@@ -7,43 +7,12 @@ struct TeamTableView: View {
     @EnvironmentObject var manager: AgentWindowManager
     @State private var isDragging = false
     @StateObject private var wsClient = WebSocketClient.shared
-    @StateObject private var speechManager = SpeechManager.shared
     @State private var inputText: String = ""
-    @State private var preRecordText: String = ""
     @State private var selectedAgentIndex: Int? = nil
-
-    @AppStorage("teamName") private var teamName: String = "MyTeam"
-    @AppStorage("showTeamName") private var showTeamName: Bool = true
 
     var body: some View {
         VStack(spacing: 0) {
-            // Spacer() 제거: 팀 명칭이 윈도우 최상단에 붙도록 수정
-
-            // ── 팀 명칭 배지 (클릭 시 드래그한듯 이동) ──
-            if showTeamName && !teamName.isEmpty {
-                Text(teamName)
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white.opacity(0.75))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 5)
-                    .background(
-                        Capsule()
-                            .fill(Color.white.opacity(0.12))
-                            .overlay(Capsule().stroke(Color.white.opacity(0.18), lineWidth: 1))
-                    )
-                    .padding(.bottom, 6)
-                    .gesture(DragGesture(minimumDistance: 0)
-                        .onChanged { _ in
-                            if let event = NSApplication.shared.currentEvent {
-                                NotificationCenter.default.post(name: .agentDragBegan, object: nil)
-                                AgentWindowManager.shared.teamPanelWindow?.performDrag(with: event)
-                            }
-                        }
-                        .onEnded { _ in
-                            NotificationCenter.default.post(name: .agentDragEnded, object: nil)
-                        }
-                    )
-            }
+            Spacer()
 
             // ── 에이전트 목록 ──
             HStack(alignment: .bottom, spacing: 10) {
@@ -79,36 +48,17 @@ struct TeamTableView: View {
                                 manager.showSwapWindow(replaceIndex: index)
                             }
                         )
-                        .offset(x: index == 3 ? -110 : 110, y: -40),
-                        alignment: .center
+                        .offset(y: -95),
+                        alignment: .top
                     )
-                    
-                    .zIndex(selectedAgentIndex == index ? 10 : 1)
                 }
             }
-            .zIndex(5)
+            .zIndex(2)
 
             Spacer().frame(height: 20)
 
             // ── 하단 입력창 및 메뉴 ──
             HStack {
-                Button(action: {
-                    if speechManager.isRecording {
-                        speechManager.stopRecording()
-                    } else {
-                        speechManager.requestAuthorization { authorized in
-                            if authorized {
-                                preRecordText = inputText
-                                speechManager.startRecording()
-                            }
-                        }
-                    }
-                }) {
-                    Image(systemName: speechManager.isRecording ? "stop.circle.fill" : "mic.fill")
-                        .foregroundColor(speechManager.isRecording ? .red : .gray)
-                }
-                .buttonStyle(PlainButtonStyle())
-                
                 TextField("팀원들에게 인사해 보세요", text: $inputText)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .onSubmit {
@@ -134,15 +84,6 @@ struct TeamTableView: View {
                     Button(action: { manager.showSettingsWindow() }) {
                         Label("API 설정하기", systemImage: "gearshape.fill")
                     }
-                    Divider()
-                    Button(action: {
-                        WebSocketClient.shared.sendSystemEvent(eventType: "shutdown", baseGreeting: "오늘 너무 고생하셨습니다. 앱을 곧 종료할게요!")
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                            NSApplication.shared.terminate(nil)
-                        }
-                    }) {
-                        Label("어플리케이션 종료", systemImage: "power")
-                    }
                 } label: {
                     Image(systemName: "line.3.horizontal")
                         .font(.system(size: 16, weight: .bold))
@@ -159,7 +100,7 @@ struct TeamTableView: View {
         }
         .padding(.horizontal, 16)
         .background(Color.clear)
-        .frame(maxWidth: .infinity, maxHeight: .infinity) // 고정 크기 제거, 윈도우 크기에 맞춤
+        .frame(width: 460, height: 280)
         .onReceive(NotificationCenter.default.publisher(for: .agentDragBegan)) { _ in
             withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) { 
                 isDragging = true
@@ -169,12 +110,6 @@ struct TeamTableView: View {
         .onReceive(NotificationCenter.default.publisher(for: .agentDragEnded)) { _ in
             withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) { 
                 isDragging = false 
-            }
-        }
-        .onChange(of: speechManager.recognizedText) { _, newText in
-            if speechManager.isRecording {
-                let prefix = preRecordText.isEmpty ? "" : preRecordText + " "
-                inputText = prefix + newText
             }
         }
     }
@@ -235,9 +170,6 @@ struct AgentSeatView: View {
     var speechText: String?
     var isSelected: Bool
     var onTap: () -> Void
-    
-    @State private var lastClickTime: Date = .distantPast
-    @State private var rapidClickCount: Int = 0
 
     @State private var isHovered = false
 
@@ -296,15 +228,15 @@ struct AgentSeatView: View {
             }
 
             ZStack {
-                // ── 선택 테두리 ──
                 if isSelected {
                     RoundedRectangle(cornerRadius: 14)
                         .stroke(Color.pink, lineWidth: 2)
                         .background(RoundedRectangle(cornerRadius: 14).fill(Color.pink.opacity(0.1)))
-                        .frame(width: 100, height: 120)
+                        .frame(width: 80, height: 80)
+                } else {
+                    Color.clear.frame(width: 80, height: 80)
                 }
-
-                // ── 호버 시 이름/역할 툴팁 ──
+                
                 if isHovered && !isDragging {
                     VStack(spacing: 2) {
                         Text(config.name).font(.system(size: 11, weight: .bold))
@@ -312,33 +244,14 @@ struct AgentSeatView: View {
                     }
                     .foregroundColor(.white).padding(.horizontal, 8).padding(.vertical, 4)
                     .background(RoundedRectangle(cornerRadius: 10).fill(config.color.opacity(0.9)))
-                    .offset(y: -70)
+                    .offset(y: -40)
                     .transition(.opacity.combined(with: .scale))
                 }
-
-                // ── 캐릭터 뷰 ──
-                // config.spriteName이 있으면 SpriteKit 사용, 없으면 이모지 폴백
-                if let spriteName = config.spriteName {
-                    // SpriteKit 스프라이트 애니메이션
-                    CharacterAnimationController(
-                        characterID: spriteName,
-                        fallbackEmoji: config.emoji,
-                        agentID: config.id,
-                        isSpeaking: isSpeaking,
-                        isThinking: isThinking,
-                        isDragging: isDragging
-                    )
-                    .frame(width: 100, height: 120)
-                    .scaleEffect(isHovered && !isDragging ? 1.05 : 1.0)
-                    .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isHovered)
-                } else {
-                    // 이모지 폴백 (스프라이트 준비 전 또는 미지원 캐릭터)
-                    Text(isDragging ? config.dragEmoji : config.emoji)
-                        .font(.system(size: 50))
-                        .rotationEffect(.degrees(isDragging ? config.dragRotation : 0))
-                        .scaleEffect(isHovered && !isDragging ? 1.1 : 1.0)
-                        .frame(width: 100, height: 120)
-                }
+                
+                Text(isDragging ? config.dragEmoji : config.emoji)
+                    .font(.system(size: 50))
+                    .rotationEffect(.degrees(isDragging ? config.dragRotation : 0))
+                    .scaleEffect(isHovered && !isDragging ? 1.1 : 1.0)
             }
 
             HStack(spacing: 3) {
@@ -354,23 +267,6 @@ struct AgentSeatView: View {
         .frame(width: 100)
         .contentShape(Rectangle())
         .onHover { h in isHovered = h }
-        .onTapGesture {
-            AgentWindowManager.shared.updateInteractionTime()
-            let now = Date()
-            if now.timeIntervalSince(lastClickTime) < 0.5 {
-                rapidClickCount += 1
-                if rapidClickCount >= 3 {
-                    let rapidGreetings = ["앗, 간지러워요!", "살살요!", "정신이 하나도 없어요!", "게임 아니에요~"]
-                    WebSocketClient.shared.sendSystemEvent(eventType: "rapid_click", baseGreeting: rapidGreetings.randomElement()!)
-                    rapidClickCount = 0
-                }
-                } else {
-                rapidClickCount = 1
-                let clickGreetings = ["네, 저 여기 있어요!", "말씀하세요!", "무슨 일이죠?", "넵! 대기 중!"]
-                WebSocketClient.shared.sendSystemEvent(eventType: "click", baseGreeting: clickGreetings.randomElement()!, agentID: config.id)
-            }
-            lastClickTime = now
-            onTap()
-        }
+        .onTapGesture { onTap() }
     }
 }

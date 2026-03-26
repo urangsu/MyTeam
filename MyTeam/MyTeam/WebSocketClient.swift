@@ -8,8 +8,6 @@ struct WSAgentResponse: Codable {
     let agent_id: String
     let text: String
     let status: String
-    let audio_base64: String?
-    let is_system: Bool?
 }
 
 // MARK: - WebSocketClient
@@ -27,8 +25,6 @@ class WebSocketClient: ObservableObject {
     @Published var currentMessage: String = ""
     @Published var agentStatus: String = "Idle"
     
-    private var messageQueue: [URLSessionWebSocketTask.Message] = []
-    
     private init() {
         connect()
     }
@@ -37,15 +33,11 @@ class WebSocketClient: ObservableObject {
         let request = URLRequest(url: url)
         webSocketTask = URLSession.shared.webSocketTask(with: request)
         webSocketTask?.resume()
-        
-        // 연결 상태는 receiveMessage에서 첫 성공 시 또는 별도 대기 로직으로 전환 가능하나,
-        // 여기서는 일단 true로 두고 실패 시 처리하도록 유지하되 flushQueue를 연동합니다.
         isConnected = true
         receiveMessage()
         print("WebSocket Connected!")
         
-        // 연결 즉시 큐 비우기 및 API 키 전송
-        flushQueue()
+        // 연결되자마자 저장된 API 키를 서버로 전송
         sendAPIKey()
     }
     
@@ -89,7 +81,6 @@ class WebSocketClient: ObservableObject {
         
         do {
             let response = try JSONDecoder().decode(WSAgentResponse.self, from: data)
-            print("[DEBUG-RX] Decoded: status=\(response.status), agent=\(response.agent_id), text=\(response.text.prefix(30))")
             
             DispatchQueue.main.async {
                 let manager = AgentWindowManager.shared
@@ -102,19 +93,9 @@ class WebSocketClient: ObservableObject {
                     self.currentSpeakerID = response.agent_id
                     self.agentStatus = "Speaking"
                     self.currentMessage = response.text
-                    
-                    // 하이브리드 음성 로직: 클라우드 보이스 사용이 켜져 있으면 AVAudioPlayer, 꺼져있으면 네이티브 TTS 재생
-                    let useCloudVoice = UserDefaults.standard.bool(forKey: "useCloudVoice")
-                    if useCloudVoice, let base64String = response.audio_base64, !base64String.isEmpty, let audioData = Data(base64Encoded: base64String) {
-                        SpeechManager.shared.playAudioData(audioData)
-                    } else if !useCloudVoice && !response.text.isEmpty {
-                        // TODO: 필요하다면 agent_id에 따른 고유 Native Voice Identifier 맵핑 가능
-                        SpeechManager.shared.speak(text: response.text)
-                    }
                 } else if response.status == "Idle" {
                     // 말하기가 끝났을 때 (Idle), 그동안의 메시지를 공용 로그에 저장
-                    // 단, 시스템 자동 응답(is_system == true)은 로그에서 제외
-                    if !self.currentMessage.isEmpty && !(response.is_system ?? false) {
+                    if !self.currentMessage.isEmpty {
                         let agentName = manager.activeAgents.first(where: { $0.id == response.agent_id })?.name ?? "에이전트"
                         let log = AgentWindowManager.ChatLog(
                             id: UUID(),
@@ -130,9 +111,6 @@ class WebSocketClient: ObservableObject {
                     self.currentSpeakerID = nil
                     self.currentMessage = ""
                     self.agentStatus = "Idle"
-                    
-                    // TTS가 재생 중일 수 있으므로 여기서 강제로 stopSpeaking()을 호출하지 않습니다.
-                    // 만약 사용자가 대화를 중단하고 싶다면 별도의 중단 인터랙션에서 처리합니다.
                 }
                 
                 // 텍스트 수신 시 소리 재생 (무음 모드가 아닐 때만)
@@ -141,15 +119,13 @@ class WebSocketClient: ObservableObject {
                 }
             }
         } catch {
-            print("[DEBUG-RX] JSON Decode Error: \(error)")
-            print("[DEBUG-RX] Raw JSON: \(jsonString.prefix(200))")
+            print("JSON Decode Error: \(error)")
         }
     }
     
     // MARK: - 메시지 발신 (클라이언트 → 백엔드)
     // 현재는 테스트용 텍스트. 나중에는 오디오 청크를 보냄.
     func sendMessage(_ text: String, targetAgentID: String? = nil) {
-        AgentWindowManager.shared.updateInteractionTime()
         guard isConnected else {
             print("WebSocket is disconnected. Reconnecting...")
             connect()
@@ -158,9 +134,7 @@ class WebSocketClient: ObservableObject {
         
         var payload: [String: Any] = [
             "type": "user_command",
-            "text": text,
-            "use_cloud_voice": UserDefaults.standard.bool(forKey: "useCloudVoice"),
-            "user_title": UserDefaults.standard.string(forKey: "userTitle") ?? "사용자님"
+            "text": text
         ]
         
         if let targetAgentID = targetAgentID {
@@ -219,56 +193,6 @@ class WebSocketClient: ObservableObject {
                 print("API Key 전송 에러: \(error)")
             } else {
                 print("API Keys 전송 성공")
-            }
-        }
-    }
-    
-    // 시스템 이벤트 (잠금 해제, 시작 등) 전송
-    func sendSystemEvent(eventType: String, baseGreeting: String, agentID: String? = nil) {
-        let useCloudVoice = UserDefaults.standard.bool(forKey: "useCloudVoice")
-        
-        var payload: [String: Any] = [
-            "type": "system_event",
-            "event": eventType,
-            "base_greeting": baseGreeting,
-            "use_cloud_voice": useCloudVoice,
-            "user_title": UserDefaults.standard.string(forKey: "userTitle") ?? "사용자님"
-        ]
-        
-        if let aid = agentID {
-            payload["agent_id"] = aid
-        }
-        
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: payload),
-              let jsonString = String(data: jsonData, encoding: .utf8) else { return }
-        
-        let message = URLSessionWebSocketTask.Message.string(jsonString)
-        print("[DEBUG-TX] sendSystemEvent: type=\(eventType), connected=\(isConnected)")
-        
-        if isConnected {
-            webSocketTask?.send(message) { error in
-                if let error = error {
-                    print("[DEBUG-TX] System Event 전송 에러: \(error)")
-                } else {
-                    print("[DEBUG-TX] System Event 전송 성공: \(eventType)")
-                }
-            }
-        } else {
-            print("[DEBUG-TX] WebSocket disconnected. Queuing: \(eventType)")
-            messageQueue.append(message)
-            connect()
-        }
-    }
-    
-    private func flushQueue() {
-        guard isConnected, !messageQueue.isEmpty else { return }
-        print("Flushing WebSocket queue (\(messageQueue.count) messages)")
-        while !messageQueue.isEmpty {
-            let msg = messageQueue.removeFirst()
-            webSocketTask?.send(msg) { error in
-                if let error = error {
-                    print("Queue Flush Error: \(error)")
-                }
             }
         }
     }

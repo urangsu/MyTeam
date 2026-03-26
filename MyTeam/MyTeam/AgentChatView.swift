@@ -9,13 +9,8 @@ struct AgentChatView: View {
     
     @EnvironmentObject var manager: AgentWindowManager
     @StateObject private var wsClient = WebSocketClient.shared
-    @StateObject private var speechManager = SpeechManager.shared
-    
     @State private var inputText: String = ""
     @State private var initialGreeting: String = "안녕하세요! 어떤 프로젝트부터 도와드릴까요?"
-    
-    // 녹음 시작 시 기존에 쓰던 텍스트를 보존하기 위한 변수
-    @State private var preRecordText: String = ""
     
     // 이 대화방에 해당하는 1:1 채팅 내역 필터링
     private var chatHistory: [AgentWindowManager.ChatLog] {
@@ -67,31 +62,7 @@ struct AgentChatView: View {
                 Spacer()
                 
                 HStack(spacing: 18) {
-                    Button(action: {
-                        if speechManager.isRecording {
-                            speechManager.stopRecording()
-                        } else {
-                            speechManager.requestAuthorization { authorized in
-                                if authorized {
-                                    self.preRecordText = self.inputText
-                                    speechManager.startRecording()
-                                }
-                            }
-                        }
-                    }) {
-                        Group {
-                            if speechManager.isStarting {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .orange))
-                                    .scaleEffect(0.7)
-                                    .frame(width: 20, height: 20)
-                            } else {
-                                Image(systemName: speechManager.isRecording ? "stop.circle.fill" : "mic")
-                                    .foregroundColor(speechManager.isRecording ? .red : subTextColor)
-                            }
-                        }
-                    }
-                    .disabled(speechManager.isStarting)
+                    Button(action: { /* 음성 */ }) { Image(systemName: "mic") }
                     Button(action: { /* 공유 */ }) { Image(systemName: "square.and.arrow.up") }
                     Button(action: onClose) { Image(systemName: "xmark") }
                 }
@@ -155,30 +126,23 @@ struct AgentChatView: View {
                         }
                     }
                     .padding(24)
-                    .onChange(of: chatHistory.count) {
+                    .onChange(of: chatHistory.count) { _ in
                         withAnimation {
                             if let lastLog = chatHistory.last {
                                 proxy.scrollTo(lastLog.id, anchor: .bottom)
                             }
                         }
                     }
-                    .onChange(of: wsClient.currentMessage) {
+                    .onChange(of: wsClient.currentMessage) { _ in
                         withAnimation {
                             proxy.scrollTo("current_speaking", anchor: .bottom)
                         }
                     }
-                    .onChange(of: wsClient.agentStatus) { _, newValue in
+                    .onChange(of: wsClient.agentStatus) { newValue in
                         if newValue == "Thinking" {
                             withAnimation {
                                 proxy.scrollTo("thinking_spinner", anchor: .bottom)
                             }
-                        }
-                    }
-                    .onChange(of: speechManager.recognizedText) { _, newText in
-                        // 녹음 중일 때 진행중인 텍스트 스트림을 보여줌
-                        if speechManager.isRecording {
-                            let prefix = preRecordText.isEmpty ? "" : preRecordText + " "
-                            inputText = prefix + newText
                         }
                     }
                 }
@@ -209,21 +173,13 @@ struct AgentChatView: View {
                         .fill(manager.isDarkMode ? Color.white.opacity(0.05) : Color.black.opacity(0.03))
                 )
                 
-                if let errorMsg = speechManager.sttError {
-                    Text(errorMsg)
-                        .font(.system(size: 11))
-                        .foregroundColor(.red)
-                        .multilineTextAlignment(.center)
-                        .padding(.top, 4)
-                }
-                
                 Text(config.status)
                     .font(.system(size: 11))
                     .foregroundColor(subTextColor.opacity(0.7))
             }
             .padding(20)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(width: 420, height: 600) // 요청하신 대로 크기 확대
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: 32)
@@ -296,12 +252,6 @@ struct ChatBubble: View {
             }
             
             VStack(alignment: .leading, spacing: 12) {
-                // 상단에 이름 표시 (색상 적용)
-                Text(isUser ? "나" : (AgentWindowManager.shared.activeAgents.first(where: { $0.emoji == emoji })?.name ?? "에이전트"))
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(isUser ? .blue : accentColor)
-                    .padding(.bottom, 2)
-                
                 ForEach(paragraphs, id: \.self) { paragraph in
                     Text(paragraph)
                         .font(.system(size: 15, weight: .regular))

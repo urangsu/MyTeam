@@ -16,16 +16,6 @@ struct SettingsView: View {
     @AppStorage("validationProvider") private var validationProvider: String = "Gemini"
     @AppStorage("customBackendURL") private var customBackendURL: String = "ws://127.0.0.1:8000/ws"
     
-    // 오디오 하이브리드 세팅
-    @AppStorage("useCloudVoice") private var useCloudVoice: Bool = false
-    
-    // 사용자 하칭
-    @AppStorage("userTitle") private var userTitle: String = "사용자님"
-    
-    // 팀 명칭
-    @AppStorage("teamName") private var teamName: String = "MyTeam"
-    @AppStorage("showTeamName") private var showTeamName: Bool = true
-    
     let providers = ["Gemini", "Claude", "OpenAI"]
     
     // 키 검증 상태
@@ -148,127 +138,10 @@ struct SettingsView: View {
                         .font(.system(size: 12, design: .monospaced))
                 }
                 
-                Divider().background(textColor.opacity(0.1)).padding(.vertical, 4)
-                
-                // ── 사용자 호칭 설정 ──
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("사용자 호칭 (AI 에이전트가 부를 이름)")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(textColor)
-                    
-                    TextField("예: 사용자님, 보스, 매니저 등", text: $userTitle)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .font(.system(size: 13))
-                }
-                
-                Divider().background(textColor.opacity(0.1)).padding(.vertical, 4)
-                
-                // ── 팀 명칭 설정 ──
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("팀 명칭 (1~8글자)")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(textColor)
-                        Spacer()
-                        Toggle("화면 표시", isOn: $showTeamName)
-                            .toggleStyle(SwitchToggleStyle(tint: .blue))
-                            .font(.system(size: 11))
-                    }
-                    TextField("팀 이름 (최대 8글자)", text: Binding(
-                        get: { teamName },
-                        set: { newValue in
-                            let filtered = String(newValue.prefix(8))
-                            teamName = filtered
-                        }
-                    ))
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .font(.system(size: 13))
-                    Text("팔원들 위에 표시되며 클릭 시 팀 전체를 드래그할 수 있습니다.")
-                        .font(.system(size: 10))
-                        .foregroundColor(textColor.opacity(0.5))
-                }
-
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("음성 상호작용 (TTS / STT)")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(textColor)
-                    
-                    Toggle("고품질 클라우드 음성 사용 (OpenAI 등 API 소모)", isOn: $useCloudVoice)
-                        .font(.system(size: 12))
-                        .foregroundColor(textColor.opacity(0.9))
-                        .toggleStyle(SwitchToggleStyle(tint: .blue))
-                    
-                    Text("체크 해제 시 맥북 내장 시스템(무료) 목소리나 커스텀 파일로 우회합니다.")
-                        .font(.system(size: 10))
-                        .foregroundColor(textColor.opacity(0.5))
-                        .padding(.top, -6)
-                    
-                    Button(action: {
-                        // 커스텀 음성 폴더 열기 (추후 로컬 연동)
-                        print("커스텀 보이스 폴더 열기")
-                    }) {
-                        HStack {
-                            Image(systemName: "folder.fill").foregroundColor(.orange)
-                            Text("커스텀 에이전트 보이스 폴더 열기")
-                        }
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(textColor)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(textColor.opacity(0.05)))
-                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(textColor.opacity(0.1), lineWidth: 1))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
-                
                 Spacer(minLength: 20)
                 
                 // ── 하단 버튼 ──
                 HStack {
-                    Button(action: {
-                        WebSocketClient.shared.sendSystemEvent(eventType: "shutdown", baseGreeting: "사용자님, 오늘 정말 고생 많으셨어요. 푹 쉬세요!")
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                            NSApplication.shared.terminate(nil)
-                        }
-                    }) {
-                        Text("앱 종료하기")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(RoundedRectangle(cornerRadius: 8).fill(Color.red.opacity(0.8)))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    
-                    Button(action: {
-                        let cheerGreetings = [
-                            "사용자님, 지금 최고예요! 제가 항상 뒤에 있는 거 아시죠?",
-                            "사용자님, 지금 페이스 너무 좋아요! 역시 우리 팀의 핵심이라니까요.",
-                            "어려운 문제도 사용자님이라면 금방 해결할 거예요. 제가 응원할게요!",
-                            "사용자님, 잠깐 기지개라도 켜세요! 항상 지켜보고 있으니까 힘내요!",
-                            "역시 사용자님! 이런 아이디어는 어디서 나오는 거예요? 진짜 대단해요.",
-                            "사용자님 곁엔 저희가 있잖아요. 힘들면 언제든 저희를 부려 먹으세요!",
-                            "와, 사용자님 방금 작업 속도 대박! 이대로만 쭉쭉 가시죠!",
-                            "사용자님은 하면 다 되더라고요. 지금까지 잘해왔으니까 걱정 마세요.",
-                            "사용자님, 오늘도 열일하는 모습 너무 멋있어요! 완전 반하겠는데요?",
-                            "기운 내세요, 사용자님! 제가 사용자님 제일 믿는 거 아시죠? 화이팅!",
-                            "오늘 날씨만큼이나 사용자님 컨디션도 좋아 보여서 다행이에요. 고고!"
-                        ]
-                        WebSocketClient.shared.sendSystemEvent(eventType: "cheer", baseGreeting: cheerGreetings.randomElement()!)
-                    }) {
-                        HStack {
-                            Image(systemName: "sparkles")
-                            Text("팀원들 응원받기")
-                        }
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(RoundedRectangle(cornerRadius: 8).fill(Color.orange.opacity(0.8)))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .padding(.leading, 8)
-
                     Spacer()
                     Button(action: {
                         WebSocketClient.shared.sendAPIKey() // 새로 입력한 3개 키 모두 전송
@@ -285,9 +158,8 @@ struct SettingsView: View {
                 }
             }
             .padding(24)
-            .textSelection(.enabled)
         }
-        .frame(width: 440, height: 740)
+        .frame(width: 440, height: 500)
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(bgColor)

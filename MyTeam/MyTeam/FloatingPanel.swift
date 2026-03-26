@@ -63,7 +63,7 @@ class FloatingPanel: NSPanel {
     override func mouseDown(with event: NSEvent) {
         // 드래그 시작점 기록
         dragStartMouseLocation = NSEvent.mouseLocation
-        AgentWindowManager.shared.updateInteractionTime()
+        // AgentWindowManager.shared.updateInteractionTime() // TODO: 복원 예정
 
         // SwiftUI 뷰에 드래그 시작 알림 (팀 창 이동 시에만 에이전트들이 반응하게 함)
         if agentID == "team" {
@@ -71,7 +71,7 @@ class FloatingPanel: NSPanel {
             
             // 백엔드에 드래그 시작 시스템 이벤트 전송
             let dragStartGreetings = ["앗, 사용자님! 갑자기 왜요?", "으악! 살살 잡아주세요!", "선택받았다!", "출동인가요?"]
-            WebSocketClient.shared.sendSystemEvent(eventType: "drag_start", baseGreeting: dragStartGreetings.randomElement()!)
+            // WebSocketClient.shared.sendSystemEvent(eventType: "drag_start", ...) // TODO: 복원 예정
 
             // 에이전트별 개인 효과음 재생
             for config in AgentWindowManager.shared.activeAgents {
@@ -105,7 +105,7 @@ class FloatingPanel: NSPanel {
         // 드래그 중인 상태 백엔드 전송 (부하 방지를 위해 3초에 한 번만)
         if Date().timeIntervalSince(lastDraggingEventTime) > 3.0 {
             let draggingGreetings = ["공중에 떴다!", "화면이 다 보여요!", "어디로 가시는 거예요?", "슝~ 날아간다!"]
-            WebSocketClient.shared.sendSystemEvent(eventType: "dragging", baseGreeting: draggingGreetings.randomElement()!)
+            // WebSocketClient.shared.sendSystemEvent(eventType: "dragging", ...) // TODO: 복원 예정
             lastDraggingEventTime = Date()
         }
 
@@ -120,7 +120,7 @@ class FloatingPanel: NSPanel {
         
         // 백엔드에 드롭 시스템 이벤트 전송
         let dropGreetings = ["착지 성공!", "여기가 제 새 자리인가요?", "안전하게 배달 완료!", "도착!"]
-        WebSocketClient.shared.sendSystemEvent(eventType: "drop", baseGreeting: dropGreetings.randomElement()!)
+        // WebSocketClient.shared.sendSystemEvent(eventType: "drop", ...) // TODO: 복원 예정
 
         // 에이전트별 개인 착지 효과음 재생
         for config in AgentWindowManager.shared.activeAgents {
