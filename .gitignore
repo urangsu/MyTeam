@@ -5,3 +5,5 @@ __pycache__/
 MyTeam/.DS_Store
 MyTeam/MyTeam.xcodeproj/project.xcworkspace/xcuserdata/
 MyTeam/MyTeam.xcodeproj/xcuserdata/
+frames/
+.claude/worktrees/
