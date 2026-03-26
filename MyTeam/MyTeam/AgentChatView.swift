@@ -223,7 +223,7 @@ struct AgentChatView: View {
             }
             .padding(20)
         }
-        .frame(width: 420, height: 600) // 요청하신 대로 크기 확대
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: 32)

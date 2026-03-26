@@ -22,6 +22,10 @@ struct SettingsView: View {
     // 사용자 하칭
     @AppStorage("userTitle") private var userTitle: String = "사용자님"
     
+    // 팀 명칭
+    @AppStorage("teamName") private var teamName: String = "MyTeam"
+    @AppStorage("showTeamName") private var showTeamName: Bool = true
+    
     let providers = ["Gemini", "Claude", "OpenAI"]
     
     // 키 검증 상태
@@ -159,7 +163,31 @@ struct SettingsView: View {
                 
                 Divider().background(textColor.opacity(0.1)).padding(.vertical, 4)
                 
-                // ── 음성(오디오) 하이브리드 설정 ──
+                // ── 팀 명칭 설정 ──
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("팀 명칭 (1~8글자)")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(textColor)
+                        Spacer()
+                        Toggle("화면 표시", isOn: $showTeamName)
+                            .toggleStyle(SwitchToggleStyle(tint: .blue))
+                            .font(.system(size: 11))
+                    }
+                    TextField("팀 이름 (최대 8글자)", text: Binding(
+                        get: { teamName },
+                        set: { newValue in
+                            let filtered = String(newValue.prefix(8))
+                            teamName = filtered
+                        }
+                    ))
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .font(.system(size: 13))
+                    Text("팔원들 위에 표시되며 클릭 시 팀 전체를 드래그할 수 있습니다.")
+                        .font(.system(size: 10))
+                        .foregroundColor(textColor.opacity(0.5))
+                }
+
                 VStack(alignment: .leading, spacing: 12) {
                     Text("음성 상호작용 (TTS / STT)")
                         .font(.system(size: 14, weight: .semibold))

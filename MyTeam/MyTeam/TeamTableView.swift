@@ -12,9 +12,38 @@ struct TeamTableView: View {
     @State private var preRecordText: String = ""
     @State private var selectedAgentIndex: Int? = nil
 
+    @AppStorage("teamName") private var teamName: String = "MyTeam"
+    @AppStorage("showTeamName") private var showTeamName: Bool = true
+
     var body: some View {
         VStack(spacing: 0) {
-            Spacer()
+            // Spacer() 제거: 팀 명칭이 윈도우 최상단에 붙도록 수정
+
+            // ── 팀 명칭 배지 (클릭 시 드래그한듯 이동) ──
+            if showTeamName && !teamName.isEmpty {
+                Text(teamName)
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white.opacity(0.75))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 5)
+                    .background(
+                        Capsule()
+                            .fill(Color.white.opacity(0.12))
+                            .overlay(Capsule().stroke(Color.white.opacity(0.18), lineWidth: 1))
+                    )
+                    .padding(.bottom, 6)
+                    .gesture(DragGesture(minimumDistance: 0)
+                        .onChanged { _ in
+                            if let event = NSApplication.shared.currentEvent {
+                                NotificationCenter.default.post(name: .agentDragBegan, object: nil)
+                                AgentWindowManager.shared.teamPanelWindow?.performDrag(with: event)
+                            }
+                        }
+                        .onEnded { _ in
+                            NotificationCenter.default.post(name: .agentDragEnded, object: nil)
+                        }
+                    )
+            }
 
             // ── 에이전트 목록 ──
             HStack(alignment: .bottom, spacing: 10) {
@@ -130,7 +159,7 @@ struct TeamTableView: View {
         }
         .padding(.horizontal, 16)
         .background(Color.clear)
-        .frame(width: 460, height: 280)
+        .frame(maxWidth: .infinity, maxHeight: .infinity) // 고정 크기 제거, 윈도우 크기에 맞춤
         .onReceive(NotificationCenter.default.publisher(for: .agentDragBegan)) { _ in
             withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) { 
                 isDragging = true
@@ -267,15 +296,15 @@ struct AgentSeatView: View {
             }
 
             ZStack {
+                // ── 선택 테두리 ──
                 if isSelected {
                     RoundedRectangle(cornerRadius: 14)
                         .stroke(Color.pink, lineWidth: 2)
                         .background(RoundedRectangle(cornerRadius: 14).fill(Color.pink.opacity(0.1)))
-                        .frame(width: 80, height: 80)
-                } else {
-                    Color.clear.frame(width: 80, height: 80)
+                        .frame(width: 100, height: 120)
                 }
-                
+
+                // ── 호버 시 이름/역할 툴팁 ──
                 if isHovered && !isDragging {
                     VStack(spacing: 2) {
                         Text(config.name).font(.system(size: 11, weight: .bold))
@@ -283,14 +312,33 @@ struct AgentSeatView: View {
                     }
                     .foregroundColor(.white).padding(.horizontal, 8).padding(.vertical, 4)
                     .background(RoundedRectangle(cornerRadius: 10).fill(config.color.opacity(0.9)))
-                    .offset(y: -40)
+                    .offset(y: -70)
                     .transition(.opacity.combined(with: .scale))
                 }
-                
-                Text(isDragging ? config.dragEmoji : config.emoji)
-                    .font(.system(size: 50))
-                    .rotationEffect(.degrees(isDragging ? config.dragRotation : 0))
-                    .scaleEffect(isHovered && !isDragging ? 1.1 : 1.0)
+
+                // ── 캐릭터 뷰 ──
+                // config.spriteName이 있으면 SpriteKit 사용, 없으면 이모지 폴백
+                if let spriteName = config.spriteName {
+                    // SpriteKit 스프라이트 애니메이션
+                    CharacterAnimationController(
+                        characterID: spriteName,
+                        fallbackEmoji: config.emoji,
+                        agentID: config.id,
+                        isSpeaking: isSpeaking,
+                        isThinking: isThinking,
+                        isDragging: isDragging
+                    )
+                    .frame(width: 100, height: 120)
+                    .scaleEffect(isHovered && !isDragging ? 1.05 : 1.0)
+                    .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isHovered)
+                } else {
+                    // 이모지 폴백 (스프라이트 준비 전 또는 미지원 캐릭터)
+                    Text(isDragging ? config.dragEmoji : config.emoji)
+                        .font(.system(size: 50))
+                        .rotationEffect(.degrees(isDragging ? config.dragRotation : 0))
+                        .scaleEffect(isHovered && !isDragging ? 1.1 : 1.0)
+                        .frame(width: 100, height: 120)
+                }
             }
 
             HStack(spacing: 3) {
