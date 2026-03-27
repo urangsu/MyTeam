@@ -183,7 +183,8 @@ class SpeechManager: NSObject, ObservableObject, @unchecked Sendable, SFSpeechRe
     // useAnimalTTS(AppStorage) = true  → 동물의 숲 스타일 (AnimalTTSManager)
     // useAnimalTTS(AppStorage) = false → Apple 기본 TTS (AVSpeechSynthesizer)
     func speak(text: String, voiceIdentifier: String? = nil) {
-        let useAnimal = UserDefaults.standard.bool(forKey: "useAnimalTTS")
+        // bool(forKey:)은 키가 없으면 false 반환 → object로 읽어 기본값 true 보장
+        let useAnimal = UserDefaults.standard.object(forKey: "useAnimalTTS") as? Bool ?? true
 
         if useAnimal {
             DispatchQueue.main.async { self.isSpeaking = true }

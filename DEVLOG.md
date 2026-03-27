@@ -157,8 +157,26 @@ WebSocketClient.shared.sendSystemEvent(eventType: "wake"/"idle"/"startup"/"greet
 ### [2026-03-27] Antigravity — UI 버그 수정 및 사용성 개선
 - `TeamStatusView`: 삭제 모드(`−`) 버튼 디자인 개선 (다크모드 시 흰색 배경 + 검정 아이콘으로 시인성 확보)
 - `TeamStatusView`: 팀 채팅방 하단에 누락되었던 채팅 입력창(`TextField`) 추가
-- `FloatingPanel`: "최소화 락" 해제를 위해 표준 최소화 버튼(`miniaturizeButton`) 활성화
+- `FloatingPanel`: "최소화 락" 해제를 위해 표준 최소화 버튼(`miniaturizeButton`) 활성화 → (로그 수정) 사용자 요청으로 다시 비활성화 및 최소 크기 제한으로 해결
 - `AgentChatView`: 외곽 컨테이너에 `.frame(maxWidth: .infinity, maxHeight: .infinity)` 추가하여 창 리사이즈 시 공백 문제 해결
+
+- `FloatingPanel`: 창 상단에 나타나던 네이티브 신호등 버튼(닫기, 최소화, 확대) 완전 숨김 (커스텀 UI와 중복 방지)
+- `AgentWindowManager`: 개별 채팅창에 최소 크기(`minSize`) 제한 제거 (사용자 요청에 따라 자유 조절 허용)
+
+### [2026-03-27] Antigravity — iMessage 레이아웃 고도화 및 동적 리사이즈
+- **동적 창 확장**: 채팅방 선택 시 창 너비가 300px에서 600px로 자동 확장 (아이메세지 스타일)
+- **사이드바 최적화**: `TeamStatusView` 및 `AgentChatView` 사이드바 너비를 85px로 축소하여 공간 효율성 증대
+- **기능 통합**: 개별 채팅창에도 에이전트 목록 사이드바를 추가하여 팀 채팅과 일관된 UX 제공
+- **UI 정리**: 팀 채팅 사이드바 하단의 불필요한 설정 버튼 제거
+- `AgentWindowManager`: `updateStatusWindowWidth`, `updateChatWindowWidth` 함수 구현으로 SwiftUI-AppKit 간 창 크기 동기화
+
+### [2026-03-27] Claude Code — 버그 수정 2건
+- **`SpeechManager.swift`**: `bool(forKey:)` → `object(forKey:) as? Bool ?? true` 로 변경
+  - 원인: 설정창 미오픈 상태에서 `useAnimalTTS` 키가 UserDefaults에 없어 false 반환 → Apple TTS 폴백
+  - 수정: 키 없을 때 기본값 true 보장 → 앱 최초 실행부터 AnimalTTS 동작
+- **`backend/main.py`**: Gemini 모델명 `gemini-1.5-flash` → `gemini-2.0-flash` (2곳)
+  - 원인: v1beta API에서 1.5-flash 404 삭제됨
+  - 수정: validate_key + set_api_keys 모두 교체
 
 ### [2026-03-27] Claude Code — 동물의 숲 TTS + SpriteKit 파이프라인 추가
 **새로 추가한 파일 (절대 수정 금지):**
