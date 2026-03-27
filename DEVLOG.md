@@ -15,7 +15,8 @@ macOS 투명 플로팅 윈도우에 동물 캐릭터 AI 에이전트 4명이 상
 | 레이어 | 기술 |
 |--------|------|
 | 클라이언트 | Swift 6 + SwiftUI + AppKit (NSPanel) + SpriteKit |
-| 백엔드 | Python + FastAPI + WebSocket + Gemini Live API + CrewAI |
+| AI 통신 | AIService.swift (URLSession 직접 호출, 서버 불필요) |
+| 백엔드 (레거시) | Python + FastAPI + WebSocket (점진적 제거 예정) |
 | 수익화 | StoreKit 2 (캐릭터 스킨 인앱결제) |
 
 ---
@@ -25,7 +26,8 @@ macOS 투명 플로팅 윈도우에 동물 캐릭터 AI 에이전트 4명이 상
 ```
 MyTeam/MyTeam/MyTeam/
 ├── AgentWindowManager.swift   ← 전체 상태 관리 (@EnvironmentObject, ChatRoom, rooms, 이벤트)
-├── WebSocketClient.swift      ← 백엔드 통신, sendSystemEvent, 하이브리드 TTS
+├── AIService.swift            ← 로컬 AI 통신 (Gemini/Claude/OpenAI 직접 호출, 서버 불필요)
+├── WebSocketClient.swift      ← 레거시 백엔드 통신 (점진적 제거 예정)
 ├── AgentChatView.swift        ← 개별 채팅창 (iMessage 스타일, isPersonalChat)
 ├── TeamStatusView.swift       ← 팀 채팅창 (iMessage 사이드바 + 방 삭제 모드)
 ├── TeamTableView.swift        ← 메인 플로팅 팀 창 (에이전트 4명 + 팀명 배지)
@@ -169,6 +171,43 @@ WebSocketClient.shared.sendSystemEvent(eventType: "wake"/"idle"/"startup"/"greet
 - **기능 통합**: 개별 채팅창에도 에이전트 목록 사이드바를 추가하여 팀 채팅과 일관된 UX 제공
 - **UI 정리**: 팀 채팅 사이드바 하단의 불필요한 설정 버튼 제거
 - `AgentWindowManager`: `updateStatusWindowWidth`, `updateChatWindowWidth` 함수 구현으로 SwiftUI-AppKit 간 창 크기 동기화
+
+### [2026-03-27] Antigravity — 백엔드 연결성 및 UI 개선
+- **`backend/main.py`**: Gemini 모델명 `gemini-1.5-flash-latest`로 업데이트하여 404 오류 해결
+- **`WebSocketClient.swift`**: 하드코딩된 URL을 `UserDefaults`의 `customBackendURL`을 사용하도록 동적화
+- **`TeamStatusView.swift`**: 팀 채팅방 레이아웃 수정 (입력창을 대화 로그 하단으로 이동)
+- 백엔드 서버 재시작 및 API 통신 검증 완료
+
+### [2026-03-27] Claude Code — 로컬 아키텍처 전환 (Python 백엔드 제거)
+**핵심 변경: 서버 없이 앱만으로 동작하도록 전환**
+
+**새 파일:**
+- `AIService.swift` — Gemini/Claude/OpenAI REST API 직접 호출 (URLSession)
+  - 에이전트 페르소나 8명 정의 (main.py에서 이식)
+  - 라운드 로빈 프로바이더 선택
+  - `getResponse(text:agentID:chatHistory:)` → AI 응답
+  - `validateKey(provider:apiKey:)` → 설정창 API 검증
+  - 시스템 프롬프트, 커스텀 페르소나, userTitle 모두 지원
+
+**수정 파일:**
+- `AgentChatView.swift` — `sendMessage()`가 WebSocket 대신 AIService 직접 호출
+- `TeamStatusView.swift` — `sendTeamMessage()`가 WebSocket 대신 AIService 직접 호출
+- `SettingsView.swift` — API 검증이 백엔드 경유 대신 AIService.validateKey() 직접 호출
+- `AnimalTTSManager.swift` — `loadPhonemeCache()` 백그라운드 스레드로 이동 (설정창 멈춤 해결)
+  - WAV 로드를 `DispatchQueue.global(qos: .userInitiated)`에서 실행
+  - 음소 미로드 시 가드 추가
+- `SpeechManager.swift` — `useAnimalTTS` 기본값 true 보장
+- `backend/main.py` — Gemini 모델 `gemini-2.0-flash` 교체
+
+**아키텍처 변경 요약:**
+```
+이전: Swift → WebSocket → Python FastAPI → AI API
+현재: Swift → AIService.swift → AI API 직접 호출 (서버 불필요!)
+```
+
+**주의: WebSocketClient.swift는 아직 삭제하지 않음** (호환성 유지)
+Antigravity가 WebSocket 관련 코드를 참조하고 있을 수 있으므로,
+완전 삭제는 협의 후 진행. 현재는 채팅에서 사용하지 않음.
 
 ### [2026-03-27] Claude Code — 버그 수정 2건
 - **`SpeechManager.swift`**: `bool(forKey:)` → `object(forKey:) as? Bool ?? true` 로 변경

@@ -343,8 +343,33 @@ struct AgentChatView: View {
 
     private func sendMessage() {
         guard !inputText.isEmpty else { return }
-        wsClient.sendMessage(inputText, targetAgentID: activeAgentID ?? config.id)
+        let text = inputText
+        let targetID = activeAgentID ?? config.id
         inputText = ""
+
+        // 내 메시지 즉시 기록
+        manager.addChatLog(agentID: targetID, agentName: "나", text: text, isUser: true)
+
+        // AIService로 직접 API 호출 (서버 불필요)
+        Task {
+            let history = manager.rooms.first(where: { $0.id == manager.currentRoomID })?
+                .messages.map { "\($0.isUser ? "User" : $0.agentName): \($0.text)" } ?? []
+
+            do {
+                let (responseText, _) = try await AIService.shared.getResponse(
+                    text: text, agentID: targetID, chatHistory: history
+                )
+                let agentName = manager.activeAgents.first(where: { $0.id == targetID })?.name ?? "에이전트"
+                await MainActor.run {
+                    manager.addChatLog(agentID: targetID, agentName: agentName, text: responseText, isUser: false)
+                    SpeechManager.shared.speak(text: responseText)
+                }
+            } catch {
+                await MainActor.run {
+                    manager.addChatLog(agentID: targetID, agentName: "시스템", text: error.localizedDescription, isUser: false)
+                }
+            }
+        }
     }
 }
 

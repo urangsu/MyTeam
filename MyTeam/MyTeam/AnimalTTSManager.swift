@@ -65,7 +65,10 @@ class AnimalTTSManager: NSObject {
     private override init() {
         super.init()
         setupAudioEngine()
-        loadPhonemeCache()
+        // 메인 스레드 블로킹 방지: 백그라운드에서 음소 로드
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            self?.loadPhonemeCache()
+        }
     }
 
     // MARK: - 오디오 엔진 구성
@@ -193,6 +196,11 @@ class AnimalTTSManager: NSObject {
 
         guard !phonemes.isEmpty else {
             print("[AnimalTTS] 재생할 음소가 없습니다: \"\(text)\"")
+            return
+        }
+
+        guard !phonemeCache.isEmpty else {
+            print("[AnimalTTS] 음소 아직 로드 중... 잠시 후 재시도")
             return
         }
 

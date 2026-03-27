@@ -296,7 +296,7 @@ struct SettingsView: View {
         )
     }
     
-    // MARK: - API 키 검증 요청 로직
+    // MARK: - API 키 검증 (로컬 직접 호출 — 서버 불필요)
     private func validateAPIKey() {
         let keyToValidate: String
         switch validationProvider {
@@ -304,60 +304,31 @@ struct SettingsView: View {
         case "OpenAI": keyToValidate = openaiAPIKey
         default: keyToValidate = geminiAPIKey
         }
-        
+
         guard !keyToValidate.isEmpty else {
             validationMessage = "❌ [\(validationProvider)] 키를 먼저 입력해주세요."
             return
         }
-        
+
         isValidating = true
         validationMessage = "검증 중..."
-        
-        // http URL
-        let httpUrlString = customBackendURL.replacingOccurrences(of: "ws://", with: "http://").replacingOccurrences(of: "/ws", with: "/validate_key")
-        guard let url = URL(string: httpUrlString) else {
-            validationMessage = "❌ 잘못된 백엔드 URL"
-            isValidating = false
-            return
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let payload: [String: String] = [
-            "provider": validationProvider,
-            "api_key": keyToValidate
-        ]
-        
-        guard let httpBody = try? JSONEncoder().encode(payload) else { return }
-        request.httpBody = httpBody
-        
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            DispatchQueue.main.async {
-                self.isValidating = false
-                
-                if error != nil {
-                    self.validationMessage = "❌ 서버 연결 실패 (파이썬 확인)"
-                    return
+
+        Task {
+            do {
+                let result = try await AIService.shared.validateKey(
+                    provider: validationProvider,
+                    apiKey: keyToValidate
+                )
+                await MainActor.run {
+                    self.validationMessage = "✅ \(result)"
+                    self.isValidating = false
                 }
-                
-                guard let data = data else {
-                    self.validationMessage = "❌ 데이터 없음"
-                    return
-                }
-                
-                do {
-                    if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
-                       let message = json["message"] as? String {
-                        self.validationMessage = message
-                    } else {
-                        self.validationMessage = "❌ 알 수 없는 응답 형식"
-                    }
-                } catch {
-                    self.validationMessage = "❌ json 해석 오류"
+            } catch {
+                await MainActor.run {
+                    self.validationMessage = "❌ \(error.localizedDescription)"
+                    self.isValidating = false
                 }
             }
-        }.resume()
+        }
     }
 }
