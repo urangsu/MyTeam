@@ -91,10 +91,10 @@ class AnimalTTSManager: NSObject {
 
     // MARK: - 음소 WAV 파일을 번들에서 로드
     private func loadPhonemeCache() {
-        // Resources/Phonemes/*.wav 파일을 모두 로드
-        guard let phonemeDir = Bundle.main.resourceURL?
-            .appendingPathComponent("Phonemes") else {
-            print("[AnimalTTS] ⚠️  Phonemes 폴더가 번들에 없습니다. Xcode에 추가해주세요.")
+        // Xcode가 Phonemes 폴더 내용을 Resources/ 에 직접 복사하므로
+        // resourceURL 바로 아래에서 검색
+        guard let phonemeDir = Bundle.main.resourceURL else {
+            print("[AnimalTTS] ⚠️  번들 리소스 경로를 찾을 수 없습니다.")
             return
         }
 
