@@ -198,10 +198,10 @@ struct SettingsView: View {
                     // 동물의 숲 TTS
                     Toggle(isOn: $useAnimalTTS) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("🐾 동물의 숲 TTS")
+                            Text("🐾 기본 TTS")
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(textColor)
-                            Text("에이전트 말소리를 동물의 숲 스타일로 재생 (로컬, 무료)")
+                            Text("팀원의 말소리를 귀여운 로컬 스타일로 재생")
                                 .font(.system(size: 10))
                                 .foregroundColor(textColor.opacity(0.45))
                         }
