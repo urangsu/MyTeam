@@ -11,11 +11,18 @@ struct SettingsView: View {
     @AppStorage("geminiAPIKey") private var geminiAPIKey: String = ""
     @AppStorage("claudeAPIKey") private var claudeAPIKey: String = ""
     @AppStorage("openaiAPIKey") private var openaiAPIKey: String = ""
-    
+
+    // 사용자 설정
+    @AppStorage("userTitle") private var userTitle: String = "사용자님"
+    @AppStorage("teamName") private var teamName: String = "MyTeam"
+    @AppStorage("showTeamName") private var showTeamName: Bool = true
+    @AppStorage("useCloudVoice") private var useCloudVoice: Bool = false
+    @AppStorage("useAnimalTTS") private var useAnimalTTS: Bool = true
+
     // 검증을 위해 선택할 제공자 저장
     @AppStorage("validationProvider") private var validationProvider: String = "Gemini"
     @AppStorage("customBackendURL") private var customBackendURL: String = "ws://127.0.0.1:8000/ws"
-    
+
     let providers = ["Gemini", "Claude", "OpenAI"]
     
     // 키 검증 상태
@@ -138,8 +145,129 @@ struct SettingsView: View {
                         .font(.system(size: 12, design: .monospaced))
                 }
                 
+
+                Divider().background(textColor.opacity(0.1)).padding(.vertical, 4)
+
+                // ── 사용자 설정 ──
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("사용자 설정")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(textColor)
+
+                    // 사용자 호칭
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("사용자 호칭")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(textColor.opacity(0.8))
+                        TextField("사용자님", text: $userTitle)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .font(.system(size: 13))
+                        Text("에이전트가 나를 부를 때 사용합니다 (예: 사용자님, 대표님, 이름)")
+                            .font(.system(size: 10))
+                            .foregroundColor(textColor.opacity(0.4))
+                    }
+
+                    // 팀 명칭
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("팀 명칭")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(textColor.opacity(0.8))
+                        HStack {
+                            TextField("MyTeam", text: $teamName)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .font(.system(size: 13))
+                            Toggle("표시", isOn: $showTeamName)
+                                .toggleStyle(SwitchToggleStyle(tint: .blue))
+                                .labelsHidden()
+                                .help(showTeamName ? "팀 명칭 표시 중" : "팀 명칭 숨김")
+                        }
+                        Text("메인 창 상단에 표시되는 팀 이름")
+                            .font(.system(size: 10))
+                            .foregroundColor(textColor.opacity(0.4))
+                    }
+                }
+
+                Divider().background(textColor.opacity(0.1)).padding(.vertical, 4)
+
+                // ── 음성 / TTS 설정 ──
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("음성 설정")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(textColor)
+
+                    // 동물의 숲 TTS
+                    Toggle(isOn: $useAnimalTTS) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("🐾 동물의 숲 TTS")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(textColor)
+                            Text("에이전트 말소리를 동물의 숲 스타일로 재생 (로컬, 무료)")
+                                .font(.system(size: 10))
+                                .foregroundColor(textColor.opacity(0.45))
+                        }
+                    }
+                    .toggleStyle(SwitchToggleStyle(tint: .green))
+                    .onChange(of: useAnimalTTS) { _, newValue in
+                        // 꺼질 때 재생 중인 AnimalTTS 즉시 중단
+                        if !newValue { AnimalTTSManager.shared.stop() }
+                    }
+
+                    // 클라우드 TTS (useAnimalTTS가 꺼져 있을 때만 의미 있음)
+                    Toggle(isOn: $useCloudVoice) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("클라우드 TTS 사용")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(useAnimalTTS ? textColor.opacity(0.35) : textColor)
+                            Text("백엔드에서 생성한 고품질 음성 사용 (네트워크 필요)")
+                                .font(.system(size: 10))
+                                .foregroundColor(textColor.opacity(0.45))
+                        }
+                    }
+                    .toggleStyle(SwitchToggleStyle(tint: .blue))
+                    .disabled(useAnimalTTS)  // 동물의 숲 TTS 켜져 있으면 비활성화
+                }
+
+                Divider().background(textColor.opacity(0.1)).padding(.vertical, 4)
+
+                // ── 응원받기 ──
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("응원받기 🎉")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(textColor)
+                    Text("에이전트에게 지금 바로 응원 한마디를 요청합니다.")
+                        .font(.system(size: 11))
+                        .foregroundColor(textColor.opacity(0.5))
+                    Button(action: {
+                        let cheers = [
+                            "지금 정말 잘하고 계세요! 조금만 더 힘내세요!",
+                            "오늘 하루도 멋지게 해내고 있어요! 최고예요!",
+                            "당신이 있어서 우리 팀이 빛나요! 파이팅!",
+                            "한 걸음씩 가다 보면 목표에 도달해요. 믿고 있어요!",
+                            "이렇게까지 열심히 하시는 분 처음 봤어요. 정말 대단해요!"
+                        ]
+                        WebSocketClient.shared.sendSystemEvent(
+                            eventType: "cheer",
+                            baseGreeting: cheers.randomElement()!
+                        )
+                        onClose?()
+                    }) {
+                        HStack {
+                            Image(systemName: "star.fill")
+                            Text("응원 한마디 받기")
+                        }
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(
+                            LinearGradient(colors: [.orange, .pink], startPoint: .leading, endPoint: .trailing)
+                        ))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+
                 Spacer(minLength: 20)
-                
+
                 // ── 하단 버튼 ──
                 HStack {
                     Spacer()
@@ -159,7 +287,7 @@ struct SettingsView: View {
             }
             .padding(24)
         }
-        .frame(width: 440, height: 500)
+        .frame(width: 440, height: 700)
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(bgColor)

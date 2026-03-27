@@ -180,9 +180,24 @@ class SpeechManager: NSObject, ObservableObject, @unchecked Sendable, SFSpeechRe
     }
     
     // MARK: - TTS (Text to Speech)
+    // useAnimalTTS(AppStorage) = true  → 동물의 숲 스타일 (AnimalTTSManager)
+    // useAnimalTTS(AppStorage) = false → Apple 기본 TTS (AVSpeechSynthesizer)
     func speak(text: String, voiceIdentifier: String? = nil) {
+        let useAnimal = UserDefaults.standard.bool(forKey: "useAnimalTTS")
+
+        if useAnimal {
+            DispatchQueue.main.async { self.isSpeaking = true }
+            AnimalTTSManager.shared.speak(text)
+            // 재생 시간 추정 후 isSpeaking 해제 (글자 수 × 간격 + 여유)
+            let estimatedDuration = Double(text.count) * 0.12 + 0.3
+            DispatchQueue.main.asyncAfter(deadline: .now() + estimatedDuration) {
+                self.isSpeaking = false
+            }
+            return
+        }
+
         let utterance = AVSpeechUtterance(string: text)
-        
+
         if let v = voiceIdentifier {
             utterance.voice = AVSpeechSynthesisVoice(identifier: v)
         } else {
@@ -193,14 +208,15 @@ class SpeechManager: NSObject, ObservableObject, @unchecked Sendable, SFSpeechRe
                 utterance.voice = AVSpeechSynthesisVoice(language: "ko-KR")
             }
         }
-        
+
         DispatchQueue.main.async {
             self.isSpeaking = true
         }
         synthesizer.speak(utterance)
     }
-    
+
     func stopSpeaking() {
+        AnimalTTSManager.shared.stop()
         if let player = audioPlayer, player.isPlaying { player.stop() }
         synthesizer.stopSpeaking(at: .immediate)
         DispatchQueue.main.async {

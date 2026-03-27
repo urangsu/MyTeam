@@ -164,7 +164,7 @@ class AnimalTTSManager: NSObject {
                     let semitones = (profile.pitch - 1.0) * 12.0 + jitter * 12.0
                     self.pitchNode.pitch = semitones * 100  // cents 단위
                     self.playerNode.volume = profile.volume
-                    self.playerNode.scheduleBuffer(buffer, completionHandler: nil)
+                    self.playerNode.scheduleBuffer(buffer, completionCallbackType: .dataConsumed) { _ in }  // async-safe API
                     self.playerNode.play()
                 }
 
