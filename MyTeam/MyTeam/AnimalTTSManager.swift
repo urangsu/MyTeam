@@ -72,11 +72,11 @@ class AnimalTTSManager: NSObject {
         audioEngine.attach(pitchNode)
         audioEngine.attach(reverbNode)
 
-        let format = audioEngine.outputNode.outputFormat(forBus: 0)
-
-        audioEngine.connect(playerNode,  to: pitchNode,   format: format)
-        audioEngine.connect(pitchNode,   to: reverbNode,  format: format)
-        audioEngine.connect(reverbNode,  to: audioEngine.mainMixerNode, format: format)
+        // nil 포맷 → AVAudioEngine이 자동으로 WAV 포맷에 맞춰 협상
+        // (이전: outputNode 포맷 고정 → 16kHz WAV와 불일치로 무음 발생)
+        audioEngine.connect(playerNode,  to: pitchNode,   format: nil)
+        audioEngine.connect(pitchNode,   to: reverbNode,  format: nil)
+        audioEngine.connect(reverbNode,  to: audioEngine.mainMixerNode, format: nil)
 
         // 약한 리버브 → 동물의 숲 특유의 "공간감"
         reverbNode.loadFactoryPreset(.smallRoom)
@@ -151,6 +151,8 @@ class AnimalTTSManager: NSObject {
         speakTask = Task { [weak self] in
             guard let self = self else { return }
 
+            self.playerNode.play()  // 엔진 한 번만 시작
+
             for key in phonemes {
                 guard self.isSpeaking else { break }
 
@@ -164,11 +166,11 @@ class AnimalTTSManager: NSObject {
                     let semitones = (profile.pitch - 1.0) * 12.0 + jitter * 12.0
                     self.pitchNode.pitch = semitones * 100  // cents 단위
                     self.playerNode.volume = profile.volume
-                    self.playerNode.scheduleBuffer(buffer, completionCallbackType: .dataConsumed) { _ in }  // async-safe API
-                    self.playerNode.play()
+                    // async 버전 사용 → 버퍼 재생 완료까지 대기 후 다음 음소
+                    await self.playerNode.scheduleBuffer(buffer)
                 }
 
-                // 다음 음소까지 대기
+                // 음소 간 간격
                 let delay = UInt64(profile.interval * 1_000_000_000)
                 try? await Task.sleep(nanoseconds: delay)
             }
