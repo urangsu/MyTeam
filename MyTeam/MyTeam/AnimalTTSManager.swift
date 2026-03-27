@@ -7,7 +7,7 @@ import Foundation
 //
 // 동작 방식:
 //   1. 텍스트를 음소(phoneme) 키로 분해 (HangulDecomposer)
-//   2. 각 음소에 해당하는 WAV 파일을 번들에서 로드
+//   2. 각 음소에 해당하는 WAV 파일을 번들에서 로드 → 엔진 포맷으로 변환
 //   3. AVAudioEngine으로 피치 조절 + 약한 리버브 적용
 //   4. 음소를 빠르게 순서대로 재생 → Animal Crossing 느낌
 //
@@ -51,7 +51,10 @@ class AnimalTTSManager: NSObject {
     private let pitchNode   = AVAudioUnitTimePitch()
     private let reverbNode  = AVAudioUnitReverb()
 
-    // 음소 WAV 버퍼 캐시 (메모리 상주, 앱 실행 중 유지)
+    // 엔진 공통 포맷 (44100Hz 스테레오) — 모든 WAV를 이 포맷으로 변환
+    private var engineFormat: AVAudioFormat!
+
+    // 음소 WAV 버퍼 캐시 (엔진 포맷으로 변환된 상태)
     private var phonemeCache: [String: AVAudioPCMBuffer] = [:]
 
     // 재생 취소용
@@ -72,11 +75,14 @@ class AnimalTTSManager: NSObject {
         audioEngine.attach(pitchNode)
         audioEngine.attach(reverbNode)
 
-        // nil 포맷 → AVAudioEngine이 자동으로 WAV 포맷에 맞춰 협상
-        // (이전: outputNode 포맷 고정 → 16kHz WAV와 불일치로 무음 발생)
-        audioEngine.connect(playerNode,  to: pitchNode,   format: nil)
-        audioEngine.connect(pitchNode,   to: reverbNode,  format: nil)
-        audioEngine.connect(reverbNode,  to: audioEngine.mainMixerNode, format: nil)
+        // 엔진의 메인 믹서 출력 포맷 사용 (보통 44100Hz 스테레오)
+        engineFormat = audioEngine.mainMixerNode.outputFormat(forBus: 0)
+        print("[AnimalTTS] 엔진 포맷: \(engineFormat!)")
+
+        // 모든 노드를 동일한 포맷으로 연결 (포맷 불일치 방지)
+        audioEngine.connect(playerNode,  to: pitchNode,   format: engineFormat)
+        audioEngine.connect(pitchNode,   to: reverbNode,  format: engineFormat)
+        audioEngine.connect(reverbNode,  to: audioEngine.mainMixerNode, format: engineFormat)
 
         // 약한 리버브 → 동물의 숲 특유의 "공간감"
         reverbNode.loadFactoryPreset(.smallRoom)
@@ -84,49 +90,91 @@ class AnimalTTSManager: NSObject {
 
         do {
             try audioEngine.start()
+            print("[AnimalTTS] ✅ 오디오 엔진 시작 성공")
         } catch {
-            print("[AnimalTTS] 오디오 엔진 시작 실패: \(error)")
+            print("[AnimalTTS] ❌ 오디오 엔진 시작 실패: \(error)")
         }
     }
 
-    // MARK: - 음소 WAV 파일을 번들에서 로드
+    // MARK: - 음소 WAV 파일을 번들에서 로드 + 포맷 변환
     private func loadPhonemeCache() {
-        // Xcode가 Phonemes 폴더 내용을 Resources/ 에 직접 복사하므로
-        // resourceURL 바로 아래에서 검색
-        guard let phonemeDir = Bundle.main.resourceURL else {
+        guard let resourceDir = Bundle.main.resourceURL else {
             print("[AnimalTTS] ⚠️  번들 리소스 경로를 찾을 수 없습니다.")
             return
         }
 
         do {
             let files = try FileManager.default.contentsOfDirectory(
-                at: phonemeDir,
+                at: resourceDir,
                 includingPropertiesForKeys: nil
             ).filter { $0.pathExtension == "wav" }
 
             var loadedCount = 0
             for url in files {
                 let key = url.deletingPathExtension().lastPathComponent
-                if let buffer = loadWAV(url: url) {
+                if let buffer = loadAndConvertWAV(url: url) {
                     phonemeCache[key] = buffer
                     loadedCount += 1
                 }
             }
-            print("[AnimalTTS] ✅ \(loadedCount)개 음소 로드 완료")
+            print("[AnimalTTS] ✅ \(loadedCount)개 음소 로드 + 포맷 변환 완료")
         } catch {
-            print("[AnimalTTS] 음소 파일 로드 실패: \(error)")
+            print("[AnimalTTS] ❌ 음소 파일 로드 실패: \(error)")
         }
     }
 
-    private func loadWAV(url: URL) -> AVAudioPCMBuffer? {
+    /// WAV 파일을 읽어서 엔진 포맷(44100Hz 스테레오)으로 변환
+    private func loadAndConvertWAV(url: URL) -> AVAudioPCMBuffer? {
         do {
             let file = try AVAudioFile(forReading: url)
-            guard let buffer = AVAudioPCMBuffer(
-                pcmFormat: file.processingFormat,
+            let srcFormat = file.processingFormat
+
+            // 원본 버퍼 읽기
+            guard let srcBuffer = AVAudioPCMBuffer(
+                pcmFormat: srcFormat,
                 frameCapacity: AVAudioFrameCount(file.length)
             ) else { return nil }
-            try file.read(into: buffer)
-            return buffer
+            try file.read(into: srcBuffer)
+
+            // 포맷이 이미 같으면 그대로 반환
+            if srcFormat.sampleRate == engineFormat.sampleRate &&
+               srcFormat.channelCount == engineFormat.channelCount {
+                return srcBuffer
+            }
+
+            // 포맷 변환 (16kHz mono → 44100Hz stereo 등)
+            guard let converter = AVAudioConverter(from: srcFormat, to: engineFormat) else {
+                print("[AnimalTTS] 컨버터 생성 실패: \(url.lastPathComponent)")
+                return nil
+            }
+
+            let ratio = engineFormat.sampleRate / srcFormat.sampleRate
+            let outFrames = AVAudioFrameCount(Double(srcBuffer.frameLength) * ratio) + 100
+            guard let outBuffer = AVAudioPCMBuffer(
+                pcmFormat: engineFormat,
+                frameCapacity: outFrames
+            ) else { return nil }
+
+            var error: NSError?
+            var inputConsumed = false
+
+            converter.convert(to: outBuffer, error: &error) { _, outStatus in
+                if !inputConsumed {
+                    inputConsumed = true
+                    outStatus.pointee = .haveData
+                    return srcBuffer
+                } else {
+                    outStatus.pointee = .endOfStream
+                    return nil
+                }
+            }
+
+            if let error = error {
+                print("[AnimalTTS] 변환 실패 \(url.lastPathComponent): \(error)")
+                return nil
+            }
+
+            return outBuffer
         } catch {
             print("[AnimalTTS] WAV 로드 실패 \(url.lastPathComponent): \(error)")
             return nil
@@ -136,41 +184,48 @@ class AnimalTTSManager: NSObject {
     // MARK: - 공개 API
 
     /// 텍스트를 Animal Crossing 스타일로 재생합니다.
-    /// - Parameters:
-    ///   - text: 재생할 텍스트
-    ///   - voice: 캐릭터 목소리 (기본값: .default)
     func speak(_ text: String, voice: Voice = .default) {
         stop()  // 이전 재생 중단
 
         let profile = voice.profile
         let phonemes = HangulDecomposer.decompose(text)
-            .filter { $0 != "pause" }  // 공백은 타이밍으로만 처리
+            .filter { $0 != "pause" }
 
+        guard !phonemes.isEmpty else {
+            print("[AnimalTTS] 재생할 음소가 없습니다: \"\(text)\"")
+            return
+        }
+
+        print("[AnimalTTS] 재생 시작: \(phonemes.count)개 음소")
         isSpeaking = true
 
         speakTask = Task { [weak self] in
             guard let self = self else { return }
 
-            self.playerNode.play()  // 엔진 한 번만 시작
+            // 엔진이 꺼져 있으면 재시작
+            if !self.audioEngine.isRunning {
+                try? self.audioEngine.start()
+            }
 
             for key in phonemes {
                 guard self.isSpeaking else { break }
 
-                // 음소 버퍼 조회 (조합키 없으면 모음만)
                 let buffer = self.phonemeCache[key]
                     ?? self.phonemeCache[self.fallbackKey(for: key)]
 
                 if let buffer = buffer {
-                    // 음소마다 피치를 약간씩 랜덤으로 흔들기 → 생동감
                     let jitter = Float.random(in: -profile.pitchJitter...profile.pitchJitter)
                     let semitones = (profile.pitch - 1.0) * 12.0 + jitter * 12.0
                     self.pitchNode.pitch = semitones * 100  // cents 단위
                     self.playerNode.volume = profile.volume
-                    // async 버전 사용 → 버퍼 재생 완료까지 대기 후 다음 음소
-                    await self.playerNode.scheduleBuffer(buffer)
+
+                    // 이전 버퍼 중단 → 새 버퍼 스케줄 → 재생
+                    self.playerNode.stop()
+                    await self.playerNode.scheduleBuffer(buffer, at: nil, options: .interrupts)
+                    self.playerNode.play()
                 }
 
-                // 음소 간 간격
+                // 음소 간 간격 대기
                 let delay = UInt64(profile.interval * 1_000_000_000)
                 try? await Task.sleep(nanoseconds: delay)
             }
