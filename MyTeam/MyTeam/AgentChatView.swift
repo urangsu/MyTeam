@@ -346,17 +346,6 @@ struct AgentChatView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
 
-                // 사이드바 접기/펼치기 버튼 (오른쪽 끝)
-                Button(action: {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        isSidebarCollapsed.toggle()
-                    }
-                }) {
-                    Image(systemName: "sidebar.squares.left")
-                        .font(.system(size: 13))
-                        .foregroundColor(subTextColor)
-                }
-                .buttonStyle(PlainButtonStyle())
             }
             .padding(.horizontal, isSidebarCollapsed ? 8 : 12)
             .padding(.vertical, 10)
