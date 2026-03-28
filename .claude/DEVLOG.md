@@ -82,6 +82,46 @@
 
 ---
 
+---
+
+### 3. 오늘 작업 (2026-03-29)
+
+#### 3-1. Xcode 프로젝트 경로 혼선 수정
+**문제:** git worktree가 3곳에 생성되어 Xcode가 `.claude/worktrees/sleepy-euler/` 의 구버전 프로젝트를 열고 있었음
+- `/Users/su/Desktop/MyTeam/MyTeam/` — 메인(최신)
+- `.claude/worktrees/sleepy-euler/MyTeam/` — 구버전 (800px, 리팩토링 없음)
+- `.claude/worktrees/gallant-nash/MyTeam/` — 구버전
+
+**해결:** `open /Users/su/Desktop/MyTeam/MyTeam/MyTeam.xcodeproj` 로 올바른 경로 직접 오픈
+
+#### 3-2. 개별 채팅창 가로 크기 700px으로 조정
+**Commits:** 76ad628, 1197b59
+- `AgentChatView.viewWidth`: 800 → 700 (사이드바 축소 시 680 → 650)
+- `AgentWindowManager.showChat` 초기 창 크기: 800×620 → 700×620
+- `onChange` 복원 높이: 600 → 620 (일관성)
+
+#### 3-3. 프로젝트 사이드바 접기 버튼 제거
+**Commit:** 1197b59
+- `projectSidebarView` 헤더에서 `sidebar.squares.left` 버튼 삭제
+- 사이드바는 항상 펼쳐진 상태로 고정
+
+#### 3-4. 채팅창 초기 크기 버그 수정 (SwiftUI/AppKit 크기 충돌)
+**문제 원인:**
+- SwiftUI `.frame(idealWidth: viewWidth, maxWidth: .infinity)` modifier가 NSHostingController를 통해 NSPanel 크기를 **지속적으로 오버라이드**함
+- `isMinimized` 변경 시 SwiftUI 레이아웃이 재계산되면서 창 크기가 임의로 변경됨
+- `onAppear`에서 초기 크기 설정 코드가 없어 SwiftUI가 먼저 창 크기를 결정함
+
+**해결:**
+1. Group 전체에 걸린 `.frame(idealWidth:, minWidth:, maxWidth:, ...)` 제거
+2. `isMinimized` 분기별 독립 설정:
+   - 최소화: `minimizedBarView.frame(width: 280, height: 52)` (NSPanel 크기 고정)
+   - 복원: `.frame(maxWidth: .infinity, maxHeight: .infinity)` (NSPanel이 크기 결정)
+3. `onAppear`에서 `DispatchQueue.main.async`로 초기 창 크기 700×620 강제 설정
+
+**핵심 원칙:** SwiftUI `idealWidth`는 NSHostingController를 통해 NSPanel 크기를 경쟁적으로 조절한다. NSPanel이 크기를 담당하려면 SwiftUI 뷰는 `maxWidth/maxHeight: .infinity`로 NSPanel에 맞게 채워야 한다.
+
+---
+
 ## TODO: Future Phases
 
 ### Phase 2: Service Layer Refactoring (Planned)
@@ -118,6 +158,9 @@ Extracted code maintains original type paths through nested extensions. This ena
 
 ## Git History
 
+- **1197b59** - fix: Remove sidebar collapse button from project sidebar header
+- **76ad628** - fix: Reduce chat window width to 700px with consistent height
+- **ad0f9d1** - doc: Add development log documenting refactoring phases and crash fix
 - **e2bec6a** - Refactor: Split large monolithic files into focused modules (6 new files, 4 modified)
 - **4dd5eff** - Update gitignore for Xcode user data
 - **f547fa3** - Fix nested git repository to push properly

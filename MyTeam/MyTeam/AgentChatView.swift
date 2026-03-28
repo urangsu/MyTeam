@@ -71,6 +71,8 @@ struct AgentChatView: View {
         Group {
             if isMinimized {
                 minimizedBarView
+                    // 최소화 시: SwiftUI가 NSPanel 크기를 직접 고정
+                    .frame(width: 280, height: minimizedHeight)
             } else {
                 HStack(spacing: 0) {
                     if selectedTab == 1 {
@@ -89,6 +91,8 @@ struct AgentChatView: View {
                         }
                     }
                 }
+                // 복원 시: NSPanel 크기에 맞게 꽉 채움 (NSPanel이 크기 결정)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 // 어디든 탭하면 편집 모드 해제
                 .onTapGesture {
                     if isEditingMessages { isEditingMessages = false }
@@ -108,16 +112,12 @@ struct AgentChatView: View {
                 manager.createAgentRoom(name: "\(config.name) 대화 1", agentID: targetID)
                 agentRoomID = manager.rooms.last?.id
             }
-            // 창 크기 업데이트는 onChange(of: isMinimized)에서 처리
+            // 초기 창 크기 강제 설정 (SwiftUI 레이아웃 완료 후 실행)
+            DispatchQueue.main.async {
+                manager.updateChatWindowSize(id: config.id, width: viewWidth, height: 620,
+                                              minSize: NSSize(width: 300, height: 480))
+            }
         }
-        .frame(
-            minWidth: isMinimized ? 240 : 300,
-            idealWidth: isMinimized ? 240 : viewWidth,
-            maxWidth: isMinimized ? 240 : .infinity,
-            minHeight: isMinimized ? minimizedHeight : 480,
-            idealHeight: isMinimized ? minimizedHeight : 600,
-            maxHeight: isMinimized ? minimizedHeight : .infinity
-        )
         .onChange(of: selectedTab) { _, newValue in
             if !isMinimized {
                 manager.updateChatWindowWidth(id: config.id, width: newValue == 0 ? 300 : viewWidth)
