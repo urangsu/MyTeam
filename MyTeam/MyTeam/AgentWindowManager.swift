@@ -238,7 +238,7 @@ class AgentWindowManager: ObservableObject {
         let panel = FloatingPanel(
             agentID: "chat_single",
             position: NSPoint(x: x, y: y),
-            size: NSSize(width: 800, height: 620)
+            size: NSSize(width: 700, height: 620)
         )
         panel.minSize = NSSize(width: 300, height: 480)
 

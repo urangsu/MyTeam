@@ -64,7 +64,7 @@ struct AgentChatView: View {
 
     private var viewWidth: CGFloat {
         if selectedTab == 0 { return 300 }
-        return isSidebarCollapsed ? 680 : 800
+        return isSidebarCollapsed ? 650 : 700
     }
 
     var body: some View {
@@ -136,7 +136,7 @@ struct AgentChatView: View {
                     manager.updateChatWindowSize(id: config.id, width: 280, height: minimizedHeight,
                                                   minSize: NSSize(width: 240, height: minimizedHeight))
                 } else {
-                    manager.updateChatWindowSize(id: config.id, width: viewWidth, height: 600,
+                    manager.updateChatWindowSize(id: config.id, width: viewWidth, height: 620,
                                                   minSize: NSSize(width: 300, height: 480))
                 }
             }
