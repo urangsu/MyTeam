@@ -6,13 +6,42 @@ import AppKit
 struct TeamTableView: View {
     @EnvironmentObject var manager: AgentWindowManager
     @State private var isDragging = false
-    @StateObject private var wsClient = WebSocketClient.shared
+    @StateObject private var speechManager = SpeechManager.shared
     @State private var inputText: String = ""
+    @State private var preRecordText: String = ""
     @State private var selectedAgentIndex: Int? = nil
+
+    @AppStorage("teamName") private var teamName: String = "MyTeam"
+    @AppStorage("showTeamName") private var showTeamName: Bool = true
 
     var body: some View {
         VStack(spacing: 0) {
-            Spacer()
+
+            // ── 팀 명칭 배지 (클릭 시 도래깃 이동) ──
+            if showTeamName && !teamName.isEmpty {
+                Text(teamName)
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundColor(.white.opacity(0.75))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 5)
+                    .background(
+                        Capsule()
+                            .fill(Color.white.opacity(0.12))
+                            .overlay(Capsule().stroke(Color.white.opacity(0.18), lineWidth: 1))
+                    )
+                    .padding(.bottom, 6)
+                    .gesture(DragGesture(minimumDistance: 0)
+                        .onChanged { _ in
+                            if let event = NSApplication.shared.currentEvent {
+                                NotificationCenter.default.post(name: .agentDragBegan, object: nil)
+                                AgentWindowManager.shared.teamPanelWindow?.performDrag(with: event)
+                            }
+                        }
+                        .onEnded { _ in
+                            NotificationCenter.default.post(name: .agentDragEnded, object: nil)
+                        }
+                    )
+            }
 
             // ── 에이전트 목록 ──
             HStack(alignment: .bottom, spacing: 10) {
@@ -20,9 +49,9 @@ struct TeamTableView: View {
                     AgentSeatView(
                         config: agent,
                         isDragging: isDragging,
-                        isSpeaking: wsClient.currentSpeakerID == agent.id,
-                        isThinking: wsClient.currentSpeakerID == agent.id && wsClient.agentStatus == "Thinking",
-                        speechText: wsClient.currentSpeakerID == agent.id ? wsClient.currentMessage : nil,
+                        isSpeaking: false,
+                        isThinking: false,
+                        speechText: nil,
                         isSelected: selectedAgentIndex == index,
                         onTap: {
                             selectedAgentIndex = (selectedAgentIndex == index) ? nil : index
@@ -31,13 +60,17 @@ struct TeamTableView: View {
                     .overlay(
                         AgentMenuPopupView(
                             isShowing: selectedAgentIndex == index,
+                            popupOnLeft: index >= 3, // 4번째(index 3) 에이전트는 왼쪽에 표시
                             onChat: {
                                 selectedAgentIndex = nil
                                 manager.showChat(for: agent)
                             },
                             onVoice: {
                                 selectedAgentIndex = nil
-                                print("음성 통화 연결: \(agent.name)")
+                                let fallback = ["안녕하세요!", "네, 불렀나요?", "무엇을 도와드릴까요?", "여기 있습니다!"]
+                                let text = CharacterDialogues.randomLine(for: agent.name, state: .greeting) ?? fallback.randomElement()!
+                                manager.addChatLog(agentID: agent.id, agentName: agent.name, text: text, isUser: false, isSystem: true)
+                                if !manager.isSilentMode { SpeechManager.shared.speak(text: text, characterName: agent.name) }
                             },
                             onSettings: {
                                 selectedAgentIndex = nil
@@ -48,31 +81,42 @@ struct TeamTableView: View {
                                 manager.showSwapWindow(replaceIndex: index)
                             }
                         )
-                        .offset(y: -95),
-                        alignment: .top
+                        .offset(x: index >= 3 ? -60 : 0, y: -95)
+                        .zIndex(selectedAgentIndex == index ? 10 : 1),
+                        alignment: index >= 3 ? .topLeading : .top
                     )
+                    .zIndex(selectedAgentIndex == index ? 10 : 1)
                 }
             }
-            .zIndex(2)
+            .zIndex(5)
 
             Spacer().frame(height: 20)
 
             // ── 하단 입력창 및 메뉴 ──
             HStack {
-                TextField("팀원들에게 인사해 보세요", text: $inputText)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .onSubmit {
-                        if !inputText.isEmpty && wsClient.isConnected {
-                            wsClient.sendMessage("[전회] " + inputText)
-                            inputText = ""
+                Button(action: {
+                    if speechManager.isRecording {
+                        speechManager.stopRecording()
+                    } else {
+                        speechManager.requestAuthorization { authorized in
+                            if authorized {
+                                preRecordText = inputText
+                                speechManager.startRecording()
+                            }
                         }
                     }
-                
-                Button("전송") {
-                    wsClient.sendMessage("[전회] " + inputText)
-                    inputText = ""
+                }) {
+                    Image(systemName: speechManager.isRecording ? "stop.circle.fill" : "mic.fill")
+                        .foregroundColor(speechManager.isRecording ? .red : .gray)
                 }
-                .disabled(inputText.isEmpty || !wsClient.isConnected)
+                .buttonStyle(PlainButtonStyle())
+
+                TextField("팀원들에게 인사해 보세요", text: $inputText)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .onSubmit { sendTeamInput() }
+
+                Button("전송") { sendTeamInput() }
+                .disabled(inputText.isEmpty)
                 
                 Menu {
                     Button(action: { manager.showStatusWindow() }) {
@@ -83,6 +127,18 @@ struct TeamTableView: View {
                     }
                     Button(action: { manager.showSettingsWindow() }) {
                         Label("API 설정하기", systemImage: "gearshape.fill")
+                    }
+                    Divider()
+                    Button(action: {
+                        let agent = manager.activeAgents.randomElement() ?? manager.activeAgents[0]
+                        let text = "오늘 너무 고생하셨습니다. 앱을 곧 종료할게요!"
+                        manager.addChatLog(agentID: agent.id, agentName: agent.name, text: text, isUser: false, isSystem: true)
+                        if !manager.isSilentMode { SpeechManager.shared.speak(text: text) }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                            NSApplication.shared.terminate(nil)
+                        }
+                    }) {
+                        Label("어플리케이션 종료", systemImage: "power")
                     }
                 } label: {
                     Image(systemName: "line.3.horizontal")
@@ -102,171 +158,68 @@ struct TeamTableView: View {
         .background(Color.clear)
         .frame(width: 460, height: 280)
         .onReceive(NotificationCenter.default.publisher(for: .agentDragBegan)) { _ in
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) { 
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) {
                 isDragging = true
-                selectedAgentIndex = nil 
+                selectedAgentIndex = nil
+            }
+            // 드래그 시작 시 랜덤 에이전트의 캐릭터별 대사 출력
+            if let agent = manager.activeAgents.randomElement() {
+                let fallback = ["어?! 잠깐만요!", "으아아!", "헉!"]
+                let line = CharacterDialogues.randomLine(for: agent.name, state: .drag) ?? fallback.randomElement()!
+                manager.addChatLog(agentID: agent.id, agentName: agent.name, text: line, isUser: false, isSystem: true)
+                if !manager.isSilentMode { SpeechManager.shared.speak(text: line, characterName: agent.name) }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .agentDragEnded)) { _ in
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) { 
-                isDragging = false 
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
+                isDragging = false
+            }
+            // 착지 시 같은 맥락의 캐릭터별 대사 출력
+            if let agent = manager.activeAgents.randomElement() {
+                let fallback = ["휴, 다시 돌아왔네요.", "무사히 착지!"]
+                let line = CharacterDialogues.randomLine(for: agent.name, state: .landing) ?? fallback.randomElement()!
+                manager.addChatLog(agentID: agent.id, agentName: agent.name, text: line, isUser: false, isSystem: true)
+                if !manager.isSilentMode { SpeechManager.shared.speak(text: line, characterName: agent.name) }
+            }
+        }
+        .onChange(of: speechManager.recognizedText) { _, newText in
+            if speechManager.isRecording {
+                let prefix = preRecordText.isEmpty ? "" : preRecordText + " "
+                inputText = prefix + newText
+            }
+        }
+    }
+
+    // MARK: - 팀 입력 전송 (AIService 직접 호출)
+    private func sendTeamInput() {
+        guard !inputText.isEmpty else { return }
+        let text = inputText
+        inputText = ""
+
+        let agents = manager.activeAgents
+        let randomAgent = agents.randomElement() ?? agents[0]
+
+        manager.addChatLog(agentID: "user", agentName: "나", text: text, isUser: true)
+
+        Task {
+            let history = manager.rooms.first(where: { $0.id == manager.currentRoomID })?
+                .messages.map { "\($0.isUser ? "User" : $0.agentName): \($0.text)" } ?? []
+            do {
+                let (responseText, _) = try await AIService.shared.getResponse(
+                    text: text, agentID: randomAgent.id, chatHistory: history
+                )
+                await MainActor.run {
+                    manager.addChatLog(agentID: randomAgent.id, agentName: randomAgent.name, text: responseText, isUser: false)
+                    if !manager.isSilentMode { SpeechManager.shared.speak(text: responseText, characterName: randomAgent.name) }
+                }
+            } catch {
+                await MainActor.run {
+                    manager.addChatLog(agentID: randomAgent.id, agentName: "시스템", text: error.localizedDescription, isUser: false)
+                }
             }
         }
     }
 }
 
-// MARK: - AgentMenuPopupView
-struct AgentMenuPopupView: View {
-    var isShowing: Bool
-    var onChat: () -> Void
-    var onVoice: () -> Void
-    var onSettings: () -> Void
-    var onSwap: () -> Void
-    
-    var body: some View {
-        if isShowing {
-            VStack(alignment: .leading, spacing: 0) {
-                MenuButton(icon: "message", text: "채팅", action: onChat)
-                MenuButton(icon: "mic", text: "음성", action: onVoice)
-                Divider().background(Color.white.opacity(0.1)).padding(.horizontal, 8)
-                MenuButton(icon: "slider.horizontal.3", text: "추가 설정", action: onSettings)
-                MenuButton(icon: "arrow.triangle.2.circlepath", text: "교체", action: onSwap)
-            }
-            .frame(width: 120)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color(red: 0.08, green: 0.08, blue: 0.12))
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.1), lineWidth: 1))
-                    .shadow(color: .black.opacity(0.4), radius: 10, y: 5)
-            )
-            .transition(.scale(scale: 0.8, anchor: .bottom).combined(with: .opacity))
-        }
-    }
-    
-    struct MenuButton: View {
-        let icon: String
-        let text: String
-        let action: () -> Void
-        var body: some View {
-            Button(action: action) {
-                HStack(spacing: 12) {
-                    Image(systemName: icon).font(.system(size: 14)).foregroundColor(.gray)
-                    Text(text).font(.system(size: 13, weight: .medium)).foregroundColor(.white)
-                    Spacer()
-                }
-                .padding(.horizontal, 16).padding(.vertical, 12).contentShape(Rectangle())
-            }
-            .buttonStyle(PlainButtonStyle())
-        }
-    }
-}
-
-// MARK: - AgentSeatView
-struct AgentSeatView: View {
-    let config: AgentWindowManager.AgentConfig
-    var isDragging: Bool
-    var isSpeaking: Bool
-    var isThinking: Bool
-    var speechText: String?
-    var isSelected: Bool
-    var onTap: () -> Void
-
-    @State private var isHovered = false
-
-    // 사용자가 요청한 '3문장(또는 3줄) 단위 분절' 로직
-    var speechParagraphs: [String] {
-        guard let text = speechText, !text.isEmpty else { return [] }
-        let sentences = text.components(separatedBy: CharacterSet(charactersIn: ".?!"))
-            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        
-        var result: [String] = []
-        var current: String = ""
-        for (index, sentence) in sentences.enumerated() {
-            current += sentence + (index < sentences.count ? ". " : " ")
-            // 3문장마다 끊어서 새로운 문단 생성
-            if (index + 1) % 3 == 0 {
-                result.append(current.trimmingCharacters(in: .whitespaces))
-                current = ""
-            }
-        }
-        if !current.isEmpty {
-            result.append(current.trimmingCharacters(in: .whitespaces))
-        }
-        return result
-    }
-
-    var body: some View {
-        VStack(spacing: 4) {
-            // 말풍선 (문단 분절 또는 로딩 스피너)
-            if isThinking {
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .scaleEffect(0.6)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .offset(y: -10)
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
-            } else if isSpeaking, !speechParagraphs.isEmpty {
-                VStack(spacing: 4) {
-                    ForEach(speechParagraphs, id: \.self) { paragraph in
-                        Text(paragraph)
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .multilineTextAlignment(.center)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(config.color.opacity(0.85))
-                            )
-                    }
-                }
-                .offset(y: -10)
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
-            } else {
-                Color.clear.frame(height: 10)
-            }
-
-            ZStack {
-                if isSelected {
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(Color.pink, lineWidth: 2)
-                        .background(RoundedRectangle(cornerRadius: 14).fill(Color.pink.opacity(0.1)))
-                        .frame(width: 80, height: 80)
-                } else {
-                    Color.clear.frame(width: 80, height: 80)
-                }
-                
-                if isHovered && !isDragging {
-                    VStack(spacing: 2) {
-                        Text(config.name).font(.system(size: 11, weight: .bold))
-                        Text(config.role).font(.system(size: 9))
-                    }
-                    .foregroundColor(.white).padding(.horizontal, 8).padding(.vertical, 4)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(config.color.opacity(0.9)))
-                    .offset(y: -40)
-                    .transition(.opacity.combined(with: .scale))
-                }
-                
-                Text(isDragging ? config.dragEmoji : config.emoji)
-                    .font(.system(size: 50))
-                    .rotationEffect(.degrees(isDragging ? config.dragRotation : 0))
-                    .scaleEffect(isHovered && !isDragging ? 1.1 : 1.0)
-            }
-
-            HStack(spacing: 3) {
-                Circle()
-                    .fill(isSpeaking ? Color.yellow : Color.green)
-                    .frame(width: 4, height: 4)
-                    .shadow(color: isSpeaking ? .yellow : .green, radius: 2)
-                Text(isSpeaking ? "말하는 중" : "대기 중")
-                    .font(.system(size: 8))
-                    .foregroundColor(.gray)
-            }
-        }
-        .frame(width: 100)
-        .contentShape(Rectangle())
-        .onHover { h in isHovered = h }
-        .onTapGesture { onTap() }
-    }
-}
+// AgentMenuPopupView → AgentMenuPopupView.swift 로 분리됨
+// AgentSeatView → AgentSeatView.swift 로 분리됨

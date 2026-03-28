@@ -5,36 +5,27 @@ import Combine
 
 // MARK: - AgentWindowManager
 // 팀 테이블 창 1개를 생성하고, 4명의 에이전트를 그 안에 표시합니다.
+// AgentConfig → AgentConfig.swift / ChatRoom, ChatLog → ChatModels.swift 로 분리됨
 class AgentWindowManager: ObservableObject {
 
     static let shared = AgentWindowManager()
 
-    struct AgentConfig: Identifiable {
-        let id: String
-        let name: String
-        let role: String         // 예: "프로젝트 매니저" (UI 상단용)
-        let emoji: String        // 평상시 이모지
-        let color: Color
-        let isPremium: Bool      // 교체 창 UI용 (무료/프리미엄 표시)
-        var status: String       // 현재 상태 (예: "일하는 중", "휴식 중")
-
-        // ── 개인별 드래그 반응 ──
-        let dragEmoji: String    // 드래그 중 이모지
-        let dragRotation: Double // 기울기 각도
-        let dragSoundName: String
-        let dropSoundName: String
-    }
-
     // ── 구매 가능하거나 보유한 전체 에이전트 목록 (DB/API 연동 전 임시 데이터) ──
+    // spriteName: Assets에 등록된 PNG 시퀀스 파일명 접두사
+    //   - 완성된 캐릭터: "sloth", "dog" (스프라이트 사용)
+    //   - 미완성 캐릭터: nil (이모지 폴백)
     let allAvailableAgents: [AgentConfig] = [
-        AgentConfig(id: "agent_1", name: "맥스", role: "프로젝트 매니저", emoji: "🐕", color: .blue, isPremium: false, status: "팀 전략 수립 중", dragEmoji: "😱", dragRotation: -14, dragSoundName: "Pop", dropSoundName: "Funk"),
-        AgentConfig(id: "agent_2", name: "올리버", role: "백엔드 개발자", emoji: "🐷", color: .purple, isPremium: false, status: "API 설계 및 서버 구축 중", dragEmoji: "😵", dragRotation: 10, dragSoundName: "Blow", dropSoundName: "Pop"),
-        AgentConfig(id: "agent_3", name: "펭", role: "UI/UX 디자이너", emoji: "🐧", color: .green, isPremium: true, status: "UI 프로토타입 디자인 중", dragEmoji: "🤯", dragRotation: -8, dragSoundName: "Morse", dropSoundName: "Funk"),
-        AgentConfig(id: "agent_4", name: "루나", role: "프론트엔드 개발자", emoji: "🐱", color: .orange, isPremium: true, status: "SwiftUI 컴포넌트 개발 중", dragEmoji: "😤", dragRotation: 12, dragSoundName: "Ping", dropSoundName: "Pop"),
-        AgentConfig(id: "agent_5", name: "토비", role: "QA 엔지니어", emoji: "🐰", color: .gray, isPremium: true, status: "단위 테스트 코드 작성 중", dragEmoji: "😵‍💫", dragRotation: -5, dragSoundName: "Pop", dropSoundName: "Pop"),
-        AgentConfig(id: "agent_6", name: "레오", role: "데이터 분석가", emoji: "🦊", color: .red, isPremium: true, status: "사용자 로그 데이터 분석 중", dragEmoji: "🤔", dragRotation: 15, dragSoundName: "Blow", dropSoundName: "Funk"),
-        AgentConfig(id: "agent_7", name: "베어", role: "DevOps 엔지니어", emoji: "🐻", color: .brown, isPremium: true, status: "CI/CD 파이프라인 구성 중", dragEmoji: "😴", dragRotation: -10, dragSoundName: "Morse", dropSoundName: "Pop"),
-        AgentConfig(id: "agent_8", name: "밤비", role: "머신러닝 엔지니어", emoji: "🐼", color: .black, isPremium: true, status: "추천 알고리즘 모델 학습 중", dragEmoji: "😲", dragRotation: 8, dragSoundName: "Ping", dropSoundName: "Funk")
+        AgentConfig(id: "agent_1",  name: "레오",   role: "비지니스 전략가",    emoji: "🦊", color: .orange, isPremium: false, status: "시장 전략 분석 중",         spriteName: nil, dragEmoji: "😤", dragRotation: -12, dragSoundName: "Pop",   dropSoundName: "Funk"),
+        AgentConfig(id: "agent_2",  name: "루나",   role: "마케터/콘텐츠 기획", emoji: "🐰", color: .pink,   isPremium: false, status: "바이럴 캠페인 기획 중",    spriteName: nil, dragEmoji: "😆", dragRotation:  10, dragSoundName: "Blow",  dropSoundName: "Pop"),
+        AgentConfig(id: "agent_3",  name: "모코",   role: "프로젝트 매니저",    emoji: "🐹", color: .purple, isPremium: false, status: "이미 다 계획해둔 마스터",  spriteName: nil, dragEmoji: "😵", dragRotation:  -8, dragSoundName: "Morse", dropSoundName: "Funk"),
+        AgentConfig(id: "agent_4",  name: "핀",     role: "UI 디자이너",        emoji: "🐧", color: .cyan,   isPremium: false, status: "픽셀 하나에 30분째 고민", spriteName: nil, dragEmoji: "😱", dragRotation:  12, dragSoundName: "Ping",  dropSoundName: "Pop"),
+        AgentConfig(id: "agent_5",  name: "치코",   role: "UX 디자이너",        emoji: "🐿️", color: Color(red:0.6, green:0.4, blue:0.2), isPremium: true, status: "감성을 데이터로 변환 중",  spriteName: nil, dragEmoji: "🤯", dragRotation: -10, dragSoundName: "Pop",   dropSoundName: "Funk"),
+        AgentConfig(id: "agent_6",  name: "렉스",   role: "법률 전문가",        emoji: "🦥", color: .green,  isPremium: true,  status: "계약서 검토 중 (천천히)", spriteName: nil, dragEmoji: "😴", dragRotation:  14, dragSoundName: "Blow",  dropSoundName: "Pop"),
+        AgentConfig(id: "agent_7",  name: "케이",   role: "보안/데이터 전문가", emoji: "🐕", color: .blue,   isPremium: true,  status: "보안 로그 분석 중",       spriteName: nil, dragEmoji: "😐", dragRotation:  -5, dragSoundName: "Morse", dropSoundName: "Funk"),
+        AgentConfig(id: "agent_8",  name: "래키",   role: "백엔드 개발자",      emoji: "🦝", color: .gray,   isPremium: true,  status: "밤새워 API 디버깅 중",    spriteName: nil, dragEmoji: "😵‍💫", dragRotation:   8, dragSoundName: "Ping",  dropSoundName: "Pop"),
+        AgentConfig(id: "agent_9",  name: "폴라",   role: "세일즈/BD",          emoji: "🐻‍❄️", color: Color(red:0.2, green:0.6, blue:0.9), isPremium: true, status: "아무도 거절 못 하는 딜 클로징", spriteName: nil, dragEmoji: "😊", dragRotation: -6, dragSoundName: "Pop",   dropSoundName: "Funk"),
+        AgentConfig(id: "agent_10", name: "몽몽",   role: "고객 서비스",        emoji: "🐩", color: Color(red:1.0, green:0.7, blue:0.0), isPremium: true, status: "고객을 팬으로 만드는 중",  spriteName: nil, dragEmoji: "🥰", dragRotation:  10, dragSoundName: "Blow",  dropSoundName: "Pop"),
+        AgentConfig(id: "agent_11", name: "올리버", role: "QA 엔지니어",        emoji: "🐷", color: .red,    isPremium: true,  status: "버그 사냥 중",            spriteName: nil, dragEmoji: "😤", dragRotation:  -9, dragSoundName: "Morse", dropSoundName: "Funk"),
     ]
     
     // ── 전역 설정 ──
@@ -42,16 +33,24 @@ class AgentWindowManager: ObservableObject {
     @AppStorage("isVoiceMode") var isVoiceMode: Bool = true
     @AppStorage("isSilentMode") var isSilentMode: Bool = false
 
-    // ── 팀 전체 채팅 로그 (히스토리) ──
-    struct ChatLog: Identifiable, Codable {
-        let id: UUID
-        let agentID: String
-        let agentName: String
-        let text: String
-        let isUser: Bool
-        let timestamp: Date
+    // ── 방 목록 (UserDefaults 영속화) ──
+    @Published var rooms: [ChatRoom] = [] {
+        didSet { saveRooms() }
     }
-    @Published var teamChatLogs: [ChatLog] = []
+    @Published var currentRoomID: UUID?
+
+    // 호환성: 현재 방의 메시지 접근
+    var teamChatLogs: [ChatLog] {
+        rooms.first(where: { $0.id == currentRoomID })?.messages.filter { !$0.isSystem } ?? []
+    }
+
+    // 팀 전체 대화용 고정 config
+    static let teamRepresentative = AgentConfig(
+        id: "team_all", name: "팀 채팅", role: "전체 대화방",
+        emoji: "🤝", color: .blue, isPremium: false,
+        status: "팀 프로젝트 진행 중", spriteName: nil,
+        dragEmoji: "🤝", dragRotation: 0, dragSoundName: "", dropSoundName: ""
+    )
 
     // 팀의 현재 큰 업무
     @Published var currentMainTask: String = "AI 팀 프로젝트 매니징 및 고도화"
@@ -61,7 +60,10 @@ class AgentWindowManager: ObservableObject {
     
     // 팀 테이블 창 (하나)
     private var teamPanel: FloatingPanel?
-    
+
+    // 팀 명칭 드래그와 같이 창 이동을 위해 TeamTableView에 노출
+    var teamPanelWindow: FloatingPanel? { teamPanel }
+
     // 개별 채팅 창 목록 (에이전트 ID별로 관리)
     private var chatPanels: [String: FloatingPanel] = [:]
     
@@ -77,9 +79,79 @@ class AgentWindowManager: ObservableObject {
     // 개별 커스텀 설정 창
     private var agentSettingsPanel: FloatingPanel?
 
+    private var lastInteractionTime: Date = Date()
+    private var idleTimer: Timer?
+
     private init() {
-        // 초기 4명 세팅
         activeAgents = Array(allAvailableAgents.prefix(4))
+
+        // 채팅 데이터 복원
+        loadRooms()
+        if rooms.isEmpty {
+            let defaultRoom = ChatRoom(id: UUID(), name: "기본 프로젝트",
+                messages: [], agentIDs: ["team_all"], createdAt: Date())
+            rooms.append(defaultRoom)
+            currentRoomID = defaultRoom.id
+        } else if currentRoomID == nil {
+            currentRoomID = rooms.first?.id
+        }
+
+        // 잠금 해제 / 잠자기 해제 감지
+        NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(handleWake), name: NSWorkspace.didWakeNotification, object: nil)
+        NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(handleWake), name: NSWorkspace.sessionDidBecomeActiveNotification, object: nil)
+
+        // 앱 최초 시작 인사말
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { self.handleStartup() }
+
+        // 아이들 감지 타이머 (1분마다 체크)
+        idleTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            self?.checkIdle()
+        }
+    }
+
+    func updateInteractionTime() { lastInteractionTime = Date() }
+
+    private func checkIdle() {
+        let idleSeconds = Date().timeIntervalSince(lastInteractionTime)
+        if idleSeconds >= 1800 && idleSeconds < 1860 {
+            // 30분 이상 → 수면 대사
+            let fallback = ["...Zzzz...", "자고 있었어요~"]
+            speakLocalEvent(text: fallback.randomElement()!, state: .sleeping, isSystem: true)
+        } else if idleSeconds >= 900 && idleSeconds < 960 {
+            // 15분 → 대기 대사
+            let fallback = ["안 안뉐하셨죠?", "졸고 있었던 거 아니에요!", "보고 싶었어요.", "계속 대기 중!"]
+            speakLocalEvent(text: fallback.randomElement()!, state: .idle, isSystem: true)
+        }
+    }
+
+    // MARK: - 시스템 이벤트 (인사말) 처리
+    @objc private func handleWake() {
+        let userTitle = UserDefaults.standard.string(forKey: "userTitle") ?? "사용자님"
+        let fallback = ["\(userTitle), 드디어 오셨네요!", "기다리고 있었어요!",
+                        "다시 작업 모드로 전환합니다!",
+                        "잠금해제 소리만 기다렸다니까요, \(userTitle). 바로 일하러 가시죠!"]
+        speakLocalEvent(text: fallback.randomElement()!, state: .greeting, isSystem: true)
+    }
+
+    private func handleStartup() {
+        let userTitle = UserDefaults.standard.string(forKey: "userTitle") ?? "사용자님"
+        let fallback = ["반가워요! 오늘 하루도 잘 부탁드려요.", "접속 완료! 어떤 일부터 할까요?",
+                        "준비 끝!", "\(userTitle), 에이전트 가동 시작합니다!"]
+        speakLocalEvent(text: fallback.randomElement()!, state: .greeting, isSystem: true)
+    }
+
+    /// 로컬 시스템 이벤트: 랜덤 에이전트가 채팅에 기록 + TTS 재생
+    /// state가 지정되면 캐릭터별 고유 대사를 우선 사용하고, 없으면 text 폴백
+    private func speakLocalEvent(text: String, state: AnimationState? = nil, isSystem: Bool = false) {
+        let agent = activeAgents.randomElement() ?? activeAgents[0]
+        let line: String
+        if let state, let charLine = CharacterDialogues.randomLine(for: agent.name, state: state) {
+            line = charLine
+        } else {
+            line = text
+        }
+        addChatLog(agentID: agent.id, agentName: agent.name, text: line, isUser: false, isSystem: isSystem)
+        if !isSilentMode { SpeechManager.shared.speak(text: line, characterName: agent.name) }
     }
 
     // MARK: - 팀 테이블 창 열기
@@ -132,7 +204,6 @@ class AgentWindowManager: ObservableObject {
         let visibleFrame = screen?.visibleFrame ?? .zero
         
         let panelWidth: CGFloat = 460
-        let panelHeight: CGFloat = 280
         
         // 1. 메인 팀 테이블: 화면 하단 중앙 (Dock 위)
         let teamX = visibleFrame.origin.x + (visibleFrame.width - panelWidth) / 2
@@ -150,39 +221,43 @@ class AgentWindowManager: ObservableObject {
         print("Window positions reset to center.")
     }
 
-    // MARK: - 개별 채팅창 띄우기
-    func showChat(for config: AgentConfig) {
-        if let existing = chatPanels[config.id] {
+    // MARK: - 개별 채팅창 띄우기 (Singular instance)
+    func showChat(for config: AgentConfig, isPersonalChat: Bool = true) {
+        if let existing = chatPanels.values.first {
             existing.orderFront(nil)
             existing.makeKey()
+            NotificationCenter.default.post(name: NSNotification.Name("didSelectAgentForChat"), object: nil, userInfo: ["agentID": config.id])
             return
         }
-        
-        // 팀 창 근처 위쪽에 띄우기 (간격 거의 없게)
+
+        // 팀 창 근체 위쪽에 띄우기 (간격 거의 없게)
         let teamFrame = teamPanel?.frame ?? NSScreen.main?.visibleFrame ?? .zero
         let x = teamFrame.origin.x + 40
-        let y = teamFrame.origin.y + teamFrame.height + 2 // 대화창과 0.2 차이나게 밀착
-        
+        let y = teamFrame.origin.y + teamFrame.height + 2
+
         let panel = FloatingPanel(
-            agentID: "chat_\(config.id)",
+            agentID: "chat_single",
             position: NSPoint(x: x, y: y),
-            size: NSSize(width: 380, height: 460) // 채팅창용 크기
+            size: NSSize(width: 800, height: 620)
         )
-        
-        let view = AgentChatView(config: config, onClose: { [weak self] in
-            self?.hideChat(id: config.id)
-        }).environmentObject(self)
-        
+        panel.minSize = NSSize(width: 300, height: 480)
+
+        let view = AgentChatView(
+            config: config,
+            onClose: { [weak self] in self?.hideChat(id: config.id) },
+            isPersonalChat: isPersonalChat
+        ).environmentObject(self)
+
         panel.contentViewController = NSHostingController(rootView: view)
         panel.orderFront(nil)
         panel.makeKey()
-        chatPanels[config.id] = panel
+        chatPanels["chat_single"] = panel
     }
     
     // MARK: - 개별 채팅창 닫기
     func hideChat(id: String) {
-        chatPanels[id]?.close()
-        chatPanels.removeValue(forKey: id)
+        chatPanels.values.forEach { $0.close() }
+        chatPanels.removeAll()
     }
     
     // MARK: - 에이전트 교체 창 띄우기
@@ -281,8 +356,8 @@ class AgentWindowManager: ObservableObject {
             return
         }
         
-        let width: CGFloat = 320
-        let height: CGFloat = 360
+        let width: CGFloat = 360
+        let height: CGFloat = 520
         // 팀 창 근처 적절한 위치에 띄움
         let teamFrame = teamPanel?.frame ?? NSScreen.main?.visibleFrame ?? .zero
         let x = teamFrame.origin.x + (teamFrame.width / 2) - (width / 2)
@@ -348,5 +423,96 @@ class AgentWindowManager: ObservableObject {
     func hideSettingsWindow() {
         settingsPanel?.close()
         settingsPanel = nil
+    }
+
+    // MARK: - 창 크기 동적 조절 (SwiftUI에서 호출)
+    func updateStatusWindowWidth(_ width: CGFloat) {
+        guard let panel = teamPanel else { return }
+        var frame = panel.frame
+        _ = frame.size.width
+        // 오른쪽으로 늘어 나도록 처리 (x는 유지)
+        frame.size.width = width
+        // frame.origin.x = frame.origin.x - (width - oldWidth) // 왼쪽으로 늘리려면 이 코드가 필요하지만, iMessage는 오른쪽으로 늘어남
+
+        
+        panel.setFrame(frame, display: true, animate: true)
+    }
+    
+    func updateChatWindowWidth(id: String, width: CGFloat) {
+        guard let panel = chatPanels["chat_single"] else { return }
+        var frame = panel.frame
+        frame.size.width = width
+        panel.setFrame(frame, display: true, animate: true)
+    }
+
+    func updateChatWindowSize(id: String, width: CGFloat, height: CGFloat, minSize: NSSize? = nil) {
+        guard let panel = chatPanels["chat_single"] else { return }
+        if let minSize { panel.minSize = minSize }
+        var frame = panel.frame
+        // y 좌표를 조정해서 창이 위로 줄어들지 않고 아래쪽이 고정되게
+        let heightDiff = height - frame.size.height
+        frame.origin.y -= heightDiff
+        frame.size = NSSize(width: width, height: height)
+        panel.setFrame(frame, display: true, animate: true)
+    }
+
+    // MARK: - 채팅 로그 추가 (현재 방에 저장)
+    func addChatLog(agentID: String, agentName: String, text: String, isUser: Bool, roomID: UUID? = nil, isSystem: Bool = false) {
+        let targetID = roomID ?? currentRoomID
+        guard let rid = targetID,
+              let index = rooms.firstIndex(where: { $0.id == rid }) else { return }
+        let newLog = ChatLog(id: UUID(), agentID: agentID, agentName: agentName,
+                             text: text, isUser: isUser, timestamp: Date(), isSystem: isSystem)
+        rooms[index].messages.append(newLog)
+    }
+
+    // MARK: - 방 생성 / 이름 변경 / 삭제
+    func createRoom(name: String) {
+        let newRoom = ChatRoom(id: UUID(), name: name,
+            messages: [], agentIDs: ["team_all"], createdAt: Date())
+        rooms.append(newRoom)
+        currentRoomID = newRoom.id
+    }
+
+    /// 특정 에이전트 전용 방 생성
+    func createAgentRoom(name: String, agentID: String) {
+        let newRoom = ChatRoom(id: UUID(), name: name,
+            messages: [], agentIDs: [agentID], createdAt: Date())
+        rooms.append(newRoom)
+    }
+
+    func renameRoom(id: UUID, newName: String) {
+        guard let index = rooms.firstIndex(where: { $0.id == id }) else { return }
+        rooms[index].name = newName
+    }
+
+    func deleteRoom(id: UUID) {
+        rooms.removeAll { $0.id == id }
+        if currentRoomID == id { currentRoomID = rooms.first?.id }
+    }
+
+    func deleteMessage(roomID: UUID, messageID: UUID) {
+        guard let idx = rooms.firstIndex(where: { $0.id == roomID }) else { return }
+        rooms[idx].messages.removeAll { $0.id == messageID }
+    }
+
+    // MARK: - 팀 전체 채팅창 띄우기 (프로젝트별)
+    func showProjectChat(roomID: UUID) {
+        currentRoomID = roomID
+        showChat(for: Self.teamRepresentative, isPersonalChat: false)
+    }
+
+    // MARK: - 채팅 데이터 영속화
+    private func saveRooms() {
+        if let encoded = try? JSONEncoder().encode(rooms) {
+            UserDefaults.standard.set(encoded, forKey: "myteam_rooms")
+        }
+    }
+
+    private func loadRooms() {
+        if let data = UserDefaults.standard.data(forKey: "myteam_rooms"),
+           let decoded = try? JSONDecoder().decode([ChatRoom].self, from: data) {
+            rooms = decoded
+        }
     }
 }

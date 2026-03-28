@@ -1,29 +1,47 @@
 import SwiftUI
 import AppKit
 
+// JiggleEffect, IMMessageBubble, DateSeparator, ChatBubble → ChatComponents.swift 로 분리됨
+
 // MARK: - AgentChatView
-// iMessage 스타일 개별 채팅창 (팀 채팅과 동일한 레이아웃)
 struct AgentChatView: View {
     let config: AgentWindowManager.AgentConfig
     let onClose: () -> Void
 
     @EnvironmentObject var manager: AgentWindowManager
-    @StateObject private var wsClient = WebSocketClient.shared
     @StateObject private var speechManager = SpeechManager.shared
     @State private var inputText: String = ""
-    @State private var initialGreeting: String = "안녕하세요! 어떤 프로젝트부터 도와드릴까요?"
     @State private var preRecordText: String = ""
-    @State private var selectedTab: Int = 1 // 기본 1: 채팅 모드 (확장 상태)
+    @State private var selectedTab: Int = 1
 
-    // 현재 선택된 에이전트 (사이드바 전환용)
     @State private var activeAgentID: String? = nil
+    @State private var agentRoomID: UUID? = nil
+    @State private var isSidebarCollapsed: Bool = false
 
-    // 1:1 또는 팀 채팅 구분 플래그
+    // 삭제/편집 모드
+    @State private var isEditingProjects: Bool = false
+    @State private var isEditingMessages: Bool = false
+
+    // 방 이름 변경
+    @State private var renamingRoomID: UUID? = nil
+    @State private var renameText: String = ""
+    @FocusState private var isRenameFieldFocused: Bool
+
+    // 최소화 (팀 협업창 스타일)
+    @State private var isMinimized: Bool = false
+    private let minimizedHeight: CGFloat = 52
+
     var isPersonalChat: Bool = true
 
-    // 현재 방의 채팅 내역 필터링
+    private var agentRooms: [AgentWindowManager.ChatRoom] {
+        let targetID = activeAgentID ?? config.id
+        // 개인 방만 표시: agentIDs가 정확히 [targetID] 하나인 방만
+        return manager.rooms.filter { $0.agentIDs.count == 1 && $0.agentIDs[0] == targetID }
+    }
+
     private var chatHistory: [AgentWindowManager.ChatLog] {
-        let logs = manager.rooms.first(where: { $0.id == manager.currentRoomID })?.messages ?? []
+        let roomID = agentRoomID ?? manager.currentRoomID
+        let logs = manager.rooms.first(where: { $0.id == roomID })?.messages ?? []
         let targetID = activeAgentID ?? config.id
         if isPersonalChat {
             return logs.filter { $0.agentID == targetID || $0.isUser }
@@ -36,7 +54,6 @@ struct AgentChatView: View {
         manager.activeAgents.first(where: { $0.id == (activeAgentID ?? config.id) }) ?? config
     }
 
-    // 다크모드 대응 색상
     private var bgColor: Color {
         manager.isDarkMode ? Color(red: 0.09, green: 0.09, blue: 0.11) : Color(red: 0.97, green: 0.97, blue: 0.99)
     }
@@ -45,142 +62,506 @@ struct AgentChatView: View {
     private var dividerColor: Color { manager.isDarkMode ? .white.opacity(0.07) : .black.opacity(0.06) }
     private var inputBgColor: Color { manager.isDarkMode ? Color.white.opacity(0.06) : Color.black.opacity(0.04) }
 
+    private var viewWidth: CGFloat {
+        if selectedTab == 0 { return 300 }
+        return isSidebarCollapsed ? 680 : 800
+    }
+
     var body: some View {
-        HStack(spacing: 0) {
-            // ── 사이드바 ──
-            sidebarView
-
-            Divider().background(dividerColor)
-
-            // ── 메인 영역 ──
-            VStack(spacing: 0) {
-                // ── 1. 헤더 ──
-                HStack(spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(currentAgent.color.opacity(manager.isDarkMode ? 0.3 : 0.15))
-                            .frame(width: 40, height: 40)
-                        Text(currentAgent.emoji)
-                            .font(.system(size: 24))
+        Group {
+            if isMinimized {
+                minimizedBarView
+            } else {
+                HStack(spacing: 0) {
+                    if selectedTab == 1 {
+                        projectSidebarView
+                        Divider().background(dividerColor)
                     }
 
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(currentAgent.name)
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(textColor)
-                        
+                    VStack(spacing: 0) {
+                        headerView
+                        Divider().background(dividerColor)
+
                         if selectedTab == 1 {
-                             if let room = manager.rooms.first(where: { $0.id == manager.currentRoomID }) {
-                                Text(room.name)
-                                    .font(.system(size: 11))
-                                    .foregroundColor(config.color.opacity(0.8))
-                            }
+                            chatLogView
                         } else {
-                            Text(currentAgent.role)
-                                .font(.system(size: 11))
-                                .foregroundColor(subTextColor)
+                            agentStatusView
                         }
                     }
-
-                    Spacer()
-
-                    HStack(spacing: 16) {
-                        // 탭 전환 버튼
-                        Button(action: {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                selectedTab = (selectedTab == 0 ? 1 : 0)
-                            }
-                        }) {
-                            Image(systemName: selectedTab == 0 ? "bubble.left.and.bubble.right.fill" : "person.fill")
-                                .font(.system(size: 14))
-                                .foregroundColor(subTextColor)
-                        }
-
-                        // 음성/마이크 버튼
-                        if selectedTab == 1 {
-                            Button(action: {
-                                if speechManager.isRecording {
-                                    speechManager.stopRecording()
-                                } else {
-                                    speechManager.requestAuthorization { authorized in
-                                        if authorized {
-                                            self.preRecordText = self.inputText
-                                            speechManager.startRecording()
-                                        }
-                                    }
-                                }
-                            }) {
-                                if speechManager.isStarting {
-                                    ProgressView()
-                                        .progressViewStyle(CircularProgressViewStyle(tint: .orange))
-                                        .scaleEffect(0.65)
-                                        .frame(width: 18, height: 18)
-                                } else {
-                                    Image(systemName: speechManager.isRecording ? "stop.circle.fill" : "mic")
-                                        .foregroundColor(speechManager.isRecording ? .red : subTextColor)
-                                }
-                            }
-                            .disabled(speechManager.isStarting)
-                        }
-
-                        // 닫기
-                        Button(action: onClose) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(subTextColor)
-                                .font(.system(size: 18))
-                        }
-                    }
-                    .buttonStyle(PlainButtonStyle())
                 }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 14)
-                .background(bgColor)
-
-                Divider().background(dividerColor)
-
-                if selectedTab == 1 {
-                    // ── 2-1. 채팅 로그 (확장 모드) ──
-                    chatLogView
-                } else {
-                    // ── 2-2. 에이전트 프로필/상태 (압축 모드) ──
-                    agentStatusView
+                // 어디든 탭하면 편집 모드 해제
+                .onTapGesture {
+                    if isEditingMessages { isEditingMessages = false }
+                    if isEditingProjects { isEditingProjects = false }
+                    if renamingRoomID != nil {
+                        commitRename()
+                    }
                 }
             }
         }
         .onAppear {
-            let greetings = [
-                "안녕하세요! 어떤 프로젝트부터 도와드릴까요?",
-                "반갑습니다. 오늘 하루도 파이팅해 볼까요?",
-                "무엇을 도와드릴까요? 편하게 말씀해 주세요.",
-                "준비 완료! 어떤 작업을 시작할까요?",
-                "안녕하세요. 오늘은 어떤 일로 오셨나요?"
-            ]
-            self.initialGreeting = greetings.randomElement() ?? greetings[0]
-            self.activeAgentID = config.id
+            activeAgentID = config.id
+            if let firstRoom = agentRooms.first {
+                agentRoomID = firstRoom.id
+            } else {
+                let targetID = config.id
+                manager.createAgentRoom(name: "\(config.name) 대화 1", agentID: targetID)
+                agentRoomID = manager.rooms.last?.id
+            }
+            // 창 크기 업데이트는 onChange(of: isMinimized)에서 처리
         }
-        .frame(width: selectedTab == 0 ? 300 : 600, height: 600)
+        .frame(
+            minWidth: isMinimized ? 240 : 300,
+            idealWidth: isMinimized ? 240 : viewWidth,
+            maxWidth: isMinimized ? 240 : .infinity,
+            minHeight: isMinimized ? minimizedHeight : 480,
+            idealHeight: isMinimized ? minimizedHeight : 600,
+            maxHeight: isMinimized ? minimizedHeight : .infinity
+        )
         .onChange(of: selectedTab) { _, newValue in
-            manager.updateChatWindowWidth(id: config.id, width: newValue == 0 ? 300 : 600)
+            if !isMinimized {
+                manager.updateChatWindowWidth(id: config.id, width: newValue == 0 ? 300 : viewWidth)
+            }
+        }
+        .onChange(of: isSidebarCollapsed) { _, _ in
+            if selectedTab == 1 && !isMinimized {
+                manager.updateChatWindowWidth(id: config.id, width: viewWidth)
+            }
+        }
+        .onChange(of: isMinimized) { _, minimized in
+            // DispatchQueue.main.async: SwiftUI render cycle 완료 후 AppKit 호출
+            // → withAnimation 트랜잭션과 panel.setFrame(animate:) 이중 충돌 방지
+            DispatchQueue.main.async {
+                if minimized {
+                    manager.updateChatWindowSize(id: config.id, width: 280, height: minimizedHeight,
+                                                  minSize: NSSize(width: 240, height: minimizedHeight))
+                } else {
+                    manager.updateChatWindowSize(id: config.id, width: viewWidth, height: 600,
+                                                  minSize: NSSize(width: 300, height: 480))
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("didSelectAgentForChat"))) { notif in
+            if let id = notif.userInfo?["agentID"] as? String {
+                withAnimation {
+                    activeAgentID = id
+                    let filteredRooms = manager.rooms.filter { $0.agentIDs.count == 1 && $0.agentIDs[0] == id }
+                    if let firstRoom = filteredRooms.first {
+                        agentRoomID = firstRoom.id
+                    } else {
+                        // 방이 없으면 즉시 생성 (팀 채팅방으로 fallback 방지)
+                        let agentName = manager.activeAgents.first(where: { $0.id == id })?.name ?? "대화"
+                        manager.createAgentRoom(name: "\(agentName) 대화 1", agentID: id)
+                        if let newRoom = manager.rooms.last {
+                            agentRoomID = newRoom.id
+                        }
+                    }
+                }
+            }
         }
     }
 
-    // MARK: - 하위 뷰 (채팅 로그)
+    // MARK: - 최소화 바 (팀 협업창 스타일)
+    private var minimizedBarView: some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(currentAgent.color.opacity(manager.isDarkMode ? 0.3 : 0.15))
+                    .frame(width: 34, height: 34)
+                Text(currentAgent.emoji).font(.system(size: 20))
+            }
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(currentAgent.name)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(textColor)
+                if let last = chatHistory.last {
+                    Text(last.text)
+                        .font(.system(size: 10))
+                        .foregroundColor(subTextColor)
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer()
+
+            HStack(spacing: 10) {
+                // 펼치기 버튼 (팀 현황창의 ↕ 버튼 스타일)
+                Button(action: {
+                    isMinimized = false  // withAnimation 제거 — AppKit 패널이 자체 animate
+                }) {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(subTextColor)
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                // 닫기
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(subTextColor.opacity(0.6))
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(bgColor)
+    }
+
+    // MARK: - 헤더
+    private var headerView: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(currentAgent.color.opacity(manager.isDarkMode ? 0.3 : 0.15))
+                    .frame(width: 40, height: 40)
+                Text(currentAgent.emoji).font(.system(size: 24))
+            }
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(currentAgent.name)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(textColor)
+                if selectedTab == 1 {
+                    let roomID = agentRoomID ?? manager.currentRoomID
+                    if let room = manager.rooms.first(where: { $0.id == roomID }) {
+                        Text(room.name)
+                            .font(.system(size: 11))
+                            .foregroundColor(config.color.opacity(0.8))
+                    }
+                } else {
+                    Text(currentAgent.role)
+                        .font(.system(size: 11))
+                        .foregroundColor(subTextColor)
+                }
+            }
+
+            Spacer()
+
+            HStack(spacing: 16) {
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        selectedTab = (selectedTab == 0 ? 1 : 0)
+                    }
+                }) {
+                    Image(systemName: selectedTab == 0 ? "bubble.left.and.bubble.right.fill" : "person.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(subTextColor)
+                }
+
+                if selectedTab == 1 {
+                    // 메시지 편집 모드 토글
+                    Button(action: {
+                        withAnimation { isEditingMessages.toggle() }
+                        if isEditingMessages { isEditingProjects = false }
+                    }) {
+                        Image(systemName: isEditingMessages ? "checkmark.circle.fill" : "trash")
+                            .font(.system(size: 14))
+                            .foregroundColor(isEditingMessages ? currentAgent.color : subTextColor)
+                    }
+
+                    Button(action: {
+                        if speechManager.isRecording {
+                            speechManager.stopRecording()
+                        } else {
+                            speechManager.requestAuthorization { authorized in
+                                if authorized {
+                                    self.preRecordText = self.inputText
+                                    speechManager.startRecording()
+                                }
+                            }
+                        }
+                    }) {
+                        if speechManager.isStarting {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .orange))
+                                .scaleEffect(0.65)
+                                .frame(width: 18, height: 18)
+                        } else {
+                            Image(systemName: speechManager.isRecording ? "stop.circle.fill" : "mic")
+                                .foregroundColor(speechManager.isRecording ? .red : subTextColor)
+                        }
+                    }
+                    .disabled(speechManager.isStarting)
+                }
+
+                // 최소화 (팀 협업창 스타일)
+                Button(action: {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                        isMinimized = true
+                    }
+                }) {
+                    Image(systemName: "arrow.down.right.and.arrow.up.left")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(subTextColor)
+                }
+
+                // 닫기
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(subTextColor.opacity(0.6))
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 14)
+        .background(bgColor)
+    }
+
+    // MARK: - 프로젝트 사이드바
+    private var projectSidebarView: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 6) {
+                Text(currentAgent.emoji).font(.system(size: 14))
+                if !isSidebarCollapsed {
+                    Text("프로젝트")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(textColor.opacity(0.5))
+                }
+                Spacer()
+
+                // 사이드바 편집 모드 버튼
+                if !isSidebarCollapsed {
+                    Button(action: {
+                        withAnimation { isEditingProjects.toggle() }
+                        if isEditingProjects { isEditingMessages = false }
+                        renamingRoomID = nil
+                    }) {
+                        Image(systemName: isEditingProjects ? "checkmark.circle.fill" : "minus.circle")
+                            .font(.system(size: 13))
+                            .foregroundColor(isEditingProjects ? currentAgent.color : subTextColor)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+
+                // 새 프로젝트 추가 (+ 버튼)
+                Button(action: addNewProject) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(currentAgent.color)
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                // 사이드바 접기/펼치기 버튼 (오른쪽 끝)
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        isSidebarCollapsed.toggle()
+                    }
+                }) {
+                    Image(systemName: "sidebar.squares.left")
+                        .font(.system(size: 13))
+                        .foregroundColor(subTextColor)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            .padding(.horizontal, isSidebarCollapsed ? 8 : 12)
+            .padding(.vertical, 10)
+
+            Divider().background(dividerColor)
+
+            ScrollView {
+                VStack(spacing: 4) {
+                    ForEach(agentRooms) { room in
+                        projectRoomRow(room: room)
+                    }
+                }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 6)
+            }
+
+            Divider().background(dividerColor)
+
+            // 에이전트 전환
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(manager.activeAgents) { agent in
+                        Button(action: {
+                            withAnimation {
+                                activeAgentID = agent.id
+                                let rooms = manager.rooms.filter { $0.agentIDs.contains(agent.id) }
+                                agentRoomID = rooms.first?.id ?? manager.currentRoomID
+                            }
+                            isEditingProjects = false
+                        }) {
+                            Text(agent.emoji)
+                                .font(.system(size: 18))
+                                .frame(width: 32, height: 32)
+                                .background(
+                                    Circle().fill(activeAgentID == agent.id ? agent.color.opacity(0.2) : Color.clear)
+                                )
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 8)
+            }
+        }
+        .frame(width: isSidebarCollapsed ? 50 : 160)
+        .background(manager.isDarkMode ? Color.white.opacity(0.03) : Color.black.opacity(0.08))
+    }
+
+    // MARK: - 새 프로젝트 추가
+    private func addNewProject() {
+        isEditingProjects = false
+        isEditingMessages = false
+        renamingRoomID = nil
+        let targetID = activeAgentID ?? config.id
+        let newName = "\(currentAgent.name) 대화 \(agentRooms.count + 1)"
+        manager.createAgentRoom(name: newName, agentID: targetID)
+        // agentRooms는 computed이므로, rooms.filter 결과에서 마지막 방을 직접 찾음
+        DispatchQueue.main.async {
+            let newAgentRooms = manager.rooms.filter {
+                $0.agentIDs.count == 1 && $0.agentIDs[0] == targetID
+            }
+            if let newRoom = newAgentRooms.last {
+                withAnimation { agentRoomID = newRoom.id }
+            }
+        }
+    }
+
+    // MARK: - 이름 변경 커밋
+    private func commitRename() {
+        if let rid = renamingRoomID, !renameText.trimmingCharacters(in: .whitespaces).isEmpty {
+            manager.renameRoom(id: rid, newName: renameText.trimmingCharacters(in: .whitespaces))
+        }
+        renamingRoomID = nil
+        renameText = ""
+    }
+
+    @ViewBuilder
+    private func projectRoomRow(room: AgentWindowManager.ChatRoom) -> some View {
+        let isSelected = agentRoomID == room.id
+        let isRenaming = renamingRoomID == room.id
+
+        ZStack(alignment: .topTrailing) {
+            // 버튼 대신 HStack 제스처로 대체하여 더블클릭 이벤트 충돌 완전 방지
+            HStack(spacing: 6) {
+                    Image(systemName: "bubble.left.fill")
+                        .font(.system(size: 10))
+                        .foregroundColor(isSelected ? currentAgent.color : .gray.opacity(0.5))
+                    if !isSidebarCollapsed {
+                        VStack(alignment: .leading, spacing: 2) {
+                            // 이름 변경 인라인 편집
+                            if isRenaming {
+                                TextField("방 이름", text: $renameText)
+                                    .font(.system(size: 11, weight: .bold))
+                                    .textFieldStyle(PlainTextFieldStyle())
+                                    .foregroundColor(currentAgent.color)
+                                    .focused($isRenameFieldFocused)
+                                    .onSubmit { commitRename() }
+                                    .onExitCommand { renamingRoomID = nil }
+                            } else {
+                                Text(room.name)
+                                    .font(.system(size: 11, weight: isSelected ? .bold : .medium))
+                                    .foregroundColor(isSelected ? currentAgent.color : textColor.opacity(0.7))
+                                    .lineLimit(1)
+                                    // 텍스트에만 직접 더블탭을 붙여서 Button에 이벤트가 먹히는 것을 우회
+                                    .onTapGesture(count: 2) {
+                                        guard !isSidebarCollapsed && !isEditingProjects else { return }
+                                        renameText = room.name
+                                        renamingRoomID = room.id
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                            isRenameFieldFocused = true
+                                        }
+                                    }
+                            }
+                            if let lastMsg = room.messages.last, !isRenaming {
+                                Text(lastMsg.text)
+                                    .font(.system(size: 9))
+                                    .foregroundColor(subTextColor)
+                                    .lineLimit(1)
+                            }
+                        }
+                        Spacer()
+                        if !isRenaming {
+                            let count = room.messages.count
+                            if count > 0 {
+                                Text("\(count)")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
+                                    .background(Capsule().fill(isSelected ? currentAgent.color : Color.gray.opacity(0.3)))
+                            }
+                        }
+                    }
+            }
+            .contentShape(Rectangle()) // 빈공간도 클릭하게
+            .onTapGesture(count: 2) {
+                guard !isSidebarCollapsed && !isEditingProjects else { return }
+                renameText = room.name
+                renamingRoomID = room.id
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    isRenameFieldFocused = true
+                }
+            }
+            .onTapGesture(count: 1) {
+                guard !isEditingProjects else { return }
+                withAnimation(.easeInOut(duration: 0.15)) { agentRoomID = room.id }
+            }
+            .padding(.horizontal, isSidebarCollapsed ? 8 : 10)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isSelected ? currentAgent.color.opacity(0.1) : Color.clear)
+            )
+            .jiggle(isEditingProjects)
+            .contextMenu {
+                Button(action: {
+                    renameText = room.name
+                    renamingRoomID = room.id
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        isRenameFieldFocused = true
+                    }
+                }) {
+                    Label("이름 변경", systemImage: "pencil")
+                }
+                Divider()
+                Button(role: .destructive, action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                        manager.deleteRoom(id: room.id)
+                        if agentRoomID == room.id {
+                            agentRoomID = agentRooms.first(where: { $0.id != room.id })?.id
+                        }
+                    }
+                }) {
+                    Label("삭제", systemImage: "trash")
+                }
+            }
+
+            // 삭제 X 버튼 (편집 모드)
+            if isEditingProjects && !isSidebarCollapsed {
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                        manager.deleteRoom(id: room.id)
+                        if agentRoomID == room.id {
+                            agentRoomID = agentRooms.first(where: { $0.id != room.id })?.id
+                        }
+                    }
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.red)
+                        .background(Circle().fill(Color.white).frame(width: 10, height: 10))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .offset(x: 4, y: -4)
+                .transition(.scale.combined(with: .opacity))
+            }
+        }
+    }
+
+    // MARK: - 채팅 로그
     private var chatLogView: some View {
         VStack(spacing: 0) {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 2) {
-                        IMMessageBubble(
-                            text: initialGreeting,
-                            isUser: false,
-                            agentName: currentAgent.name,
-                            agentEmoji: currentAgent.emoji,
-                            agentColor: currentAgent.color,
-                            isDarkMode: manager.isDarkMode,
-                            timestamp: nil
-                        )
-                        .padding(.top, 12)
-
                         ForEach(Array(chatHistory.enumerated()), id: \.element.id) { index, log in
                             if index == 0 || !Calendar.current.isDate(
                                 log.timestamp, inSameDayAs: chatHistory[index - 1].timestamp
@@ -188,33 +569,8 @@ struct AgentChatView: View {
                                 DateSeparator(date: log.timestamp)
                             }
 
-                            IMMessageBubble(
-                                text: log.text,
-                                isUser: log.isUser,
-                                agentName: log.isUser ? "나" : log.agentName,
-                                agentEmoji: log.isUser ? "👤" : currentAgent.emoji,
-                                agentColor: log.isUser ? .blue : currentAgent.color,
-                                isDarkMode: manager.isDarkMode,
-                                timestamp: log.timestamp
-                            )
-                            .id(log.id)
-                        }
-
-                        if wsClient.currentSpeakerID == (activeAgentID ?? config.id) {
-                            if wsClient.agentStatus == "Thinking" {
-                                thinkingBubble
-                            } else if !wsClient.currentMessage.isEmpty {
-                                IMMessageBubble(
-                                    text: wsClient.currentMessage,
-                                    isUser: false,
-                                    agentName: currentAgent.name,
-                                    agentEmoji: currentAgent.emoji,
-                                    agentColor: currentAgent.color,
-                                    isDarkMode: manager.isDarkMode,
-                                    timestamp: nil
-                                )
-                                .id("current_speaking")
-                            }
+                            deletableMessageBubble(log: log)
+                                .id(log.id)
                         }
 
                         Color.clear.frame(height: 8).id("bottom_anchor")
@@ -224,14 +580,6 @@ struct AgentChatView: View {
                 }
                 .onChange(of: chatHistory.count) { _, _ in
                     withAnimation { proxy.scrollTo("bottom_anchor", anchor: .bottom) }
-                }
-                .onChange(of: wsClient.currentMessage) { _, _ in
-                    proxy.scrollTo("current_speaking", anchor: .bottom)
-                }
-                .onChange(of: wsClient.agentStatus) { _, newValue in
-                    if newValue == "Thinking" {
-                        proxy.scrollTo("thinking_spinner", anchor: .bottom)
-                    }
                 }
                 .onChange(of: speechManager.recognizedText) { _, newText in
                     if speechManager.isRecording {
@@ -243,25 +591,49 @@ struct AgentChatView: View {
             .background(bgColor)
 
             Divider().background(dividerColor)
-
-            // 입력창
             inputFieldView
         }
     }
 
-    private var thinkingBubble: some View {
-        HStack(spacing: 6) {
-            Circle().fill(currentAgent.color.opacity(0.5)).frame(width: 6, height: 6)
-            Circle().fill(currentAgent.color.opacity(0.35)).frame(width: 5, height: 5)
-            Circle().fill(currentAgent.color.opacity(0.2)).frame(width: 4, height: 4)
+    @ViewBuilder
+    private func deletableMessageBubble(log: AgentWindowManager.ChatLog) -> some View {
+        ZStack(alignment: log.isUser ? .topTrailing : .topLeading) {
+            IMMessageBubble(
+                text: log.text,
+                isUser: log.isUser,
+                agentName: log.isUser ? "나" : log.agentName,
+                agentEmoji: log.isUser ? "👤" : currentAgent.emoji,
+                agentColor: log.isUser ? .blue : currentAgent.color,
+                isDarkMode: manager.isDarkMode,
+                timestamp: log.timestamp
+            )
+            .jiggle(isEditingMessages)
+            .padding(log.isUser ? .trailing : .leading, isEditingMessages ? 8 : 0)
+
+            // 삭제 버튼
+            if isEditingMessages {
+                let roomID = agentRoomID ?? manager.currentRoomID
+                Button(action: {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                        if let rID = roomID {
+                            manager.deleteMessage(roomID: rID, messageID: log.id)
+                        }
+                    }
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(.red)
+                        .background(Circle().fill(Color.white).frame(width: 12, height: 12))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .offset(x: log.isUser ? 4 : -4, y: -4)
+                .transition(.scale.combined(with: .opacity))
+            }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(RoundedRectangle(cornerRadius: 18).fill(manager.isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.06)))
-        .padding(.leading, 54).padding(.vertical, 2)
-        .id("thinking_spinner")
+        .padding(.vertical, 2)
     }
 
+    // MARK: - 입력창
     private var inputFieldView: some View {
         VStack(spacing: 6) {
             HStack(spacing: 10) {
@@ -289,12 +661,11 @@ struct AgentChatView: View {
         .padding(.horizontal, 14).padding(.vertical, 12).background(bgColor)
     }
 
-    // MARK: - 하위 뷰 (프로필/상태)
+    // MARK: - 프로필/상태
     private var agentStatusView: some View {
         VStack(spacing: 20) {
             Spacer()
-            Text(currentAgent.emoji)
-                .font(.system(size: 64))
+            Text(currentAgent.emoji).font(.system(size: 64))
             VStack(spacing: 8) {
                 Text(currentAgent.name)
                     .font(.system(size: 24, weight: .bold))
@@ -313,46 +684,19 @@ struct AgentChatView: View {
         .background(bgColor)
     }
 
-    // MARK: - 하위 뷰 (사이드바)
-    private var sidebarView: some View {
-        VStack(spacing: 0) {
-            Text("멤버")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundColor(textColor.opacity(0.4))
-                .padding(.vertical, 10)
-            Divider().background(dividerColor)
-            ScrollView {
-                VStack(spacing: 12) {
-                    ForEach(manager.activeAgents) { agent in
-                        VStack(spacing: 4) {
-                            ZStack {
-                                Circle().fill(agent.color.opacity(activeAgentID == agent.id ? 0.2 : 0.05)).frame(width: 44, height: 44)
-                                Text(agent.emoji).font(.system(size: 22))
-                            }
-                            Text(agent.name.prefix(2)).font(.system(size: 10, weight: .medium)).foregroundColor(activeAgentID == agent.id ? .blue : textColor.opacity(0.5))
-                        }
-                        .onTapGesture { withAnimation { activeAgentID = agent.id } }
-                    }
-                }
-                .padding(.vertical, 14)
-            }
-        }
-        .frame(width: 85)
-        .background(manager.isDarkMode ? Color.white.opacity(0.03) : Color.black.opacity(0.025))
-    }
-
+    // MARK: - 메시지 전송
     private func sendMessage() {
         guard !inputText.isEmpty else { return }
+        isEditingMessages = false
         let text = inputText
         let targetID = activeAgentID ?? config.id
+        let roomID = agentRoomID ?? manager.currentRoomID
         inputText = ""
 
-        // 내 메시지 즉시 기록
-        manager.addChatLog(agentID: targetID, agentName: "나", text: text, isUser: true)
+        manager.addChatLog(agentID: targetID, agentName: "나", text: text, isUser: true, roomID: roomID)
 
-        // AIService로 직접 API 호출 (서버 불필요)
         Task {
-            let history = manager.rooms.first(where: { $0.id == manager.currentRoomID })?
+            let history = manager.rooms.first(where: { $0.id == roomID })?
                 .messages.map { "\($0.isUser ? "User" : $0.agentName): \($0.text)" } ?? []
 
             do {
@@ -361,42 +705,15 @@ struct AgentChatView: View {
                 )
                 let agentName = manager.activeAgents.first(where: { $0.id == targetID })?.name ?? "에이전트"
                 await MainActor.run {
-                    manager.addChatLog(agentID: targetID, agentName: agentName, text: responseText, isUser: false)
-                    SpeechManager.shared.speak(text: responseText)
+                    manager.addChatLog(agentID: targetID, agentName: agentName, text: responseText, isUser: false, roomID: roomID)
+                    if !manager.isSilentMode { SpeechManager.shared.speak(text: responseText, characterName: agentName) }
                 }
             } catch {
                 await MainActor.run {
-                    manager.addChatLog(agentID: targetID, agentName: "시스템", text: error.localizedDescription, isUser: false)
+                    manager.addChatLog(agentID: targetID, agentName: "시스템", text: error.localizedDescription, isUser: false, roomID: roomID)
                 }
             }
         }
     }
 }
 
-// MARK: - iMessage 스타일 말풍선 & DateSeparator (생략 - 기존과 동일)
-struct IMMessageBubble: View {
-    let text: String; let isUser: Bool; let agentName: String; let agentEmoji: String; let agentColor: Color; let isDarkMode: Bool; let timestamp: Date?
-    private var bubbleBg: Color { isUser ? .blue : (isDarkMode ? Color.white.opacity(0.11) : Color.black.opacity(0.07)) }
-    var body: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            if !isUser { Text(agentEmoji).font(.system(size: 22)).frame(width: 34) } else { Spacer() }
-            VStack(alignment: isUser ? .trailing : .leading, spacing: 3) {
-                if !isUser { Text(agentName).font(.system(size: 10, weight: .semibold)).foregroundColor(agentColor.opacity(0.85)) }
-                Text(text).font(.system(size: 14)).foregroundColor(isUser ? .white : (isDarkMode ? .white : .black)).padding(.horizontal, 14).padding(.vertical, 9)
-                    .background(RoundedRectangle(cornerRadius: 18).fill(bubbleBg)).frame(maxWidth: 260, alignment: isUser ? .trailing : .leading)
-                if let ts = timestamp { Text(ts, style: .time).font(.system(size: 9)).foregroundColor(.gray.opacity(0.5)) }
-            }
-            if isUser { Spacer().frame(width: 8) }
-        }.padding(.vertical, 2)
-    }
-}
-struct DateSeparator: View {
-    let date: Date
-    var body: some View {
-        HStack { Spacer(); Text(date, style: .date).font(.system(size: 10, weight: .bold)).foregroundColor(.gray.opacity(0.6)).padding(.horizontal, 12).padding(.vertical, 4).background(Capsule().fill(Color.gray.opacity(0.1))); Spacer() }.padding(.vertical, 8)
-    }
-}
-struct ChatBubble: View {
-    let message: String; let isUser: Bool; let emoji: String; let isDarkMode: Bool; let accentColor: Color
-    var body: some View { IMMessageBubble(text: message, isUser: isUser, agentName: "", agentEmoji: emoji, agentColor: accentColor, isDarkMode: isDarkMode, timestamp: nil) }
-}
