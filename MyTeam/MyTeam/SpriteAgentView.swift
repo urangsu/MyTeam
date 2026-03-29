@@ -14,9 +14,9 @@ import SpriteKit
 //   .frame(width: 100, height: 120)
 struct SpriteAgentView: View {
 
-    let characterID: String      // Assets 파일명 접두사 (예: "sloth", "dog")
-    let fallbackEmoji: String    // 스프라이트 없을 때 대체 이모지
-    let state: AnimationState    // 현재 재생할 애니메이션 상태
+    let characterID: String         // Assets 파일명 접두사 (예: "sloth", "dog")
+    let fallbackImageName: String   // 스프라이트 없을 때 표시할 얼굴 이미지명
+    let state: AnimationState       // 현재 재생할 애니메이션 상태
 
     // SpriteKit 씬은 한 번 생성되고 재사용됩니다.
     // @StateObject 대신 직접 인스턴스를 들고 있습니다.
@@ -44,13 +44,13 @@ struct SpriteAgentView: View {
 
     // MARK: - 씬 초기화
     private func setupScene() {
-        // 캐릭터 ID와 폴백 이모지 설정
+        // 캐릭터 ID와 폴백 이미지 설정
         scene.characterID = characterID
-        scene.fallbackEmoji = fallbackEmoji
+        scene.fallbackImageName = fallbackImageName
 
         // 씬 크기: SpriteView 프레임과 동일하게 맞춥니다
         // (나중에 fitCharacterToScene()에서 캐릭터 크기 조절)
-        scene.size = CGSize(width: 100, height: 120)
+        scene.size = CGSize(width: 100, height: 140)
 
         // 배경 투명
         scene.backgroundColor = .clear
@@ -70,20 +70,20 @@ struct SpriteAgentView_Previews: PreviewProvider {
 
             // 스프라이트가 있을 때
             SpriteAgentView(
-                characterID: "sloth",
-                fallbackEmoji: "🦥",
+                characterID: "치코",
+                fallbackImageName: "치코_profile",
                 state: .idle
             )
-            .frame(width: 100, height: 120)
+            .frame(width: 100, height: 140)
             .border(Color.gray.opacity(0.3))
 
-            // 스프라이트가 없을 때 (이모지 폴백)
+            // 스프라이트가 없을 때 (이미지 폴백)
             SpriteAgentView(
                 characterID: "dog",
-                fallbackEmoji: "🐕",
+                fallbackImageName: "dog_profile",
                 state: .idle
             )
-            .frame(width: 100, height: 120)
+            .frame(width: 100, height: 140)
             .border(Color.gray.opacity(0.3))
         }
         .padding()
@@ -97,7 +97,7 @@ struct SpriteAgentView_Previews: PreviewProvider {
 // WebSocket에서 받은 이벤트 → AnimationState로 변환합니다.
 struct CharacterAnimationController: View {
     let characterID: String
-    let fallbackEmoji: String
+    let fallbackImageName: String
     let agentID: String
 
     // WebSocket에서 실시간으로 받아오는 값들
@@ -113,7 +113,7 @@ struct CharacterAnimationController: View {
     var body: some View {
         SpriteAgentView(
             characterID: characterID,
-            fallbackEmoji: fallbackEmoji,
+            fallbackImageName: fallbackImageName,
             state: currentAnimState
         )
         // 상태 변화를 감지하여 AnimationState 업데이트
@@ -146,11 +146,9 @@ struct CharacterAnimationController: View {
     // 드래그 > 생각 중 > 말하는 중 > 대기 순서로 우선순위 적용
     private func updateState(speaking: Bool, thinking: Bool, dragging: Bool) {
         if dragging && !wasDragging {
-            // 드래그 시작
-            currentAnimState = .dragging
+            currentAnimState = .drag
             wasDragging = true
         } else if !dragging && wasDragging {
-            // 드래그 종료 → 착지 (1회 재생 후 idle로 자동 복귀)
             currentAnimState = .landing
             wasDragging = false
         } else if thinking {

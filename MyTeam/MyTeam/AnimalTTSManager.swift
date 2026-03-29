@@ -28,13 +28,43 @@ class AnimalTTSManager: NSObject {
         let volume: Float       // 볼륨 (0.0 ~ 1.0)
     }
 
+    // CHARACTER_VOICES 기반 캐릭터별 프로필
+    // pitch(Hz) / 220(기준) = 배율, tone → pitchJitter
+    static let characterProfiles: [String: VoiceProfile] = [
+        "레오":  VoiceProfile(pitch: 0.82, pitchJitter: 0.03, interval: 0.08, volume: 0.85), // 180Hz smooth
+        "루나":  VoiceProfile(pitch: 1.45, pitchJitter: 0.08, interval: 0.06, volume: 0.88), // 320Hz bright
+        "치코":  VoiceProfile(pitch: 1.73, pitchJitter: 0.12, interval: 0.05, volume: 0.85), // 380Hz bubbly
+        "렉스":  VoiceProfile(pitch: 0.55, pitchJitter: 0.03, interval: 0.14, volume: 0.90), // 120Hz deep
+        "케이":  VoiceProfile(pitch: 0.73, pitchJitter: 0.02, interval: 0.09, volume: 0.82), // 160Hz flat
+        "래키":  VoiceProfile(pitch: 0.91, pitchJitter: 0.10, interval: 0.07, volume: 0.83), // 200Hz raspy
+        "모코":  VoiceProfile(pitch: 1.27, pitchJitter: 0.06, interval: 0.07, volume: 0.87), // 280Hz nasal
+        "핀":    VoiceProfile(pitch: 1.18, pitchJitter: 0.04, interval: 0.08, volume: 0.86), // 260Hz clean
+        "폴라":  VoiceProfile(pitch: 0.64, pitchJitter: 0.05, interval: 0.10, volume: 0.88), // 140Hz warm
+        "몽몽":  VoiceProfile(pitch: 1.82, pitchJitter: 0.15, interval: 0.05, volume: 0.84), // 400Hz squeaky
+        // 현재 앱 에이전트 매핑
+        "맥스":  VoiceProfile(pitch: 1.35, pitchJitter: 0.12, interval: 0.09, volume: 0.90), // dog: 높고 활발
+        "올리버":VoiceProfile(pitch: 0.91, pitchJitter: 0.06, interval: 0.10, volume: 0.85), // pig: 중간 낮음
+        "페":    VoiceProfile(pitch: 1.18, pitchJitter: 0.07, interval: 0.08, volume: 0.85), // penguin: 또렷
+        "토비":  VoiceProfile(pitch: 1.55, pitchJitter: 0.10, interval: 0.07, volume: 0.86), // rabbit: 경쾌
+        "베어":  VoiceProfile(pitch: 0.64, pitchJitter: 0.04, interval: 0.12, volume: 0.90), // bear: 낮고 깊음
+        "범비":  VoiceProfile(pitch: 1.09, pitchJitter: 0.05, interval: 0.09, volume: 0.85), // panda: 차분
+    ]
+
+    static func profile(for characterName: String) -> VoiceProfile {
+        characterProfiles[characterName]
+            ?? VoiceProfile(pitch: 1.00, pitchJitter: 0.08, interval: 0.11, volume: 0.80)
+    }
+
     enum Voice {
-        case sloth      // 슬로스: 낮고 느릿한 목소리
-        case dog        // 개: 높고 활발한 목소리
-        case `default`  // 기본
+        case character(String)  // 캐릭터 이름으로 직접 지정
+        case sloth
+        case dog
+        case `default`
 
         var profile: VoiceProfile {
             switch self {
+            case .character(let name):
+                return AnimalTTSManager.profile(for: name)
             case .sloth:
                 return VoiceProfile(pitch: 0.80, pitchJitter: 0.04, interval: 0.16, volume: 0.85)
             case .dog:
@@ -56,6 +86,9 @@ class AnimalTTSManager: NSObject {
 
     // 음소 WAV 버퍼 캐시 (엔진 포맷으로 변환된 상태)
     private var phonemeCache: [String: AVAudioPCMBuffer] = [:]
+
+    /// 외부에서 캐시 로드 여부를 확인 (SpeechManager 폴백용)
+    var isPhonemeReady: Bool { !phonemeCache.isEmpty }
 
     // 재생 취소용
     private var isSpeaking = false
@@ -106,9 +139,13 @@ class AnimalTTSManager: NSObject {
             return
         }
 
+        // Phonemes 서브폴더 우선 탐색, 없으면 루트에서 검색
+        let phonemesDir = resourceDir.appendingPathComponent("Phonemes")
+        let searchDir = FileManager.default.fileExists(atPath: phonemesDir.path) ? phonemesDir : resourceDir
+
         do {
             let files = try FileManager.default.contentsOfDirectory(
-                at: resourceDir,
+                at: searchDir,
                 includingPropertiesForKeys: nil
             ).filter { $0.pathExtension == "wav" }
 

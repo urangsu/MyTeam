@@ -239,13 +239,169 @@ Antigravity가 WebSocket 관련 코드를 참조하고 있을 수 있으므로,
 
 ## 🚧 미완성 / 향후 작업 (TODO)
 
-- [ ] FloatingPanel 드래그 이벤트 WebSocket 연동 복원 (`drag_start`, `dragging`, `drop` — 현재 주석 처리됨)
+- [ ] FloatingPanel 드래그 이벤트 로컬 처리 (`drag_start`, `dragging`, `drop` — 현재 주석 처리됨)
+- [ ] TTS 음질 개선 (현재 외계어 느낌 → 동물의 숲 느낌으로 개선 필요, 사용자 샘플 검토 후 작업)
 - [ ] 영상통화 기능 (장기 로드맵)
 - [ ] StoreKit 2 캐릭터 스킨 인앱결제
 - [ ] 팀 채팅 개별 채팅 프로젝트 연결 (채팅방 선택 후 1:1 대화)
 - [ ] 에이전트 추가 스프라이트: 슬로스(완성), 개(완성) → 나머지 6개 미완성
 - [ ] `AgentSettingsView`: role/job 필드 복원 (현재 persona만 있음)
 - [ ] 백엔드 `cheer` 이벤트 타입 처리 추가
+
+---
+
+### [2026-03-28] Claude Code — WebSocket 의존성 제거 + UI 복원 + 직업 프리셋
+
+**WebSocket → 로컬 전환 (완료):**
+- `TeamTableView.swift`: 하단 입력창이 WebSocket 대신 AIService 직접 호출하도록 전환
+- `TeamTableView.swift`: 종료 메뉴 sendSystemEvent → 로컬 addChatLog + TTS
+- `AgentSeatView`: 더블탭 인사말 sendSystemEvent → 로컬 addChatLog + TTS
+- `AgentChatView.swift`: wsClient 의존성 완전 제거 (WebSocket 라이브 스피킹 표시 제거)
+- `SettingsView.swift`: 응원받기 버튼 sendSystemEvent → 로컬 처리
+- `FloatingPanel.swift`: `updateInteractionTime()` TODO 주석 해제 → 정상 호출
+
+**UI 복원:**
+- `TeamStatusView.swift`: `footerView` (소리/무음 토글, 다크모드 토글, 위치 초기화, 설정 버튼) 화면에 표시되도록 body에 추가
+- `TeamTableView.swift`: 에이전트 팝업 메뉴 위치 수정 — 1~3번은 오른쪽, 4번(index≥3)은 왼쪽에 표시하여 화면 잘림 방지
+- `AgentMenuPopupView`: `popupOnLeft` 파라미터 추가
+
+**기능 추가:**
+- `AgentSettingsView.swift`: 직업 프리셋 시스템 추가 (14개 직업별 대표 프롬프트)
+  - PM, 백엔드, 프론트엔드, UI/UX, QA, 데이터분석, DevOps, ML, 마케터, CEO, 고객지원, 콘텐츠, 비서, 보안전문가
+  - 프리셋 선택 시 기본 프롬프트 자동 적용, 세부 성격은 별도 커스텀 가능
+  - `custom_job_{agentID}` AppStorage로 선택 직업 저장
+- `AIService.swift`: Gemini 모델 `gemini-1.5-flash-latest` → `gemini-2.0-flash-lite`로 변경 (API 가용성 문제 해결)
+
+**수정 파일:** TeamTableView.swift, TeamStatusView.swift, AgentChatView.swift, SettingsView.swift, FloatingPanel.swift, AgentSettingsView.swift, AIService.swift
+
+### [2026-03-28] Claude Code — 캐릭터별 감정 대사 + TTS 개선
+
+**캐릭터별 감정 대사 시스템:**
+- `CharacterDialogues.swift` 새 파일 생성
+  - 구글 스프레드시트 캐릭터 설정 시트에서 11캐릭터 × 15감정 상태 대사 임포트
+  - `CharacterDialogues.randomLine(for:state:)` 정적 함수 제공
+- `AgentWindowManager.swift`: `speakLocalEvent(text:state:)` 개선
+  - `state` 파라미터 추가 — 캐릭터별 대사 우선, 없으면 기존 텍스트 폴백
+  - `handleStartup()`, `handleWake()` → `.greeting` 상태 대사 사용
+  - `checkIdle()`: 15분 → `.idle`, 30분 → `.sleeping` 대사 사용
+- `TeamTableView.swift`: 캐릭터 고유 대사 연결
+  - 에이전트 팝업 음성 버튼 → `.greeting` 대사
+  - 에이전트 더블탭 → `.greeting` 대사 (+ characterName을 TTS에 전달)
+  - `agentDragBegan` → `.drag` 대사
+  - `agentDragEnded` → `.landing` 대사
+
+**TTS 개선 (Apple 기본 TTS 강화):**
+- `SpeechManager.swift`: `useAnimalTTS` 기본값 `false`로 변경 (외계인 목소리 문제 해결)
+- 캐릭터별 전용 Apple TTS 목소리 배정 (`characterVoiceMap`):
+  - 레오 → Rocko (낮고 차분), 루나 → Sandy (밝고 활발), 치코 → Flo (감성적)
+  - 렉스 → Grandpa (느리고 낮음), 케이 → Reed (중성적), 래키 → Eddy (활발)
+  - 모코 → Reed, 핀 → Rocko, 폴라 → Sandy, 몽몽 → Shelley, 올리버 → Grandpa
+- 각 캐릭터별 pitchMultiplier + rate를 AnimalTTSManager 프로필에서 재활용
+
+**수정 파일:** CharacterDialogues.swift (신규), AgentWindowManager.swift, TeamTableView.swift, SpeechManager.swift
+
+### [2026-03-28] Antigravity — 개별 대화창 버그 수정 및 기능 추가
+- **`AgentChatView.swift`**: + 버튼 클릭 시 앱 멈춤 버그 수정 (DispatchQueue.main.async로 방 생성 후 선택 처리)
+- **`AgentChatView.swift`**: 대화(프로젝트) 이름 변경 기능 추가 (더블탭 인라인 편집 + 우클릭 컨텍스트 메뉴)
+- **`AgentChatView.swift`**: − 버튼 아이콘 교체 → 팀 협업창 스타일 (↙ 화살표) + 최소화 시 헤더바 표시
+- **`AgentChatView.swift`**: 창 최소 높이 `minHeight: 480` 설정으로 초기 열릴 때 너무 작은 버그 해결
+- **`AgentWindowManager.swift`**: 개별 채팅창 초기 크기 420×900 → 600×620 수정, `minSize` 300×480 복원
+
+### [2026-03-29] Antigravity — 단일 대화창 고도화 및 치명적 버그 수정
+- **`AgentChatView.swift`**: `EXC_BREAKPOINT` 크래시 해결 (AppKit NSPanel 프레임 수정을 `DispatchQueue.main.async`로 감싸 SwiftUI 애니메이션 충돌 방지)
+- **`AgentChatView.swift`**: 프로젝트 이름 더블클릭 수정 기능 개선 (macOS Button 이벤트 간섭 해결을 위해 `onTapGesture`로 교체)
+- **`AgentChatView.swift`**: 창 가로 크기(800px) 미반영 문제 해결 (`onAppear` 시 강제 리사이즈 및 `chat_single` ID 동기화)
+- **`AgentWindowManager.swift`**: 개별 채팅창을 **단일 인스턴스(`chat_single`)**로 통합하여 중복 창 생성 방지 및 에이전트 전환 알림 구현, **초기 및 전환 시 가로/세로 크기를 600x520px로 최적화**
+- **`AgentWindowManager.swift`**: 시스템 로그(`isSystem: true`) 필터링 강화 (드래그, 수면, 인사말 등 모든 시스템 대사를 팀 협업창에서 차단)
+- **`TeamStatusView.swift`**: 사이드바 프로젝트 이름 최대 6글자 노출 및 왼쪽 정렬 레이아웃 수정
+- **`TeamTableView.swift`**: 에이전트 팝업 메뉴 위치 재수정 (1~3번은 캐릭터 오른쪽 바깥 `.topLeading` + `x:100`, 4번은 왼쪽 바깥 `.topTrailing` + `x:-100`으로 배치하여 가독성 및 화면 잘림 방지)
+- **`backend/main.py`**: Gemini 모델 중복 코드 제거 및 `gemini-1.5-flash-latest` 안정화 버전 유지
+- **사용성 개선**: 개별 채팅창에서 에이전트 전환 시 해당 에이전트와 나눈 개인 대화방이 없으면 즉시 자동 생성하도록 로직 보완
+
+### [2026-03-29] Claude & Antigravity 합동 — 캐릭터 프로필 파일 폴백 및 통합
+- **`CharacterSpriteScene.swift`**: 치코 스프라이트 완전 적용 (23개 모션, 폴백 체인 구현, 기본 복귀 상태 `typing`으로 변경)
+- **`CharacterSpriteScene.swift`**: 드래그 중 스프라이트가 비정상적으로 확대되어 발만 보이는 버그 해결 (애니메이션 첫 프레임이 아닌 전체 프레임 중 최대 크기를 기준으로 Scene 스케일을 계산하도록 수정) 및 `.drag` 상태를 루프 모션(`loopingStates`)에 추가하여 드래그 내내 모션이 유지되도록 개선
+- **`AgentSeatView.swift` / `SpriteAgentView.swift`**: SpriteKit 애니메이션이 없는 캐릭터의 경우 Assets에 저장된 고유 프로필 이미지를 띄우는 폴백(`fallbackImageName`) 로직 구현
+- **`AgentChatView.swift` & `ChatComponents.swift`**: 앱 전반적으로 사용되던 기본 이모지(`Text(agent.emoji)`)를 모두 제거하고, Assets의 11개 얼굴 프로필 아이콘(`Image(agent.fallbackImageName)`)이 둥근 모양(`clipShape(Circle())`)으로 노출되도록 전면 개편
+- **`TeamStatusView.swift`**: '팀 협업 중' 리스트의 에이전트 아이콘을 이모지 대신 프로필 이미지로 교체하고, 원형 배경에 꽉 차도록(`.scaledToFill()`) 레이아웃 최적화
+- **`SettingsView.swift` & `TeamTableView.swift`**: 메인 창 상단의 '팀 이름' 명패 배경 색상을 사용자가 직접 변경할 수 있도록 `ColorPicker` 기능 추가 및 HEX 기반 색상 저장 로직 구현
+- **`Color+Hex.swift` [NEW]**: SwiftUI `Color`와 HEX 문자열 간 상호 변환 및 배경색 밝기에 따른 텍스트 색상 자동 반전(`isDark`) 유틸리티 추가
+- **`AgentWindowManager.swift`**: 업로드된 파일명(`렉스`, `올리버`, `몽몽` 등) 변경 사항을 코드 상의 `fallbackImageName` 매핑과 완벽히 일치하도록 최종 수정
+- **`Assets.xcassets`**: 단순 나열되어 있던 PNG 파일들을 `Contents.json`을 포함한 정식 `.imageset` 구조로 변환하고, 파일명 인코딩을 **NFC(유니코드 정규화)**로 통일하여 빌드 환경에서 이미지가 로컬 경로 문제 없이 정상적으로 로딩되도록 조치
+- **`ChatComponents.swift`**: 개별 대화창의 '사용자' 및 '팀 전체 채팅' 아이콘이 빈칸으로 나오던 문제를 해결하기 위해, 이미지가 없는 경우 SF Symbols(`person.2.circle.fill`)를 기본값으로 사용하도록 보완
+- **`AgentSeatView.swift`**: 메인 팀 화면(요원 배치창)에서도 치코와 같은 전용 애니메이션 캐릭터가 아닌 경우, 이모지 대신 사용자 제공 프로필 이미지가 우선적으로 나타나도록 렌더링 로직 고도화
+
+
+
+### [2026-03-29] Claude Code — 스프라이트 레이아웃 최적화 & 프로필 이미지 폴백 시스템
+
+**스프라이트 화면 보정 (위아래 잘림 문제 해결):**
+- `CharacterSpriteScene.swift`: `anchorPoint = CGPoint(x:0.5, y:0.0)` 씬 하단 고정 → 발만 보이던 버그 해결
+- `SpriteAgentView.swift`: `scene.size` 100×120 → 100×140 (세로 여유 확보)
+- `AgentSeatView.swift`: 선택 영역 80×80 → 100×100, SpriteAgentView 프레임 100×140 명시
+- `CharacterSpriteScene.fitCharacterToScene()`: 스케일 90% → 95%
+- `loadAndPlay()`: 첫 프레임 크기 적용 후 fitCharacterToScene() 자동 호출
+
+**AnimationState rawValue 파일명 동기화:**
+- `backToWork`: "back_to_work" → "backwork" (실제 파일 치코_backwork_001.png에 맞춤)
+- `clockOut`: "clock_out" → "clockout"
+- `clockIn`: "clock_in" → "clockin"
+- `returnToTyping`: "return_to_typing" → "typing_return"
+- `idleLoop` 신규: "idle_loop"
+- `lowering` 신규: "lowering" (내려감 — dropped의 신규 파일명 대응)
+
+**모션 통합 및 폴백 체인 구현:**
+- `fallbackStates` 딕셔너리: 파일 없는 상태 → 대체 상태 자동 매핑
+  - thinking→idle, praise→agree, sleeping→resting, clockOut→resting
+  - disagree→angry, lookLeft/Right→look→idle, dropped→lowering
+- `resolveWithFallback()`: 체인 순서로 파일 탐색, 최대 5단계, 방문 집합으로 무한루프 방지
+- 1회 재생 후 복귀: `.idle` → `.typing` (업무 중이 기본 상태)
+
+**캐릭터 프로필 이미지 폴백 시스템:**
+- `AgentConfig.swift`: `fallbackImageName: String` 프로퍼티 추가
+- `CharacterSpriteScene.swift`: fallbackEmoji(SKLabelNode) → fallbackImageName(SKSpriteNode)
+- `SpriteAgentView.swift` / `CharacterAnimationController`: 파라미터명 fallbackEmoji → fallbackImageName
+- `AgentWindowManager.swift`: 11개 에이전트 fallbackImageName 매핑
+  (치코_profile, leo_profile, luna_profile, moco_profile, pin_profile, rex_profile,
+   kai_profile, lucky_profile, polar_profile, mongmong_profile, oliver_profile)
+- `Assets.xcassets`: 프로필 이미지 `.png` 직접 복사 등록
+
+**수정 파일:** CharacterSpriteScene.swift, SpriteAgentView.swift, AgentSeatView.swift,
+AgentConfig.swift, AgentWindowManager.swift, Assets.xcassets
+
+---
+
+### [2026-03-29] Claude Code — 로드맵 수립 (TTS / 감정-스프라이트 / 에이전트 고도화)
+
+**향후 구현 방향 계획 수립:**
+
+**TTS 교체 (AnimalTTS 폐기):**
+- 현재 espeak-ng phoneme WAV 방식 → 외계인 음성 수준으로 사용 불가, 완전 교체 결정
+- 채택 방안: Apple AVSpeechSynthesizer + AVAudioEngine DSP (Animal Crossing 방식 오프라인 구현)
+  - AVAudioUnitTimePitch: 캐릭터별 pitch(cents) + rate 실시간 조절
+  - 치코(+400, 1.15x 빠름) / 렉스(-400, 0.75x 느림) 등 11개 VoiceProfile 정의
+  - 0 추가 용량, 완전 오프라인, 즉시 구현 가능
+- 장기: Chatterbox CoreML (+1.5GB, zero-shot 음성 복제, 구현 1~2개월)
+
+**감정-스프라이트 연결 (버그 확인 및 수정 계획):**
+- TeamTableView 라인 57: `isSpeaking: false` 하드코딩 발견 → 대화해도 캐릭터 무표정
+- 수정 계획:
+  - AgentWindowManager: `speakingAgentID`, `agentEmotions[agentID]` @Published 추가
+  - SpeechManager.speak(): agentID 파라미터, didFinish에서 clearAgentSpeaking() 콜백
+  - AgentWindowManager.detectEmotion(): AI 응답 텍스트 → AnimationState 감지
+  - TeamTableView: isSpeaking 하드코딩 해제
+  - AgentSeatView: agentEmotions 기반 state 결정
+
+**에이전트 고도화 (OpenClo Lite):**
+- AgentOrchestrator: [DELEGATE:agentID] 태그 기반 에이전트 간 위임
+- SharedWorkspace: 에이전트 간 공유 프로젝트 컨텍스트
+- 자율 협업 워크플로우 (기획→디자인→개발→QA 흐름)
+
+**외부 서비스 연동 (Tool Use / Function Calling):**
+- Gemini/Claude/OpenAI 모두 Function Calling 지원 → AIService.swift 도구 정의 추가만으로 가능
+- ToolExecutor.swift (신규): AgentTool 프로토콜, GoogleCalendarTool, GmailTool, WebSearchTool
+- Google OAuth → KeychainManager 토큰 저장 (이미 있음), SettingsView 연동 버튼 추가
+- 우선순위: Google Calendar > Gmail > Web Search > Notion > GitHub
 
 ---
 

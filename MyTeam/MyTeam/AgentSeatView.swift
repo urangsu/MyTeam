@@ -70,9 +70,9 @@ struct AgentSeatView: View {
                     RoundedRectangle(cornerRadius: 14)
                         .stroke(Color.pink, lineWidth: 2)
                         .background(RoundedRectangle(cornerRadius: 14).fill(Color.pink.opacity(0.1)))
-                        .frame(width: 80, height: 80)
+                        .frame(width: 100, height: 100)
                 } else {
-                    Color.clear.frame(width: 80, height: 80)
+                    Color.clear.frame(width: 100, height: 100)
                 }
 
                 if isHovered && !isDragging {
@@ -86,15 +86,25 @@ struct AgentSeatView: View {
                     .transition(.opacity.combined(with: .scale))
                 }
 
-                // SpriteKit 캐릭터 (spriteName이 있을 때) / 이모지 폴백
+                // SpriteKit 캐릭터 (spriteName이 있을 때) / 이미지 폴백
                 if let spriteName = config.spriteName {
                     SpriteAgentView(
                         characterID: spriteName,
-                        fallbackEmoji: config.emoji,
-                        state: isDragging ? .drag : (isSpeaking ? .joy : .idle)
+                        fallbackImageName: config.fallbackImageName,
+                        state: isDragging ? .drag : (isSpeaking ? .speaking : .typing)
                     )
+                    .frame(width: 100, height: 140)
                     .rotationEffect(.degrees(isDragging ? config.dragRotation : 0))
                     .scaleEffect(isHovered && !isDragging ? 1.1 : 1.0)
+                } else if !config.fallbackImageName.isEmpty {
+                    Image(config.fallbackImageName)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 60, height: 60)
+                        .clipShape(Circle())
+                        .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                        .rotationEffect(.degrees(isDragging ? config.dragRotation : 0))
+                        .scaleEffect(isHovered && !isDragging ? 1.1 : 1.0)
                 } else {
                     Text(isDragging ? config.dragEmoji : config.emoji)
                         .font(.system(size: 50))

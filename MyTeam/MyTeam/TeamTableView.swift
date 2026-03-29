@@ -13,6 +13,11 @@ struct TeamTableView: View {
 
     @AppStorage("teamName") private var teamName: String = "MyTeam"
     @AppStorage("showTeamName") private var showTeamName: Bool = true
+    @AppStorage("teamNameColor") private var teamNameColor: String = "#FFFFFF"
+
+    private var plaqueBaseColor: Color {
+        Color(hex: teamNameColor) ?? .white
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -21,13 +26,13 @@ struct TeamTableView: View {
             if showTeamName && !teamName.isEmpty {
                 Text(teamName)
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundColor(.white.opacity(0.75))
+                    .foregroundColor(plaqueBaseColor.isDark ? .white : .black.opacity(0.85))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 5)
                     .background(
                         Capsule()
-                            .fill(Color.white.opacity(0.12))
-                            .overlay(Capsule().stroke(Color.white.opacity(0.18), lineWidth: 1))
+                            .fill(plaqueBaseColor.opacity(0.12))
+                            .overlay(Capsule().stroke(plaqueBaseColor.opacity(0.18), lineWidth: 1))
                     )
                     .padding(.bottom, 6)
                     .gesture(DragGesture(minimumDistance: 0)
@@ -81,9 +86,10 @@ struct TeamTableView: View {
                                 manager.showSwapWindow(replaceIndex: index)
                             }
                         )
-                        .offset(x: index >= 3 ? -60 : 0, y: -95)
+                        // 1~3번째는 캐릭터의 오른쪽 바깥에, 4번째는 왼쪽 바깥으로 완전히 빠져나오게 배치
+                        .offset(x: index >= 3 ? -100 : 100, y: -95)
                         .zIndex(selectedAgentIndex == index ? 10 : 1),
-                        alignment: index >= 3 ? .topLeading : .top
+                        alignment: index >= 3 ? .topTrailing : .topLeading
                     )
                     .zIndex(selectedAgentIndex == index ? 10 : 1)
                 }

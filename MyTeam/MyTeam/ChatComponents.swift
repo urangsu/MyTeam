@@ -33,7 +33,7 @@ struct IMMessageBubble: View {
     let text: String
     let isUser: Bool
     let agentName: String
-    let agentEmoji: String
+    let agentImageName: String
     let agentColor: Color
     let isDarkMode: Bool
     let timestamp: Date?
@@ -45,7 +45,19 @@ struct IMMessageBubble: View {
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
             if !isUser {
-                Text(agentEmoji).font(.system(size: 22)).frame(width: 34)
+                if agentImageName.isEmpty {
+                    Image(systemName: "person.2.circle.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 28, height: 28)
+                        .foregroundColor(.gray.opacity(0.5))
+                } else {
+                    Image(agentImageName)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 28, height: 28)
+                        .clipShape(Circle())
+                }
             } else {
                 Spacer()
             }
@@ -106,8 +118,8 @@ struct DateSeparator: View {
 
 // MARK: - ChatBubble (호환용)
 struct ChatBubble: View {
-    let message: String; let isUser: Bool; let emoji: String; let isDarkMode: Bool; let accentColor: Color
+    let message: String; let isUser: Bool; let imageName: String; let isDarkMode: Bool; let accentColor: Color
     var body: some View {
-        IMMessageBubble(text: message, isUser: isUser, agentName: "", agentEmoji: emoji, agentColor: accentColor, isDarkMode: isDarkMode, timestamp: nil)
+        IMMessageBubble(text: message, isUser: isUser, agentName: "", agentImageName: imageName, agentColor: accentColor, isDarkMode: isDarkMode, timestamp: nil)
     }
 }

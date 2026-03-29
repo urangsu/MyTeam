@@ -64,7 +64,7 @@ struct AgentChatView: View {
 
     private var viewWidth: CGFloat {
         if selectedTab == 0 { return 300 }
-        return isSidebarCollapsed ? 650 : 700
+        return isSidebarCollapsed ? 550 : 600
     }
 
     var body: some View {
@@ -114,18 +114,24 @@ struct AgentChatView: View {
             }
             // 초기 창 크기 강제 설정 (SwiftUI 레이아웃 완료 후 실행)
             DispatchQueue.main.async {
-                manager.updateChatWindowSize(id: config.id, width: viewWidth, height: 620,
+                manager.updateChatWindowSize(id: config.id, width: viewWidth, height: 520,
                                               minSize: NSSize(width: 300, height: 480))
             }
         }
         .onChange(of: selectedTab) { _, newValue in
             if !isMinimized {
-                manager.updateChatWindowWidth(id: config.id, width: newValue == 0 ? 300 : viewWidth)
+                let w = newValue == 0 ? 300 : viewWidth
+                DispatchQueue.main.async {
+                    manager.updateChatWindowWidth(id: config.id, width: w)
+                }
             }
         }
         .onChange(of: isSidebarCollapsed) { _, _ in
             if selectedTab == 1 && !isMinimized {
-                manager.updateChatWindowWidth(id: config.id, width: viewWidth)
+                let w = viewWidth
+                DispatchQueue.main.async {
+                    manager.updateChatWindowWidth(id: config.id, width: w)
+                }
             }
         }
         .onChange(of: isMinimized) { _, minimized in
@@ -136,7 +142,7 @@ struct AgentChatView: View {
                     manager.updateChatWindowSize(id: config.id, width: 280, height: minimizedHeight,
                                                   minSize: NSSize(width: 240, height: minimizedHeight))
                 } else {
-                    manager.updateChatWindowSize(id: config.id, width: viewWidth, height: 620,
+                    manager.updateChatWindowSize(id: config.id, width: viewWidth, height: 520,
                                                   minSize: NSSize(width: 300, height: 480))
                 }
             }
@@ -168,7 +174,11 @@ struct AgentChatView: View {
                 Circle()
                     .fill(currentAgent.color.opacity(manager.isDarkMode ? 0.3 : 0.15))
                     .frame(width: 34, height: 34)
-                Text(currentAgent.emoji).font(.system(size: 20))
+                Image(currentAgent.fallbackImageName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 24, height: 24)
+                    .clipShape(Circle())
             }
 
             VStack(alignment: .leading, spacing: 1) {
@@ -217,7 +227,11 @@ struct AgentChatView: View {
                 Circle()
                     .fill(currentAgent.color.opacity(manager.isDarkMode ? 0.3 : 0.15))
                     .frame(width: 40, height: 40)
-                Text(currentAgent.emoji).font(.system(size: 24))
+                Image(currentAgent.fallbackImageName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 28, height: 28)
+                    .clipShape(Circle())
             }
 
             VStack(alignment: .leading, spacing: 1) {
@@ -316,7 +330,11 @@ struct AgentChatView: View {
     private var projectSidebarView: some View {
         VStack(spacing: 0) {
             HStack(spacing: 6) {
-                Text(currentAgent.emoji).font(.system(size: 14))
+                Image(currentAgent.fallbackImageName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 18, height: 18)
+                    .clipShape(Circle())
                 if !isSidebarCollapsed {
                     Text("프로젝트")
                         .font(.system(size: 11, weight: .bold))
@@ -376,7 +394,11 @@ struct AgentChatView: View {
                             }
                             isEditingProjects = false
                         }) {
-                            Text(agent.emoji)
+                            Image(agent.fallbackImageName)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 20, height: 20)
+                                .clipShape(Circle())
                                 .font(.system(size: 18))
                                 .frame(width: 32, height: 32)
                                 .background(
@@ -591,7 +613,7 @@ struct AgentChatView: View {
                 text: log.text,
                 isUser: log.isUser,
                 agentName: log.isUser ? "나" : log.agentName,
-                agentEmoji: log.isUser ? "👤" : currentAgent.emoji,
+                agentImageName: log.isUser ? "" : (log.agentID == "team_all" ? "" : manager.allAvailableAgents.first(where: { $0.id == log.agentID })?.fallbackImageName ?? currentAgent.fallbackImageName),
                 agentColor: log.isUser ? .blue : currentAgent.color,
                 isDarkMode: manager.isDarkMode,
                 timestamp: log.timestamp
@@ -654,7 +676,12 @@ struct AgentChatView: View {
     private var agentStatusView: some View {
         VStack(spacing: 20) {
             Spacer()
-            Text(currentAgent.emoji).font(.system(size: 64))
+            Image(currentAgent.fallbackImageName)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 80, height: 80)
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(0.2), radius: 10, y: 5)
             VStack(spacing: 8) {
                 Text(currentAgent.name)
                     .font(.system(size: 24, weight: .bold))

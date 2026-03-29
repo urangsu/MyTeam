@@ -16,6 +16,7 @@ struct SettingsView: View {
     @AppStorage("userTitle") private var userTitle: String = "사용자님"
     @AppStorage("teamName") private var teamName: String = "MyTeam"
     @AppStorage("showTeamName") private var showTeamName: Bool = true
+    @AppStorage("teamNameColor") private var teamNameColor: String = "#FFFFFF"
     @AppStorage("useCloudVoice") private var useCloudVoice: Bool = false
     @AppStorage("useAnimalTTS") private var useAnimalTTS: Bool = true
 
@@ -168,20 +169,32 @@ struct SettingsView: View {
                     }
 
                     // 팀 명칭
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 6) {
                         Text("팀 명칭")
                             .font(.system(size: 11, weight: .bold))
                             .foregroundColor(textColor.opacity(0.8))
-                        HStack {
+                        HStack(spacing: 8) {
                             TextField("MyTeam", text: $teamName)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
                                 .font(.system(size: 13))
+                            
+                            // HEX 입력 필드
+                            TextField("#FFFFFF", text: $teamNameColor)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .font(.system(size: 11, design: .monospaced))
+                                .frame(width: 75)
+                            
+                            ColorPicker("", selection: Binding(
+                                get: { Color(hex: teamNameColor) ?? .white },
+                                set: { teamNameColor = $0.toHex() ?? "#FFFFFF" }
+                            ))
+                            .labelsHidden()
+                            
                             Toggle("표시", isOn: $showTeamName)
                                 .toggleStyle(SwitchToggleStyle(tint: .blue))
                                 .labelsHidden()
-                                .help(showTeamName ? "팀 명칭 표시 중" : "팀 명칭 숨김")
                         }
-                        Text("메인 창 상단에 표시되는 팀 이름")
+                        Text("메인 창 상단에 표시되는 팀 이름의 배경 색상을 선택할 수 있습니다.")
                             .font(.system(size: 10))
                             .foregroundColor(textColor.opacity(0.4))
                     }
@@ -245,10 +258,11 @@ struct SettingsView: View {
                             "한 걸음씩 가다 보면 목표에 도달해요. 믿고 있어요!",
                             "이렇게까지 열심히 하시는 분 처음 봤어요. 정말 대단해요!"
                         ]
-                        WebSocketClient.shared.sendSystemEvent(
-                            eventType: "cheer",
-                            baseGreeting: cheers.randomElement()!
-                        )
+                        let text = cheers.randomElement()!
+                        let agents = manager.activeAgents
+                        let agent = agents.randomElement() ?? agents[0]
+                        manager.addChatLog(agentID: agent.id, agentName: agent.name, text: text, isUser: false)
+                        if !manager.isSilentMode { SpeechManager.shared.speak(text: text) }
                         onClose?()
                     }) {
                         HStack {

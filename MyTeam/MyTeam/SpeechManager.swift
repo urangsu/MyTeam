@@ -179,40 +179,69 @@ class SpeechManager: NSObject, ObservableObject, @unchecked Sendable, SFSpeechRe
         try audioEngine.start()
     }
     
-    // MARK: - TTS (Text to Speech)
-    // useAnimalTTS(AppStorage) = true  → 동물의 숲 스타일 (AnimalTTSManager)
-    // useAnimalTTS(AppStorage) = false → Apple 기본 TTS (AVSpeechSynthesizer)
-    func speak(text: String, voiceIdentifier: String? = nil) {
-        // bool(forKey:)은 키가 없으면 false 반환 → object로 읽어 기본값 true 보장
-        let useAnimal = UserDefaults.standard.object(forKey: "useAnimalTTS") as? Bool ?? true
+    // MARK: - 캐릭터별 Apple TTS 목소리 매핑
+    // macOS 14+ 한국어 Eloquence 목소리 사용
+    // 성별/성격에 맞게 배정
+    private static let characterVoiceMap: [String: String] = [
+        "레오":   "com.apple.eloquence.ko-KR.Rocko",   // 남, 낮고 차분
+        "루나":   "com.apple.eloquence.ko-KR.Sandy",   // 여, 밝고 활발
+        "치코":   "com.apple.eloquence.ko-KR.Flo",     // 여, 감성적
+        "렉스":   "com.apple.eloquence.ko-KR.Grandpa", // 남, 느리고 낮음
+        "케이":   "com.apple.eloquence.ko-KR.Reed",    // 남, 중성적
+        "래키":   "com.apple.eloquence.ko-KR.Eddy",   // 남, 활발한 개발자
+        "모코":   "com.apple.eloquence.ko-KR.Reed",    // 남, 차분한 PM
+        "핀":     "com.apple.eloquence.ko-KR.Rocko",   // 남, 심미적 디자이너
+        "폴라":   "com.apple.eloquence.ko-KR.Sandy",   // 여, 에너지 넘치는 BD
+        "몽몽":   "com.apple.eloquence.ko-KR.Shelley", // 여, 따뜻한 CS
+        "올리버": "com.apple.eloquence.ko-KR.Grandpa", // 남, 꼼꼼한 QA
+    ]
 
-        if useAnimal {
+    // MARK: - TTS (Text to Speech)
+    // characterName: 캐릭터 이름 → 전용 목소리 + 피치/속도 적용
+    // useAnimalTTS = true  → 동물의 숲 스타일 (AnimalTTSManager)
+    // useAnimalTTS = false → Apple 기본 TTS (개성 있는 한국어 목소리)
+    func speak(text: String, characterName: String? = nil, voiceIdentifier: String? = nil) {
+        let useAnimal = UserDefaults.standard.object(forKey: "useAnimalTTS") as? Bool ?? false
+
+        if useAnimal && AnimalTTSManager.shared.isPhonemeReady {
             DispatchQueue.main.async { self.isSpeaking = true }
-            AnimalTTSManager.shared.speak(text)
-            // 재생 시간 추정 후 isSpeaking 해제 (글자 수 × 간격 + 여유)
-            let estimatedDuration = Double(text.count) * 0.12 + 0.3
+            let voice: AnimalTTSManager.Voice = characterName.map { .character($0) } ?? .default
+            AnimalTTSManager.shared.speak(text, voice: voice)
+            let profile = AnimalTTSManager.profile(for: characterName ?? "")
+            let estimatedDuration = Double(max(text.count, 1)) * profile.interval + 0.3
             DispatchQueue.main.asyncAfter(deadline: .now() + estimatedDuration) {
                 self.isSpeaking = false
             }
             return
         }
 
+        // Apple TTS — 캐릭터별 전용 목소리 + 피치/속도 적용
         let utterance = AVSpeechUtterance(string: text)
 
         if let v = voiceIdentifier {
             utterance.voice = AVSpeechSynthesisVoice(identifier: v)
+        } else if let name = characterName,
+                  let voiceID = SpeechManager.characterVoiceMap[name],
+                  let voice = AVSpeechSynthesisVoice(identifier: voiceID) {
+            utterance.voice = voice
         } else {
+            // 폴백: Yuna → 첫 번째 한국어 목소리
             let koreanVoices = AVSpeechSynthesisVoice.speechVoices().filter { $0.language.contains("ko") }
-            if let yuna = koreanVoices.first(where: { $0.identifier.lowercased().contains("yuna") }) ?? koreanVoices.first {
-                utterance.voice = yuna
-            } else {
-                utterance.voice = AVSpeechSynthesisVoice(language: "ko-KR")
-            }
+            utterance.voice = koreanVoices.first(where: { $0.identifier.lowercased().contains("yuna") })
+                ?? koreanVoices.first
+                ?? AVSpeechSynthesisVoice(language: "ko-KR")
         }
 
-        DispatchQueue.main.async {
-            self.isSpeaking = true
+        // 캐릭터별 피치/속도 적용 (AnimalTTS 프로필 재활용)
+        if let name = characterName {
+            let profile = AnimalTTSManager.profile(for: name)
+            // rate: 0.0~1.0, interval이 짧을수록(빠를수록) rate 높임
+            utterance.rate = Float(max(0.3, min(0.7, 0.5 + (0.11 - profile.interval) * 3.0)))
+            // pitchMultiplier: 0.5~2.0
+            utterance.pitchMultiplier = max(0.5, min(2.0, profile.pitch))
         }
+
+        DispatchQueue.main.async { self.isSpeaking = true }
         synthesizer.speak(utterance)
     }
 

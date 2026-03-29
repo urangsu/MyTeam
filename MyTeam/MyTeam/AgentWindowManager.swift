@@ -15,17 +15,17 @@ class AgentWindowManager: ObservableObject {
     //   - 완성된 캐릭터: "sloth", "dog" (스프라이트 사용)
     //   - 미완성 캐릭터: nil (이모지 폴백)
     let allAvailableAgents: [AgentConfig] = [
-        AgentConfig(id: "agent_1",  name: "레오",   role: "비지니스 전략가",    emoji: "🦊", color: .orange, isPremium: false, status: "시장 전략 분석 중",         spriteName: nil, dragEmoji: "😤", dragRotation: -12, dragSoundName: "Pop",   dropSoundName: "Funk"),
-        AgentConfig(id: "agent_2",  name: "루나",   role: "마케터/콘텐츠 기획", emoji: "🐰", color: .pink,   isPremium: false, status: "바이럴 캠페인 기획 중",    spriteName: nil, dragEmoji: "😆", dragRotation:  10, dragSoundName: "Blow",  dropSoundName: "Pop"),
-        AgentConfig(id: "agent_3",  name: "모코",   role: "프로젝트 매니저",    emoji: "🐹", color: .purple, isPremium: false, status: "이미 다 계획해둔 마스터",  spriteName: nil, dragEmoji: "😵", dragRotation:  -8, dragSoundName: "Morse", dropSoundName: "Funk"),
-        AgentConfig(id: "agent_4",  name: "핀",     role: "UI 디자이너",        emoji: "🐧", color: .cyan,   isPremium: false, status: "픽셀 하나에 30분째 고민", spriteName: nil, dragEmoji: "😱", dragRotation:  12, dragSoundName: "Ping",  dropSoundName: "Pop"),
-        AgentConfig(id: "agent_5",  name: "치코",   role: "UX 디자이너",        emoji: "🐿️", color: Color(red:0.6, green:0.4, blue:0.2), isPremium: true, status: "감성을 데이터로 변환 중",  spriteName: "치코", dragEmoji: "🤯", dragRotation: -10, dragSoundName: "Pop",   dropSoundName: "Funk"),
-        AgentConfig(id: "agent_6",  name: "렉스",   role: "법률 전문가",        emoji: "🦥", color: .green,  isPremium: true,  status: "계약서 검토 중 (천천히)", spriteName: nil, dragEmoji: "😴", dragRotation:  14, dragSoundName: "Blow",  dropSoundName: "Pop"),
-        AgentConfig(id: "agent_7",  name: "케이",   role: "보안/데이터 전문가", emoji: "🐕", color: .blue,   isPremium: true,  status: "보안 로그 분석 중",       spriteName: nil, dragEmoji: "😐", dragRotation:  -5, dragSoundName: "Morse", dropSoundName: "Funk"),
-        AgentConfig(id: "agent_8",  name: "래키",   role: "백엔드 개발자",      emoji: "🦝", color: .gray,   isPremium: true,  status: "밤새워 API 디버깅 중",    spriteName: nil, dragEmoji: "😵‍💫", dragRotation:   8, dragSoundName: "Ping",  dropSoundName: "Pop"),
-        AgentConfig(id: "agent_9",  name: "폴라",   role: "세일즈/BD",          emoji: "🐻‍❄️", color: Color(red:0.2, green:0.6, blue:0.9), isPremium: true, status: "아무도 거절 못 하는 딜 클로징", spriteName: nil, dragEmoji: "😊", dragRotation: -6, dragSoundName: "Pop",   dropSoundName: "Funk"),
-        AgentConfig(id: "agent_10", name: "몽몽",   role: "고객 서비스",        emoji: "🐩", color: Color(red:1.0, green:0.7, blue:0.0), isPremium: true, status: "고객을 팬으로 만드는 중",  spriteName: nil, dragEmoji: "🥰", dragRotation:  10, dragSoundName: "Blow",  dropSoundName: "Pop"),
-        AgentConfig(id: "agent_11", name: "올리버", role: "QA 엔지니어",        emoji: "🐷", color: .red,    isPremium: true,  status: "버그 사냥 중",            spriteName: nil, dragEmoji: "😤", dragRotation:  -9, dragSoundName: "Morse", dropSoundName: "Funk"),
+        AgentConfig(id: "agent_1",  name: "레오",   role: "비지니스 전략가",    emoji: "🦊", color: .orange, isPremium: false, status: "시장 전략 분석 중",         spriteName: nil, fallbackImageName: "레오_profile", dragEmoji: "😤", dragRotation: -12, dragSoundName: "Pop",   dropSoundName: "Funk"),
+        AgentConfig(id: "agent_2",  name: "루나",   role: "마케터/콘텐츠 기획", emoji: "🐰", color: .pink,   isPremium: false, status: "바이럴 캠페인 기획 중",    spriteName: nil, fallbackImageName: "루나_profile", dragEmoji: "😆", dragRotation:  10, dragSoundName: "Blow",  dropSoundName: "Pop"),
+        AgentConfig(id: "agent_3",  name: "모코",   role: "프로젝트 매니저",    emoji: "🐹", color: .purple, isPremium: false, status: "이미 다 계획해둔 마스터",  spriteName: nil, fallbackImageName: "모코_profile", dragEmoji: "😵", dragRotation:  -8, dragSoundName: "Morse", dropSoundName: "Funk"),
+        AgentConfig(id: "agent_4",  name: "핀",     role: "UI 디자이너",        emoji: "🐧", color: .cyan,   isPremium: false, status: "픽셀 하나에 30분째 고민", spriteName: nil, fallbackImageName: "핀_profile", dragEmoji: "😱", dragRotation:  12, dragSoundName: "Ping",  dropSoundName: "Pop"),
+        AgentConfig(id: "agent_5",  name: "치코",   role: "UX 디자이너",        emoji: "🐿️", color: Color(red:0.6, green:0.4, blue:0.2), isPremium: true, status: "감성을 데이터로 변환 중",  spriteName: "치코", fallbackImageName: "치코_profile", dragEmoji: "🤯", dragRotation: -10, dragSoundName: "Pop",   dropSoundName: "Funk"),
+        AgentConfig(id: "agent_6",  name: "렉스",   role: "법률 전문가",        emoji: "🦥", color: .green,  isPremium: true,  status: "계약서 검토 중 (천천히)", spriteName: nil, fallbackImageName: "렉스_profile", dragEmoji: "😴", dragRotation:  14, dragSoundName: "Blow",  dropSoundName: "Pop"),
+        AgentConfig(id: "agent_7",  name: "케이",   role: "보안/데이터 전문가", emoji: "🐕", color: .blue,   isPremium: true,  status: "보안 로그 분석 중",       spriteName: nil, fallbackImageName: "케이_profile", dragEmoji: "😐", dragRotation:  -5, dragSoundName: "Morse", dropSoundName: "Funk"),
+        AgentConfig(id: "agent_8",  name: "래키",   role: "백엔드 개발자",      emoji: "🦝", color: .gray,   isPremium: true,  status: "밤새워 API 디버깅 중",    spriteName: nil, fallbackImageName: "래키_profile", dragEmoji: "😵‍💫", dragRotation:   8, dragSoundName: "Ping",  dropSoundName: "Pop"),
+        AgentConfig(id: "agent_9",  name: "폴라",   role: "세일즈/BD",          emoji: "🐻‍❄️", color: Color(red:0.2, green:0.6, blue:0.9), isPremium: true, status: "아무도 거절 못 하는 딜 클로징", spriteName: nil, fallbackImageName: "폴라_profile", dragEmoji: "😊", dragRotation: -6, dragSoundName: "Pop",   dropSoundName: "Funk"),
+        AgentConfig(id: "agent_10", name: "몽몽",   role: "고객 서비스",        emoji: "🐩", color: Color(red:1.0, green:0.7, blue:0.0), isPremium: true, status: "고객을 팬으로 만드는 중",  spriteName: nil, fallbackImageName: "몽몽_profile", dragEmoji: "🥰", dragRotation:  10, dragSoundName: "Blow",  dropSoundName: "Pop"),
+        AgentConfig(id: "agent_11", name: "올리버", role: "QA 엔지니어",        emoji: "🐷", color: .red,    isPremium: true,  status: "버그 사냥 중",            spriteName: nil, fallbackImageName: "올리버_profile", dragEmoji: "😤", dragRotation:  -9, dragSoundName: "Morse", dropSoundName: "Funk"),
     ]
     
     // ── 전역 설정 ──
@@ -48,7 +48,7 @@ class AgentWindowManager: ObservableObject {
     static let teamRepresentative = AgentConfig(
         id: "team_all", name: "팀 채팅", role: "전체 대화방",
         emoji: "🤝", color: .blue, isPremium: false,
-        status: "팀 프로젝트 진행 중", spriteName: nil,
+        status: "팀 프로젝트 진행 중", spriteName: nil, fallbackImageName: "",
         dragEmoji: "🤝", dragRotation: 0, dragSoundName: "", dropSoundName: ""
     )
 
@@ -226,6 +226,7 @@ class AgentWindowManager: ObservableObject {
         if let existing = chatPanels.values.first {
             existing.orderFront(nil)
             existing.makeKey()
+            updateChatWindowWidth(id: config.id, width: 600)
             NotificationCenter.default.post(name: NSNotification.Name("didSelectAgentForChat"), object: nil, userInfo: ["agentID": config.id])
             return
         }
@@ -238,7 +239,7 @@ class AgentWindowManager: ObservableObject {
         let panel = FloatingPanel(
             agentID: "chat_single",
             position: NSPoint(x: x, y: y),
-            size: NSSize(width: 700, height: 620)
+            size: NSSize(width: 600, height: 520)
         )
         panel.minSize = NSSize(width: 300, height: 480)
 

@@ -16,9 +16,15 @@ extension AgentWindowManager {
 
         // ── 스프라이트 애니메이션 ──
         // Assets에 등록된 PNG 시퀀스 파일명 접두사
-        // nil이면 이모지로 폴백합니다.
+        // nil이면 fallbackImageName으로 폴백합니다.
         // 예: "sloth" → sloth_idle_001.png, sloth_joy_001.png ...
         let spriteName: String?
+
+        // ── 폴백 이미지 ──
+        // 스프라이트가 없을 때 표시할 캐릭터 얼굴 이미지명
+        // Assets.xcassets에 등록된 이미지 파일 이름
+        // 예: "치코_profile", "penguin_face"
+        let fallbackImageName: String
 
         // ── 개인별 드래그 반응 ──
         let dragEmoji: String    // 드래그 중 이모지 (스프라이트 없을 때 폴백)

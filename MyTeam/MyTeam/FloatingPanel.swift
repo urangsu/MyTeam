@@ -33,7 +33,7 @@ class FloatingPanel: NSPanel {
         self.titlebarAppearsTransparent = true
         self.isMovableByWindowBackground = true
         
-        // 표준 버튼(신호등) 숨기기 - 디자인 통앤매너 유지
+        // 표준 버튼(신호등) 숨기기 - 디자인 통앤매너 유지 (개별 X버튼이 이미 존재함)
         self.standardWindowButton(.closeButton)?.isHidden = true
         self.standardWindowButton(.miniaturizeButton)?.isHidden = true
         self.standardWindowButton(.zoomButton)?.isHidden = true
@@ -63,15 +63,10 @@ class FloatingPanel: NSPanel {
     override func mouseDown(with event: NSEvent) {
         // 드래그 시작점 기록
         dragStartMouseLocation = NSEvent.mouseLocation
-        // AgentWindowManager.shared.updateInteractionTime() // TODO: 복원 예정
+        AgentWindowManager.shared.updateInteractionTime()
 
-        // SwiftUI 뷰에 드래그 시작 알림 (팀 창 이동 시에만 에이전트들이 반응하게 함)
         if agentID == "team" {
             NotificationCenter.default.post(name: .agentDragBegan, object: nil)
-            
-            // 백엔드에 드래그 시작 시스템 이벤트 전송
-            let dragStartGreetings = ["앗, 사용자님! 갑자기 왜요?", "으악! 살살 잡아주세요!", "선택받았다!", "출동인가요?"]
-            // WebSocketClient.shared.sendSystemEvent(eventType: "drag_start", ...) // TODO: 복원 예정
 
             // 에이전트별 개인 효과음 재생
             for config in AgentWindowManager.shared.activeAgents {
@@ -104,8 +99,8 @@ class FloatingPanel: NSPanel {
 
         // 드래그 중인 상태 백엔드 전송 (부하 방지를 위해 3초에 한 번만)
         if Date().timeIntervalSince(lastDraggingEventTime) > 3.0 {
-            let draggingGreetings = ["공중에 떴다!", "화면이 다 보여요!", "어디로 가시는 거예요?", "슝~ 날아간다!"]
-            // WebSocketClient.shared.sendSystemEvent(eventType: "dragging", ...) // TODO: 복원 예정
+            // 드래그 중 이벤트 (WebSocketClient.shared.sendSystemEvent 복원 예정)
+            // let draggingGreetings = [...]
             lastDraggingEventTime = Date()
         }
 
@@ -115,16 +110,14 @@ class FloatingPanel: NSPanel {
     override func mouseUp(with event: NSEvent) {
         dragStartMouseLocation = nil
 
-        // SwiftUI 뷰에 드래그 종료 알림
-        NotificationCenter.default.post(name: .agentDragEnded, object: nil)
-        
-        // 백엔드에 드롭 시스템 이벤트 전송
-        let dropGreetings = ["착지 성공!", "여기가 제 새 자리인가요?", "안전하게 배달 완료!", "도착!"]
-        // WebSocketClient.shared.sendSystemEvent(eventType: "drop", ...) // TODO: 복원 예정
+        // 에이전트창일 때만 드래그 종료 알림 + 효과음
+        if agentID == "team" {
+            NotificationCenter.default.post(name: .agentDragEnded, object: nil)
 
-        // 에이전트별 개인 착지 효과음 재생
-        for config in AgentWindowManager.shared.activeAgents {
-            SoundPlayer.playDropEnd(soundName: config.dropSoundName)
+            // 에이전트별 개인 착지 효과음 재생
+            for config in AgentWindowManager.shared.activeAgents {
+                SoundPlayer.playDropEnd(soundName: config.dropSoundName)
+            }
         }
 
         // 현재 위치 저장
@@ -135,22 +128,25 @@ class FloatingPanel: NSPanel {
 
     // MARK: - 위치 저장/복원
     func savePosition() {
-        // 위치만 저장, 크기는 저장하지 않음 (항상 코드에서 지정한 기본 크기 사용)
         UserDefaults.standard.set(self.frame.origin.x, forKey: "\(agentID)_x")
         UserDefaults.standard.set(self.frame.origin.y, forKey: "\(agentID)_y")
-        
-        // 기존에 저장된 크기 값을 명시적으로 삭제 (이전 버전 잔류 데이터 제거)
-        UserDefaults.standard.removeObject(forKey: "\(agentID)_w")
-        UserDefaults.standard.removeObject(forKey: "\(agentID)_h")
+        // 채팅창은 사용자가 조절한 크기도 저장
+        if agentID.hasPrefix("chat_") {
+            UserDefaults.standard.set(self.frame.size.width, forKey: "\(agentID)_w")
+            UserDefaults.standard.set(self.frame.size.height, forKey: "\(agentID)_h")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "\(agentID)_w")
+            UserDefaults.standard.removeObject(forKey: "\(agentID)_h")
+        }
     }
 
     func restorePosition() {
         let x = UserDefaults.standard.double(forKey: "\(agentID)_x")
         let y = UserDefaults.standard.double(forKey: "\(agentID)_y")
-        
-        // 위치만 복원, 창 크기는 init에서 전달된 기본 크기를 그대로 사용
         if x != 0 || y != 0 {
             self.setFrameOrigin(NSPoint(x: x, y: y))
         }
+        // 채팅창 크기는 복원 안 함 → showChat에서 지정한 크기(현재 800×620)를 항상 사용
     }
+
 }

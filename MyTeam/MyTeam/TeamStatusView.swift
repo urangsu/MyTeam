@@ -8,8 +8,9 @@ struct TeamStatusView: View {
     @State private var selectedTab: Int = 0
     @State private var isDeleteMode = false
     @State private var roomToDelete: AgentWindowManager.ChatRoom? = nil
-    @StateObject private var wsClient = WebSocketClient.shared
-
+    @State private var showRenameAlert = false
+    @State private var newName = ""
+    @State private var roomToRename: AgentWindowManager.ChatRoom? = nil
     private var bgColor: Color {
         manager.isDarkMode ? Color.black.opacity(isCollapsed ? 0.4 : 0.8) : Color.white.opacity(isCollapsed ? 0.3 : 0.75)
     }
@@ -69,7 +70,7 @@ struct TeamStatusView: View {
             
             if !isCollapsed {
                 Divider().background(textColor.opacity(0.05))
-                
+
                 if selectedTab == 0 {
                     // ── 탭 0: 에이전트 리스트 ──
                     agentListView
@@ -77,6 +78,9 @@ struct TeamStatusView: View {
                     // ── 탭 1: 팀 채팅방 (로그) ──
                     chatroomView
                 }
+
+                Divider().background(textColor.opacity(0.05))
+                footerView
             }
         }
         .frame(width: isCollapsed ? 300 : (selectedTab == 0 ? 300 : 600), height: isCollapsed ? 40 : 480, alignment: .top)
@@ -188,12 +192,17 @@ struct TeamStatusView: View {
 
                 ScrollView {
                     VStack(spacing: 4) {
-                        ForEach(manager.rooms) { room in
+                        ForEach(manager.rooms.filter { $0.agentIDs.contains("team_all") || $0.agentIDs.count > 1 }) { room in
                             RoomRowView(
                                 room: room,
                                 isSelected: manager.currentRoomID == room.id,
                                 isDarkMode: manager.isDarkMode,
-                                isDeleteMode: isDeleteMode
+                                isDeleteMode: isDeleteMode,
+                                onRename: {
+                                    roomToRename = room
+                                    newName = room.name
+                                    showRenameAlert = true
+                                }
                             )
                             .onTapGesture {
                                 if isDeleteMode {
@@ -205,6 +214,17 @@ struct TeamStatusView: View {
                         }
                     }
                     .padding(.horizontal, 8).padding(.vertical, 6)
+                }
+                .alert("프로젝트 이름 변경", isPresented: $showRenameAlert) {
+                    TextField("새 이름", text: $newName)
+                    Button("변경") {
+                        if let r = roomToRename {
+                            manager.renameRoom(id: r.id, newName: newName)
+                        }
+                    }
+                    Button("취소", role: .cancel) { }
+                } message: {
+                    Text("새 프로젝트 이름을 입력하세요.")
                 }
                 .alert(item: $roomToDelete) { room in
                     Alert(
@@ -218,7 +238,7 @@ struct TeamStatusView: View {
                     )
                 }
             }
-            .frame(width: 85) // 사이드바 너비 축소 (아이메세지 스타일)
+            .frame(width: 140)
             .background(manager.isDarkMode ? Color.white.opacity(0.03) : Color.black.opacity(0.03))
 
             Divider().background(textColor.opacity(0.08))
@@ -349,6 +369,7 @@ struct TeamStatusView: View {
         let isSelected: Bool
         let isDarkMode: Bool
         var isDeleteMode: Bool = false
+        var onRename: () -> Void
 
         var body: some View {
             HStack(spacing: 6) {
@@ -363,10 +384,21 @@ struct TeamStatusView: View {
                         .foregroundColor(isSelected ? .blue : .gray.opacity(0.5))
                 }
                 
-                // 너비가 좁으므로 이름은 생략하거나 아주 작게 (아이메세지 아이콘 느낌)
-                Text(room.name.prefix(1))
+                // 6글자까지 허용하고 왼쪽 정렬
+                Text(room.name.prefix(12))
                     .font(.system(size: 10, weight: .bold))
                     .foregroundColor(isSelected ? .blue : (isDarkMode ? .white.opacity(0.6) : .black.opacity(0.5)))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .lineLimit(1)
+                
+                if isSelected && !isDeleteMode {
+                    Button(action: onRename) {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 10))
+                            .foregroundColor(.blue.opacity(0.7))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
@@ -436,8 +468,19 @@ struct StatusAgentRow: View {
     var body: some View {
         HStack(spacing: 12) {
             ZStack {
-                Circle().fill(agent.color.opacity(isDarkMode ? 0.3 : 0.15)).frame(width: 38, height: 38)
-                Text(agent.emoji).font(.system(size: 20))
+                Circle()
+                    .fill(agent.color.opacity(isDarkMode ? 0.3 : 0.15))
+                    .frame(width: 38, height: 38)
+                
+                if !agent.fallbackImageName.isEmpty {
+                    Image(agent.fallbackImageName)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 38, height: 38)
+                        .clipShape(Circle())
+                } else {
+                    Text(agent.emoji).font(.system(size: 20))
+                }
             }
             
             VStack(alignment: .leading, spacing: 2) {
