@@ -88,10 +88,18 @@ struct AgentSeatView: View {
 
                 // SpriteKit 캐릭터 (spriteName이 있을 때) / 이미지 폴백
                 if let spriteName = config.spriteName {
+                    // 감정 상태 우선순위: 드래그 > agentEmotions(AI 감지) > 기본 타이핑
+                    let emotionState: AnimationState = {
+                        if isDragging { return .drag }
+                        if let emotion = AgentWindowManager.shared.agentEmotions[config.id] {
+                            return emotion
+                        }
+                        return .typing
+                    }()
                     SpriteAgentView(
                         characterID: spriteName,
                         fallbackImageName: config.fallbackImageName,
-                        state: isDragging ? .drag : (isSpeaking ? .speaking : .typing)
+                        state: emotionState
                     )
                     .frame(width: 100, height: 140)
                     .rotationEffect(.degrees(isDragging ? config.dragRotation : 0))
@@ -130,7 +138,10 @@ struct AgentSeatView: View {
             let fallback = ["안녕하세요!", "네, 불렀나요?", "무엇을 도와드릴까요?", "여기 있습니다!"]
             let text = CharacterDialogues.randomLine(for: config.name, state: .greeting) ?? fallback.randomElement()!
             AgentWindowManager.shared.addChatLog(agentID: config.id, agentName: config.name, text: text, isUser: false, isSystem: true)
-            if !AgentWindowManager.shared.isSilentMode { SpeechManager.shared.speak(text: text, characterName: config.name) }
+            if !AgentWindowManager.shared.isSilentMode {
+                AgentWindowManager.shared.setAgentSpeaking(agentID: config.id, text: text)
+                SpeechManager.shared.speak(text: text, agentID: config.id, characterName: config.name)
+            }
         }
         .onTapGesture { onTap() }
     }

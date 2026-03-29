@@ -14,6 +14,9 @@ class SpeechManager: NSObject, ObservableObject, @unchecked Sendable, SFSpeechRe
     private var audioPlayer: AVAudioPlayer?
     @Published var isSpeaking: Bool = false
     
+    // 현재 TTS 중인 에이전트 ID (감정-스프라이트 연결용)
+    private var currentSpeakingAgentID: String? = nil
+    
     // STT (Apple Native)
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "ko-KR"))
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
@@ -200,8 +203,11 @@ class SpeechManager: NSObject, ObservableObject, @unchecked Sendable, SFSpeechRe
     // characterName: 캐릭터 이름 → 전용 목소리 + 피치/속도 적용
     // useAnimalTTS = true  → 동물의 숲 스타일 (AnimalTTSManager)
     // useAnimalTTS = false → Apple 기본 TTS (개성 있는 한국어 목소리)
-    func speak(text: String, characterName: String? = nil, voiceIdentifier: String? = nil) {
+    func speak(text: String, agentID: String? = nil, characterName: String? = nil, voiceIdentifier: String? = nil) {
         let useAnimal = UserDefaults.standard.object(forKey: "useAnimalTTS") as? Bool ?? false
+        
+        // 발화 에이전트 ID 기록
+        currentSpeakingAgentID = agentID
 
         if useAnimal && AnimalTTSManager.shared.isPhonemeReady {
             DispatchQueue.main.async { self.isSpeaking = true }
@@ -209,8 +215,12 @@ class SpeechManager: NSObject, ObservableObject, @unchecked Sendable, SFSpeechRe
             AnimalTTSManager.shared.speak(text, voice: voice)
             let profile = AnimalTTSManager.profile(for: characterName ?? "")
             let estimatedDuration = Double(max(text.count, 1)) * profile.interval + 0.3
+            let capturedAgentID = agentID
             DispatchQueue.main.asyncAfter(deadline: .now() + estimatedDuration) {
                 self.isSpeaking = false
+                if let aid = capturedAgentID {
+                    AgentWindowManager.shared.clearAgentSpeaking(agentID: aid)
+                }
             }
             return
         }
@@ -235,9 +245,7 @@ class SpeechManager: NSObject, ObservableObject, @unchecked Sendable, SFSpeechRe
         // 캐릭터별 피치/속도 적용 (AnimalTTS 프로필 재활용)
         if let name = characterName {
             let profile = AnimalTTSManager.profile(for: name)
-            // rate: 0.0~1.0, interval이 짧을수록(빠를수록) rate 높임
             utterance.rate = Float(max(0.3, min(0.7, 0.5 + (0.11 - profile.interval) * 3.0)))
-            // pitchMultiplier: 0.5~2.0
             utterance.pitchMultiplier = max(0.5, min(2.0, profile.pitch))
         }
 
@@ -267,8 +275,13 @@ class SpeechManager: NSObject, ObservableObject, @unchecked Sendable, SFSpeechRe
     }
     
     func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        let finishedAgentID = currentSpeakingAgentID
         DispatchQueue.main.async {
             self.isSpeaking = false
+            if let aid = finishedAgentID {
+                AgentWindowManager.shared.clearAgentSpeaking(agentID: aid)
+            }
+            self.currentSpeakingAgentID = nil
         }
     }
 }

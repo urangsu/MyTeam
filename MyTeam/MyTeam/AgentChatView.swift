@@ -722,7 +722,10 @@ struct AgentChatView: View {
                 let agentName = manager.activeAgents.first(where: { $0.id == targetID })?.name ?? "에이전트"
                 await MainActor.run {
                     manager.addChatLog(agentID: targetID, agentName: agentName, text: responseText, isUser: false, roomID: roomID)
-                    if !manager.isSilentMode { SpeechManager.shared.speak(text: responseText, characterName: agentName) }
+                    if !manager.isSilentMode {
+                        manager.setAgentSpeaking(agentID: targetID, text: responseText)
+                        SpeechManager.shared.speak(text: responseText, agentID: targetID, characterName: agentName)
+                    }
                 }
             } catch {
                 await MainActor.run {

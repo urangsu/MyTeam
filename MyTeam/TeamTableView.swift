@@ -54,9 +54,11 @@ struct TeamTableView: View {
                     AgentSeatView(
                         config: agent,
                         isDragging: isDragging,
-                        isSpeaking: false,
+                        isSpeaking: manager.speakingAgentID == agent.id,
                         isThinking: false,
-                        speechText: nil,
+                        speechText: manager.speakingAgentID == agent.id
+                            ? manager.rooms.flatMap { $0.messages }.last(where: { $0.agentID == agent.id && !$0.isUser })?.text
+                            : nil,
                         isSelected: selectedAgentIndex == index,
                         onTap: {
                             selectedAgentIndex = (selectedAgentIndex == index) ? nil : index
@@ -75,7 +77,10 @@ struct TeamTableView: View {
                                 let fallback = ["안녕하세요!", "네, 불렀나요?", "무엇을 도와드릴까요?", "여기 있습니다!"]
                                 let text = CharacterDialogues.randomLine(for: agent.name, state: .greeting) ?? fallback.randomElement()!
                                 manager.addChatLog(agentID: agent.id, agentName: agent.name, text: text, isUser: false, isSystem: true)
-                                if !manager.isSilentMode { SpeechManager.shared.speak(text: text, characterName: agent.name) }
+                                if !manager.isSilentMode {
+                                    manager.setAgentSpeaking(agentID: agent.id, text: text)
+                                    SpeechManager.shared.speak(text: text, agentID: agent.id, characterName: agent.name)
+                                }
                             },
                             onSettings: {
                                 selectedAgentIndex = nil
@@ -173,7 +178,10 @@ struct TeamTableView: View {
                 let fallback = ["어?! 잠깐만요!", "으아아!", "헉!"]
                 let line = CharacterDialogues.randomLine(for: agent.name, state: .drag) ?? fallback.randomElement()!
                 manager.addChatLog(agentID: agent.id, agentName: agent.name, text: line, isUser: false, isSystem: true)
-                if !manager.isSilentMode { SpeechManager.shared.speak(text: line, characterName: agent.name) }
+                if !manager.isSilentMode {
+                    manager.setAgentSpeaking(agentID: agent.id, text: line)
+                    SpeechManager.shared.speak(text: line, agentID: agent.id, characterName: agent.name)
+                }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .agentDragEnded)) { _ in
@@ -185,7 +193,10 @@ struct TeamTableView: View {
                 let fallback = ["휴, 다시 돌아왔네요.", "무사히 착지!"]
                 let line = CharacterDialogues.randomLine(for: agent.name, state: .landing) ?? fallback.randomElement()!
                 manager.addChatLog(agentID: agent.id, agentName: agent.name, text: line, isUser: false, isSystem: true)
-                if !manager.isSilentMode { SpeechManager.shared.speak(text: line, characterName: agent.name) }
+                if !manager.isSilentMode {
+                    manager.setAgentSpeaking(agentID: agent.id, text: line)
+                    SpeechManager.shared.speak(text: line, agentID: agent.id, characterName: agent.name)
+                }
             }
         }
         .onChange(of: speechManager.recognizedText) { _, newText in
@@ -216,7 +227,10 @@ struct TeamTableView: View {
                 )
                 await MainActor.run {
                     manager.addChatLog(agentID: randomAgent.id, agentName: randomAgent.name, text: responseText, isUser: false)
-                    if !manager.isSilentMode { SpeechManager.shared.speak(text: responseText, characterName: randomAgent.name) }
+                    if !manager.isSilentMode {
+                        manager.setAgentSpeaking(agentID: randomAgent.id, text: responseText)
+                        SpeechManager.shared.speak(text: responseText, agentID: randomAgent.id, characterName: randomAgent.name)
+                    }
                 }
             } catch {
                 await MainActor.run {

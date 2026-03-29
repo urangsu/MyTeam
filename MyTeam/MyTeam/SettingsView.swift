@@ -178,17 +178,17 @@ struct SettingsView: View {
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
                                 .font(.system(size: 13))
                             
-                            // HEX 입력 필드
+                            // HEX 필드 (클릭 시 컬러 피커 열림)
                             TextField("#FFFFFF", text: $teamNameColor)
                                 .textFieldStyle(RoundedBorderTextFieldStyle())
                                 .font(.system(size: 11, design: .monospaced))
                                 .frame(width: 75)
-                            
-                            ColorPicker("", selection: Binding(
-                                get: { Color(hex: teamNameColor) ?? .white },
-                                set: { teamNameColor = $0.toHex() ?? "#FFFFFF" }
-                            ))
-                            .labelsHidden()
+                                .onTapGesture {
+                                    let panel = NSColorPanel.shared
+                                    panel.color = NSColor(Color(hex: teamNameColor) ?? .white)
+                                    panel.isContinuous = true
+                                    panel.makeKeyAndOrderFront(nil)
+                                }
                             
                             Toggle("표시", isOn: $showTeamName)
                                 .toggleStyle(SwitchToggleStyle(tint: .blue))
@@ -308,6 +308,17 @@ struct SettingsView: View {
                 .overlay(RoundedRectangle(cornerRadius: 16).stroke(textColor.opacity(0.1), lineWidth: 1))
                 .shadow(color: Color.black.opacity(0.2), radius: 10)
         )
+        .onAppear {
+            // 컬러 피커가 임사적으로 열려있는 경우 닫기 (요청 사항: 키자마자 나오지 않게)
+            NSColorPanel.shared.close()
+        }
+        // 컬러 피퍼에서 색상 선택 시 teamNameColor 업데이트
+        .onReceive(NotificationCenter.default.publisher(for: NSColorPanel.colorDidChangeNotification)) { _ in
+            let selectedColor = Color(NSColorPanel.shared.color)
+            if let hex = selectedColor.toHex() {
+                self.teamNameColor = hex
+            }
+        }
     }
     
     // MARK: - API 키 검증 (로컬 직접 호출 — 서버 불필요)

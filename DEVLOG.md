@@ -331,6 +331,26 @@ Antigravity가 WebSocket 관련 코드를 참조하고 있을 수 있으므로,
 - **`ChatComponents.swift`**: 개별 대화창의 '사용자' 및 '팀 전체 채팅' 아이콘이 빈칸으로 나오던 문제를 해결하기 위해, 이미지가 없는 경우 SF Symbols(`person.2.circle.fill`)를 기본값으로 사용하도록 보완
 - **`AgentSeatView.swift`**: 메인 팀 화면(요원 배치창)에서도 치코와 같은 전용 애니메이션 캐릭터가 아닌 경우, 이모지 대신 사용자 제공 프로필 이미지가 우선적으로 나타나도록 렌더링 로직 고도화
 
+### [2026-03-29] Antigravity — 감정-스프라이트 동적 연결 구현
+
+**핵심 변경: AI 응답 → 텍스트 감정 감지 → SpriteKit 표정 자동 전환**
+
+- **`AgentWindowManager.swift`**: `@Published var speakingAgentID: String?`, `@Published var agentEmotions: [String: AnimationState]` 추가
+  - `setAgentSpeaking(agentID:text:)` — AI 응답 수신 시 호출, `detectEmotion()`으로 표정 자동 결정
+  - `clearAgentSpeaking(agentID:)` — TTS 종료 시 호출, 해당 에이전트를 `.typing`으로 복원
+  - `detectEmotion(from:)` — 키워드 기반 감정 추론: 기쁨→`.joy`, 동의→`.agree`, 슬픔→`.sad`, 혼란→`.confused`, 인사→`.greeting`, 기본→`.speaking`
+  - `speakLocalEvent`: `setAgentSpeaking()` 연동으로 시스템 이벤트(인사/수면/웨이크업)도 표정 전환
+- **`SpeechManager.swift`**: `speak()`에 `agentID` 파라미터 추가
+  - `currentSpeakingAgentID` 내부 프로퍼티로 발화 에이전트 추적
+  - `speechSynthesizer(_:didFinish:)` 델리게이트에서 `clearAgentSpeaking()` 자동 호출 (Apple TTS)
+  - AnimalTTS 사용 시에도 추정 시간 후 `clearAgentSpeaking()` 호출
+- **`TeamTableView.swift`**: `isSpeaking: false` 하드코딩 → `manager.speakingAgentID == agent.id`로 교체
+  - `speechText`: 발화 중인 에이전트의 마지막 메시지 텍스트를 말풍선에 실시간 표시
+  - 팝업 음성 버튼, 드래그/착지 이벤트, AI 응답 전송 모두 `setAgentSpeaking()` 연동
+- **`AgentSeatView.swift`**: SpriteKit 캐릭터 `state` 결정 로직 고도화
+  - 우선순위: 드래그(`.drag`) > `agentEmotions[agentID]`(감지된 감정) > 기본(`.typing`)
+  - 더블탭 인사말도 `setAgentSpeaking()` 연동
+- **수정 파일**: AgentWindowManager.swift, SpeechManager.swift, TeamTableView.swift, AgentSeatView.swift, AgentChatView.swift
 
 
 ### [2026-03-29] Claude Code — 스프라이트 레이아웃 최적화 & 프로필 이미지 폴백 시스템

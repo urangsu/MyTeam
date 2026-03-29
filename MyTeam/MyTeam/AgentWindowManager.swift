@@ -57,6 +57,12 @@ class AgentWindowManager: ObservableObject {
     
     // 팀 전체 설정 — 현재 화면에 나와있는 4명의 에이전트 (순서 변경 및 교체 가능)
     @Published var activeAgents: [AgentConfig]
+
+    // ── 감정-스프라이트 연결 ──────────────────────────────────────
+    /// 현재 TTS 재생 중인 에이전트 ID (nil = 아무도 말하지 않음)
+    @Published var speakingAgentID: String? = nil
+    /// 에이전트별 현재 감정 상태 (agentID → AnimationState)
+    @Published var agentEmotions: [String: AnimationState] = [:]
     
     // 팀 테이블 창 (하나)
     private var teamPanel: FloatingPanel?
@@ -111,6 +117,61 @@ class AgentWindowManager: ObservableObject {
 
     func updateInteractionTime() { lastInteractionTime = Date() }
 
+    // MARK: - 감정-스프라이트 상태 관리
+
+    /// AI 응답 수신 시 호출 — 에이전트를 '말하는 중'으로 표시하고 감정 감지
+    func setAgentSpeaking(agentID: String, text: String) {
+        let emotion = detectEmotion(from: text)
+        DispatchQueue.main.async {
+            self.speakingAgentID = agentID
+            self.agentEmotions[agentID] = emotion
+        }
+    }
+
+    /// TTS 종료 시 호출 — 해당 에이전트를 '대기 중'(.typing)으로 복원
+    func clearAgentSpeaking(agentID: String) {
+        DispatchQueue.main.async {
+            if self.speakingAgentID == agentID {
+                self.speakingAgentID = nil
+            }
+            self.agentEmotions[agentID] = .typing
+        }
+    }
+
+    /// 텍스트 키워드 기반 감정 추론
+    private func detectEmotion(from text: String) -> AnimationState {
+        let t = text
+        // 기쁨/긍정
+        if t.contains("잘했") || t.contains("훌륭") || t.contains("완벽") || t.contains("최고") ||
+           t.contains("축하") || t.contains("좋아") || t.contains("굿") || t.contains("ㅋㅋ") ||
+           t.contains("👍") || t.contains("🎉") || t.contains("😊") || t.contains("🥳") {
+            return .joy
+        }
+        // 긍정 동의
+        if t.contains("맞아") || t.contains("맞습") || t.contains("동의") || t.contains("그렇죠") ||
+           t.contains("물론") || t.contains("네, ") || t.contains("넵") || t.contains("오케이") ||
+           t.contains("알겠") || t.contains("확인했") {
+            return .agree
+        }
+        // 슬픔/공감
+        if t.contains("안타") || t.contains("힘들") || t.contains("어렵") || t.contains("슬프") ||
+           t.contains("속상") || t.contains("미안") || t.contains("죄송") || t.contains("😢") ||
+           t.contains("😔") {
+            return .sad
+        }
+        // 혼란/당황
+        if t.contains("음...") || t.contains("음…") || t.contains("글쎄") || t.contains("잘 모르") ||
+           t.contains("모르겠") || t.contains("애매") || t.contains("헷갈") || t.contains("?") {
+            return .confused
+        }
+        // 인사
+        if t.contains("안녕") || t.contains("반가") || t.contains("어서") || t.contains("오셨") {
+            return .greeting
+        }
+        // 기본: 말하는 중
+        return .speaking
+    }
+
     private func checkIdle() {
         let idleSeconds = Date().timeIntervalSince(lastInteractionTime)
         if idleSeconds >= 1800 && idleSeconds < 1860 {
@@ -151,7 +212,10 @@ class AgentWindowManager: ObservableObject {
             line = text
         }
         addChatLog(agentID: agent.id, agentName: agent.name, text: line, isUser: false, isSystem: isSystem)
-        if !isSilentMode { SpeechManager.shared.speak(text: line, characterName: agent.name) }
+        if !isSilentMode {
+            setAgentSpeaking(agentID: agent.id, text: line)
+            SpeechManager.shared.speak(text: line, agentID: agent.id, characterName: agent.name)
+        }
     }
 
     // MARK: - 팀 테이블 창 열기
