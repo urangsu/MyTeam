@@ -143,30 +143,189 @@
 ---
 
 ### 5. 치코 스프라이트 시스템 적용 (2026-03-29)
-**Commit:** (진행 중)
+**Commits:** 46abe69, 구글 프롬프트 개선 작업
 
-**배경:** 치코(agent_5) 23개 모션 PNG 시퀀스 제작 완료 (12~48프레임, 모두 영문 state명)
+**배경:** 치코(agent_5) 23개 모션 PNG 시퀀스 제작 (12~48프레임, 500×502px 정사각형)
 
-**파일 배치 구조:**
+#### 5-1. 초기 문제점 분석
+- **원본 영상:** 9:16 비율이지만, PNG 내보내기는 500×502(1:1 정사각형)로 이미 크롭됨
+- **씬 크기 불일치:** 100×120 (5:6 비율) vs 500×502 스프라이트 → 상단/하단 잘림
+- **드래그 시 목 잘림:** 80×80 선택 영역이 스프라이트 출력 영역 제한
+- **기본 상태:** idle → typing으로 변경 필요
+
+#### 5-2. 파일 배치 및 rawValue 매핑
+**실제 파일 구조:**
 ```
-MyTeam/MyTeam/Resources/Sprites/치코/
-  치코_{state명}_{001~}.png
-  (예: 치코_idle_001.png, 치코_disagree_001.png)
+MyTeam/MyTeam/MyTeam/Resources/Sprites/치코/
+  치코_idle_001.png ~ 048.png
+  치코_typing_001.png
+  치코_agree_001.png
+  ... (23개 모션, 674개 파일)
 ```
-Xcode에서 "Create folder references"(파란 폴더)로 추가 필요
 
-**코드 변경:**
+**rawValue 수정 (파일명과 동기화):**
+| 케이스 | 구 rawValue | 신 rawValue | 파일명 |
+|--------|----------|----------|--------|
+| `dropped` | `"drop"` | `"drop"` | ✅ 유지 |
+| `backToWork` | `"back_to_work"` | `"backwork"` | ✅ 수정 |
+| `clockOut` | `"clock_out"` | `"clockout"` | ✅ 수정 |
+| `clockIn` | `"clock_in"` | `"clockin"` | ✅ 수정 |
+| `returnToTyping` | `"return_to_typing"` | `"typing_return"` | ✅ 수정 |
+| `idleLoop` | `"idle_loop"` | `"idle_loop"` | ✅ 신규 추가 |
 
-1. `CharacterSpriteScene.swift` — AnimationState 15 → 26개로 확장
-   - 신규 추가: look, lifted, dropped, backToWork, loopReturn, typing, clockOut, resting, clockIn, returnToTyping, confused
-   - loopingStates에 typing, resting 추가 (지속형 루프 상태)
-   - loadTextures: `Bundle.main.path(inDirectory: "Sprites/치코")` 서브디렉토리 우선 탐색 후 flat/Assets fallback
+#### 5-3. 화면 레이아웃 최적화
+**문제:** 100×120 씬이 1:1 스프라이트에 맞지 않아 위아래 크롭
+**해결:**
+- AgentSeatView: 선택 영역 80×80 → 100×100으로 확대
+- SpriteAgentView: 프레임 명시적 지정 100×140 (세로 여유)
+- SpriteScene: 크기 100×120 → 100×100 (1:1 스프라이트에 맞춤)
+- fitCharacterToScene: 스케일 여백 90% → 95% (더 많이 표시)
 
-2. `AgentWindowManager.swift` — agent_5 치코 `spriteName: nil → "치코"` 활성화
+#### 5-4. 폴백 상태 체인 구현
+**문제:** 새로운 모션 통합으로 일부 상태는 파일이 없지만 코드 호환성 유지 필요
 
-**AnimationState 반복 정책:**
-- **루프 (6개):** idle, speaking, thinking, sleeping, typing, resting
-- **1회 후 idle 복귀 (18개):** 나머지 모든 상태
+**해결: fallbackStates 매핑**
+```swift
+private let fallbackStates: [AnimationState: AnimationState] = [
+    .thinking   : .idle,       // 생각중 → 대기
+    .praise     : .agree,      // 칭찬 → 긍정대답 (파일 통합)
+    .sleeping   : .resting,    // 수면 → 휴식
+    .clockOut   : .resting,    // 퇴근 → 휴식 진입
+    .disagree   : .angry,      // 부정대답 → 화남
+    .lookLeft   : .look,       // 좌우보기 → 두리번
+    .lookRight  : .look,
+    .look       : .idle,
+    .dropped    : .lowering,   // 구파일 없으면 신규 파일 탐색
+]
+```
+
+**동작:**
+1. 요청 상태 → loadTextures 시도
+2. 파일 없으면 → fallbackStates 체인 추적
+3. 최종 idle까지 탐색 (파일 반드시 존재)
+
+#### 5-5. 기본 복귀 상태 변경
+**변경:** 1회 모션 후 idle → **typing**으로 복귀
+- 이유: 앱의 기본(default) 상태는 '업무 중' (타이핑)
+- 여러 모션 재생 후 자연스럽게 업무 상태로 돌아감
+
+#### 5-6. 제미나이 프롬프트 최적화
+**목표:** 9:16 원본에서 500×700으로 크롭했을 때 캐릭터 전신이 다 보임
+
+**개선 포인트:**
+1. **프레임 내 유지:** 꼬리, 귀 등 모든 신체 부위가 500×700 안에 포함
+2. **합계 루프:** 첫 프레임 = 마지막 프레임 (무한 루프 시 뚝 끊기지 않음)
+3. **배경색 매칭:** 원 배경이 캐릭터 털 색상과 조화 (갈색, 회색 등)
+4. **크기 일관성:** 모든 캐릭터가 동일 800×800 캔버스로 일관된 프로필
+
+**공통 제미나이 프롬프트:** (별도 문서화)
+
+---
+
+### 6. 캐릭터 프로필 이미지 & 폴백 시스템 (2026-03-29)
+**Commits:** 신규 추가
+
+**배경:** 스프라이트 애니메이션 없는 캐릭터(레오, 루나 등)도 단순 이모지 대신 전문적인 프로필 이미지 표시
+
+#### 6-1. 코드 변경 사항
+**수정 파일 5개:**
+
+1. **CharacterSpriteScene.swift**
+   - `fallbackEmoji: String` → `fallbackImageName: String`
+   - `emojiNode: SKLabelNode?` → `fallbackImageNode: SKSpriteNode?`
+   - setupCharacterNode: SKLabelNode(emoji) → SKSpriteNode(imageName) 생성
+   - showEmojiFallback/hideEmojiFallback: 이미지 노드 사용
+
+2. **SpriteAgentView.swift**
+   - 파라미터: `fallbackEmoji` → `fallbackImageName`
+   - setupScene: `scene.fallbackEmoji = ...` → `scene.fallbackImageName = ...`
+   - CharacterAnimationController도 동일 변경
+   - Preview 업데이트 (100×140)
+
+3. **AgentConfig.swift** (신규 프로퍼티 추가)
+   - `let fallbackImageName: String` — Assets에 등록된 이미지 파일명
+   - 용도: 스프라이트 없을 때 표시할 캐릭터 원형 프로필
+
+4. **AgentWindowManager.swift**
+   - allAvailableAgents 각 AgentConfig에 `fallbackImageName` 값 추가:
+     ```
+     agent_1 (레오):    "leo_profile"
+     agent_2 (루나):    "luna_profile"
+     agent_3 (모코):    "moco_profile"
+     agent_4 (핀):      "pin_profile"
+     agent_5 (치코):    "치코_profile"
+     agent_6 (렉스):    "rex_profile"
+     agent_7 (케이):    "kai_profile"
+     agent_8 (래키):    "lucky_profile"
+     agent_9 (폴라):    "polar_profile"
+     agent_10 (몽몽):   "mongmong_profile"
+     agent_11 (올리버): "oliver_profile"
+     ```
+
+5. **AgentSeatView.swift**
+   - SpriteAgentView 호출: `fallbackEmoji: config.emoji` → `fallbackImageName: config.fallbackImageName`
+
+#### 6-2. Assets.xcassets에 이미지 등록
+**방법:** `/Users/su/Desktop/MyTeam/MyTeam/MyTeam/Assets.xcassets/` 에 직접 이미지 파일 복사
+
+**등록된 이미지:**
+- `치코_profile.png` (다람쥐 원형 프로필)
+- `leo_profile.png` (여우)
+- `luna_profile.png` (토끼)
+- `moco_profile.png` (햄스터)
+- `pin_profile.png` (펭귄)
+- `rex_profile.png` (나무늘보)
+- `kai_profile.png` (개)
+- `lucky_profile.png` (너구리)
+- `polar_profile.png` (북극곰)
+- `mongmong_profile.png` (푸들)
+- `oliver_profile.png` (돼지)
+
+#### 6-3. 동작 원리
+**스프라이트 있을 때 (치코):**
+1. SpriteAgentView → loadAndPlay(state: .typing)
+2. CharacterSpriteScene: loadTextures("typing") 성공
+3. SKSpriteNode에 애니메이션 표시 ✅
+
+**스프라이트 없을 때 (레오 등):**
+1. SpriteAgentView → loadAndPlay(state: .typing)
+2. CharacterSpriteScene: loadTextures("typing") 실패
+3. fallbackStates: .typing → .idle 폴백 → 여전히 실패
+4. showEmojiFallback() → fallbackImageNode 표시 ✅
+5. "leo_profile" 이미지가 SKSpriteNode로 렌더링됨
+
+---
+
+---
+
+## 📊 오늘(2026-03-29) 핵심 성과
+
+### 🎬 치코 스프라이트 애니메이션 완전 적용
+- **23개 모션** PNG 시퀀스 (500×502px, 674개 파일)
+- **폴백 상태 체인** 구현 (파일 없으면 유사 모션으로 자동 대체)
+- **화면 레이아웃 최적화** (100×140 씬, 95% 스케일)
+- **기본 상태 변경** (idle → typing)
+
+### 🖼️ 캐릭터 프로필 이미지 시스템
+- **11개 캐릭터** 원형 프로필 이미지 (Assets.xcassets 등록)
+- **스프라이트 폴백** (애니메이션 없으면 프로필 이미지 표시)
+- **일관된 구성** (모든 캐릭터가 통일된 방식으로 표시)
+
+### 🔧 코드 개선
+- **파일명/rawValue 동기화** (5개 케이스 수정)
+- **폴백 체인** (무한 루프 방지, 최대 5단계 탐색)
+- **4개 파일 수정** (Scene, View, Config, Manager)
+- **1회 모션 후 자동 복귀** (typing으로 통일)
+
+### 📝 문서화
+- DEVLOG 5.5장 추가 (스프라이트 최적화, rawValue 매핑, 레이아웃 개선)
+- DEVLOG 6장 추가 (이미지 폴백 시스템, 코드 변경, 동작 원리)
+
+### 🎨 제미나이 프롬프트 최적화
+- 씬 포함/프레임 경계 명시
+- 루프 연속성 강화
+- 500×700 크롭 기반 구도
+- 배경색 캐릭터 색상 매칭
 
 ---
 
@@ -206,6 +365,14 @@ Extracted code maintains original type paths through nested extensions. This ena
 
 ## Git History
 
+**2026-03-29 (오늘)**
+- **[진행 중]** - feat: Add fallback image system for character profiles (11 characters)
+- **[진행 중]** - refactor: Update CharacterSpriteScene with fallback state chain and 1:1 sprite support
+- **[진행 중]** - Update SpriteAgentView, AgentConfig, AgentWindowManager, AgentSeatView for image fallback
+- **46abe69** - Fix nil crash in CharacterSpriteScene.loadAndPlay (guard characterNode before hideEmojiFallback)
+- **[진행 중]** - doc: Update DEVLOG with sprite system, layout optimization, image fallback implementation
+
+**2026-03-28~29**
 - **1197b59** - fix: Remove sidebar collapse button from project sidebar header
 - **76ad628** - fix: Reduce chat window width to 700px with consistent height
 - **ad0f9d1** - doc: Add development log documenting refactoring phases and crash fix

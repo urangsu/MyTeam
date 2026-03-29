@@ -93,7 +93,7 @@ class AIHandler:
         
         if gemini_key:
             genai.configure(api_key=gemini_key)
-            self.gemini_model = genai.GenerativeModel('gemini-2.0-flash')
+            self.gemini_model = genai.GenerativeModel('gemini-1.5-flash-latest')
             self.available_providers.append("Gemini")
         if openai_key:
             self.openai_client = AsyncOpenAI(api_key=openai_key)
@@ -175,7 +175,7 @@ async def validate_key_endpoint(req: KeyValidationRequest):
     try:
         if provider == "Gemini":
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-2.0-flash')
+            model = genai.GenerativeModel('gemini-1.5-flash-latest')
             await asyncio.to_thread(model.generate_content, "hi")
             return {"status": "success", "message": "✅ Gemini API 연동 성공!"}
             

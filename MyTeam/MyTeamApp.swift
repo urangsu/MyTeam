@@ -1,0 +1,54 @@
+import SwiftUI
+import AppKit
+
+// MARK: - App Entry Point
+@main
+struct MyTeamApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
+    var body: some Scene {
+        Settings {
+            SettingsView()
+        }
+    }
+}
+
+// MARK: - AppDelegate
+class AppDelegate: NSObject, NSApplicationDelegate {
+
+    var statusItem: NSStatusItem?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        setupMenuBar()
+
+        // 앱 시작 시 팀 테이블 창 표시 (4명 한 번에)
+        AgentWindowManager.shared.showTeam()
+
+        // Dock 아이콘 숨기기 (백그라운드 앱)
+        NSApp.setActivationPolicy(.accessory)
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        AgentWindowManager.shared.savePosition()
+    }
+
+    // MARK: - 메뉴바
+    private func setupMenuBar() {
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+
+        if let button = statusItem?.button {
+            button.image = NSImage(systemSymbolName: "person.3.fill", accessibilityDescription: "MyTeam")
+        }
+
+        let menu = NSMenu()
+        menu.addItem(NSMenuItem(title: "팀 테이블 표시",  action: #selector(showTeam),  keyEquivalent: "t"))
+        menu.addItem(NSMenuItem(title: "팀 테이블 숨기기", action: #selector(hideTeam),  keyEquivalent: "h"))
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "종료",            action: #selector(quitApp),   keyEquivalent: "q"))
+        statusItem?.menu = menu
+    }
+
+    @objc func showTeam() { AgentWindowManager.shared.showTeam() }
+    @objc func hideTeam() { AgentWindowManager.shared.hideTeam() }
+    @objc func quitApp()  { NSApp.terminate(nil) }
+}
