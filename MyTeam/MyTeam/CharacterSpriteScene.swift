@@ -102,6 +102,9 @@ class CharacterSpriteScene: SKScene {
     ///   - state: 재생할 AnimationState
     ///   - fps: 초당 프레임 수 (기본값 12)
     func loadAndPlay(state: AnimationState, fps: Double? = nil) {
+        // didMove(to:) 이전에 호출되면 characterNode가 nil → 무시
+        guard characterNode != nil else { return }
+
         let actualFPS = fps ?? defaultFPS
         let timePerFrame = 1.0 / actualFPS
 
