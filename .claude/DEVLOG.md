@@ -122,6 +122,54 @@
 
 ---
 
+---
+
+### 4. Phase 1 리팩토링 상세 (2026-03-28~29)
+
+#### 추출된 파일 구조 (6개 신규)
+
+| 파일 | 원본 | 내용 |
+|------|------|------|
+| `AgentConfig.swift` | AgentWindowManager.swift | `AgentWindowManager.AgentConfig` struct (14 프로퍼티) |
+| `ChatModels.swift` | AgentWindowManager.swift | `AgentWindowManager.ChatRoom`, `ChatLog` (Codable) |
+| `ChatComponents.swift` | AgentChatView.swift | JiggleEffect, IMMessageBubble, DateSeparator, ChatBubble |
+| `AgentMenuPopupView.swift` | TeamTableView.swift | 팝업 메뉴 4개 버튼 (Chat/Voice/Settings/Swap) |
+| `AgentSeatView.swift` | TeamTableView.swift | 에이전트 카드 (말풍선, 스프라이트, 상태 표시) |
+| `AgentPersona.swift` | AIService.swift | AgentPersona struct, 8개 에이전트 정의, AIServiceError |
+
+**설계 원칙:** 모든 추출 타입은 `extension AgentWindowManager { struct Name... }` 패턴 사용
+→ 기존 코드 `AgentWindowManager.AgentConfig` 참조 변경 없이 호환
+
+---
+
+### 5. 치코 스프라이트 시스템 적용 (2026-03-29)
+**Commit:** (진행 중)
+
+**배경:** 치코(agent_5) 23개 모션 PNG 시퀀스 제작 완료 (12~48프레임, 모두 영문 state명)
+
+**파일 배치 구조:**
+```
+MyTeam/MyTeam/Resources/Sprites/치코/
+  치코_{state명}_{001~}.png
+  (예: 치코_idle_001.png, 치코_disagree_001.png)
+```
+Xcode에서 "Create folder references"(파란 폴더)로 추가 필요
+
+**코드 변경:**
+
+1. `CharacterSpriteScene.swift` — AnimationState 15 → 26개로 확장
+   - 신규 추가: look, lifted, dropped, backToWork, loopReturn, typing, clockOut, resting, clockIn, returnToTyping, confused
+   - loopingStates에 typing, resting 추가 (지속형 루프 상태)
+   - loadTextures: `Bundle.main.path(inDirectory: "Sprites/치코")` 서브디렉토리 우선 탐색 후 flat/Assets fallback
+
+2. `AgentWindowManager.swift` — agent_5 치코 `spriteName: nil → "치코"` 활성화
+
+**AnimationState 반복 정책:**
+- **루프 (6개):** idle, speaking, thinking, sleeping, typing, resting
+- **1회 후 idle 복귀 (18개):** 나머지 모든 상태
+
+---
+
 ## TODO: Future Phases
 
 ### Phase 2: Service Layer Refactoring (Planned)

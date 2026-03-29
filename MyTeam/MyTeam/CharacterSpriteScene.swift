@@ -7,15 +7,32 @@ import SwiftUI
 // 파일명 규칙: "{캐릭터ID}_{상태명}_{번호}.png"
 // 예시: sloth_idle_001.png, sloth_joy_001.png
 enum AnimationState: String {
-    case idle       = "idle"       // 대기 중 (기본 상태)
-    case speaking   = "speaking"   // 말하는 중 (립싱크)
-    case thinking   = "thinking"   // 생각 중 (=idle 재활용 가능)
-    case joy        = "joy"        // 기쁨
-    case sad        = "sad"        // 슬픔
-    case dragging   = "dragging"   // 드래그 중 (공중에 버둥)
-    case landing    = "landing"    // 착지 (드래그 놓았을 때)
-    case greeting   = "greeting"   // 인사 (손 흔들기)
-    case thumbsUp   = "thumbsup"   // 칭찬/엄지척
+    case idle             = "idle"              // 대기 중 (기본 상태)
+    case speaking         = "speaking"          // 말하는 중
+    case thinking         = "thinking"          // 생각 중
+    case joy              = "joy"               // 기쁨
+    case sad              = "sad"               // 슬픔
+    case drag             = "drag"              // 드래그 중
+    case landing          = "landing"           // 착지 및 안도
+    case greeting         = "greeting"          // 인사
+    case praise           = "praise"            // 칭찬
+    case lookLeft         = "look_left"         // 왼쪽 보기
+    case lookRight        = "look_right"        // 오른쪽 보기
+    case agree            = "agree"             // 긍정 대답
+    case disagree         = "disagree"          // 부정 대답
+    case angry            = "angry"             // 분노
+    case sleeping         = "sleeping"          // 졸기/수면
+    case look             = "look"              // 두리번
+    case lifted           = "lifted"            // 들려짐
+    case dropped          = "dropped"           // 떨어짐
+    case backToWork       = "back_to_work"      // 업무 복귀
+    case loopReturn       = "loop_return"       // 루프 복귀
+    case typing           = "typing"            // 업무 중 (타이핑)
+    case clockOut         = "clock_out"         // 퇴근
+    case resting          = "resting"           // 휴식/대기
+    case clockIn          = "clock_in"          // 출근
+    case returnToTyping   = "return_to_typing"  // 타자 복귀
+    case confused         = "confused"          // 혼란
 }
 
 // MARK: - CharacterSpriteScene
@@ -42,7 +59,11 @@ class CharacterSpriteScene: SKScene {
     // 상태별 반복 설정
     // true = 계속 반복 (idle, speaking, thinking)
     // false = 1회 재생 후 idle로 복귀 (joy, sad, landing, greeting 등)
-    private let loopingStates: Set<AnimationState> = [.idle, .speaking, .thinking]
+    private let loopingStates: Set<AnimationState> = [
+        .idle, .speaking, .thinking, .sleeping,
+        .typing,    // 업무 중 — 타이핑 루프
+        .resting    // 휴식/대기 — 쉬는 루프
+    ]
 
     // MARK: - Scene 초기화
     override func didMove(to view: SKView) {
@@ -134,15 +155,16 @@ class CharacterSpriteScene: SKScene {
     /// 최대 60프레임까지 탐색 (없는 번호에서 탐색 중단)
     private func loadTextures(for state: AnimationState) -> [SKTexture] {
         var textures: [SKTexture] = []
+        // 서브디렉토리 우선 탐색: Resources/Sprites/{characterID}/
+        let subdir = "Sprites/\(characterID)"
 
         for i in 1...60 {
             let imageName = String(format: "%@_%@_%03d", characterID, state.rawValue, i)
-            // SKTexture는 Assets에 없는 이름이어도 즉시 에러를 내지 않음
-            // 실제 크기로 확인하는 방법으로 존재 여부를 체크
-            if Bundle.main.path(forResource: imageName, ofType: "png") != nil
-                || UIImageOrNSImageExists(named: imageName) {
-                let texture = SKTexture(imageNamed: imageName)
-                textures.append(texture)
+            let exists = Bundle.main.path(forResource: imageName, ofType: "png", inDirectory: subdir) != nil
+                      || Bundle.main.path(forResource: imageName, ofType: "png") != nil
+                      || UIImageOrNSImageExists(named: imageName)
+            if exists {
+                textures.append(SKTexture(imageNamed: imageName))
             } else {
                 break // 연속이 끊기면 탐색 종료
             }
@@ -175,7 +197,7 @@ class CharacterSpriteScene: SKScene {
     // MARK: - 드래그 인터랙션 (흔들림 효과)
     /// 드래그 시작 시 호출: 흔들리는 애니메이션 재생
     func startDragging() {
-        loadAndPlay(state: .dragging)
+        loadAndPlay(state: .drag)
         // 약간 흔들리는 물리적 효과 추가
         let wobble = SKAction.sequence([
             SKAction.rotate(byAngle: 0.1, duration: 0.08),
