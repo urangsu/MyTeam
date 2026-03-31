@@ -47,7 +47,7 @@ class AIService: ObservableObject {
     // MARK: - Public API
 
     /// Send message and get AI response
-    func getResponse(text: String, agentID: String, chatHistory: [String]) async throws -> (text: String, provider: String) {
+    func getResponse(text: String, agentID: String, chatHistory: [AgentWindowManager.ChatLog]) async throws -> (text: String, provider: String) {
         await MainActor.run { isProcessing = true }
         defer { Task { @MainActor in isProcessing = false } }
 
@@ -75,37 +75,25 @@ class AIService: ObservableObject {
         [당신의 페르소나]
         \(basePersona)
 
-        당장은 아주 짧고 임팩트 있게 한 문장이나 혹은 두 문장 내외로만 대답하세요.
+        위 대화 맥락과 제공된 페르소나에 맞게, 다른 팀원을 부를 땐 이름을 직접 언급하며 자연스럽게 대답해줘.
         """
 
-        // Build recent history (last 8 entries, same as Python backend)
-        let recentHistory: [String]
-        if chatHistory.count > 8 {
-            recentHistory = Array(chatHistory.suffix(8))
+        let recentHistory: [AgentWindowManager.ChatLog]
+        if chatHistory.count > 30 {
+            recentHistory = Array(chatHistory.suffix(30))
         } else {
             recentHistory = chatHistory
         }
-        let historyText = recentHistory.joined(separator: "\n")
-
-        let fullPrompt = """
-        [팀 대화 기록 (위에서부터 과거)]
-        \(historyText)
-
-        [현재 사용자의 요청 또는 동료의 말]
-        \(text)
-
-        위 대화 맥락과 제공된 페르소나에 맞게, 다른 팀원을 부를 땐 이름을 직접 언급하며 자연스럽게 대답해줘.
-        """
 
         do {
             let responseText: String
             switch provider {
             case "Gemini":
-                responseText = try await callGemini(systemPrompt: systemPrompt, userPrompt: fullPrompt)
+                responseText = try await callGemini(systemPrompt: systemPrompt, history: recentHistory)
             case "OpenAI":
-                responseText = try await callOpenAI(systemPrompt: systemPrompt, userPrompt: fullPrompt)
+                responseText = try await callOpenAI(systemPrompt: systemPrompt, history: recentHistory)
             case "Claude":
-                responseText = try await callClaude(systemPrompt: systemPrompt, userPrompt: fullPrompt)
+                responseText = try await callClaude(systemPrompt: systemPrompt, history: recentHistory)
             default:
                 throw AIServiceError.invalidProvider(provider)
             }
@@ -133,7 +121,7 @@ class AIService: ObservableObject {
 
     // MARK: - Gemini API
 
-    private func callGemini(systemPrompt: String, userPrompt: String) async throws -> String {
+    private func callGemini(systemPrompt: String, history: [AgentWindowManager.ChatLog]) async throws -> String {
         guard let apiKey = UserDefaults.standard.string(forKey: "geminiAPIKey"), !apiKey.isEmpty else {
             throw AIServiceError.noAPIKeys
         }
@@ -143,19 +131,33 @@ class AIService: ObservableObject {
             throw AIServiceError.invalidResponse
         }
 
-        // Gemini combines system + user into a single prompt
-        let combinedPrompt = "\(systemPrompt)\n\n\(userPrompt)"
+        var contentsArray: [[String: Any]] = []
+        for log in history {
+            let role = log.isUser ? "user" : "model"
+            let contentText = log.isUser ? log.text : "[\(log.agentName)] \(log.text)"
+            
+            if let last = contentsArray.last, let lastRole = last["role"] as? String, lastRole == role {
+                if var parts = last["parts"] as? [[String: String]], let lastText = parts.first?["text"] {
+                    parts[0]["text"] = lastText + "\n" + contentText
+                    contentsArray[contentsArray.count - 1]["parts"] = parts
+                }
+            } else {
+                contentsArray.append([
+                    "role": role,
+                    "parts": [["text": contentText]]
+                ])
+            }
+        }
 
         let body: [String: Any] = [
-            "contents": [
-                [
-                    "parts": [
-                        ["text": combinedPrompt]
-                    ]
+            "systemInstruction": [
+                "parts": [
+                    ["text": systemPrompt]
                 ]
             ],
+            "contents": contentsArray,
             "generationConfig": [
-                "maxOutputTokens": 300
+                "maxOutputTokens": 1024
             ]
         ]
 
@@ -206,7 +208,7 @@ class AIService: ObservableObject {
 
     // MARK: - OpenAI API
 
-    private func callOpenAI(systemPrompt: String, userPrompt: String) async throws -> String {
+    private func callOpenAI(systemPrompt: String, history: [AgentWindowManager.ChatLog]) async throws -> String {
         guard let apiKey = UserDefaults.standard.string(forKey: "openaiAPIKey"), !apiKey.isEmpty else {
             throw AIServiceError.noAPIKeys
         }
@@ -215,13 +217,25 @@ class AIService: ObservableObject {
             throw AIServiceError.invalidResponse
         }
 
+        var messagesArray: [[String: String]] = [
+            ["role": "system", "content": systemPrompt]
+        ]
+        
+        for log in history {
+            let role = log.isUser ? "user" : "assistant"
+            let contentText = log.isUser ? log.text : "[\(log.agentName)] \(log.text)"
+            
+            if let last = messagesArray.last, last["role"] == role, role != "system" {
+                messagesArray[messagesArray.count - 1]["content"] = (last["content"] ?? "") + "\n" + contentText
+            } else {
+                messagesArray.append(["role": role, "content": contentText])
+            }
+        }
+
         let body: [String: Any] = [
             "model": "gpt-4o-mini",
-            "messages": [
-                ["role": "system", "content": systemPrompt],
-                ["role": "user", "content": userPrompt]
-            ],
-            "max_tokens": 300
+            "messages": messagesArray,
+            "max_tokens": 1024
         ]
 
         var request = URLRequest(url: url)
@@ -270,7 +284,7 @@ class AIService: ObservableObject {
 
     // MARK: - Claude API
 
-    private func callClaude(systemPrompt: String, userPrompt: String) async throws -> String {
+    private func callClaude(systemPrompt: String, history: [AgentWindowManager.ChatLog]) async throws -> String {
         guard let apiKey = UserDefaults.standard.string(forKey: "claudeAPIKey"), !apiKey.isEmpty else {
             throw AIServiceError.noAPIKeys
         }
@@ -279,13 +293,31 @@ class AIService: ObservableObject {
             throw AIServiceError.invalidResponse
         }
 
+        var messagesArray: [[String: String]] = []
+        for log in history {
+            let role = log.isUser ? "user" : "assistant"
+            let contentText = log.isUser ? log.text : "[\(log.agentName)] \(log.text)"
+            
+            if let last = messagesArray.last, last["role"] == role {
+                messagesArray[messagesArray.count - 1]["content"] = (last["content"] ?? "") + "\n" + contentText
+            } else {
+                messagesArray.append(["role": role, "content": contentText])
+            }
+        }
+        
+        // Claude api requires first message to be user role
+        if messagesArray.first?["role"] == "assistant" {
+            messagesArray.removeFirst()
+        }
+        if messagesArray.isEmpty {
+            messagesArray.append(["role": "user", "content": "hello"])
+        }
+
         let body: [String: Any] = [
             "model": "claude-3-haiku-20240307",
-            "max_tokens": 300,
+            "max_tokens": 1024,
             "system": systemPrompt,
-            "messages": [
-                ["role": "user", "content": userPrompt]
-            ]
+            "messages": messagesArray
         ]
 
         var request = URLRequest(url: url)

@@ -219,8 +219,7 @@ struct TeamTableView: View {
         manager.addChatLog(agentID: "user", agentName: "나", text: text, isUser: true)
 
         Task {
-            let history = manager.rooms.first(where: { $0.id == manager.currentRoomID })?
-                .messages.map { "\($0.isUser ? "User" : $0.agentName): \($0.text)" } ?? []
+            let history = manager.rooms.first(where: { $0.id == manager.currentRoomID })?.messages ?? []
             do {
                 let (responseText, _) = try await AIService.shared.getResponse(
                     text: text, agentID: randomAgent.id, chatHistory: history

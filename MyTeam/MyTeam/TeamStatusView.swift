@@ -344,8 +344,7 @@ struct TeamStatusView: View {
         let randomAgent = agents.randomElement() ?? agents[0]
 
         Task {
-            let history = manager.rooms.first(where: { $0.id == manager.currentRoomID })?
-                .messages.map { "\($0.isUser ? "User" : $0.agentName): \($0.text)" } ?? []
+            let history = manager.rooms.first(where: { $0.id == manager.currentRoomID })?.messages ?? []
 
             do {
                 let (responseText, _) = try await AIService.shared.getResponse(

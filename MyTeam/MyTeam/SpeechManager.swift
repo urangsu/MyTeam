@@ -285,3 +285,4 @@ class SpeechManager: NSObject, ObservableObject, @unchecked Sendable, SFSpeechRe
         }
     }
 }
+
