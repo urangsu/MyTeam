@@ -4,6 +4,23 @@
 > **담당**: Antigravity (Claude Sonnet) + Claude Code 공동 관리
 > **규칙**: 추가할 기능, 수정할 버그, 리팩토링 계획 등은 모두 이 파일에 관리합니다. 작업이 완료되면 `[x]` 표시를 하고, 그 내역을 루트의 `DEVLOG.md`에 추가해 주세요!
 
+## ⚠️ 작업 경로 규칙 (반드시 준수)
+
+**Antigravity와 Claude Code 모두 아래 단일 경로에서만 작업할 것:**
+
+```
+✅ 유일한 작업 경로: /Users/su/Desktop/MyTeam/MyTeam/MyTeam/
+✅ task 파일:        /Users/su/Desktop/MyTeam/TASK.md  (이 파일)
+✅ 개발 일지:        /Users/su/Desktop/MyTeam/DEVLOG.md
+```
+
+**절대 금지:**
+- ❌ `/Users/su/Desktop/MyTeam/MyTeam/*.swift` 직접 수정 (Xcode 외부 경로)
+- ❌ Claude Code worktree (`.claude/worktrees/`) 안에서 Swift 파일 수정
+- ❌ 별도 task/devlog 파일 생성 (`.claude/DEVLOG.md` 등)
+
+**이유**: 과거에 Antigravity는 `MyTeam/MyTeam/`에서, Claude Code는 `.claude/worktrees/`에서 각각 작업하면서 파일이 분기됨. 지금은 `MyTeam/MyTeam/MyTeam/`으로 통일됨.
+
 ## 🚧 현재 진행 중인 작업 (In Progress)
 - [ ] [긴급 버그] AIService.swift 대화 품질 개선 (단답형 제거, 대화기록 절삭 완화, Messages Array 적용)
 ## 🚧 현재 진행 중인 작업 (In Progress)
