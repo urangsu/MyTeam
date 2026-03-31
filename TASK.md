@@ -23,7 +23,17 @@
 
 ## 🚧 현재 진행 중인 작업 (In Progress)
 - [ ] [긴급 버그] AIService.swift 대화 품질 개선 (단답형 제거, 대화기록 절삭 완화, Messages Array 적용)
-## 🚧 현재 진행 중인 작업 (In Progress)
+- [x] [프롬프트] "본캐+부캐" 마스터 프롬프트 템플릿 적용 및 탈옥 방어 (AIService.swift)
+- [x] [버그/최적화] AI 답변 이름 태그 정규식 제거 도입 (`[캐릭터이름] 어쩌고...`)
+- [x] [채팅 UX] 개별대화방 대화 삭제 시 흔들림(Jiggle) 속도를 1/2로 느리게 조정
+- [x] [채팅 UX] 편집 모드 전환 시 안 흔들리는 뷰 누락 버그 해결 (onAppear)
+- [x] [채팅 UX] 대화 삭제(x버튼) 위치를 모두 화면 우측으로 동일하게 정렬하여 편의성 향상
+- [x] [채팅 UX] 대화 삭제 시 가장 아래로 강제 스크롤되는 자동 다운 버그 수정
+- [x] [UI/문구] AgentSettingsView 내부 타이틀 "직업 프리셋" 등 -> "보조 업무"로 변경
+- [x] [창 관리] SettingsView에 "대화창 정돈" 버튼 추가 및 AgentWindowManager에 윈도우 우측/하단 정렬 로직 구현
+- [x] [다중 연결] 팀 채팅방 "team_all" 멀티 에이전트 유기적 답변 체계(티키타카 오케스트레이션) 구축
+- [x] [음성/UX] TTS SpeechManager단에서 이모티콘 낭독 방지를 위한 정규식(Regex) 절삭 로직 추가
+- [x] [UI/문구] SettingsView 대화창 정돈 섹션을 더 깔끔한 디자인(작은 버튼 하나)으로 변경
 
 ### [최우선] Native TTS 파이프라인 구축 — AnimalTTSManager 교체
 
@@ -105,11 +115,104 @@ try AVAudioSession.sharedInstance().setCategory(
 
 > ⚠️ Antigravity 작업과 충돌 방지: `MyTeam/MyTeam/` 경로에서만 작업. 신규 파일은 이 경로에 추가.
 
-### [P1 완료] 감정-스프라이트 연결 ✅
-- [x] `AgentWindowManager`: `speakingAgentID`, `agentEmotions`, `detectEmotion()`, `setAgentSpeaking()` 구현
-- [x] `TeamTableView`: `isSpeaking: manager.speakingAgentID == agent.id` (하드코딩 해제)
-- [x] `AgentChatView`: AI 응답 후 `setAgentSpeaking()` 호출
-- [x] `AgentSeatView`: `agentEmotions[config.id]` → SpriteAgentView 전달
+### [최우선 과제] 감정-스프라이트 연결 (현재 오작동/미구현)
+- [ ] AI가 자신을 AI로 인식하여 표정을 지을 수 없다고 답변하는 문제 해결 (시스템 프롬프트 강화 및 자기 객관화 방지)
+- [ ] 실제 AI 응답 감정과 UI 스프라이트 액션(.joy, .agree 등)이 완벽하게 연계되어 작동하도록 로직 재구현
+- [ ] `AgentWindowManager`의 `detectEmotion()` 로직 재점검 및 뷰 계층 전달 오류 수정
+
+### [최우선 과제] 멀티에이전트 대화 엔진 재구축 (AutoGen+CrewAI 하이브리드)
+
+> **현재 문제**: 팀 채팅에서 랜덤 2~3명이 각각 독립적으로 대답 → 서로 참조 없는 병렬 독백
+> **목표**: 에이전트들이 서로의 발언을 참조하며 자연스럽게 토의하는 유기적 대화
+> **참고**: AutoGen SelectorGroupChat 패턴 + CrewAI Scoped Memory 패턴
+
+#### 📁 신규 생성할 파일
+
+**1. `TeamOrchestrator.swift`** — 팀 대화 오케스트레이터 (핵심)
+```swift
+class TeamOrchestrator {
+    /// LLM Selector: 대화 맥락을 읽고 다음 화자를 선택 (AutoGen 패턴)
+    func selectNextSpeaker(
+        conversationThread: [ChatLog],
+        agents: [AgentConfig],
+        lastSpeaker: String?
+    ) async -> String?  // agentID or nil(종료)
+
+    /// 팀 대화 실행: 사용자 메시지 → 자동 턴 진행 → 자연스러운 종료
+    func runTeamDiscussion(
+        userMessage: String,
+        roomID: UUID,
+        maxTurns: Int = 6
+    ) async
+
+    /// 에이전트별 역할 프롬프트 (전략가=리드/종합, 디자이너=시각적제안, 보안=리스크지적)
+    func buildAgentPrompt(agentID: String, role: DiscussionRole, previousTurns: [ChatLog]) -> String
+}
+
+enum DiscussionRole {
+    case leader      // 토의 리드, 종합
+    case contributor // 전문 의견 제시
+    case critic      // 반론/리스크 제기
+    case supporter   // 동의/보충
+    case summarizer  // 마무리 정리
+}
+```
+
+**2. `ConversationMemory.swift`** — 범위별 대화 기억 (CrewAI 패턴)
+```swift
+struct ConversationMemory {
+    var teamContext: String       // 팀 전체 공유 맥락 (자동 요약)
+    var agentMemories: [String: [String]]  // 에이전트별 사적 기억
+    var currentTopic: String      // 현재 토의 주제
+
+    /// 30개 초과 시 오래된 메시지를 AI로 요약 (토큰 관리)
+    mutating func compactIfNeeded(messages: [ChatLog]) async -> String
+}
+```
+
+#### 🔗 기존 파일 수정 포인트
+
+**`AIService.swift`** — 시스템 프롬프트 분화
+- 개별 대화용 프롬프트 vs 팀 토의용 프롬프트 분리
+- 팀 토의 프롬프트에 포함: 이전 화자의 발언 요약, 현재 에이전트의 역할(leader/critic/etc), 대화 종료 조건
+- Selector LLM 호출용 경량 프롬프트 추가 (다음 화자 선택 전용)
+
+**`AgentChatView.swift`** — 팀 채팅 로직 교체
+- 현재: `agents.shuffled().prefix(2...3)` + 순차 독립 응답
+- 수정: `TeamOrchestrator.runTeamDiscussion()` 호출 → 자동 턴 진행
+- 각 턴에서 이전 에이전트의 응답을 다음 에이전트의 컨텍스트로 주입
+
+**`AgentPersona.swift`** — 에이전트 설명문 추가
+- Selector가 "누가 이 주제에 답해야 하나"를 판단하려면 각 에이전트의 전문 분야 설명 필요
+- 예: `레오: 비즈니스 전략 전문. 프로젝트 방향성, 의사결정, 리소스 배분에 강점`
+
+#### ✅ 구현 순서
+1. `TeamOrchestrator.swift` 생성 — Selector LLM 호출 + 턴 루프
+2. `ConversationMemory.swift` 생성 — 맥락 요약 + 범위별 기억
+3. `AgentPersona.swift` — 에이전트별 1줄 설명 추가 (Selector용)
+4. `AIService.swift` — 팀 토의용 프롬프트 + Selector 프롬프트 추가
+5. `AgentChatView.swift` — 팀 채팅 `team_all` 분기를 Orchestrator로 교체
+6. 테스트: "취득세 검토해줘" → 레오(리드) → 렉스(법률) → 케이(리스크) → 레오(종합)
+
+#### Selector 프롬프트 설계 (핵심)
+```
+당신은 팀 대화의 진행자입니다. 아래 대화를 읽고, 다음에 발언할 에이전트를 선택하세요.
+
+[참가자]
+- 레오(agent_1): 비즈니스 전략, 프로젝트 리드
+- 루나(agent_2): 마케팅, 크리에이티브
+- 렉스(agent_6): 법률, 규정 분석
+- 케이(agent_7): 보안, 리스크 평가
+
+[대화 기록]
+{conversation_history}
+
+[규칙]
+- 직전 화자는 연속 선택 불가
+- 주제와 무관한 에이전트는 선택하지 말 것
+- 충분히 논의되었으면 "DONE"을 출력
+- 에이전트 이름만 출력 (예: "렉스")
+```
 
 ### [P1 진행중] TTS 교체
 > Antigravity TASK.md의 TTSEngine 프로토콜 방식 사용. 아래 수치를 VoiceProfile에 추가할 것.
@@ -191,4 +294,3 @@ try AVAudioSession.sharedInstance().setCategory(
 - [x] 개별 대화창 UI 구조 개편 및 크기 충돌(SwiftUI vs AppKit) 해결 (2026-03-29)
 - [x] 치코 스프라이트 23종 완벽 적용 및 오류 상태 체인(Fallback Chain) 구축 (2026-03-29)
 - [x] 캐릭터 프로필 이미지 시스템(11인) Fallback 구축 완료 (2026-03-29)
-- [x] AI 응답 기반 캐릭터 감정-스프라이트 동적 전환 추가 (2026-03-29)
