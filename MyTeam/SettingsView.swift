@@ -20,6 +20,7 @@ struct SettingsView: View {
     @AppStorage("useCloudVoice") private var useCloudVoice: Bool = false
     @AppStorage("useAnimalTTS") private var useAnimalTTS: Bool = true
     @AppStorage("appLanguage") private var appLanguage: String = "한국어"
+    @AppStorage("userLocation") private var userLocation: String = "전남 광양"
 
     // 검증을 위해 선택할 제공자 저장
     @AppStorage("validationProvider") private var validationProvider: String = "Gemini"
@@ -161,10 +162,23 @@ struct SettingsView: View {
                         Text("사용자 호칭")
                             .font(.system(size: 11, weight: .bold))
                             .foregroundColor(textColor.opacity(0.8))
-                        TextField("사용자님", text: $userTitle)
+                        TextField("대표님", text: $userTitle)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                             .font(.system(size: 13))
                         Text("에이전트가 나를 부를 때 사용합니다 (예: 사용자님, 대표님, 이름)")
+                            .font(.system(size: 10))
+                            .foregroundColor(textColor.opacity(0.4))
+                    }
+
+                    // 현재 위치
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("현재 위치 / 지역")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(textColor.opacity(0.8))
+                        TextField("어디에 계신가요?", text: $userLocation)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .font(.system(size: 13))
+                        Text("에이전트가 현실적인 대화를 하기 위해 참고합니다 (예: 서울, 제주, 전남 광양)")
                             .font(.system(size: 10))
                             .foregroundColor(textColor.opacity(0.4))
                     }

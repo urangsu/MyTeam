@@ -8,6 +8,35 @@ class TeamOrchestrator {
     static let shared = TeamOrchestrator()
 
     private let memory = ConversationMemory()
+    
+    // MARK: - 시스템 맥락 정보 (시공간 정보 주입)
+    
+    private func getSystemContextPrompt() -> String {
+        let now = Date()
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.dateFormat = "yyyy년 MM월 dd일 EEEE HH:mm"
+        let dateString = formatter.string(from: now)
+        
+        let month = Calendar.current.component(.month, from: now)
+        let season: String
+        switch month {
+        case 3...5: season = "봄"
+        case 6...8: season = "여름"
+        case 9...11: season = "가을"
+        default: season = "겨울"
+        }
+        
+        let location = AgentWindowManager.shared.userLocation
+        
+        return """
+        [현재 시스템 및 환경 정보]
+        - 현재 시간: \(dateString)
+        - 현재 계절: \(season)
+        - 사용자 위치: \(location)
+        (위 정보를 바탕으로 지금 시기와 장소에 맞는 현실적인 응답을 하세요. 계절에 어긋나는 활동이나 대화는 절대 하지 마세요.)
+        """
+    }
 
     // MARK: - 팀 토의 실행
 
@@ -90,6 +119,8 @@ class TeamOrchestrator {
             당신은 시스템 팀장으로부터 특정 업무를 하달받은 전문가 '\(agent.name)'입니다.
             분야: \(routing.taskCategory ?? "일반") / 성격: \(agent.role)
             
+            \(getSystemContextPrompt())
+            
             [시스템 팀장의 지시서]
             귀하의 이번 역할은 다음과 같습니다: "\(order.subTask)"
             
@@ -104,6 +135,7 @@ class TeamOrchestrator {
             [업무 규칙]
             1. 절대 약하거나 모호한 결과를 통과시키지 마세요 (Don't pass through weak results).
             2. 연극 대본을 쓰지 말고, 오직 당신의 답변 본문만 출력하세요.
+            3. 답변 시작 시 당신의 이름(예: [\(agent.name)], \(agent.name):)을 절대로 붙이지 마세요.
             """
             
             do {
@@ -295,6 +327,7 @@ class TeamOrchestrator {
 
         var prompt = ""
         prompt += "당신은 현재 단체 채팅방에 참여 중인 '\(agent.name)' 본인입니다. 연극 대본 작가가 아님을 명심하세요.\n\n"
+        prompt += getSystemContextPrompt() + "\n\n"
 
         if !otherAgentMessages.isEmpty {
             prompt += "[이전 채팅 내용]\n\(otherAgentMessages)\n\n"

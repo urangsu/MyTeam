@@ -158,13 +158,24 @@ class AIService: ObservableObject {
     }
 
     private func removeNameTag(from text: String) -> String {
-        // 다국어 지원 (유니코드 알파벳, 마크, 공백 등 포함) 이름 태그 필터
-        let pattern = "^\\s*(?:\\*\\*|\\*)?(?:\\[)?([\\p{L}\\p{M}0-9\\s]{1,15})(?:\\])?(?:\\*\\*|\\*)?\\s*[:：\\-,]*\\s*"
-        if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
-            let range = NSRange(text.startIndex..., in: text)
-            return regex.stringByReplacingMatches(in: text, options: [], range: range, withTemplate: "")
+        // 이름 태그 패턴: [이름], **이름**: , 이름: , 이름 - 등
+        // 이름 부분에 마침표나 쉼표 등이 포함되지 않도록 제한하여 본문 침범 방지
+        let pattern = "^\\s*(?:\\*\\*|\\*)?(?:\\[)?([\\p{L}\\p{M}0-9]{1,10})(?:\\])?(?:\\*\\*|\\*)?\\s*[:：\\-]*\\s*"
+        
+        var cleaned = text
+        if let regex = try? NSRegularExpression(pattern: pattern, options: [.anchorsMatchLines]) {
+            let range = NSRange(cleaned.startIndex..., in: cleaned)
+            cleaned = regex.stringByReplacingMatches(in: cleaned, options: [], range: range, withTemplate: "")
         }
-        return text
+        
+        // 앞부분에 남은 불필요한 문장 부호나 잔상(., :) 제거
+        cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+        while cleaned.hasPrefix(".") || cleaned.hasPrefix(":") || cleaned.hasPrefix("-") || cleaned.hasPrefix(" ") {
+            cleaned.removeFirst()
+            cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        
+        return cleaned
     }
 
     /// Validate API key by making a minimal test request

@@ -32,6 +32,7 @@ class AgentWindowManager: ObservableObject {
     @AppStorage("isDarkMode") var isDarkMode: Bool = false
     @AppStorage("isVoiceMode") var isVoiceMode: Bool = true
     @AppStorage("isSilentMode") var isSilentMode: Bool = false
+    @AppStorage("userLocation") var userLocation: String = "전남 광양"
 
     // ── 방 목록 (UserDefaults 영속화) ──
     @Published var rooms: [ChatRoom] = [] {
