@@ -9,10 +9,18 @@ struct JiggleEffect: ViewModifier {
     func body(content: Content) -> some View {
         content
             .rotationEffect(.degrees(isJiggling ? angle : 0))
+            .onAppear {
+                if isJiggling {
+                    withAnimation(
+                        .easeInOut(duration: 0.24)
+                        .repeatForever(autoreverses: true)
+                    ) { angle = 2.5 }
+                }
+            }
             .onChange(of: isJiggling) { _, newVal in
                 if newVal {
                     withAnimation(
-                        .easeInOut(duration: 0.12)
+                        .easeInOut(duration: 0.24)
                         .repeatForever(autoreverses: true)
                     ) { angle = 2.5 }
                 } else {
@@ -113,6 +121,53 @@ struct DateSeparator: View {
             Spacer()
         }
         .padding(.vertical, 8)
+    }
+}
+
+// MARK: - 첨부파일 칩 (입력창 미리보기)
+struct AttachmentChip: View {
+    let attachment: ChatAttachment
+    let onRemove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: iconName)
+                .font(.system(size: 11))
+                .foregroundColor(iconColor)
+            Text(attachment.fileName)
+                .font(.system(size: 11))
+                .lineLimit(1)
+                .frame(maxWidth: 100)
+            Button(action: onRemove) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(.secondary)
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color.secondary.opacity(0.15)))
+    }
+
+    private var iconName: String {
+        switch attachment.type {
+        case .image: return "photo"
+        case .pdf: return "doc.richtext"
+        case .text: return "doc.text"
+        case .document: return "doc.fill"
+        case .other: return "paperclip"
+        }
+    }
+
+    private var iconColor: Color {
+        switch attachment.type {
+        case .image: return .blue
+        case .pdf: return .red
+        case .text: return .green
+        case .document: return .orange
+        case .other: return .gray
+        }
     }
 }
 

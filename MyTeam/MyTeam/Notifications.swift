@@ -5,4 +5,5 @@ import Foundation
 extension Notification.Name {
     static let agentDragBegan = Notification.Name("agentDragBegan")
     static let agentDragEnded = Notification.Name("agentDragEnded")
+    static let characterEmote = Notification.Name("characterEmote")
 }

@@ -118,6 +118,17 @@ class SpeechManager: NSObject, ObservableObject, @unchecked Sendable, SFSpeechRe
         self.isStarting = false
     }
     
+    // MARK: - 이모티콘 및 특수문자 제거 필터 (TTS 전용)
+    private func sanitizeForSpeech(_ text: String) -> String {
+        let pattern = "[^가-힣a-zA-Z0-9\\s\\.,?!~^]"
+        if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
+            let range = NSRange(text.startIndex..., in: text)
+            let result = regex.stringByReplacingMatches(in: text, options: [], range: range, withTemplate: "")
+            return result.replacingOccurrences(of: " +", with: " ", options: .regularExpression).trimmingCharacters(in: .whitespaces)
+        }
+        return text
+    }
+    
     // MARK: - 엔진 셋업
     private func startAudioEngine() throws {
         // 1. 기존 잔재 완전 정리
@@ -204,6 +215,7 @@ class SpeechManager: NSObject, ObservableObject, @unchecked Sendable, SFSpeechRe
     // useAnimalTTS = true  → 동물의 숲 스타일 (AnimalTTSManager)
     // useAnimalTTS = false → Apple 기본 TTS (개성 있는 한국어 목소리)
     func speak(text: String, agentID: String? = nil, characterName: String? = nil, voiceIdentifier: String? = nil) {
+        let cleanText = sanitizeForSpeech(text)
         let useAnimal = UserDefaults.standard.object(forKey: "useAnimalTTS") as? Bool ?? false
         
         // 발화 에이전트 ID 기록
@@ -212,9 +224,9 @@ class SpeechManager: NSObject, ObservableObject, @unchecked Sendable, SFSpeechRe
         if useAnimal && AnimalTTSManager.shared.isPhonemeReady {
             DispatchQueue.main.async { self.isSpeaking = true }
             let voice: AnimalTTSManager.Voice = characterName.map { .character($0) } ?? .default
-            AnimalTTSManager.shared.speak(text, voice: voice)
+            AnimalTTSManager.shared.speak(cleanText, voice: voice)
             let profile = AnimalTTSManager.profile(for: characterName ?? "")
-            let estimatedDuration = Double(max(text.count, 1)) * profile.interval + 0.3
+            let estimatedDuration = Double(max(cleanText.count, 1)) * profile.interval + 0.3
             let capturedAgentID = agentID
             DispatchQueue.main.asyncAfter(deadline: .now() + estimatedDuration) {
                 self.isSpeaking = false
@@ -226,7 +238,7 @@ class SpeechManager: NSObject, ObservableObject, @unchecked Sendable, SFSpeechRe
         }
 
         // Apple TTS — 캐릭터별 전용 목소리 + 피치/속도 적용
-        let utterance = AVSpeechUtterance(string: text)
+        let utterance = AVSpeechUtterance(string: cleanText)
 
         if let v = voiceIdentifier {
             utterance.voice = AVSpeechSynthesisVoice(identifier: v)

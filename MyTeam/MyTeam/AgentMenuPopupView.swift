@@ -5,15 +5,13 @@ struct AgentMenuPopupView: View {
     var isShowing: Bool
     var popupOnLeft: Bool = false // true면 왼쪽에 표시 (4번째 에이전트용)
     var onChat: () -> Void
-    var onVoice: () -> Void
     var onSettings: () -> Void
     var onSwap: () -> Void
 
     var body: some View {
         if isShowing {
             VStack(alignment: .leading, spacing: 0) {
-                MenuButton(icon: "message", text: "채팅", action: onChat)
-                MenuButton(icon: "mic", text: "음성", action: onVoice)
+                MenuButton(icon: "message", text: "대화", action: onChat)
                 Divider().background(Color.white.opacity(0.1)).padding(.horizontal, 8)
                 MenuButton(icon: "slider.horizontal.3", text: "추가 설정", action: onSettings)
                 MenuButton(icon: "arrow.triangle.2.circlepath", text: "교체", action: onSwap)

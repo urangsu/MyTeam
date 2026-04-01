@@ -138,11 +138,11 @@ class TeamOrchestrator {
         lastSpeaker: String?
     ) async -> String?  // agentID or nil(종료)
 
-    /// 팀 대화 실행: 사용자 메시지 → 자동 턴 진행 → 자연스러운 종료
+    /// 팀 대화 실행: 사용자 메시지 → 시스템 팀장이 작업 지시서(Work Order) 생성 → 에이전트 순차 수행
     func runTeamDiscussion(
         userMessage: String,
         roomID: UUID,
-        maxTurns: Int = 6
+        maxTurns: Int = 3
     ) async
 
     /// 에이전트별 역할 프롬프트 (전략가=리드/종합, 디자이너=시각적제안, 보안=리스크지적)
@@ -244,6 +244,22 @@ struct ConversationMemory {
 - [ ] `AgentOrchestrator.swift` — 자연어→Workflow 변환, 크로스체크, [DELEGATE] 파싱
 - [ ] `WorkflowView.swift` — 타임라인 UI + 실시간 토의 표시
 - [ ] 작업 완료 알림: 최소화 패널 위글 + 뱃지
+
+---
+
+## 📌 나중에 다시 고민할 과제 (Deferred / Recorded)
+
+### 1. 개별 에이전트 공간 확장 (꼬리 짤림 해결)
+- **현상**: 에이전트 꼬리 등이 창 크기(100x140)에 비해 커서 9:16 영상 삽입 시 짤리는 문제.
+- **아이디어**: 가로 폭을 130~140px로 확장하여 여백 확보 검토. (팀 테이블 전체 너비 증가 동반됨)
+
+### 2. 멀티에이전트 유기적 대화 엔진 (TeamOrchestrator)
+- **현상**: 현재 빌드 에러 및 로직 정교화 필요로 인해 잠시 중단.
+- **기록된 에러**:
+  - `nil' requires a contextual type`
+  - `Cannot find type 'AgentConfig' in scope`
+  - `Cannot infer contextual base in reference to member 'whitespacesAndNewlines' / 'regularExpression'`
+- **목표**: AutoGen SelectorGroupChat + CrewAI Scoped Memory 패턴 도입하여 병렬 독백이 아닌 유기적 토론 구현.
 
 ---
 

@@ -712,8 +712,7 @@ struct AgentChatView: View {
         manager.addChatLog(agentID: targetID, agentName: "나", text: text, isUser: true, roomID: roomID)
 
         Task {
-            let history = manager.rooms.first(where: { $0.id == roomID })?
-                .messages.map { "\($0.isUser ? "User" : $0.agentName): \($0.text)" } ?? []
+            let history = manager.rooms.first(where: { $0.id == roomID })?.messages ?? []
 
             do {
                 let (responseText, _) = try await AIService.shared.getResponse(

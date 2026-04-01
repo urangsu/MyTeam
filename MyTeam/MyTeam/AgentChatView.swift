@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 // JiggleEffect, IMMessageBubble, DateSeparator, ChatBubble → ChatComponents.swift 로 분리됨
 
@@ -17,6 +18,10 @@ struct AgentChatView: View {
     @State private var activeAgentID: String? = nil
     @State private var agentRoomID: UUID? = nil
     @State private var isSidebarCollapsed: Bool = false
+
+    // 첨부파일
+    @State private var pendingAttachments: [ChatAttachment] = []
+    @State private var isTargetedForDrop: Bool = false
 
     // 삭제/편집 모드
     @State private var isEditingProjects: Bool = false
@@ -589,8 +594,10 @@ struct AgentChatView: View {
                     .padding(.horizontal, 12)
                     .padding(.bottom, 8)
                 }
-                .onChange(of: chatHistory.count) { _, _ in
-                    withAnimation { proxy.scrollTo("bottom_anchor", anchor: .bottom) }
+                .onChange(of: chatHistory.count) { oldCount, newCount in
+                    if newCount > oldCount {
+                        withAnimation { proxy.scrollTo("bottom_anchor", anchor: .bottom) }
+                    }
                 }
                 .onChange(of: speechManager.recognizedText) { _, newText in
                     if speechManager.isRecording {
@@ -608,7 +615,7 @@ struct AgentChatView: View {
 
     @ViewBuilder
     private func deletableMessageBubble(log: AgentWindowManager.ChatLog) -> some View {
-        ZStack(alignment: log.isUser ? .topTrailing : .topLeading) {
+        ZStack(alignment: .topTrailing) {
             IMMessageBubble(
                 text: log.text,
                 isUser: log.isUser,
@@ -619,9 +626,9 @@ struct AgentChatView: View {
                 timestamp: log.timestamp
             )
             .jiggle(isEditingMessages)
-            .padding(log.isUser ? .trailing : .leading, isEditingMessages ? 8 : 0)
+            .padding(.trailing, isEditingMessages ? 12 : 0)
 
-            // 삭제 버튼
+            // 삭제 버튼 (항상 우측)
             if isEditingMessages {
                 let roomID = agentRoomID ?? manager.currentRoomID
                 Button(action: {
@@ -637,7 +644,7 @@ struct AgentChatView: View {
                         .background(Circle().fill(Color.white).frame(width: 12, height: 12))
                 }
                 .buttonStyle(PlainButtonStyle())
-                .offset(x: log.isUser ? 4 : -4, y: -4)
+                .offset(x: -4, y: 0)
                 .transition(.scale.combined(with: .opacity))
             }
         }
@@ -646,30 +653,118 @@ struct AgentChatView: View {
 
     // MARK: - 입력창
     private var inputFieldView: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 10) {
-                TextField("\(currentAgent.name)에게 메시지...", text: $inputText)
-                    .textFieldStyle(PlainTextFieldStyle())
-                    .foregroundColor(textColor)
-                    .font(.system(size: 14))
+        VStack(spacing: 0) {
+            // 첨부파일 미리보기
+            if !pendingAttachments.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(pendingAttachments) { attachment in
+                            AttachmentChip(attachment: attachment) {
+                                pendingAttachments.removeAll { $0.id == attachment.id }
+                            }
+                        }
+                    }
                     .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(RoundedRectangle(cornerRadius: 20).fill(inputBgColor))
-                    .onSubmit { sendMessage() }
-
-                Button(action: sendMessage) {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 28))
-                        .foregroundColor(inputText.isEmpty ? subTextColor : currentAgent.color)
+                    .padding(.vertical, 6)
                 }
-                .buttonStyle(PlainButtonStyle())
-                .disabled(inputText.isEmpty)
+                .background(inputBgColor.opacity(0.5))
+                Divider()
             }
-            if let errorMsg = speechManager.sttError {
-                Text(errorMsg).font(.system(size: 10)).foregroundColor(.red)
+
+            VStack(spacing: 6) {
+                HStack(spacing: 8) {
+                    // 파일 첨부 버튼
+                    Button(action: openFilePicker) {
+                        Image(systemName: "paperclip")
+                            .font(.system(size: 16))
+                            .foregroundColor(subTextColor)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+
+                    TextField("\(currentAgent.name)에게 메시지...", text: $inputText)
+                        .textFieldStyle(PlainTextFieldStyle())
+                        .foregroundColor(textColor)
+                        .font(.system(size: 14))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(isTargetedForDrop ? currentAgent.color.opacity(0.15) : inputBgColor)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 20)
+                                        .stroke(isTargetedForDrop ? currentAgent.color : Color.clear, lineWidth: 1.5)
+                                )
+                        )
+                        .onSubmit { sendMessage() }
+
+                    Button(action: sendMessage) {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 28))
+                            .foregroundColor((inputText.isEmpty && pendingAttachments.isEmpty) ? subTextColor : currentAgent.color)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .disabled(inputText.isEmpty && pendingAttachments.isEmpty)
+                }
+                if let errorMsg = speechManager.sttError {
+                    Text(errorMsg).font(.system(size: 10)).foregroundColor(.red)
+                }
+            }
+            .padding(.horizontal, 14).padding(.vertical, 12).background(bgColor)
+        }
+        // 드래그&드롭
+        .onDrop(of: [.fileURL], isTargeted: $isTargetedForDrop) { providers in
+            for provider in providers {
+                _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                    guard let url = url else { return }
+                    Task { @MainActor in
+                        if let attachment = await loadAttachment(from: url) {
+                            pendingAttachments.append(attachment)
+                        }
+                    }
+                }
+            }
+            return true
+        }
+    }
+
+    // MARK: - 파일 첨부 헬퍼
+
+    private func openFilePicker() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.text, .pdf, .image, .plainText, .data]
+        panel.begin { response in
+            guard response == .OK else { return }
+            Task {
+                for url in panel.urls {
+                    if let attachment = await loadAttachment(from: url) {
+                        await MainActor.run {
+                            pendingAttachments.append(attachment)
+                        }
+                    }
+                }
             }
         }
-        .padding(.horizontal, 14).padding(.vertical, 12).background(bgColor)
+    }
+
+    private func loadAttachment(from url: URL) async -> ChatAttachment? {
+        guard url.startAccessingSecurityScopedResource() else { return nil }
+        defer { url.stopAccessingSecurityScopedResource() }
+
+        let fileName = url.lastPathComponent
+        let type = ChatAttachment.AttachmentType.from(fileName: fileName)
+        let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        let textContent = FileContentExtractor.extractText(from: url)
+
+        return ChatAttachment(
+            fileName: fileName,
+            fileSize: fileSize,
+            type: type,
+            textContent: textContent,
+            localPath: url.path
+        )
     }
 
     // MARK: - 프로필/상태
@@ -702,33 +797,64 @@ struct AgentChatView: View {
 
     // MARK: - 메시지 전송
     private func sendMessage() {
-        guard !inputText.isEmpty else { return }
+        guard !inputText.isEmpty || !pendingAttachments.isEmpty else { return }
         isEditingMessages = false
+
         let text = inputText
+        let attachments = pendingAttachments
         let targetID = activeAgentID ?? config.id
         let roomID = agentRoomID ?? manager.currentRoomID
-        inputText = ""
 
-        manager.addChatLog(agentID: targetID, agentName: "나", text: text, isUser: true, roomID: roomID)
+        inputText = ""
+        pendingAttachments = []
+
+        // 첨부파일 컨텍스트를 메시지에 포함
+        let attachmentContext = ConversationMemory.buildAttachmentContext(from: attachments)
+        let fullText = attachmentContext.isEmpty ? text : text + attachmentContext
+
+        manager.addChatLog(
+            agentID: targetID, agentName: "나",
+            text: text.isEmpty ? "[첨부파일 \(attachments.count)개]" : text,
+            isUser: true, roomID: roomID
+        )
 
         Task {
-            let history = manager.rooms.first(where: { $0.id == roomID })?.messages ?? []
-
-            do {
-                let (responseText, _) = try await AIService.shared.getResponse(
-                    text: text, agentID: targetID, chatHistory: history
+            if targetID == "team_all" {
+                // ── 팀 채팅: TeamOrchestrator (LLM Selector 기반 유기적 토의) ──
+                // activeAgents(화면의 4명)만 참여
+                await TeamOrchestrator.shared.runTeamDiscussion(
+                    userMessage: fullText,
+                    roomID: roomID ?? UUID(),
+                    manager: manager
                 )
-                let agentName = manager.activeAgents.first(where: { $0.id == targetID })?.name ?? "에이전트"
-                await MainActor.run {
-                    manager.addChatLog(agentID: targetID, agentName: agentName, text: responseText, isUser: false, roomID: roomID)
-                    if !manager.isSilentMode {
-                        manager.setAgentSpeaking(agentID: targetID, text: responseText)
-                        SpeechManager.shared.speak(text: responseText, agentID: targetID, characterName: agentName)
+            } else {
+                // ── 개별 채팅: 해당 에이전트 단독 응답 ──
+                var history = manager.rooms.first(where: { $0.id == roomID })?.messages ?? []
+                
+                // 과거 페르소나 오염 방지를 위한 엄격한 슬라이딩 윈도우 한도 적용 (최신 5개)
+                history = Array(history.suffix(5))
+                
+                // (선택) 여전히 30개 초과 요약 로직이 있다면 태우되, 보통 5개면 안 탐
+                history = await ConversationMemory.compactHistory(messages: history)
+
+                do {
+                    let (responseText, _) = try await AIService.shared.getResponse(
+                        text: fullText, agentID: targetID, chatHistory: history
+                    )
+                    let agentName = manager.activeAgents.first(where: { $0.id == targetID })?.name
+                        ?? manager.allAvailableAgents.first(where: { $0.id == targetID })?.name
+                        ?? "에이전트"
+                    await MainActor.run {
+                        manager.addChatLog(agentID: targetID, agentName: agentName, text: responseText, isUser: false, roomID: roomID)
+                        if !manager.isSilentMode {
+                            manager.setAgentSpeaking(agentID: targetID, text: responseText)
+                            SpeechManager.shared.speak(text: responseText, agentID: targetID, characterName: agentName)
+                        }
                     }
-                }
-            } catch {
-                await MainActor.run {
-                    manager.addChatLog(agentID: targetID, agentName: "시스템", text: error.localizedDescription, isUser: false, roomID: roomID)
+                } catch {
+                    await MainActor.run {
+                        manager.addChatLog(agentID: targetID, agentName: "시스템", text: error.localizedDescription, isUser: false, roomID: roomID)
+                    }
                 }
             }
         }

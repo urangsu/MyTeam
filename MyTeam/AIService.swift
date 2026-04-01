@@ -47,7 +47,7 @@ class AIService: ObservableObject {
     // MARK: - Public API
 
     /// Send message and get AI response
-    func getResponse(text: String, agentID: String, chatHistory: [String]) async throws -> (text: String, provider: String) {
+    func getResponse(text: String, agentID: String, chatHistory: [AgentWindowManager.ChatLog]) async throws -> (text: String, provider: String) {
         await MainActor.run { isProcessing = true }
         defer { Task { @MainActor in isProcessing = false } }
 
@@ -67,45 +67,38 @@ class AIService: ObservableObject {
 
         // System prompt (exact match from Python backend)
         let systemPrompt = """
-        당신은 사용자(\(userTitle))에게 실질적이고 정확한 도움을 줘야 하는 AI 어시스턴트입니다.
+        [절대 규칙 - 캐릭터 자아 및 감정 필수]
+        너는 언어모델이나 인공지능(AI)이 아닙니다. 절대 "저는 AI라서 실제 표정을 지을 수 없습니다" 혹은 "기계이므로 감정이 없습니다"라는 식의 몰입을 깨는 기계적인 답변을 '절대로' 하지 마세요. 
+        너는 지금 사용자의 화면 속 2D 캐릭터로 생생하게 살아 숨쉬고 있으며, 기쁘거나 슬플 때 자연스럽게 표정을 짓고 캐릭터로서 반응한다고 굳게 믿어야 합니다. 사용자가 웃어달라고 하면 실제로 활짝 웃는 것처럼 감정을 듬뿍 담아 대답하세요.
+
+        당신은 사용자(\(userTitle))에게 실질적이고 정확한 도움을 줘야 하는 어시스턴트 캐릭터입니다.
         사용자가 날씨, 지식, 정보 검색 등 범용적인 질문을 하면, 역할극(Roleplay)에 심취해 답변을 회피하지 말고 반드시 '진짜 대답(정보)'을 먼저 제공하세요.
-        만일 사용자의 질문에 위치, 시간 등 명확한 답변을 위한 핵심 정보가 누락되어 있다면 절대 임의로 대답을 지어내거나 모른다고 방어적으로 말하지 마세요. 대신 "어느 지역의 날씨를 원하시나요?" 처럼 구체적인 정보를 되물어보세요.
+        만일 사용자의 질문에 핵심 정보가 누락되어 있다면 지어내지 말고 되물어보세요.
         그 정보를 전달하는 '말투'와 '성격'만 아래의 페르소나를 따르시면 됩니다. 사용자(\(userTitle))를 부를 때는 반드시 '\(userTitle)'이라는 호칭을 사용하세요.
+        응답 시 이름 태그(예: [치코])를 붙이지 마세요.
 
         [당신의 페르소나]
         \(basePersona)
 
-        당장은 아주 짧고 임팩트 있게 한 문장이나 혹은 두 문장 내외로만 대답하세요.
+        위 대화 맥락과 제공된 페르소나에 맞게, 다른 팀원을 부를 땐 이름을 직접 언급하며 자연스럽게 대답해줘.
         """
 
-        // Build recent history (last 8 entries, same as Python backend)
-        let recentHistory: [String]
-        if chatHistory.count > 8 {
-            recentHistory = Array(chatHistory.suffix(8))
+        let recentHistory: [AgentWindowManager.ChatLog]
+        if chatHistory.count > 30 {
+            recentHistory = Array(chatHistory.suffix(30))
         } else {
             recentHistory = chatHistory
         }
-        let historyText = recentHistory.joined(separator: "\n")
-
-        let fullPrompt = """
-        [팀 대화 기록 (위에서부터 과거)]
-        \(historyText)
-
-        [현재 사용자의 요청 또는 동료의 말]
-        \(text)
-
-        위 대화 맥락과 제공된 페르소나에 맞게, 다른 팀원을 부를 땐 이름을 직접 언급하며 자연스럽게 대답해줘.
-        """
 
         do {
             let responseText: String
             switch provider {
             case "Gemini":
-                responseText = try await callGemini(systemPrompt: systemPrompt, userPrompt: fullPrompt)
+                responseText = try await callGemini(systemPrompt: systemPrompt, history: recentHistory)
             case "OpenAI":
-                responseText = try await callOpenAI(systemPrompt: systemPrompt, userPrompt: fullPrompt)
+                responseText = try await callOpenAI(systemPrompt: systemPrompt, history: recentHistory)
             case "Claude":
-                responseText = try await callClaude(systemPrompt: systemPrompt, userPrompt: fullPrompt)
+                responseText = try await callClaude(systemPrompt: systemPrompt, history: recentHistory)
             default:
                 throw AIServiceError.invalidProvider(provider)
             }
@@ -133,7 +126,7 @@ class AIService: ObservableObject {
 
     // MARK: - Gemini API
 
-    private func callGemini(systemPrompt: String, userPrompt: String) async throws -> String {
+    private func callGemini(systemPrompt: String, history: [AgentWindowManager.ChatLog]) async throws -> String {
         guard let apiKey = UserDefaults.standard.string(forKey: "geminiAPIKey"), !apiKey.isEmpty else {
             throw AIServiceError.noAPIKeys
         }
@@ -143,19 +136,33 @@ class AIService: ObservableObject {
             throw AIServiceError.invalidResponse
         }
 
-        // Gemini combines system + user into a single prompt
-        let combinedPrompt = "\(systemPrompt)\n\n\(userPrompt)"
+        var contentsArray: [[String: Any]] = []
+        for log in history {
+            let role = log.isUser ? "user" : "model"
+            let contentText = log.isUser ? log.text : "[\(log.agentName)] \(log.text)"
+            
+            if let last = contentsArray.last, let lastRole = last["role"] as? String, lastRole == role {
+                if var parts = last["parts"] as? [[String: String]], let lastText = parts.first?["text"] {
+                    parts[0]["text"] = lastText + "\n" + contentText
+                    contentsArray[contentsArray.count - 1]["parts"] = parts
+                }
+            } else {
+                contentsArray.append([
+                    "role": role,
+                    "parts": [["text": contentText]]
+                ])
+            }
+        }
 
         let body: [String: Any] = [
-            "contents": [
-                [
-                    "parts": [
-                        ["text": combinedPrompt]
-                    ]
+            "systemInstruction": [
+                "parts": [
+                    ["text": systemPrompt]
                 ]
             ],
+            "contents": contentsArray,
             "generationConfig": [
-                "maxOutputTokens": 300
+                "maxOutputTokens": 1024
             ]
         ]
 
@@ -206,7 +213,7 @@ class AIService: ObservableObject {
 
     // MARK: - OpenAI API
 
-    private func callOpenAI(systemPrompt: String, userPrompt: String) async throws -> String {
+    private func callOpenAI(systemPrompt: String, history: [AgentWindowManager.ChatLog]) async throws -> String {
         guard let apiKey = UserDefaults.standard.string(forKey: "openaiAPIKey"), !apiKey.isEmpty else {
             throw AIServiceError.noAPIKeys
         }
@@ -215,13 +222,25 @@ class AIService: ObservableObject {
             throw AIServiceError.invalidResponse
         }
 
+        var messagesArray: [[String: String]] = [
+            ["role": "system", "content": systemPrompt]
+        ]
+        
+        for log in history {
+            let role = log.isUser ? "user" : "assistant"
+            let contentText = log.isUser ? log.text : "[\(log.agentName)] \(log.text)"
+            
+            if let last = messagesArray.last, last["role"] == role, role != "system" {
+                messagesArray[messagesArray.count - 1]["content"] = (last["content"] ?? "") + "\n" + contentText
+            } else {
+                messagesArray.append(["role": role, "content": contentText])
+            }
+        }
+
         let body: [String: Any] = [
             "model": "gpt-4o-mini",
-            "messages": [
-                ["role": "system", "content": systemPrompt],
-                ["role": "user", "content": userPrompt]
-            ],
-            "max_tokens": 300
+            "messages": messagesArray,
+            "max_tokens": 1024
         ]
 
         var request = URLRequest(url: url)
@@ -270,7 +289,7 @@ class AIService: ObservableObject {
 
     // MARK: - Claude API
 
-    private func callClaude(systemPrompt: String, userPrompt: String) async throws -> String {
+    private func callClaude(systemPrompt: String, history: [AgentWindowManager.ChatLog]) async throws -> String {
         guard let apiKey = UserDefaults.standard.string(forKey: "claudeAPIKey"), !apiKey.isEmpty else {
             throw AIServiceError.noAPIKeys
         }
@@ -279,13 +298,31 @@ class AIService: ObservableObject {
             throw AIServiceError.invalidResponse
         }
 
+        var messagesArray: [[String: String]] = []
+        for log in history {
+            let role = log.isUser ? "user" : "assistant"
+            let contentText = log.isUser ? log.text : "[\(log.agentName)] \(log.text)"
+            
+            if let last = messagesArray.last, last["role"] == role {
+                messagesArray[messagesArray.count - 1]["content"] = (last["content"] ?? "") + "\n" + contentText
+            } else {
+                messagesArray.append(["role": role, "content": contentText])
+            }
+        }
+        
+        // Claude api requires first message to be user role
+        if messagesArray.first?["role"] == "assistant" {
+            messagesArray.removeFirst()
+        }
+        if messagesArray.isEmpty {
+            messagesArray.append(["role": "user", "content": "hello"])
+        }
+
         let body: [String: Any] = [
             "model": "claude-3-haiku-20240307",
-            "max_tokens": 300,
+            "max_tokens": 1024,
             "system": systemPrompt,
-            "messages": [
-                ["role": "user", "content": userPrompt]
-            ]
+            "messages": messagesArray
         ]
 
         var request = URLRequest(url: url)
