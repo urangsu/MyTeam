@@ -75,7 +75,7 @@ struct AgentSettingsView: View {
                     // ── 직업 선택 프리셋 ──
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text("직업 프리셋")
+                            Text("보조 업무 프리셋")
                                 .font(.system(size: 13, weight: .bold))
                                 .foregroundColor(textColor)
                             Spacer()
@@ -94,7 +94,7 @@ struct AgentSettingsView: View {
                             .buttonStyle(PlainButtonStyle())
                         }
 
-                        Text("직업을 선택하면 기본 프롬프트가 자동 적용됩니다.")
+                        Text("주어진 성격 외에, 추가로 수행할 보조 직무를 선택하세요.")
                             .font(.system(size: 10))
                             .foregroundColor(subTextColor.opacity(0.7))
 
@@ -133,10 +133,10 @@ struct AgentSettingsView: View {
 
                     // ── 세부 성격 설정 (커스텀) ──
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("세부 성격 설정")
+                        Text("보조 업무 설정 (또는 추가 직무 부여)")
                             .font(.system(size: 13, weight: .bold))
                             .foregroundColor(textColor)
-                        Text("에이전트에게 특별히 지시할 성격이나 말투를 적어주세요.\n프리셋 위에 추가로 적용됩니다.")
+                        Text("당신의 캐릭터가 가진 기본 직업(본캐) 외에, 추가로 수행해야 할 두 번째 직무(부캐)를 입력해 주세요.\n캐릭터의 고유한 성격은 그대로 유지됩니다.")
                             .font(.system(size: 11))
                             .foregroundColor(subTextColor)
                             .fixedSize(horizontal: false, vertical: true)
@@ -160,7 +160,7 @@ struct AgentSettingsView: View {
                     // 저장 버튼
                     Button(action: {
                         self.customPersona = self.inputText
-                        print("[\(config.name)] 직업: \(selectedJob), 커스텀 성격 저장 완료")
+                        print("[\(config.name)] 보조업무: \(selectedJob), 커스텀 설정 저장 완료")
                         onClose()
                     }) {
                         Text("저장하기")

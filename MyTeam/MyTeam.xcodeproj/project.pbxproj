@@ -17,7 +17,7 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		9079F7EF2F6EDE4900B4CE24 /* MyTeam */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = MyTeam;
+			path = .;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */

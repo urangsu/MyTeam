@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 // MARK: - TeamStatusView
 // 고도화: 팀 전체 채팅방(Logs) + 사운드/무음 모드 토글 + 다크모드
@@ -281,7 +282,7 @@ struct TeamStatusView: View {
                                     VStack(alignment: log.isUser ? .trailing : .leading, spacing: 2) {
                                         Text(log.isUser ? "나" : log.agentName)
                                             .font(.system(size: 9, weight: .bold))
-                                            .foregroundColor(log.isUser ? .blue : .orange)
+                                            .foregroundColor(log.isUser ? .blue : (manager.allAvailableAgents.first(where: { $0.id == log.agentID })?.color ?? .orange))
                                         Text(log.text)
                                             .font(.system(size: 12))
                                             .foregroundColor(log.isUser ? .white : textColor.opacity(0.9))
@@ -308,57 +309,121 @@ struct TeamStatusView: View {
                     }
                 }
 
-                // ── 하단: 입력창 추가 (팀 채팅용) ──
+                // ── 하단: 입력창 (팀 채팅 + 첨부파일) ──
                 Divider().background(textColor.opacity(0.08))
+
+                // 첨부파일 미리보기
+                if !pendingAttachments.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(pendingAttachments) { attachment in
+                                AttachmentChip(attachment: attachment) {
+                                    pendingAttachments.removeAll { $0.id == attachment.id }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 10).padding(.vertical, 4)
+                    }
+                }
+
                 HStack(spacing: 8) {
+                    Button(action: openTeamFilePicker) {
+                        Image(systemName: "paperclip")
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+
                     TextField("팀원들에게 메시지...", text: $inputText)
                         .textFieldStyle(PlainTextFieldStyle())
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)
-                        .background(RoundedRectangle(cornerRadius: 14).fill(textColor.opacity(0.05)))
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(isTargetedForDrop ? Color.blue.opacity(0.1) : textColor.opacity(0.05))
+                                .overlay(RoundedRectangle(cornerRadius: 14).stroke(isTargetedForDrop ? Color.blue : Color.clear, lineWidth: 1))
+                        )
                         .onSubmit { sendTeamMessage() }
 
                     Button(action: sendTeamMessage) {
                         Image(systemName: "paperplane.fill")
-                            .foregroundColor(inputText.isEmpty ? .gray.opacity(0.4) : .blue)
+                            .foregroundColor((inputText.isEmpty && pendingAttachments.isEmpty) ? .gray.opacity(0.4) : .blue)
                     }
                     .buttonStyle(PlainButtonStyle())
-                    .disabled(inputText.isEmpty)
+                    .disabled(inputText.isEmpty && pendingAttachments.isEmpty)
                 }
                 .padding(10)
+                .onDrop(of: [.fileURL], isTargeted: $isTargetedForDrop) { providers in
+                    for provider in providers {
+                        _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                            guard let url = url else { return }
+                            Task { @MainActor in
+                                if let a = await loadTeamAttachment(from: url) { pendingAttachments.append(a) }
+                            }
+                        }
+                    }
+                    return true
+                }
             }
         }
     }
 
     @State private var inputText: String = ""
-    private func sendTeamMessage() {
-        guard !inputText.isEmpty else { return }
-        let text = inputText
-        inputText = ""
+    @State private var pendingAttachments: [ChatAttachment] = []
+    @State private var isTargetedForDrop: Bool = false
 
-        // 내 메시지 기록
-        manager.addChatLog(agentID: "user", agentName: "나", text: text, isUser: true)
-
-        // 랜덤 에이전트가 응답 (팀 채팅)
-        let agents = manager.activeAgents
-        let randomAgent = agents.randomElement() ?? agents[0]
-
-        Task {
-            let history = manager.rooms.first(where: { $0.id == manager.currentRoomID })?.messages ?? []
-
-            do {
-                let (responseText, _) = try await AIService.shared.getResponse(
-                    text: text, agentID: randomAgent.id, chatHistory: history
-                )
-                await MainActor.run {
-                    manager.addChatLog(agentID: randomAgent.id, agentName: randomAgent.name, text: responseText, isUser: false)
-                    SpeechManager.shared.speak(text: responseText)
-                }
-            } catch {
-                await MainActor.run {
-                    manager.addChatLog(agentID: randomAgent.id, agentName: "시스템", text: error.localizedDescription, isUser: false)
+    private func openTeamFilePicker() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.begin { response in
+            guard response == .OK else { return }
+            Task {
+                for url in panel.urls {
+                    if let a = await loadTeamAttachment(from: url) {
+                        await MainActor.run { pendingAttachments.append(a) }
+                    }
                 }
             }
+        }
+    }
+
+    private func loadTeamAttachment(from url: URL) async -> ChatAttachment? {
+        guard url.startAccessingSecurityScopedResource() else { return nil }
+        defer { url.stopAccessingSecurityScopedResource() }
+        let fileName = url.lastPathComponent
+        let type = ChatAttachment.AttachmentType.from(fileName: fileName)
+        let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+        let textContent = FileContentExtractor.extractText(from: url)
+        return ChatAttachment(fileName: fileName, fileSize: fileSize, type: type, textContent: textContent, localPath: url.path)
+    }
+
+    private func sendTeamMessage() {
+        guard !inputText.isEmpty || !pendingAttachments.isEmpty else { return }
+        let text = inputText
+        let attachments = pendingAttachments
+        inputText = ""
+        pendingAttachments = []
+
+        // 첨부파일 컨텍스트 포함
+        let attachmentContext = ConversationMemory.buildAttachmentContext(from: attachments)
+        let fullText = attachmentContext.isEmpty ? text : text + attachmentContext
+
+        manager.addChatLog(
+            agentID: "user", agentName: "나",
+            text: text.isEmpty ? "[첨부파일 \(attachments.count)개]" : text,
+            isUser: true
+        )
+
+        // TeamOrchestrator: 화면의 activeAgents에서 LLM Selector가 화자 선택
+        Task {
+            guard let roomID = manager.currentRoomID else { return }
+            await TeamOrchestrator.shared.runTeamDiscussion(
+                userMessage: fullText,
+                roomID: roomID,
+                manager: manager
+            )
         }
     }
 

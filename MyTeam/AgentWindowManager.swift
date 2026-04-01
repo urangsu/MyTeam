@@ -64,6 +64,21 @@ class AgentWindowManager: ObservableObject {
     /// 에이전트별 현재 감정 상태 (agentID → AnimationState)
     @Published var agentEmotions: [String: AnimationState] = [:]
     
+    // ── 지능형 기억 보호 (Key Fact Buffer) ──
+    @AppStorage("keyFacts") private var keyFactsData: Data = Data()
+    @Published var keyFacts: [String] = [] {
+        didSet {
+            if let data = try? JSONEncoder().encode(keyFacts) {
+                keyFactsData = data
+            }
+        }
+    }
+    
+    var persistentContext: String {
+        guard !keyFacts.isEmpty else { return "" }
+        return "\n[기억해야 할 핵심 정보]\n" + keyFacts.map { "- \($0)" }.joined(separator: "\n") + "\n"
+    }
+    
     // 팀 테이블 창 (하나)
     private var teamPanel: FloatingPanel?
 
@@ -93,13 +108,19 @@ class AgentWindowManager: ObservableObject {
 
         // 채팅 데이터 복원
         loadRooms()
+        
         if rooms.isEmpty {
             let defaultRoom = ChatRoom(id: UUID(), name: "기본 프로젝트",
                 messages: [], agentIDs: ["team_all"], createdAt: Date())
             rooms.append(defaultRoom)
             currentRoomID = defaultRoom.id
-        } else if currentRoomID == nil {
+        } else {
             currentRoomID = rooms.first?.id
+        }
+        
+        // Key Facts 복구
+        if let decoded = try? JSONDecoder().decode([String].self, from: keyFactsData) {
+            keyFacts = decoded
         }
 
         // 잠금 해제 / 잠자기 해제 감지
@@ -116,6 +137,51 @@ class AgentWindowManager: ObservableObject {
     }
 
     func updateInteractionTime() { lastInteractionTime = Date() }
+
+    // MARK: - 윈도우 정돈 기능
+    func arrangeWindows() {
+        guard let screen = NSScreen.main else { return }
+        let visibleFrame = screen.visibleFrame
+        let padding: CGFloat = 20
+        
+        // 1. 메인 에이전트 창 (하단 중앙, Dock 위)
+        if let teamPanel = teamPanel {
+            let panelFrame = teamPanel.frame
+            let x = visibleFrame.midX - (panelFrame.width / 2)
+            let y = visibleFrame.minY + padding
+            teamPanel.setFrameOrigin(NSPoint(x: x, y: y))
+        }
+        
+        // 2. 협업 상태창 및 개별 대화창 (우측 가장자리에 차곡차곡 정렬)
+        var currentY = visibleFrame.maxY - padding
+        let rightX = visibleFrame.maxX - padding
+        let spacing: CGFloat = 16
+        
+        // 협업창이 안 켜져있으면 먼저 켬
+        if statusPanel == nil || !(statusPanel!.isVisible) {
+            showStatusWindow()
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            // 협업 상태창 배치
+            if let statusPanel = self.statusPanel {
+                currentY -= statusPanel.frame.height
+                statusPanel.setFrameOrigin(NSPoint(x: rightX - statusPanel.frame.width, y: currentY))
+                currentY -= spacing
+            }
+            
+            // 개별 채팅창 배치
+            for panel in self.chatPanels.values where panel.isVisible {
+                currentY -= panel.frame.height
+                
+                // 공간 부족 시 약간 겹치게(Cascade) 처리
+                if currentY < visibleFrame.minY { currentY = visibleFrame.minY + padding }
+                
+                panel.setFrameOrigin(NSPoint(x: rightX - panel.frame.width, y: currentY))
+                currentY -= spacing
+            }
+        }
+    }
 
     // MARK: - 감정-스프라이트 상태 관리
 

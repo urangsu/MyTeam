@@ -72,16 +72,6 @@ struct TeamTableView: View {
                                 selectedAgentIndex = nil
                                 manager.showChat(for: agent)
                             },
-                            onVoice: {
-                                selectedAgentIndex = nil
-                                let fallback = ["안녕하세요!", "네, 불렀나요?", "무엇을 도와드릴까요?", "여기 있습니다!"]
-                                let text = CharacterDialogues.randomLine(for: agent.name, state: .greeting) ?? fallback.randomElement()!
-                                manager.addChatLog(agentID: agent.id, agentName: agent.name, text: text, isUser: false, isSystem: true)
-                                if !manager.isSilentMode {
-                                    manager.setAgentSpeaking(agentID: agent.id, text: text)
-                                    SpeechManager.shared.speak(text: text, agentID: agent.id, characterName: agent.name)
-                                }
-                            },
                             onSettings: {
                                 selectedAgentIndex = nil
                                 manager.showAgentSettingsWindow(for: agent)
@@ -92,9 +82,9 @@ struct TeamTableView: View {
                             }
                         )
                         // 1~3번째는 캐릭터의 오른쪽 바깥에, 4번째는 왼쪽 바깥으로 완전히 빠져나오게 배치
-                        .offset(x: index >= 3 ? -100 : 100, y: -95)
+                        .offset(x: index >= 3 ? -100 : 100, y: -80)
                         .zIndex(selectedAgentIndex == index ? 10 : 1),
-                        alignment: index >= 3 ? .topTrailing : .topLeading
+                        alignment: index >= 3 ? .bottomTrailing : .bottomLeading
                     )
                     .zIndex(selectedAgentIndex == index ? 10 : 1)
                 }
@@ -137,7 +127,7 @@ struct TeamTableView: View {
                         Label("팀원 교체하기", systemImage: "arrow.triangle.2.circlepath")
                     }
                     Button(action: { manager.showSettingsWindow() }) {
-                        Label("API 설정하기", systemImage: "gearshape.fill")
+                        Label("설정하기", systemImage: "gearshape.fill")
                     }
                     Divider()
                     Button(action: {
@@ -213,27 +203,34 @@ struct TeamTableView: View {
         let text = inputText
         inputText = ""
 
-        let agents = manager.activeAgents
-        let randomAgent = agents.randomElement() ?? agents[0]
+        let agentsCount = Int.random(in: 2...3)
+        let responders = manager.activeAgents.shuffled().prefix(agentsCount)
 
         manager.addChatLog(agentID: "user", agentName: "나", text: text, isUser: true)
 
         Task {
-            let history = manager.rooms.first(where: { $0.id == manager.currentRoomID })?.messages ?? []
-            do {
-                let (responseText, _) = try await AIService.shared.getResponse(
-                    text: text, agentID: randomAgent.id, chatHistory: history
-                )
-                await MainActor.run {
-                    manager.addChatLog(agentID: randomAgent.id, agentName: randomAgent.name, text: responseText, isUser: false)
-                    if !manager.isSilentMode {
-                        manager.setAgentSpeaking(agentID: randomAgent.id, text: responseText)
-                        SpeechManager.shared.speak(text: responseText, agentID: randomAgent.id, characterName: randomAgent.name)
+            for agent in responders {
+                let history = manager.rooms.first(where: { $0.id == manager.currentRoomID })?.messages ?? []
+                do {
+                    // text는 공백으로 넘겨도, history 맨 끝에 User 메시지가 있으므로 문맥 연결에 문제없음
+                    let (responseText, _) = try await AIService.shared.getResponse(
+                        text: text, agentID: agent.id, chatHistory: history
+                    )
+                    await MainActor.run {
+                        manager.addChatLog(agentID: agent.id, agentName: agent.name, text: responseText, isUser: false)
+                        if !manager.isSilentMode {
+                            manager.setAgentSpeaking(agentID: agent.id, text: responseText)
+                            SpeechManager.shared.speak(text: responseText, agentID: agent.id, characterName: agent.name)
+                        }
                     }
-                }
-            } catch {
-                await MainActor.run {
-                    manager.addChatLog(agentID: randomAgent.id, agentName: "시스템", text: error.localizedDescription, isUser: false)
+                    
+                    let delay = Double.random(in: 1.5...2.5)
+                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                } catch {
+                    await MainActor.run {
+                        manager.addChatLog(agentID: agent.id, agentName: "시스템", text: error.localizedDescription, isUser: false)
+                    }
+                    break
                 }
             }
         }

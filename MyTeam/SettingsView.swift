@@ -19,6 +19,7 @@ struct SettingsView: View {
     @AppStorage("teamNameColor") private var teamNameColor: String = "#FFFFFF"
     @AppStorage("useCloudVoice") private var useCloudVoice: Bool = false
     @AppStorage("useAnimalTTS") private var useAnimalTTS: Bool = true
+    @AppStorage("appLanguage") private var appLanguage: String = "한국어"
 
     // 검증을 위해 선택할 제공자 저장
     @AppStorage("validationProvider") private var validationProvider: String = "Gemini"
@@ -168,6 +169,23 @@ struct SettingsView: View {
                             .foregroundColor(textColor.opacity(0.4))
                     }
 
+                    // 언어 설정
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("대화 언어 (App Language)")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(textColor.opacity(0.8))
+                        Picker("", selection: $appLanguage) {
+                            Text("한국어").tag("한국어")
+                            Text("English").tag("English")
+                            Text("日本語").tag("日本語")
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+                        .labelsHidden()
+                        Text("에이전트들이 대답할 주 언어를 선택하세요.")
+                            .font(.system(size: 10))
+                            .foregroundColor(textColor.opacity(0.4))
+                    }
+
                     // 팀 명칭
                     VStack(alignment: .leading, spacing: 6) {
                         Text("팀 명칭")
@@ -238,6 +256,30 @@ struct SettingsView: View {
                     }
                     .toggleStyle(SwitchToggleStyle(tint: .blue))
                     .disabled(useAnimalTTS)  // 동물의 숲 TTS 켜져 있으면 비활성화
+                }
+
+                // ── 윈도우 정돈 ──
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("대화창 정돈 📑")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(textColor)
+                        
+                        Spacer()
+                        
+                        Button(action: {
+                            manager.arrangeWindows()
+                            onClose?()
+                        }) {
+                            Text("정돈")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 4)
+                                .background(RoundedRectangle(cornerRadius: 6).fill(Color.blue))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
                 }
 
                 Divider().background(textColor.opacity(0.1)).padding(.vertical, 4)
