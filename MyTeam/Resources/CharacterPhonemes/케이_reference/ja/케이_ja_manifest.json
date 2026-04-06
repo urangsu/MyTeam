@@ -1,0 +1,36 @@
+{
+  "voice": "케이_reference",
+  "language": "ja",
+  "count": 3,
+  "duration_sec": 0.3,
+  "sample_rate": 44100,
+  "items": [
+    {
+      "index": 1,
+      "token": "あ",
+      "lang": "ja",
+      "file": "01_あ.wav",
+      "score": -999.0,
+      "prompt": "fallback_silence",
+      "status": "fallback"
+    },
+    {
+      "index": 2,
+      "token": "い",
+      "lang": "ja",
+      "file": "02_い.wav",
+      "score": -999.0,
+      "prompt": "fallback_silence",
+      "status": "fallback"
+    },
+    {
+      "index": 3,
+      "token": "う",
+      "lang": "ja",
+      "file": "03_う.wav",
+      "score": -999.0,
+      "prompt": "fallback_silence",
+      "status": "fallback"
+    }
+  ]
+}

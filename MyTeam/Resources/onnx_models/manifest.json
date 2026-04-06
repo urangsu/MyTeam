@@ -1,0 +1,23 @@
+{
+  "t3_decode": {
+    "file": "t3_decode.onnx",
+    "n_layers": 30
+  },
+  "model_info": {
+    "t3_config": {
+      "start_text_token": 255,
+      "stop_text_token": 0,
+      "start_speech_token": 6561,
+      "stop_speech_token": 6562,
+      "speech_tokens_dict_size": 8194,
+      "max_speech_tokens": 4096,
+      "hidden_size": 1024,
+      "n_layers": 30,
+      "n_heads": 16,
+      "head_dim": 64
+    },
+    "sample_rate": 24000,
+    "s3_sr": 16000,
+    "speech_cond_prompt_len": 150
+  }
+}

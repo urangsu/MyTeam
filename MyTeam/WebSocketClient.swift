@@ -71,8 +71,9 @@ class WebSocketClient: ObservableObject {
                 case .string(let text):
                     self.handleIncomingJSON(text)
                 case .data(let data):
-                    if let text = String(data: data, encoding: .utf8) {
-                        self.handleIncomingJSON(text)
+                    // 바이너리 데이터는 직접 오디오 파이프라인으로 쏩니다.
+                    Task {
+                        await WebSocketStreamManager.shared.handleBinaryFrame(data)
                     }
                 @unknown default:
                     break
@@ -85,10 +86,32 @@ class WebSocketClient: ObservableObject {
         }
     }
     
+    // JSON 구조에 stream_start/end 관련 항목이 추가되었다고 가정 (동적 파싱)
     private func handleIncomingJSON(_ jsonString: String) {
         guard let data = jsonString.data(using: .utf8) else { return }
         
         do {
+            // 컨트롤 프레임 (stream_start / stream_end) 우선 검사
+            if let dict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+               let event = dict["event"] as? String {
+                
+                if event == "stream_start" {
+                    let streamId = dict["stream_id"] as? String ?? UUID().uuidString
+                    let agentId = dict["agent_id"] as? String ?? "unknown"
+                    let pitch = (dict["pitch"] as? NSNumber)?.floatValue ?? AnimalTTSManager.profile(for: agentId).pitch
+                    let rate = (dict["rate"] as? NSNumber)?.floatValue ?? 1.0
+                    let volume = (dict["volume"] as? NSNumber)?.floatValue ?? 1.0
+                    
+                    Task { await WebSocketStreamManager.shared.handleStreamStart(streamId: streamId, agentId: agentId, characterName: agentId, pitch: pitch, rate: rate, volume: volume) }
+                    return
+                } else if event == "stream_end" {
+                    let streamId = dict["stream_id"] as? String ?? ""
+                    Task { await WebSocketStreamManager.shared.handleStreamEnd(streamId: streamId) }
+                    return
+                }
+            }
+            
+            // 기존 텍스트 응답 파싱
             let response = try JSONDecoder().decode(WSAgentResponse.self, from: data)
             print("[DEBUG-RX] Decoded: status=\(response.status), agent=\(response.agent_id), text=\(response.text.prefix(30))")
             
@@ -103,19 +126,7 @@ class WebSocketClient: ObservableObject {
                     self.currentSpeakerID = response.agent_id
                     self.agentStatus = "Speaking"
                     self.currentMessage = response.text
-                    
-                    // 하이브리드 음성: 클라우드 보이스 / 네이티브 TTS
-                    let useCloudVoice = UserDefaults.standard.bool(forKey: "useCloudVoice")
-                    if useCloudVoice,
-                       let base64String = response.audio_base64,
-                       !base64String.isEmpty,
-                       let audioData = Data(base64Encoded: base64String) {
-                        SpeechManager.shared.playAudioData(audioData)
-                    } else if !useCloudVoice && !response.text.isEmpty {
-                        SpeechManager.shared.speak(text: response.text)
-                    }
                 } else if response.status == "Idle" {
-                    // 시스템 자동 응답(is_system == true)은 로그에서 제외
                     if !self.currentMessage.isEmpty && !(response.is_system ?? false) {
                         let agentName = manager.activeAgents.first(where: { $0.id == response.agent_id })?.name ?? "에이전트"
                         manager.addChatLog(agentID: response.agent_id, agentName: agentName, text: self.currentMessage, isUser: false)
@@ -132,8 +143,9 @@ class WebSocketClient: ObservableObject {
                 }
             }
         } catch {
-            print("[DEBUG-RX] JSON Decode Error: \(error)")
-            print("[DEBUG-RX] Raw JSON: \(jsonString.prefix(200))")
+            print("[DEBUG-RX] JSON 파싱 에러 (드롭): \(error.localizedDescription)")
+            // 바이너리 프레임 강제 주입(폴백) 로직 완벽히 삭제. 
+            // 텍스트/바이너리는 URLSessionWebSocketTask.Message 단계에서 분리 수신됩니다.
         }
     }
     

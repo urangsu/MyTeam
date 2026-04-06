@@ -1,13 +1,31 @@
 {
-  "originHash" : "0ed1a20ef167ff6bbd7e233d8316ce8089f144b9619fb921d55eb1b69ffdfd4c",
+  "originHash" : "550f532bfbea6c778f90318cd31acce49db9902f64d7f1efcbaa257d45e9cd02",
   "pins" : [
     {
-      "identity" : "rive-ios",
+      "identity" : "mlx-swift",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/rive-app/rive-ios",
+      "location" : "https://github.com/ml-explore/mlx-swift.git",
       "state" : {
-        "revision" : "51cedcaae851ea5145acbfa8b9868737c5a38d58",
-        "version" : "6.17.0"
+        "revision" : "61b9e011e09a62b489f6bd647958f1555bdf2896",
+        "version" : "0.31.3"
+      }
+    },
+    {
+      "identity" : "onnxruntime-swift-package-manager",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/microsoft/onnxruntime-swift-package-manager",
+      "state" : {
+        "revision" : "b7fb7f7dea8a2469e6335d95a61b8f36d0dc83b2",
+        "version" : "1.24.2"
+      }
+    },
+    {
+      "identity" : "swift-numerics",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-numerics",
+      "state" : {
+        "revision" : "0c0290ff6b24942dadb83a929ffaaa1481df04a2",
+        "version" : "1.1.1"
       }
     }
   ],

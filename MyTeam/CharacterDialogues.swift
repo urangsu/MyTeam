@@ -242,7 +242,24 @@ struct CharacterDialogues {
             return nil
         }
 
-        guard let rawLine = dialogueArray.filter({!$0.isEmpty }).randomElement() else {
+        // 시간대별 부적절한 대사 필터링
+        let hour = Calendar.current.component(.hour, from: Date())
+        let filtered = dialogueArray.filter { line in
+            guard !line.isEmpty else { return false }
+            // 아침 인사는 5시~11시에만
+            if line.contains("좋은 아침") || line.contains("아침이에요") || line.contains("아침입니다") {
+                return hour >= 5 && hour < 12
+            }
+            // 종료/퇴근 관련은 drag/landing에서 제외
+            if state == .drag || state == .landing {
+                if line.contains("종료") || line.contains("퇴근") || line.contains("끝나") {
+                    return false
+                }
+            }
+            return true
+        }
+
+        guard let rawLine = (filtered.isEmpty ? dialogueArray : filtered).randomElement() else {
             return nil
         }
 

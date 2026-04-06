@@ -1,0 +1,36 @@
+{
+  "voice": "올리버_reference",
+  "language": "ko",
+  "count": 3,
+  "duration_sec": 0.3,
+  "sample_rate": 44100,
+  "items": [
+    {
+      "index": 1,
+      "token": "아",
+      "lang": "ko",
+      "file": "01_아.wav",
+      "score": -999.0,
+      "prompt": "fallback_silence",
+      "status": "fallback"
+    },
+    {
+      "index": 2,
+      "token": "이",
+      "lang": "ko",
+      "file": "02_이.wav",
+      "score": -999.0,
+      "prompt": "fallback_silence",
+      "status": "fallback"
+    },
+    {
+      "index": 3,
+      "token": "우",
+      "lang": "ko",
+      "file": "03_우.wav",
+      "score": -999.0,
+      "prompt": "fallback_silence",
+      "status": "fallback"
+    }
+  ]
+}

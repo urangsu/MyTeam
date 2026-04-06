@@ -1,9 +1,36 @@
+# Environments
 backend/venv/
+myenv/
+.venv/
+env/
+venv/
+ENV/
+
+# OS/VS Code
 .DS_Store
+.vscode/
+.claude/worktrees/
+
+# Python
 __pycache__/
 *.pyc
-MyTeam/.DS_Store
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Xcode / SwiftUI
 MyTeam/MyTeam.xcodeproj/project.xcworkspace/xcuserdata/
 MyTeam/MyTeam.xcodeproj/xcuserdata/
+DerivedData/
+build/
+*.xcworkspace
+!MyTeam/MyTeam.xcodeproj/project.xcworkspace
+
+# Media
 frames/
-.claude/worktrees/
+*.mp4
+*.png
+# (Except for required assets)
+!MyTeam/MyTeam/Assets.xcassets/**/*.png

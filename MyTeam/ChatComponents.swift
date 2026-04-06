@@ -178,3 +178,48 @@ struct ChatBubble: View {
         IMMessageBubble(text: message, isUser: isUser, agentName: "", agentImageName: imageName, agentColor: accentColor, isDarkMode: isDarkMode, timestamp: nil)
     }
 }
+
+// MARK: - 타이핑 인디케이터 (카톡 "..." 애니메이션)
+struct TypingIndicatorView: View {
+    let agentName: String
+    let agentColor: Color
+    @State private var dotPhase: Int = 0
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 6) {
+            // 에이전트 이름 (캐릭터 색상)
+            Text(agentName)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(agentColor)
+
+            // 말풍선 형태의 "..."
+            HStack(spacing: 3) {
+                ForEach(0..<3, id: \.self) { i in
+                    Circle()
+                        .fill(agentColor.opacity(dotPhase == i ? 1.0 : 0.3))
+                        .frame(width: 6, height: 6)
+                        .offset(y: dotPhase == i ? -3 : 0)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.gray.opacity(0.12))
+            )
+
+            Spacer()
+        }
+        .padding(.leading, 4)
+        .padding(.vertical, 2)
+        .onAppear { startAnimation() }
+    }
+
+    private func startAnimation() {
+        Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { _ in
+            withAnimation(.easeInOut(duration: 0.3)) {
+                dotPhase = (dotPhase + 1) % 3
+            }
+        }
+    }
+}

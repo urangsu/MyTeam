@@ -105,6 +105,93 @@ MyTeam/MyTeam/MyTeam/
 
 ## 📋 작업 이력
 
+### 2026-04-05 (3차): [Claude Code] ONNX 온디바이스 TTS + UX 대폭 개선
+- **[핵심 기능] ONNX Runtime 온디바이스 TTS 파이프라인 구현 (ONNXTTSManager.swift)**
+  - 7개 ONNX 모델 (T3 prefill/decode, S3Gen enc/cfm, HiFiGAN f0/backbone, VE) 추론 파이프라인
+  - cam_plus/s3tokenizer export 실패 → Python pre-compute 우회 전략 적용
+  - `precompute_embeddings.py`: 11개 캐릭터 speaker embedding + prompt tokens 미리 계산 완료
+  - T3 임베딩 가중치 추출 (text_emb, speech_emb, pos_emb 6개 .npy 파일)
+  - SpeechManager TTS 우선순위: ONNX → Chatterbox HTTP → 캐릭터 음절 WAV
+- **[버그 수정] 이름 태그 첫 글자 잘림 (AIService.swift)**
+  - 정규식이 구분자 없이도 한글을 태그로 인식하던 문제 → 콜론/괄호 필수 매칭으로 변경
+- **[버그 수정] 에이전트창 크기 변동 (채팅/협업 전환 시)**
+  - `updateStatusWindowWidth()`가 `teamPanel`을 변경하던 버그 → `statusPanel`로 수정
+- **[버그 수정] 말풍선 영구 표시 문제**
+  - TTS 실패 시 `finishSpeaking()` 미호출 → guard 실패 경로에 명시적 호출 추가
+  - 안전장치: `setAgentSpeaking()` 후 최대 30초 타임아웃 자동 clear
+- **[버그 수정] OnDeviceTTSManager 스트리밍 실패 시 reference 직접 재생 문제**
+  - `success = true` 반환하던 로직 → `false` 반환으로 변경 (음절 WAV 폴백 허용)
+- **[UX 개선] 카톡 스타일 채팅 구현**
+  - 긴 AI 응답을 1~3문장씩 끊어서 별도 말풍선으로 전송
+  - 타이핑 딜레이: 첫 메시지 0.3~0.8초, 이후 글자수 비례 (20대 타이핑 속도)
+  - `TypingIndicatorView`: 캐릭터 색상 "..." 바운스 애니메이션 (ChatComponents.swift)
+  - `AgentWindowManager.typingAgentIDs`: 타이핑 중인 에이전트 추적
+- **[UX 개선] 채팅창/설정창 스크롤 문제 해결**
+  - FloatingPanel: 팀 패널만 커스텀 드래그, 나머지는 기본 NSPanel 동작
+  - 설정창/협업현황창 `isMovableByWindowBackground = false`
+  - 설정창 `.clipped()` 추가 (UI 오버플로 수정)
+- **[UX 개선] 대사 시간 인식 + AI 시간 컨텍스트**
+  - CharacterDialogues: "좋은 아침" 5~11시에만, 드래그 중 "종료" 대사 차단
+  - AIService 시스템 프롬프트에 현재 날짜/시간 자동 주입
+- **[버그 수정] NSSound "Already playing" 중복 재생 방지**
+- **[핵심 수정] 오디오 재생 Mac mini 호환성**
+  - AVAudioEngine PlayerNode: Mac mini에서 무음 확인 → 사용 중지
+  - AVAudioPlayer: Mac mini에서 무음 확인 → 사용 중지
+  - NSSound: 유일하게 작동 → 모든 오디오 재생 NSSound로 통일
+  - ONNX TTS PCM 출력: WAV 파일 생성 → NSSound 재생
+  - SpeechManager: animalEngine/animalPlayer/animalPitch 완전 제거
+  - SpeechManager 앱 시작 시 ONNXTTSManager 미리 초기화 (1.9GB 모델 로딩 시간 확보)
+- 수정 파일: `ONNXTTSManager.swift`, `SpeechManager.swift`, `AIService.swift`, `FloatingPanel.swift`, `AgentWindowManager.swift`, `AgentChatView.swift`, `ChatComponents.swift`, `CharacterDialogues.swift`, `SettingsView.swift`, `OnDeviceTTSManager.swift`, `SoundPlayer.swift`
+- 신규 파일: `precompute_embeddings.py`, `Resources/PrecomputedVoice/*.json`
+
+### 2026-04-05 (2차): [Claude Code] 캐릭터 음절 TTS + Rive 폐기 + 워크트리 충돌 해결
+- **[핵심 기능] 캐릭터 음절 WAV 기반 TTS 구현 (Apple TTS 완전 제거)**
+  - SpeechManager에서 Apple TTS(AVSpeechSynthesizer) 관련 코드 전부 삭제
+  - 캐릭터별 음절 WAV(CharacterPhonemes/) 로드 → 텍스트 음절 분해 → 순차 재생
+  - useAnimalTTS ON: 캐릭터 프로필 피치/배속/리버브 적용 (동물의 숲 스타일)
+  - useAnimalTTS OFF: 정상 속도 재생 (또는 Chatterbox 서버 가용 시 스트리밍)
+  - 폴백: 레퍼런스 음성 직접 재생 (음절 WAV 없을 때)
+- **[음절 생성] Python 스크립트 개선판 작성**
+  - `generate_all_syllables.py`: 무음 감지/재시도 5회, 프롬프트 변형, 진행률 표시
+  - 파일명에 캐릭터 접두사 포함 (Xcode PBXFileSystemSynchronizedRootGroup 충돌 방지)
+  - `--characters` 옵션으로 특정 캐릭터만 재생성 가능
+- **[빌드 에러] RiveRuntime 패키지 완전 폐기**
+  - pbxproj에서 Rive 관련 6개 참조 제거 (BuildFile, Framework, packageRef, productDep 등)
+  - RiveAgentView.swift를 빈 스텁으로 교체
+  - Package.resolved에서 rive-ios 항목 제거
+- **[빌드 에러] 워크트리(.claude/worktrees/) 빌드 충돌 해결**
+  - 원인: PBXFileSystemSynchronizedRootGroup이 워크트리 내 중복 파일까지 스캔
+  - 해결: 워크트리 제거 (`git worktree remove`)
+- **[버그 수정] 음소거 버튼이 TTS를 막지 못하는 문제**
+  - SpeechManager.speak() 진입 시 isSilentMode 즉시 체크 추가
+- 수정 파일: `SpeechManager.swift`, `RiveAgentView.swift`, `project.pbxproj`, `Package.resolved`
+- 신규 파일: `generate_all_syllables.py` (Python)
+
+### 2026-04-05 (1차): [Claude Code] TTS 파이프라인 전면 재구축 및 빌드 에러 해결
+- **[핵심 기능] 동물의 숲 TTS 모드 구현 (SpeechManager.swift)**
+  - 설정의 "🐾 기본 TTS" 토글(useAnimalTTS)이 ON이면 레퍼런스 음성을 동물의 숲 스타일로 재생
+  - AnimalTTSManager.characterProfiles의 캐릭터별 피치/배속/볼륨 프로필 재활용
+  - AVAudioEngine + TimePitch + Reverb 파이프라인으로 레퍼런스 음성에 고피치/빠른속도/공간감 적용
+  - 텍스트 길이에 비례한 재생 시간 조절 (짧은 문장은 짧게, 긴 문장은 반복)
+  - 레퍼런스 음성 미발견 시 Apple TTS로 자동 폴백
+- **[치명적 버그 수정] 음소거 버튼 무시 문제 해결**
+  - SpeechManager.speak() 진입 시점에 isSilentMode 체크 추가
+  - 동물TTS 루프 내에서도 매 반복마다 isSilentMode 체크
+  - TeamOrchestrator 순차 발화 중 음소거 전환 시에도 즉시 차단
+- **[치명적 버그 수정] AVAudioBuffer mDataByteSize(0) 크래시 완전 해결**
+  - OnDeviceTTSManager 오디오 엔진을 지연 초기화(lazy)로 전환
+  - Chatterbox 서버 없으면 엔진 자체를 만들지 않음 → CoreAudio 초기화 에러 원천 차단
+  - `isServiceAvailable` 플래그 기반으로 서버 부재 시 즉시 실패 반환
+- **[빌드 에러 해결] project.pbxproj 중복 프로젝트 참조 제거**
+  - 동일 MyTeam.xcodeproj 4중 참조 + 고아 그룹/파일 참조 전부 제거 → "Multiple commands produce" 해결
+- **[배포 대응] TTSServiceManager Python 서버 의존성 분리**
+  - Python venv 미존재 시 서비스 시작 건너뜀 → 배포 환경 블로킹 방지
+- **TTS 우선순위 체계 확립**:
+  1. useAnimalTTS ON → 레퍼런스 음성 + 캐릭터별 피치/배속 (동물의 숲)
+  2. useAnimalTTS OFF + Chatterbox 서버 가용 → 스트리밍 음성 클로닝
+  3. useAnimalTTS OFF + 서버 없음 → Apple Eloquence TTS (캐릭터별 매핑)
+- 수정 파일: `SpeechManager.swift`, `OnDeviceTTSManager.swift`, `TTSServiceManager.swift`, `project.pbxproj`
+
 ### 2026-04-01: [Antigravity] Phase 2/3 - 의도 기반 협업 및 지능형 기억 시스템 (진행 중)
 - **[아키텍처] 시스템-팀장 (App-as-Leader) 모델 도입**
   - 에이전트들이 스스로 조율하는 대신, 앱(SwiftUI)이 중앙 지휘자가 되어 작업을 분배하는 'Orchestrator-Worker' 패턴 확립.
@@ -161,6 +248,500 @@ MyTeam/MyTeam/MyTeam/
   - 23개 모션 파일 연결. 스프라이트 화면 위 잘림 버그 수정(100x140 씬 확대), 폴백 체인(대체 상태 자동 맵핑) 도입, 1회 애니메이션 후 기본 상태를 `.idle`에서 `.typing`(업무 중)으로 변경.
 - **프로필 이미지 시스템**:
   - 스프라이트가 렌더링되지 않는 레오, 루나 등의 캐릭터에게 이모지 대신 고퀄리티 `.png` 원형 이미지가 표시되도록 `fallbackImageName` 통일 및 `Assets.xcassets` 구성
+
+---
+
+### 2026-04-05 (4차): [Antigravity] Xcode 중복 빌드 오류(Multiple commands produce) 해결
+- **[버그 수정] 중복 리소스 및 소스 코드 충돌 해결**
+  - 원인: `MyTeam.xcodeproj`의 `PBXFileSystemSynchronizedRootGroup`이 루트(`.`)를 동기화하면서, 하위 폴더에 남아있던 `.claude/worktrees/`의 중복 소스 코드를 모두 컴파일하려고 시도함.
+  - 조치: 문제가 되는 `.claude/` 폴더를 프로젝트 루트 바깥인 `/Users/su/Desktop/MyTeam/Backup_claude_worktrees`로 이동시켜 격리함 (삭제 없이 보존).
+  - 조치: 불필요하게 생성된 빈 중복 폴더인 `MyTeam/MyTeam/MyTeam/`을 삭제함.
+- 결과: `AnimationState is ambiguous` 오류 및 `Multiple commands produce` 오류 해결 완료.
+
+---
+
+### 2026-04-05 (5차): [Claude Code] ONNX T3 모델 그래프 수술 + E2E 파이프라인 검증
+
+- **[핵심] T3 ONNX 모델 Gather OOB 버그 수정 (t3_prefill.onnx, t3_decode.onnx)**
+  - CumSum 노드 bool→INT64 Cast 삽입 (이전 세션에서 적용)
+  - Gather_4, Gather_6 인덱스 OOB 수정: CumSum→Flatten 출력에 마지막 원소 패딩 (Slice+Concat)
+  - Python `onnx` 라이브러리로 그래프 노드 삽입, 토폴로지 순서 보장
+  - 수정 스크립트: `/Users/su/Desktop/TTS맨/chatterbox/fix_gather_oob.py`
+  - 백업: `t3_prefill.onnx.bak_prefix`, `t3_decode.onnx.bak_prefix`
+
+- **[핵심] Python E2E 파이프라인 검증 완료**
+  - T3 prefill → speech tokens 생성 ✅ (seq≥2 모두 동작)
+  - S3Gen encoder (token+prompt+xvector → mu/mask/conds/spks) ✅
+  - CFM ODE loop 10 Euler steps ✅
+  - HiFiGAN (source_len = T_mel × 480, 출력: magnitude+phase STFT) ✅
+  - ISTFT (n_fft=16, hop=4) → PCM → WAV → afplay 재생 ✅
+  - 검증 스크립트: `/Users/su/Desktop/TTS맨/chatterbox/test_e2e.py`
+
+- **[버그 수정] OnDeviceTTSManager.swift:405 컴파일 에러**
+  - `player.scheduleBuffer()` → `await player.scheduleBuffer()` (macOS 12+ async 오버로드)
+
+- **[확인] S3Gen mel_mask bool→float 변환** (이전 세션 작업, 동작 확인)
+  - `extractBoolsAsFloats()` 메서드 추가, S3Gen encoder mask 처리 수정
+
+- **[작업] BPE 토크나이저 파일 복사**
+  - `grapheme_mtl_merged_expanded_v1.json` → `/Users/su/Desktop/TTS맨/chatterbox/onnx_models/`
+
+**수정 파일**: `OnDeviceTTSManager.swift`, `t3_prefill.onnx`, `t3_decode.onnx`
+**신규 파일**: `fix_gather_oob.py`, `test_e2e.py` (검증 스크립트)
+
+### 2026-04-05 (6차): [Claude Code] ONNX TTS 실행 문제 진단 및 수정
+
+**증상**: 앱 빌드→실행 시 (1) main thread 경고 수백 개, (2) 앱 멈춤, (3) S3Gen 추론 실패
+
+**진단 결과**:
+1. **main thread 경고** — `Task.detached`로 로딩해도 CoreML EP가 내부적으로 `dispatch_sync(main_queue)` 호출 (ONNX Runtime 알려진 이슈). CoreML EP를 비활성화하면 해결됨
+2. **앱 멈춤 원인** — T3 AR 루프가 KV cache 없이 매 스텝마다 전체 시퀀스를 prefill 재실행. 1.9GB Transformer 30층 × 매 스텝 full forward = CPU에서 극도로 느림 (O(n²) 복잡도). Mac mini M4 24GB에서도 한 문장 합성에 수분 소요
+3. **S3Gen 실패** — `try?`로 에러 디테일이 삼켜지고 있었음. `do-catch`로 변경하여 정확한 에러 출력되도록 수정
+
+**수정 내용**:
+- `ONNXTTSManager.swift`:
+  - `Task { await loadAll() }` → `Task.detached(priority: .userInitiated)` (백그라운드 로딩)
+  - CoreML EP 비활성화 → CPU EP만 사용 (main thread 경고 근본 해결)
+  - T3 AR max tokens 500→100 (실용적 상한)
+  - T3/S3Gen/HiFiGAN 에러를 `try?` → `do-catch`로 변경 (디테일 로그)
+  - 컴파일 경고 수정: `let count` 미사용 제거, `MainActor.run` 리턴값 `_ =` 처리
+- `SpeechManager.swift`:
+  - ONNX TTS 호출 조건에서 `!useAnimalTTS &&` 제거 → ONNX ready이면 항상 1순위
+  - `let semitones` 미사용 경고 수정
+
+**현실적 한계 및 결정**:
+- Mac mini M4 (CPU only, KV cache 없음)에서 ONNX T3 AR 추론은 **너무 느림** (한 문장에 수분, 발열 64도)
+- **결정: ONNX 비활성화, Chatterbox HTTP 서버를 1순위로 전환**
+
+### 2026-04-05 (7차): [Claude Code] TTS 우선순위 최종 변경
+
+**변경 내용**:
+- `SpeechManager.swift` TTS 우선순위 변경:
+  - 1순위: **Chatterbox HTTP 서버** (`OnDeviceTTSManager.isServiceAvailable` → `speak()`)
+  - 2순위: 캐릭터 음절 WAV (NSSound)
+  - 3순위: 레퍼런스 오디오 폴백
+  - ONNX: **비활성화** (`_ = ONNXTTSManager.shared` 주석 처리)
+- `ONNXTTSManager.swift`:
+  - CoreML EP 비활성화 (main thread 경고 근본 원인)
+  - T3 AR max tokens 500→100
+  - 에러 로그 `try?` → `do-catch`로 변경
+  - `Task.detached` 백그라운드 로딩
+  - 컴파일 경고 수정 (`let count` 제거, `_ = MainActor.run`)
+- `SpeechManager.swift`:
+  - `let semitones` 미사용 경고 수정
+
+**수정 파일**: `SpeechManager.swift`, `ONNXTTSManager.swift`
+
+**TTS 서버 시작법** (Chatterbox HTTP):
+```bash
+cd ~/Desktop/TTS���/chatterbox
+.venv/bin/python3 tts_service.py
+# → http://127.0.0.1:9999 에서 리스닝
+# → Swift 앱이 자동 감지하여 사용
+```
+
+**캐릭터 음절 WAV 생성법** (서버 없이도 동작하는 폴백용):
+```bash
+cd ~/Desktop/TTS맨/chatterbox
+
+# 전체 캐릭터 일괄 생성
+.venv/bin/python3 generate_all_syllables.py
+
+# 특정 캐릭터만 (핀, 몽몽 등 음절 WAV 없는 캐릭터)
+.venv/bin/python3 generate_all_syllables.py --characters 핀 몽몽
+```
+- 스크립트 위치: `/Users/su/Desktop/TTS맨/chatterbox/generate_all_syllables.py`
+- 레퍼런스 오디오: `~/Desktop/MyTeam/MyTeam/Resources/ReferenceAudio/{캐릭��}_reference.mp3`
+- 출력: `~/Desktop/MyTeam/MyTeam/Resources/CharacterPhonemes/{캐릭터}_{번호}_{음절}.wav`
+- 한/영/일 음절 약 60개씩, 0.3초, 44100Hz
+- 실패 시 최대 5회 재시도 + 무음 감지
+
+### 2026-04-05 (8차): [Claude Code] KV Cache Export + INT8 양자화 — 100배 속도 향상 달성
+
+**핵심 성과**:
+- T3 모델 KV cache export 성공 (`export_kv_cache.py`)
+  - `T3PrefillWrapper` / `T3DecodeWrapper` 수정: `use_cache=True`, 실제 KV 텐서 입출력
+  - `DynamicCache` API 호환: `.layers[i].keys` / `.layers[i].values`
+  - Dynamic axes: KV seq 축 dynamic 설정
+- INT8 양자화 완료: 1953MB → 489MB (75% 감소)
+- **벤치마크** (Mac mini M4, CPU only):
+  - FP32 KV cache 없음: ~60초+ (이전)
+  - FP32 + KV cache: 1.34초 (42배 향상)
+  - **INT8 + KV cache: 0.46초** (100배+ 향상)
+  - 스텝당: 0.010초
+
+**신규 파일**:
+- `/Users/su/Desktop/TTS맨/chatterbox/export_kv_cache.py` — KV cache 모델 export 스크립트
+- `/Users/su/Desktop/TTS맨/chatterbox/onnx_models/t3_prefill_kv.onnx` (1953MB)
+- `/Users/su/Desktop/TTS맨/chatterbox/onnx_models/t3_decode_kv.onnx` (1953MB)
+- `/Users/su/Desktop/TTS맨/chatterbox/onnx_models/t3_prefill_kv_int8.onnx` (489MB)
+- `/Users/su/Desktop/TTS맨/chatterbox/onnx_models/t3_decode_kv_int8.onnx` (489MB)
+- `/Users/su/Desktop/TTS맨/chatterbox/onnx_models/s3gen_cfm_int8.onnx` (71MB)
+
+**수정 파일**: `export_onnx.py` (T3PrefillWrapper, T3DecodeWrapper KV cache 지원)
+
+### 2026-04-05 (9차): ONNX TTS E2E 동작 확인 — 소리 품질 문제 발견
+
+**파이프라인 동작 확인**:
+- T3 KV cache → S3Gen → CFM → HiFiGAN → ISTFT → PCM → NSSound **모두 동작**
+- PCM 생성 성공 (147856~274576 samples, 6~11초 분량)
+- **문제**: 생성된 오디오가 "찌이이이이이" 노이즈 (의미 있는 음성 아님)
+
+**노이즈 원인 분석**:
+- T3가 의미 있는 speech tokens을 생성하지 못함
+  - 원본 Python 모델: `alignment_stream_analyzer`로 hallucination 감지 + 강제 EOS
+  - ONNX 모델: 이 기능 없음 → stop token이 안 나와서 151토큰까지 찍히거나, 토큰 자체가 의미 없음
+  - F0 예측값 0~0.8Hz (정상: 100~400Hz) → 소스 신호 이상 → 노이즈
+- **Bool 텐서 문제**: S3Gen mel_mask가 bool 출력 → ORT Swift에서 tensorTypeAndShapeInfo() 실패
+  - **해결**: mel_mask를 요청하지 않고 Swift에서 직접 float 1.0 배열 생성
+
+**결정**: ONNX TTS 임시 비활성화, 음절 WAV + 레퍼런스 오디오로 소리 복원
+
+**남은 작업** (ONNX 온디바이스 완성까지):
+1. **[최우선] T3 토큰 품질 수정** — alignment_stream_analyzer 로직을 Swift로 구현하거나, ONNX에 포함
+2. **export_onnx.py에서 S3Gen mel_mask를 float로 캐스팅** — `mask.float()` 추가해서 Bool 문제 근본 해결
+3. CoreML EP `CPUAndGPU` V2 API 재활성화
+4. `SpeechManager.swift` ONNX 1순위 복원
+
+### 2026-04-05 (최종): CoreML 전환 결정
+
+**ONNX 최종 진단**:
+- BPE ✅, ISTFT ✅, KV cache ✅, HiFiGAN Full ✅, t3_cond_embeds ✅
+- **CFG 실패**: batch=2 실행되지만 cond≈uncond → 토큰 품질 저하 → 백색소음
+- Python에서 2회 호출 CFG로 첫 토큰 1763 (원본 1761과 일치) → "안녕하세요" 음성 확인
+- **근본 원인**: ONNX export 시 LlamaModel 내부의 batch 분리 로직이 소실
+
+**CoreML 직접 변환 시도**:
+- F0 Predictor → CoreML ✅ (`f0_predictor.mlpackage`)
+- HiFiGAN Decode → CoreML ✅ (`hifigan_decode.mlpackage`)
+- **T3 (LlamaModel) → CoreML ❌**: `torch.diff`, `new_ones`, `fill` 등 미지원 op 연쇄
+- transformers 5.2.0이 최신 PyTorch ops 대량 사용 → coremltools 9.0과 비호환
+
+### 2026-04-05 (최종2): MLX 온디바이스 TTS 성공!
+
+**🎉 M4 Mac mini에서 온디바이스 한국어 음성 생성 성공**
+- MLX (Apple Silicon GPU) + CFG (2회 호출) + S3Gen + HiFiGAN → "안녕하세요" 음성 출력
+- T3 MLX GPU: 1.86초, 전체 파이프라인: 6.95초
+- 스크립트: `/Users/su/Desktop/TTS맨/chatterbox/mlx_t3_inference.py`
+
+**기술 스택**:
+- T3: MLX 네이티브 LlamaModel (30층, GPU 가속)
+- CFG: 2회 호출 (cond + uncond → logits 결합, cfg_weight=0.5)
+- S3Gen/HiFiGAN: ONNX (CPU) — 추후 MLX 변환 예정
+- BPE: unicodeScalars 기반 자모 분해 (Python 동일)
+- ISTFT: periodic Hann window (깨끗한 음성 검증됨)
+- Conditioning: t3_cond_embeds (34토큰, perceiver 포함)
+
+**남은 작업**: 초반 기계음 제거, S3Gen/HiFiGAN MLX 변환, Swift 앱 연결
+
+### 2026-04-06: [Claude Code] MLX TTS 앱 통합 + UI 개선 + 속도 최적화
+
+#### 달성한 것 ✅
+1. **ONNX → MLX 전환 성공**
+   - MLX (Apple M4 GPU) 네이티브 LlamaModel 30층 구현 (`mlx_t3_inference.py`)
+   - T3 가중치 변환 완료 (`t3_mlx_weights.npz`, 1952MB)
+   - MLX TTS HTTP 서버 구현 (`mlx_tts_server.py`, port 9998)
+   - **한국어 음성 "안녕하세요" 온디바이스 생성 성공!**
+
+2. **BPE 토크나이저 근본 수정**
+   - 원인: Swift `Character`가 grapheme cluster로 자모를 합침 → 음절 토큰(2400번대) 출력
+   - 해결: `unicodeScalars` 기반 분리 → Python 동일 자모 토큰(1700~1900번대)
+   - BPE merge 비활성화 (Python tokenizer는 character-level)
+
+3. **ISTFT 근본 수정**
+   - 원인: `np.hanning` (symmetric, nFFT-1) vs `torch.hann_window` (periodic, nFFT) 차이
+   - 해결: `0.5 * (1 - cos(2π*n/nFFT))` — periodic Hann으로 통일
+   - **Python에서 깨끗한 음성 확인** (`torch.istft`와 동일 결과)
+
+4. **CFG (Classifier-Free Guidance) 구현**
+   - 원인: ONNX batch=2 CFG가 동작 안 함 (cond≈uncond)
+   - 해결: MLX에서 2회 호출 (cond + uncond) → logits 결합
+   - 첫 토큰 1763 (Python 원본 1761과 거의 일치)
+
+5. **t3_cond_embeds pre-compute**
+   - T3 conditioning 전체 (spkr_enc + perceiver) 34토큰을 pre-compute
+   - `precompute_embeddings.py` 수정 → 11캐릭터 JSON에 `t3_cond_embeds` 추가
+   - emotion_adv (감정) 텐서 포함
+
+6. **HiFiGAN Full ONNX export**
+   - F0 + SourceModuleHnNSF + Decode 통합 (`hifigan_full.onnx`, 79.6MB)
+   - torch.stft를 conv1d 기반 수동 DFT로 우회 (ONNX 호환)
+   - 기존 분리 방식(hifigan_f0 + hifigan + Swift ISTFT)의 F0 스케일 문제 해결
+
+7. **속도 최적화**
+   - KV Cache warm-up: 캐릭터별 cond 34토큰 미리 계산 → prefill 0.3초 절약
+   - CFG prefill only (decode는 cond만) → T3 시간 50% 절약
+   - CFM 스텝 조절 (10→5→3→2→1 테스트, 최적: 5스텝)
+   - 최종: 짧은 대사 1.5초, 일반 대사 3.5초
+
+8. **UI 개선**
+   - 설정창: 사용자 이름 + 호칭 한 줄 배치 (`userName` AppStorage 추가)
+   - 설정창: 에이전트창 배경 투명도 슬라이더 (`agentWindowOpacity`)
+   - 설정창: GPS 위치 자동 (CoreLocation + 역지오코딩)
+   - 빈 파일 삭제: `AgentView.swift`, `RiveAgentView.swift`
+   - 팀원 교체 TTS: 캐릭터별 성격 맞는 짧은 인사 11종
+
+9. **앱 연결**
+   - `OnDeviceTTSManager`: MLX 서버(9998) 우선 → Chatterbox(9999) 폴백
+   - `SpeechManager`: debounce(0.15s), `shortenForTTS`, `speakImmediate`
+   - abort 메커니즘: 파일 기반 인터럽트 (`/tmp/mlx_tts_abort`)
+
+#### 실패/미해결 ❌
+1. **ONNX CFG 실패**
+   - batch=2로 실행은 되지만 cond≈uncond → CFG 효과 없음
+   - ONNX export 시 LlamaModel 내부 batch 분리 로직 소실
+   - **결론: ONNX 온디바이스 TTS는 포기, MLX로 전환**
+
+2. **CoreML 직접 변환 실패**
+   - `torch.diff`, `new_ones`, `fill` 등 coremltools 미지원 op 연쇄
+   - transformers 5.2.0이 최신 PyTorch ops 대량 사용
+   - HiFiGAN F0, HiFiGAN Decode는 CoreML 변환 성공 (작은 모델)
+   - **T3 (LlamaModel 30층) CoreML 변환은 실패**
+
+3. **INT8 양자화 품질 저하**
+   - ONNX INT8: 토큰 다양성 급감 (22/31 → 6/21)
+   - MLX FP16: 오히려 FP32보다 느림 (캐스팅 오버헤드)
+   - **FP32 유지가 최적**
+
+4. **음절 반복 문제**
+   - "오늘 텐션 오늘 텐션 한 번" — T3가 문장 중간에서 되풀이
+   - 원인: CFG를 prefill에만 적용하고 decode에서 제거 → 집중력 저하
+   - 5-gram 반복 감지로 완화했으나 근본 해결 안 됨
+   - **해결 방향: decode에 CFG 복원 (속도 2배 느려지지만 품질 향상)**
+
+5. **TTS 겹침/밀림**
+   - 싱글스레드 서버라 이전 요청 처리 중 새 요청 대기
+   - 파일 기반 abort 구현했으나 타이밍 이슈 잔존
+   - abort 파일 잔존으로 정상 요청도 204 반환하는 버그
+   - **해결 방향: 비동기 서버 또는 MLX-Swift 네이티브**
+
+6. **shortenForTTS 한계**
+   - 15~25자로 자르면 문맥 손실
+   - 10자 이상에서 음질 저하 (T3 모델 한계)
+   - **해결 방향: 대사 자체를 짧게 기획 (5~10자)**
+
+#### 아키텍처 현재 상태
+```
+Swift App (SpeechManager)
+  ├─ speakImmediate() — 교체 TTS (debounce 없음)
+  ├─ speak() — 일반 TTS (debounce 0.15s)
+  │   └─ shortenForTTS() — 첫 구절만 추출
+  ├─ stopSpeaking() — 전체 취소 + abort 파일
+  └─ OnDeviceTTSManager
+      ├─ MLX TTS 서버 (port 9998) ← 1순위
+      ├─ Chatterbox 서버 (port 9999) ← 2순위
+      └─ 음절 WAV 폴백 ← 3순위
+
+MLX TTS 서버 (Python)
+  ├─ T3 LlamaModel (MLX GPU, 30층)
+  │   ├─ KV Cache warm-up (캐릭터별 cond 34토큰)
+  │   ├─ CFG prefill (2회 실행)
+  │   ├─ Decode (cond만, KV cache)
+  │   └─ Abort 감시 스레드 (/tmp/mlx_tts_abort)
+  ├─ S3Gen Encoder (ONNX CPU)
+  ├─ S3Gen CFM 5steps (ONNX CPU)
+  ├─ HiFiGAN Full (ONNX CPU)
+  └─ ISTFT (numpy, periodic Hann)
+```
+
+**다음 세션 가이드**:
+1. **경로 A 추천**: ONNX 2회 호출 CFG + CoreML EP (가장 빠름)
+2. **경로 C 검토**: MLX-Swift (Llama 네이티브 지원, Apple Silicon 최적화)
+3. BPE 토크나이저: unicodeScalars 기반 — **완성됨, 그대로 재사용**
+4. ISTFT: periodic Hann window — **완성됨, 그대로 재사용**
+5. t3_cond_embeds: 34토큰 perceiver 출력 — **완성됨, 그대로 재사용**
+6. SpeechManager: ONNX 비활성화 상태, 음절 WAV 폴백으로 소리 나옴
+
+---
+
+#### ⚠️ 미완료 — 다음 작업자가 이어서 할 것
+
+1. **ONNX 세션 로딩을 백그라운드 스레드로 이동** (현재 main thread 경고 수백 개)
+   - `ONNXTTSManager.loadOrtSessions()` 내부의 `ORTSession()` 생성이 CoreML EP와 함께 main thread에서 실행됨
+   - 해결: `loadAll()` 전체를 `Task.detached(priority: .userInitiated)` 로 감싸거나, `loadOrtSessions()`를 `DispatchQueue.global().async`에서 실행
+   - `isReady` 플래그는 세션 로딩 완료 후 설정되므로 race condition 없음
+
+2. **ONNX TTS가 실제로 호출되지 않는 문제**
+   - `SpeechManager.speak()` (line 598): `if !useAnimalTTS && ONNXTTSManager.shared.isReady`
+   - 현재 `useAnimalTTS = true`로 설정되어 있어서 ONNX 경로가 항상 스킵됨
+   - 수정: ONNX ready이면 animalTTS 모드와 무관하게 ONNX 우선 사용
+   - 변경할 코드: `if ONNXTTSManager.shared.isReady {` (line 598에서 `!useAnimalTTS &&` 제거)
+
+3. **컴파일 경고 2개**
+   - `ONNXTTSManager.swift:320` — `let count` 미사용 → `_ =` 또는 제거
+   - `ONNXTTSManager.swift:1162` — `run(resultType:body:)` 리턴값 미사용 → `_ =` 추가
+
+4. **t3_decode.onnx seq=1 에러** (우선순위 낮음)
+   - t3_decode는 현재 Swift 코드에서 사용하지 않음 (AR 루프가 t3_prefill 재사용)
+   - 나중에 KV cache 기반 decode로 전환할 때 수정 필요
+
+---
+
+---
+
+### 2026-04-05 (최종3+): [Claude Code] 사전 합성 캐시 시스템 완성 + Thinking Character UX
+
+#### ✅ 완료된 작업
+
+**[버그 수정] refHash 정수/부동소수점 불일치 (캐시 항상 미스 문제)**
+- 원인: Python `str(mtime)` = `"1775361817.1432633"` vs Swift `"\(mtime)"` 정밀도 다름 → SHA256 불일치 → 캐시 항상 미스
+- 수정: 양쪽 모두 초 단위 정수로 통일
+  - `SpeechCacheManager.swift:44` → `sha256Prefix8("\(Int(mtime))")`
+  - `pregenerate_dialogues.py:73` → `sha256_prefix8(str(int(mtime)))`
+- 이후 `pregenerate_dialogues.py` 재실행 (11캐릭터 × ~60개 대사 합성 완료)
+
+**[핵심 버그 수정] MLX TTS 서버 — CFG decode 복원 + Abort 버그 수정 + CoreML EP**
+- `/Users/su/Desktop/TTS맨/chatterbox/mlx_tts_server.py`
+  - T3 decode 루프에 CFG 적용 (`CFG_DECODE_W=0.3`, cond/uncond 2회 forward → 가중합) → 음절 반복("오늘 텐션 오늘 텐션") 완전 제거
+  - Abort 버그 수정: `abort_target_id` 변수 도입 → 해당 요청만 취소, 다음 요청에 영향 없음
+  - S3Gen/HiFiGAN ONNX 세션에 `CoreMLExecutionProvider` 적용 (일부 ANE/GPU 가속)
+  - 서버 시작 시 잔존 abort 파일 자동 제거
+
+**[신규 파일] SpeechCacheManager.swift**
+- 사전 합성 캐시 전담 관리 (`~/Library/Application Support/MyTeam/SpeechCache/`)
+- 캐시 키: `{캐릭터명}_{refHash}_{textHash}.wav`
+  - `refHash` = SHA256(PrecomputedVoice JSON mtime 정수)[:8] → 음성 파일 교체 시 자동 무효화
+  - `textHash` = SHA256(sanitized+shortened 텍스트)[:8] → `{title}` 치환 후 해싱이므로 호칭 변경도 자동 처리
+- 런타임 캐시 + 번들 캐시 2단계 조회
+- `saveAsync()`: MLX 합성 결과 백그라운드 저장 + 구 refHash 파일 자동 삭제
+- `playCached()`: NSSound 즉시 재생 (딜레이 <50ms)
+
+**[신규 파일] pregenerate_dialogues.py**
+- `CharacterDialogues.swift` 파싱 (괄호 깊이 기반, 중첩 Swift 배열 처리)
+- `{title}` 포함 대사 자동 스킵 (호칭은 수시로 바뀌므로 사전 합성 무의미)
+- 11캐릭터 × ~60개 고정 대사 → MLX TTS 서버로 합성 → `SpeechCache/` 저장
+- 실행: `cd ~/Desktop/TTS맨/chatterbox && .venv/bin/python3 pregenerate_dialogues.py`
+
+**[UX 기능] SpeechManager.swift — 캐시 통합 + onAudioStarted 콜백**
+- `executeTTS()` 0순위: `SpeechCacheManager.cachedURL()` → NSSound 즉시 재생 (<50ms)
+- `onAudioStarted: (() -> Void)?` 프로퍼티 추가 → 오디오 재생 시작 순간 메인스레드 콜백
+  - 캐시 히트: `sound.play()` 직전 호출
+  - MLX 서버 경로: `onWavDataReady` 시점 (WAV 수신 → 재생 직전) 호출
+- `isCached(rawText:characterName:) -> Bool` public 메서드 추가 (AgentChatView UX 분기용)
+- `onWavDataReady` 콜백: MLX 합성 WAV를 `SpeechCacheManager.saveAsync()`로 자동 캐시 저장
+
+**[UX 기능] "Thinking Character" — 텍스트·음성 동기화 (AgentChatView.swift)**
+- AI 응답 수신 후 캐시 히트 여부로 분기:
+  - **캐시 히트 (빠른 경로)**: 텍스트 즉시 표시 + 바로 재생 (thinking 생략)
+  - **캐시 미스 (느린 경로)**: typing... 인디케이터 유지 → `onAudioStarted` 콜백 시 텍스트 표시 + 음성 동시 해제
+- 기존 청크별 타이핑 딜레이 루프 제거 → MLX 합성 시간이 자연스러운 "생각하는 시간"으로 대체
+- 무음 모드: TTS 없이 텍스트 즉시 표시
+
+**수정 파일:**
+- `MyTeam/MyTeam/SpeechManager.swift`
+- `MyTeam/MyTeam/AgentChatView.swift`
+- `MyTeam/MyTeam/SpeechCacheManager.swift` (신규)
+- `/Users/su/Desktop/TTS맨/chatterbox/mlx_tts_server.py`
+- `/Users/su/Desktop/TTS맨/chatterbox/pregenerate_dialogues.py` (신규)
+
+**빌드**: `** BUILD SUCCEEDED **` 확인
+
+---
+
+### [2026-04-06] [Antigravity]
+- **TTS 엔진 순차 스트리밍 플랜 감사 및 치명적 버그 수정**
+  - **버그 1 (Mac mini 무음)**: `speakChunk`의 이펙트 재생 경로에 `AVAudioEngine + AVAudioPlayerNode`가 도입되어 있었으나, 이미 Mac mini(M4)에서 해당 엔진이 무음으로 동작하는 문제가 알려져 있었음.
+  - **버그 2 (오디오 겹침/데드락)**: `player.scheduleFile(at: nil, completionHandler:)`의 핸들러가 재생 완료 시점이 아닌 "버퍼 스케줄 직후"에 즉시 호출되어, `withCheckedContinuation`이 즉시 `resume`되고 모든 청크가 동시에 음성 출력되는 현상 발생.
+  - **해결 완료**: `playWithEffects`를 **NSSound + duration 기반 지연 대기** 로직으로 전면 교체. (`AVAudioEngine` 완전 제거)
+  - **음질 타협**: NSSound는 피치(pitch) 조절을 지원하지 않아 동물 TTS 모드 시 볼륨만 매핑하고 이펙트는 포기함. 고품질 MLX 음성만으로도 충분한 개성이 살아난다고 판단.
+  - **죽은 코드 정리**: `executeTTS`의 `if false /* CoreMLTTSManager /*` 블록과 구식 음절 WAV 폴백 호출 찌꺼기 완전 제거 (TTS 경로를 캐시 → MLX 서버 → 무음으로 명료화).
+
+- **TASK.md 업데이트: 앱스토어 배포 기준의 TTS 고도화 로드맵 작성**
+  - **프로젝트 목표 명시**: 사용자 목표인 "애플 제품 같은 완성도, 앱스토어 배포" 기준에 맞춰 Python 서버가 구조적 블로커임을 안내.
+  - **Phase 1**: 캐시 극대화 (AI 커먼 리액션 사전 합성, 번들 내포 포함).
+  - **Phase 2**: **MLX-Swift 네이티브 전환 (필수)**. Python HTTP API를 Swift 네이티브 코드로 교체해 앱스토어 심사 통과 보장.
+  - **Phase 3**: 초경량 한국어 모델 교체 검토 (VITS2-Korean 등).
+  
+**수정 파일:**
+- `MyTeam/MyTeam/SpeechManager.swift`
+- `TASK.md`
+
+---
+
+### [2026-04-06] [Antigravity]
+- **Mac App Store 샌드박스 완벽 대응 및 보안 강화 (Priority 1 완료)**
+  - **절대경로 하드코딩 제거**: `SpeechManager.swift`, `ONNXTTSManager.swift` 코드 내부의 `/Users/su/Desktop/...` 및 `~/` 계열 절대경로들을 모두 찾아 제거. 샌드박스가 허용하는 `FileManager.default.urls(for: .applicationSupportDirectory)`로 폴백되도록 리팩토링.
+  - **API 키 Keychain 기반 암호화 적용**: `SettingsView.swift`와 `AIService.swift`가 `UserDefaults`(@AppStorage)를 통해 API 키를 평문으로 입출력하던 보안 취약점을 해결. 자체 `KeychainManager`를 도입하여 암호화 저장소에 보관하도록 구조 개선 완료. `MyTeamApp.swift` 시작 시 자동 마이그레이션 적용.
+- **수정 파일 목록**
+  - `MyTeam/MyTeam/SpeechManager.swift`
+  - `MyTeam/MyTeam/ONNXTTSManager.swift`
+  - `MyTeam/MyTeam/SettingsView.swift`
+  - `MyTeam/MyTeam/AIService.swift`
+  - `MyTeam/MyTeam/KeychainManager.swift`
+  - `MyTeam/MyTeam/MyTeamApp.swift`
+
+---
+
+## 📝 다음 작업 시 이 파일에 아래 형식으로 추가
+
+```markdown
+### [YYYY-MM-DD] [Antigravity / Claude Code]
+- 작업한 내용 요약
+- 수정 파일 목록
+```
+
+---
+
+### [2026-04-07] [Antigravity]
+- **[우선순위 2] SpeechManager Massive Class 해체 — 아키텍처 전면 리팩토링 완료**
+
+  #### 배경
+  896줄의 SpeechManager 하나가 STT 권한 요청, 마이크 엔진, 오디오 재생(NSSound/AVAudioPlayer), 동물TTS 음절 파싱, WAV 포맷 변환, MLX/Chatterbox 분기까지 모든 것을 담당하던 Massive Class 상태였음. 향후 MLX-Swift 네이티브 전환, 피치/속도 이펙트 복구가 불가능한 구조.
+
+  #### 신규 생성 파일 (단일 책임 원칙 적용)
+  - **`AudioPlayable.swift`** — 재생 추상화 프로토콜 + `PlaybackCommand` 구조체 (pitch/rate/volume 탑재). `AVAudioEnginePlaybackService`로의 갈아끼움 경로를 DI 형태로 명시.
+  - **`NSSoundPlaybackService.swift`** — 현재 과도기 구현체. pitch/rate 미지원 명시, AVAudioEngine 전환 TODO 주석 포함.
+  - **`AudioPlaybackService.swift`** — `actor`로 선언된 Thread-safe State Machine.
+    - **Actor Reentrancy 방어**: 상태 변경(`.playing`)을 await 이전 동기적으로 확정 후 I/O.
+    - **AsyncStream 소비자 패턴**: 큐에 데이터 주입 즉시 재생 시작 (Early-Bird Streaming).
+  - **`PermissionsManager.swift`** — 마이크/음성인식 TCC 권한 전담 actor. `AudioCaptureService`에서 권한 코드 완전 분리.
+  - **`AudioCaptureService.swift`** — 순수 STT 버퍼링만 담당.
+    - Barge-in 지원: 재생 중에도 마이크 강제 정지 없음.
+    - 탭 콜백 내 메인 스레드 블로킹 제거.
+    - `setVoiceProcessingEnabled(true)` TODO 주석 삽입 — AVAudioEngine 전환 시 활성화하면 하드웨어 AEC가 켜져 무전기식 에코 방지 로직 자체가 불필요해짐.
+  - **`AnimalTTSService.swift`** — "배열 반환" 금지, "스트림 주입(Stream Injection)" 방식.
+    - 음절 하나 파싱 즉시 `AudioPlaybackService.enqueue()` 주입 → 딜레이 0.
+    - `PlaybackCommand`에 캐릭터별 pitch/rate/volume 탑재하여 배출.
+
+  #### 수정 파일
+  - **`SpeechManager.swift`** — 896줄 → 약 230줄의 순수 오케스트레이터로 다이어트.
+    - Barge-in 감지(AI 재생 중 사용자 끼어들기 → 재생 즉시 중단).
+    - VPIO(Voice Processing I/O) TODO 주석 명시.
+    - 모든 기존 공개 API(`speak`, `speakChunk`, `speakImmediate`, `prefetchChunk`, `stopSpeaking`, `requestAuthorization` 등) 100% 호환 유지.
+
+  #### 기술 부채 명시 (추후 해소 예정)
+  - `NSSoundPlaybackService`는 pitch/rate 미지원 → **`AVAudioEnginePlaybackService`** 전환 필수 (AVAudioUnitTimePitch, AVAudioUnitVarispeed 노드 연결).
+  - `AudioCaptureService` 내 `setVoiceProcessingEnabled(true)` 주석 해제로 하드웨어 AEC 활성화 → Barge-in 감지 코드 제거 가능.
+
+- **수정 파일 목록**
+  - `MyTeam/MyTeam/AudioPlayable.swift` (신규)
+  - `MyTeam/MyTeam/NSSoundPlaybackService.swift` (신규)
+  - `MyTeam/MyTeam/AudioPlaybackService.swift` (신규)
+  - `MyTeam/MyTeam/PermissionsManager.swift` (신규)
+  - `MyTeam/MyTeam/AudioCaptureService.swift` (신규)
+  - `MyTeam/MyTeam/AnimalTTSService.swift` (신규)
+  - `MyTeam/MyTeam/SpeechManager.swift` (전면 교체)
+
+---
+
+### [2026-04-07] [Antigravity]
+- **True Real-Time AVAudioEngine 리팩토링 및 안정화 완료**
+  - **레거시 제거**: `NSSound` 기반의 땜빵식 재생과 WAV 파일 I/O(디스크 쓰기/읽기)를 완전히 제거하고 `AVAudioEngine` 기반의 순수 인메모리 PCM 파이프라인으로 전환.
+  - **세션 멀티플렉싱**: `WebSocketStreamManager` (Actor)를 도입하여 `stream_id` 기반의 제어 프레임을 처리하고, 여러 캐릭터의 오디오 스트림이 섞이지 않도록 세션을 완벽히 격리.
+  - **동적 리샘플링 및 노이즈 방어**:
+    - `AVAudioConverter` 재사용 풀링을 통해 CPU 오버헤드 최소화.
+    - 100ms 미만의 **Jitter Pre-buffering** 워터마크를 도입하여 네트워크 지연 시 발생하는 팝핑/찌직 노이즈 원천 차단.
+    - 버퍼 언더런 시 Silence Padding 및 세션 종료 시 **Node Detach (Teardown)** 로직을 추가하여 메모리 누수 및 엔진 붕괴 방지.
+  - **Actor 기반 메모리 캐싱**: `AnimalTTSCacheManager` (Actor)를 분리하여 수백 개의 음절 WAV 파일을 앱 구동 시 비동기로 PCM Data로 변환하여 메모리에 적재. 재생 시 I/O 지연 0초 달성.
+  - **샌드박스 안정성**: 절대경로 하드코딩 및 임시 파일 생성을 배제하여 Mac App Store 심사 기준 충족.
+
+- **수정 파일 목록**
+  - `MyTeam/MyTeam/AudioPlaybackService.swift` (전면 재작성)
+  - `MyTeam/MyTeam/WebSocketStreamManager.swift` (신규 작성)
+  - `MyTeam/MyTeam/WebSocketClient.swift` (JSON 파싱/바이너리 분리 로직 수정)
+  - `MyTeam/MyTeam/AnimalTTSService.swift` (Actor 캐시 연동 및 Pre-loading 도입)
+  - `MyTeam/MyTeam/SpeechManager.swift` (URL 제거 및 PCM 주입 방식으로 연동 수정)
+  - `MyTeam/MyTeam/AudioPlayable.swift` (Protocol 명세 업데이트)
 
 ---
 

@@ -12,6 +12,11 @@ struct TeamStatusView: View {
     @State private var showRenameAlert = false
     @State private var newName = ""
     @State private var roomToRename: AgentWindowManager.ChatRoom? = nil
+    
+    @State private var inputText: String = ""
+    @State private var pendingAttachments: [ChatAttachment] = []
+    @State private var isTargetedForDrop: Bool = false
+    
     private var bgColor: Color {
         manager.isDarkMode ? Color.black.opacity(isCollapsed ? 0.4 : 0.8) : Color.white.opacity(isCollapsed ? 0.3 : 0.75)
     }
@@ -143,234 +148,244 @@ struct TeamStatusView: View {
     private var chatroomView: some View {
         HStack(spacing: 0) {
             // ── 좌측: 방 목록 사이드바 ──
-            VStack(spacing: 0) {
-                HStack {
-                    Text("채팅방")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(textColor.opacity(0.5))
-                    Spacer()
-                    // 삭제 모드 토글 (−)
-                    Button(action: {
-                        withAnimation(.easeInOut(duration: 0.15)) { isDeleteMode.toggle() }
-                    }) {
-                        if isDeleteMode {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 14))
-                                .foregroundColor(.orange)
-                        } else {
-                            ZStack {
-                                if manager.isDarkMode {
-                                    Circle()
-                                        .fill(Color.white)
-                                        .frame(width: 14, height: 14)
-                                    Image(systemName: "minus")
-                                        .font(.system(size: 8, weight: .heavy))
-                                        .foregroundColor(.black)
-                                } else {
-                                    Image(systemName: "minus.circle.fill")
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.red.opacity(0.7))
-                                }
-                            }
-                        }
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    // 채팅방 추가 (+)
-                    Button(action: {
-                        isDeleteMode = false
-                        manager.createRoom(name: "프로젝트 \(manager.rooms.count + 1)")
-                    }) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.blue)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-
-                Divider().background(textColor.opacity(0.05))
-
-                ScrollView {
-                    VStack(spacing: 4) {
-                        ForEach(manager.rooms.filter { $0.agentIDs.contains("team_all") || $0.agentIDs.count > 1 }) { room in
-                            RoomRowView(
-                                room: room,
-                                isSelected: manager.currentRoomID == room.id,
-                                isDarkMode: manager.isDarkMode,
-                                isDeleteMode: isDeleteMode,
-                                onRename: {
-                                    roomToRename = room
-                                    newName = room.name
-                                    showRenameAlert = true
-                                }
-                            )
-                            .onTapGesture {
-                                if isDeleteMode {
-                                    roomToDelete = room
-                                } else {
-                                    manager.currentRoomID = room.id
-                                }
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 8).padding(.vertical, 6)
-                }
-                .alert("프로젝트 이름 변경", isPresented: $showRenameAlert) {
-                    TextField("새 이름", text: $newName)
-                    Button("변경") {
-                        if let r = roomToRename {
-                            manager.renameRoom(id: r.id, newName: newName)
-                        }
-                    }
-                    Button("취소", role: .cancel) { }
-                } message: {
-                    Text("새 프로젝트 이름을 입력하세요.")
-                }
-                .alert(item: $roomToDelete) { room in
-                    Alert(
-                        title: Text("\"\(room.name)\" 삭제"),
-                        message: Text("이 채팅방의 모든 대화 내역이 삭제됩니다. 계속하시겠습니까?"),
-                        primaryButton: .destructive(Text("삭제")) {
-                            manager.deleteRoom(id: room.id)
-                            if manager.rooms.isEmpty { isDeleteMode = false }
-                        },
-                        secondaryButton: .cancel(Text("취소"))
-                    )
-                }
-            }
-            .frame(width: 140)
-            .background(manager.isDarkMode ? Color.white.opacity(0.03) : Color.black.opacity(0.03))
-
+            chatroomSidebar
+            
             Divider().background(textColor.opacity(0.08))
-
+            
             // ── 우측: 선택된 방의 채팅 로그 ──
-            VStack(spacing: 0) {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 8) {
-                            if manager.teamChatLogs.isEmpty {
-                                VStack(spacing: 8) {
-                                    Image(systemName: "bubble.left.and.bubble.right")
-                                        .font(.system(size: 28))
-                                        .foregroundColor(textColor.opacity(0.2))
-                                    Text("아직 대화 내용이 없습니다.")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(textColor.opacity(0.3))
-                                }
-                                .frame(maxWidth: .infinity).padding(.top, 30)
-                            }
-
-                            ForEach(Array(manager.teamChatLogs.enumerated()), id: \.element.id) { index, log in
-                                if index == 0 || !Calendar.current.isDate(
-                                    log.timestamp, inSameDayAs: manager.teamChatLogs[index - 1].timestamp
-                                ) {
-                                    HStack {
-                                        Spacer()
-                                        Text(log.timestamp, style: .date)
-                                            .font(.system(size: 9, weight: .bold))
-                                            .foregroundColor(textColor.opacity(0.4))
-                                            .padding(.horizontal, 8).padding(.vertical, 2)
-                                            .background(Capsule().fill(textColor.opacity(0.06)))
-                                        Spacer()
-                                    }
-                                    .padding(.vertical, 4)
-                                }
-
-                                HStack(alignment: .top, spacing: 6) {
-                                    if log.isUser { Spacer() }
-                                    VStack(alignment: log.isUser ? .trailing : .leading, spacing: 2) {
-                                        Text(log.isUser ? "나" : log.agentName)
-                                            .font(.system(size: 9, weight: .bold))
-                                            .foregroundColor(log.isUser ? .blue : (manager.allAvailableAgents.first(where: { $0.id == log.agentID })?.color ?? .orange))
-                                        Text(log.text)
-                                            .font(.system(size: 12))
-                                            .foregroundColor(log.isUser ? .white : textColor.opacity(0.9))
-                                            .padding(.horizontal, 10).padding(.vertical, 6)
-                                            .background(
-                                                RoundedRectangle(cornerRadius: 12)
-                                                    .fill(log.isUser ? Color.blue : (manager.isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.06)))
-                                            )
-                                        Text(log.timestamp, style: .time)
-                                            .font(.system(size: 8))
-                                            .foregroundColor(textColor.opacity(0.35))
-                                    }
-                                    if !log.isUser { Spacer() }
-                                }
-                                .id(log.id)
-                            }
-                        }
-                        .padding(12)
-                    }
-                    .onChange(of: manager.teamChatLogs.count) { _, _ in
-                        if let last = manager.teamChatLogs.last {
-                            withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
-                        }
-                    }
-                }
-
-                // ── 하단: 입력창 (팀 채팅 + 첨부파일) ──
-                Divider().background(textColor.opacity(0.08))
-
-                // 첨부파일 미리보기
-                if !pendingAttachments.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(pendingAttachments) { attachment in
-                                AttachmentChip(attachment: attachment) {
-                                    pendingAttachments.removeAll { $0.id == attachment.id }
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 10).padding(.vertical, 4)
-                    }
-                }
-
-                HStack(spacing: 8) {
-                    Button(action: openTeamFilePicker) {
-                        Image(systemName: "paperclip")
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondary)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                    TextField("팀원들에게 메시지...", text: $inputText)
-                        .textFieldStyle(PlainTextFieldStyle())
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(isTargetedForDrop ? Color.blue.opacity(0.1) : textColor.opacity(0.05))
-                                .overlay(RoundedRectangle(cornerRadius: 14).stroke(isTargetedForDrop ? Color.blue : Color.clear, lineWidth: 1))
-                        )
-                        .onSubmit { sendTeamMessage() }
-
-                    Button(action: sendTeamMessage) {
-                        Image(systemName: "paperplane.fill")
-                            .foregroundColor((inputText.isEmpty && pendingAttachments.isEmpty) ? .gray.opacity(0.4) : .blue)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .disabled(inputText.isEmpty && pendingAttachments.isEmpty)
-                }
-                .padding(10)
-                .onDrop(of: [.fileURL], isTargeted: $isTargetedForDrop) { providers in
-                    for provider in providers {
-                        _ = provider.loadObject(ofClass: URL.self) { url, _ in
-                            guard let url = url else { return }
-                            Task { @MainActor in
-                                if let a = await loadTeamAttachment(from: url) { pendingAttachments.append(a) }
-                            }
-                        }
-                    }
-                    return true
-                }
-            }
+            chatroomLogView
         }
     }
 
-    @State private var inputText: String = ""
-    @State private var pendingAttachments: [ChatAttachment] = []
-    @State private var isTargetedForDrop: Bool = false
+    private var chatroomSidebar: some View {
+        VStack(spacing: 0) {
+            chatroomSidebarHeader
+            
+            Divider().background(textColor.opacity(0.05))
+
+            ScrollView {
+                VStack(spacing: 4) {
+                    let filteredRooms = manager.rooms.filter { $0.agentIDs.contains("team_all") || $0.agentIDs.count > 1 }
+                    ForEach(filteredRooms) { room in
+                        RoomRowView(
+                            room: room,
+                            isSelected: manager.currentRoomID == room.id,
+                            isDarkMode: manager.isDarkMode,
+                            isDeleteMode: isDeleteMode,
+                            onRename: {
+                                roomToRename = room
+                                newName = room.name
+                                showRenameAlert = true
+                            }
+                        )
+                        .onTapGesture {
+                            if isDeleteMode {
+                                roomToDelete = room
+                            } else {
+                                manager.currentRoomID = room.id
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 8).padding(.vertical, 6)
+            }
+            .alert("프로젝트 이름 변경", isPresented: $showRenameAlert) {
+                TextField("새 이름", text: $newName)
+                Button("변경") {
+                    if let r = roomToRename {
+                        manager.renameRoom(id: r.id, newName: newName)
+                    }
+                }
+                Button("취소", role: .cancel) { }
+            } message: {
+                Text("새 프로젝트 이름을 입력하세요.")
+            }
+            .alert(item: $roomToDelete) { room in
+                Alert(
+                    title: Text("\"\(room.name)\" 삭제"),
+                    message: Text("이 채팅방의 모든 대화 내역이 삭제됩니다. 계속하시겠습니까?"),
+                    primaryButton: .destructive(Text("삭제")) {
+                        manager.deleteRoom(id: room.id)
+                        if manager.rooms.isEmpty { isDeleteMode = false }
+                    },
+                    secondaryButton: .cancel(Text("취소"))
+                )
+            }
+        }
+        .frame(width: 140)
+        .background(manager.isDarkMode ? Color.white.opacity(0.03) : Color.black.opacity(0.03))
+    }
+
+    private var chatroomSidebarHeader: some View {
+        HStack {
+            Text("채팅방")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundColor(textColor.opacity(0.5))
+            Spacer()
+            // 삭제 모드 토글 (−)
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.15)) { isDeleteMode.toggle() }
+            }) {
+                if isDeleteMode {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.orange)
+                } else {
+                    ZStack {
+                        if manager.isDarkMode {
+                            Circle()
+                                .fill(Color.white)
+                                .frame(width: 14, height: 14)
+                            Image(systemName: "minus")
+                                .font(.system(size: 8, weight: .heavy))
+                                .foregroundColor(.black)
+                        } else {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.red.opacity(0.7))
+                        }
+                    }
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
+            // 채팅방 추가 (+)
+            Button(action: {
+                isDeleteMode = false
+                manager.createRoom(name: "프로젝트 \(manager.rooms.count + 1)")
+            }) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundColor(.blue)
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+
+    private var chatroomLogView: some View {
+        VStack(spacing: 0) {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 8) {
+                        if manager.teamChatLogs.isEmpty {
+                            VStack(spacing: 8) {
+                                Image(systemName: "bubble.left.and.bubble.right")
+                                    .font(.system(size: 28))
+                                    .foregroundColor(textColor.opacity(0.2))
+                                Text("아직 대화 내용이 없습니다.")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(textColor.opacity(0.3))
+                            }
+                            .frame(maxWidth: .infinity).padding(.top, 30)
+                        }
+
+                        ForEach(Array(manager.teamChatLogs.enumerated()), id: \.element.id) { index, log in
+                            if index == 0 || !Calendar.current.isDate(
+                                log.timestamp, inSameDayAs: manager.teamChatLogs[index - 1].timestamp
+                            ) {
+                                HStack {
+                                    Spacer()
+                                    Text(log.timestamp, style: .date)
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundColor(textColor.opacity(0.4))
+                                        .padding(.horizontal, 8).padding(.vertical, 2)
+                                        .background(Capsule().fill(textColor.opacity(0.06)))
+                                    Spacer()
+                                }
+                                .padding(.vertical, 4)
+                            }
+
+                            HStack(alignment: .top, spacing: 6) {
+                                if log.isUser { Spacer() }
+                                VStack(alignment: log.isUser ? .trailing : .leading, spacing: 2) {
+                                    Text(log.isUser ? "나" : log.agentName)
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundColor(log.isUser ? .blue : (manager.allAvailableAgents.first(where: { $0.id == log.agentID })?.color ?? .orange))
+                                    Text(log.text)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(log.isUser ? .white : textColor.opacity(0.9))
+                                        .padding(.horizontal, 10).padding(.vertical, 6)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 12)
+                                                .fill(log.isUser ? Color.blue : (manager.isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.06)))
+                                        )
+                                    Text(log.timestamp, style: .time)
+                                        .font(.system(size: 8))
+                                        .foregroundColor(textColor.opacity(0.35))
+                                }
+                                if !log.isUser { Spacer() }
+                            }
+                            .id(log.id)
+                        }
+                    }
+                    .padding(12)
+                }
+                .background(Color.clear)
+                .onChange(of: manager.teamChatLogs.count) { _, _ in
+                    if let last = manager.teamChatLogs.last {
+                        withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                    }
+                }
+            }
+
+            // ── 하단: 입력창 (팀 채팅 + 첨부파일) ──
+            Divider().background(textColor.opacity(0.08))
+
+            // 첨부파일 미리보기
+            if !pendingAttachments.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(pendingAttachments) { attachment in
+                            AttachmentChip(attachment: attachment) {
+                                pendingAttachments.removeAll { $0.id == attachment.id }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 10).padding(.vertical, 4)
+                }
+            }
+
+            HStack(spacing: 8) {
+                Button(action: openTeamFilePicker) {
+                    Image(systemName: "paperclip")
+                        .font(.system(size: 14))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                TextField("팀원들에게 메시지...", text: $inputText)
+                    .textFieldStyle(PlainTextFieldStyle())
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(isTargetedForDrop ? Color.blue.opacity(0.1) : textColor.opacity(0.05))
+                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(isTargetedForDrop ? Color.blue : Color.clear, lineWidth: 1))
+                    )
+                    .onSubmit { sendTeamMessage() }
+
+                Button(action: sendTeamMessage) {
+                    Image(systemName: "paperplane.fill")
+                        .foregroundColor((inputText.isEmpty && pendingAttachments.isEmpty) ? .gray.opacity(0.4) : .blue)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .disabled(inputText.isEmpty && pendingAttachments.isEmpty)
+            }
+            .padding(10)
+            .onDrop(of: [.fileURL], isTargeted: $isTargetedForDrop) { providers in
+                for provider in providers {
+                    _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                        guard let url = url else { return }
+                        Task { @MainActor in
+                            if let a = await loadTeamAttachment(from: url) { pendingAttachments.append(a) }
+                        }
+                    }
+                }
+                return true
+            }
+        }
+    }
 
     private func openTeamFilePicker() {
         let panel = NSOpenPanel()
@@ -448,7 +463,7 @@ struct TeamStatusView: View {
                         .foregroundColor(isSelected ? .blue : .gray.opacity(0.5))
                 }
                 
-                // 6글자까지 허용하고 왼쪽 정렬
+                // 12글자까지 허용하고 왼쪽 정렬
                 Text(room.name.prefix(12))
                     .font(.system(size: 10, weight: .bold))
                     .foregroundColor(isSelected ? .blue : (isDarkMode ? .white.opacity(0.6) : .black.opacity(0.5)))

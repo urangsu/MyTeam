@@ -1,26 +1,30 @@
 import SwiftUI
 import AppKit
+import CoreLocation
 
 // MARK: - SettingsView
 // 환경 설정 창 (API 키 입력 등)
 struct SettingsView: View {
     @EnvironmentObject var manager: AgentWindowManager
     var onClose: (() -> Void)? = nil
+    @State private var locationLoading: Bool = false
     
-    // 3개 API 제공자 영구 저장
-    @AppStorage("geminiAPIKey") private var geminiAPIKey: String = ""
-    @AppStorage("claudeAPIKey") private var claudeAPIKey: String = ""
-    @AppStorage("openaiAPIKey") private var openaiAPIKey: String = ""
+    // 3개 API 제공자 영구 저장 (보안을 위해 Keychain 사용)
+    @State private var geminiAPIKey: String = ""
+    @State private var claudeAPIKey: String = ""
+    @State private var openaiAPIKey: String = ""
 
     // 사용자 설정
+    @AppStorage("userName") private var userName: String = ""
     @AppStorage("userTitle") private var userTitle: String = "사용자님"
+    @AppStorage("agentWindowOpacity") private var agentWindowOpacity: Double = 0.0
     @AppStorage("teamName") private var teamName: String = "MyTeam"
     @AppStorage("showTeamName") private var showTeamName: Bool = true
     @AppStorage("teamNameColor") private var teamNameColor: String = "#FFFFFF"
     @AppStorage("useCloudVoice") private var useCloudVoice: Bool = false
     @AppStorage("useAnimalTTS") private var useAnimalTTS: Bool = true
     @AppStorage("appLanguage") private var appLanguage: String = "한국어"
-    @AppStorage("userLocation") private var userLocation: String = "전남 광양"
+    @AppStorage("userLocation") private var userLocation: String = "서울"
 
     // 검증을 위해 선택할 제공자 저장
     @AppStorage("validationProvider") private var validationProvider: String = "Gemini"
@@ -157,15 +161,27 @@ struct SettingsView: View {
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(textColor)
 
-                    // 사용자 호칭
+                    // 사용자 이름 + 호칭 (한 줄)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("사용자 호칭")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(textColor.opacity(0.8))
-                        TextField("대표님", text: $userTitle)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .font(.system(size: 13))
-                        Text("에이전트가 나를 부를 때 사용합니다 (예: 사용자님, 대표님, 이름)")
+                        HStack(spacing: 8) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("이름")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(textColor.opacity(0.8))
+                                TextField("홍길동", text: $userName)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .font(.system(size: 13))
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("호칭")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(textColor.opacity(0.8))
+                                TextField("대표님", text: $userTitle)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .font(.system(size: 13))
+                            }
+                        }
+                        Text("에이전트가 맥락에 따라 이름과 호칭을 유기적으로 사용합니다")
                             .font(.system(size: 10))
                             .foregroundColor(textColor.opacity(0.4))
                     }
@@ -175,10 +191,21 @@ struct SettingsView: View {
                         Text("현재 위치 / 지역")
                             .font(.system(size: 11, weight: .bold))
                             .foregroundColor(textColor.opacity(0.8))
-                        TextField("어디에 계신가요?", text: $userLocation)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .font(.system(size: 13))
-                        Text("에이전트가 현실적인 대화를 하기 위해 참고합니다 (예: 서울, 제주, 전남 광양)")
+                        HStack(spacing: 6) {
+                            TextField("어디에 계신가요?", text: $userLocation)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .font(.system(size: 13))
+                            Button(action: { requestGPSLocation() }) {
+                                Image(systemName: locationLoading ? "arrow.triangle.2.circlepath" : "location.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.white)
+                                    .frame(width: 28, height: 22)
+                                    .background(RoundedRectangle(cornerRadius: 6).fill(Color.blue))
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .help("GPS로 현재 위치 자동 입력")
+                        }
+                        Text("에이전트가 현실적인 대화를 하기 위해 참고합니다")
                             .font(.system(size: 10))
                             .foregroundColor(textColor.opacity(0.4))
                     }
@@ -243,7 +270,7 @@ struct SettingsView: View {
                     // 동물의 숲 TTS
                     Toggle(isOn: $useAnimalTTS) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("🐾 기본 TTS")
+                            Text("🐾 동물 TTS")
                                 .font(.system(size: 13, weight: .medium))
                                 .foregroundColor(textColor)
                             Text("팀원의 말소리를 귀여운 로컬 스타일로 재생")
@@ -271,6 +298,35 @@ struct SettingsView: View {
                     .toggleStyle(SwitchToggleStyle(tint: .blue))
                     .disabled(useAnimalTTS)  // 동물의 숲 TTS 켜져 있으면 비활성화
                 }
+
+                Divider().background(textColor.opacity(0.1)).padding(.vertical, 4)
+
+                // ── 팀원창 설정 ──
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("팀원창")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(textColor)
+
+                    // 배경 투명도
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("배경 투명도")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(textColor.opacity(0.8))
+                            Spacer()
+                            Text("\(Int(agentWindowOpacity * 100))%")
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundColor(textColor.opacity(0.6))
+                        }
+                        Slider(value: $agentWindowOpacity, in: 0.0...1.0, step: 0.05)
+                            .tint(.blue)
+                        Text("에이전트 팀원창의 배경 불투명도를 조절합니다")
+                            .font(.system(size: 10))
+                            .foregroundColor(textColor.opacity(0.4))
+                    }
+                }
+
+                Divider().background(textColor.opacity(0.1)).padding(.vertical, 4)
 
                 // ── 윈도우 정돈 ──
                 VStack(alignment: .leading, spacing: 10) {
@@ -342,6 +398,9 @@ struct SettingsView: View {
                 HStack {
                     Spacer()
                     Button(action: {
+                        KeychainManager.save(key: "geminiAPIKey", value: geminiAPIKey)
+                        KeychainManager.save(key: "claudeAPIKey", value: claudeAPIKey)
+                        KeychainManager.save(key: "openaiAPIKey", value: openaiAPIKey)
                         WebSocketClient.shared.sendAPIKey() // 새로 입력한 3개 키 모두 전송
                         onClose?()
                     }) {
@@ -358,6 +417,7 @@ struct SettingsView: View {
             .padding(24)
         }
         .frame(width: 440, height: 700)
+        .clipped()
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(bgColor)
@@ -365,6 +425,10 @@ struct SettingsView: View {
                 .shadow(color: Color.black.opacity(0.2), radius: 10)
         )
         .onAppear {
+            geminiAPIKey = KeychainManager.load(key: "geminiAPIKey")
+            claudeAPIKey = KeychainManager.load(key: "claudeAPIKey")
+            openaiAPIKey = KeychainManager.load(key: "openaiAPIKey")
+            
             // 컬러 피커가 임사적으로 열려있는 경우 닫기 (요청 사항: 키자마자 나오지 않게)
             NSColorPanel.shared.close()
         }
@@ -411,5 +475,70 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+
+    // MARK: - GPS 위치 자동 감지
+    private func requestGPSLocation() {
+        locationLoading = true
+        let locator = GPSLocator()
+        locator.requestLocation { result in
+            DispatchQueue.main.async {
+                locationLoading = false
+                switch result {
+                case .success(let placeName):
+                    userLocation = placeName
+                case .failure(let error):
+                    print("[Settings] GPS 실패: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+}
+
+// MARK: - GPS Helper
+private class GPSLocator: NSObject, CLLocationManagerDelegate {
+    private let manager = CLLocationManager()
+    private var completion: ((Result<String, Error>) -> Void)?
+
+    func requestLocation(completion: @escaping (Result<String, Error>) -> Void) {
+        self.completion = completion
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyKilometer
+
+        let status = manager.authorizationStatus
+        if status == .denied || status == .restricted {
+            completion(.failure(NSError(domain: "GPS", code: -1, userInfo: [NSLocalizedDescriptionKey: "위치 권한이 거부되었습니다. 시스템 설정에서 허용해주세요."])))
+        } else {
+            // .notDetermined일 때 startUpdatingLocation 호출하면 자동으로 권한 팝업 표시
+            manager.requestLocation()
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.last else { return }
+
+        // CLGeocoder: macOS 26에서 deprecated 예정이나 현재 macOS 15 호환 필요
+        let geocoder: CLGeocoder = {
+            if #available(macOS 26, *) { /* TODO: MKReverseGeocodingRequest로 전환 */ }
+            return CLGeocoder()
+        }()
+        geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
+            if let error = error {
+                self?.completion?(.failure(error))
+                return
+            }
+            guard let place = placemarks?.first else {
+                self?.completion?(.failure(NSError(domain: "GPS", code: -2, userInfo: [NSLocalizedDescriptionKey: "주소를 찾을 수 없습니다."])))
+                return
+            }
+            let admin = place.administrativeArea ?? ""
+            let locality = place.locality ?? place.subAdministrativeArea ?? ""
+            let name = [admin, locality].filter { !$0.isEmpty }.joined(separator: " ")
+            self?.completion?(.success(name.isEmpty ? "알 수 없음" : name))
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        completion?(.failure(error))
     }
 }

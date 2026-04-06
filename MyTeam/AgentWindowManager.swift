@@ -31,7 +31,14 @@ class AgentWindowManager: ObservableObject {
     // ── 전역 설정 ──
     @AppStorage("isDarkMode") var isDarkMode: Bool = false
     @AppStorage("isVoiceMode") var isVoiceMode: Bool = true
-    @AppStorage("isSilentMode") var isSilentMode: Bool = false
+    @AppStorage("isSilentMode") var isSilentMode: Bool = false {
+        didSet {
+            // 무음 모드 켜지면 즉시 모든 음성 중단
+            if isSilentMode {
+                SpeechManager.shared.stopSpeaking()
+            }
+        }
+    }
     @AppStorage("userLocation") var userLocation: String = "전남 광양"
 
     // ── 방 목록 (UserDefaults 영속화) ──
@@ -64,6 +71,8 @@ class AgentWindowManager: ObservableObject {
     @Published var speakingAgentID: String? = nil
     /// 에이전트별 현재 감정 상태 (agentID → AnimationState)
     @Published var agentEmotions: [String: AnimationState] = [:]
+    /// 현재 타이핑 중인 에이전트 ID Set (카톡 "..." 인디케이터용)
+    @Published var typingAgentIDs: Set<String> = []
     
     // ── 지능형 기억 보호 (Key Fact Buffer) ──
     @AppStorage("keyFacts") private var keyFactsData: Data = Data()
@@ -187,11 +196,18 @@ class AgentWindowManager: ObservableObject {
     // MARK: - 감정-스프라이트 상태 관리
 
     /// AI 응답 수신 시 호출 — 에이전트를 '말하는 중'으로 표시하고 감정 감지
+    /// TTS가 끝날 때까지 말풍선 유지. 안전장치: 최대 30초 후 자동 clear
     func setAgentSpeaking(agentID: String, text: String) {
         let emotion = detectEmotion(from: text)
         DispatchQueue.main.async {
             self.speakingAgentID = agentID
             self.agentEmotions[agentID] = emotion
+        }
+        // 안전장치: TTS가 끝나지 않아도 최대 30초 후 자동 clear
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak self] in
+            if self?.speakingAgentID == agentID {
+                self?.clearAgentSpeaking(agentID: agentID)
+            }
         }
     }
 
@@ -433,7 +449,7 @@ class AgentWindowManager: ObservableObject {
     // MARK: - 에이전트 스왑 로직 (순서 변경 포함)
     func swapAgent(at index: Int, with newAgent: AgentConfig) {
         guard index >= 0 && index < activeAgents.count else { return }
-        
+
         // 만약 선택한 에이전트가 이미 테이블의 다른 자리에 있다면, 둘의 자리를 맞바꿈 (Swap)
         if let existingIndex = activeAgents.firstIndex(where: { $0.id == newAgent.id }) {
             let temp = activeAgents[index]
@@ -443,6 +459,32 @@ class AgentWindowManager: ObservableObject {
             // 새 에이전트로 교체
             activeAgents[index] = newAgent
         }
+
+        // 교체 TTS — 동기적 flush 후 즉시 실행 (딜레이 없음)
+        if !isSilentMode {
+            SpeechManager.shared.stopSpeaking()
+            let greeting = swapGreeting(for: newAgent.name)
+            SpeechManager.shared.speakImmediate(text: greeting, agentID: newAgent.id, characterName: newAgent.name)
+        }
+    }
+
+    /// 캐릭터별 교체 인사 — 성격 반영, 짧고 빠르게
+    private func swapGreeting(for name: String) -> String {
+        let greetings: [String: [String]] = [
+            "레오": ["전략가 레오, 투입.", "레오 출근.", "분석 시작.", "준비 완료.", "배치 확인."],
+            "루나": ["안녕! 보고싶었지?!", "루나 등장!", "텐션 업!", "나왔다!", "기다렸지?!"],
+            "치코": ["반가워요!", "이쁘게 해줄게!", "디자인 시작!", "안녕!", "기대해요!"],
+            "렉스": ["...왔습니다.", "...배치 완료.", "...시작하죠.", "...렉스입니다.", "...조용히 하겠습니다."],
+            "케이": ["보안 점검.", "케이 투입.", "감시 시작.", "이상 없음.", "배치 확인."],
+            "모코": ["일정 확인!", "모코 출근!", "시작합시다.", "준비됐습니다.", "체크리스트!"],
+            "핀": ["핀 등장!", "그려볼까!", "안녕안녕!", "준비 끝!", "시작이다!"],
+            "래키": ["래키 왔어!", "달려볼까!", "안녕!", "출발!", "기대돼!"],
+            "폴라": ["폴라입니다.", "시작하죠.", "안녕.", "준비됐어요.", "배치 완료."],
+            "몽몽": ["몽몽 왔어!", "안녕!", "놀자!", "준비 끝!", "기다렸어!"],
+            "올리버": ["올리버 출근.", "안녕하세요.", "시작합시다.", "준비됐습니다.", "잘 부탁해요."],
+        ]
+        let options = greetings[name] ?? ["안녕!"]
+        return options.randomElement() ?? "안녕!"
     }
     
     // MARK: - 에이전트 스택/상태 창 띄우기
@@ -465,12 +507,9 @@ class AgentWindowManager: ObservableObject {
             ),
             size: NSSize(width: width, height: height)
         )
-        // 현황창은 드래그로 위치 이동 가능하게 설정
-        panel.isMovableByWindowBackground = true
-        
         let view = TeamStatusView().environmentObject(self)
         panel.contentViewController = NSHostingController(rootView: view)
-        
+
         panel.orderFront(nil)
         statusPanel = panel
     }
@@ -559,14 +598,10 @@ class AgentWindowManager: ObservableObject {
 
     // MARK: - 창 크기 동적 조절 (SwiftUI에서 호출)
     func updateStatusWindowWidth(_ width: CGFloat) {
-        guard let panel = teamPanel else { return }
+        // statusPanel의 크기를 변경 (teamPanel 아님!)
+        guard let panel = statusPanel else { return }
         var frame = panel.frame
-        _ = frame.size.width
-        // 오른쪽으로 늘어 나도록 처리 (x는 유지)
         frame.size.width = width
-        // frame.origin.x = frame.origin.x - (width - oldWidth) // 왼쪽으로 늘리려면 이 코드가 필요하지만, iMessage는 오른쪽으로 늘어남
-
-        
         panel.setFrame(frame, display: true, animate: true)
     }
     

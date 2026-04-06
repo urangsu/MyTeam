@@ -1,0 +1,36 @@
+{
+  "voice": "몽몽_reference",
+  "language": "en",
+  "count": 3,
+  "duration_sec": 0.3,
+  "sample_rate": 44100,
+  "items": [
+    {
+      "index": 1,
+      "token": "a",
+      "lang": "en",
+      "file": "01_a.wav",
+      "score": -999.0,
+      "prompt": "fallback_silence",
+      "status": "fallback"
+    },
+    {
+      "index": 2,
+      "token": "e",
+      "lang": "en",
+      "file": "02_e.wav",
+      "score": -999.0,
+      "prompt": "fallback_silence",
+      "status": "fallback"
+    },
+    {
+      "index": 3,
+      "token": "i",
+      "lang": "en",
+      "file": "03_i.wav",
+      "score": -999.0,
+      "prompt": "fallback_silence",
+      "status": "fallback"
+    }
+  ]
+}

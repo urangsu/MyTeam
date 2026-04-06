@@ -40,7 +40,10 @@ class SoundPlayer {
                 return
             }
         }
-        // 없으면 시스템 사운드 사용
-        NSSound(named: soundName)?.play()
+        // 없으면 시스템 사운드 사용 (중복 재생 방지)
+        if let sound = NSSound(named: soundName) {
+            if sound.isPlaying { sound.stop() }
+            sound.play()
+        }
     }
 }

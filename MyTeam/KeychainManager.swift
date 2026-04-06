@@ -61,4 +61,16 @@ enum KeychainManager {
         let status = SecItemDelete(query as CFDictionary)
         return status == errSecSuccess || status == errSecItemNotFound
     }
+
+    // MARK: - 마이그레이션
+    static func migrateFromUserDefaultsIfNeeded() {
+        let keys = ["geminiAPIKey", "claudeAPIKey", "openaiAPIKey"]
+        for key in keys {
+            if let oldVal = UserDefaults.standard.string(forKey: key), !oldVal.isEmpty {
+                save(key: key, value: oldVal)
+                UserDefaults.standard.removeObject(forKey: key)
+                print("[KeychainManager] 마이그레이션 완료: \(key)")
+            }
+        }
+    }
 }

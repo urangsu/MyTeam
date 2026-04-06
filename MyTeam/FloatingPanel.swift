@@ -31,13 +31,14 @@ class FloatingPanel: NSPanel {
 
         self.titleVisibility = .hidden
         self.titlebarAppearsTransparent = true
+        // 모든 패널에서 배경 드래그 허용 (창 이동 필수)
         self.isMovableByWindowBackground = true
-        
+
         // 표준 버튼(신호등) 숨기기 - 디자인 통앤매너 유지 (개별 X버튼이 이미 존재함)
         self.standardWindowButton(.closeButton)?.isHidden = true
         self.standardWindowButton(.miniaturizeButton)?.isHidden = true
         self.standardWindowButton(.zoomButton)?.isHidden = true
-        
+
         self.backgroundColor = .clear
         self.isOpaque = false
         self.hasShadow = false
@@ -51,7 +52,7 @@ class FloatingPanel: NSPanel {
 
     override var canBecomeKey: Bool  { true }
     override var canBecomeMain: Bool { true }
-    
+
     // 화살표 키 등 키보드 이벤트가 다른 UI 컨트롤로 전파되는 것을 차단
     override func keyDown(with event: NSEvent) {
         // 화살표 키는 무시 (테마 토글 방지)
@@ -61,30 +62,34 @@ class FloatingPanel: NSPanel {
     // MARK: - 마우스 이벤트: 드래그로 창 이동
 
     override func mouseDown(with event: NSEvent) {
-        // 드래그 시작점 기록
-        dragStartMouseLocation = NSEvent.mouseLocation
+        // 클릭 위치가 NSScrollView 내부면 창 드래그 시작 안 함
+        let pointInContent = contentView?.convert(event.locationInWindow, from: nil) ?? .zero
+        var hitView: NSView? = contentView?.hitTest(pointInContent)
+        var insideScroll = false
+        while let v = hitView {
+            if v is NSScrollView { insideScroll = true; break }
+            hitView = v.superview
+        }
+        if !insideScroll {
+            dragStartMouseLocation = NSEvent.mouseLocation
+        }
         AgentWindowManager.shared.updateInteractionTime()
 
         if agentID == "team" {
-            NotificationCenter.default.post(name: .agentDragBegan, object: nil)
-
-            // 에이전트별 개인 효과음 재생
             for config in AgentWindowManager.shared.activeAgents {
                 SoundPlayer.playDragStart(soundName: config.dragSoundName)
             }
         }
-        
+
         super.mouseDown(with: event)
     }
-    
+
     private var lastDraggingEventTime: Date = .distantPast
 
     override func mouseDragged(with event: NSEvent) {
         guard let startLocation = dragStartMouseLocation else { return }
 
         let currentLocation = NSEvent.mouseLocation
-
-        // 마우스 이동량 계산 → 창 위치에 반영
         let deltaX = currentLocation.x - startLocation.x
         let deltaY = currentLocation.y - startLocation.y
 
@@ -93,14 +98,9 @@ class FloatingPanel: NSPanel {
             y: self.frame.origin.y + deltaY
         )
         self.setFrameOrigin(newOrigin)
-
-        // 다음 mouseDragged를 위한 기준점 업데이트
         dragStartMouseLocation = currentLocation
 
-        // 드래그 중인 상태 백엔드 전송 (부하 방지를 위해 3초에 한 번만)
         if Date().timeIntervalSince(lastDraggingEventTime) > 3.0 {
-            // 드래그 중 이벤트 (WebSocketClient.shared.sendSystemEvent 복원 예정)
-            // let draggingGreetings = [...]
             lastDraggingEventTime = Date()
         }
 
@@ -110,19 +110,15 @@ class FloatingPanel: NSPanel {
     override func mouseUp(with event: NSEvent) {
         dragStartMouseLocation = nil
 
-        // 에이전트창일 때만 드래그 종료 알림 + 효과음
         if agentID == "team" {
             NotificationCenter.default.post(name: .agentDragEnded, object: nil)
 
-            // 에이전트별 개인 착지 효과음 재생
             for config in AgentWindowManager.shared.activeAgents {
                 SoundPlayer.playDropEnd(soundName: config.dropSoundName)
             }
         }
 
-        // 현재 위치 저장
         savePosition()
-
         super.mouseUp(with: event)
     }
 
@@ -130,7 +126,6 @@ class FloatingPanel: NSPanel {
     func savePosition() {
         UserDefaults.standard.set(self.frame.origin.x, forKey: "\(agentID)_x")
         UserDefaults.standard.set(self.frame.origin.y, forKey: "\(agentID)_y")
-        // 채팅창은 사용자가 조절한 크기도 저장
         if agentID.hasPrefix("chat_") {
             UserDefaults.standard.set(self.frame.size.width, forKey: "\(agentID)_w")
             UserDefaults.standard.set(self.frame.size.height, forKey: "\(agentID)_h")
@@ -146,7 +141,24 @@ class FloatingPanel: NSPanel {
         if x != 0 || y != 0 {
             self.setFrameOrigin(NSPoint(x: x, y: y))
         }
-        // 채팅창 크기는 복원 안 함 → showChat에서 지정한 크기(현재 800×620)를 항상 사용
     }
 
+}
+
+// MARK: - WindowDragBlocker
+// 스크롤 영역 위에서 마우스 드래그가 창 이동으로 이어지는 것을 차단.
+// .background(WindowDragBlocker())를 ScrollView에 부착하면 됨.
+// trackpad 두 손가락 스크롤(scrollWheel)은 차단하지 않으므로 정상 스크롤 가능.
+struct WindowDragBlocker: NSViewRepresentable {
+    func makeNSView(context: Context) -> BlockerView { BlockerView() }
+    func updateNSView(_ nsView: BlockerView, context: Context) {}
+
+    class BlockerView: NSView {
+        override func mouseDown(with event: NSEvent) {
+            // super 호출 안 함 → isMovableByWindowBackground 창이동 트리거 차단
+        }
+        override func mouseDragged(with event: NSEvent) {
+            // 흡수 — 창이동 없음
+        }
+    }
 }

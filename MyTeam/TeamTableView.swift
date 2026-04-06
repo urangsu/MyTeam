@@ -14,6 +14,13 @@ struct TeamTableView: View {
     @AppStorage("teamName") private var teamName: String = "MyTeam"
     @AppStorage("showTeamName") private var showTeamName: Bool = true
     @AppStorage("teamNameColor") private var teamNameColor: String = "#FFFFFF"
+    @AppStorage("agentWindowOpacity") private var agentWindowOpacity: Double = 0.0
+
+    // 드래그 스팸 방지: 한 번의 드래그 제스처 당 알림 1회만 발생
+    @State private var isBadgeDragActive: Bool = false
+    // 드래그 TTS 중복 방지: agentDragBegan/Ended 알림이 여러 번 와도 speak()는 1회만
+    @State private var hasSpokenOnDragBegan: Bool = false
+    @State private var hasSpokenOnDragEnded: Bool = false
 
     private var plaqueBaseColor: Color {
         Color(hex: teamNameColor) ?? .white
@@ -38,11 +45,16 @@ struct TeamTableView: View {
                     .gesture(DragGesture(minimumDistance: 0)
                         .onChanged { _ in
                             if let event = NSApplication.shared.currentEvent {
-                                NotificationCenter.default.post(name: .agentDragBegan, object: nil)
+                                // 드래그 시작 시 1회만 알림 발송 (mouseDragged마다 발송 금지)
+                                if !isBadgeDragActive {
+                                    isBadgeDragActive = true
+                                    NotificationCenter.default.post(name: .agentDragBegan, object: nil)
+                                }
                                 AgentWindowManager.shared.teamPanelWindow?.performDrag(with: event)
                             }
                         }
                         .onEnded { _ in
+                            isBadgeDragActive = false
                             NotificationCenter.default.post(name: .agentDragEnded, object: nil)
                         }
                     )
@@ -156,14 +168,20 @@ struct TeamTableView: View {
             .zIndex(1)
         }
         .padding(.horizontal, 16)
-        .background(Color.clear)
+        .background(Color.black.opacity(agentWindowOpacity > 0.99 ? 0.0 : (1.0 - agentWindowOpacity) * 0.6)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+        )
         .frame(width: 460, height: 280)
         .onReceive(NotificationCenter.default.publisher(for: .agentDragBegan)) { _ in
             withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) {
                 isDragging = true
                 selectedAgentIndex = nil
             }
-            // 드래그 시작 시 랜덤 에이전트의 캐릭터별 대사 출력
+            // 중복 방지: 이미 말한 경우 skip (알림이 여러 번 와도 speak()는 1회만)
+            guard !hasSpokenOnDragBegan else { return }
+            hasSpokenOnDragBegan = true
+
+            // 드래그 시작 시 랜덤 에이전트 1명만 말함
             if let agent = manager.activeAgents.randomElement() {
                 let fallback = ["어?! 잠깐만요!", "으아아!", "헉!"]
                 let line = CharacterDialogues.randomLine(for: agent.name, state: .drag) ?? fallback.randomElement()!
@@ -178,7 +196,20 @@ struct TeamTableView: View {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
                 isDragging = false
             }
-            // 착지 시 같은 맥락의 캐릭터별 대사 출력
+            // 드래그 종료: 플래그 초기화 + 착지 대사 1회 (중복 방지)
+            hasSpokenOnDragBegan = false
+            guard !hasSpokenOnDragEnded else {
+                // 타이머로 플래그 초기화 (다음 드래그를 위해)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    hasSpokenOnDragEnded = false
+                }
+                return
+            }
+            hasSpokenOnDragEnded = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                hasSpokenOnDragEnded = false
+            }
+
             if let agent = manager.activeAgents.randomElement() {
                 let fallback = ["휴, 다시 돌아왔네요.", "무사히 착지!"]
                 let line = CharacterDialogues.randomLine(for: agent.name, state: .landing) ?? fallback.randomElement()!

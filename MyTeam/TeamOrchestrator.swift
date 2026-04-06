@@ -8,6 +8,8 @@ class TeamOrchestrator {
     static let shared = TeamOrchestrator()
 
     private let memory = ConversationMemory()
+    private var lastDiscussionTime: Date = .distantPast
+    private let discussionCooldown: TimeInterval = 2.0  // 최소 2초 간격
     
     // MARK: - 시스템 맥락 정보 (시공간 정보 주입)
     
@@ -47,8 +49,16 @@ class TeamOrchestrator {
         manager: AgentWindowManager,
         maxTurns: Int = 6
     ) async {
+        // 디바운싱: 마지막 토의로부터 2초 이상 경과해야만 진행
+        let now = Date()
+        guard now.timeIntervalSince(lastDiscussionTime) >= discussionCooldown else { return }
+        lastDiscussionTime = now
+
         let agents = manager.activeAgents
         guard !agents.isEmpty else { return }
+
+        // 이전 토의의 대기 음성 즉시 중단
+        SpeechManager.shared.stopSpeaking()
 
         do {
             // 1. 의도 분류 및 리더 추천 (Intent Router)
@@ -105,46 +115,52 @@ class TeamOrchestrator {
                     SpeechManager.shared.speak(text: proposal, agentID: firstAgent.id, characterName: firstAgent.name)
                 }
             }
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            // 첫 에이전트의 발성이 완료될 때까지 대기
+            var waitCount = 0
+            while manager.speakingAgentID == firstAgent.id && waitCount < 120 {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                waitCount += 1
+            }
+            try? await Task.sleep(nanoseconds: 600_000_000)  // 간격
         }
         
         // 2. 지시서(Work Orders) 순차 수행
         for (index, order) in orders.enumerated() {
             guard let agent = agents.first(where: { $0.id == order.agentID }) else { continue }
-            
+
             let history = manager.rooms.first(where: { $0.id == roomID })?.messages.suffix(10) ?? []
             let historyText = history.map { "[\($0.agentName)] \($0.text)" }.joined(separator: "\n")
-            
+
             let taskPrompt = """
             당신은 시스템 팀장으로부터 특정 업무를 하달받은 전문가 '\(agent.name)'입니다.
             분야: \(routing.taskCategory ?? "일반") / 성격: \(agent.role)
-            
+
             \(getSystemContextPrompt())
-            
+
             [시스템 팀장의 지시서]
             귀하의 이번 역할은 다음과 같습니다: "\(order.subTask)"
-            
+
             [이전 대화 맥락]
             \(historyText)
-            
-            [지시] 
-            시스템의 지시서에 따라 귀하의 전문성을 발휘하여 답변하세요. 
+
+            [지시]
+            시스템의 지시서에 따라 귀하의 전문성을 발휘하여 답변하세요.
             절대 본인이 팀장인 것처럼 행동하지 말고, 배정받은 '전문가'로서의 역할에 충실하세요.
             답변은 3~5문장 이내로 핵심만 명확하게 전달하세요.
-            
+
             [업무 규칙]
             1. 절대 약하거나 모호한 결과를 통과시키지 마세요 (Don't pass through weak results).
             2. 연극 대본을 쓰지 말고, 오직 당신의 답변 본문만 출력하세요.
             3. 답변 시작 시 당신의 이름(예: [\(agent.name)], \(agent.name):)을 절대로 붙이지 마세요.
             """
-            
+
             do {
                 let (responseText, _) = try await AIService.shared.getResponse(
                     text: userMessage,
                     agentID: agent.id,
                     systemPrompt: taskPrompt
                 )
-                
+
                 await MainActor.run {
                     manager.addChatLog(agentID: agent.id, agentName: agent.name, text: responseText, isUser: false, roomID: roomID)
                     if !manager.isSilentMode {
@@ -152,12 +168,19 @@ class TeamOrchestrator {
                         SpeechManager.shared.speak(text: responseText, agentID: agent.id, characterName: agent.name)
                     }
                 }
-                
+
+                // 현재 에이전트의 발성이 완료될 때까지 대기
+                var waitCount = 0
+                while manager.speakingAgentID == agent.id && waitCount < 120 {  // 최대 120초 대기
+                    try? await Task.sleep(nanoseconds: 100_000_000)  // 0.1초씩 확인
+                    waitCount += 1
+                }
+
                 // 에이전트 간 자연스러운 간격
                 if index < orders.count - 1 {
-                    try? await Task.sleep(nanoseconds: 1_200_000_000)
+                    try? await Task.sleep(nanoseconds: 800_000_000)
                 }
-                
+
             } catch {
                 print("Work Order Execution Error (\(agent.name)): \(error)")
             }
@@ -172,13 +195,23 @@ class TeamOrchestrator {
             if let (interText, _) = try? await AIService.shared.getResponse(text: "동료들의 작업 완료", agentID: supporter.id, systemPrompt: interjectionPrompt) {
                 await MainActor.run {
                     manager.addChatLog(agentID: supporter.id, agentName: supporter.name, text: interText, isUser: false, roomID: roomID)
+                    if !manager.isSilentMode {
+                        manager.setAgentSpeaking(agentID: supporter.id, text: interText)
+                        SpeechManager.shared.speak(text: interText, agentID: supporter.id, characterName: supporter.name)
+                    }
+                }
+                // 서포터의 발성이 완료될 때까지 대기
+                var waitCount = 0
+                while manager.speakingAgentID == supporter.id && waitCount < 120 {
+                    try? await Task.sleep(nanoseconds: 100_000_000)
+                    waitCount += 1
                 }
             }
         }
     }
 
     // MARK: - [TRACK B] 수다 모드 (Chitchat Mode)
-    
+
     private func runChitchatMode(
         userMessage: String,
         roomID: UUID,
@@ -187,14 +220,14 @@ class TeamOrchestrator {
     ) async {
         var lastSpeakerID: String? = nil
         let agents = manager.activeAgents
-        
+
         for turn in 0..<maxTurns {
             let history = manager.rooms.first(where: { $0.id == roomID })?.messages ?? []
             guard let nextAgentID = await selectNextSpeaker(history: history, agents: agents, lastSpeakerID: lastSpeakerID, userMessage: userMessage) else { break }
             guard let agent = agents.first(where: { $0.id == nextAgentID }) else { break }
 
             let prompt = buildDiscussionPrompt(agent: agent, history: history, turn: turn, totalAgents: agents.count)
-            
+
             do {
                 let (responseText, _) = try await AIService.shared.getResponse(text: prompt, agentID: agent.id, chatHistory: Array(history.suffix(3)))
                 await MainActor.run {
@@ -205,7 +238,16 @@ class TeamOrchestrator {
                     }
                 }
                 lastSpeakerID = agent.id
-                try? await Task.sleep(nanoseconds: UInt64(Double.random(in: 1.0...1.8) * 1_000_000_000))
+
+                // 현재 에이전트의 발성이 완료될 때까지 대기
+                var waitCount = 0
+                while manager.speakingAgentID == agent.id && waitCount < 120 {  // 최대 120초 대기
+                    try? await Task.sleep(nanoseconds: 100_000_000)  // 0.1초씩 확인
+                    waitCount += 1
+                }
+
+                // 다음 에이전트까지의 자연스러운 간격
+                try? await Task.sleep(nanoseconds: UInt64(Double.random(in: 0.5...1.0) * 1_000_000_000))
             } catch { break }
         }
     }
