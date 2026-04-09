@@ -464,7 +464,7 @@ class AgentWindowManager: ObservableObject {
         if !isSilentMode {
             SpeechManager.shared.stopSpeaking()
             let greeting = swapGreeting(for: newAgent.name)
-            SpeechManager.shared.speakImmediate(text: greeting, agentID: newAgent.id, characterName: newAgent.name)
+            SpeechManager.shared.speak(text: greeting, agentID: newAgent.id, characterName: newAgent.name)
         }
     }
 
@@ -581,9 +581,8 @@ class AgentWindowManager: ObservableObject {
         panel.level = .floating
         panel.isMovableByWindowBackground = true
         
-        let view = SettingsView(onClose: { [weak self] in
-            self?.hideSettingsWindow()
-        }).environmentObject(self)
+        let view = SettingsView()
+            .environmentObject(self)
         
         panel.contentViewController = NSHostingController(rootView: view)
         panel.orderFront(nil)

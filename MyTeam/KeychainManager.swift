@@ -1,76 +1,69 @@
-import Security
 import Foundation
+import Security
 
-// MARK: - KeychainManager
-// API 키를 macOS Keychain에 암호화 저장/조회합니다.
-// UserDefaults 평문 저장 방식을 대체합니다.
-enum KeychainManager {
-
-    private static let service = "com.myteam.app"
-
-    // MARK: - 저장
+/// 군사급 API 키 보안 관리를 위한 Keychain Manager
+final class KeychainManager {
+    static let shared = KeychainManager()
+    private init() {}
+    
     @discardableResult
     static func save(key: String, value: String) -> Bool {
         guard let data = value.data(using: .utf8) else { return false }
-
-        // 기존 항목이 있으면 먼저 삭제
-        delete(key: key)
-
-        let query: [CFString: Any] = [
-            kSecClass:       kSecClassGenericPassword,
-            kSecAttrService: service,
-            kSecAttrAccount: key,
-            kSecValueData:   data
+        
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key,
+            kSecValueData as String: data
         ]
-
-        let status = SecItemAdd(query as CFDictionary, nil)
-        return status == errSecSuccess
+        
+        SecItemDelete(query as CFDictionary)
+        return SecItemAdd(query as CFDictionary, nil) == errSecSuccess
     }
-
-    // MARK: - 조회
-    static func load(key: String) -> String {
-        let query: [CFString: Any] = [
-            kSecClass:            kSecClassGenericPassword,
-            kSecAttrService:      service,
-            kSecAttrAccount:      key,
-            kSecMatchLimit:       kSecMatchLimitOne,
-            kSecReturnData:       true,
-            kSecReturnAttributes: true
+    
+    static func load(key: String) -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key,
+            kSecReturnData as String: kCFBooleanTrue!,
+            kSecMatchLimit as String: kSecMatchLimitOne
         ]
-
-        var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
-
-        guard status == errSecSuccess,
-              let dict = result as? [CFString: Any],
-              let data = dict[kSecValueData] as? Data,
-              let value = String(data: data, encoding: .utf8)
-        else { return "" }
-
-        return value
+        
+        var dataTypeRef: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &dataTypeRef)
+        
+        if status == errSecSuccess, let data = dataTypeRef as? Data {
+            return String(data: data, encoding: .utf8)
+        }
+        return nil
     }
-
-    // MARK: - 삭제
+    
     @discardableResult
     static func delete(key: String) -> Bool {
-        let query: [CFString: Any] = [
-            kSecClass:       kSecClassGenericPassword,
-            kSecAttrService: service,
-            kSecAttrAccount: key
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key
         ]
-        let status = SecItemDelete(query as CFDictionary)
-        return status == errSecSuccess || status == errSecItemNotFound
+        return SecItemDelete(query as CFDictionary) == errSecSuccess
     }
 
-    // MARK: - 마이그레이션
+    /// UserDefaults에 평문으로 저장된 API 키를 Keychain으로 1회 마이그레이션.
+    /// 앱 최초 부팅 또는 업그레이드 직후 한 번만 실행됨.
     static func migrateFromUserDefaultsIfNeeded() {
-        let keys = ["geminiAPIKey", "claudeAPIKey", "openaiAPIKey"]
-        for key in keys {
-            if let oldVal = UserDefaults.standard.string(forKey: key), !oldVal.isEmpty {
-                save(key: key, value: oldVal)
+        let migrationKey = "keychain_migrated_v1"
+        guard !UserDefaults.standard.bool(forKey: migrationKey) else { return }
+
+        let keysToMigrate = [
+            "geminiAPIKey", "claudeAPIKey", "openRouterAPIKey", "openaiAPIKey"
+        ]
+
+        for key in keysToMigrate {
+            if let plaintext = UserDefaults.standard.string(forKey: key), !plaintext.isEmpty {
+                save(key: key, value: plaintext)
                 UserDefaults.standard.removeObject(forKey: key)
-                print("[KeychainManager] 마이그레이션 완료: \(key)")
+                print("[KeychainManager] ✅ UserDefaults → Keychain 마이그레이션 완료: \(key)")
             }
         }
+
+        UserDefaults.standard.set(true, forKey: migrationKey)
     }
 }

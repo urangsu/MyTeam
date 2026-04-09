@@ -193,9 +193,9 @@ class LiveAudioManager: NSObject, ObservableObject {
     func sendAPIKey() {
         let payload: [String: Any] = [
             "type": "api_keys",
-            "gemini":  KeychainManager.load(key: "geminiAPIKey"),
-            "claude":  KeychainManager.load(key: "claudeAPIKey"),
-            "openai":  KeychainManager.load(key: "openaiAPIKey")
+            "gemini":  KeychainManager.load(key: "geminiAPIKey") ?? "",
+            "claude":  KeychainManager.load(key: "claudeAPIKey") ?? "",
+            "openai":  KeychainManager.load(key: "openaiAPIKey") ?? ""
         ]
         send(payload)
     }

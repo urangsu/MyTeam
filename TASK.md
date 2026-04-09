@@ -191,52 +191,82 @@
 - [x] **WebSocket PCM 스트리밍 및 세션 멀티플렉싱** — `stream_id` 기반 컨트롤 프레임 처리 및 실시간 Raw PCM 스트리밍 연동
 - [x] **안정화 및 최적화 (Robustness)** — Jitter Buffer(100ms), Silence Padding, Node Detach(Teardown) 구현으로 팝핑 노이즈 및 메모리 누수 방지
 - [x] **AnimalTTS In-Memory 캐싱** — `AnimalTTSCacheManager (actor)` 기반 비동기 Pre-loading으로 수백 개 음절의 I/O 딜레이 제거
+- [x] **Perfect Lip-Sync (오디오 팝업 동기화)** — `scheduleBuffer` 후킹 및 콜백 배관(`SpeechManager.shared.processRealtimeSSEStream`)을 통해 스피커 첫 발성 찰나에 UI 텍스트 출력 완벽 연동 (AgentChatView 레거시 로직 전면 파괴)
 
 ---
 
-## 🚧 다음 세션에서 해야 할 작업 (2026-04-06~)
+## 🚀 2026-04-07 완료 및 다음 작업
 
-### 🔴 1순위: TTS 캐시 검증 및 앱 번들 적용
+### ✅ 2026-04-07 완료: Mock → Real TTS 파이프라인 + ModelRouter
+- [x] `MLXModelManager.swift` — WAV + Zero-Copy Memory Mapping 구현
+- [x] `T3MLXModel.swift` (신규) — Llama AR 추론 + RoPE + KV Cache + BPE 토크나이저 연동
+- [x] `MLXInferenceService.swift` — CoreML EP 강제, 파이프라인 (ve → s3gen_enc → s3gen_cfm → hifigan), `@autoreleasepool` 메모리 릭 차단
+- [x] `AgentConfig.swift` — LLMProvider enum + openRouterModelId 필드 추가
+- [x] `AIService.swift` — ModelRouter (Gemini/Claude/OpenRouter SSE) 및 Claude `3-5-sonnet` 업데이트
 
-> **현재 상태**: pregenerate가 `~/Library/Application Support/MyTeam/SpeechCache/`에 저장 중 (런타임 캐시)
-> 배포용으로는 WAV 파일들을 Xcode 번들에 포함시켜야 앱 설치 즉시 캐시 히트 가능
+### ✅ 2026-04-07 완료: Phase 6 (보안/UI 조종석 및 네이티브 전환 완수)
+- [x] **`KeychainManager.swift`** — 군사급 API 키 암호화 및 보관 로직
+- [x] **`SettingsView.swift`** — API 키 등록 및 OpenRouter 모델 스위칭 UI
+- [x] **`BPETokenizer.swift`** — 100% Swift 네이티브 자소 분리(Jamo split) 기반 BPE 텍스트 로더
 
-- [ ] **pregenerate 완료 후 WAV 파일 번들 포함** — `Resources/SpeechCache/` 폴더에 복사 후 Xcode에서 인식 확인
-  - `cp -r ~/Library/Application\ Support/MyTeam/SpeechCache/* ~/Desktop/MyTeam/MyTeam/Resources/SpeechCache/`
-  - PBXFileSystemSynchronizedRootGroup이 자동 포함하는지 확인 (Xcode 재빌드)
-- [ ] **캐시 히트 동작 검증** — 앱 실행 → 이벤트 대사 발화 → `[SpeechCache] ⚡ 캐시 히트` 로그 확인
-- [ ] **Thinking Character 동작 검증** — AI 응답 시 캐시 미스 경로에서 typing... 인디케이터가 MLX 합성 동안 유지되는지 확인
+---
 
-### 🔴 2순위: MLX TTS 잔존 이슈
+## 🚧 다음 세션에서 해야 할 작업 (2026-04-08~)
 
-**현재 속도** (CFG decode 적용 후): 짧은 대사 ~5초, 이벤트 대사는 캐시로 <50ms
-- [ ] **15자 이상 대사 깨짐** — shortenForTTS로 완화 중이나 근본 해결 안 됨. T3 maxTokens 동적 설정 검토
-- [ ] **TTS 겹침/밀림** — 싱글스레드 서버 구조적 한계. 근본 해결: MLX-Swift 네이티브 또는 비동기 서버
-- [ ] **팀원 교체 TTS 대사 겹침** — swap 시 이전/새 캐릭터 TTS 겹침. speakImmediate + stopSpeaking으로 완화 중
+### 🔴 1순위: 레퍼런스 오디오 WAV 변환 + ONNX 모델 파일 번들 배치
 
-**MLX TTS 서버 시작법:**
-```bash
-cd ~/Desktop/TTS맨/chatterbox
-.venv/bin/python3 mlx_tts_server.py
-# → http://127.0.0.1:9998 (MLX GPU 가속)
-```
+**상황**: MLXInferenceService.swift가 완성됐으나, 실행 환경 준비 필요
 
-**핵심 파일:**
-| 파일 | 역할 |
-|------|------|
-| `/Users/su/Desktop/TTS맨/chatterbox/mlx_tts_server.py` | MLX TTS HTTP 서버 (T3 + S3Gen + HiFiGAN) |
-| `/Users/su/Desktop/TTS맨/chatterbox/pregenerate_dialogues.py` | 이벤트 대사 사전 합성 스크립트 |
-| `MyTeam/MyTeam/SpeechCacheManager.swift` | 캐시 조회/저장/정리 |
-| `MyTeam/MyTeam/SpeechManager.swift` | TTS 우선순위 + onAudioStarted 콜백 |
-| `MyTeam/MyTeam/OnDeviceTTSManager.swift` | Swift ↔ MLX 서버 통신 + onWavDataReady |
+- [ ] **ReferenceAudio MP3 → WAV 변환** (24kHz, 16-bit mono PCM)
+  - 현재: `Resources/ReferenceAudio/{char}_reference.mp3` (11개)
+  - 필수: `Resources/ReferenceAudio/{char}_reference.wav`
+  - 변환 명령: `ffmpeg -i 루나_reference.mp3 -ar 24000 -ac 1 -sample_fmt s16 루나_reference.wav`
+  - 적용 범위: 루나, 레오, 렉스, 래키, 모코, 몽몽, 올리버, 치코, 케이, 폴라, 핀 (11개)
 
-### 🟡 3순위: MLX TTS 최적화 (속도/아키텍처) — 장기
+- [ ] **ONNX 모델 파일 앱 번들 확인**
+  - 앱 번들에 필수 파일:
+    - ✅ `Resources/onnx_models/ve.onnx` — Voice Encoder (화자 임베딩)
+    - ✅ `Resources/onnx_models/s3gen_enc.onnx` — S3Gen Encoder
+    - ❌ `Resources/onnx_models/s3gen_cfm.onnx` — S3Gen CFM (TTS맨에서 복사 필요)
+    - ❌ `Resources/onnx_models/hifigan_full.onnx` — HiFiGAN (TTS맨에서 복사 필요)
+    - ✅ `Resources/onnx_models/grapheme_mtl_merged_expanded_v1.json` — BPE 토크나이저
+  - 복사 명령:
+    ```bash
+    cp /Users/su/Desktop/TTS맨/chatterbox/onnx_models/s3gen_cfm.onnx ~/Desktop/MyTeam/MyTeam/Resources/onnx_models/
+    cp /Users/su/Desktop/TTS맨/chatterbox/onnx_models/hifigan_full.onnx ~/Desktop/MyTeam/MyTeam/Resources/onnx_models/
+    ```
 
-- [ ] **S3Gen + HiFiGAN MLX 변환** — 현재 ONNX CPU(0.8~1.5초) → MLX GPU로 이전하면 추가 2~3배 빨라질 것
-- [ ] **MLX-Swift 네이티브 통합** — Python HTTP 서버 제거, Swift에서 직접 MLX 추론. `apple/mlx-swift` 패키지 사용. HTTP 오버헤드 + 싱글스레드 문제 동시 해결
-- [ ] **T3 decode CFG 최적화** — batch=2로 한 번에 실행 (현재 2회 호출). MLX에서 batch 처리 검증 필요
-- [ ] **스트리밍 재생** — T3 토큰 30개 생성될 때마다 S3Gen+HiFiGAN 실행 → 첫 청크 즉시 재생. S3Gen이 전체 토큰 필요해서 구조적 한계 있음
-- [ ] **FP16 양자화 재시도** — MLX FP16이 FP32보다 느렸음 (캐스팅 오버헤드). `mx.float16` 강제 설정으로 재시도
+- [ ] **T3 FP16 가중치 파일 번들/Dev 폴백 확인**
+  - 앱 번들 경로: `Resources/onnx_models/t3_mlx_weights_fp16.npz` (선호)
+  - Dev 폴백: `/Users/su/Desktop/TTS맨/chatterbox/onnx_models/t3_mlx_weights_fp16.npz` (배포 빌드에선 ODR 필요)
+
+### 🔴 2순위: 빌드 검증 + 첫 실행 테스트
+
+- [ ] **Xcode 빌드 성공 확인**
+  - `MLXModelManager.swift` (MLX, AVFoundation import)
+  - `T3MLXModel.swift` (MLX.loadArrays, NPY 로드)
+  - `MLXInferenceService.swift` (OnnxRuntimeSwift, CoreML EP)
+  - `AgentConfig.swift` + `AIService.swift` 통합 확인
+
+- [ ] **런타임 에러 확인 및 수정**
+  - WAV 파일 없음 → "MP3 사용 불가" 오류 메시지 확인 (의도된 동작)
+  - ONNX 파일 없음 → "[OrtSessionPool] ❌ 세션 초기화 실패" 로그 확인
+  - 첫 token → T3 AR 디코딩 시작 → PCM 청크 yield 확인
+
+### 🟡 3순위: 성능 측정 + 최적화
+
+- [ ] **Token-to-Audio 레이턴시 프로파일링**
+  - BPE 토크나이징 시간
+  - T3 AR 디코딩 시간 (maxTokens 동적 설정 테스트)
+  - ONNX CoreML EP 추론 시간 (ve → s3gen_enc → s3gen_cfm → hifigan)
+  - PCM 청크 yield 오버헤드
+  - 목표: 짧은 대사 (<20자) 1초 이내 출력 시작
+
+- [ ] **메모리 사용량 모니터링**
+  - MLX 가중치 메모리 (FP16, 약 950MB)
+  - KV Cache 최대치 (AR 디코딩 중)
+  - ONNX 세션 메모리 (CoreML EP)
+  - 목표: 총 메모리 < 2GB (8GB Mac 최소 사양 고려)
 
 ### 🟡 4순위: 기존 미해결 과제
 

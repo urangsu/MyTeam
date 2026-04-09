@@ -7,27 +7,22 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		14F40B84D41297D07421D7B6 /* MLXModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11E1979219227863CF7793C3 /* MLXModelManager.swift */; };
 		4B5D90E2F128DDB37123EBA0 /* MLX in Frameworks */ = {isa = PBXBuildFile; productRef = 080E0E1B2AA039294162D44C /* MLX */; };
 		A211C82ACA31A4AC2C64C248 /* MLXRandom in Frameworks */ = {isa = PBXBuildFile; productRef = E02FD46B15A0E577B70D106A /* MLXRandom */; };
 		AAAA0001BBBB2222CCCC0001 /* onnxruntime in Frameworks */ = {isa = PBXBuildFile; productRef = AAAA0001BBBB2222CCCC0002 /* onnxruntime */; };
-		FDA445A6CF920D1D3CF1725D /* MLXInferenceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F18E058D65160BC5E520FFA /* MLXInferenceService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		11E1979219227863CF7793C3 /* MLXModelManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MLXModelManager.swift; sourceTree = "<group>"; };
-		3F18E058D65160BC5E520FFA /* MLXInferenceService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MLXInferenceService.swift; sourceTree = "<group>"; };
 		9079F7ED2F6EDE4900B4CE24 /* MyTeam.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyTeam.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		907C1FEB2F8183EF00D0AC87 /* MyTeam.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = MyTeam.xcodeproj; sourceTree = "<group>"; };
 		907C31802F81917500D0AC87 /* MyTeam.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = MyTeam.xcodeproj; sourceTree = "<group>"; };
 		907C47032F841C8A00D0AC87 /* MyTeam.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = MyTeam.xcodeproj; sourceTree = "<group>"; };
+		907C5DDE2F84220F00D0AC87 /* MyTeam.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = MyTeam.xcodeproj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		9079F7EF2F6EDE4900B4CE24 /* . */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = .;
 			sourceTree = "<group>";
 		};
@@ -50,8 +45,6 @@
 		8EAD91A347512A83BC142D85 /* MyTeam */ = {
 			isa = PBXGroup;
 			children = (
-				11E1979219227863CF7793C3 /* MLXModelManager.swift */,
-				3F18E058D65160BC5E520FFA /* MLXInferenceService.swift */,
 			);
 			name = MyTeam;
 			sourceTree = "<group>";
@@ -91,6 +84,11 @@
 			isa = PBXGroup;
 			children = (
 			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		907C5DF22F84220F00D0AC87 /* Products */ = {
+			isa = PBXGroup;
 			name = Products;
 			sourceTree = "<group>";
 		};
@@ -165,6 +163,10 @@
 					ProductGroup = 907C31912F81917500D0AC87 /* Products */;
 					ProjectRef = 907C31802F81917500D0AC87 /* MyTeam.xcodeproj */;
 				},
+				{
+					ProductGroup = 907C5DF22F84220F00D0AC87 /* Products */;
+					ProjectRef = 907C5DDE2F84220F00D0AC87 /* MyTeam.xcodeproj */;
+				},
 			);
 			projectRoot = "";
 			targets = (
@@ -188,8 +190,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				14F40B84D41297D07421D7B6 /* MLXModelManager.swift in Sources */,
-				FDA445A6CF920D1D3CF1725D /* MLXInferenceService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

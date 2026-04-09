@@ -71,7 +71,9 @@ actor WebSocketStreamManager {
             characterName: stream.characterName,
             pitch: stream.pitch,
             rate: stream.rate,
-            volume: stream.volume
+            volume: stream.volume,
+            textPayload: nil,       // WebSocket 경로는 Lip-Sync 불필요
+            onPlaybackStarted: nil
         )
         
         Task {

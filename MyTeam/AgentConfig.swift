@@ -1,5 +1,24 @@
 import SwiftUI
 
+// MARK: - LLM Provider (ModelRouter)
+/// 에이전트별 AI 뇌(Brain) 제공자 설정
+/// AIService.getResponseStream()이 이 값을 기반으로 API 엔드포인트를 동적 라우팅
+enum LLMProvider: String, Codable, CaseIterable {
+    case gemini      = "gemini"
+    case openAI      = "openai"
+    case claude      = "claude"
+    case openRouter  = "openrouter"
+
+    var displayName: String {
+        switch self {
+        case .gemini:     return "Gemini"
+        case .openAI:     return "OpenAI"
+        case .claude:     return "Claude"
+        case .openRouter: return "OpenRouter"
+        }
+    }
+}
+
 // MARK: - AgentConfig (AgentWindowManager에서 분리)
 // AgentWindowManager.AgentConfig 타입 유지 — 기존 참조 코드 변경 불필요
 
@@ -31,6 +50,15 @@ extension AgentWindowManager {
         let dragRotation: Double // 기울기 각도
         let dragSoundName: String
         let dropSoundName: String
+
+        // ── ModelRouter: 에이전트별 AI 뇌 설정 ──
+        /// 이 에이전트가 사용할 LLM 제공자 (기본값: Gemini)
+        var llmProvider: LLMProvider = .gemini
+
+        /// OpenRouter 전용 모델 ID
+        /// llmProvider == .openRouter 일 때 API 요청 body에 동적 삽입
+        /// 예: "meta-llama/llama-3-8b-instruct", "anthropic/claude-3-haiku"
+        var openRouterModelId: String? = nil
     }
 
 }

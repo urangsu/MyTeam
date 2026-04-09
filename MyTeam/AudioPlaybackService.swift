@@ -1,5 +1,5 @@
 import Foundation
-import AVFoundation
+@preconcurrency import AVFoundation
 
 actor AudioPlaybackService: AudioPlayable {
     static let shared = AudioPlaybackService()
@@ -14,7 +14,7 @@ actor AudioPlaybackService: AudioPlayable {
     var isCurrentlyPlaying: Bool { return playerNode.isPlaying }
     
     private init() {
-        setupEngine()
+        Task { await self.setupEngine() }
     }
     
     private func setupEngine() {
@@ -39,6 +39,7 @@ actor AudioPlaybackService: AudioPlayable {
     // MARK: - Optimization & Tracking State
     private var converters: [String: AVAudioConverter] = [:]
     private var queuedBufferCount: Int = 0
+    func getQueuedBufferCount() -> Int { return queuedBufferCount }
     private let playbackStartThreshold: Int = 2 // Jitter 방어를 위한 최소 버퍼 조각 갯수 (약 60~100ms)
     
     // MARK: - Core Resampling Logic (Reuse + Autoreleasepool)
@@ -89,6 +90,9 @@ actor AudioPlaybackService: AudioPlayable {
     
     /// 네트워크나 TTS 생성기에서 들어온 Data를 안전하게 리샘플링하여 스케줄
     func appendRawPCM(command: PlaybackCommand) {
+        // onPlaybackStarted 클로저를 actor 격리 컨텍스트 밖으로 먼저 캡처
+        let lipSyncCallback: (() -> Void)? = command.onPlaybackStarted
+        
         autoreleasepool {
             guard command.streamId == currentActiveStreamId else { return }
             
@@ -105,10 +109,9 @@ actor AudioPlaybackService: AudioPlayable {
             // 3. 볼륨
             playerNode.volume = command.volume
             
-            // 4. 스케줄링 (엔진 백그라운드 틱과 연결)
+            // 4. 버퍼 스케줄링
+            let wasAlreadyPlaying = playerNode.isPlaying
             playerNode.scheduleBuffer(outBuffer, at: nil, options: []) { [weak self] in
-                // 버퍼가 소진될 때 (Underrun 우려 시) 무음 패딩을 넣는 장치 등은 여기서 제어 가능합니다.
-                // 현재는 Apple 가이드라인에 따라 schedule 처리를 위임하되, 재생 완료 이벤트를 추적만 합니다.
                 Task { [weak self] in
                     guard let self else { return }
                     await self.decrementBufferCount()
@@ -120,6 +123,12 @@ actor AudioPlaybackService: AudioPlayable {
             if !playerNode.isPlaying && queuedBufferCount >= playbackStartThreshold {
                 if !engine.isRunning { try? engine.start() }
                 playerNode.play()
+            }
+            
+            // 🎯 Perfect Lip-Sync: 첫 버퍼가 재생 큐에 등록되는 찰나에 UI 말풍선 트리거
+            // wasAlreadyPlaying=false → 이 버퍼가 재생 개시 버퍼 → 텍스트 표시 타이밍 정확
+            if !wasAlreadyPlaying, let callback = lipSyncCallback {
+                DispatchQueue.main.async { callback() }
             }
         }
     }
@@ -169,15 +178,25 @@ actor AudioPlaybackService: AudioPlayable {
         timePitchNode.rate = rate
     }
 
-    func playStream(streamId: String, stream: AsyncStream<Data>, characterName: String, pitch: Float, rate: Float) async {
+    func playStream(
+        streamId: String,
+        stream: AsyncStream<Data>,
+        characterName: String,
+        pitch: Float,
+        rate: Float,
+        textPayload: String? = nil,
+        onPlaybackStarted: (@Sendable () -> Void)? = nil
+    ) async {
         // 1. 세션 환경 구성
         prepareSession(streamId: streamId, characterName: characterName, pitch: pitch, rate: rate)
         
         let format = AVAudioFormat(standardFormatWithSampleRate: 24000, channels: 1)! // HiFiGAN 출력 기준 포맷
         
-        // 2. 우아한 백프레셔 스트림 구독 (for await)
+        // 첫 번째 버퍼에만 Lip-Sync 콜백을 탑재 (그 이후 청크는 콜백 없음)
+        var isFirstChunk = true
+        
+        // 2. 백프레셔 스트림 구독 (for await)
         for await pcmData in stream {
-            // Task 취소 시 스트림 루프 즉시 정지
             guard !Task.isCancelled else { break }
             
             let command = PlaybackCommand(
@@ -187,13 +206,14 @@ actor AudioPlaybackService: AudioPlayable {
                 characterName: characterName,
                 pitch: pitch,
                 rate: rate,
-                volume: 1.0
+                volume: 1.0,
+                // 🎯 첫 번째 청크에만 Lip-Sync 콜백 탑재
+                textPayload: isFirstChunk ? textPayload : nil,
+                onPlaybackStarted: isFirstChunk ? onPlaybackStarted : nil
             )
-            await appendRawPCM(command: command)
+            isFirstChunk = false
+            appendRawPCM(command: command)
         }
-        
-        // 3. 스트림 종료 후 Teardown (선택사항, 필요시 일정 대기 후 종료 가능)
-        // endSession(streamId: streamId) 
     }
 
     func stopAll() {
@@ -214,7 +234,7 @@ actor AudioPlaybackService: AudioPlayable {
 
 // MARK: - Data to AVAudioPCMBuffer Extension
 extension Data {
-    func toAVAudioPCMBuffer(format: AVAudioFormat) -> AVAudioPCMBuffer? {
+    nonisolated func toAVAudioPCMBuffer(format: AVAudioFormat) -> AVAudioPCMBuffer? {
         let streamDesc = format.streamDescription.pointee
         let bytesPerFrame = streamDesc.mBytesPerFrame
         guard bytesPerFrame > 0 else { return nil }

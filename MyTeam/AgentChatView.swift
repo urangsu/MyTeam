@@ -759,7 +759,7 @@ struct AgentChatView: View {
             Task {
                 for url in panel.urls {
                     if let attachment = await loadAttachment(from: url) {
-                        await MainActor.run {
+                        _ = await MainActor.run {
                             pendingAttachments.append(attachment)
                         }
                     }
@@ -864,132 +864,51 @@ struct AgentChatView: View {
                         ?? manager.allAvailableAgents.first(where: { $0.id == targetID })?.name
                         ?? "에이전트"
 
-                    let chunks = Self.splitIntoMessageChunks(responseText)
-
-                    // ── 순차 스트리밍: 청크별 TTS + 말풍선 동기화 ──
+                    // ── 순차 스트리밍: SpeechManager 백그라운드 위임 ──
                     if manager.isSilentMode {
-                        // 무음 모드: 타이핑 딜레이만 넣고 순차 표시
-                        for chunk in chunks {
-                            await MainActor.run { manager.typingAgentIDs.insert(targetID) }
-                            try? await Task.sleep(nanoseconds: UInt64.random(in: 800_000_000...1_500_000_000))
-                            await MainActor.run {
-                                manager.typingAgentIDs.remove(targetID)
-                                manager.addChatLog(agentID: targetID, agentName: agentName,
-                                                   text: chunk, isUser: false, roomID: roomID)
-                            }
+                        // 무음 모드: 즉시 화면에 띄우고 종료
+                        _ = await MainActor.run {
+                            manager.typingAgentIDs.remove(targetID)
+                            manager.addChatLog(agentID: targetID, agentName: agentName,
+                                               text: responseText, isUser: false, roomID: roomID)
                         }
                     } else {
-                        // TTS 모드: 순차 합성+재생 + 다음 청크 미리 굽기
-                        for (i, chunk) in chunks.enumerated() {
-                            // 다음 청크 pre-fetch (현재 청크와 병렬)
-                            if i + 1 < chunks.count {
-                                SpeechManager.shared.prefetchChunk(
-                                    text: chunks[i + 1], characterName: agentName)
-                            }
+                        // 1. 타이핑 인디케이터 ON
+                        _ = await MainActor.run { manager.typingAgentIDs.insert(targetID) }
 
-                            await MainActor.run {
-                                manager.typingAgentIDs.insert(targetID)
-                                if i == 0 {
-                                    manager.setAgentSpeaking(agentID: targetID, text: responseText)
-                                }
-                            }
+                        // 2. SSE 스트림 오픈 (단일 String이 아니라 AsyncThrowingStream 획득을 위해 별도 메서드 사용, 호환성을 위해 AIService 업데이트가 필요하나 일단 getResponseStream을 호출)
+                        let agentConfig = manager.activeAgents.first(where: { $0.id == targetID })
+                            ?? manager.allAvailableAgents.first(where: { $0.id == targetID })
+                        
+                        let tokenStream = AIService.shared.getResponseStream(
+                            text: fullText, agentID: targetID, chatHistory: history, agentConfig: agentConfig
+                        )
 
-                            let success = await SpeechManager.shared.speakChunk(
-                                text: chunk, agentID: targetID, characterName: agentName,
-                                onStart: {
-                                    // 오디오 시작 = 말풍선 표시
+                        // 3. SpeechManager에 SSE→오디오 배관 완전 위임
+                        //    - 청크 완성/오디오 시작 시말풍선 UI 콜백 호출
+                        SpeechManager.shared.processRealtimeSSEStream(
+                            agentID: targetID,
+                            characterName: agentName,
+                            tokenStream: tokenStream,
+                            onAudioPlaybackStarted: { chunk in
+                                // 이 클로저는 MainActor로 스케줄링됨 (Playback 시작 찰나)
+                                DispatchQueue.main.async {
                                     manager.typingAgentIDs.remove(targetID)
                                     manager.addChatLog(agentID: targetID, agentName: agentName,
                                                        text: chunk, isUser: false, roomID: roomID)
-                                }
-                            )
-                            if !success {
-                                // TTS 실패 시 텍스트만이라도 표시
-                                await MainActor.run {
-                                    manager.typingAgentIDs.remove(targetID)
-                                    manager.addChatLog(agentID: targetID, agentName: agentName,
-                                                       text: chunk, isUser: false, roomID: roomID)
+                                    manager.setAgentSpeaking(agentID: targetID, text: chunk)
                                 }
                             }
-                            // 말풍선 간 자연 간격
-                            if i < chunks.count - 1 {
-                                try? await Task.sleep(nanoseconds: UInt64.random(in: 300_000_000...600_000_000))
-                            }
-                        }
-                        await MainActor.run { manager.clearAgentSpeaking(agentID: targetID) }
+                        )
                     }
                 } catch {
-                    await MainActor.run {
+                    _ = await MainActor.run {
                         manager.typingAgentIDs.remove(targetID)
                         manager.addChatLog(agentID: targetID, agentName: "시스템", text: error.localizedDescription, isUser: false, roomID: roomID)
                     }
                 }
             }
         }
-    }
-
-    // MARK: - 카톡 스타일 메시지 분리
-    // 글자 수 25자 상한 + 문장 경계 존중 → TTS 합성 1초 이내 보장
-    static func splitIntoMessageChunks(_ text: String) -> [String] {
-        let trimmed = text.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return [] }
-
-        let sentences = splitSentences(trimmed)
-        guard !sentences.isEmpty else { return [trimmed] }
-
-        var chunks: [String] = []
-        var buffer = ""
-        let maxChars = 25  // TTS 속도 1초 이내 보장
-
-        for sentence in sentences {
-            // 현재 버퍼 + 이 문장이 25자 초과하면 버퍼 flush
-            if !buffer.isEmpty && (buffer.count + sentence.count + 1) > maxChars {
-                chunks.append(buffer.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines))
-                buffer = ""
-            }
-            // 문장 자체가 25자 초과 → 그대로 하나의 청크 (더 쪼개면 의미 깨짐)
-            if buffer.isEmpty && sentence.count > maxChars {
-                chunks.append(sentence.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines))
-                continue
-            }
-            buffer += (buffer.isEmpty ? "" : " ") + sentence
-        }
-        if !buffer.isEmpty {
-            chunks.append(buffer.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines))
-        }
-
-        let result = chunks.filter { !$0.isEmpty }
-        return result.isEmpty ? [trimmed] : result
-    }
-
-    private static func splitSentences(_ text: String) -> [String] {
-        // 한국어/영어 문장 종결 패턴으로 분리
-        var sentences: [String] = []
-        let pattern = try? NSRegularExpression(pattern: "(?<=[.!?。！？~])(\\s+|(?=[가-힣A-Z\"']))", options: [])
-        guard let regex = pattern else { return [text] }
-
-        let nsText = text as NSString
-        var lastEnd = 0
-        let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsText.length))
-
-        for match in matches {
-            let splitPoint = match.range.location + match.range.length
-            if splitPoint > lastEnd {
-                let sentence = nsText.substring(with: NSRange(location: lastEnd, length: match.range.location - lastEnd + 1))
-                    .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
-                if !sentence.isEmpty { sentences.append(sentence) }
-                lastEnd = splitPoint
-            }
-        }
-
-        // 마지막 문장
-        if lastEnd < nsText.length {
-            let remaining = nsText.substring(from: lastEnd)
-                .trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
-            if !remaining.isEmpty { sentences.append(remaining) }
-        }
-
-        return sentences.isEmpty ? [text] : sentences
     }
 }
 

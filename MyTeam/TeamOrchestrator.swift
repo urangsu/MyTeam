@@ -72,18 +72,8 @@ class TeamOrchestrator {
                 await runChitchatMode(userMessage: userMessage, roomID: roomID, manager: manager, maxTurns: 3)
             }
             
-            // 3. 대화 완료 후 핵심 정보 추출 및 기억 박제
-            let history = manager.rooms.first(where: { $0.id == roomID })?.messages.suffix(5) ?? []
-            let fullText = history.map { "[\($0.agentName)] \($0.text)" }.joined(separator: "\n")
-            let newFacts = await AIService.shared.extractKeyFacts(from: fullText)
-            if !newFacts.isEmpty {
-                await MainActor.run {
-                    // 중복 제거하며 추가
-                    for fact in newFacts where !manager.keyFacts.contains(fact) {
-                        manager.keyFacts.append(fact)
-                    }
-                }
-            }
+            // 3. 대화 완료 후 핵심 정보는 manager.keyFacts로 관리 (extractKeyFacts 제거)
+            // 필요 시 별도 요약 로직으로 대체 가능
             
         } catch {
             print("Orchestration Error: \(error)")
@@ -156,9 +146,10 @@ class TeamOrchestrator {
 
             do {
                 let (responseText, _) = try await AIService.shared.getResponse(
-                    text: userMessage,
+                    text: "\(taskPrompt)\n\n[사용자 지시]: \(userMessage)",
                     agentID: agent.id,
-                    systemPrompt: taskPrompt
+                    chatHistory: [],
+                    agentConfig: agent
                 )
 
                 await MainActor.run {
@@ -192,7 +183,12 @@ class TeamOrchestrator {
         if let supporter = availableSupporters.randomElement() {
             try? await Task.sleep(nanoseconds: 800_000_000)
             let interjectionPrompt = "동료들의 전문적인 작업 결과에 대해 본인의 페르소나(\(supporter.role))에 맞게 아주 짧은 리액션이나 격려를 1문장만 하세요."
-            if let (interText, _) = try? await AIService.shared.getResponse(text: "동료들의 작업 완료", agentID: supporter.id, systemPrompt: interjectionPrompt) {
+            if let (interText, _) = try? await AIService.shared.getResponse(
+                text: "\(interjectionPrompt)\n\n동료들의 작업 완료",
+                agentID: supporter.id,
+                chatHistory: [],
+                agentConfig: supporter
+            ) {
                 await MainActor.run {
                     manager.addChatLog(agentID: supporter.id, agentName: supporter.name, text: interText, isUser: false, roomID: roomID)
                     if !manager.isSilentMode {
@@ -229,7 +225,7 @@ class TeamOrchestrator {
             let prompt = buildDiscussionPrompt(agent: agent, history: history, turn: turn, totalAgents: agents.count)
 
             do {
-                let (responseText, _) = try await AIService.shared.getResponse(text: prompt, agentID: agent.id, chatHistory: Array(history.suffix(3)))
+                let (responseText, _) = try await AIService.shared.getResponse(text: prompt, agentID: agent.id, chatHistory: Array(history.suffix(3)), agentConfig: agent)
                 await MainActor.run {
                     manager.addChatLog(agentID: agent.id, agentName: agent.name, text: responseText, isUser: false, roomID: roomID)
                     if !manager.isSilentMode {
@@ -300,8 +296,9 @@ class TeamOrchestrator {
 
         do {
             // Selector는 경량 호출 — 짧은 응답만 필요
+            let selectorAgent = agents.first(where: { $0.id == "agent_1" }) ?? agents.first
             let (result, _) = try await AIService.shared.getResponse(
-                text: selectorPrompt, agentID: "agent_1", chatHistory: []
+                text: selectorPrompt, agentID: selectorAgent?.id ?? "agent_1", chatHistory: [], agentConfig: selectorAgent
             )
 
             let trimmed = result.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()

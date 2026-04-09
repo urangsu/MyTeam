@@ -55,11 +55,11 @@ class IntentRouter {
         4. proactiveMessage는 반드시 첫 번째 에이전트의 성격(Persona)을 반영하세요.
         """
         
-        // AIService를 통해 JSON 응답 강제 (Gemini/Claude는 JSON 모드 지원)
+        // AIService를 통해 JSON 응답 강제 (SSE 스트림을 collect하여 반환)
         let (rawJSON, _) = try await AIService.shared.getResponse(
-            text: message,
+            text: "\(systemPrompt)\n\n[사용자 메시지]: \(message)",
             agentID: "system_router",
-            systemPrompt: systemPrompt
+            chatHistory: []
         )
         
         // JSON 파싱 (안정성을 위해 앞뒤 찌꺼기 제거)

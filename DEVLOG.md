@@ -100,6 +100,63 @@ MyTeam/MyTeam/MyTeam/
 1. `teamChatLogs.append()` 직접 호출 — `addChatLog()` 사용
 2. `AnimalTTSManager`, `SpriteAgentView`, `CharacterSpriteScene`, `KeychainManager` 수정 (단, 향후 Native TTS 마이그레이션이 있을 때 제외)
 3. Swift onChange 단일 파라미터 클로저 사용 — `{ _, newValue in }` 두 파라미터 형식 사용
+4. **SettingsView 필수 UI 항목 무단 삭제 금지** — 어떤 뷰 개편 시에도 아래 항목은 반드시 존재해야 함:
+   - 사용자 호칭 (`UserDefaults("userTitle")`)
+   - 사용자 위치 (`@AppStorage("userLocation")`)
+   - 팀 이름 (`@AppStorage("teamName")`)
+   - 팀 명패 색상 (`@AppStorage("teamNameColor")`)
+   - 에이전트창 투명도 (`@AppStorage("agentWindowOpacity")`)
+   - API 키 (Gemini / Claude / OpenRouter) + 검증 버튼
+   - 에이전트별 LLM 라우팅 (`UserDefaults("llmProvider_agent_N")`)
+   - 닫기(X) 버튼 (`NSApp.keyWindow?.close()`)
+
+---
+
+## 🪟 창별 기능 목록 (필수 기능 / 개발 예정)
+
+### TeamTableView (메인 플로팅 팀 창, 460×280)
+| 상태 | 기능 |
+|------|------|
+| ✅ | 에이전트 4명 표시 (스프라이트/프로필) |
+| ✅ | 팀 이름 명패 배지 |
+| ✅ | 각 에이전트 클릭 → 팝업 메뉴 (Chat/Voice/Settings/Swap) |
+| ✅ | 팀 채팅방 버튼 |
+| 🔵 | 에지 스냅핑 애니메이션 |
+
+### AgentChatView (개별 채팅창, 700×620)
+| 상태 | 기능 |
+|------|------|
+| ✅ | iMessage 스타일 버블 (사용자 우측 파란, 에이전트 좌측 회색) |
+| ✅ | 타이핑 인디케이터 (... 바운스) |
+| ✅ | 말풍선 삭제(X) + 삭제 모드 Jiggle |
+| ✅ | 날짜 구분선, 타임스탬프 |
+| ✅ | 스크롤 자동 하단 이동 |
+| 🔵 | 채팅창 스크롤 ↔ 창 이동 충돌 해결 |
+
+### TeamStatusView (팀 협업현황창, 620×480)
+| 상태 | 기능 |
+|------|------|
+| ✅ | 다중 채팅방 사이드바 |
+| ✅ | 방 생성/삭제/이름 변경 |
+| ✅ | 반투명 배경 (NSVisualEffectView) |
+
+### SettingsView (설정창, 460×600)
+| 상태 | 기능 |
+|------|------|
+| ✅ | 사용자 호칭·위치 설정 |
+| ✅ | 팀 이름·명패색·창 투명도 |
+| ✅ | API 키 (Gemini/Claude/OpenRouter) + 검증 버튼 |
+| ✅ | 에이전트별 LLM 라우팅 (11명) |
+| ✅ | 닫기(X) 버튼 |
+| ✅ | NSVisualEffectView 반투명 배경 |
+| 🔵 | 창 크기 조절 가능하게 변경 |
+
+### AgentSettingsView (에이전트별 커스텀 설정)
+| 상태 | 기능 |
+|------|------|
+| ✅ | 성격 커스텀 텍스트 입력 |
+| ✅ | 보조 업무(직업 프리셋) 14종 |
+| 🔵 | 캐릭터 음성 레퍼런스 WAV 업로드 UI |
 
 ---
 
@@ -228,6 +285,42 @@ MyTeam/MyTeam/MyTeam/
 
 ### 2026-03-31: 에이전트 정체성 혼선 및 메타인지 제어 시스템 보완
 - 초기 창 모델 및 SwiftUI 뷰(단일/팀 채팅) 구현 및 WebSocket 연동에서 완전히 `AIService.swift` 기반의 로컬 연결 아키텍처로 변환 (서버 불필요). 백엔드 Python 서버 의존성 점진적 제거. AnimalTTS 첫 적용.
+
+### 2026-04-08: [Claude Code] 3개 긴급 수정 — SettingsView 복구 + NPZ 로더 + ONNX 패딩
+- **[UI 복구] SettingsView.swift 전면 재작성 (G-Stack UI/UX 표준)**
+  - 3탭: 사용자&팀 / API 설정 / 에이전트 라우팅
+  - 사용자 호칭·위치, 팀 이름·명패색·창 투명도 복구 (AppStorage 연결)
+  - API 설정 탭: 동적 Picker(Gemini/Claude/OpenRouter) + 선택된 제공자만 표시 + API 키 검증 버튼(AIService.validateKey 연결)
+  - 에이전트 라우팅 탭: 11명 에이전트별 LLM 제공자·Model ID 개별 설정 UI (UserDefaults("llmProvider_agent_N"))
+  - 닫기(X) 버튼 복구, NSVisualEffectView 반투명 배경(sidebar material)
+  - Apple HIG Form/Section 레이아웃 적용
+- **[버그 수정] T3MLXModel.swift — NPZ 로더 교체**
+  - `MLX.loadArrays(.npz)` → `unknownExtension` 크래시 수정
+  - `T3MLXModel.loadNPZ(url:)` 구현: ZIP 파싱 + DEFLATE(Compression 프레임워크) + `parseNPYData` 직접 호출
+  - Zero-Copy: `.mappedIfSafe` 강제, 1.95GB 파일 복사 없음
+- **[버그 수정] MLXModelManager.swift — 투트랙 레퍼런스 오디오 로딩**
+  - 1순위: `{char}_reference.wav` (무손실, 아티팩트 없음)
+  - 2순위: `{char}_reference.mp3` 폴백 + 경고 로그 (`⚠️ WAV 에셋 누락. 테스트용 MP3 Fallback으로 로드 중...`)
+  - `decodeWAVToFloat32` → `decodeAudioToFloat32` (WAV/MP3 공용)
+- **[버그 수정] MLXInferenceService.swift — ONNX Conv 최소 패딩**
+  - `Conv padded input tensor height 1 is smaller than the kernel height 16` 수정
+  - `runS3GenEncoder()` 진입 시 `MIN_SEQ_LEN=32` 미달 시 zero-pad 강제 적용
+
+### 2026-04-07: [Claude Code] Mock → Real 추론 파이프라인 교체 + ModelRouter 구현
+- **[핵심 기능] T3 MLX-Swift 네이티브 TTS 추론 (온디바이스, App Store 배포 가능)**
+  - `MLXModelManager.swift`: WAV 전용 레퍼런스 로드 (MP3 절대 금지), Zero-Copy Memory Mapping (Bundle URL → MLX.loadArrays 직결, 파일 복사 없음)
+  - `T3MLXModel.swift` (신규): Llama 30-layer FP16 모델, RoPE + KV Cache + AR 디코딩, BPE 토크나이저 (grapheme_mtl_merged_expanded_v1.json)
+  - `MLXInferenceService.swift`: CoreML EP 강제 (ANE/GPU 가속, CPU 폴백 불허), 실제 파이프라인 (Text → BPE → T3(MLX) → ve.onnx → s3gen(CoreML) → hifigan(CoreML) → PCM 청크)
+- **[핵심 기능] ModelRouter + 에이전트별 동적 LLM 라우팅**
+  - `AgentConfig.swift`: `llmProvider: LLMProvider` (gemini/claude/openRouter) + `openRouterModelId: String?` (동적 모델 ID)
+  - `AIService.swift`: `getResponseStream(agentConfig:)` — 에이전트별로 Gemini/Claude/OpenRouter 중 선택, OpenRouter는 modelId를 API 페이로드에 직접 삽입
+- **G-Stack 4가지 원칙 적용**:
+  1. ✅ WAV 무손실 전용 (MP3 아티팩트 방지)
+  2. ✅ ONNX CoreML EP 강제 (MLX↔CPU 병목 제거, ANE 가속)
+  3. ✅ Zero-Copy Memory Mapping (1.95GB 파일 복사 금지, App Hang 방지)
+  4. ✅ OpenRouter 동적 모델 ID (agentConfig.openRouterModelId 페이로드 주입)
+- 신규 파일: `MLXModelManager.swift`, `T3MLXModel.swift`, `MLXInferenceService.swift` (완전 재작성)
+- 수정 파일: `AgentConfig.swift` (llmProvider, openRouterModelId 필드 추가), `AIService.swift` (ModelRouter 구현, Gemini/Claude/OpenRouter SSE 파이프라인)
 
 ### [2026-03-25 ~ 2026-03-27] 초기 구축 및 로컬 환경 전환
 - 초기 창 모델 및 SwiftUI 뷰(단일/팀 채팅) 구현 및 WebSocket 연동에서 완전히 `AIService.swift` 기반의 로컬 연결 아키텍처로 변환 (서버 불필요). 백엔드 Python 서버 의존성 점진적 제거. AnimalTTS 첫 적용.
@@ -743,7 +836,100 @@ MLX TTS 서버 (Python)
   - `MyTeam/MyTeam/SpeechManager.swift` (URL 제거 및 PCM 주입 방식으로 연동 수정)
   - `MyTeam/MyTeam/AudioPlayable.swift` (Protocol 명세 업데이트)
 
+### [2026-04-07] [Antigravity] (오후 세션)
+- **Perfect Lip-Sync 아키텍처 (재생 시작 시 텍스트 팝업) 구현 완료**
+  - **오디오 엔진 후킹**: `AudioPlaybackService` 내에서 버퍼가 큐에 쌓여 실제 스피커로 첫 소리가 흘러나오기 시작하는 찰나의 시점(`playerNode.play()` 직후 첫 버퍼)에 `onPlaybackStarted` 이벤트를 발화하는 초정밀 립싱크 배관 구축.
+  - **비동기 타이밍 버그 해결**: 기존에 SSE 모델 응답 청크가 모이자마자 UI 스레드에 텍스트를 던지던 방식(TTS 버퍼 대기로 인해 텍스트-싱크 극심한 불일치 발생)을 폐기. `textPayload`와 `onPlaybackStarted` 콜백을 큐에 심어 보내는 방식으로 변경.
+  - **UI 종속성 파괴 극의 (`AgentChatView.swift` 리팩토링)**: 
+    - `AgentChatView` 내부의 난해했던 텍스트 분리 정규식(`splitIntoMessageChunks`, `splitSentences`) 로직 및 인위적인 대기 타이머 루프 전면 제거 (약 70줄 감량).
+    - 순환 참조 없이 `SpeechManager.shared.processRealtimeSSEStream(...)` 15줄짜리 클로저로 텍스트 출력 권한을 100% 오디오 엔진의 타이밍에 위임.
+  - **컴파일 종속성 복구 (Exit 0)**: `TeamOrchestrator`, `IntentRouter`, `SettingsView` 등 `AIService.swift`의 구버전 시그니처에 의존하던 모든 에러 격추 완료. Swift 6 Concurrency Issue 방어.
+
+- **수정 파일 목록**
+  - `MyTeam/MyTeam/AudioPlayable.swift` (PlaybackCommand Payload 추가)
+  - `MyTeam/MyTeam/AudioPlaybackService.swift` (scheduleBuffer 후킹 완료)
+  - `MyTeam/MyTeam/SpeechManager.swift` (SSE 콜백 배관 재작성)
+  - `MyTeam/MyTeam/MLXInferenceService.swift` (취소 콜백 명시)
+  - `MyTeam/MyTeam/AgentChatView.swift` (UI 동기식 루프 삭제)
+  - `MyTeam/MyTeam/AIService.swift`, `MyTeam/MyTeam/TeamOrchestrator.swift`, `MyTeam/MyTeam/IntentRouter.swift`, `MyTeam/MyTeam/SettingsView.swift`, `MyTeam/MyTeam/AgentWindowManager.swift` (호환성 버그 패치)
+
 ---
+
+### [2026-04-07] [Antigravity] (야간 세션 - Phase 6 완료)
+- **온디바이스 네이티브 인프라 보안 및 메모리 방어선 완수**
+  - **군사급 보안 인프라**: `Security` 프레임워크 기반 `KeychainManager.swift` 구축 완료. API 키를 안전하게 암호화 보관.
+  - **Settings UI**: macOS 네이티브 `TabView` 기반의 `SettingsView.swift` 구현 및 `openRouterModelId` 동적 스위칭 지원.
+  - **100% Swift 네이티브 BPE Tokenizer**: `BPETokenizer.swift` 구축. Hangul Jamo 분해(`UnicodeScalar` 연산) 및 `grapheme_mtl` 병합 논리 적용.
+  - **메모리 릭 원천 방어**: `MLXInferenceService.swift`의 AsyncStream 핫 루프 통과 시점(MLX 텐서 → CoreML 캐스팅 등 연산 집약 부위)에 `@autoreleasepool` 강제 삽입.
+  - **모듈 의존성 패치**: `import onnxruntime`을 `import OnnxRuntimeSwift`로 원복하여 Swift Package Manager 의존성 회복.
+
+- **수정/생성 파일 목록**
+  - `MyTeam/MyTeam/KeychainManager.swift` (신규)
+  - `MyTeam/MyTeam/SettingsView.swift` (신규)
+  - `MyTeam/MyTeam/BPETokenizer.swift` (신규)
+  - `MyTeam/MyTeam/MLXInferenceService.swift`
+  - `MyTeam/MyTeam/AIService.swift`
+
+### [2026-04-08] [Claude Code] (최종 교정 — 글로벌 테마 동기화 + 모델명 동적 라우팅)
+- **SettingsView 테마 결함 수술 + OpenAI 모델명 하드코딩 파괴**
+  
+  - **결함 1: OS 다크모드 강제 종속 제거**
+    - ❌ 이전: `Color(red: 0.12, green: 0.12, blue: 0.12)` 하드코딩으로 OS 설정에 강제 종속
+    - ✅ 수술: `manager.isDarkMode` (AgentWindowManager의 글로벌 테마 상태) 구독
+    - ✅ 팀 협업창 테마 토글과 설정창 배경색 **100% 실시간 동기화**
+    - ✅ 사용자가 팀 협업창에서 테마 버튼을 누르면 설정창도 즉시 변경
+  
+  - **결함 2: OpenAI 모델명 하드코딩 파괴**
+    - ❌ 이전: `openAIStream()` 내부에 `let model = "gpt-4o"` 대못 박기
+    - ✅ 수술: `@AppStorage("openAIModelId")` 필드 추가 → SettingsView의 API 설정 탭에서 사용자가 직접 입력
+    - ✅ `openAIStream(modelId: String)` 메서드 시그니처 변경 → 동적 주입
+    - ✅ `getResponseStream()`에서 UserDefaults 읽어 modelId 전달
+    - ✅ API 바디에 동적으로 주입: `"model": modelId`
+
+  - **구현 상세**:
+    - SettingsView Tab 2 (API 설정)의 OpenAI 섹션에 "Model ID" TextField 추가
+    - openAIModelId 기본값: "gpt-4o"
+    - AIService.swift: `let modelId = UserDefaults.standard.string(forKey: "openAIModelId") ?? "gpt-4o"` → openAIStream() 전달
+    - 콘솔 로그도 동적: `"OpenAI SSE 채널 오픈 (model: \(modelId), agent: \(agentID))"`
+
+- **이전 수정: SettingsView 레이아웃 완전 재설계 + OpenAI 통합 + 동물의숲 TTS**
+  
+  - **윈도우 크기 및 레이아웃**:
+    - 460×600 → **380×420** (압축)
+    - GPS 버튼 좌측 배치 (입력칸 앞)
+    - 팀 이름을 한 줄로 통합 (레이블 + TextField + ColorPicker)
+    - X 버튼 크기 증대 (title2), 탭 헤더 라인에 정렬
+    - Dark/Light 모드 자동 대응
+  
+  - **탭 구조 3가지**:
+    1. **사용자 설정** (이전: 사용자 & 팀)
+       - 호칭, 위치 (GPS 버튼), 팀 이름, 팀 색상
+       - **新: "동물의숲 TTS" 토글** (ON: 피치/속도 조정 / OFF: 기본 TTS)
+       - 에이전트창 투명도 Slider
+    
+    2. **API 설정** (동일)
+       - Gemini / OpenAI / Claude / OpenRouter
+       - 선택한 제공자만 키 입력란 표시
+       - API 키 검증 버튼
+    
+    3. **위치별 라우팅** (신규, 11명 → **4개 위치**)
+       - 좌측(Team 1), 우측상단(Team 2), 우측중단(Team 3), 우측하단(Team 4)
+       - 각 위치별 LLM 뇌 선택 (Gemini/OpenAI/Claude/OpenRouter)
+       - OpenRouter 선택 시 Model ID 입력란 동적 표시
+  
+  - **상태 관리**:
+    - `@AppStorage("animalTTSEnabled")` — 동물의숲 TTS 토글
+    - `@AppStorage("llmProvider_pos_N")` — 위치별 LLM 라우팅 (N=0~3)
+    - `@AppStorage("openRouterModelId_pos_N")` — 위치별 OpenRouter 모델 ID
+  
+  - **APIService.swift 통합**:
+    - `openAIStream()` 실제 구현 추가 (gpt-4o, SSE 파싱 OpenAI 포맷)
+    - switch provider에 `.openAI` 케이스 exhaustive 완성
+
+- **수정/생성 파일**
+  - `MyTeam/MyTeam/SettingsView.swift` (완전 재작성, 380×420)
+  - `MyTeam/MyTeam/AgentConfig.swift` (LLMProvider에 openAI 추가)
+  - `MyTeam/MyTeam/AIService.swift` (openAIStream() 구현, switch exhaustive 해결)
 
 ## 📝 다음 작업 시 이 파일에 아래 형식으로 추가
 

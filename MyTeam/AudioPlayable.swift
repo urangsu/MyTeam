@@ -3,7 +3,7 @@ import AVFoundation
 
 // MARK: - PlaybackCommand
 // 스트리밍 세션과 바이너리 데이터를 포함하는 오디오 재생 명령
-struct PlaybackCommand: Sendable {
+struct PlaybackCommand: @unchecked Sendable {
     let streamId: String
     let pcmData: Data
     let format: AVAudioFormat
@@ -13,6 +13,11 @@ struct PlaybackCommand: Sendable {
     let pitch: Float
     let rate: Float
     let volume: Float
+    
+    // 🎯 Perfect Lip-Sync 페이로드
+    // 이 버퍼의 PCM 데이터가 실제로 스피커에서 재생을 시작하는 순간에 트리거되는 콜백
+    let textPayload: String?
+    let onPlaybackStarted: (@Sendable () -> Void)?
 }
 
 // MARK: - AudioPlayable Protocol
