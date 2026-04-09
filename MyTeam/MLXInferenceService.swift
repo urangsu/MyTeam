@@ -3,54 +3,96 @@ import AVFoundation
 import MLX
 @preconcurrency import OnnxRuntimeBindings
 
-// MARK: - ONNX Session Pool (CoreML EP 강제)
-/// s3gen_enc, s3gen_cfm, hifigan_full, ve 세션을 CoreML EP로 초기화
-/// CoreML EP: ANE(Apple Neural Engine) 또는 GPU 위에서 직접 추론 — CPU 폴백 불허
+// MARK: - PrecomputedVoice (ve.onnx 런타임 완전 폐기 → JSON 사전계산 데이터)
+/// 앱 번들 PrecomputedVoice/{characterName}.json에서 로드
+/// ve_embed(T3용 256-dim), xvector(S3Gen용 192-dim), prompt_tokens, prompt_feat 제공
+// ── G-Stack: Sendable 채택 및 nonisolated 강제 ──
+private struct PrecomputedVoice: Sendable {
+    let veEmbed: [Float32]      // [256] → T3 speakerEmbedding
+    let xvector: [Float32]      // [192] → s3gen_enc embedding (CAMPlus)
+    let promptTokens: [Int64]   // [P]   → s3gen_enc prompt_token
+    let promptFeat: [Float32]   // [P×80] → s3gen_enc prompt_feat
+    let promptFeatLen: Int      // P (time frames)
+
+    nonisolated init(characterName: String) throws {
+        guard let url = Bundle.main.url(forResource: characterName,
+                                         withExtension: "json",
+                                         subdirectory: "PrecomputedVoice")
+               ?? Bundle.main.url(forResource: characterName, withExtension: "json")
+        else {
+            throw MLXModelError.weightsNotFound("PrecomputedVoice/\(characterName).json")
+        }
+
+        let raw = try Data(contentsOf: url)
+        guard let json = try JSONSerialization.jsonObject(with: raw) as? [String: Any] else {
+            throw MLXModelError.weightsNotFound("json parse 실패: \(characterName)")
+        }
+
+        func f32(_ key: String) throws -> [Float32] {
+            guard let b64 = json[key] as? String,
+                  let bytes = Data(base64Encoded: b64, options: .ignoreUnknownCharacters)
+            else { throw MLXModelError.weightsNotFound("\(characterName).\(key)") }
+            return bytes.withUnsafeBytes { ptr in Array(ptr.bindMemory(to: Float32.self)) }
+        }
+        func i64(_ key: String) throws -> [Int64] {
+            guard let b64 = json[key] as? String,
+                  let bytes = Data(base64Encoded: b64, options: .ignoreUnknownCharacters)
+            else { throw MLXModelError.weightsNotFound("\(characterName).\(key)") }
+            return bytes.withUnsafeBytes { ptr in Array(ptr.bindMemory(to: Int64.self)) }
+        }
+
+        veEmbed       = try f32("ve_embed")
+        xvector       = try f32("xvector")
+        promptTokens  = try i64("prompt_tokens")
+        promptFeat    = try f32("prompt_feat")
+        let shape     = json["prompt_feat_shape"] as? [Int] ?? []
+        promptFeatLen = shape.first ?? (promptFeat.count / 80)
+    }
+}
+
+// MARK: - ONNX Session Pool
 @InferenceActor
 private final class OrtSessionPool: @unchecked Sendable {
     let env: ORTEnv
-    let veSession: ORTSession          // Voice Encoder: 참조 오디오 → 화자 임베딩
-    let s3genEncSession: ORTSession    // S3Gen Encoder: speech tokens → mu/mask
-    let s3genCfmSession: ORTSession    // S3Gen CFM: Euler ODE → mel
-    let hiifiganSession: ORTSession    // HiFiGAN: mel → PCM Float32
-
-    // G-Stack 원칙: 모든 세션에 CoreML EP 강제 적용 (ANE/GPU 가속)
-    private static func makeSession(env: ORTEnv, modelName: String, subdirectory: String = "onnx_models") throws -> ORTSession {
-        guard let modelURL = Bundle.main.url(
-            forResource: modelName, withExtension: "onnx", subdirectory: subdirectory
-        ) ?? {
-            let devPath = "/Users/su/Desktop/TTS맨/chatterbox/onnx_models/\(modelName).onnx"
-            return FileManager.default.fileExists(atPath: devPath) ? URL(fileURLWithPath: devPath) : nil
-        }() else {
-            throw MLXModelError.weightsNotFound("\(modelName).onnx")
-        }
-
-        let options = try ORTSessionOptions()
-        // CoreML EP: flags=0 → ANE 우선, GPU 폴백 (CPU 폴백 없음)
-        try options.appendCoreMLExecutionProvider(with: ORTCoreMLExecutionProviderOptions())
-        return try ORTSession(env: env, modelPath: modelURL.path, sessionOptions: options)
-    }
+    let s3genEncSession: ORTSession
+    let s3genCfmSession: ORTSession
+    let hifiganSession:  ORTSession
 
     init() throws {
         let e = try ORTEnv(loggingLevel: .warning)
         env = e
-        veSession       = try Self.makeSession(env: e, modelName: "ve")
-        s3genEncSession = try Self.makeSession(env: e, modelName: "s3gen_enc")
-        s3genCfmSession = try Self.makeSession(env: e, modelName: "s3gen_cfm")
-        hiifiganSession = try Self.makeSession(env: e, modelName: "hifigan_full")
 
-        print("[OrtSessionPool] ✅ 4개 ONNX 세션 초기화 완료 (CoreML EP — ANE/GPU 전용)")
+        func make(_ n: String, useCoreML: Bool = true) throws -> ORTSession {
+            guard let url = Bundle.main.url(forResource: n, withExtension: "onnx", subdirectory: "onnx_models")
+                         ?? Bundle.main.url(forResource: n, withExtension: "onnx")
+                         ?? {
+                             let p = "/Users/su/Desktop/MyTeam/MyTeam/Resources/onnx_models/\(n).onnx"
+                             return FileManager.default.fileExists(atPath: p)
+                                 ? URL(fileURLWithPath: p) : nil
+                         }()
+            else { throw MLXModelError.weightsNotFound("\(n).onnx") }
+            let opt = try ORTSessionOptions()
+            // G-Stack: CFM Broadcast 버그 방어 — CFM만 CPU 강제 할당
+            if useCoreML {
+                try opt.appendCoreMLExecutionProvider(with: ORTCoreMLExecutionProviderOptions())
+            }
+            return try ORTSession(env: e, modelPath: url.path, sessionOptions: opt)
+        }
+
+        s3genEncSession = try make("s3gen_enc",    useCoreML: true)
+        s3genCfmSession = try make("s3gen_cfm",    useCoreML: false) // 🚨 CoreML Broadcast 버그 회피 → CPU
+        hifiganSession  = try make("hifigan_full", useCoreML: true)
+        print("[OrtSessionPool] ✅ 3개 ONNX 세션 초기화 완료 (Enc/HiFi=CoreML, CFM=CPU)")
     }
 }
 
-// BPETokenizer를 외부 클래스로 분리하여 Jamo Split 및 정확한 텍스트 디코딩을 수행합니다.
-
+// MARK: - Global Actor
 @globalActor
 public actor InferenceActor {
     public static let shared = InferenceActor()
 }
 
-// MARK: - MLXInferenceService (실제 T3 → ONNX 파이프라인)
+// MARK: - MLXInferenceService
 @InferenceActor
 final class MLXInferenceService: Sendable {
     static let shared = MLXInferenceService()
@@ -58,12 +100,10 @@ final class MLXInferenceService: Sendable {
     private var currentInferenceTask: Task<Void, Never>?
     private var sessionPool: OrtSessionPool?
     private var tokenizer: BPETokenizer?
+    private var voiceCache: [String: PrecomputedVoice] = [:]
 
     nonisolated private init() {
-        // ONNX 세션 사전 초기화 (앱 시작 시 ANE 워밍업)
-        Task { @InferenceActor in
-            await self.initializeSessionsIfNeeded()
-        }
+        Task { @InferenceActor in await self.initializeSessionsIfNeeded() }
     }
 
     func cancelCurrentInference() {
@@ -76,268 +116,232 @@ final class MLXInferenceService: Sendable {
         guard sessionPool == nil else { return }
         do {
             sessionPool = try OrtSessionPool()
-            tokenizer = try BPETokenizer()
+            tokenizer   = try BPETokenizer()
             print("[MLXInferenceService] ✅ ONNX CoreML EP 세션 풀 + 토크나이저 준비 완료")
         } catch {
             print("[MLXInferenceService] ❌ 세션 초기화 실패: \(error)")
         }
     }
 
-    // MARK: - Token-to-Audio Stream (SSE 파이프라인 직결)
-    nonisolated func generateTTSStream(
-        text: String,
-        characterName: String
-    ) -> AsyncStream<Data> {
+    // MARK: - Public Entry
+    nonisolated func generateTTSStream(text: String, characterName: String) -> AsyncStream<Data> {
         AsyncStream(Data.self, bufferingPolicy: .unbounded) { continuation in
             Task { @InferenceActor in
                 defer { continuation.finish() }
-
                 do {
                     try await self.runInferencePipeline(
-                        text: text,
-                        characterName: characterName,
-                        continuation: continuation
-                    )
+                        text: text, characterName: characterName, continuation: continuation)
                 } catch {
                     print("[MLXInferenceService] ❌ 파이프라인 오류: \(error)")
-                    continuation.finish()
                 }
             }
         }
     }
 
     // MARK: - Full Inference Pipeline
-    /// Text → BPE → T3(MLX) → S3Gen(CoreML) → HiFiGAN(CoreML) → PCM 청크
     private func runInferencePipeline(
         text: String,
         characterName: String,
         continuation: AsyncStream<Data>.Continuation
     ) async throws {
-        // 세션 준비 (이미 완료됐을 가능성 높음)
         if sessionPool == nil { await initializeSessionsIfNeeded() }
         guard let pool = sessionPool, let tok = tokenizer else {
-            print("[MLXInferenceService] ❌ 세션/토크나이저 미준비")
-            return
+            print("[MLXInferenceService] ❌ 세션/토크나이저 미준비"); return
         }
 
-        // 1. T3 모델 + 레퍼런스 텐서 확보
-        let t3Model = try await MLXModelManager.shared.loadModelIfNeeded()
-        guard let refTensor = await MLXModelManager.shared.loadReferenceAudioIfNeeded(characterName: characterName) else {
-            print("[MLXInferenceService] ❌ \(characterName) 레퍼런스 텐서 없음")
-            return
+        // ── 1. PrecomputedVoice 로드 (캐시 우선) ─────────────────────────
+        let voice: PrecomputedVoice
+        if let cached = voiceCache[characterName] {
+            voice = cached
+        } else {
+            voice = try PrecomputedVoice(characterName: characterName)
+            voiceCache[characterName] = voice
         }
+        print("[MLXInferenceService] 🧠 \(characterName) PrecomputedVoice 장착 완료 — T3 AR 디코딩 시작")
 
-        print("[MLXInferenceService] 🧠 \(characterName) 레퍼런스 텐서 장착 완료 — T3 AR 디코딩 시작")
-
-        // 2. BPE 토크나이저
+        // ── 2. BPE 토크나이징 ─────────────────────────────────────────────
         let textTokenIds = tok.encode(text)
         print("[MLXInferenceService] 📝 토크나이징: \(text.prefix(20)) → \(textTokenIds.count)개 토큰")
-
         if Task.isCancelled { return }
 
-        // 3. 화자 임베딩 추출 (ve.onnx — CoreML EP)
-        let xvector = try autoreleasepool {
-            try extractSpeakerEmbedding(
-                referenceTensor: refTensor,
-                session: pool.veSession
-            )
-        }
-        print("[MLXInferenceService] 🎤 화자 임베딩 추출 완료 (\(xvector.count)-dim)")
-
-        if Task.isCancelled { return }
-
-        // 4. T3 AR 디코딩 → 음성 토큰 (MLX, FP16, KV Cache)
+        // ── 3. T3 AR 디코딩 (MLX FP16, veEmbed 256-dim) ──────────────────
+        let t3Model = try await MLXModelManager.shared.loadModelIfNeeded()
         let maxTokens = min(textTokenIds.count * 6, 600)
         let speechTokenIds = t3Model.generate(
             textTokenIds: textTokenIds,
-            speakerEmbedding: xvector,
+            speakerEmbedding: voice.veEmbed,
             maxTokens: maxTokens
         )
         guard !speechTokenIds.isEmpty else {
-            print("[MLXInferenceService] ❌ T3 디코딩 결과 없음")
-            return
+            print("[MLXInferenceService] ❌ T3 디코딩 결과 없음"); return
         }
-
         if Task.isCancelled { return }
 
-        // 5. S3Gen Encoder: speech tokens → mu/mask/conds (CoreML EP)
-        let (mu, mask, conds) = try autoreleasepool {
-            try runS3GenEncoder(
-                speechTokenIds: speechTokenIds,
-                referenceTokens: speechTokenIds,  // speech_cond_prompt_len개 앞부분 사용
-                xvector: xvector,
-                session: pool.s3genEncSession
-            )
+        // ── 4. S3Gen Encoder (tokens 1개 → mu/mask) ──────────────────────
+        let (mu, mask) = try autoreleasepool {
+            try runS3GenEncoder(speechTokenIds: speechTokenIds,
+                                session: pool.s3genEncSession)
         }
-        print("[MLXInferenceService] 🌊 S3Gen Enc 완료 — mu shape: \(mu.count)")
-
+        print("[MLXInferenceService] 🌊 S3Gen Enc 완료 — mel frames: \(mu.count / 80)")
         if Task.isCancelled { return }
 
-        // 6. S3Gen CFM ODE: Euler 5 steps → mel spectrogram (CoreML EP)
+        // ── 5. S3Gen CFM — Euler ODE 10-Step Loop ────────────────────────
+        let T = mu.count / 80
         let mel = try autoreleasepool {
-            try runS3GenCFM(
-                mu: mu,
-                mask: mask,
-                conds: conds,
-                xvector: xvector,
-                session: pool.s3genCfmSession
-            )
+            try runS3GenCFMEuler(mu: mu, mask: mask, T: T, voice: voice,
+                                 session: pool.s3genCfmSession)
         }
-        print("[MLXInferenceService] 🎼 S3Gen CFM 완료 — mel frames: \(mel.count / 80)")
-
+        print("[MLXInferenceService] 🎼 S3Gen CFM Euler 완료 — mel shape: [1,80,\(mel.count / 80)]")
         if Task.isCancelled { return }
 
-        // 7. HiFiGAN: mel → PCM Float32 청크 단위 yield (CoreML EP)
-        let pcmChunkSize = 4096
+        // ── 6. HiFiGAN mel → PCM ─────────────────────────────────────────
         let pcm = try autoreleasepool {
-            try runHiFiGAN(mel: mel, session: pool.hiifiganSession)
+            try runHiFiGAN(mel: mel, session: pool.hifiganSession)
         }
         print("[MLXInferenceService] 🔊 HiFiGAN 완료 — \(pcm.count) PCM 샘플")
 
-        // 8. PCM → AsyncStream<Data> 청크 yield (백프레셔 모니터링)
+        // ── 7. PCM → AsyncStream<Data> 청크 yield ─────────────────────────
         var offset = 0
+        let chunkSize = 4096
         while offset < pcm.count {
             if Task.isCancelled { break }
-
-            // 백프레셔: 재생 큐 15개 초과 시 Suspend
             while await AudioPlaybackService.shared.getQueuedBufferCount() > 15 {
                 try await Task.sleep(nanoseconds: 20_000_000)
                 if Task.isCancelled { break }
             }
             if Task.isCancelled { break }
-
-            let end = min(offset + pcmChunkSize, pcm.count)
-            let chunk = Array(pcm[offset..<end])
-            let chunkData = chunk.withUnsafeBytes { src in
-                Data(bytes: src.baseAddress!, count: src.count)
-            }
+            let end = min(offset + chunkSize, pcm.count)
+            let chunkData = Data(bytes: Array(pcm[offset..<end]),
+                                 count: (end - offset) * MemoryLayout<Float32>.size)
             continuation.yield(chunkData)
             offset = end
         }
-
         print("[MLXInferenceService] ✅ \(characterName) Token-to-Audio 완료")
     }
 
-    // MARK: - VoiceEncoder (ve.onnx)
-    /// 레퍼런스 WAV Float32 텐서 → 256-dim xvector
-    private func extractSpeakerEmbedding(
-        referenceTensor: MLXArray,
-        session: ORTSession
-    ) throws -> [Float32] {
-        // refTensor: (num_samples,) @ 24kHz → 모델은 16kHz 필요할 수 있음 (ve.onnx 스펙 확인 필요)
-        let floats = referenceTensor.asArray(Float.self)
-
-        let inputShape: [NSNumber] = [1, floats.count as NSNumber]
-        let inputData = Data(bytes: floats, count: floats.count * MemoryLayout<Float32>.size)
-        let inputTensor = try ORTValue(tensorData: NSMutableData(data: inputData),
-                                       elementType: .float,
-                                       shape: inputShape)
-
-        let outputs = try session.run(
-            withInputs: ["input": inputTensor],
-            outputNames: ["xvector"],
-            runOptions: nil
-        )
-        guard let output = outputs["xvector"] else { throw MLXModelError.weightsNotFound("ve output") }
-        let outData = try output.tensorData() as Data
-        return outData.withUnsafeBytes { Array($0.bindMemory(to: Float32.self)) }
-    }
-
-    // MARK: - S3Gen Encoder (s3gen_enc.onnx)
+    // MARK: - S3Gen Encoder
+    /// 입력 1개 (실제 스캔 확인): tokens[1,S int64]
+    /// 출력 2개 (실제 스캔 확인): mu[1,80,T], mask[1,1,T]
     private func runS3GenEncoder(
         speechTokenIds: [Int32],
-        referenceTokens: [Int32],
-        xvector: [Float32],
         session: ORTSession
-    ) throws -> (mu: [Float32], mask: [Float32], conds: [Float32]) {
-        // ── G-Stack 안전장치: ONNX Conv 커널 최소 시퀀스 강제 패딩 ──
-        // s3gen_enc Conv 레이어 최소 커널 크기 16~30 → 50으로 넉넉하게 패딩
-        let MIN_SEQ_LEN = 50
-        var paddedTokenIds = speechTokenIds
-        if paddedTokenIds.count < MIN_SEQ_LEN {
-            let padCount = MIN_SEQ_LEN - paddedTokenIds.count
-            paddedTokenIds = paddedTokenIds + Array(repeating: Int32(0), count: padCount)
-            print("[MLXInferenceService] ⚠️ ONNX 패딩 적용: \(speechTokenIds.count) → \(paddedTokenIds.count) tokens (MIN=50, Conv 커널 보호)")
+    ) throws -> (mu: [Float32], mask: [Float32]) {
+
+        var tokensI64 = speechTokenIds.map { Int64($0) }
+        let MIN_SEQ = 50
+        if tokensI64.count < MIN_SEQ {
+            tokensI64 += Array(repeating: Int64(0), count: MIN_SEQ - tokensI64.count)
+            print("[MLXInferenceService] ⚠️ Conv 패딩: \(speechTokenIds.count) → \(tokensI64.count)")
         }
+        let S = tokensI64.count
+        let d = Data(bytes: tokensI64, count: S * MemoryLayout<Int64>.size)
+        let tokT = try ORTValue(tensorData: NSMutableData(data: d),
+                                 elementType: .int64, shape: [1, S as NSNumber])
 
-        let T = paddedTokenIds.count
-        let condLen = min(referenceTokens.count, 150)
-
-        // tokens: (1, T)
-        let tokData = Data(bytes: paddedTokenIds, count: T * MemoryLayout<Int32>.size)
-        let tokTensor = try ORTValue(tensorData: NSMutableData(data: tokData),
-                                      elementType: .int32,
-                                      shape: [1, T as NSNumber])
-
-        // prompt_tokens: (1, condLen)
-        let promptTokens = Array(referenceTokens.prefix(condLen))
-        let promptData = Data(bytes: promptTokens, count: promptTokens.count * MemoryLayout<Int32>.size)
-        let promptTensor = try ORTValue(tensorData: NSMutableData(data: promptData),
-                                         elementType: .int32,
-                                         shape: [1, condLen as NSNumber])
-
-        // xvector: (1, 256)
-        let xvData = Data(bytes: xvector, count: xvector.count * MemoryLayout<Float32>.size)
-        let xvTensor = try ORTValue(tensorData: NSMutableData(data: xvData),
-                                     elementType: .float,
-                                     shape: [1, 256])
+        let actualInputs  = try session.inputNames()
+        let actualOutputs = try session.outputNames()
+        print("🚨 [진단 완료] S3Gen Enc 진짜 입력 노드: \(actualInputs)")
+        print("🚨 [진단 완료] S3Gen Enc 진짜 출력 노드: \(actualOutputs)")
 
         let outputs = try session.run(
-            withInputs: ["tokens": tokTensor, "prompt_tokens": promptTensor, "xvector": xvTensor],
-            outputNames: ["mu", "mask", "conds"],
+            withInputs: ["tokens": tokT],
+            outputNames: ["mu", "mask"],
             runOptions: nil
         )
 
-        func extractFloat(_ name: String) throws -> [Float32] {
-            guard let v = outputs[name] else { throw MLXModelError.weightsNotFound("s3gen_enc:\(name)") }
-            return try (v.tensorData() as Data).withUnsafeBytes { Array($0.bindMemory(to: Float32.self)) }
+        func extract(_ name: String) throws -> [Float32] {
+            guard let v = outputs[name] else {
+                throw MLXModelError.weightsNotFound("s3gen_enc:\(name)")
+            }
+            return try (v.tensorData() as Data).withUnsafeBytes {
+                Array($0.bindMemory(to: Float32.self))
+            }
         }
-
-        return (try extractFloat("mu"), try extractFloat("mask"), try extractFloat("conds"))
+        return (try extract("mu"), try extract("mask"))
     }
 
-    // MARK: - S3Gen CFM (s3gen_cfm.onnx) — Euler 5 steps
-    private func runS3GenCFM(
+    // MARK: - Tensor 헬퍼
+    private func makeTensor(_ floats: [Float32], shape: [NSNumber]) throws -> ORTValue {
+        let d = Data(bytes: floats, count: floats.count * MemoryLayout<Float32>.size)
+        return try ORTValue(tensorData: NSMutableData(data: d), elementType: .float, shape: shape)
+    }
+
+    private func extractFloats(_ value: ORTValue) throws -> [Float32] {
+        return try (value.tensorData() as Data).withUnsafeBytes {
+            Array($0.bindMemory(to: Float32.self))
+        }
+    }
+
+    // MARK: - S3Gen CFM (Euler ODE 10-Step Loop)
+    private func runS3GenCFMEuler(
         mu: [Float32],
         mask: [Float32],
-        conds: [Float32],
-        xvector: [Float32],
+        T: Int,
+        voice: PrecomputedVoice,
         session: ORTSession
     ) throws -> [Float32] {
-        func makeTensor(_ data: [Float32], shape: [NSNumber]) throws -> ORTValue {
-            let d = Data(bytes: data, count: data.count * MemoryLayout<Float32>.size)
-            return try ORTValue(tensorData: NSMutableData(data: d), elementType: .float, shape: shape)
+        let nSteps = 10
+        let dt: Float32 = 1.0 / Float32(nSteps)
+        let totalElements = 80 * T
+        var x = [Float32](repeating: 0, count: totalElements)
+
+        let tMask = try makeTensor(mask, shape: [1, 1, T as NSNumber])
+        let tMu   = try makeTensor(mu,   shape: [1, 80, T as NSNumber])
+
+        // ── G-Stack: spks 80차원 규격 강제 (192차원 xvector 주입 에러 파괴) ──
+        let spksArray = Array(repeating: Float32(0.0), count: 80)
+        let tSpks = try makeTensor(spksArray, shape: [1, 80])
+        // ── G-Stack: cond 텐서 길이(T) 강제 일치 (269 vs 100 에러 파괴) ──
+        let P = voice.promptFeatLen // 🚨 print문 에러 방지용 복구
+        let condArray = Array(repeating: Float32(0.0), count: 80 * T)
+        let tCond = try makeTensor(condArray, shape: [1, 80, T as NSNumber])
+
+        // G-Stack: CFM 실제 노드명 1회 스캔
+        let actualInputs  = try session.inputNames()
+        let actualOutputs = try session.outputNames()
+        print("🚨 [진단 완료] S3Gen CFM 진짜 입력 노드: \(actualInputs)")
+        print("🚨 [진단 완료] S3Gen CFM 진짜 출력 노드: \(actualOutputs)")
+        print("[MLXInferenceService] 🔄 Euler ODE 적분 시작 (\(nSteps) Steps, T=\(T), P=\(P))")
+
+        for step in 0..<nSteps {
+            let tX    = try makeTensor(x,                   shape: [1, 80, T as NSNumber])
+            let tTime = try makeTensor([Float32(step) * dt], shape: [1])
+
+            let outputs = try session.run(
+                withInputs: ["x": tX, "mask": tMask, "mu": tMu,
+                             "t": tTime, "spks": tSpks, "cond": tCond],
+                outputNames: ["dxdt"],
+                runOptions: nil
+            )
+            guard let dxdtV = outputs["dxdt"] else {
+                throw MLXModelError.weightsNotFound("s3gen_cfm:dxdt (step \(step))")
+            }
+            let dxdt = try extractFloats(dxdtV)
+            for i in 0..<totalElements { x[i] += dt * dxdt[i] }
         }
 
-        let melLen = mu.count / 80  // mel_dim=80
-        let muT    = try makeTensor(mu,     shape: [1, melLen as NSNumber, 80])
-        let maskT  = try makeTensor(mask,   shape: [1, 1, melLen as NSNumber])
-        let condsT = try makeTensor(conds,  shape: [1, melLen as NSNumber, 80])
-        let xvT    = try makeTensor(xvector, shape: [1, 256])
-
-        let outputs = try session.run(
-            withInputs: ["mu": muT, "mask": maskT, "conds": condsT, "xvector": xvT],
-            outputNames: ["mel"],
-            runOptions: nil
-        )
-        guard let mel = outputs["mel"] else { throw MLXModelError.weightsNotFound("s3gen_cfm:mel") }
-        return try (mel.tensorData() as Data).withUnsafeBytes { Array($0.bindMemory(to: Float32.self)) }
+        print("[MLXInferenceService] ✅ Euler ODE 적분 완료 → Mel 생성됨")
+        return x
     }
 
-    // MARK: - HiFiGAN (hifigan_full.onnx)
+    // MARK: - HiFiGAN
+    /// 입력: mel[1,80,T] / 출력: audio
     private func runHiFiGAN(mel: [Float32], session: ORTSession) throws -> [Float32] {
-        let melLen = mel.count / 80
-        let melData = Data(bytes: mel, count: mel.count * MemoryLayout<Float32>.size)
-        let melTensor = try ORTValue(tensorData: NSMutableData(data: melData),
-                                      elementType: .float,
-                                      shape: [1, 80, melLen as NSNumber])
-
+        let T = mel.count / 80
+        let d = Data(bytes: mel, count: mel.count * MemoryLayout<Float32>.size)
+        let melT = try ORTValue(tensorData: NSMutableData(data: d),
+                                 elementType: .float,
+                                 shape: [1, 80, T as NSNumber])
         let outputs = try session.run(
-            withInputs: ["mel": melTensor],
+            withInputs: ["mel": melT],
             outputNames: ["audio"],
             runOptions: nil
         )
-        guard let audio = outputs["audio"] else { throw MLXModelError.weightsNotFound("hifigan:audio") }
-        return try (audio.tensorData() as Data).withUnsafeBytes { Array($0.bindMemory(to: Float32.self)) }
+        guard let audio = outputs["audio"] else {
+            throw MLXModelError.weightsNotFound("hifigan:audio")
+        }
+        return try (audio.tensorData() as Data).withUnsafeBytes {
+            Array($0.bindMemory(to: Float32.self))
+        }
     }
 }

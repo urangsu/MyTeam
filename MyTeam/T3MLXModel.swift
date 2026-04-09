@@ -323,11 +323,12 @@ final class T3MLXModel {
         return try T3MLXModel.parseNPYData(data, name: url.lastPathComponent)
     }
 
-    /// NPY 바이너리 파싱 (URL 불필요 버전 — loadNPZ 내부에서 직접 호출)
+    /// NPY 바이너리 파싱 — shape + dtype 헤더 포함 완전 파싱
     static func parseNPYData(_ data: Data, name: String = "?") throws -> MLXArray {
         guard data.count > 10 else { throw MLXModelError.embeddingNotFound(name) }
         let majorVersion = data[6]
-        let hlo = 8  // header_len_offset
+        let hlo = 8
+        let headerLenSize = majorVersion == 1 ? 2 : 4
         let headerLen: Int
         if majorVersion == 1 {
             headerLen = Int(data[hlo]) | (Int(data[hlo+1]) << 8)
@@ -335,18 +336,50 @@ final class T3MLXModel {
             headerLen = Int(data[hlo]) | (Int(data[hlo+1]) << 8)
                       | (Int(data[hlo+2]) << 16) | (Int(data[hlo+3]) << 24)
         }
-        let headerLenSize = majorVersion == 1 ? 2 : 4
-        let dataStart = 6 + 2 + headerLenSize + headerLen
-        guard dataStart < data.count else { throw MLXModelError.embeddingNotFound(name) }
+        let headerStart = 6 + 2 + headerLenSize
+        let dataStart   = headerStart + headerLen
+        guard dataStart <= data.count else { throw MLXModelError.embeddingNotFound(name) }
+
+        let headerStr = String(data: data.subdata(in: headerStart..<(headerStart + headerLen)),
+                               encoding: .ascii) ?? ""
+        let shape  = parseNPYShape(headerStr)
+        let isFP16 = headerStr.contains("'<f2'") || headerStr.contains("\"<f2\"") ||
+                     headerStr.contains("'|f2'") || headerStr.contains("float16")
 
         let rawData = data.subdata(in: dataStart..<data.count)
-        let floatCount = rawData.count / MemoryLayout<Float32>.size
-        let floats: [Float32] = rawData.withUnsafeBytes { ptr in
-            guard let base = ptr.baseAddress else { return [] }
-            return Array(UnsafeBufferPointer(start: base.assumingMemoryBound(to: Float32.self),
-                                             count: floatCount))
+        let arr: MLXArray
+        if isFP16 {
+            let count = rawData.count / 2
+            let floats: [Float32] = rawData.withUnsafeBytes { ptr in
+                guard let base = ptr.baseAddress else { return [] }
+                let u16 = base.assumingMemoryBound(to: UInt16.self)
+                return (0..<count).map { Float32(Float16(bitPattern: u16[$0])) }
+            }
+            arr = MLXArray(floats)
+        } else {
+            let count = rawData.count / MemoryLayout<Float32>.size
+            let floats: [Float32] = rawData.withUnsafeBytes { ptr in
+                guard let base = ptr.baseAddress else { return [] }
+                return Array(UnsafeBufferPointer(start: base.assumingMemoryBound(to: Float32.self),
+                                                 count: count))
+            }
+            arr = MLXArray(floats)
         }
-        return MLXArray(floats)
+        guard !shape.isEmpty else { return arr }
+        return arr.reshaped(shape)
+    }
+
+    /// NPY 헤더 문자열에서 shape 추출 — ex) "'shape': (1024, 256)" → [1024, 256]
+    private static func parseNPYShape(_ header: String) -> [Int] {
+        guard let keyRange = header.range(of: "'shape'") ?? header.range(of: "\"shape\"") else { return [] }
+        let afterKey = header[keyRange.upperBound...]
+        guard let openParen  = afterKey.firstIndex(of: "("),
+              let closeParen = afterKey.firstIndex(of: ")") else { return [] }
+        let content = afterKey[afterKey.index(after: openParen)..<closeParen]
+            .trimmingCharacters(in: .whitespaces)
+        if content.isEmpty { return [] }  // scalar ()
+        return content.split(separator: ",")
+            .compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
     }
 
 }
