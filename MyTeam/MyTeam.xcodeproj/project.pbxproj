@@ -7,22 +7,44 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1992E08E20244BC3CDC105B5 /* LlamaModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6332D8769DAD6FC52D04181E /* LlamaModel.swift */; };
+		2ECC48AE8C64FE9F80D95953 /* ChatterboxConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50FBC3ACD817B577E6DFB087 /* ChatterboxConfig.swift */; };
 		4B5D90E2F128DDB37123EBA0 /* MLX in Frameworks */ = {isa = PBXBuildFile; productRef = 080E0E1B2AA039294162D44C /* MLX */; };
+		69E812CEC45FBF7724577CC1 /* MLXNN in Frameworks */ = {isa = PBXBuildFile; productRef = 9BCEB15ED70DC75AB67DA76A /* MLXNN */; };
+		72637E03A46FFDD47296CCCE /* AudioUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2EE60189BC5025E127B3DEC /* AudioUtils.swift */; };
+		7F36831F7C78808E4E3D74AD /* MLXFFT in Frameworks */ = {isa = PBXBuildFile; productRef = 5B9D55BA2C66AEF21781A6F7 /* MLXFFT */; };
+		8E755ECD296B9AEA96F59830 /* ChatterboxPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B263F34662A4E9BE5A7A74C /* ChatterboxPipeline.swift */; };
 		A211C82ACA31A4AC2C64C248 /* MLXRandom in Frameworks */ = {isa = PBXBuildFile; productRef = E02FD46B15A0E577B70D106A /* MLXRandom */; };
+		A22346F7D7C752E85F14BA18 /* HiFTGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67671949737A91D1114C8228 /* HiFTGenerator.swift */; };
+		A66E80FF45F63B508A44691B /* T3Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = D373E518BD8F4070536F95BA /* T3Model.swift */; };
 		AAAA0001BBBB2222CCCC0001 /* onnxruntime in Frameworks */ = {isa = PBXBuildFile; productRef = AAAA0001BBBB2222CCCC0002 /* onnxruntime */; };
+		D50D0C85B1C464670B86083E /* T3CondEnc.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A9C55FB78B2FEF3673188F5 /* T3CondEnc.swift */; };
+		EDFAE771D0C66D44CC596DD6 /* VoiceEncoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = D04C4F6BC4B1123CC5766519 /* VoiceEncoder.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		4A9C55FB78B2FEF3673188F5 /* T3CondEnc.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = T3CondEnc.swift; sourceTree = "<group>"; };
+		50FBC3ACD817B577E6DFB087 /* ChatterboxConfig.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatterboxConfig.swift; sourceTree = "<group>"; };
+		6332D8769DAD6FC52D04181E /* LlamaModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LlamaModel.swift; sourceTree = "<group>"; };
+		67671949737A91D1114C8228 /* HiFTGenerator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HiFTGenerator.swift; sourceTree = "<group>"; };
+		8B263F34662A4E9BE5A7A74C /* ChatterboxPipeline.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatterboxPipeline.swift; sourceTree = "<group>"; };
 		9079F7ED2F6EDE4900B4CE24 /* MyTeam.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MyTeam.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		907C1FEB2F8183EF00D0AC87 /* MyTeam.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = MyTeam.xcodeproj; sourceTree = "<group>"; };
 		907C31802F81917500D0AC87 /* MyTeam.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = MyTeam.xcodeproj; sourceTree = "<group>"; };
 		907C47032F841C8A00D0AC87 /* MyTeam.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = MyTeam.xcodeproj; sourceTree = "<group>"; };
 		907C5DDE2F84220F00D0AC87 /* MyTeam.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = MyTeam.xcodeproj; sourceTree = "<group>"; };
+		907C659F2F926EA800D0AC87 /* MyTeam.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = MyTeam.xcodeproj; sourceTree = "<group>"; };
+		907C6D5B2F926FDA00D0AC87 /* MyTeam.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = MyTeam.xcodeproj; sourceTree = "<group>"; };
+		D04C4F6BC4B1123CC5766519 /* VoiceEncoder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VoiceEncoder.swift; sourceTree = "<group>"; };
+		D373E518BD8F4070536F95BA /* T3Model.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = T3Model.swift; sourceTree = "<group>"; };
+		E2EE60189BC5025E127B3DEC /* AudioUtils.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AudioUtils.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		9079F7EF2F6EDE4900B4CE24 /* . */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = .;
 			sourceTree = "<group>";
 		};
@@ -36,6 +58,8 @@
 				AAAA0001BBBB2222CCCC0001 /* onnxruntime in Frameworks */,
 				4B5D90E2F128DDB37123EBA0 /* MLX in Frameworks */,
 				A211C82ACA31A4AC2C64C248 /* MLXRandom in Frameworks */,
+				69E812CEC45FBF7724577CC1 /* MLXNN in Frameworks */,
+				7F36831F7C78808E4E3D74AD /* MLXFFT in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -45,6 +69,14 @@
 		8EAD91A347512A83BC142D85 /* MyTeam */ = {
 			isa = PBXGroup;
 			children = (
+				E2EE60189BC5025E127B3DEC /* AudioUtils.swift */,
+				50FBC3ACD817B577E6DFB087 /* ChatterboxConfig.swift */,
+				8B263F34662A4E9BE5A7A74C /* ChatterboxPipeline.swift */,
+				67671949737A91D1114C8228 /* HiFTGenerator.swift */,
+				6332D8769DAD6FC52D04181E /* LlamaModel.swift */,
+				4A9C55FB78B2FEF3673188F5 /* T3CondEnc.swift */,
+				D373E518BD8F4070536F95BA /* T3Model.swift */,
+				D04C4F6BC4B1123CC5766519 /* VoiceEncoder.swift */,
 			);
 			name = MyTeam;
 			sourceTree = "<group>";
@@ -89,6 +121,22 @@
 		};
 		907C5DF22F84220F00D0AC87 /* Products */ = {
 			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		907C65B72F926EA800D0AC87 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		907C6D732F926FDA00D0AC87 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
 			name = Products;
 			sourceTree = "<group>";
 		};
@@ -113,6 +161,8 @@
 			name = MyTeam;
 			packageProductDependencies = (
 				AAAA0001BBBB2222CCCC0002 /* onnxruntime */,
+				9BCEB15ED70DC75AB67DA76A /* MLXNN */,
+				5B9D55BA2C66AEF21781A6F7 /* MLXFFT */,
 			);
 			productName = MyTeam;
 			productReference = 9079F7ED2F6EDE4900B4CE24 /* MyTeam.app */;
@@ -167,6 +217,14 @@
 					ProductGroup = 907C5DF22F84220F00D0AC87 /* Products */;
 					ProjectRef = 907C5DDE2F84220F00D0AC87 /* MyTeam.xcodeproj */;
 				},
+				{
+					ProductGroup = 907C65B72F926EA800D0AC87 /* Products */;
+					ProjectRef = 907C659F2F926EA800D0AC87 /* MyTeam.xcodeproj */;
+				},
+				{
+					ProductGroup = 907C6D732F926FDA00D0AC87 /* Products */;
+					ProjectRef = 907C6D5B2F926FDA00D0AC87 /* MyTeam.xcodeproj */;
+				},
 			);
 			projectRoot = "";
 			targets = (
@@ -190,6 +248,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				72637E03A46FFDD47296CCCE /* AudioUtils.swift in Sources */,
+				2ECC48AE8C64FE9F80D95953 /* ChatterboxConfig.swift in Sources */,
+				8E755ECD296B9AEA96F59830 /* ChatterboxPipeline.swift in Sources */,
+				A22346F7D7C752E85F14BA18 /* HiFTGenerator.swift in Sources */,
+				1992E08E20244BC3CDC105B5 /* LlamaModel.swift in Sources */,
+				D50D0C85B1C464670B86083E /* T3CondEnc.swift in Sources */,
+				A66E80FF45F63B508A44691B /* T3Model.swift in Sources */,
+				EDFAE771D0C66D44CC596DD6 /* VoiceEncoder.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -355,6 +421,7 @@
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = targeted;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -400,6 +467,7 @@
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = targeted;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 			};
@@ -452,6 +520,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B82E0410E8DA0C1ED3DD6B94 /* XCRemoteSwiftPackageReference "mlx-swift" */;
 			productName = MLX;
+		};
+		5B9D55BA2C66AEF21781A6F7 /* MLXFFT */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B82E0410E8DA0C1ED3DD6B94 /* XCRemoteSwiftPackageReference "mlx-swift" */;
+			productName = MLXFFT;
+		};
+		9BCEB15ED70DC75AB67DA76A /* MLXNN */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B82E0410E8DA0C1ED3DD6B94 /* XCRemoteSwiftPackageReference "mlx-swift" */;
+			productName = MLXNN;
 		};
 		AAAA0001BBBB2222CCCC0002 /* onnxruntime */ = {
 			isa = XCSwiftPackageProductDependency;

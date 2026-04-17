@@ -270,11 +270,35 @@ final class MLXInferenceService: Sendable {
         let totalElements = 80 * T
         var x = [Float32](repeating: 0, count: totalElements)
 
-        let tMask = try makeTensor(mask,                                   shape: [1, 1,  T as NSNumber])
-        let tMu   = try makeTensor(mu,                                     shape: [1, 80, T as NSNumber])
-        // ── G-Stack: Shape 에러 파괴 — Zero 주입 ──
-        let tSpks = try makeTensor([Float32](repeating: 0, count: 80),    shape: [1, 80])
-        let tCond = try makeTensor([Float32](repeating: 0, count: 80 * T), shape: [1, 80, T as NSNumber])
+        let tMask = try makeTensor(mask, shape: [1, 1,  T as NSNumber])
+        let tMu   = try makeTensor(mu,   shape: [1, 80, T as NSNumber])
+
+        // ── spks: promptFeat 시간 평균 → [1, 80] (화자 글로벌 임베딩) ──
+        let P = voice.promptFeatLen   // 269 프레임
+        var spksMean = [Float32](repeating: 0, count: 80)
+        for frame in 0..<P {
+            for dim in 0..<80 {
+                spksMean[dim] += voice.promptFeat[frame * 80 + dim]
+            }
+        }
+        if P > 0 { for i in 0..<80 { spksMean[i] /= Float32(P) } }
+        let tSpks = try makeTensor(spksMean, shape: [1, 80])
+
+        // ── cond: promptFeat를 T 프레임으로 선형 보간 → [1, 80, T] (레퍼런스 mel) ──
+        // 메모리 레이아웃: shape [1,80,T] → condArray[dim * T + t]
+        var condArray = [Float32](repeating: 0, count: 80 * T)
+        for t in 0..<T {
+            let ratio = (P <= 1) ? 0.0 : Float32(t) / Float32(T - 1) * Float32(P - 1)
+            let lo    = min(Int(ratio), P - 1)
+            let hi    = min(lo + 1, P - 1)
+            let frac  = ratio - Float32(lo)
+            for dim in 0..<80 {
+                let loVal = voice.promptFeat[lo * 80 + dim]
+                let hiVal = voice.promptFeat[hi * 80 + dim]
+                condArray[dim * T + t] = loVal * (1 - frac) + hiVal * frac
+            }
+        }
+        let tCond = try makeTensor(condArray, shape: [1, 80, T as NSNumber])
 
         let actualIn  = try session.inputNames()
         let actualOut = try session.outputNames()

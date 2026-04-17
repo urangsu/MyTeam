@@ -938,3 +938,176 @@ MLX TTS 서버 (Python)
 - 작업한 내용 요약
 - 수정 파일 목록
 ```
+
+---
+
+## 2026-04-17 — TASK-0.1/0.3 완료: Chatterbox Multilingual MLX 한국어 PoC (@Claude Code)
+
+### 결과
+- **G0 통과**: Q4 모델 기준 25~30자 한국어 생성 1~1.8초 (기준 < 3초)
+- **목소리 클로닝**: fp16/Q4 모두 기본값(파라미터 무설정)으로 레퍼런스 여성 목소리 재현 확인
+- **채택 모델**: `theoracleguy/Chatterbox-Multilingual-MLX-v2-Q4` (속도 우선)
+- **채택 파라미터**: 완전 기본값 (`ref_audio`, `lang_code="ko"` 만 지정)
+
+### 성능 측정 (Q4, 30자 기준)
+| 회차 | 시간 | 품질 |
+|---|---|---|
+| 1회 | 1.64초 | ✅ 여성 목소리 클로닝 성공 |
+| 2회 | 1.05초 | ⚠️ 보통 |
+| 3회 | 1.00초 | ❌ 외국인 발음 |
+
+### 발견된 문제
+- **일관성 불안정**: temperature=0.8 기본값으로 인해 매 생성마다 품질 편차 큼 → Phase 2 서버 구현 시 temperature 튜닝 필요
+- **fp16**: 품질 안정적이나 3~4초로 기준 초과
+
+### 실패 기록 (재시도 금지)
+- **동물의 숲 효과**: 글자당 2+ 옥타브 피치시프트 → 범죄자 목소리 모자이크 수준, 완전 실패
+- **커스텀 파라미터 (exaggeration/cfg_weight 조합)**: 오히려 남성 목소리로 변질됨. 기본값이 최선
+- **실제 animalese 구조**: 글자별 사전 녹음 AAC 샘플 + ±300cents 랜덤 피치 (타이핑용 설계), 우리 용도에 부적합
+
+### 해제된 의존성
+- TASK-0.1 ✅, TASK-0.3 ✅ → Phase 1 + TASK-2.1 진입 가능
+
+---
+
+## 2026-04-17 — 목소리 클로닝 파라미터 실험 기록 (@Claude Code)
+
+### ✅ 원본 목소리와 같게 나온 설정
+
+**모델**: `theoracleguy/Chatterbox-Multilingual-MLX-v2-Q4`  
+**파라미터**: **완전 기본값** — 아무것도 지정하지 않음
+
+```python
+model.generate(
+    text=text,
+    ref_audio=REF_AUDIO_PATH,  # 경로 문자열 직접 전달
+    lang_code="ko",
+    verbose=False
+)
+```
+
+- `exaggeration`, `cfg_weight`, `temperature` 등 **일절 건드리지 않음**
+- 생성 시간: 1~1.8초 (단, 매 실행마다 품질 편차 있음 — temperature=0.8 기본값 때문)
+- 1회차가 가장 잘 나오는 경향 있음
+
+---
+
+### ❌ 남자 목소리로 변질된 설정들의 공통점
+
+| 실험 | exaggeration | cfg_weight | temperature | 결과 |
+|---|---|---|---|---|
+| "선명하게" | 0.3 | 0.7 | 0.7 | ❌ 남성 |
+| "최선명" | 0.2 | 0.9 | 0.6 | ❌ 남성 |
+| "레퍼런스 충실" | 0.8 | 0.5 | 0.8 | ❌ 남성 |
+| "lowcfg" | 0.1 | 0.3 | 0.7 | ❌ 남성 |
+| "mid" | 0.3 | 0.3 | 0.7 | ❌ 남성 |
+| "highexag" | 0.6 | 0.3 | 0.7 | ❌ 남성 |
+
+**공통점**:
+- `cfg_weight`를 기본값(0.5)에서 벗어나게 바꿀수록 목소리 특성이 망가짐
+- `cfg_weight < 0.5` → 레퍼런스 목소리 반영 감소 → 모델 기본(남성) 목소리로 회귀
+- `cfg_weight > 0.5` + `exaggeration 높임` → 과도한 강조로 목소리 왜곡
+- **결론: 파라미터를 건드리는 것 자체가 독. 기본값이 최선.**
+
+---
+
+## 2026-04-17 — TASK-B 스파이크: MLX-Swift 네이티브 포팅 가능성 검증 (@Claude Code)
+
+### 결론: ✅ 가능
+
+- MLX-Swift 0.31.3 이미 Xcode 프로젝트에 포함됨
+- `MLX.loadArrays(url:)` — safetensors 로드 API 존재
+- `MLXNN`: Linear, Conv1d, ConvTranspose1d, LSTM, MultiHeadAttention 전부 있음
+- 빌드 완전 성공 (CLI Metal 권한 이슈는 앱 컨텍스트에서 미발생)
+- 가중치 구조: `ve.*` / `t3.*` / `s3gen.*` 로 명확히 분리됨
+
+### 포팅 규모 추정
+| 컴포넌트 | 예상 LOC | 난이도 |
+|---|---|---|
+| VoiceEncoder (LSTM) | ~150 | 낮음 |
+| T3 Transformer (LLaMA) | ~500 | 중간 |
+| S3Gen Flow Matching | ~400 | 높음 |
+| HiFiGAN Vocoder | ~400 | 중간 |
+| 파이프라인 연결 | ~200 | 낮음 |
+
+### 다음: Python 서버 없이 바로 Swift 네이티브 구현 진행
+
+---
+
+## 2026-04-17 — [Antigravity] Swift 네이티브 TTS 통합 + 빌드 에러 연쇄 수정
+
+### 이어받은 상태
+이전 Claude Code 세션에서 Swift 네이티브 Chatterbox TTS 파이프라인 9개 파일을 구현 완료하고 `project.pbxproj` 연동까지 마쳤으나, **실제 Xcode 빌드는 미검증 상태**였음. 이번 세션에서 빌드를 시도하면서 발생한 연쇄 에러들을 해결함.
+
+### 배경 — 스트리밍 TTS 설계 원리 확인
+사용자가 "생성 중인 문장을 작은 단위로 잘라 즉시 TTS 합성"하는 기법에 대해 질문함. 코드 분석 결과, `SpeechManager.processRealtimeSSEStream()`에 이미 완벽히 구현되어 있음을 확인:
+- SSE 토큰 스트림 수신 → `sentenceBuffer`에 누적 → `.`, `?`, `!`, `\n` 감지 즉시 청크 flush
+- 첫 문장이 끝나는 순간 TTS 추론 시작, `playerNode.play()` 시점에 UI 말풍선 표시
+- 남은 문장은 파이프라인에서 병렬 준비 → 지연 없는 연속 재생
+
+현재 병목: `MLXInferenceService`가 여전히 HTTP 서버(`localhost:9998`)를 호출하는 레거시 형태 → `ChatterboxPipeline.swift`(Swift 네이티브)로 교체 필요 (다음 세션 작업)
+
+### 수정한 빌드 에러들
+
+#### 1. MLXNN / MLXFFT 모듈 의존성 에러
+```
+Unable to resolve module dependency: 'MLXNN'
+Unable to resolve module dependency: 'MLXFFT'
+```
+- **원인**: `project.pbxproj`에 `MLX`, `MLXRandom`만 등록되어 있고 `MLXNN`, `MLXFFT`는 누락
+- **해결**: `add_mlx_products.rb` 스크립트로 mlx-swift 패키지에서 두 모듈을 타겟에 추가
+- **수정 파일**: `MyTeam.xcodeproj/project.pbxproj`
+
+#### 2. Duplicate build file 경고 (8개 TTS 파일)
+```
+Skipping duplicate build file in Compile Sources build phase: VoiceEncoder.swift ...
+```
+- **원인**: Xcode DerivedData 캐시 오염 (실제 pbxproj에는 1개씩만 존재)
+- **해결**: `Shift+Cmd+K` (Clean Build Folder) 로 해결
+
+#### 3. CLGeocoder deprecated 경고 (SettingsView.swift)
+```
+'CLGeocoder' was deprecated in macOS 26.0: Use MapKit
+```
+- **원인**: macOS 26에서 `CLGeocoder`가 deprecated되고 `MKReverseGeocodingRequest`로 대체됨
+- **해결**: `MKReverseGeocodingRequest(location:)` 로 완전 교체 (구버전 호환 불필요 — 결정)
+- **수정 파일**: `MyTeam/MyTeam/SettingsView.swift` (LocationHelper 내부 geocoding 로직)
+
+#### 4. Main actor-isolated 에러 — 표면적 수정 (1차 시도, 실패)
+```
+Main actor-isolated initializer 'init()' has different actor isolation from nonisolated overridden declaration
+```
+- **1차 시도**: 각 `Module` 서브클래스 `init()` 앞에 `nonisolated` 키워드 추가
+- **결과**: 에러 미해결 — `nonisolated init` 안에서 `@MainActor` 프로퍼티를 set하려 하면 Swift 6가 여전히 에러를 냄
+
+#### 5. Main actor 격리 + Swift 6 Strict Concurrency 에러 — 근본 해결 (2차 수정)
+```
+Main actor-isolated property '_lstm' can not be mutated from a nonisolated context
+Main actor-isolated static property 'numMels' can not be referenced from a nonisolated context
+```
+- **근본 원인**: `MLXNN.Module`이 최신 mlx-swift 버전에서 `@MainActor`로 마킹됨.
+  서브클래스의 **모든 저장 프로퍼티** (`_lstm`, `_proj` 등)와 **Config enum 정적 프로퍼티**가 `@MainActor` 격리로 추론됨.
+  ML 추론 코드는 백그라운드에서 돌아야 하므로 `nonisolated`만으로는 절반짜리 해결임.
+- **해결**: `@preconcurrency import MLXNN` — Swift 컴파일러에게 "이 모듈의 actor 어노테이션은 소급 적용하지 말라"고 지시. Apple 공식 MLX-Swift 예제에서도 사용하는 패턴.
+- **영향 파일 전체 적용**:
+  - `VoiceEncoder.swift`, `LlamaModel.swift`, `T3CondEnc.swift`, `HiFTGenerator.swift`
+  - `T3Model.swift`, `AudioUtils.swift`, `ChatterboxConfig.swift`, `ChatterboxPipeline.swift`
+
+### 현재 상태
+- `MLXNN` / `MLXFFT` 의존성 ✅ 해결
+- `CLGeocoder` deprecated ✅ 해결  
+- Swift 6 `@MainActor` 격리 에러 ✅ `@preconcurrency import MLXNN` 적용 완료
+- **다음 빌드에서 확인 필요**: `Cmd+B` 결과
+- **다음 작업**: `MLXInferenceService`의 HTTP 서버 호출부를 `ChatterboxPipeline.generate()`로 교체 → Python 서버 의존성 완전 제거
+
+### 수정 파일 목록
+- `MyTeam/MyTeam/SettingsView.swift` — CLGeocoder → MKReverseGeocodingRequest
+- `MyTeam/MyTeam/VoiceEncoder.swift` — @preconcurrency import + nonisolated init
+- `MyTeam/MyTeam/LlamaModel.swift` — @preconcurrency import + nonisolated init
+- `MyTeam/MyTeam/T3CondEnc.swift` — @preconcurrency import + nonisolated init
+- `MyTeam/MyTeam/HiFTGenerator.swift` — @preconcurrency import + nonisolated init
+- `MyTeam/MyTeam/T3Model.swift` — @preconcurrency import + nonisolated init
+- `MyTeam/MyTeam/AudioUtils.swift` — @preconcurrency import
+- `MyTeam/MyTeam/ChatterboxConfig.swift` — @preconcurrency import
+- `MyTeam/MyTeam/ChatterboxPipeline.swift` — @preconcurrency import
+- `MyTeam/MyTeam/add_mlx_products.rb` — MLXNN/MLXFFT pbxproj 등록 스크립트 (신규)

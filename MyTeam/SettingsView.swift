@@ -54,16 +54,16 @@ private class LocationHelper: NSObject, ObservableObject, CLLocationManagerDeleg
         }
     }
 
-    // CLLocationManagerDelegate — 위치 수신 성공 (MKReverseGeocodingRequest 인라인)
+    // CLLocationManagerDelegate — 위치 수신 성공
     nonisolated func locationManager(_ manager: CLLocationManager,
                                       didUpdateLocations locations: [CLLocation]) {
         guard let loc = locations.first else { return }
         Task {
             do {
-                let placemarks = try await CLGeocoder().reverseGeocodeLocation(loc)
-                guard let p = placemarks.first else { return }
-                let area = p.administrativeArea ?? ""
-                let city = p.locality ?? ""
+                guard let req = MKReverseGeocodingRequest(location: loc) else { return }
+                let items = try await req.mapItems
+                let area = items.first?.placemark.administrativeArea ?? ""
+                let city = items.first?.placemark.locality ?? ""
                 await MainActor.run {
                     self.locationText = "\(area) \(city)".trimmingCharacters(in: .whitespaces)
                     self.isLoading = false

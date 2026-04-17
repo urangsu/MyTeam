@@ -12,6 +12,8 @@ ENV/
 .claude/worktrees/
 
 # Python
+# Graphify
+graphify-out/
 __pycache__/
 *.pyc
 *.pyo

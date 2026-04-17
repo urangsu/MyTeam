@@ -57,7 +57,348 @@
 
 ---
 
-## 🚀 TTS 고도화 로드맵 (우선순위 순)
+# 🆕 ACTIVE PLAN — 2026-04-15 Chatterbox Multilingual 전면 피벗
+
+> **이 블록이 현재 유일한 유효 실행 계획입니다.**
+> 아래 "🚀 TTS 고도화 로드맵" ~ "온디바이스 TTS CoreML/MLX 전환" 섹션은 **모두 레거시/실패 이력**으로 보존만 합니다.
+> 새 에이전트는 이 블록 끝까지 읽고, 실패 이력은 `DEVLOG.md` 2026-04-10 / 2026-04-15 항목으로 맥락 파악하시기 바랍니다.
+
+## 🎯 최상위 목표
+
+**ONNX 역공학 폐기** → **mlx-audio + Chatterbox Multilingual** 로 전면 전환.
+
+- 13개 캐릭터 각자 다른 목소리 (zero-shot voice cloning)
+- 한국어 정식 지원 (Resemble AI 공식 학습, 7~8/10 품질)
+- 감정 표현 (happy/sad/thinking)
+- macOS Apple Silicon 네이티브 (MLX)
+- MIT 라이선스 (상업 배포 OK, App Store 안전)
+- 3~4초 지연, 사용자 추가 설치 없음
+
+## 🚫 절대 하지 말 것 (Dead Ends — 2026-04 검증 완료)
+
+1. **ONNX Chatterbox 역공학 재개** — `MLXInferenceService.swift` + S3Gen CFM의 `spks`/`cond` 생성 로직은 원본 Python 소스 없이 복원 불가. 20초 지연 + "치지직" 한 번으로 검증 끝.
+2. **Kokoro-82M** — Apache 2.0이지만 **한국어 미지원** (지원 언어: EN/JA/ZH/ES/FR/HI/IT/PT). VOICES.md 직접 확인 완료.
+3. **F5-TTS** — 한국어 지원 문서 없음, 사실상 영어 전용.
+4. **Fish-Speech / IndexTTS2** — 라이선스 지뢰 (CC-BY-NC-SA / commercial 조건 불명). App Store 심사 실격 리스크.
+5. **Apple TTS / AVSpeechSynthesizer** — 수석님이 기계음으로 강력 거부. 폴백으로도 금지.
+6. **AnimalTTSService 음절 WAV** — 기계음 동일 취급, 사용 금지.
+7. **Python mlx_tts_server.py + 자체 T3 Llama** — 샌드박스 위반으로 App Store 배포 불가.
+
+## 📚 반드시 읽어야 하는 자료
+
+| # | 파일 / URL | 용도 |
+|---|---|---|
+| 1 | `/Users/su/Desktop/MyTeam/DEVLOG.md` | 2026-04-10/15 실패/피벗 사유 |
+| 2 | `~/.claude/projects/-Users-su-Desktop-MyTeam/memory/DEVLOG.md` | 역공학 실패 상세 |
+| 3 | `~/.claude/projects/-Users-su-Desktop-MyTeam/memory/feedback_no_apple_tts.md` | Apple TTS 절대 금지 사유 |
+| 4 | `~/.claude/projects/-Users-su-Desktop-MyTeam/memory/feedback_honorifics.md` | "수석님" 호칭 + 존댓말 규칙 |
+| 5 | https://github.com/Blaizzy/mlx-audio | mlx-audio 저장소 (MIT) — Chatterbox 포함 |
+| 6 | https://github.com/resemble-ai/chatterbox | Chatterbox 본가 (MIT) — Multilingual 브랜치 |
+| 7 | https://www.resemble.ai/introducing-chatterbox-multilingual-open-source-tts-for-23-languages/ | Multilingual 한국어 지원 공식 발표 |
+
+---
+
+## 🗂️ Phase 0 — 사전 검증 (20분 컷, 소리 한 번 들으면 끝)
+
+> **목적:** Chatterbox Multilingual이 실제로 Apple Silicon에서 한국어를 읽는지 스모크 테스트. 이게 안 되면 Phase 1 이후는 전부 의미 없음.
+
+### - [ ] TASK-0.1: mlx-audio Python PoC
+- **작업자:** 단독 (Python/Mac 지식 필요)
+- **출력:** 한국어 샘플 WAV 1개 ("안녕하세요 수석님, 반갑습니다")
+- **단계:**
+  1. 새 디렉토리 `/Users/su/Desktop/TTS맨/mlx-audio-poc/` 생성
+  2. `python3 -m venv .venv && source .venv/bin/activate`
+  3. `pip install mlx-audio` (MIT 라이선스 확인)
+  4. `/Users/su/Desktop/TTS맨/chatterbox/ref_voices/` 에서 기존 WAV 1개 복사해서 레퍼런스로 사용
+  5. mlx-audio README의 Chatterbox 예시 코드 그대로 실행
+  6. 생성된 output.wav 재생 → 사람 소리인지 확인
+- **성공 기준:**
+  - [ ] import 성공, 모델 다운로드 완료
+  - [ ] 한국어 텍스트 → 알아들을 수 있는 한국어 음성 출력
+  - [ ] 생성 시간 < 10초 (M-시리즈 기준)
+- **실패 대응:** mlx-audio가 Chatterbox Multilingual 미포팅이면 → TASK-0.2 즉시 전환
+- **기록:** `/Users/su/Desktop/MyTeam/DEVLOG.md` 에 결과 추가
+
+### - [ ] TASK-0.2: (Fallback) Chatterbox 본가 Python MPS PoC
+- **선행:** TASK-0.1 실패 시에만
+- **단계:**
+  1. `pip install chatterbox-tts` (resemble-ai 공식)
+  2. `ChatterboxMultilingualTTS.from_pretrained(device="mps")`
+  3. 동일 한국어 샘플 생성
+- **성공 기준:** MPS에서 10초 이내 한국어 WAV 생성
+- **실패 대응:** Phase 0을 CosyVoice 2 로 재시도 (별도 Task 추가)
+
+### - [ ] TASK-0.3: 성능 프로파일링
+- **선행:** TASK-0.1 또는 TASK-0.2 성공
+- **측정:**
+  - 콜드 스타트 / 핫 생성 (5/25/50/100자)
+  - RAM, 온도, CPU/GPU 활용률
+- **성공 기준:** 25자 < 3초, RAM < 6GB, 온도 < 70°C
+- **결과:** `mlx-audio-poc/benchmark.md` + `DEVLOG.md`
+
+---
+
+## 🗂️ Phase 1 — 레퍼런스 음성 자산 준비
+
+> Chatterbox zero-shot cloning은 레퍼런스 WAV 품질이 결과 품질의 거의 전부.
+
+### - [ ] TASK-1.1: 13 캐릭터 명단 확정
+- **입력:** `AnimalTTSManager.swift`, `AgentPersona.swift`, `CharacterDialogues.swift`
+- **단계:** Grep으로 13개 캐릭터 이름 추출 + 성별/연령/톤/감정 메타데이터 정리
+- **출력:** `/Users/su/Desktop/MyTeam/MyTeam/CharacterRoster.md`
+
+### - [ ] TASK-1.2: 기존 레퍼런스 WAV 감사
+- **선행:** TASK-1.1
+- **확인 경로:**
+  - `/Users/su/Desktop/TTS맨/chatterbox/ref_voices/`
+  - `/Users/su/Desktop/MyTeam/MyTeam/Resources/ReferenceAudio/` (현 .mp3)
+  - `/Users/su/Desktop/MyTeam/MyTeam/PrecomputedVoice/`
+- **출력:** `voices-audit.md` (있음/없음/품질 평가)
+
+### - [ ] TASK-1.3: 누락/저품질 레퍼런스 보완
+- **선행:** TASK-1.2
+- **옵션:**
+  - A. 기존 고품질 WAV에서 3~5초 구간 `ffmpeg`로 컷
+  - B. 수석님 직접 녹음 요청 — **마지막 수단**
+- **품질 기준:** 3~5초, 배경 잡음 -40dB 이하, 중립 톤, 24kHz mono 16-bit
+- **출력:** `Resources/ReferenceVoices/{character}.wav`
+
+### - [ ] TASK-1.4: 레퍼런스 임베딩 사전 계산
+- **선행:** TASK-0.1 + TASK-1.3
+- **단계:**
+  1. Chatterbox `PrepareConditionals` API로 WAV → 임베딩 추출
+  2. `.safetensors` 로 저장
+  3. 런타임에 임베딩만 로드하도록 구조 설계 (WAV 파싱 단계 제거)
+- **출력:** `Resources/ReferenceEmbeddings/{character}.safetensors`
+- **이유:** 콜드 스타트 단축 + 앱 번들 크기 감소
+
+---
+
+## 🗂️ Phase 2 — TTS 서버 전면 교체 (Python, 임시)
+
+> **주의:** 이 서버는 **개발용 과도기** 입니다. App Store 배포 버전에서는 Phase 5에서 PyInstaller 번들 또는 Swift 네이티브로 재이식합니다.
+
+### - [ ] TASK-2.1: 기존 서버 계약 분석
+- **입력:** `/Users/su/Desktop/TTS맨/chatterbox/mlx_tts_server.py`, `OnDeviceTTSManager.swift`
+- **출력:** `api-contract.md` (엔드포인트/요청·응답 스키마/캐시 키 정책)
+- **핵심 확인:** `SpeechCacheManager` 캐시 키와 호환되는지
+
+### - [ ] TASK-2.2: 새 서버 `chatterbox_ml_server.py` 구현
+- **선행:** TASK-2.1 + Phase 1 완료 + TASK-0.1 성공
+- **위치:** `/Users/su/Desktop/TTS맨/chatterbox/chatterbox_ml_server.py`
+- **요구사항:**
+  - FastAPI/Flask (기존과 동일), 포트 **9998 유지**
+  - 요청 스키마 100% 호환 → Swift 클라이언트 무수정
+  - 콜드 스타트 시 13 캐릭터 임베딩 preload
+  - 응답: 24kHz mono WAV
+  - 감정 태그 실험 (`[happy]` prefix or API param)
+- **출력:** 동작 서버 + `README.md`
+
+### - [ ] TASK-2.3: 서버 벤치마크
+- **테스트:** 5/25/50/100자 × 13 캐릭터 순환, 각 10회
+- **성공 기준:** 25자 P95 < 3초
+- **출력:** `benchmark.md`
+
+### - [ ] TASK-2.4: 구 서버 보존 + 전환
+- **단계:**
+  1. `mlx_tts_server.py` → `mlx_tts_server.py.legacy` (삭제 금지, 롤백용)
+  2. `chatterbox_ml_server.py` 기본 실행으로 승격
+  3. `run_tts.sh` / launchd plist 업데이트
+
+---
+
+## 🗂️ Phase 3 — Swift 클라이언트 정리
+
+> ONNX 경로 완전 제거 + HTTP 클라이언트 재점검. 이상적으로는 `OnDeviceTTSManager.swift` 한 파일만 건드려서 마무리.
+
+### - [ ] TASK-3.1: ONNX 파이프라인 데드코드 삭제
+- **삭제 대상:**
+  - `/Users/su/Desktop/MyTeam/MyTeam/MLXInferenceService.swift` (전체)
+  - `/Users/su/Desktop/MyTeam/MyTeam/T3MLXModel.swift` (전체)
+  - `/Users/su/Desktop/MyTeam/MyTeam/MLXModelManager.swift` (Phase 2 이후 호출부 없으면)
+  - `/Users/su/Desktop/MyTeam/MyTeam/PrecomputedVoice/*.json` (Phase 1.4의 .safetensors로 대체)
+  - `/Users/su/Desktop/MyTeam/MyTeam/Resources/onnx_models/*.onnx` 전체
+  - `BPETokenizer.swift` (사용처 확인 후)
+- **단계:**
+  1. `Grep` 으로 각 클래스 사용처 전수조사
+  2. 호출부 선(先)차단 → 빌드 에러로 경로 확인
+  3. 파일 삭제 + `project.pbxproj` 참조 제거
+  4. 클린 빌드 성공 확인
+- **성공 기준:** TTS 경로가 HTTP 서버 1개로 귀결, 빌드 성공
+
+### - [ ] TASK-3.2: `OnDeviceTTSManager.swift` 재검증
+- **선행:** TASK-3.1 + TASK-2.4
+- **단계:**
+  1. `synthesizeOnly()` → `http://127.0.0.1:9998/synthesize` 호출 확인
+  2. 24kHz mono WAV 응답 파싱 경로 검증
+  3. 서버 미가동 시 무음 폴백 (Apple TTS 금지)
+- **성공 기준:** 앱에서 말 걸면 3초 내 한국어 음성 재생
+
+### - [ ] TASK-3.3: `SpeechCacheManager` 무효화
+- **단계:**
+  1. 캐시 키 접두사 `cm_v1_` 추가
+  2. 기존 캐시 디렉토리 `~/Library/Application Support/MyTeam/SpeechCache/` 이름 변경(삭제 금지)
+- **이유:** 모델 교체로 구 캐시 음색 불일치
+
+### - [ ] TASK-3.4: `AnimalTTSManager` 단순화
+- **현재:** AVAudioEngine 피치 조작 (실패 이력 — DEVLOG 2026-04-06)
+- **변경 후:** 캐릭터 → 레퍼런스 임베딩 파일명 매핑 테이블만 유지 (20~30 LOC)
+
+### - [ ] TASK-3.5: `AudioPlaybackService` 이펙트 노드 제거
+- **단계:**
+  1. `AVAudioUnitTimePitch` 분리
+  2. `PlaybackCommand.pitch` deprecated
+  3. 24kHz mono → 44.1kHz Stereo 변환 그래프만 유지
+- **성공 기준:** 재생 코드 LOC 30% 이상 감소, 품질 정상
+
+---
+
+## 🗂️ Phase 4 — 캐릭터 보이스 매핑 & 감정
+
+### - [ ] TASK-4.1: 13 캐릭터 × 보이스 프리셋 QA
+- **단계:** 캐릭터별로 1~3회 생성 테스트 → 사람 귀로 이미지 일치 여부 평가 → 불일치 시 레퍼런스 재선정
+- **출력:** `character-voice-mapping.md`
+
+### - [ ] TASK-4.2: 감정 태그 스키마 확정
+- **옵션:**
+  - A. 텍스트 prefix `[happy]`
+  - B. API 파라미터 `emotion`
+  - C. 레퍼런스 자체를 감정별로 다중 보관
+- **결정 기준:** Chatterbox 실제 동작 확인 후
+- **출력:** `emotion-schema.md`
+
+### - [ ] TASK-4.3: LLM 응답 감정 메타데이터 주입
+- **단계:**
+  1. `AIService.swift` 시스템 프롬프트에 `[감정]` 태그 규칙 추가
+  2. 응답 파싱 → TTS 요청에 포함
+  3. 태그 없으면 neutral
+- **성공 기준:** "기뻐서 말해봐" → 실제 밝은 톤
+
+---
+
+## 🗂️ Phase 5 — App Store 대응 & 배포
+
+> **최중요:** Python 서버는 App Store 샌드박스 위반. 이 Phase에서 해결하지 않으면 출시 불가.
+
+### - [ ] TASK-5.1: 배포 아키텍처 결정
+- **옵션 비교 필수:**
+  - A. **PyInstaller 번들 + XPC** — Python 서버를 단일 바이너리화 후 XPC 서비스로 실행 (샌드박스 승인 가능성 확인 필요)
+  - B. **Swift 네이티브 재이식** — mlx-audio의 Chatterbox 추론 경로를 MLX-Swift 로 포팅 (최선이나 난이도 높음)
+  - C. **On-Demand Resources** — 모델 가중치만 ODR, 추론은 Swift
+- **출력:** `deployment-architecture-decision.md` + 수석님 결재
+
+### - [ ] TASK-5.2: E2E 시나리오 테스트
+- **시나리오:**
+  - [ ] 13 캐릭터 순차 발화 — 모두 다른 목소리
+  - [ ] Barge-in 즉시 중단
+  - [ ] 동시 요청 큐잉
+  - [ ] 무음 모드
+  - [ ] 25자 청크 순차 스트리밍 (말풍선 동기화)
+  - [ ] 100자+ 끊김 없음
+  - [ ] 감정 변화 구분
+- **출력:** `integration-test-results.md`
+
+### - [ ] TASK-5.3: 30분 안정성 테스트
+- **측정:** RAM 증가, GPU 온도, 크래시 여부
+- **성공 기준:** RAM 증가 < 200MB, 온도 < 75°C, 크래시 0
+
+### - [ ] TASK-5.4: .dmg 배포 아티팩트
+- **단계:**
+  1. TASK-5.1 결정에 따라 번들 구성
+  2. 라이선스 통합 (`LICENSES.md` + About 창)
+  3. 코드 사이닝 + notarization
+  4. 신규 Mac 설치 → 추가 설치 없이 동작 확인
+
+### - [ ] TASK-5.5: App Store 심사 체크리스트
+- [ ] 라이선스 전수조사 (Chatterbox MIT, mlx-audio MIT, MLX Apache 2.0)
+- [ ] 개인정보/마이크 사용 설명 문자열
+- [ ] 번들 크기 확인 (모델 포함 시 2GB 예상)
+- [ ] 샌드박스 엔타이틀먼트 (로컬 127.0.0.1:9998 허용 가능 여부)
+- [ ] notarization 통과
+
+---
+
+## 🗂️ Phase 6 — 문서 & 로그 규칙 (상시)
+
+### TASK-6.1: Task 완료 시 `/Users/su/Desktop/MyTeam/DEVLOG.md` 갱신 포맷
+```
+## 2026-04-XX — TASK-X.Y 완료 (@작업자)
+- 변경 파일: ...
+- 결과: ...
+- 발견 이슈: ...
+- 해제된 의존성: TASK-A.B, TASK-C.D
+```
+
+### TASK-6.2: 실패 시 DEVLOG 필수 기록
+- 시도한 접근법 + 실패 원인 → 다른 에이전트 중복 삽질 방지
+
+### TASK-6.3: 아래 레거시 섹션은 삭제 금지
+- 원인 분석과 되돌아갈 근거가 되므로 **보존만** 함
+- 더 이상 수정하지 말 것
+
+---
+
+## 🏷️ Task 의존성 그래프
+
+```
+TASK-0.1 ─┬─> TASK-0.3 ─> G0
+          └─> TASK-1.4
+
+TASK-1.1 → TASK-1.2 → TASK-1.3 → TASK-1.4
+TASK-2.1  (TASK-0.1과 병렬 가능)
+
+G0 + TASK-1.4 + TASK-2.1 → TASK-2.2 → TASK-2.3 → TASK-2.4
+
+TASK-2.4 + TASK-3.1 → TASK-3.2 → TASK-3.3
+                                └→ TASK-3.4 → TASK-3.5
+
+Phase 4: TASK-3.2 이후 병렬
+Phase 5: Phase 4 이후 순차
+```
+
+**동시 작업 가능 에이전트 최대 3명:**
+- A. Python 서버 (Phase 0 → 2)
+- B. 자산 준비 (Phase 1)
+- C. Swift 클라이언트 (Phase 3)
+
+---
+
+## 🚦 Go/No-Go 게이트
+
+| 게이트 | 조건 | 통과 시 | 실패 시 |
+|---|---|---|---|
+| **G0** | TASK-0.1/0.2 성공 + 0.3 벤치 25자 < 3초 | Phase 1 | CosyVoice 2 재조사 |
+| **G1** | 13 레퍼런스 임베딩 확보 | Phase 2 | 재녹음 |
+| **G2** | P95 < 3초 | Phase 3 | 경량화 |
+| **G3** | 앱에서 한국어 재생 정상 | Phase 4 | 클라이언트 재점검 |
+| **G4** | 13 캐릭터 구분 가능 | Phase 5 | 레퍼런스 재선정 |
+| **G5** | 샌드박스/배포 통과 | 출시 | TASK-5.1 재결정 |
+
+---
+
+## 📌 에이전트 작업 규칙 (필수)
+
+1. **Task 시작 전:** `DEVLOG.md` 최신 항목 + 선행 Task 완료 여부 검증
+2. **작업 중:** 범위 벗어나면 즉시 중단 → 이 파일에 sub-task 추가
+3. **완료 후:** DEVLOG 기록 + 본 파일 체크박스 `[ ]` → `[x]`
+4. **실패 시:** 원인 + 시도한 접근법 DEVLOG 기록 (중복 방지)
+5. **호칭:** 모든 응답 "수석님" + 존댓말
+6. **Apple TTS / 음절 WAV 유혹:** `feedback_no_apple_tts.md` 재독
+7. **경로 규칙:** `/Users/su/Desktop/MyTeam/MyTeam/MyTeam/` 외 Swift 파일 건드리지 말 것
+
+---
+
+---
+
+# 📜 LEGACY — 2026-04-15 이전 TTS 시도 기록 (보존용)
+
+> ⚠️ 아래 섹션들은 **모두 실패** 또는 **피벗으로 무효화** 되었습니다.
+> 수정 금지. 원인 분석·재발 방지 용도로만 존재합니다.
+> 현재 유효한 계획은 위의 "ACTIVE PLAN" 블록입니다.
+
+---
+
+## 🚀 TTS 고도화 로드맵 (우선순위 순) — LEGACY
 
 > **핵심 원칙**: 온디바이스, 서버 없음, 한국어 고품질, App Store 배포 가능
 
