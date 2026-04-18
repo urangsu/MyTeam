@@ -120,7 +120,13 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         let streamId = "mlx_\(UUID().uuidString)"
 
         // MLX Inference: 텍스트 → PCM AsyncStream
-        let pcmStream = await MLXInferenceService.shared.generateTTSStream(text: text, characterName: characterName)
+        let pcmStream = MLXInferenceService.shared.generateTTSStream(text: text, characterName: characterName)
+
+        // 🎯 동물의 숲 효과 (Animal Crossing Style):
+        // 별개의 엔진이 아니라, Chatterbox가 생성한 고품질 음성에 피치와 속도 변조를 덫씌워 캐릭터 느낌을 냅니다.
+        let useAnimalEffect = UserDefaults.standard.bool(forKey: "useAnimalCrossingTTS")
+        let pitch: Float = useAnimalEffect ? 1.5 : 1.0
+        let rate: Float  = useAnimalEffect ? 1.3 : 1.0
 
         // AudioPlaybackService: PCM 스트림 소비 + 재생 시작 시 Lip-Sync 콜백 발화
         // onPlaybackStarted는 playStream → appendRawPCM → playerNode.play() 직후 트리거됨
@@ -128,8 +134,8 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
             streamId: streamId,
             stream: pcmStream,
             characterName: characterName,
-            pitch: 1.0,
-            rate: 1.0,
+            pitch: pitch,
+            rate: rate,
             textPayload: text,
             onPlaybackStarted: onPlaybackStarted  // 🎯 이 콜백이 UI 말풍선을 그림
         )
@@ -147,6 +153,22 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
     func stopRecording()  { capture.stopRecording() }
 
     // MARK: - 단발성 TTS (레거시 호환 - Silent Mode, 팀채팅 등)
+    private func chunkText(_ text: String) -> [String] {
+        var chunks: [String] = []
+        var currentChunk = ""
+        for char in text {
+            currentChunk.append(char)
+            if char == "." || char == "?" || char == "!" || char == "\n" {
+                let trimmed = currentChunk.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { chunks.append(trimmed) }
+                currentChunk = ""
+            }
+        }
+        let finalTrimmed = currentChunk.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !finalTrimmed.isEmpty { chunks.append(finalTrimmed) }
+        return chunks
+    }
+
     func speak(text: String, agentID: String? = nil, characterName: String? = nil) {
         guard !AgentWindowManager.shared.isSilentMode else { return }
         let character = characterName ?? "루나"
@@ -154,10 +176,15 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         DispatchQueue.main.async { self.isSpeaking = true }
 
         currentStreamTask = Task {
-            let streamId = "mlx_\(UUID().uuidString)"
-            let pcmStream = await MLXInferenceService.shared.generateTTSStream(text: text, characterName: character)
-            await playback.playStream(streamId: streamId, stream: pcmStream,
-                                      characterName: character, pitch: 1.0, rate: 1.0)
+            let sentences = chunkText(text)
+            for sentence in sentences {
+                if Task.isCancelled { break }
+                let streamId = "mlx_\(UUID().uuidString)"
+                let pcmStream = await MLXInferenceService.shared.generateTTSStream(text: sentence, characterName: character)
+                // enqueue to audio player (it will play sequentially)
+                await playback.playStream(streamId: streamId, stream: pcmStream,
+                                          characterName: character, pitch: 1.0, rate: 1.0)
+            }
             await MainActor.run { self.isSpeaking = false }
         }
     }

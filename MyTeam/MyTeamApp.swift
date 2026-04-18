@@ -31,8 +31,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
     }
 
-    func applicationWillTerminate(_ notification: Notification) {
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         AgentWindowManager.shared.savePosition()
+        // InferenceActor가 busy 상태면 Task dispatch가 큐에 쌓여 데드락 발생 가능.
+        // 추론은 OS가 프로세스 종료 시 강제 정리하므로 그냥 즉시 종료.
+        return .terminateNow
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        // 위의 applicationShouldTerminate에서 이미 처리
     }
 
     // MARK: - 메뉴바

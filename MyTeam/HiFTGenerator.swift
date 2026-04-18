@@ -22,12 +22,13 @@ import Foundation
 /// Periodic activation: x + (1/|α|) * sin²(αx)
 /// Alpha shape: (channels,) — one learnable parameter per channel.
 /// Expects channels-first layout: (B, C, T).
+
 final class Snake: Module, @unchecked Sendable {
     @ParameterInfo(key: "alpha") var alpha: MLXArray  // (C,)
 
     nonisolated override init() { fatalError() }
 
-    nonisolated init(channels: Int) {
+    init(channels: Int) {
         self._alpha.wrappedValue = MLXArray.ones([channels])
         super.init()
     }
@@ -48,6 +49,7 @@ final class Snake: Module, @unchecked Sendable {
 /// One residual block: two stacks of [Snake → Conv1d] pairs, skip connection.
 /// Operates in channels-first format (B, C, T). Conv1d in MLX-Swift expects
 /// NLC (B, T, C), so we transpose in/out around each Conv1d call.
+
 final class HiFTResBlock: Module, @unchecked Sendable {
     var convs1: [Conv1d]       // key "convs1"
     var convs2: [Conv1d]       // key "convs2"
@@ -60,7 +62,7 @@ final class HiFTResBlock: Module, @unchecked Sendable {
     ///   - dilations: list of dilation values, one per sub-layer pair
     nonisolated override init() { fatalError() }
 
-    nonisolated init(channels: Int, kernelSize: Int = 3, dilations: [Int] = [1, 3, 5]) {
+    init(channels: Int, kernelSize: Int = 3, dilations: [Int] = [1, 3, 5]) {
         var c1 = [Conv1d]()
         var c2 = [Conv1d]()
         var a1 = [Snake]()
@@ -103,13 +105,14 @@ final class HiFTResBlock: Module, @unchecked Sendable {
 /// Predicts normalised F0 from mel spectrogram using a stack of dilated Conv1d layers.
 /// Input:  (B, T, 80) mel
 /// Output: (B, T, 1) F0 in [0, 1] range
-final class ConvRNNF0Predictor: Module, @unchecked Sendable {
+
+@InferenceActor final class ConvRNNF0Predictor: Module, @unchecked Sendable {
     var condnet: [Conv1d]  // key "condnet", 5 layers: "condnet.0" … "condnet.4"
     @ModuleInfo(key: "classifier") var classifier: Linear  // (C → 1)
 
     nonisolated override init() { fatalError("Use init(inChannels:hidChannels:numLayers:)") }
 
-    nonisolated init(
+    init(
         inChannels: Int = 80,
         hidChannels: Int = 512,
         numLayers: Int = 5
@@ -141,7 +144,8 @@ final class ConvRNNF0Predictor: Module, @unchecked Sendable {
 
 /// Generates a harmonic-noise source signal from predicted F0.
 /// Weights: l_linear.weight (1, numHarmonics) + l_linear.bias (1,)
-final class SourceModuleHnNSF: Module, @unchecked Sendable {
+
+@InferenceActor final class SourceModuleHnNSF: Module, @unchecked Sendable {
     @ModuleInfo(key: "l_linear") var lLinear: Linear  // (numHarmonics → 1)
 
     let sampleRate: Float
@@ -149,7 +153,7 @@ final class SourceModuleHnNSF: Module, @unchecked Sendable {
 
     nonisolated override init() { fatalError() }
 
-    nonisolated init(sampleRate: Float = 24000, numHarmonics: Int = 9) {
+    init(sampleRate: Float = 24000, numHarmonics: Int = 9) {
         self.sampleRate   = sampleRate
         self.numHarmonics = numHarmonics
         self._lLinear.wrappedValue = Linear(numHarmonics, 1)
@@ -207,7 +211,8 @@ final class SourceModuleHnNSF: Module, @unchecked Sendable {
 ///
 /// Input:  (B, T, 80)   mel spectrogram (24kHz, hop=480)
 /// Output: (audioLen,)  mono waveform at 24kHz (first batch item)
-final class HiFTGenerator: Module, @unchecked Sendable {
+
+@InferenceActor final class HiFTGenerator: Module, @unchecked Sendable {
     @ModuleInfo(key: "conv_pre")     var convPre:     Conv1d
     var resblocks:                   [HiFTResBlock]   // key "resblocks"
     @ModuleInfo(key: "conv_post")    var convPost:    Conv1d
@@ -226,15 +231,8 @@ final class HiFTGenerator: Module, @unchecked Sendable {
     let melHop: Int = 480         // upsampling factor: 24000 / 50fps = 480
 
     nonisolated override init() {
-        // conv_pre: 80 mel channels → 512
-        self._convPre.wrappedValue = Conv1d(
-            inputChannels: 80, outputChannels: 512, kernelSize: 7, padding: 3)
-
-        // Three groups of resblocks at decreasing channel counts
-        // Typical HiFi-GAN v1 layout: 3 upsample stages × 3 dilations each = 9 resblocks
-        // For HiFT (no transposed conv): just a flat list of resblocks at varying sizes
+        // 1. Initialize non-wrapped properties first
         var rbs = [HiFTResBlock]()
-        // Channels: 512 → 256 → 128 → 64 — here we keep 256 for all after first projection
         let rbChannelSeq = [512, 512, 512, 256, 256, 256, 128, 128, 128]
         let rbKernels    = [ 3,   7,  11,   3,   7,  11,   3,   7,  11]
         for (ch, ks) in zip(rbChannelSeq, rbKernels) {
@@ -242,13 +240,19 @@ final class HiFTGenerator: Module, @unchecked Sendable {
         }
         self.resblocks = rbs
 
-        // conv_post: 64 → 18
+        // 2. Call super.init()
+        super.init()
+
+        // 3. Initialize wrapped properties (@ModuleInfo)
+        // Accessing these from nonisolated is allowed during init before escaping
+        self._convPre.wrappedValue = Conv1d(
+            inputChannels: 80, outputChannels: 512, kernelSize: 7, padding: 3)
+
         self._convPost.wrappedValue = Conv1d(
             inputChannels: postChannels, outputChannels: outputChannels, kernelSize: 7, padding: 3)
 
         self._f0Predictor.wrappedValue = ConvRNNF0Predictor()
         self._mSource.wrappedValue     = SourceModuleHnNSF()
-        super.init()
     }
 
     // MARK: - Forward
@@ -259,7 +263,7 @@ final class HiFTGenerator: Module, @unchecked Sendable {
     ///   - refF0: optional reference F0 (unused — predicted internally)
     /// - Returns: (audioLen,) mono waveform (first batch item), float32
     func callAsFunction(_ mel: MLXArray, refF0: MLXArray? = nil) -> MLXArray {
-        let B = mel.shape[0]
+        let _ = mel.shape[0]  // B - batch size
         let T = mel.shape[1]  // number of mel frames
 
         // ── 1. Predict F0 ────────────────────────────────────────────────────

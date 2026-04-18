@@ -9,7 +9,7 @@ import MLXFFT
 
 /// Periodic Hann window: w[n] = 0.5 * (1 - cos(2*pi*n / size))
 /// Uses `size` (not size-1) in the denominator for a periodic window.
-func hannWindow(size: Int) -> MLXArray {
+nonisolated func hannWindow(size: Int) -> MLXArray {
     let indices = MLXArray(Array(0..<size).map { Float($0) })
     let twoPiOverN = Float(2.0 * Double.pi) / Float(size)
     return 0.5 * (1.0 - MLX.cos(indices * twoPiOverN))
@@ -20,7 +20,7 @@ func hannWindow(size: Int) -> MLXArray {
 /// Returns a mel filterbank matrix of shape (nFft/2+1, nMels).
 /// Uses HTK-style mel scale: mel = 2595 * log10(1 + f/700)
 /// Filters are area-normalized (Slaney-style).
-func melFilterbank(
+nonisolated func melFilterbank(
     sampleRate: Int,
     nFft: Int,
     nMels: Int,
@@ -84,7 +84,7 @@ func melFilterbank(
 /// Computes Short-Time Fourier Transform.
 /// Returns complex array of shape (T_frames, nFft/2+1).
 /// Center-padding: pads signal by nFft//2 on each side (reflect padding).
-func computeSTFT(
+nonisolated func computeSTFT(
     wav: MLXArray,
     nFft: Int,
     hopLength: Int,
@@ -150,10 +150,7 @@ func computeSTFT(
 
 // MARK: - VoiceEncoder Mel Spectrogram (40-bin, 16kHz)
 
-/// Computes 40-bin mel spectrogram for the VoiceEncoder.
-/// Input: 1D wav array sampled at 16kHz.
-/// Output: (nMels=40, T_frames) — power spectrum (magnitude squared), NOT dB.
-func voiceEncMelSpectrogram(wav: MLXArray) -> MLXArray {
+nonisolated func voiceEncMelSpectrogram(wav: MLXArray) -> MLXArray {
     let sr = VoiceEncConfig.sampleRate
     let nFft = VoiceEncConfig.nFft       // 400
     let hop = VoiceEncConfig.hopSize     // 160
@@ -184,7 +181,7 @@ func voiceEncMelSpectrogram(wav: MLXArray) -> MLXArray {
 /// Computes 80-bin mel spectrogram for HiFTGenerator reference.
 /// Input: 1D wav array sampled at 24kHz.
 /// Output: (T_frames, 80) — no center padding.
-func s3genMelSpectrogram(wav: MLXArray) -> MLXArray {
+nonisolated func s3genMelSpectrogram(wav: MLXArray) -> MLXArray {
     let sr = AudioConstants.s3genSR  // 24000
     let nFft = 1920
     let hop = 480

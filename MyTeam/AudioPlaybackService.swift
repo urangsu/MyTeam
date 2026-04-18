@@ -40,7 +40,7 @@ actor AudioPlaybackService: AudioPlayable {
     private var converters: [String: AVAudioConverter] = [:]
     private var queuedBufferCount: Int = 0
     func getQueuedBufferCount() -> Int { return queuedBufferCount }
-    private let playbackStartThreshold: Int = 2 // Jitter 방어를 위한 최소 버퍼 조각 갯수 (약 60~100ms)
+    private let playbackStartThreshold: Int = 1 // threshold=1: 첫 청크 도착 즉시 재생 (짧은 문장 누락 방지)
     
     // MARK: - Core Resampling Logic (Reuse + Autoreleasepool)
     private func convertBuffer(_ input: AVAudioPCMBuffer, from srcFormat: AVAudioFormat, to dstFormat: AVAudioFormat) -> AVAudioPCMBuffer? {
@@ -67,11 +67,12 @@ actor AudioPlaybackService: AudioPlayable {
             guard let output = AVAudioPCMBuffer(pcmFormat: dstFormat, frameCapacity: capacity) else { return nil }
             
             var error: NSError?
-            var inputConsumed = false
+            class InputState: @unchecked Sendable { var consumed = false }
+            let state = InputState()
             
             converter.convert(to: output, error: &error) { packetCount, outStatus in
-                if !inputConsumed {
-                    inputConsumed = true
+                if !state.consumed {
+                    state.consumed = true
                     outStatus.pointee = .haveData
                     return input
                 } else {
@@ -91,7 +92,7 @@ actor AudioPlaybackService: AudioPlayable {
     /// 네트워크나 TTS 생성기에서 들어온 Data를 안전하게 리샘플링하여 스케줄
     func appendRawPCM(command: PlaybackCommand) {
         // onPlaybackStarted 클로저를 actor 격리 컨텍스트 밖으로 먼저 캡처
-        let lipSyncCallback: (() -> Void)? = command.onPlaybackStarted
+        let lipSyncCallback: (@Sendable () -> Void)? = command.onPlaybackStarted
         
         autoreleasepool {
             guard command.streamId == currentActiveStreamId else { return }
@@ -128,7 +129,7 @@ actor AudioPlaybackService: AudioPlayable {
             // 🎯 Perfect Lip-Sync: 첫 버퍼가 재생 큐에 등록되는 찰나에 UI 말풍선 트리거
             // wasAlreadyPlaying=false → 이 버퍼가 재생 개시 버퍼 → 텍스트 표시 타이밍 정확
             if !wasAlreadyPlaying, let callback = lipSyncCallback {
-                DispatchQueue.main.async { callback() }
+                Task { @MainActor in callback() }
             }
         }
     }
@@ -163,8 +164,11 @@ actor AudioPlaybackService: AudioPlayable {
             if playerNode.engine == nil {
                 engine.attach(playerNode)
                 engine.attach(timePitchNode)
+                // engineFormat을 재쿼리 (detach 후 nil 가능성 방어)
+                engineFormat = engine.mainMixerNode.outputFormat(forBus: 0)
                 engine.connect(playerNode, to: timePitchNode, format: engineFormat)
                 engine.connect(timePitchNode, to: engine.mainMixerNode, format: engineFormat)
+                print("[AudioPlayback] 🔁 노드 재연결 완료. 포맷: \(engineFormat!)")
             }
             
             currentActiveStreamId = streamId
@@ -213,6 +217,14 @@ actor AudioPlaybackService: AudioPlayable {
             )
             isFirstChunk = false
             appendRawPCM(command: command)
+        }
+        
+        // 🔊 스트림 종료 후 안전망: 아직 playerNode가 play 안 됐으면 강제 시작
+        // (짧은 문장 → threshold 미달 → 재생 안 되는 버그 방어)
+        if !playerNode.isPlaying && queuedBufferCount > 0 {
+            if !engine.isRunning { try? engine.start() }
+            playerNode.play()
+            print("[AudioPlayback] ⚡ 스트림 종료 후 강제 재생 시작 (queuedBuffers=\(queuedBufferCount))")
         }
     }
 

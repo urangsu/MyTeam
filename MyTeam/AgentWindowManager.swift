@@ -133,11 +133,10 @@ class AgentWindowManager: ObservableObject {
             keyFacts = decoded
         }
 
-        // 잠금 해제 / 잠자기 해제 감지
+        // 잠금 해제 감지 (didWake만 — sessionDidBecomeActive는 앱 시작 시도 발화해서 중복 유발)
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(handleWake), name: NSWorkspace.didWakeNotification, object: nil)
-        NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(handleWake), name: NSWorkspace.sessionDidBecomeActiveNotification, object: nil)
 
-        // 앱 최초 시작 인사말
+        // 앱 최초 시작 인사말 — 랜덤 1명만
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { self.handleStartup() }
 
         // 아이들 감지 타이머 (1분마다 체크)

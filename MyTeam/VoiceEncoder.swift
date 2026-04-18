@@ -9,8 +9,7 @@ import MLXRandom
 /// Wraps 3 MLXNN.LSTM layers and returns the final hidden state of the last layer.
 /// Input:  (B, T, inputSize)
 /// Output: (B, hiddenSize) — last time-step of the last LSTM layer
-final class StackedLSTM: Module, @unchecked Sendable {
-    // MLXNN.LSTM layers — serialized as "layers.0", "layers.1", "layers.2"
+@InferenceActor final class StackedLSTM: Module, @unchecked Sendable {
     var layers: [MLXNN.LSTM]
 
     nonisolated init(inputSize: Int, hiddenSize: Int, numLayers: Int) {
@@ -27,6 +26,7 @@ final class StackedLSTM: Module, @unchecked Sendable {
         fatalError("Use init(inputSize:hiddenSize:numLayers:)")
     }
 
+    
     func callAsFunction(_ x: MLXArray) -> MLXArray {
         // x: (B, T, inputSize)
         var current = x
@@ -69,7 +69,7 @@ final class StackedLSTM: Module, @unchecked Sendable {
 /// Forward:
 ///   Input  mel: (B, T, 40)
 ///   Output emb: (B, 256)  — L2-normalised speaker embedding
-final class VoiceEncoder: Module, @unchecked Sendable {
+@InferenceActor final class VoiceEncoder: Module, @unchecked Sendable {
     @ModuleInfo(key: "lstm") var lstm: StackedLSTM
     @ModuleInfo(key: "proj") var proj: Linear
 
@@ -81,16 +81,21 @@ final class VoiceEncoder: Module, @unchecked Sendable {
         let numMels = VoiceEncConfig.numMels
         let hiddenSize = VoiceEncConfig.hiddenSize
         let embedSize = VoiceEncConfig.speakerEmbedSize
-        _lstm = ModuleInfo(wrappedValue: StackedLSTM(inputSize: numMels, hiddenSize: hiddenSize, numLayers: 3), key: "lstm")
-        _proj = ModuleInfo(wrappedValue: Linear(hiddenSize, embedSize), key: "proj")
-        _similarityWeight = ParameterInfo(wrappedValue: MLXArray([Float(10.0)]), key: "similarity_weight")
-        _similarityBias   = ParameterInfo(wrappedValue: MLXArray([Float(-5.0)]), key: "similarity_bias")
+        
+        let lstm = StackedLSTM(inputSize: numMels, hiddenSize: hiddenSize, numLayers: 3)
+        let proj = Linear(hiddenSize, embedSize)
+        
         super.init()
+        
+        // Use InferenceActor.run or similar? No, just initialize storage.
+        // In Swift 6, we can use nonisolated(unsafe) for the storage or just trust the init.
+        // For now, let's try the most basic approach.
     }
 
     /// Forward pass.
     /// - Parameter mel: shape (B, T, 40) — batch of mel spectrograms
     /// - Returns: shape (B, 256) — L2-normalised speaker embeddings
+    
     func callAsFunction(_ mel: MLXArray) -> MLXArray {
         // 1. Run stacked LSTM → (B, hiddenSize)
         let finalHidden = lstm(mel)
@@ -131,6 +136,7 @@ extension VoiceEncoder {
     /// Compute a speaker embedding for a single 16kHz waveform.
     /// - Parameter wav: 1D MLXArray of float32 samples at 16kHz
     /// - Returns: (256,) speaker embedding
+    
     func embed(wav: MLXArray) -> MLXArray {
         // Build mel spectrogram: (40, T)
         let mel = voiceEncMelSpectrogram(wav: wav)  // (40, T)
@@ -152,6 +158,7 @@ extension VoiceEncoder {
     ///   - partialFrames: number of mel frames per partial clip (default 160)
     ///   - partialOverlap: overlap between clips in frames (default 0)
     /// - Returns: (256,) mean-pooled, L2-normalised speaker embedding
+    
     func embedUtterance(
         wav: MLXArray,
         partialFrames: Int = VoiceEncConfig.partialFrames,

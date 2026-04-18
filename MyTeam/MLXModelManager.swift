@@ -99,9 +99,9 @@ actor MLXModelManager {
         let embURLs = try resolveEmbeddingURLs()
 
         print("[MLXModelManager] 🔥 T3 FP16 Zero-Copy Memory Mapping 적재 시작...")
-        // T3MLXModel은 @InferenceActor 격리 — MLXModelManager 액터에서 직접 호출 불가
+        // T3MLXModel은 격리 — MLXModelManager 액터에서 직접 호출 불가
         // Swift 6 Task 반환 문법을 사용하여 액터 경계를 명시적으로 hop
-        let model = try await Task { @InferenceActor in
+        let model = try await Task.detached(priority: .high) {
             try T3MLXModel(weightsURL: weightsURL, embeddingURLs: embURLs)
         }.value
         ttsModel = model
@@ -192,9 +192,10 @@ actor MLXModelManager {
               let outBuf = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: outFrames),
               let conv = AVAudioConverter(from: srcFormat, to: targetFormat) else { return nil }
 
-        var srcConsumed = false
+        class ConvState: @unchecked Sendable { var consumed = false }
+        let state = ConvState()
         conv.convert(to: outBuf, error: nil) { _, status in
-            if !srcConsumed { srcConsumed = true; status.pointee = .haveData; return srcBuf }
+            if !state.consumed { state.consumed = true; status.pointee = .haveData; return srcBuf }
             status.pointee = .endOfStream; return nil
         }
 

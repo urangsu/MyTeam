@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 import Combine
-import CoreLocation
+@preconcurrency import CoreLocation
 import MapKit
 
 // MARK: - 검증 상태
@@ -29,6 +29,7 @@ private enum ValidationStatus {
 }
 
 // MARK: - GPS 헬퍼 (CLLocationManager + MKReverseGeocodingRequest)
+@MainActor
 private class LocationHelper: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var locationText: String = ""
     @Published var isLoading: Bool = false
@@ -60,20 +61,21 @@ private class LocationHelper: NSObject, ObservableObject, CLLocationManagerDeleg
         guard let loc = locations.first else { return }
         Task {
             do {
-                guard let req = MKReverseGeocodingRequest(location: loc) else { return }
-                let items = try await req.mapItems
-                let area = items.first?.placemark.administrativeArea ?? ""
-                let city = items.first?.placemark.locality ?? ""
-                await MainActor.run {
-                    self.locationText = "\(area) \(city)".trimmingCharacters(in: .whitespaces)
-                    self.isLoading = false
+                let geocoder = CLGeocoder()
+                let placemarks = try await geocoder.reverseGeocodeLocation(loc)
+                if let p = placemarks.first {
+                    await MainActor.run {
+                        let area = p.administrativeArea ?? ""
+                        let city = p.locality ?? ""
+                        self.locationText = "\(area) \(city)".trimmingCharacters(in: .whitespaces)
+                        self.isLoading = false
+                    }
+                } else {
+                    await MainActor.run {
+                        self.locationText = "주소 변환 실패"
+                        self.isLoading = false
+                    }
                 }
-            } catch {
-                await MainActor.run {
-                    self.locationText = "주소 변환 실패"
-                    self.isLoading = false
-                }
-                print("[LocationHelper] Geocoding Error: \(error)")
             }
         }
     }
@@ -90,9 +92,9 @@ private class LocationHelper: NSObject, ObservableObject, CLLocationManagerDeleg
     // CLLocationManagerDelegate — 권한 변경 시 자동 재시도
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in
-            let status = manager.authorizationStatus
-            if status == .authorized || status == .authorizedAlways {
-                manager.requestLocation()
+            let status = CLLocationManager().authorizationStatus
+            if status == .authorizedAlways {
+                self.mgr.requestLocation()
             } else if status == .denied || status == .restricted {
                 self.locationText = "위치 권한 없음"
                 self.isLoading = false
@@ -220,9 +222,9 @@ struct SettingsView: View {
                 }
             }
 
-            Section("음성") {
+            Section(header: Text("음성"), footer: Text("활성화 시 고품질 음성에 피치와 속도 변조를 덫씌워 캐릭터 느낌을 냅니다.")) {
                 Toggle(isOn: $useAnimalCrossingTTS) {
-                    Label("동물의숲 TTS", systemImage: "waveform")
+                    Label("동물의숲 효과", systemImage: "waveform")
                 }
             }
 

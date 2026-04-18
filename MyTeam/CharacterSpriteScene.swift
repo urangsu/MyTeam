@@ -203,19 +203,18 @@ class CharacterSpriteScene: SKScene {
 
     // MARK: - 텍스처 로드 헬퍼
     private func loadTextures(for state: AnimationState) -> [SKTexture] {
+        guard let resourcePath = Bundle.main.resourcePath else { return [] }
         var textures: [SKTexture] = []
-        let subdir = "Sprites/\(characterID)"
+        // macOS HFS+/APFS가 한글 파일명을 NFD로 저장 → Bundle API 검색 실패.
+        // FileManager 직접 경로 접근으로 NFD/NFC 정규화 우회.
+        let baseDir = "\(resourcePath)/Sprites/\(characterID)"
 
         for i in 1...60 {
             let imageName = String(format: "%@_%@_%03d", characterID, state.rawValue, i)
-            let exists = Bundle.main.path(forResource: imageName, ofType: "png", inDirectory: subdir) != nil
-                      || Bundle.main.path(forResource: imageName, ofType: "png") != nil
-                      || NSImage(named: imageName) != nil
-            if exists {
-                textures.append(SKTexture(imageNamed: imageName))
-            } else {
-                break
-            }
+            let path = "\(baseDir)/\(imageName).png"
+            guard FileManager.default.fileExists(atPath: path),
+                  let image = NSImage(contentsOfFile: path) else { break }
+            textures.append(SKTexture(image: image))
         }
         return textures
     }

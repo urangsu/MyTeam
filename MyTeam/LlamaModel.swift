@@ -14,7 +14,8 @@ import Foundation
 // MARK: - Q4Linear
 
 /// Stores 4-bit quantised weights and dequantises on each forward pass.
-final class Q4Linear: Module, @unchecked Sendable {
+
+@InferenceActor final class Q4Linear: Module, @unchecked Sendable {
     @ParameterInfo(key: "weight") var weight: MLXArray
     @ParameterInfo(key: "scales") var scales: MLXArray
     @ParameterInfo(key: "biases") var biases: MLXArray
@@ -26,14 +27,16 @@ final class Q4Linear: Module, @unchecked Sendable {
 
     nonisolated override init() { fatalError() }
 
-    nonisolated init(inputSize: Int, outputSize: Int, hasBias: Bool = false) {
+    init(inputSize: Int, outputSize: Int, hasBias: Bool = false) {
         self.inputSize = inputSize
         self.outputSize = outputSize
+        
+        super.init()
+        
         // Packed Q4: each int stores 2 × 4-bit values → width = inputSize / (32/4) = inputSize / 8
         let packedWidth = inputSize / 8
         let numGroups  = inputSize / LlamaConfig.quantGroupSize
-        // Must call super.init() before accessing @ParameterInfo wrapped properties
-        super.init()
+        
         self._weight.wrappedValue = zeros([outputSize, packedWidth], dtype: .uint32)
         self._scales.wrappedValue = zeros([outputSize, numGroups])
         self._biases.wrappedValue = zeros([outputSize, numGroups])
@@ -60,7 +63,7 @@ final class Q4Linear: Module, @unchecked Sendable {
 // MARK: - KVCache
 
 /// Accumulates key / value tensors across decode steps for one layer.
-struct KVCache {
+struct KVCache: @unchecked Sendable {
     /// (B, nHeads, T_past, headDim)
     var keys: MLXArray?
     /// (B, nHeads, T_past, headDim)
@@ -83,7 +86,7 @@ struct KVCache {
 // MARK: - LlamaRoPE
 
 /// Rotary position embeddings with LLaMA-3 long-context scaling.
-final class LlamaRoPE {
+final class LlamaRoPE: @unchecked Sendable {
     let headDim: Int
     let ropeTheta: Float
     let scalingFactor: Float
@@ -91,7 +94,7 @@ final class LlamaRoPE {
     let lowFreqFactor: Float
     let origMaxLen: Int
 
-    nonisolated init(
+    init(
         headDim: Int      = LlamaConfig.headDim,
         ropeTheta: Float  = LlamaConfig.ropeTheta,
         scalingFactor: Float   = LlamaConfig.ropeScalingFactor,
@@ -169,7 +172,8 @@ final class LlamaRoPE {
 // MARK: - LlamaAttention
 
 /// Multi-head self-attention with Q4-quantised projections and KV-cache support.
-final class LlamaAttention: Module, @unchecked Sendable {
+
+@InferenceActor final class LlamaAttention: Module, @unchecked Sendable {
     @ModuleInfo(key: "q_proj") var qProj: Q4Linear
     @ModuleInfo(key: "k_proj") var kProj: Q4Linear
     @ModuleInfo(key: "v_proj") var vProj: Q4Linear
@@ -183,7 +187,7 @@ final class LlamaAttention: Module, @unchecked Sendable {
 
     nonisolated override init() { fatalError("Use designated init") }
 
-    nonisolated init(
+    init(
         hiddenSize: Int  = LlamaConfig.hiddenSize,
         nHeads: Int      = LlamaConfig.numAttentionHeads,
         nKVHeads: Int    = LlamaConfig.numKeyValueHeads,
@@ -271,14 +275,15 @@ final class LlamaAttention: Module, @unchecked Sendable {
 // MARK: - LlamaMLP
 
 /// SwiGLU feed-forward with Q4-quantised gate / up / down projections.
-final class LlamaMLP: Module, @unchecked Sendable {
+
+@InferenceActor final class LlamaMLP: Module, @unchecked Sendable {
     @ModuleInfo(key: "gate_proj") var gateProj: Q4Linear
     @ModuleInfo(key: "up_proj")   var upProj:   Q4Linear
     @ModuleInfo(key: "down_proj") var downProj: Q4Linear
 
     nonisolated override init() { fatalError("Use designated init") }
 
-    nonisolated init(
+    init(
         hiddenSize: Int       = LlamaConfig.hiddenSize,
         intermediateSize: Int = LlamaConfig.intermediateSize
     ) {
@@ -298,18 +303,31 @@ final class LlamaMLP: Module, @unchecked Sendable {
 // MARK: - LlamaDecoderLayer
 
 /// One LLaMA transformer block: pre-norm → attention → residual → pre-norm → MLP → residual.
-final class LlamaDecoderLayer: Module, @unchecked Sendable {
+
+@InferenceActor final class LlamaDecoderLayer: Module, @unchecked Sendable {
     @ModuleInfo(key: "input_layernorm")         var inputNorm:  RMSNorm
     @ModuleInfo(key: "self_attn")               var selfAttn:   LlamaAttention
     @ModuleInfo(key: "post_attention_layernorm") var postNorm:   RMSNorm
     @ModuleInfo(key: "mlp")                     var mlp:        LlamaMLP
+    
+    let layerIdx: Int
 
-    nonisolated override init() {
+    nonisolated init(layerIdx: Int) {
+        self.layerIdx = layerIdx
+        super.init()
         self._inputNorm.wrappedValue = RMSNorm(dimensions: LlamaConfig.hiddenSize, eps: LlamaConfig.rmsNormEps)
         self._selfAttn.wrappedValue  = LlamaAttention()
         self._postNorm.wrappedValue  = RMSNorm(dimensions: LlamaConfig.hiddenSize, eps: LlamaConfig.rmsNormEps)
         self._mlp.wrappedValue       = LlamaMLP()
+    }
+
+    nonisolated override init() {
+        self.layerIdx = 0
         super.init()
+        self._inputNorm.wrappedValue = RMSNorm(dimensions: LlamaConfig.hiddenSize, eps: LlamaConfig.rmsNormEps)
+        self._selfAttn.wrappedValue  = LlamaAttention()
+        self._postNorm.wrappedValue  = RMSNorm(dimensions: LlamaConfig.hiddenSize, eps: LlamaConfig.rmsNormEps)
+        self._mlp.wrappedValue       = LlamaMLP()
     }
 
     func callAsFunction(
@@ -330,7 +348,8 @@ final class LlamaDecoderLayer: Module, @unchecked Sendable {
 // Key: "model"  (inside LlamaWrapper)
 // Full path: t3.tfmr.model.*
 
-final class LlamaInternals: Module, @unchecked Sendable {
+
+@InferenceActor final class LlamaInternals: Module, @unchecked Sendable {
     @ModuleInfo(key: "embed_tokens") var embedTokens: Embedding
     @ModuleInfo(key: "layers")       var layers: [LlamaDecoderLayer]
     @ModuleInfo(key: "norm")         var norm: RMSNorm
@@ -338,12 +357,12 @@ final class LlamaInternals: Module, @unchecked Sendable {
     nonisolated override init() { fatalError() }
 
     nonisolated init(numLayers: Int = LlamaConfig.numHiddenLayers) {
+        super.init()
         // embed_tokens is loaded from weights but not used in T3's forward pass
         // (T3 has its own text/speech embeddings)
         self._embedTokens.wrappedValue = Embedding(embeddingCount: 8, dimensions: LlamaConfig.hiddenSize)
-        self._layers.wrappedValue = (0..<numLayers).map { _ in LlamaDecoderLayer() }
+        self._layers.wrappedValue = (0..<numLayers).map { i in LlamaDecoderLayer(layerIdx: i) }
         self._norm.wrappedValue   = RMSNorm(dimensions: LlamaConfig.hiddenSize, eps: LlamaConfig.rmsNormEps)
-        super.init()
     }
 
     func callAsFunction(
@@ -378,12 +397,13 @@ final class LlamaInternals: Module, @unchecked Sendable {
 // Key: "tfmr"  (inside T3Model)
 // Holds LlamaInternals at key "model"
 
-final class LlamaWrapper: Module, @unchecked Sendable {
+
+@InferenceActor final class LlamaWrapper: Module, @unchecked Sendable {
     @ModuleInfo(key: "model") var model: LlamaInternals
 
     nonisolated override init() {
-        self._model.wrappedValue = LlamaInternals()
         super.init()
+        self._model.wrappedValue = LlamaInternals()
     }
 
     /// Convenience passthrough used by T3Model.

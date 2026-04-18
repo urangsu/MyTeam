@@ -23,7 +23,7 @@ struct T3Config: Sendable {
 }
 
 // MARK: - Per-Layer Weights
-@InferenceActor
+
 struct T3LayerWeights: @unchecked Sendable {
     let inputLayerNorm: MLXArray         // (hidden,)
     let postAttentionLayerNorm: MLXArray // (hidden,)
@@ -37,7 +37,7 @@ struct T3LayerWeights: @unchecked Sendable {
 }
 
 // MARK: - KV Cache (per-layer)
-@InferenceActor
+
 struct LayerKVCache: @unchecked Sendable {
     var k: MLXArray  // (seq_len, n_heads, head_dim) — grows with each token
     var v: MLXArray  // (seq_len, n_heads, head_dim)
@@ -46,8 +46,8 @@ struct LayerKVCache: @unchecked Sendable {
 // MARK: - T3MLXModel
 /// Chatterbox T3: Llama-style AR transformer (30-layer, hidden=1024, FP16 가중치)
 /// Zero-Shot TTS: 텍스트 토큰 + 화자 임베딩 → 음성 토큰 AR 디코딩
-@InferenceActor
-final class T3MLXModel {
+
+final class T3MLXModel: @unchecked Sendable {
     let config: T3Config
 
     // Transformer
@@ -68,7 +68,7 @@ final class T3MLXModel {
     private let spkrEncBias: MLXArray        // (1024,)
 
     // MARK: - Init (MLX.loadArrays .safetensors 순정 로더)
-    init(weightsURL: URL, embeddingURLs: T3EmbeddingURLs) throws {
+    nonisolated init(weightsURL: URL, embeddingURLs: T3EmbeddingURLs) throws {
         self.config = T3Config()
         // MLX-Swift 순정 loadArrays: .safetensors만 지원 — Zero-Copy Memory Mapped
         // (수석 아키텍트가 npz → safetensors 변환 후 번들 배치)
@@ -116,19 +116,19 @@ final class T3MLXModel {
     ///   - speakerEmbedding: ve.onnx 출력 xvector (256-dim)
     ///   - maxTokens: 입력 길이 비례 동적 설정 권장 (len * 6, 최대 600)
     /// - Returns: 음성 토큰 배열 (stop 토큰 미포함)
-    func generate(textTokenIds: [Int32], speakerEmbedding: [Float32], maxTokens: Int) -> [Int32] {
+    @InferenceActor func generate(
+        textTokenIds: [Int32],
+        t3CondEmbeds: [Float32],   // precomputed: spkr_enc(1) + perceiver(32) + emotion(1) = [len×1024]
+        t3CondLen: Int,            // = 34
+        maxTokens: Int,
+        repetitionPenalty: Float = 1.3,
+        isCancelled: (() -> Bool)? = nil
+    ) -> [Int32] {
         let H = config.hiddenSize
 
-        // 1. 화자 임베딩: xvector (256) → 조건 벡터 (1024)
-        //    spkrEncWeight: (1024, 256) → Linear(256→1024): output = W @ x + b
-        let xvec = MLXArray(speakerEmbedding)  // (256,)
-        let spkrCond = MLX.matmul(spkrEncWeight, xvec.reshaped([256, 1]))
-            .reshaped([H]) + spkrEncBias       // (1024,)
-
-        // 2. 조건 토큰 시퀀스 구성 (8개 학습된 조건 토큰 + 화자 조건 주입)
-        let condTokens = (0..<config.numCondTokens).map { i -> MLXArray in
-            condEmbedWeight[i] + spkrCond  // (1024,) × 8
-        }
+        // 1. Precomputed T3 conditioning
+        let condMat = MLXArray(t3CondEmbeds).reshaped([t3CondLen, H])
+        let condTokens = (0..<t3CondLen).map { i -> MLXArray in condMat[i] }
 
         // 3. 텍스트 토큰 임베딩 + 위치 임베딩
         var textEmbeds: [MLXArray] = []
@@ -138,9 +138,9 @@ final class T3MLXModel {
             textEmbeds.append(te + pe)
         }
 
-        // 4. Prefill: [cond(8) + text(T)] 시퀀스 전체 포워드 → KV 캐시 구축
-        let prefillSeq = condTokens + textEmbeds           // (8+T, 1024)
-        let prefillInput = MLX.stacked(prefillSeq, axis: 0) // (8+T, 1024)
+        // 4. Prefill: [cond(34) + text(T)] 시퀀스 전체 포워드 → KV 캐시 구축
+        let prefillSeq = condTokens + textEmbeds           // (34+T, 1024)
+        let prefillInput = MLX.stacked(prefillSeq, axis: 0) // (34+T, 1024)
         var kvCaches: [LayerKVCache?] = Array(repeating: nil, count: config.numLayers)
         let prefillPos = Array(0..<prefillSeq.count)
         _ = forwardSequence(prefillInput, positions: prefillPos, kvCaches: &kvCaches)
@@ -151,6 +151,7 @@ final class T3MLXModel {
         let prefillLen = prefillSeq.count
 
         for step in 0..<maxTokens {
+            if isCancelled?() == true { break }
             let pos = prefillLen + step
             let se = speechEmbWeight[Int(currentToken)]    // (1024,)
             let pe = speechPosEmbWeight[step]               // (1024,)
@@ -163,8 +164,31 @@ final class T3MLXModel {
             let normed = rmsNorm(x[0], weight: normWeight)
             let logits = MLX.matmul(speechHeadWeight, normed.reshaped([H, 1])).reshaped([speechHeadWeight.shape[0]])
 
-            // Greedy 디코딩 (argmax)
-            let nextToken = Int32(MLX.argMax(logits, axis: 0).item(Int.self))
+            var logitFloats = logits.asArray(Float.self)
+            let vocabSize = logitFloats.count
+
+            // Mask out: S3Gen이 받을 수 없는 토큰 완전 차단
+            if vocabSize > 6563 {
+                for i in 6563..<vocabSize {
+                    logitFloats[i] = -Float.greatestFiniteMagnitude
+                }
+            }
+            logitFloats[Int(config.startSpeechToken)] = -Float.greatestFiniteMagnitude // 6561 차단
+
+            // 반복 페널티: 전체 생성된 토큰에 대해 중복 적용 방지
+            if repetitionPenalty > 1.0 {
+                let uniqueTokens = Set(speechTokens)
+                for t in uniqueTokens {
+                    let idx = Int(t)
+                    guard idx < vocabSize && idx != Int(config.stopSpeechToken) else { continue }
+                    logitFloats[idx] = logitFloats[idx] > 0
+                        ? logitFloats[idx] / repetitionPenalty
+                        : logitFloats[idx] * repetitionPenalty
+                }
+            }
+
+            // Greedy 디코딩 (argmax with penalty and mask)
+            let nextToken = Int32(logitFloats.indices.max(by: { logitFloats[$0] < logitFloats[$1] }) ?? 0)
 
             if nextToken == config.stopSpeechToken { break }
             speechTokens.append(nextToken)
@@ -176,7 +200,7 @@ final class T3MLXModel {
     }
 
     // MARK: - Full Sequence Forward (Prefill & Single-Step Decode 공용)
-    @discardableResult
+    @InferenceActor @discardableResult
     private func forwardSequence(
         _ input: MLXArray,
         positions: [Int],

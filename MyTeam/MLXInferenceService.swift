@@ -6,6 +6,8 @@ import MLX
 // MARK: - PrecomputedVoice (ve.onnx 런타임 완전 대체)
 private struct PrecomputedVoice: Sendable {
     let veEmbed: [Float32]      // 256-dim → T3 speakerEmbedding
+    let t3CondEmbeds: [Float32] // [34×1024] → T3 conditioning
+    let t3CondLen: Int          // = 34
     let xvector: [Float32]      // 192-dim → s3gen_enc embedding
     let promptTokens: [Int64]   // [P] → s3gen_enc prompt_token
     let promptFeat: [Float32]   // [P×80] → s3gen_enc prompt_feat
@@ -13,9 +15,21 @@ private struct PrecomputedVoice: Sendable {
 
     nonisolated init(characterName: String) throws {
         let fileName = "\(characterName)_reference"
-        guard let url = Bundle.main.url(forResource: fileName, withExtension: "json", subdirectory: "PrecomputedVoice")
-               ?? Bundle.main.url(forResource: characterName, withExtension: "json", subdirectory: "PrecomputedVoice")
-               ?? Bundle.main.url(forResource: characterName, withExtension: "json")
+        // macOS HFS+/APFS가 한글 파일명을 NFD로 저장하므로 Bundle API 검색 실패.
+        // resourcePath 직접 접근으로 폴백.
+        func bundleURL() -> URL? {
+            if let u = Bundle.main.url(forResource: fileName, withExtension: "json", subdirectory: "PrecomputedVoice") { return u }
+            if let u = Bundle.main.url(forResource: characterName, withExtension: "json", subdirectory: "PrecomputedVoice") { return u }
+            if let u = Bundle.main.url(forResource: characterName, withExtension: "json") { return u }
+            // NFD 파일명 직접 경로 접근
+            guard let rp = Bundle.main.resourcePath else { return nil }
+            let candidates = [
+                "\(rp)/PrecomputedVoice/\(characterName).json",
+                "\(rp)/\(characterName).json"
+            ]
+            return candidates.compactMap { FileManager.default.fileExists(atPath: $0) ? URL(fileURLWithPath: $0) : nil }.first
+        }
+        guard let url = bundleURL()
         else { throw MLXModelError.weightsNotFound("PrecomputedVoice/\(characterName).json") }
 
         let raw  = try Data(contentsOf: url)
@@ -34,11 +48,13 @@ private struct PrecomputedVoice: Sendable {
             return bytes.withUnsafeBytes { Array($0.bindMemory(to: Int64.self)) }
         }
 
-        veEmbed      = try f32("ve_embed")
-        xvector      = try f32("xvector")
-        promptTokens = try i64("prompt_tokens")
-        promptFeat   = try f32("prompt_feat")
-        let shape    = json["prompt_feat_shape"] as? [Int] ?? []
+        veEmbed       = try f32("ve_embed")
+        t3CondEmbeds  = try f32("t3_cond_embeds")
+        t3CondLen     = (json["t3_cond_shape"] as? [Int])?.first ?? 34
+        xvector       = try f32("xvector")
+        promptTokens  = try i64("prompt_tokens")
+        promptFeat    = try f32("prompt_feat")
+        let shape     = json["prompt_feat_shape"] as? [Int] ?? []
         promptFeatLen = shape.first ?? (promptFeat.count / 80)
     }
 }
@@ -50,14 +66,14 @@ public actor InferenceActor {
 }
 
 // MARK: - ONNX Session Pool
-@InferenceActor
+
 private final class OrtSessionPool: @unchecked Sendable {
     let env: ORTEnv
     let s3genEncSession: ORTSession
     let s3genCfmSession: ORTSession
     let hifiganSession:  ORTSession
 
-    init() throws {
+    nonisolated init() throws {
         let e = try ORTEnv(loggingLevel: .warning)
         env = e
 
@@ -73,15 +89,14 @@ private final class OrtSessionPool: @unchecked Sendable {
         }
 
         s3genEncSession = try make("s3gen_enc",    useCoreML: true)
-        s3genCfmSession = try make("s3gen_cfm",    useCoreML: false) // CoreML Broadcast 버그 회피 → CPU
-        hifiganSession  = try make("hifigan_full", useCoreML: true)
-        print("[OrtSessionPool] ✅ 3개 ONNX 세션 초기화 완료 (Enc/HiFi=CoreML, CFM=CPU)")
+        s3genCfmSession = try make("s3gen_cfm",    useCoreML: false) // CoreML Broadcast 버그 회피
+        hifiganSession  = try make("hifigan_full", useCoreML: false) // CoreML Dimension-0 버그 회피 (CPU 강제)
+        print("[OrtSessionPool] ✅ 3개 ONNX 세션 초기화 완료 (Enc=CoreML, CFM/HiFi=CPU)")
     }
 }
 
 // MARK: - MLXInferenceService
-@InferenceActor
-final class MLXInferenceService: Sendable {
+@InferenceActor final class MLXInferenceService {
     static let shared = MLXInferenceService()
 
     private var sessionPool: OrtSessionPool?
@@ -91,7 +106,7 @@ final class MLXInferenceService: Sendable {
     // ── G-Stack: 동시 발화 / GPU 폭발 방지 순차 큐 ──
     private var speechTaskQueue: Task<Void, Error>?
 
-    nonisolated private init() {}
+    private init() {}
 
     func cancelCurrentInference() {
         speechTaskQueue?.cancel()
@@ -124,7 +139,7 @@ final class MLXInferenceService: Sendable {
         let currentTask  = Task { @InferenceActor in
             _ = await previousTask?.result   // 앞 발화 완전히 끝날 때까지 대기
             try await self.performInference(text: text, characterName: characterName,
-                                             continuation: continuation)
+                                            continuation: continuation)
         }
         speechTaskQueue = currentTask
         try await currentTask.value
@@ -138,8 +153,13 @@ final class MLXInferenceService: Sendable {
     ) async throws {
 
         // lazy 초기화 (첫 발화 시 1회)
-        if sessionPool == nil { sessionPool = try OrtSessionPool() }
-        if tokenizer   == nil { tokenizer   = try BPETokenizer()  }
+        if sessionPool == nil {
+            // actor 내부에서 수행되므로 이미 메인 스레드가 아님
+            sessionPool = try OrtSessionPool()
+        }
+        
+        if tokenizer == nil { tokenizer = try BPETokenizer() }
+        
         guard let pool = sessionPool, let tok = tokenizer else {
             throw MLXModelError.weightsNotFound("세션/토크나이저 초기화 실패")
         }
@@ -164,8 +184,10 @@ final class MLXInferenceService: Sendable {
         let maxTokens = min(textTokenIds.count * 6, 600)
         var speechTokenIds = t3Model.generate(
             textTokenIds:     textTokenIds,
-            speakerEmbedding: voice.veEmbed,
-            maxTokens:        maxTokens
+            t3CondEmbeds:     voice.t3CondEmbeds,
+            t3CondLen:        voice.t3CondLen,
+            maxTokens:        maxTokens,
+            repetitionPenalty: 1.3
         )
         guard !speechTokenIds.isEmpty else {
             print("[MLXInferenceService] ❌ T3 디코딩 결과 없음"); return
@@ -180,17 +202,17 @@ final class MLXInferenceService: Sendable {
 
         // 4. S3Gen Encoder (tokens → mu, mask)
         let (mu, mask) = try runS3GenEncoder(speechTokenIds: speechTokenIds, session: pool.s3genEncSession)
-        let T = mu.count / 80   // 실제 mel 프레임 수 (토큰 수 ≠ T)
-        print("[MLXInferenceService] 🌊 S3Gen Enc 완료 — mel frames: \(T)")
+        let melFrames = mu.count / 80   // 실제 mel 프레임 수 (토큰 수 ≠ T)
+        print("[MLXInferenceService] 🌊 S3Gen Enc 완료 — mel frames: \(melFrames)")
         if Task.isCancelled { return }
 
         // 5. S3Gen CFM Euler ODE (mel 생성)
-        let mel = try runS3GenCFMEuler(mu: mu, mask: mask, T: T, voice: voice, session: pool.s3genCfmSession)
-        print("[MLXInferenceService] 🎼 S3Gen CFM 완료 — mel shape: [1,80,\(T)]")
+        let mel = try runS3GenCFMEuler(mu: mu, mask: mask, T: melFrames, voice: voice, session: pool.s3genCfmSession)
+        print("[MLXInferenceService] 🎼 S3Gen CFM 완료 — mel shape: [1,80,\(melFrames)]")
         if Task.isCancelled { return }
 
         // 6. HiFiGAN magnitude+phase → ISTFT → PCM
-        let tMel = try makeTensor(mel, shape: [1, 80, T as NSNumber])
+        let tMel = try makeTensor(mel, shape: [1, 80, melFrames as NSNumber])
 
         let hifiInputNames = try pool.hifiganSession.inputNames()
         let inName = hifiInputNames.first ?? "mel"
@@ -210,11 +232,14 @@ final class MLXInferenceService: Sendable {
         let phaseArr  = try extractFloats(phaseVal)
         let magShape  = try magVal.tensorTypeAndShapeInfo().shape.map { $0.intValue }
         let nFrames   = magShape[2]
+        let nBins     = magShape[1]
+        
+        print("[MLXInferenceService] 🔊 HiFiGAN Output Shape: \(magShape), Magnitude Max: \(magnitude.max() ?? 0)")
 
         // ── G-Stack: ISTFT (주파수 스펙트럼 → PCM 파형) ──
         let pcmFloats = istft(magnitude: magnitude, phase: phaseArr,
-                              nBins: 9, nPhase: 8, nFrames: nFrames,
-                              nFFT: 16, hopLen: 4)
+                              nBins: nBins, nPhase: nBins - 1, nFrames: nFrames,
+                              nFFT: (nBins - 1) * 2, hopLen: 4)
         print("[MLXInferenceService] 🔊 ISTFT 완료! PCM: \(pcmFloats.count)개 @ 24kHz")
 
         // 7. 4096 샘플 청킹 스트리밍
@@ -313,7 +338,11 @@ final class MLXInferenceService: Sendable {
                              "t": tTime, "spks": tSpks, "cond": tCond],
                 outputNames: ["dxdt"], runOptions: nil)
             let dxdt = try extractFloats(out["dxdt"]!)
-            for i in 0..<totalElements { x[i] += dt * dxdt[i] }
+            for i in 0..<totalElements { 
+                let val = dxdt[i]
+                if val.isNaN || val.isInfinite { continue }
+                x[i] += dt * val 
+            }
         }
         print("[MLXInferenceService] ✅ Euler ODE 완료")
         return x
@@ -328,23 +357,32 @@ final class MLXInferenceService: Sendable {
         let audioLen  = (nFrames - 1) * hopLen + nFFT
         var output    = [Float32](repeating: 0, count: audioLen)
         var windowSum = [Float32](repeating: 0, count: audioLen)
-        let window    = (0..<nFFT).map { n -> Float32 in
+        
+        // Hann Window
+        let window = (0..<nFFT).map { n -> Float32 in
             0.5 * (1 - cos(2 * Float32.pi * Float32(n) / Float32(nFFT)))
         }
 
         for frame in 0..<nFrames {
             var real = [Float32](repeating: 0, count: nFFT)
             var imag = [Float32](repeating: 0, count: nFFT)
+            
             for k in 0..<nBins {
-                let mag = min(magnitude[k * nFrames + frame], 100.0)
+                let mag = magnitude[k * nFrames + frame]
                 let ph  = phase[k * nFrames + frame]
+                // NaNs check
+                if mag.isNaN || mag.isInfinite || ph.isNaN || ph.isInfinite { continue }
+                
                 real[k] = mag * cos(ph)
                 imag[k] = mag * sin(ph)
+                
+                // Hermitian symmetry for Real-IDFT
+                if k > 0 && k < (nFFT / 2) {
+                    real[nFFT - k] = real[k]
+                    imag[nFFT - k] = -imag[k]
+                }
             }
-            for k in 1..<(nFFT / 2) {
-                real[nFFT - k] =  real[k]
-                imag[nFFT - k] = -imag[k]
-            }
+            
             var samples = [Float32](repeating: 0, count: nFFT)
             for n in 0..<nFFT {
                 var s: Float32 = 0
@@ -354,14 +392,22 @@ final class MLXInferenceService: Sendable {
                 }
                 samples[n] = s / Float32(nFFT)
             }
+            
             let off = frame * hopLen
             for n in 0..<nFFT where off + n < audioLen {
-                output[off + n]    += samples[n] * window[n]
+                let s = samples[n] * window[n]
+                if s.isNaN || s.isInfinite { continue }
+                output[off + n]    += s
                 windowSum[off + n] += window[n] * window[n]
             }
         }
-        for i in 0..<audioLen where windowSum[i] > 1e-8 {
-            output[i] /= windowSum[i]
+        
+        for i in 0..<audioLen {
+            if windowSum[i] > 1e-8 {
+                output[i] /= windowSum[i]
+            }
+            // Final safety clip to [-1, 1]
+            output[i] = max(-1.0, min(1.0, output[i]))
         }
         return output
     }

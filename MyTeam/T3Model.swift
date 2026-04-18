@@ -21,26 +21,27 @@ import Foundation
 
 /// Wraps a single Embedding(maxLen, dim) and returns the first T positions.
 /// Weight key: "<prefix>.emb"
+
 final class LearnedPositionEmbeddings: Module, @unchecked Sendable {
     @ModuleInfo(key: "emb") var emb: Embedding
 
     nonisolated override init() { fatalError() }
 
-    nonisolated init(maxLen: Int, dim: Int) {
+    init(maxLen: Int, dim: Int) {
         self._emb.wrappedValue = Embedding(embeddingCount: maxLen, dimensions: dim)
         super.init()
     }
 
     /// Returns position embeddings for the first T positions.
     /// - Parameter x: any (B, T) tensor — only the T dimension is used.
-    func callAsFunction(_ x: MLXArray) -> MLXArray {
+    @InferenceActor func callAsFunction(_ x: MLXArray) -> MLXArray {
         let T = x.shape[1]
         let positions = MLXArray(Array(0..<T).map { Int32($0) })  // (T,)
         return emb(positions)  // (T, dim)
     }
 
     /// Returns the embedding for a single position index.
-    func forPosition(_ pos: Int) -> MLXArray {
+    @InferenceActor func forPosition(_ pos: Int) -> MLXArray {
         let idx = MLXArray([Int32(pos)])
         return emb(idx)  // (1, dim)
     }
@@ -49,7 +50,7 @@ final class LearnedPositionEmbeddings: Module, @unchecked Sendable {
 // MARK: - Temperature sampling
 
 /// Sample a token index from `logits` (1D, already un-batched) using temperature.
-private func sampleToken(logits: MLXArray, temperature: Float) -> Int {
+private nonisolated func sampleToken(logits: MLXArray, temperature: Float) -> Int {
     if temperature <= 0 {
         return logits.argMax(axis: -1).item(Int.self)
     }
@@ -65,17 +66,16 @@ private func sampleToken(logits: MLXArray, temperature: Float) -> Int {
 // MARK: - Repetition penalty helper
 
 /// Returns a copy of `logits` (shape [vocabSize]) with per-token repetition penalty applied.
-private func applyRepetitionPenalty(
+private nonisolated func applyRepetitionPenalty(
     logits: MLXArray,
-    generatedTokens: [Int],
+    generatedTokens: [Int32],
     penalty: Float
 ) -> MLXArray {
-    guard penalty != 1.0, !generatedTokens.isEmpty else { return logits }
-    // Build a factor array: 1.0 everywhere, `penalty` at generated positions.
     var factors = [Float](repeating: 1.0, count: logits.shape[0])
     for tid in generatedTokens {
-        if tid >= 0 && tid < factors.count {
-            factors[tid] = penalty
+        let idx = Int(tid)
+        if idx >= 0 && idx < factors.count {
+            factors[idx] = penalty
         }
     }
     let factorArr = MLXArray(factors)
@@ -91,6 +91,7 @@ private func applyRepetitionPenalty(
 ///
 /// Inference method generates speech tokens from text tokens conditioned on
 /// a speaker embedding, with optional classifier-free guidance.
+
 final class T3Model: Module, @unchecked Sendable {
     // Embeddings
     @ModuleInfo(key: "text_emb")        var textEmb:       Embedding
@@ -140,7 +141,7 @@ final class T3Model: Module, @unchecked Sendable {
     ///   - cfgWeight: classifier-free guidance weight (0 = disabled)
     ///   - repetitionPenalty: penalty > 1.0 reduces repeated tokens
     /// - Returns: (1, T_speech) generated speech token ids (int32), SOT/EOT stripped
-    func inference(
+    @InferenceActor func inference(
         t3Cond: T3Cond,
         textTokens: MLXArray,           // (1, T_text)
         maxNewTokens: Int = 1000,
@@ -150,12 +151,12 @@ final class T3Model: Module, @unchecked Sendable {
     ) -> MLXArray {
         let useCFG = cfgWeight > 0
         // B = 2 when CFG is active (conditioned + unconditioned), else 1
-        let B = useCFG ? 2 : 1
+        let _ = useCFG ? 2 : 1  // B = 2 when CFG is active, else 1
 
         // ── 1. Conditioning embeddings ──────────────────────────────────────
         // condEmb: (1, condLen, 1024)
         let condEmb1 = condEnc(t3Cond)
-        let condLen  = condEmb1.shape[1]
+        let _ = condEmb1.shape[1]  // condLen
         // For CFG: duplicate along batch axis → (2, condLen, 1024)
         // Second item is the "null" conditioning (zeroed out below for text, kept for cond)
         let condEmb: MLXArray
@@ -221,7 +222,7 @@ final class T3Model: Module, @unchecked Sendable {
             // Logits from last position: speechHead( hidden[:, -1, :] )
             // hidden[:, -1, :] → (B, 1024)
             let lastHidden = hidden[0..., -1, 0...]  // (B, 1024)
-            var logits = speechHead(lastHidden)       // (B, speechVocabSize)
+            let logits = speechHead(lastHidden)       // (B, speechVocabSize)
 
             // Apply CFG: guided_logits = cond + cfgWeight * (cond - uncond)
             let singleLogits: MLXArray
@@ -236,7 +237,7 @@ final class T3Model: Module, @unchecked Sendable {
             // Apply repetition penalty
             let penalisedLogits = applyRepetitionPenalty(
                 logits: singleLogits,
-                generatedTokens: generatedTokenIds,
+                generatedTokens: generatedTokenIds.map { Int32($0) },
                 penalty: repetitionPenalty
             )
 

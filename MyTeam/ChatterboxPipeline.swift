@@ -134,7 +134,7 @@ final class KoreanBPETokenizer {
 
         // 3. Initial character-level tokens (each Unicode scalar is one token)
         // Split by [SPACE] and [XX] special tokens first, then char-split the rest
-        var rawTokens = splitWithSpecials(withSpace)
+        let rawTokens = splitWithSpecials(withSpace)
 
         // 4. Apply BPE merges
         let bpeTokens = applyBPE(rawTokens)
@@ -341,14 +341,14 @@ final class ChatterboxPipeline {
                      Date().timeIntervalSince(t1)))
 
         // ── Step 4: HiFTGenerator (speech tokens → mel → audio) ───────────────
-        // Note: In the full pipeline, S3Gen decodes speech tokens to mel first.
-        // For this spike, we use a placeholder mel derived from the reference audio
-        // to validate the mel→audio path. Full S3Gen will be added in next phase.
-        print("[Pipeline] Running HiFTGenerator (mel → audio)...")
+        // TODO: S3Gen ONNX 연결 필요
+        //   speechTokens → s3gen_enc.onnx → mu/mask → s3gen_cfm.onnx (Euler ODE 10스텝) → mel [1,80,T]
+        //   → transpose [1,T,80] → hiftGen(mel) → audio
+        //   현재는 레퍼런스 WAV mel 대리 사용 (spike 검증용)
+        //   프로덕션 경로: MLXInferenceService.performInference() 참고
+        print("[Pipeline] Running HiFTGenerator (mel → audio) [spike: ref mel proxy]...")
         let t2 = Date()
 
-        // Compute mel from reference audio (resampled to 24kHz equivalent)
-        // For spike: use the reference audio mel as a proxy
         let refMel = s3genMelSpectrogram(wav: referenceWAV)  // (T, 80)
         let refMelBatched = refMel.expandedDimensions(axis: 0)  // (1, T, 80)
 

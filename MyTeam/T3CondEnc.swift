@@ -33,6 +33,7 @@ struct T3Cond {
 
 /// Perceiver cross-attention block.
 /// Latents (learned queries) attend to [input_context ; latents] for keys/values.
+
 final class PerceiverAttentionBlock: Module, @unchecked Sendable {
     @ModuleInfo(key: "norm")     var norm:    LayerNorm
     @ModuleInfo(key: "to_q")     var toQ:     Linear
@@ -47,7 +48,7 @@ final class PerceiverAttentionBlock: Module, @unchecked Sendable {
     // dim=1024, nHeads=8, headDim=128
     nonisolated override init() { fatalError() }
 
-    nonisolated init(dim: Int = T3Constants.nChannels, nHeads: Int = 8) {
+    init(dim: Int = T3Constants.nChannels, nHeads: Int = 8) {
         self.nHeads  = nHeads
         self.headDim = dim / nHeads
         self.scale   = 1.0 / sqrt(Float(dim / nHeads))
@@ -106,13 +107,14 @@ final class PerceiverAttentionBlock: Module, @unchecked Sendable {
 // Key: "perceiver"  (inside T3CondEnc)
 
 /// Wraps PerceiverAttentionBlock and the learned query tensor.
+
 final class Perceiver: Module, @unchecked Sendable {
     @ModuleInfo(key: "attn")                 var attn:          PerceiverAttentionBlock
     @ParameterInfo(key: "pre_attention_query") var preAttnQuery: MLXArray
 
     nonisolated override init() { fatalError() }
 
-    nonisolated init(
+    init(
         queryLen: Int = T3Constants.perceiverQueryLen,
         dim: Int      = T3Constants.nChannels
     ) {
@@ -142,6 +144,7 @@ final class Perceiver: Module, @unchecked Sendable {
 ///
 /// Matches Python cond_enc.py concatenation order:
 ///   cond_spkr | cond_clap(omitted) | cond_prompt_speech | cond_emotion_adv
+
 final class T3CondEnc: Module, @unchecked Sendable {
     @ModuleInfo(key: "spkr_enc")      var spkrEnc:     Linear
     @ModuleInfo(key: "emotion_adv_fc") var emotionAdvFc: Linear
@@ -149,7 +152,7 @@ final class T3CondEnc: Module, @unchecked Sendable {
 
     nonisolated override init() { fatalError() }
 
-    nonisolated init(
+    init(
         speakerEmbSize: Int = T3Constants.speakerEmbedSize,
         dim: Int            = T3Constants.nChannels
     ) {

@@ -98,7 +98,7 @@ class WebSocketClient: ObservableObject {
                 if event == "stream_start" {
                     let streamId = dict["stream_id"] as? String ?? UUID().uuidString
                     let agentId = dict["agent_id"] as? String ?? "unknown"
-                    let pitch = (dict["pitch"] as? NSNumber)?.floatValue ?? AnimalTTSManager.profile(for: agentId).pitch
+                    let pitch = (dict["pitch"] as? NSNumber)?.floatValue ?? 1.0
                     let rate = (dict["rate"] as? NSNumber)?.floatValue ?? 1.0
                     let volume = (dict["volume"] as? NSNumber)?.floatValue ?? 1.0
                     
@@ -235,9 +235,9 @@ class WebSocketClient: ObservableObject {
     
     // 3개 API 키를 백엔드로 모두 전송
     func sendAPIKey() {
-        let geminiKey = UserDefaults.standard.string(forKey: "geminiAPIKey") ?? ""
-        let claudeKey = UserDefaults.standard.string(forKey: "claudeAPIKey") ?? ""
-        let openaiKey = UserDefaults.standard.string(forKey: "openaiAPIKey") ?? ""
+        let geminiKey = KeychainManager.load(key: "geminiAPIKey") ?? ""
+        let claudeKey = KeychainManager.load(key: "claudeAPIKey") ?? ""
+        let openaiKey = KeychainManager.load(key: "openAIAPIKey") ?? ""
         
         let payload: [String: Any] = [
             "type": "api_keys",
