@@ -83,6 +83,15 @@ class AgentWindowManager: ObservableObject {
             }
         }
     }
+
+    @AppStorage("automationTasks") private var automationTasksData: Data = Data()
+    @Published var automationTasks: [AutomationTask] = [] {
+        didSet {
+            if let data = try? JSONEncoder().encode(automationTasks) {
+                automationTasksData = data
+            }
+        }
+    }
     
     var persistentContext: String {
         guard !keyFacts.isEmpty else { return "" }
@@ -112,9 +121,13 @@ class AgentWindowManager: ObservableObject {
 
     private var lastInteractionTime: Date = Date()
     private var idleTimer: Timer?
+    private var automationTimer: Timer?
 
     private init() {
         activeAgents = Array(allAvailableAgents.prefix(4))
+        for index in activeAgents.indices {
+            activeAgents[index].applyDeskRouting(index: index)
+        }
 
         // 채팅 데이터 복원
         loadRooms()
@@ -132,6 +145,9 @@ class AgentWindowManager: ObservableObject {
         if let decoded = try? JSONDecoder().decode([String].self, from: keyFactsData) {
             keyFacts = decoded
         }
+        if let decoded = try? JSONDecoder().decode([AutomationTask].self, from: automationTasksData) {
+            automationTasks = decoded
+        }
 
         // 잠금 해제 감지 (didWake만 — sessionDidBecomeActive는 앱 시작 시도 발화해서 중복 유발)
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(handleWake), name: NSWorkspace.didWakeNotification, object: nil)
@@ -142,6 +158,9 @@ class AgentWindowManager: ObservableObject {
         // 아이들 감지 타이머 (1분마다 체크)
         idleTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             self?.checkIdle()
+        }
+        automationTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.runDueAutomationTasks() }
         }
     }
 
@@ -167,7 +186,7 @@ class AgentWindowManager: ObservableObject {
         let spacing: CGFloat = 16
         
         // 협업창이 안 켜져있으면 먼저 켬
-        if statusPanel == nil || !(statusPanel!.isVisible) {
+        if statusPanel?.isVisible != true {
             showStatusWindow()
         }
         
@@ -372,7 +391,6 @@ class AgentWindowManager: ObservableObject {
         if let existing = chatPanels.values.first {
             existing.orderFront(nil)
             existing.makeKey()
-            updateChatWindowWidth(id: config.id, width: 600)
             NotificationCenter.default.post(name: NSNotification.Name("didSelectAgentForChat"), object: nil, userInfo: ["agentID": config.id])
             return
         }
@@ -382,6 +400,9 @@ class AgentWindowManager: ObservableObject {
         let x = teamFrame.origin.x + 40
         let y = teamFrame.origin.y + teamFrame.height + 2
 
+        var routedConfig = config
+        routedConfig.applyDeskRouting(index: activeAgents.firstIndex(where: { $0.id == config.id }) ?? 0)
+
         let panel = FloatingPanel(
             agentID: "chat_single",
             position: NSPoint(x: x, y: y),
@@ -390,7 +411,7 @@ class AgentWindowManager: ObservableObject {
         panel.minSize = NSSize(width: 300, height: 480)
 
         let view = AgentChatView(
-            config: config,
+            config: routedConfig,
             onClose: { [weak self] in self?.hideChat(id: config.id) },
             isPersonalChat: isPersonalChat
         ).environmentObject(self)
@@ -448,23 +469,75 @@ class AgentWindowManager: ObservableObject {
     // MARK: - 에이전트 스왑 로직 (순서 변경 포함)
     func swapAgent(at index: Int, with newAgent: AgentConfig) {
         guard index >= 0 && index < activeAgents.count else { return }
+        var routedAgent = newAgent
+        routedAgent.applyDeskRouting(index: index)
 
         // 만약 선택한 에이전트가 이미 테이블의 다른 자리에 있다면, 둘의 자리를 맞바꿈 (Swap)
-        if let existingIndex = activeAgents.firstIndex(where: { $0.id == newAgent.id }) {
+        if let existingIndex = activeAgents.firstIndex(where: { $0.id == routedAgent.id }) {
             let temp = activeAgents[index]
             activeAgents[index] = activeAgents[existingIndex]
             activeAgents[existingIndex] = temp
         } else {
             // 새 에이전트로 교체
-            activeAgents[index] = newAgent
+            activeAgents[index] = routedAgent
         }
 
         // 교체 TTS — 동기적 flush 후 즉시 실행 (딜레이 없음)
         if !isSilentMode {
             SpeechManager.shared.stopSpeaking()
-            let greeting = swapGreeting(for: newAgent.name)
-            SpeechManager.shared.speak(text: greeting, agentID: newAgent.id, characterName: newAgent.name)
+            let greeting = swapGreeting(for: routedAgent.name)
+            SpeechManager.shared.speak(text: greeting, agentID: routedAgent.id, characterName: routedAgent.name)
         }
+    }
+
+    // MARK: - 팀 리더 관리
+
+    func teamLeader(for roomID: UUID? = nil) -> AgentConfig? {
+        let targetID = roomID ?? currentRoomID
+        guard let rid = targetID,
+              let room = rooms.first(where: { $0.id == rid }),
+              let leaderID = room.leaderAgentID,
+              let leader = activeAgents.first(where: { $0.id == leaderID }) else {
+            return nil
+        }
+        return leader
+    }
+
+    func fallbackTeamLeader(for roomID: UUID? = nil) -> AgentConfig? {
+        teamLeader(for: roomID) ?? activeAgents.first
+    }
+
+    func setTeamLeader(agentID: String, roomID: UUID? = nil) {
+        let targetID = roomID ?? currentRoomID
+        guard activeAgents.contains(where: { $0.id == agentID }),
+              let rid = targetID,
+              let index = rooms.firstIndex(where: { $0.id == rid }) else { return }
+        rooms[index].leaderAgentID = agentID
+    }
+
+    struct AgentMentionResolution {
+        let mentionedAgent: AgentConfig
+        let activeAgent: AgentConfig?
+
+        var isActive: Bool { activeAgent != nil }
+    }
+
+    func resolveMentionedAgent(in message: String) -> AgentMentionResolution? {
+        let normalizedMessage = message
+            .replacingOccurrences(of: " ", with: "")
+            .lowercased()
+
+        let candidates = allAvailableAgents
+            .sorted { $0.name.count > $1.name.count }
+
+        guard let mentioned = candidates.first(where: { agent in
+            normalizedMessage.contains(agent.name.lowercased())
+        }) else {
+            return nil
+        }
+
+        let active = activeAgents.first(where: { $0.id == mentioned.id })
+        return AgentMentionResolution(mentionedAgent: mentioned, activeAgent: active)
     }
 
     /// 캐릭터별 교체 인사 — 성격 반영, 짧고 빠르게
@@ -602,6 +675,16 @@ class AgentWindowManager: ObservableObject {
         frame.size.width = width
         panel.setFrame(frame, display: true, animate: true)
     }
+
+    func updateStatusWindowSize(width: CGFloat, height: CGFloat) {
+        guard let panel = statusPanel else { return }
+        var frame = panel.frame
+        let heightDiff = height - frame.size.height
+        frame.origin.y -= heightDiff
+        frame.size = NSSize(width: width, height: height)
+        panel.setFrame(frame, display: true, animate: true)
+        panel.savePosition()
+    }
     
     func updateChatWindowWidth(id: String, width: CGFloat) {
         guard let panel = chatPanels["chat_single"] else { return }
@@ -621,14 +704,129 @@ class AgentWindowManager: ObservableObject {
         panel.setFrame(frame, display: true, animate: true)
     }
 
+    func savedChatWindowSize() -> NSSize? {
+        let width = UserDefaults.standard.double(forKey: "chat_single_w")
+        let height = UserDefaults.standard.double(forKey: "chat_single_h")
+        guard width >= 300, height >= 480 else { return nil }
+        return NSSize(width: width, height: height)
+    }
+
     // MARK: - 채팅 로그 추가 (현재 방에 저장)
-    func addChatLog(agentID: String, agentName: String, text: String, isUser: Bool, roomID: UUID? = nil, isSystem: Bool = false) {
+    func addChatLog(
+        agentID: String,
+        agentName: String,
+        text: String,
+        isUser: Bool,
+        roomID: UUID? = nil,
+        isSystem: Bool = false,
+        sources: [SourceReference] = []
+    ) {
         let targetID = roomID ?? currentRoomID
         guard let rid = targetID,
               let index = rooms.firstIndex(where: { $0.id == rid }) else { return }
         let newLog = ChatLog(id: UUID(), agentID: agentID, agentName: agentName,
-                             text: text, isUser: isUser, timestamp: Date(), isSystem: isSystem)
+                             text: text, isUser: isUser, timestamp: Date(), isSystem: isSystem, sources: sources)
         rooms[index].messages.append(newLog)
+    }
+
+    func replaceMessages(roomID: UUID, with messages: [ChatLog]) {
+        guard let index = rooms.firstIndex(where: { $0.id == roomID }) else { return }
+        rooms[index].messages = messages
+    }
+
+    func clearMessages(roomID: UUID) {
+        guard let index = rooms.firstIndex(where: { $0.id == roomID }) else { return }
+        rooms[index].messages.removeAll()
+    }
+
+    func addKeyFact(_ fact: String) {
+        let cleaned = fact.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return }
+        if !keyFacts.contains(cleaned) {
+            keyFacts.append(cleaned)
+        }
+    }
+
+    func forgetKeyFact(matching query: String) -> Int {
+        let cleaned = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !cleaned.isEmpty else { return 0 }
+        let before = keyFacts.count
+        keyFacts.removeAll { $0.lowercased().contains(cleaned) }
+        return before - keyFacts.count
+    }
+
+    func clearKeyFacts() {
+        keyFacts.removeAll()
+    }
+
+    // MARK: - 스케줄 업무
+
+    @discardableResult
+    func addAutomationTask(prompt: String, nextRunAt: Date, repeatInterval: TimeInterval? = nil, roomID: UUID? = nil) -> AutomationTask {
+        let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = String(trimmed.prefix(28))
+        let task = AutomationTask(
+            id: UUID(),
+            title: title.isEmpty ? "스케줄 업무" : title,
+            prompt: trimmed,
+            nextRunAt: nextRunAt,
+            repeatInterval: repeatInterval,
+            roomID: roomID ?? currentRoomID,
+            isEnabled: true,
+            createdAt: Date(),
+            lastRunAt: nil
+        )
+        automationTasks.append(task)
+        return task
+    }
+
+    func cancelAutomationTask(id: UUID) {
+        automationTasks.removeAll { $0.id == id }
+    }
+
+    func cancelAutomationTask(displayIndex: Int) -> Bool {
+        let sorted = automationTasks.sorted { $0.nextRunAt < $1.nextRunAt }
+        guard displayIndex > 0, displayIndex <= sorted.count else { return false }
+        cancelAutomationTask(id: sorted[displayIndex - 1].id)
+        return true
+    }
+
+    private func runDueAutomationTasks() {
+        let now = Date()
+        let dueTasks = automationTasks.filter { $0.isEnabled && $0.nextRunAt <= now }
+        guard !dueTasks.isEmpty else { return }
+
+        for task in dueTasks {
+            guard let index = automationTasks.firstIndex(where: { $0.id == task.id }) else { continue }
+            let targetRoomID = task.roomID ?? currentRoomID
+
+            automationTasks[index].lastRunAt = now
+            if let interval = task.repeatInterval {
+                automationTasks[index].nextRunAt = now.addingTimeInterval(interval)
+            } else {
+                automationTasks.remove(at: index)
+            }
+
+            addChatLog(
+                agentID: "system",
+                agentName: "스케줄",
+                text: "스케줄 업무 실행: \(task.prompt)",
+                isUser: false,
+                roomID: targetRoomID
+            )
+
+            Task {
+                if task.prompt.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("/") {
+                    _ = await ConversationMemory.handleChatCommand(task.prompt, roomID: targetRoomID, manager: self, currentAgent: fallbackTeamLeader(for: targetRoomID))
+                } else if let roomID = targetRoomID {
+                    await TeamOrchestrator.shared.runTeamDiscussion(
+                        userMessage: task.prompt,
+                        roomID: roomID,
+                        manager: self
+                    )
+                }
+            }
+        }
     }
 
     // MARK: - 방 생성 / 이름 변경 / 삭제

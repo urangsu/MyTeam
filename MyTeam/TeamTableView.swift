@@ -76,6 +76,15 @@ struct TeamTableView: View {
                             selectedAgentIndex = (selectedAgentIndex == index) ? nil : index
                         }
                     )
+                    .overlay(alignment: .topTrailing) {
+                        if manager.teamLeader()?.id == agent.id {
+                            Image(systemName: "crown.fill")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.yellow)
+                                .shadow(color: .black.opacity(0.45), radius: 2, y: 1)
+                                .offset(x: 8, y: -8)
+                        }
+                    }
                     .overlay(
                         AgentMenuPopupView(
                             isShowing: selectedAgentIndex == index,
@@ -137,6 +146,15 @@ struct TeamTableView: View {
                     }
                     Button(action: { manager.showSwapWindow() }) {
                         Label("팀원 교체하기", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    Menu {
+                        ForEach(manager.activeAgents) { agent in
+                            Button(action: { manager.setTeamLeader(agentID: agent.id) }) {
+                                Label(agent.name, systemImage: manager.teamLeader()?.id == agent.id ? "crown.fill" : "person.fill")
+                            }
+                        }
+                    } label: {
+                        Label("팀 리더 지정", systemImage: "crown.fill")
                     }
                     Button(action: { manager.showSettingsWindow() }) {
                         Label("설정하기", systemImage: "gearshape.fill")
@@ -234,36 +252,28 @@ struct TeamTableView: View {
         let text = inputText
         inputText = ""
 
-        let agentsCount = Int.random(in: 2...3)
-        let responders = manager.activeAgents.shuffled().prefix(agentsCount)
+        Task {
+            if await ConversationMemory.handleChatCommand(
+                text,
+                roomID: manager.currentRoomID,
+                manager: manager,
+                currentAgent: manager.fallbackTeamLeader()
+            ) {
+                return
+            }
+        }
+
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("/") else { return }
 
         manager.addChatLog(agentID: "user", agentName: "나", text: text, isUser: true)
 
         Task {
-            for agent in responders {
-                let history = manager.rooms.first(where: { $0.id == manager.currentRoomID })?.messages ?? []
-                do {
-                    // text는 공백으로 넘겨도, history 맨 끝에 User 메시지가 있으므로 문맥 연결에 문제없음
-                    let (responseText, _) = try await AIService.shared.getResponse(
-                        text: text, agentID: agent.id, chatHistory: history
-                    )
-                    await MainActor.run {
-                        manager.addChatLog(agentID: agent.id, agentName: agent.name, text: responseText, isUser: false)
-                        if !manager.isSilentMode {
-                            manager.setAgentSpeaking(agentID: agent.id, text: responseText)
-                            SpeechManager.shared.speak(text: responseText, agentID: agent.id, characterName: agent.name)
-                        }
-                    }
-                    
-                    let delay = Double.random(in: 1.5...2.5)
-                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-                } catch {
-                    await MainActor.run {
-                        manager.addChatLog(agentID: agent.id, agentName: "시스템", text: error.localizedDescription, isUser: false)
-                    }
-                    break
-                }
-            }
+            guard let roomID = manager.currentRoomID else { return }
+            await TeamOrchestrator.shared.runTeamDiscussion(
+                userMessage: text,
+                roomID: roomID,
+                manager: manager
+            )
         }
     }
 }

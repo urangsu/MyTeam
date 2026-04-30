@@ -23,6 +23,14 @@ struct TeamStatusView: View {
     private var textColor: Color {
         manager.isDarkMode ? .white : .black
     }
+
+    private var panelWidth: CGFloat {
+        isCollapsed ? 300 : (selectedTab == 0 ? 300 : 600)
+    }
+
+    private var panelHeight: CGFloat {
+        isCollapsed ? 40 : 480
+    }
     
     var body: some View {
         VStack(spacing: 0) {
@@ -89,11 +97,14 @@ struct TeamStatusView: View {
                 footerView
             }
         }
-        .frame(width: isCollapsed ? 300 : (selectedTab == 0 ? 300 : 600), height: isCollapsed ? 40 : 480, alignment: .top)
+        .frame(width: panelWidth, height: panelHeight, alignment: .top)
         .onChange(of: selectedTab) { _, newValue in
             if !isCollapsed {
-                manager.updateStatusWindowWidth(newValue == 0 ? 300 : 600)
+                manager.updateStatusWindowSize(width: newValue == 0 ? 300 : 600, height: panelHeight)
             }
+        }
+        .onChange(of: isCollapsed) { _, _ in
+            manager.updateStatusWindowSize(width: panelWidth, height: panelHeight)
         }
         .background(
             ZStack {
@@ -310,6 +321,10 @@ struct TeamStatusView: View {
                                             RoundedRectangle(cornerRadius: 12)
                                                 .fill(log.isUser ? Color.blue : (manager.isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.06)))
                                         )
+                                    if !log.sources.isEmpty {
+                                        SourceChipsView(sources: log.sources, isDarkMode: manager.isDarkMode)
+                                            .frame(maxWidth: 220, alignment: .leading)
+                                    }
                                     Text(log.timestamp, style: .time)
                                         .font(.system(size: 8))
                                         .foregroundColor(textColor.opacity(0.35))
@@ -331,6 +346,7 @@ struct TeamStatusView: View {
 
             // ── 하단: 입력창 (팀 채팅 + 첨부파일) ──
             Divider().background(textColor.opacity(0.08))
+            scheduleTasksStrip
 
             // 첨부파일 미리보기
             if !pendingAttachments.isEmpty {
@@ -387,6 +403,89 @@ struct TeamStatusView: View {
         }
     }
 
+    private var scheduleTasksStrip: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 6) {
+                Image(systemName: "clock.badge.checkmark")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(.orange)
+                Text("스케줄 업무")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(textColor.opacity(0.55))
+                Spacer()
+                if !manager.automationTasks.isEmpty {
+                    Text("\(manager.automationTasks.count)")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.orange)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(Color.orange.opacity(0.12)))
+                }
+            }
+
+            if manager.automationTasks.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus.circle")
+                        .font(.system(size: 10))
+                    Text("/schedule 09:00 오늘 주요뉴스")
+                        .font(.system(size: 10))
+                        .lineLimit(1)
+                    Spacer()
+                }
+                .foregroundColor(textColor.opacity(0.32))
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(Array(manager.automationTasks.sorted { $0.nextRunAt < $1.nextRunAt }.enumerated()), id: \.element.id) { index, task in
+                            scheduleTaskChip(index: index + 1, task: task)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(
+            Rectangle()
+                .fill(manager.isDarkMode ? Color.white.opacity(0.025) : Color.black.opacity(0.018))
+        )
+    }
+
+    private func scheduleTaskChip(index: Int, task: AgentWindowManager.AutomationTask) -> some View {
+        HStack(spacing: 6) {
+            Text("\(index)")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundColor(.white)
+                .frame(width: 16, height: 16)
+                .background(Circle().fill(Color.orange))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(task.scheduleText)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(.orange)
+                Text(task.prompt)
+                    .font(.system(size: 9))
+                    .foregroundColor(textColor.opacity(0.65))
+                    .lineLimit(1)
+            }
+            Button(action: { manager.cancelAutomationTask(id: task.id) }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundColor(textColor.opacity(0.35))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(manager.isDarkMode ? Color.white.opacity(0.06) : Color.white.opacity(0.85))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.orange.opacity(0.18), lineWidth: 1)
+                )
+        )
+    }
+
     private func openTeamFilePicker() {
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = true
@@ -420,6 +519,19 @@ struct TeamStatusView: View {
         let attachments = pendingAttachments
         inputText = ""
         pendingAttachments = []
+
+        Task {
+            if await ConversationMemory.handleChatCommand(
+                text,
+                roomID: manager.currentRoomID,
+                manager: manager,
+                currentAgent: manager.fallbackTeamLeader()
+            ) {
+                return
+            }
+        }
+
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("/") else { return }
 
         // 첨부파일 컨텍스트 포함
         let attachmentContext = ConversationMemory.buildAttachmentContext(from: attachments)
