@@ -20,23 +20,36 @@ final class AIService {
         agentConfig: AgentWindowManager.AgentConfig? = nil
     ) -> AsyncThrowingStream<String, Error> {
 
-        let provider = agentConfig?.llmProvider ?? .gemini
+        let provider: LLMProvider
+        if let configured = agentConfig?.llmProvider {
+            provider = configured
+        } else if let raw = UserDefaults.standard.string(forKey: "defaultLLMProvider"),
+                  let defaultProvider = LLMProvider(rawValue: raw) {
+            provider = defaultProvider
+        } else {
+            provider = .gemini
+        }
 
         switch provider {
         case .gemini:
             return geminiStream(text: text, agentID: agentID, chatHistory: chatHistory)
         case .openAI:
-            let modelId = UserDefaults.standard.string(forKey: "openAIModelId") ?? "gpt-4o"
+            // 사용자 수동 설정 있으면 그대로, 없으면 openAIStream 내부에서 동적 발견
+            let modelId = UserDefaults.standard.string(forKey: "openAIModelId") ?? ""
             return openAIStream(text: text, agentID: agentID, chatHistory: chatHistory, modelId: modelId)
         case .claude:
             return claudeStream(text: text, agentID: agentID, chatHistory: chatHistory)
         case .openRouter:
-            let modelId = agentConfig?.openRouterModelId ?? "meta-llama/llama-3-8b-instruct"
+            let modelId = agentConfig?.openRouterModelId
+                ?? UserDefaults.standard.string(forKey: "openRouterModelId")
+                ?? "meta-llama/llama-3-8b-instruct"
             return openRouterStream(text: text, agentID: agentID, chatHistory: chatHistory, modelId: modelId)
         }
     }
 
     private var cachedGeminiModelId: String?
+    private var cachedClaudeModelId: String?
+    private var cachedOpenAIModelId: String?
 
     // MARK: - Gemini Self-Healing Discovery
     private func discoverLatestGeminiModel(apiKey: String) async throws -> String {
@@ -57,45 +70,126 @@ final class AIService {
             throw AIServiceError.invalidResponse
         }
         
-        var validModels: [(id: String, version: Double)] = []
-        
+        var validModels: [(id: String, score: Double)] = []
+        let nonConversational = ["embedding", "aqa", "tuning"]
+
         for model in models {
             guard let name = model["name"] as? String,
                   let supportedMethods = model["supportedGenerationMethods"] as? [String],
                   name.contains("gemini"),
-                  supportedMethods.contains("generateContent") else {
+                  supportedMethods.contains("generateContent"),
+                  !nonConversational.contains(where: { name.contains($0) }) else {
                 continue
             }
-            
+
             let modelId = name.replacingOccurrences(of: "models/", with: "")
-            let version = extractVersion(from: modelId)
-            validModels.append((id: modelId, version: version))
+            validModels.append((id: modelId, score: scoreModel(modelId)))
         }
-        
-        validModels.sort { a, b in
-            if a.version != b.version {
-                return a.version > b.version
-            }
-            return a.id > b.id
-        }
+
+        validModels.sort { $0.score > $1.score }
         
         guard let bestModel = validModels.first?.id else {
-            return "gemini-1.5-flash"
+            return "gemini-2.0-flash"
         }
         
         print("[AIService] 🔍 Self-Healing: 최신 Gemini 모델 동적 색인 성공 -> \(bestModel)")
         return bestModel
     }
 
+    // MARK: - Claude Model Discovery
+    private func discoverLatestClaudeModel(apiKey: String) async throws -> String {
+        guard let url = URL(string: "https://api.anthropic.com/v1/models") else {
+            return "claude-opus-4-7"
+        }
+        var request = URLRequest(url: url)
+        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+
+        let (data, response) = try await session.data(for: request)
+        guard let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200,
+              let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let models = json["data"] as? [[String: Any]] else {
+            return "claude-opus-4-7"
+        }
+
+        let best = models
+            .compactMap { $0["id"] as? String }
+            .filter { $0.hasPrefix("claude-") }
+            .map { (id: $0, score: scoreModel($0)) }
+            .sorted { $0.score > $1.score }
+            .first?.id ?? "claude-opus-4-7"
+
+        print("[AIService] 🔍 Claude 모델 동적 색인 성공 -> \(best)")
+        return best
+    }
+
+    // MARK: - OpenAI Model Discovery
+    private func discoverLatestOpenAIModel(apiKey: String) async throws -> String {
+        guard let url = URL(string: "https://api.openai.com/v1/models") else {
+            return "gpt-4o"
+        }
+        var request = URLRequest(url: url)
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await session.data(for: request)
+        guard let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200,
+              let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let models = json["data"] as? [[String: Any]] else {
+            return "gpt-4o"
+        }
+
+        let excludePatterns = ["instruct", "embedding", "tts", "whisper", "dall-e",
+                               "babbage", "davinci", "curie", "ada", "realtime", "search"]
+        let best = models
+            .compactMap { $0["id"] as? String }
+            .filter { id in
+                id.hasPrefix("gpt-") && !excludePatterns.contains(where: { id.contains($0) })
+            }
+            .map { (id: $0, score: scoreModel($0)) }
+            .sorted { $0.score > $1.score }
+            .first?.id ?? "gpt-4o"
+
+        print("[AIService] 🔍 OpenAI 모델 동적 색인 성공 -> \(best)")
+        return best
+    }
+
     private func extractVersion(from text: String) -> Double {
-        let pattern = "([0-9]+\\.[0-9]+)"
-        if let regex = try? NSRegularExpression(pattern: pattern),
+        // 1. 점 구분: "gemini-2.5", "gpt-5.4"
+        if let regex = try? NSRegularExpression(pattern: "([0-9]+\\.[0-9]+)"),
            let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
            let range = Range(match.range(at: 1), in: text),
-           let version = Double(String(text[range])) {
-            return version
-        }
+           let v = Double(String(text[range])) { return v }
+
+        // 2. 대시 구분 major-minor 1~2자리: "claude-opus-4-7"→4.7, "claude-3-5-sonnet"→3.5
+        // 8자리 날짜(20240620)는 \d{1,2} 제한으로 자동 제외
+        if let regex = try? NSRegularExpression(pattern: "(?:^|[-_])(\\d{1,2})-(\\d{1,2})(?:[-_]|$)"),
+           let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+           let r1 = Range(match.range(at: 1), in: text),
+           let r2 = Range(match.range(at: 2), in: text),
+           let major = Double(String(text[r1])),
+           let minor = Double(String(text[r2])) { return major + minor / 10.0 }
+
+        // 3. 단일 정수: "gpt-5", "o4"
+        if let regex = try? NSRegularExpression(pattern: "(?:^|[^0-9])(\\d+)(?:[^0-9]|$)"),
+           let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+           let range = Range(match.range(at: 1), in: text),
+           let v = Double(String(text[range])) { return v }
+
         return 0.0
+    }
+
+    /// 순수 알고리즘 스코어링 — 버전 하드코딩 없음, 미래 모델 자동 대응
+    private func scoreModel(_ id: String) -> Double {
+        var score = extractVersion(from: id) * 1000.0
+        let idLow = id.lowercased()
+        if      ["ultra", "opus"].contains(where: { idLow.contains($0) })                         { score += 30 }
+        else if ["pro", "sonnet"].contains(where: { idLow.contains($0) }),
+                !idLow.contains("lite")                                                             { score += 20 }
+        else if ["flash", "4o"].contains(where: { idLow.contains($0) }),
+                !idLow.contains("lite")                                                             { score += 10 }
+        else if ["lite", "mini", "haiku", "nano"].contains(where: { idLow.contains($0) })          { score += 5  }
+        if idLow.contains("customtools") { score -= 100 }
+        return score
     }
 
     // MARK: - Message Builders
@@ -104,8 +198,15 @@ final class AIService {
         let userTitle = UserDefaults.standard.string(forKey: "userTitle") ?? "수석님"
         let userName = UserDefaults.standard.string(forKey: "userName") ?? ""
         
+        let selectedJob = UserDefaults.standard.string(forKey: "custom_job_\(agentID)") ?? ""
         let customPersona = UserDefaults.standard.string(forKey: "custom_persona_\(agentID)") ?? ""
-        let appliedPersona = customPersona.isEmpty ? personaInfo.persona : customPersona
+        var appliedPersona = personaInfo.persona
+        if !selectedJob.isEmpty && selectedJob != personaInfo.role {
+            appliedPersona += "\n\n[보조 직무]\n기본 직업은 '\(personaInfo.role)'이고, 추가로 '\(selectedJob)' 관점도 함께 고려합니다."
+        }
+        if !customPersona.isEmpty {
+            appliedPersona += "\n\n[사용자 추가 설정]\n\(customPersona)"
+        }
         
         return """
         당신은 이 팀의 구성원입니다. 다른 에이전트들과 협력하여 사용자의 요청을 해결하세요.
@@ -177,9 +278,10 @@ final class AIService {
                     if let httpResp = response as? HTTPURLResponse, httpResp.statusCode != 200 {
                         print("[AIService] ❌ Gemini HTTP \(httpResp.statusCode) (model: \(modelToUse), agent: \(agentID))")
                         
-                        // 404 모델 에러 시 Self-Healing 가동 (최대 1회 재시도)
-                        if httpResp.statusCode == 404 && retryCount < 1 {
-                            print("[AIService] 🔄 404 모델 없음 에러 감지. Self-Healing 로직 재가동...")
+                        // 404/429 시 Self-Healing 가동 (최대 2회 재시도)
+                        if (httpResp.statusCode == 404 || httpResp.statusCode == 429) && retryCount < 2 {
+                            let reason = httpResp.statusCode == 429 ? "Rate limit" : "모델 없음"
+                            print("[AIService] 🔄 \(reason) (\(httpResp.statusCode)). 다음 모델로 Self-Healing...")
                             cachedGeminiModelId = nil // 캐시 무효화
                             let newStream = geminiStream(text: text, agentID: agentID, chatHistory: chatHistory, retryCount: retryCount + 1)
                             for try await token in newStream {
@@ -244,11 +346,19 @@ final class AIService {
                 request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
                 request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
 
+                var claudeModel = "claude-opus-4-7"
+                if let cached = cachedClaudeModelId {
+                    claudeModel = cached
+                } else if let discovered = try? await discoverLatestClaudeModel(apiKey: apiKey) {
+                    claudeModel = discovered
+                    cachedClaudeModelId = discovered
+                }
+
                 let messages = buildAnthropicMessages(text: text, chatHistory: chatHistory)
                 let systemPrompt = buildSystemPrompt(agentID: agentID)
-                
+
                 var body: [String: Any] = [
-                    "model": "claude-3-5-sonnet-20240620",
+                    "model": claudeModel,
                     "max_tokens": 1024,
                     "stream": true,
                     "messages": messages
@@ -265,7 +375,7 @@ final class AIService {
                         return
                     }
 
-                    print("[AIService] ⚡ Claude SSE 채널 오픈 (agent: \(agentID))")
+                    print("[AIService] ⚡ Claude SSE 채널 오픈 (model: \(claudeModel), agent: \(agentID))")
                     for try await line in result.lines {
                         if Task.isCancelled { break }
                         if line.hasPrefix("data: ") {
@@ -302,6 +412,19 @@ final class AIService {
                     return
                 }
 
+                // 사용자 수동 설정 우선, 없으면 동적 발견
+                var resolvedModel = modelId.isEmpty ? "" : modelId
+                if resolvedModel.isEmpty {
+                    if let cached = cachedOpenAIModelId {
+                        resolvedModel = cached
+                    } else if let discovered = try? await discoverLatestOpenAIModel(apiKey: apiKey) {
+                        resolvedModel = discovered
+                        cachedOpenAIModelId = discovered
+                    } else {
+                        resolvedModel = "gpt-4o"
+                    }
+                }
+
                 guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else {
                     continuation.finish(throwing: AIServiceError.invalidResponse)
                     return
@@ -317,9 +440,8 @@ final class AIService {
                 if !systemPrompt.isEmpty {
                     messages.insert(["role": "system", "content": systemPrompt], at: 0)
                 }
-                // modelId 동적 주입: SettingsView의 openAIModelId 필드 값이 그대로 body에 삽입됨
                 let body: [String: Any] = [
-                    "model": modelId,
+                    "model": resolvedModel,
                     "messages": messages,
                     "stream": true,
                     "max_tokens": 1024
@@ -496,12 +618,139 @@ final class AIService {
         return text
     }
 
+    // MARK: - Claude with Tool Calling (non-streaming, multi-turn)
+    /// Tool calling 루프 — LLM이 tool_use를 반환하면 실행 후 결과를 다시 보내고 최종 텍스트 응답을 받습니다.
+    /// v1.1 실험적 기능. UI 통합 전 콘솔 테스트용.
+    func claudeWithTools(
+        text: String,
+        agentID: String,
+        chatHistory: [AgentWindowManager.ChatLog],
+        maxIterations: Int = 4
+    ) async throws -> String {
+        let apiKey = KeychainManager.load(key: "claudeAPIKey") ?? ""
+        guard !apiKey.isEmpty else { throw AIServiceError.noAPIKeys }
+        guard let url = URL(string: "https://api.anthropic.com/v1/messages") else {
+            throw AIServiceError.invalidResponse
+        }
+
+        let tools = await MainActor.run { AgentToolRegistry.shared.anthropicToolsArray() }
+        var messages = buildAnthropicMessages(text: text, chatHistory: chatHistory)
+        let systemPrompt = buildSystemPrompt(agentID: agentID)
+
+        var claudeModel = "claude-opus-4-7"
+        if let cached = cachedClaudeModelId {
+            claudeModel = cached
+        } else if let discovered = try? await discoverLatestClaudeModel(apiKey: apiKey) {
+            claudeModel = discovered
+            cachedClaudeModelId = discovered
+        }
+
+        for iteration in 0..<maxIterations {
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "content-type")
+            request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+            request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+
+            var body: [String: Any] = [
+                "model": claudeModel,
+                "max_tokens": 1024,
+                "messages": messages,
+                "tools": tools
+            ]
+            if !systemPrompt.isEmpty { body["system"] = systemPrompt }
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+            let (data, response) = try await session.data(for: request)
+            guard let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200,
+                  let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                throw AIServiceError.invalidResponse
+            }
+
+            let stopReason = json["stop_reason"] as? String ?? ""
+            let content = json["content"] as? [[String: Any]] ?? []
+
+            if stopReason != "tool_use" {
+                let textBlocks = content.compactMap { ($0["type"] as? String == "text") ? $0["text"] as? String : nil }
+                return textBlocks.joined(separator: "\n")
+            }
+
+            // Tool 호출 발견 → 실행 후 결과 첨부 후 재요청
+            messages.append(["role": "assistant", "content": content])
+
+            var toolResultsBlock: [[String: Any]] = []
+            for block in content where block["type"] as? String == "tool_use" {
+                guard let id = block["id"] as? String,
+                      let name = block["name"] as? String,
+                      let input = block["input"] as? [String: Any] else { continue }
+                let call = AgentToolCall(id: id, name: name, input: input)
+                let result = await AgentToolRegistry.shared.execute(call)
+                print("[AIService] 🔧 Tool \(name) → \(result.content.prefix(80))")
+                toolResultsBlock.append([
+                    "type": "tool_result",
+                    "tool_use_id": result.toolUseId,
+                    "content": result.content,
+                    "is_error": result.isError
+                ])
+            }
+            messages.append(["role": "user", "content": toolResultsBlock])
+            print("[AIService] 🔧 Tool iteration \(iteration + 1) 완료")
+        }
+        throw AIServiceError.invalidResponse
+    }
+
     // MARK: - Key Validation
     func validateKey(provider: String, apiKey: String) async throws -> String {
-        try await Task.sleep(nanoseconds: 500_000_000)
-        guard apiKey.count >= 10 else {
-            throw NSError(domain: "AIService", code: 401, userInfo: [NSLocalizedDescriptionKey: "키가 너무 짧습니다."])
+        let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 10 else { throw validationError("키가 너무 짧습니다.") }
+
+        let request: URLRequest
+        switch provider.lowercased() {
+        case LLMProvider.gemini.rawValue:
+            guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models?key=\(trimmed)") else {
+                throw AIServiceError.invalidResponse
+            }
+            request = URLRequest(url: url)
+
+        case LLMProvider.openAI.rawValue:
+            guard let url = URL(string: "https://api.openai.com/v1/models") else {
+                throw AIServiceError.invalidResponse
+            }
+            var req = URLRequest(url: url)
+            req.setValue("Bearer \(trimmed)", forHTTPHeaderField: "Authorization")
+            request = req
+
+        case LLMProvider.claude.rawValue:
+            guard let url = URL(string: "https://api.anthropic.com/v1/models") else {
+                throw AIServiceError.invalidResponse
+            }
+            var req = URLRequest(url: url)
+            req.setValue(trimmed, forHTTPHeaderField: "x-api-key")
+            req.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+            request = req
+
+        case LLMProvider.openRouter.rawValue:
+            guard let url = URL(string: "https://openrouter.ai/api/v1/models") else {
+                throw AIServiceError.invalidResponse
+            }
+            var req = URLRequest(url: url)
+            req.setValue("Bearer \(trimmed)", forHTTPHeaderField: "Authorization")
+            request = req
+
+        default:
+            throw validationError("알 수 없는 제공자입니다.")
         }
-        return "인증 성공"
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw AIServiceError.invalidResponse }
+        guard (200..<300).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw validationError("HTTP \(http.statusCode): \(String(body.prefix(160)))")
+        }
+        return "인증 성공 · 모델 목록 확인됨"
+    }
+
+    private func validationError(_ message: String) -> NSError {
+        NSError(domain: "AIService", code: 401, userInfo: [NSLocalizedDescriptionKey: message])
     }
 }

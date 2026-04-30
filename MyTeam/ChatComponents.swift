@@ -45,6 +45,7 @@ struct IMMessageBubble: View {
     let agentColor: Color
     let isDarkMode: Bool
     let timestamp: Date?
+    var sources: [AgentWindowManager.SourceReference] = []
 
     private var bubbleBg: Color {
         isUser ? .blue : (isDarkMode ? Color.white.opacity(0.11) : Color.black.opacity(0.07))
@@ -94,6 +95,11 @@ struct IMMessageBubble: View {
                         }
                     }
 
+                if !sources.isEmpty {
+                    SourceChipsView(sources: sources, isDarkMode: isDarkMode)
+                        .frame(maxWidth: 260, alignment: .leading)
+                }
+
                 if let ts = timestamp {
                     Text(ts, style: .time)
                         .font(.system(size: 9))
@@ -103,6 +109,61 @@ struct IMMessageBubble: View {
 
             if isUser { Spacer().frame(width: 8) }
         }
+    }
+}
+
+struct SourceChipsView: View {
+    let sources: [AgentWindowManager.SourceReference]
+    let isDarkMode: Bool
+
+    private var visibleSources: [AgentWindowManager.SourceReference] {
+        Array(sources.prefix(2))
+    }
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text("출처")
+                .font(.system(size: 8, weight: .semibold))
+                .foregroundColor(.secondary)
+
+            ForEach(visibleSources) { source in
+                Button(action: { open(source) }) {
+                    HStack(spacing: 3) {
+                        Image(systemName: "link")
+                            .font(.system(size: 7, weight: .bold))
+                        Text(sourceTitle(source))
+                            .lineLimit(1)
+                    }
+                    .font(.system(size: 8, weight: .medium))
+                    .foregroundColor(.blue)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(
+                        Capsule()
+                            .fill(isDarkMode ? Color.white.opacity(0.08) : Color.black.opacity(0.05))
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
+                .help(source.url)
+            }
+
+            if sources.count > visibleSources.count {
+                Text("+\(sources.count - visibleSources.count)")
+                    .font(.system(size: 8, weight: .medium))
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+
+    private func sourceTitle(_ source: AgentWindowManager.SourceReference) -> String {
+        if !source.title.isEmpty { return source.title }
+        guard let host = URL(string: source.url)?.host else { return source.provider }
+        return host.replacingOccurrences(of: "www.", with: "")
+    }
+
+    private func open(_ source: AgentWindowManager.SourceReference) {
+        guard let url = URL(string: source.url) else { return }
+        NSWorkspace.shared.open(url)
     }
 }
 

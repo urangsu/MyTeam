@@ -128,8 +128,10 @@ struct AgentChatView: View {
             }
             // 초기 창 크기 강제 설정 (SwiftUI 레이아웃 완료 후 실행)
             DispatchQueue.main.async {
-                manager.updateChatWindowSize(id: config.id, width: viewWidth, height: 520,
-                                              minSize: NSSize(width: 300, height: 480))
+                if manager.savedChatWindowSize() == nil {
+                    manager.updateChatWindowSize(id: config.id, width: viewWidth, height: 520,
+                                                  minSize: NSSize(width: 300, height: 480))
+                }
             }
         }
         .onChange(of: selectedTab) { _, newValue in
@@ -642,7 +644,8 @@ struct AgentChatView: View {
                 agentImageName: log.isUser ? "" : (log.agentID == "team_all" ? "" : manager.allAvailableAgents.first(where: { $0.id == log.agentID })?.fallbackImageName ?? currentAgent.fallbackImageName),
                 agentColor: log.isUser ? .blue : currentAgent.color,
                 isDarkMode: manager.isDarkMode,
-                timestamp: log.timestamp
+                timestamp: log.timestamp,
+                sources: log.sources
             )
             .jiggle(isEditingMessages)
             .padding(.trailing, isEditingMessages ? 12 : 0)
@@ -827,6 +830,19 @@ struct AgentChatView: View {
         inputText = ""
         pendingAttachments = []
 
+        Task {
+            if await ConversationMemory.handleChatCommand(
+                text,
+                roomID: roomID,
+                manager: manager,
+                currentAgent: currentAgent
+            ) {
+                return
+            }
+        }
+
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("/") else { return }
+
         // 첨부파일 컨텍스트를 메시지에 포함
         let attachmentContext = ConversationMemory.buildAttachmentContext(from: attachments)
         let fullText = attachmentContext.isEmpty ? text : text + attachmentContext
@@ -857,31 +873,44 @@ struct AgentChatView: View {
                 history = await ConversationMemory.compactHistory(messages: history)
 
                 do {
-                    let (responseText, _) = try await AIService.shared.getResponse(
-                        text: fullText, agentID: targetID, chatHistory: history
-                    )
+                    let toolPolicy = ToolPolicy.evaluate(fullText)
+                    let toolEvidence = await ToolEvidenceService.gather(for: fullText, policy: toolPolicy)
                     let agentName = manager.activeAgents.first(where: { $0.id == targetID })?.name
                         ?? manager.allAvailableAgents.first(where: { $0.id == targetID })?.name
                         ?? "에이전트"
+                    let agentConfig = manager.activeAgents.first(where: { $0.id == targetID })
+                        ?? manager.allAvailableAgents.first(where: { $0.id == targetID })
+                    let personalPolicy = ConversationMemory.buildPersonalResponsePolicy(
+                        for: agentConfig,
+                        toolPolicy: toolPolicy
+                    )
+                    let groundedText = fullText
+                        + manager.persistentContext
+                        + personalPolicy
+                        + toolEvidence.promptContext
 
                     // ── 순차 스트리밍: SpeechManager 백그라운드 위임 ──
                     if manager.isSilentMode {
+                        _ = await MainActor.run { manager.typingAgentIDs.insert(targetID) }
+                        let (responseText, _) = try await AIService.shared.getResponse(
+                            text: groundedText,
+                            agentID: targetID,
+                            chatHistory: history,
+                            agentConfig: agentConfig
+                        )
                         // 무음 모드: 즉시 화면에 띄우고 종료
                         _ = await MainActor.run {
                             manager.typingAgentIDs.remove(targetID)
                             manager.addChatLog(agentID: targetID, agentName: agentName,
-                                               text: responseText, isUser: false, roomID: roomID)
+                                               text: responseText, isUser: false, roomID: roomID, sources: toolEvidence.sources)
                         }
                     } else {
                         // 1. 타이핑 인디케이터 ON
                         _ = await MainActor.run { manager.typingAgentIDs.insert(targetID) }
 
                         // 2. SSE 스트림 오픈 (단일 String이 아니라 AsyncThrowingStream 획득을 위해 별도 메서드 사용, 호환성을 위해 AIService 업데이트가 필요하나 일단 getResponseStream을 호출)
-                        let agentConfig = manager.activeAgents.first(where: { $0.id == targetID })
-                            ?? manager.allAvailableAgents.first(where: { $0.id == targetID })
-                        
                         let tokenStream = AIService.shared.getResponseStream(
-                            text: fullText, agentID: targetID, chatHistory: history, agentConfig: agentConfig
+                            text: groundedText, agentID: targetID, chatHistory: history, agentConfig: agentConfig
                         )
 
                         // 3. SpeechManager에 SSE→오디오 배관 완전 위임
@@ -895,7 +924,7 @@ struct AgentChatView: View {
                                 DispatchQueue.main.async {
                                     manager.typingAgentIDs.remove(targetID)
                                     manager.addChatLog(agentID: targetID, agentName: agentName,
-                                                       text: chunk, isUser: false, roomID: roomID)
+                                                       text: chunk, isUser: false, roomID: roomID, sources: toolEvidence.sources)
                                     manager.setAgentSpeaking(agentID: targetID, text: chunk)
                                 }
                             }
@@ -911,4 +940,3 @@ struct AgentChatView: View {
         }
     }
 }
-

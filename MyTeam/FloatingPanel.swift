@@ -48,6 +48,7 @@ class FloatingPanel: NSPanel {
         self.acceptsMouseMovedEvents = true
 
         restorePosition()
+        restoreSizeIfAvailable(defaultSize: size)
     }
 
     override var canBecomeKey: Bool  { true }
@@ -126,7 +127,7 @@ class FloatingPanel: NSPanel {
     func savePosition() {
         UserDefaults.standard.set(self.frame.origin.x, forKey: "\(agentID)_x")
         UserDefaults.standard.set(self.frame.origin.y, forKey: "\(agentID)_y")
-        if agentID.hasPrefix("chat_") {
+        if shouldPersistSize {
             UserDefaults.standard.set(self.frame.size.width, forKey: "\(agentID)_w")
             UserDefaults.standard.set(self.frame.size.height, forKey: "\(agentID)_h")
         } else {
@@ -141,6 +142,34 @@ class FloatingPanel: NSPanel {
         if x != 0 || y != 0 {
             self.setFrameOrigin(NSPoint(x: x, y: y))
         }
+        keepInsideVisibleScreen()
+    }
+
+    private var shouldPersistSize: Bool {
+        agentID.hasPrefix("chat_") || agentID == "status_window" || agentID == "settings_window"
+    }
+
+    private func restoreSizeIfAvailable(defaultSize: NSSize) {
+        guard shouldPersistSize else { return }
+        let width = UserDefaults.standard.double(forKey: "\(agentID)_w")
+        let height = UserDefaults.standard.double(forKey: "\(agentID)_h")
+        guard width >= max(240, minSize.width), height >= max(40, minSize.height) else { return }
+        var frame = self.frame
+        frame.size = NSSize(
+            width: max(width, minSize.width == 0 ? defaultSize.width : minSize.width),
+            height: max(height, minSize.height == 0 ? defaultSize.height : minSize.height)
+        )
+        self.setFrame(frame, display: false)
+        keepInsideVisibleScreen()
+    }
+
+    private func keepInsideVisibleScreen() {
+        var frame = self.frame
+        guard let screen = NSScreen.screens.first(where: { $0.visibleFrame.intersects(frame) }) ?? NSScreen.main else { return }
+        let visible = screen.visibleFrame
+        frame.origin.x = min(max(frame.origin.x, visible.minX + 8), visible.maxX - min(frame.width, visible.width) - 8)
+        frame.origin.y = min(max(frame.origin.y, visible.minY + 8), visible.maxY - min(frame.height, visible.height) - 8)
+        self.setFrameOrigin(frame.origin)
     }
 
 }

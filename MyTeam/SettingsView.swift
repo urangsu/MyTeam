@@ -114,6 +114,7 @@ struct SettingsView: View {
     @AppStorage("teamNameColor")          private var teamNameColor: String = "#FFFFFF"
     @AppStorage("agentWindowOpacity")     private var agentWindowOpacity: Double = 0.0
     @AppStorage("useAnimalCrossingTTS")   private var useAnimalCrossingTTS: Bool = true
+    @AppStorage("ttsModelId")             private var ttsModelId: String = ModelCatalog.defaultTTSModelId
 
     // ── API 설정
     @AppStorage("defaultLLMProvider") private var defaultProviderRaw: String = LLMProvider.gemini.rawValue
@@ -148,7 +149,7 @@ struct SettingsView: View {
                 .pickerStyle(.segmented)
                 .labelsHidden()
 
-                Button(action: { NSApp.keyWindow?.close() }) {
+                Button(action: { manager.hideSettingsWindow() }) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title2)
                         .foregroundStyle(.secondary)
@@ -225,6 +226,11 @@ struct SettingsView: View {
             Section(header: Text("음성"), footer: Text("활성화 시 고품질 음성에 피치와 속도 변조를 덫씌워 캐릭터 느낌을 냅니다.")) {
                 Toggle(isOn: $useAnimalCrossingTTS) {
                     Label("동물의숲 효과", systemImage: "waveform")
+                }
+                LabeledContent {
+                    TextField("", text: $ttsModelId)
+                } label: {
+                    Label("TTS 모델 ID", systemImage: "cpu")
                 }
             }
 

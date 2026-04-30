@@ -59,6 +59,24 @@ extension AgentWindowManager {
         /// llmProvider == .openRouter 일 때 API 요청 body에 동적 삽입
         /// 예: "meta-llama/llama-3-8b-instruct", "anthropic/claude-3-haiku"
         var openRouterModelId: String? = nil
+
+        mutating func applyDeskRouting(index: Int) {
+            let providerKey = "llmProvider_desk_\(index)"
+            let modelKey = "openRouterModelId_desk_\(index)"
+            if let raw = UserDefaults.standard.string(forKey: providerKey),
+               let provider = LLMProvider(rawValue: raw) {
+                llmProvider = provider
+            } else if let raw = UserDefaults.standard.string(forKey: "defaultLLMProvider"),
+                      let provider = LLMProvider(rawValue: raw) {
+                llmProvider = provider
+            }
+
+            if let model = UserDefaults.standard.string(forKey: modelKey), !model.isEmpty {
+                openRouterModelId = model
+            } else if let model = UserDefaults.standard.string(forKey: "openRouterModelId"), !model.isEmpty {
+                openRouterModelId = model
+            }
+        }
     }
 
 }
