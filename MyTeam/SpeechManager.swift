@@ -120,13 +120,11 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         let streamId = "mlx_\(UUID().uuidString)"
 
         // MLX Inference: 텍스트 → PCM AsyncStream
-        let pcmStream = MLXInferenceService.shared.generateTTSStream(text: text, characterName: characterName)
+        let pcmStream = Qwen3TTSService.shared.generateTTSStream(text: text, characterName: characterName)
 
-        // 🎯 동물의 숲 효과 (Animal Crossing Style):
-        // 별개의 엔진이 아니라, Chatterbox가 생성한 고품질 음성에 피치와 속도 변조를 덫씌워 캐릭터 느낌을 냅니다.
-        let useAnimalEffect = UserDefaults.standard.bool(forKey: "useAnimalCrossingTTS")
-        let pitch: Float = useAnimalEffect ? 1.5 : 1.0
-        let rate: Float  = useAnimalEffect ? 1.3 : 1.0
+        // 🎯 레퍼런스 음성 원본 그대로 재생 (피치/속도 변형 금지 — 사용자 요구)
+        let pitch: Float = 0.0   // AVAudioUnitTimePitch: cents 단위, 0 = 변형 없음
+        let rate: Float  = 1.0   // 1.0 = 원본 속도
 
         // AudioPlaybackService: PCM 스트림 소비 + 재생 시작 시 Lip-Sync 콜백 발화
         // onPlaybackStarted는 playStream → appendRawPCM → playerNode.play() 직후 트리거됨
@@ -171,7 +169,11 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
 
     func speak(text: String, agentID: String? = nil, characterName: String? = nil) {
         guard !AgentWindowManager.shared.isSilentMode else { return }
-        let character = characterName ?? "루나"
+        let character = characterName
+            ?? agentID.flatMap { id in
+                AgentWindowManager.shared.allAvailableAgents.first(where: { $0.id == id })?.name
+            }
+            ?? "루나"
         currentSpeakingAgentID = agentID
         DispatchQueue.main.async { self.isSpeaking = true }
 
@@ -180,7 +182,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
             for sentence in sentences {
                 if Task.isCancelled { break }
                 let streamId = "mlx_\(UUID().uuidString)"
-                let pcmStream = await MLXInferenceService.shared.generateTTSStream(text: sentence, characterName: character)
+                let pcmStream = Qwen3TTSService.shared.generateTTSStream(text: sentence, characterName: character)
                 // enqueue to audio player (it will play sequentially)
                 await playback.playStream(streamId: streamId, stream: pcmStream,
                                           characterName: character, pitch: 1.0, rate: 1.0)
@@ -195,7 +197,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         currentStreamTask = nil
 
         // MLX 추론 루프 취소
-        Task { await MLXInferenceService.shared.cancelCurrentInference() }
+        Task { await Qwen3TTSService.shared.cancelCurrentInference() }
 
         // 오디오 엔진 즉각 정지
         Task { await playback.stopAll() }
