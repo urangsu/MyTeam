@@ -79,10 +79,11 @@ final class WorkflowEngine {
             }
         }
 
-        // 완료 알림 (sessionID 포함 — AgentWindowManager가 해당 workflow만 필터하는 데 사용)
+        // 완료 알림 (workflowID 포함 — AgentWindowManager가 해당 workflow만 필터하는 데 사용)
+        // 키 이름: "workflowID" (sessionID라는 이름을 쓰지 않는다 — AICallBudgetManager.sessionID와 혼동 방지)
         let workspaceURL = context.workspaceURL
         let completedArtifacts = artifacts
-        let completedSessionID = sessionID
+        let completedWorkflowID = sessionID
         Task { @MainActor in
             NotificationCenter.default.post(
                 name: .workflowCompleted,
@@ -90,7 +91,7 @@ final class WorkflowEngine {
                 userInfo: [
                     "workspaceURL": workspaceURL,
                     "artifacts": completedArtifacts,
-                    "sessionID": completedSessionID   // ← workflow 식별자
+                    "workflowID": completedWorkflowID
                 ]
             )
         }

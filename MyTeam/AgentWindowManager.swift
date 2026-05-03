@@ -75,7 +75,10 @@ class AgentWindowManager: ObservableObject {
     @Published var typingAgentIDs: Set<String> = []
     /// Workflow 실행 중 여부 — WorkflowOrchestrator가 set, UI가 중지 버튼 표시에 사용
     @Published var isWorkflowRunning: Bool = false
-    /// 최근 완료된 workflow artifact 목록 — 채팅 하단 ArtifactCardView에 표시
+    /// 최근 완료된 workflow artifact 목록 — 채팅 하단 ArtifactCardView에 표시.
+    /// TODO: room scope 분리 — 현재는 앱 전역이라 여러 채팅방에서 artifact가 섞일 수 있음.
+    ///       제품 구조에서는 recentArtifactsByRoom: [UUID: [IndexedArtifact]] 또는
+    ///       ChatRoom에 artifacts 필드를 붙여야 한다. 데모 이후 우선 적용.
     @Published var recentArtifacts: [IndexedArtifact] = []
     
     // ── 지능형 기억 보호 (Key Fact Buffer) ──
@@ -251,21 +254,30 @@ class AgentWindowManager: ObservableObject {
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(handleWake), name: NSWorkspace.didWakeNotification, object: nil)
 
         // WorkflowEngine 완료 시 recentArtifacts 갱신 (채팅에서 ArtifactCardView 표시)
-        // userInfo["sessionID"] 기준으로 방금 완료된 workflow의 artifact만 표시.
+        // userInfo["workflowID"] 기준으로 방금 완료된 workflow의 artifact만 표시.
+        // "sessionID" 키는 하위 호환 fallback (경고 기록 후 사용).
         NotificationCenter.default.addObserver(
             forName: .workflowCompleted, object: nil, queue: .main
         ) { [weak self] notification in
             guard let self else { return }
-            let sessionID = notification.userInfo?["sessionID"] as? String
+            let workflowID: String?
+            if let wid = notification.userInfo?["workflowID"] as? String {
+                workflowID = wid
+            } else if let sid = notification.userInfo?["sessionID"] as? String {
+                // 구버전 호환 — 새 코드에서는 "workflowID" 키를 사용한다
+                AppLog.warning("[AgentWindowManager] workflowCompleted: 'sessionID' fallback 사용 — 'workflowID' 키로 통일 필요")
+                workflowID = sid
+            } else {
+                workflowID = nil
+            }
+
             Task {
                 let all = await ArtifactStore.shared.loadArtifacts()
                 let recent: [IndexedArtifact]
-                if let sid = sessionID {
-                    // 방금 완료된 workflow의 artifact만 필터
-                    recent = all.filter { $0.workflowID == sid }
+                if let wid = workflowID {
+                    recent = all.filter { $0.workflowID == wid }
                 } else {
-                    // sessionID 없는 경우 — fallback (데이터 오염 방지용 경고)
-                    AppLog.warning("[AgentWindowManager] workflowCompleted에 sessionID 없음 — suffix(5) fallback 사용")
+                    AppLog.warning("[AgentWindowManager] workflowCompleted에 workflowID 없음 — suffix(5) fallback (데이터 오염 위험)")
                     recent = Array(all.suffix(5))
                 }
                 await MainActor.run { self.recentArtifacts = recent }

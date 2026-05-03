@@ -6,6 +6,73 @@
 
 ---
 
+## 2026-05-03 (2차 — 안정화 마무리 + 데모 검증)
+
+### 안정화 완료 사항
+
+| 항목 | 내용 |
+|------|------|
+| Rolling budget | beginSession()에서 rollingCallLog 초기화 제거. 60초/5회 제한 실제 동작 |
+| Artifact 카드 필터 | workflowID 기준 필터. 이전 workflow 파일 오염 없음 |
+| ArtifactCardView | cloud/local 분기, path 비면 disabled, Finder 버튼 cloud에서 숨김 |
+| 취소→네트워크 | Gemini/Claude/OpenAI/OpenRouter 4개 provider 모두 withTaskCancellationHandler 적용 |
+| Validator | 필수 XML 내용 읽기 실패 = validation failure (silent skip 제거) |
+| Validator | deflate(method=8) 항목은 .compressedContent 에러 throw (MiniZipWriter 계약 명시) |
+| workflowID 통일 | notification userInfo 키를 "workflowID"로 통일. "sessionID" fallback + warning |
+| room scope TODO | recentArtifacts 전역 한계 TODO 주석 추가 |
+
+### 데모 테스트 — PPTX/XLSX 생성 파이프라인
+
+**테스트 날짜:** 2026-05-03  
+**테스트 환경:** 코드 정적 분석 + ZIP 구조 검증 기준 (앱 런타임 실행은 수석님이 직접 확인 필요)
+
+**PPTX 파이프라인 분석:**
+```
+"MyTeam 회사원들을 소개할 PPT 만들어줘"
+→ requiresFileCreation() → true (ppt 명사 + 만들어 동사)
+→ 플래너 LLM: create_presentation_plan → generate_pptx 2단계
+→ PPTXWriter → MiniZipWriter(stored) → .pptx
+→ DocumentPackageValidator.validatePPTX():
+   [Content_Types].xml ✓, ppt/presentation.xml ✓
+   ppt/_rels/presentation.xml.rels ✓ (slide 관계 검사)
+   ppt/slides/slideN.xml × N ✓ (slide 수 일치)
+   content type "presentationml.slide" ✓
+→ ArtifactCardView "열기" 버튼 표시
+```
+
+**XLSX 파이프라인 분석:**
+```
+"MyTeam 기능을 표로 정리해서 엑셀 파일로 만들어줘"
+→ requiresFileCreation() → true (엑셀 명사 + 만들어 동사)
+→ 플래너 LLM: create_spreadsheet_plan → generate_xlsx 2단계
+→ XLSXWriter → MiniZipWriter(stored) → .xlsx
+→ DocumentPackageValidator.validateXLSX():
+   [Content_Types].xml ✓, xl/workbook.xml ✓
+   xl/_rels/workbook.xml.rels ✓ (sheet 참조)
+   xl/worksheets/sheetN.xml ✓ (sheet 수 일치)
+   xl/sharedStrings.xml ✓ (si 개수 불일치 경고)
+   xl/styles.xml ✓
+→ ArtifactCardView "열기" + "Finder" 버튼 표시
+```
+
+**런타임 테스트 결과 (수석님 직접 확인 항목):**
+| 항목 | 결과 |
+|------|------|
+| .pptx — Keynote/PowerPoint 열기 | ☐ 미확인 |
+| .pptx — 한글 깨짐 | ☐ 미확인 |
+| .xlsx — Numbers/Excel 열기 | ☐ 미확인 |
+| .xlsx — 한글 깨짐 | ☐ 미확인 |
+| ArtifactCard "열기" 버튼 | ☐ 미확인 |
+| ArtifactCard "Finder" 버튼 | ☐ 미확인 |
+| 취소 버튼 (■) → 작업 중단 | ☐ 미확인 |
+
+**알려진 제약:**
+- PPTX 슬라이드 레이아웃: 단일 레이아웃 (title + bullets). 디자인 커스텀 없음.
+- XLSX 셀 스타일: 헤더 bold + freeze row. 색상/병합 없음.
+- Google Slides/Sheets: stub (OAuth 연결 필요 메시지만 반환).
+
+---
+
 ## 2026-05-03
 
 ### WorkflowOrchestrator + 업무 실행 엔진 추가
