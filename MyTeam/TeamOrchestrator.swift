@@ -505,13 +505,23 @@ class TeamOrchestrator {
 
     private func needsEvidenceGather(_ message: String) -> Bool {
         let lower = message.lowercased()
-        let triggers = [
-            "http", "https", "www.", ".com", ".kr", ".io",  // URL
-            "파일", "첨부", "자료",                            // 파일 참조
-            "웹", "검색", "찾아", "찾아봐", "최신", "뉴스",     // 웹 검색
-            "주가", "환율", "날씨", "오늘", "지금", "현재"       // 실시간 정보
-        ]
-        return triggers.contains { lower.contains($0) }
+
+        // URL 포함 → 즉시 gather
+        if lower.contains("http") || lower.contains("www.") { return true }
+
+        // 첨부파일 / 링크 참조
+        if lower.contains("첨부") { return true }
+
+        // 명시적 웹 검색 의도
+        if lower.contains("웹") || lower.contains("검색") ||
+           lower.contains("찾아줘") || lower.contains("찾아봐") { return true }
+
+        // 실시간/외부 정보 (오늘/지금/현재 단독 제외)
+        let externalInfoWords = ["날씨", "뉴스", "주가", "환율", "가격", "버전",
+                                 "최신정보", "최신 정보", "실시간"]
+        if externalInfoWords.contains(where: { lower.contains($0) }) { return true }
+
+        return false
     }
 
     private func emitUnavailableMentionNoticeIfNeeded(

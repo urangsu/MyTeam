@@ -19,6 +19,7 @@ final class WorkflowEngine {
 
         for step in plan.steps {
             AppLog.info("[WorkflowEngine] 실행: '\(step.title)' [\(step.toolName)]")
+            var executedStep = step  // repair 성공 시 repairedStep으로 교체
             var result = await ToolExecutor.shared.execute(
                 step: step,
                 context: context,
@@ -30,6 +31,7 @@ final class WorkflowEngine {
                 AppLog.info("[WorkflowEngine] 입력 오류 감지 → step 수정 시도: '\(step.title)'")
                 if let repairedStep = await repairStep(step, error: rawErr, plan: plan) {
                     AppLog.info("[WorkflowEngine] step 수정 완료 → 재실행: '\(step.title)'")
+                    executedStep = repairedStep
                     result = await ToolExecutor.shared.execute(
                         step: repairedStep,
                         context: context,
@@ -41,20 +43,21 @@ final class WorkflowEngine {
             if result.success {
                 if let relPath = result.artifactPath {
                     let absPath = context.workspaceURL.appendingPathComponent(relPath).path
+                    // artifact 기록은 실제 실행된 step(executedStep) 기준
                     let artifact = Artifact(
-                        stepID: step.id,
-                        stepTitle: step.title,
+                        stepID: executedStep.id,
+                        stepTitle: executedStep.title,
                         path: relPath,
                         output: result.output
                     )
                     artifacts.append(artifact)
 
-                    // ArtifactIndex 등록
+                    // ArtifactIndex 등록 (executedStep 기준)
                     let indexed = IndexedArtifact(
                         id: UUID().uuidString,
                         workflowID: sessionID,
-                        title: step.title,
-                        type: inferArtifactType(toolName: step.toolName),
+                        title: executedStep.title,
+                        type: inferArtifactType(toolName: executedStep.toolName),
                         filename: relPath,
                         path: absPath,
                         preview: String(result.output.prefix(200)),
@@ -64,14 +67,14 @@ final class WorkflowEngine {
                 }
             } else {
                 let rawErr = result.error ?? "알 수 없는 오류"
-                let friendlyErr = friendlyError(rawErr, step: step)
-                failedSteps.append((step: step, error: friendlyErr))
+                let friendlyErr = friendlyError(rawErr, step: executedStep)
+                failedSteps.append((step: executedStep, error: friendlyErr))
 
-                if step.isRequired {
-                    AppLog.error("[WorkflowEngine] 필수 단계 실패 → 중단: '\(step.title)' — \(rawErr)")
+                if executedStep.isRequired {
+                    AppLog.error("[WorkflowEngine] 필수 단계 실패 → 중단: '\(executedStep.title)' — \(rawErr)")
                     break
                 } else {
-                    AppLog.warning("[WorkflowEngine] 선택 단계 실패 → 계속: '\(step.title)' — \(rawErr)")
+                    AppLog.warning("[WorkflowEngine] 선택 단계 실패 → 계속: '\(executedStep.title)' — \(rawErr)")
                 }
             }
         }
@@ -157,6 +160,38 @@ final class WorkflowEngine {
 
     private func buildStepRepairPrompt(step: WorkflowStep, error: String, plan: WorkflowPlan) -> String {
         let inputJSON = (try? String(data: JSONEncoder().encode(step.input), encoding: .utf8)) ?? "{}"
+
+        // 도구 inputSchema 설명
+        let schemaDesc: String
+        if let tool = ToolRegistry.shared.lookup(name: step.toolName) {
+            let params = tool.inputSchema
+                .sorted { $0.key < $1.key }
+                .map { "  - \($0.key): \($0.value)" }
+                .joined(separator: "\n")
+            schemaDesc = "도구 파라미터 설명:\n\(params)"
+        } else {
+            schemaDesc = ""
+        }
+
+        // 복잡한 JSON 파라미터에 대한 형식 힌트
+        let formatHint: String
+        switch step.toolName {
+        case "create_presentation_plan":
+            formatHint = """
+            slides_json 형식 (반드시 JSON 문자열로 전달):
+            "[{\\"title\\":\\"슬라이드 제목\\",\\"content\\":\\"슬라이드 내용\\"},...]"
+            (배열 안에 title/content 키를 가진 객체 나열)
+            """
+        case "create_spreadsheet_plan":
+            formatHint = """
+            data_json 형식 (반드시 JSON 문자열로 전달):
+            "{\\"headers\\":[\\"항목\\",\\"값\\"],\\"rows\\":[[\\"A\\",\\"1\\"],[\\"B\\",\\"2\\"]]}"
+            (headers 배열 + rows 2차원 배열 필수)
+            """
+        default:
+            formatHint = ""
+        }
+
         return """
         아래 워크플로우 단계가 입력 오류로 실패했습니다.
         JSON 블록(```json ... ```)으로 수정된 단계만 반환하세요. 다른 설명은 없어야 합니다.
@@ -167,6 +202,8 @@ final class WorkflowEngine {
         현재 입력값: \(inputJSON)
         오류 메시지: \(error)
 
+        \(schemaDesc)
+        \(formatHint.isEmpty ? "" : "\n\(formatHint)")
         수정된 단계 JSON 스키마:
         {
           "id": "\(step.id)",

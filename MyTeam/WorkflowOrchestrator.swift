@@ -42,16 +42,31 @@ final class WorkflowOrchestrator {
     // MARK: - File-creation heuristic
 
     /// 파일/문서 생성 의도가 담긴 메시지인지 판단한다.
-    /// true → WorkflowEngine, false → TeamOrchestrator 토의
+    /// 산출물 명사 + 생성 동사가 함께 있을 때만 true.
+    /// "만들어" / "작성해" 동사 단독으로는 false.
     private func requiresFileCreation(_ message: String) -> Bool {
         let lower = message.lowercased()
-        let keywords = [
-            "파일", "보고서", "ppt", "엑셀", "스프레드시트", "표로", "표를",
-            "저장", "초안", "문서", "생성해", "만들어", "작성해", "정리해줘",
-            "만들어줘", "만들어 줘", "작성해줘", "작성해 줘", "저장해줘",
-            "정리해 줘", "만들어주세요", "작성해주세요", "저장해주세요"
-        ]
-        return keywords.contains { lower.contains($0) }
+
+        // 산출물 명사 (파일/문서 결과물)
+        let artifactNouns = ["보고서", "ppt", "프레젠테이션", "발표자료", "엑셀",
+                             "스프레드시트", "파일", "문서", "초안"]
+        // 생성 동사
+        let creationVerbs = ["만들어", "작성해", "생성해", "저장해"]
+
+        let hasNoun = artifactNouns.contains { lower.contains($0) }
+        let hasVerb = creationVerbs.contains { lower.contains($0) }
+
+        // 산출물 명사 + 생성 동사 조합
+        if hasNoun && hasVerb { return true }
+
+        // "표로/표를" + 정리/만들/작성/생성 → 스프레드시트 생성 의도
+        if (lower.contains("표로") || lower.contains("표를")) &&
+            (lower.contains("정리") || lower.contains("만들") ||
+             lower.contains("작성") || lower.contains("생성")) {
+            return true
+        }
+
+        return false
     }
 
     // MARK: - Intent classification (1회)
