@@ -15,6 +15,15 @@ final class WorkflowOrchestrator {
         roomID: UUID,
         manager: AgentWindowManager
     ) async {
+        // ── 파일/문서 생성 요청이면 IntentRouter 없이 즉시 Workflow로 ──
+        // API 비용 절감: 명확한 파일 생성 요청은 분류 호출을 스킵한다.
+        if requiresFileCreation(userMessage) {
+            AppLog.info("[WorkflowOrchestrator] 파일 생성 요청 감지 → workflow 즉시 실행 (IntentRouter 스킵)")
+            await runWorkflow(userMessage: userMessage, roomID: roomID, manager: manager)
+            return
+        }
+
+        // ── 그 외: IntentRouter 1회 호출 ──
         let intent = await classifyIntent(message: userMessage, manager: manager)
         AppLog.info("[WorkflowOrchestrator] Intent: \(intent.rawValue)")
 
@@ -27,15 +36,11 @@ final class WorkflowOrchestrator {
                 manager: manager
             )
         case .task, .research, .decision:
-            if requiresFileCreation(userMessage) {
-                await runWorkflow(userMessage: userMessage, roomID: roomID, manager: manager)
-            } else {
-                await TeamOrchestrator.shared.runTeamDiscussion(
-                    userMessage: userMessage,
-                    roomID: roomID,
-                    manager: manager
-                )
-            }
+            await TeamOrchestrator.shared.runTeamDiscussion(
+                userMessage: userMessage,
+                roomID: roomID,
+                manager: manager
+            )
         }
     }
 
@@ -78,6 +83,7 @@ final class WorkflowOrchestrator {
     // MARK: - Intent classification (1회)
 
     private func classifyIntent(message: String, manager: AgentWindowManager) async -> UserIntent {
+        AppLog.info("[AICall] callType=intent_classify")
         do {
             let result = try await IntentRouter.shared.classify(
                 message: message,
@@ -95,6 +101,17 @@ final class WorkflowOrchestrator {
     private func runWorkflow(userMessage: String, roomID: UUID, manager: AgentWindowManager) async {
         // 진행 중 알림
         await postChat(manager: manager, roomID: roomID, text: "⏳ 작업 계획을 수립하는 중입니다...", isSystem: true)
+
+        // 15초 typing indicator 자동 해제 타이머
+        let timeoutTask = Task {
+            try? await Task.sleep(nanoseconds: 15_000_000_000)
+            if !Task.isCancelled {
+                await MainActor.run {
+                    manager.typingAgentIDs.removeAll()
+                }
+            }
+        }
+        defer { timeoutTask.cancel() }
 
         // LLM 플래너 (self-repair 포함) — 실패 시 fallback 없이 에러 표시
         guard let plan = await planWorkflowWithRepair(userMessage: userMessage) else {
@@ -127,6 +144,8 @@ final class WorkflowOrchestrator {
         userMessage: String,
         previousError: String?
     ) async -> (WorkflowPlan?, String?) {
+        let callType = previousError == nil ? "workflow_plan" : "workflow_repair"
+        AppLog.info("[AICall] callType=\(callType)")
         let prompt = buildPlannerPrompt(userMessage: userMessage, previousError: previousError)
         do {
             let (jsonText, _) = try await AIService.shared.getResponse(
@@ -145,7 +164,14 @@ final class WorkflowOrchestrator {
             AppLog.error("[WorkflowOrchestrator] \(msg)")
             return (nil, msg)
         } catch {
-            let msg = "LLM 호출 실패: \(error.localizedDescription)"
+            let errStr = error.localizedDescription
+            // 429 → 사용자 친화적 메시지
+            if errStr.contains("429") || errStr.contains("사용량 제한") || errStr.contains("Rate limit") {
+                let msg = "⚠️ API 사용량 제한에 걸렸습니다. 잠시 후 다시 시도해 주세요."
+                AppLog.warning("[WorkflowOrchestrator] 429 감지: \(errStr)")
+                return (nil, msg)
+            }
+            let msg = "LLM 호출 실패: \(errStr)"
             AppLog.error("[WorkflowOrchestrator] \(msg)")
             return (nil, msg)
         }

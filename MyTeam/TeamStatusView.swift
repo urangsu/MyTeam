@@ -54,13 +54,32 @@ struct TeamStatusView: View {
                 Spacer()
                 
                 HStack(spacing: 14) {
+                    // ⏰ 스케줄 버튼 (헤더 상단 접근)
+                    Button(action: {
+                        withAnimation(.spring(response: 0.26, dampingFraction: 0.82)) {
+                            isSchedulePanelPresented.toggle()
+                        }
+                    }) {
+                        HStack(spacing: 3) {
+                            Image(systemName: "clock.badge.checkmark")
+                                .font(.system(size: 11, weight: .semibold))
+                            if !manager.automationTasks.isEmpty {
+                                Text("\(manager.automationTasks.count)")
+                                    .font(.system(size: 9, weight: .bold))
+                            }
+                        }
+                        .foregroundColor(isSchedulePanelPresented ? .orange : (manager.isDarkMode ? .white.opacity(0.5) : .gray.opacity(0.6)))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("스케줄 업무")
+
                     // 탭 전환 버튼
                     Button(action: { selectedTab = (selectedTab == 0 ? 1 : 0) }) {
                         Image(systemName: selectedTab == 0 ? "bubble.left.and.bubble.right.fill" : "person.3.fill")
                             .font(.system(size: 12))
                     }
                     .buttonStyle(PlainButtonStyle())
-                    
+
                     Button(action: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                             isCollapsed.toggle()
@@ -69,7 +88,7 @@ struct TeamStatusView: View {
                         Image(systemName: isCollapsed ? "arrow.up.left.and.arrow.down.right" : "arrow.down.right.and.arrow.up.left")
                     }
                     .buttonStyle(PlainButtonStyle())
-                    
+
                     Button(action: { manager.hideStatusWindow() }) {
                         Image(systemName: "xmark")
                             .font(.system(size: 12, weight: .bold))

@@ -53,6 +53,28 @@ final class AIService {
     private var cachedClaudeModelId: String?
     private var cachedOpenAIModelId: String?
 
+    /// 429 쿨다운 블랙리스트 — 모델 ID → 쿨다운 만료 시각
+    private var gemini429Cooldown: [String: Date] = [:]
+    private let gemini429CooldownSeconds: TimeInterval = 120 // 2분
+
+    /// 해당 모델이 현재 쿨다운 중인지 확인
+    private func isGeminiModelCoolingDown(_ modelId: String) -> Bool {
+        guard let expiry = gemini429Cooldown[modelId] else { return false }
+        if Date() > expiry {
+            gemini429Cooldown.removeValue(forKey: modelId)
+            return false
+        }
+        return true
+    }
+
+    /// 모델을 429 쿨다운에 추가
+    private func markGeminiModel429(_ modelId: String) {
+        gemini429Cooldown[modelId] = Date().addingTimeInterval(gemini429CooldownSeconds)
+        AppLog.warning("[AIService] 429 쿨다운 등록: \(modelId) (\(Int(gemini429CooldownSeconds))초)")
+        // 캐시도 무효화
+        if cachedGeminiModelId == modelId { cachedGeminiModelId = nil }
+    }
+
     // MARK: - Gemini Self-Healing Discovery
     func discoverLatestGeminiModel(apiKey: String) async throws -> String {
         guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models?key=\(apiKey)") else {
@@ -85,11 +107,13 @@ final class AIService {
             }
 
             let modelId = name.replacingOccurrences(of: "models/", with: "")
+            // 쿨다운 중인 모델은 후보에서 제외
+            guard !isGeminiModelCoolingDown(modelId) else { continue }
             validModels.append((id: modelId, score: scoreModel(modelId)))
         }
 
         validModels.sort { $0.score > $1.score }
-        
+
         guard let bestModel = validModels.first?.id else {
             return "gemini-2.0-flash"
         }
@@ -246,13 +270,20 @@ final class AIService {
                     return
                 }
 
-                var modelToUse = "gemini-1.5-flash"
-                if let cached = cachedGeminiModelId {
+                // ── 모델 선택 (쿨다운 중 모델 제외) ──
+                let fallbackFlash = "gemini-2.0-flash"
+                var modelToUse: String
+                if let cached = cachedGeminiModelId, !isGeminiModelCoolingDown(cached) {
                     modelToUse = cached
                 } else {
-                    if let discoveredModel = try? await discoverLatestGeminiModel(apiKey: apiKey) {
+                    cachedGeminiModelId = nil
+                    if let discoveredModel = try? await discoverLatestGeminiModel(apiKey: apiKey),
+                       !isGeminiModelCoolingDown(discoveredModel) {
                         modelToUse = discoveredModel
                         cachedGeminiModelId = discoveredModel
+                    } else {
+                        // 발견 모델도 쿨다운 중이면 flash로 즉시 폴백
+                        modelToUse = fallbackFlash
                     }
                 }
 
@@ -280,11 +311,27 @@ final class AIService {
                     if let httpResp = response as? HTTPURLResponse, httpResp.statusCode != 200 {
                         AppLog.error("[AIService] Gemini HTTP \(httpResp.statusCode) (model: \(modelToUse), agent: \(agentID))")
                         
-                        // 404/429 시 Self-Healing 가동 (최대 2회 재시도)
-                        if (httpResp.statusCode == 404 || httpResp.statusCode == 429) && retryCount < 2 {
-                            let reason = httpResp.statusCode == 429 ? "Rate limit" : "모델 없음"
-                            AppLog.info("[AIService] 🔄 \(reason) (\(httpResp.statusCode)). 다음 모델로 Self-Healing...")
-                            cachedGeminiModelId = nil // 캐시 무효화
+                        // 404/429 self-healing (최대 1회 재시도 — retryCount 2 이상이면 즉시 실패)
+                        if httpResp.statusCode == 429 {
+                            markGeminiModel429(modelToUse) // 쿨다운 블랙리스트 등록
+                            if retryCount < 1 {
+                                AppLog.info("[AIService] 🔄 429 → flash 폴백 재시도 (retryCount=\(retryCount + 1))")
+                                cachedGeminiModelId = fallbackFlash
+                                let newStream = geminiStream(text: text, agentID: agentID, chatHistory: chatHistory, retryCount: retryCount + 1)
+                                for try await token in newStream {
+                                    continuation.yield(token)
+                                }
+                                continuation.finish()
+                                return
+                            } else {
+                                AppLog.error("[AIService] 429 재시도 초과 → 즉시 실패")
+                                continuation.finish(throwing: AIServiceError.httpError(429, "API 사용량 제한 초과. 잠시 후 다시 시도해 주세요."))
+                                return
+                            }
+                        }
+                        if httpResp.statusCode == 404 && retryCount < 1 {
+                            AppLog.info("[AIService] 🔄 404 → 모델 재발견 재시도")
+                            cachedGeminiModelId = nil
                             let newStream = geminiStream(text: text, agentID: agentID, chatHistory: chatHistory, retryCount: retryCount + 1)
                             for try await token in newStream {
                                 continuation.yield(token)
@@ -292,7 +339,7 @@ final class AIService {
                             continuation.finish()
                             return
                         }
-                        
+
                         continuation.finish(throwing: AIServiceError.httpError(httpResp.statusCode, "Gemini 응답 오류"))
                         return
                     }

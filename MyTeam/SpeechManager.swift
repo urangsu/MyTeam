@@ -25,6 +25,13 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
     private var currentStreamTask: Task<Void, Never>? = nil
     private var currentSpeakingAgentID: String? = nil
 
+    /// Qwen3 TTS 실험 플래그 — UserDefaults "enableExperimentalQwenTTS" == true 일 때만 활성
+    private var qwenEnabled: Bool {
+        UserDefaults.standard.bool(forKey: "enableExperimentalQwenTTS")
+    }
+    /// 세션 내 Qwen3 불가 캐시 — 한 번 실패하면 세션 내 재시도 없음
+    private var qwenUnavailable: Bool = false
+
     private init() {
         capture.$isRecording.assign(to: &$isRecording)
         capture.$isStarting.assign(to: &$isStarting)
@@ -117,24 +124,36 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         characterName: String,
         onPlaybackStarted: @escaping @Sendable () -> Void
     ) async {
+        // ── Qwen3 TTS 차단 ──
+        // enableExperimentalQwenTTS 플래그가 꺼져 있거나 이미 세션 내 실패한 경우 스킵
+        guard qwenEnabled && !qwenUnavailable else {
+            // TTS 없이 립싱크 콜백만 즉시 발화 (말풍선은 표시)
+            AppLog.info("[AICall] callType=tts skipped (qwenDisabled)")
+            onPlaybackStarted()
+            return
+        }
+
         let streamId = "mlx_\(UUID().uuidString)"
+        AppLog.info("[AICall] callType=tts characterName=\(characterName)")
 
-        // MLX Inference: 텍스트 → PCM AsyncStream
-        let pcmStream = Qwen3TTSService.shared.generateTTSStream(text: text, characterName: characterName)
-
-        let style = VoiceStyleCatalog.playbackStyle(for: characterName)
-
-        // AudioPlaybackService: PCM 스트림 소비 + 재생 시작 시 Lip-Sync 콜백 발화
-        // onPlaybackStarted는 playStream → appendRawPCM → playerNode.play() 직후 트리거됨
-        await playback.playStream(
-            streamId: streamId,
-            stream: pcmStream,
-            characterName: characterName,
-            pitch: style.pitch,
-            rate: style.rate,
-            textPayload: text,
-            onPlaybackStarted: onPlaybackStarted  // 🎯 이 콜백이 UI 말풍선을 그림
-        )
+        do {
+            let pcmStream = Qwen3TTSService.shared.generateTTSStream(text: text, characterName: characterName)
+            let style = VoiceStyleCatalog.playbackStyle(for: characterName)
+            await playback.playStream(
+                streamId: streamId,
+                stream: pcmStream,
+                characterName: characterName,
+                pitch: style.pitch,
+                rate: style.rate,
+                textPayload: text,
+                onPlaybackStarted: onPlaybackStarted
+            )
+        } catch {
+            // Qwen 실패 → 세션 내 캐시, 채팅에는 표시 안 함
+            qwenUnavailable = true
+            AppLog.warning("[SpeechManager] Qwen3 TTS 실패 (세션 내 이후 스킵): \(error.localizedDescription)")
+            onPlaybackStarted() // 말풍선은 계속 표시
+        }
     }
 
     // MARK: - 권한 요청
@@ -195,13 +214,18 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         DispatchQueue.main.async { self.isSpeaking = true }
 
         currentStreamTask = Task {
-            let sentences = chunkText(text)
+            guard self.qwenEnabled && !self.qwenUnavailable else {
+                AppLog.info("[AICall] callType=tts skipped speak() (qwenDisabled)")
+                await MainActor.run { self.isSpeaking = false }
+                return
+            }
+            let sentences = self.chunkText(text)
             for sentence in sentences {
                 if Task.isCancelled { break }
                 let streamId = "mlx_\(UUID().uuidString)"
+                AppLog.info("[AICall] callType=tts characterName=\(character)")
                 let pcmStream = Qwen3TTSService.shared.generateTTSStream(text: sentence, characterName: character)
                 let style = VoiceStyleCatalog.playbackStyle(for: character)
-                // enqueue to audio player (it will play sequentially)
                 await playback.playStream(streamId: streamId, stream: pcmStream,
                                           characterName: character, pitch: style.pitch, rate: style.rate)
             }

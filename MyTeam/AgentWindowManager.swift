@@ -398,21 +398,35 @@ class AgentWindowManager: ObservableObject {
         speakLocalEvent(text: fallback.randomElement()!, state: .greeting, isSystem: true)
     }
 
-    /// 로컬 시스템 이벤트: 랜덤 에이전트가 채팅에 기록 + TTS 재생
-    /// state가 지정되면 캐릭터별 고유 대사를 우선 사용하고, 없으면 text 폴백
+    /// 로컬 시스템 이벤트: TTS만 재생. 채팅 로그에는 절대 기록하지 않음.
+    /// (시작 인사/idle/wake 대사가 채팅을 오염시키는 문제 방지)
     private func speakLocalEvent(text: String, state: AnimationState? = nil, isSystem: Bool = false) {
-        let agent = activeAgents.randomElement() ?? activeAgents[0]
+        // 기본값은 모두 비활성. UserDefaults로 실험적 활성화 가능.
+        if state == .greeting || state == .idle || state == .sleeping {
+            let key: String
+            switch state {
+            case .greeting: key = "startupGreetingEnabled"
+            case .idle:     key = "idleGreetingEnabled"
+            case .sleeping: key = "wakeGreetingEnabled"
+            default:        key = ""
+            }
+            guard !key.isEmpty && UserDefaults.standard.bool(forKey: key) else {
+                AppLog.info("[SystemEvent] '\(state?.rawValue ?? "")' 인사 비활성 (채팅 오염 차단)")
+                return
+            }
+        }
+
+        guard !isSilentMode else { return }
+        guard let agent = activeAgents.first else { return }
         let line: String
         if let state, let charLine = CharacterDialogues.randomLine(for: agent.name, state: state) {
             line = charLine
         } else {
             line = text
         }
-        addChatLog(agentID: agent.id, agentName: agent.name, text: line, isUser: false, isSystem: isSystem)
-        if !isSilentMode {
-            setAgentSpeaking(agentID: agent.id, text: line)
-            SpeechManager.shared.speak(text: line, agentID: agent.id, characterName: agent.name)
-        }
+        // 채팅 로그에 추가하지 않음 — TTS만 재생
+        setAgentSpeaking(agentID: agent.id, text: line)
+        SpeechManager.shared.speak(text: line, agentID: agent.id, characterName: agent.name)
     }
 
     // MARK: - 팀 테이블 창 열기
