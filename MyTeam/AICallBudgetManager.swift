@@ -79,10 +79,14 @@ final class AICallBudgetManager {
     /// true = 호출 허용, false = 예산 초과로 차단 (세션 한도 또는 rolling 한도)
     @discardableResult
     func requestCall(_ type: AICallType) -> Bool {
+        // 매 호출마다 플래그 초기화 — 세션 한도 차단 메시지가 rolling 메시지로 오염되지 않게
+        lastBlockWasRolling = false
+
         // 1) Rolling window 체크 먼저 (전역 속도 제한 — 세션 경계와 무관)
+        // checkRollingLimit이 false 반환 시 lastBlockWasRolling = true로 설정됨
         guard checkRollingLimit(for: type) else { return false }
 
-        // 2) 세션 내 호출 횟수 체크
+        // 2) 세션 내 호출 횟수 체크 (여기까지 왔으면 rolling은 통과 — lastBlockWasRolling = false)
         let current = counts[type, default: 0]
         let limit   = limits[type, default: 1]
 

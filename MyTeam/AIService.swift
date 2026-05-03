@@ -507,7 +507,11 @@ final class AIService {
                 request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
                 do {
-                    let (result, response) = try await session.bytes(for: request)
+                    let (result, response) = try await withTaskCancellationHandler {
+                        try await session.bytes(for: request)
+                    } onCancel: {
+                        AppLog.info("[AIService] Claude request cancelled (task cancellation)")
+                    }
                     guard let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200 else {
                         continuation.finish(throwing: AIServiceError.invalidResponse)
                         return
@@ -515,7 +519,10 @@ final class AIService {
 
                     AppLog.info("[AIService] ⚡ Claude SSE 채널 오픈 (model: \(claudeModel), agent: \(agentID))")
                     for try await line in result.lines {
-                        if Task.isCancelled { break }
+                        if Task.isCancelled {
+                            AppLog.info("[AIService] Claude stream loop cancelled")
+                            break
+                        }
                         if line.hasPrefix("data: ") {
                             let dataStr = String(line.dropFirst(6))
                             if dataStr == "[DONE]" { break }
@@ -526,7 +533,12 @@ final class AIService {
                     }
                     continuation.finish()
                 } catch {
-                    continuation.finish(throwing: error)
+                    if Task.isCancelled || (error as? URLError)?.code == .cancelled {
+                        AppLog.info("[AIService] Claude request cancelled")
+                        continuation.finish()
+                    } else {
+                        continuation.finish(throwing: error)
+                    }
                 }
             }
         }
@@ -587,15 +599,22 @@ final class AIService {
                 request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
                 do {
-                    let (result, response) = try await session.bytes(for: request)
+                    let (result, response) = try await withTaskCancellationHandler {
+                        try await session.bytes(for: request)
+                    } onCancel: {
+                        AppLog.info("[AIService] OpenAI request cancelled (task cancellation)")
+                    }
                     guard let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200 else {
                         continuation.finish(throwing: AIServiceError.invalidResponse)
                         return
                     }
 
-                    AppLog.info("[AIService] ⚡ OpenAI SSE 채널 오픈 (model: \(modelId), agent: \(agentID))")
+                    AppLog.info("[AIService] ⚡ OpenAI SSE 채널 오픈 (model: \(resolvedModel), agent: \(agentID))")
                     for try await line in result.lines {
-                        if Task.isCancelled { break }
+                        if Task.isCancelled {
+                            AppLog.info("[AIService] OpenAI stream loop cancelled")
+                            break
+                        }
                         if line.hasPrefix("data: ") {
                             let dataStr = String(line.dropFirst(6))
                             if dataStr == "[DONE]" { break }
@@ -606,7 +625,12 @@ final class AIService {
                     }
                     continuation.finish()
                 } catch {
-                    continuation.finish(throwing: error)
+                    if Task.isCancelled || (error as? URLError)?.code == .cancelled {
+                        AppLog.info("[AIService] OpenAI request cancelled")
+                        continuation.finish()
+                    } else {
+                        continuation.finish(throwing: error)
+                    }
                 }
             }
         }
@@ -655,7 +679,11 @@ final class AIService {
                 request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
                 do {
-                    let (result, response) = try await session.bytes(for: request)
+                    let (result, response) = try await withTaskCancellationHandler {
+                        try await session.bytes(for: request)
+                    } onCancel: {
+                        AppLog.info("[AIService] OpenRouter request cancelled (task cancellation)")
+                    }
                     guard let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200 else {
                         continuation.finish(throwing: AIServiceError.invalidResponse)
                         return
@@ -663,7 +691,10 @@ final class AIService {
 
                     AppLog.info("[AIService] ⚡ OpenRouter SSE 채널 오픈 (model: \(modelId), agent: \(agentID))")
                     for try await line in result.lines {
-                        if Task.isCancelled { break }
+                        if Task.isCancelled {
+                            AppLog.info("[AIService] OpenRouter stream loop cancelled")
+                            break
+                        }
                         if line.hasPrefix("data: ") {
                             let dataStr = String(line.dropFirst(6))
                             if dataStr == "[DONE]" { break }
@@ -674,7 +705,12 @@ final class AIService {
                     }
                     continuation.finish()
                 } catch {
-                    continuation.finish(throwing: error)
+                    if Task.isCancelled || (error as? URLError)?.code == .cancelled {
+                        AppLog.info("[AIService] OpenRouter request cancelled")
+                        continuation.finish()
+                    } else {
+                        continuation.finish(throwing: error)
+                    }
                 }
             }
         }

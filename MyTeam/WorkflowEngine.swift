@@ -79,16 +79,18 @@ final class WorkflowEngine {
             }
         }
 
-        // 완료 알림 (artifacts 포함 — UI 버튼 연결용)
+        // 완료 알림 (sessionID 포함 — AgentWindowManager가 해당 workflow만 필터하는 데 사용)
         let workspaceURL = context.workspaceURL
         let completedArtifacts = artifacts
+        let completedSessionID = sessionID
         Task { @MainActor in
             NotificationCenter.default.post(
                 name: .workflowCompleted,
                 object: nil,
                 userInfo: [
                     "workspaceURL": workspaceURL,
-                    "artifacts": completedArtifacts
+                    "artifacts": completedArtifacts,
+                    "sessionID": completedSessionID   // ← workflow 식별자
                 ]
             )
         }

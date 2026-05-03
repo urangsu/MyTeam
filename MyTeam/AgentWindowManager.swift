@@ -251,19 +251,24 @@ class AgentWindowManager: ObservableObject {
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(handleWake), name: NSWorkspace.didWakeNotification, object: nil)
 
         // WorkflowEngine 완료 시 recentArtifacts 갱신 (채팅에서 ArtifactCardView 표시)
+        // userInfo["sessionID"] 기준으로 방금 완료된 workflow의 artifact만 표시.
         NotificationCenter.default.addObserver(
             forName: .workflowCompleted, object: nil, queue: .main
         ) { [weak self] notification in
             guard let self else { return }
-            if let artifacts = notification.userInfo?["artifacts"] as? [Artifact] {
-                // WorkflowEngine.Artifact → IndexedArtifact 변환 (ArtifactStore에서 최신 로드)
-                Task {
-                    let indexed = await ArtifactStore.shared.loadArtifacts()
-                    // workflow 완료 직후 등록된 것들만 (최근 5개)
-                    let recent = Array(indexed.suffix(5))
-                    await MainActor.run { self.recentArtifacts = recent }
+            let sessionID = notification.userInfo?["sessionID"] as? String
+            Task {
+                let all = await ArtifactStore.shared.loadArtifacts()
+                let recent: [IndexedArtifact]
+                if let sid = sessionID {
+                    // 방금 완료된 workflow의 artifact만 필터
+                    recent = all.filter { $0.workflowID == sid }
+                } else {
+                    // sessionID 없는 경우 — fallback (데이터 오염 방지용 경고)
+                    AppLog.warning("[AgentWindowManager] workflowCompleted에 sessionID 없음 — suffix(5) fallback 사용")
+                    recent = Array(all.suffix(5))
                 }
-                _ = artifacts  // 미사용 경고 억제
+                await MainActor.run { self.recentArtifacts = recent }
             }
         }
 
