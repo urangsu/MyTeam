@@ -3,6 +3,9 @@
 > 위치: `/Users/su/Desktop/MyTeam/TASK.md`
 > 목적: 앞으로 가야 할 길만 관리한다. 완료 이력은 `DEVLOG.md`에 남긴다.
 >
+> **기준 브랜치: `main`** — 모든 작업은 main에서 시작하고 main에 커밋한다.
+> `git-push`는 PR/배포 미러용이며 작업 기준이 아니다. main 커밋 후 `git push origin main:git-push`로 동기화.
+>
 > **경로 규칙:** 실제 Swift 파일 위치는 `MyTeam/MyTeam/*.swift` (flat).
 > Antigravity/Claude/Codex는 이 경로만 수정한다. 루트 `MyTeam/*.swift`는 없다.
 > 신규 파일도 `MyTeam/MyTeam/` flat에 추가 후 Xcode target에 포함.

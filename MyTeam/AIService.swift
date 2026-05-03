@@ -96,7 +96,7 @@ final class AIService {
     // MARK: - Provider 전체 쿨다운 검사
 
     /// true면 Gemini 전체가 쿨다운 중 (discovery 포함 모든 호출 차단)
-    private func isGeminiProviderCoolingDown() -> Bool {
+    func isGeminiProviderCoolingDown() -> Bool {
         guard let until = globalGeminiCooldownUntil else { return false }
         if Date() > until {
             globalGeminiCooldownUntil = nil
@@ -130,6 +130,10 @@ final class AIService {
 
     // MARK: - Gemini Self-Healing Discovery
     func discoverLatestGeminiModel(apiKey: String) async throws -> String {
+        // ── Provider 전체 쿨다운 중이면 모델 목록 API 호출 자체를 금지 ──
+        guard !isGeminiProviderCoolingDown() else {
+            throw AIServiceError.httpError(429, "Gemini provider cooldown — discovery 스킵")
+        }
         guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models?key=\(apiKey)") else {
             throw AIServiceError.invalidResponse
         }

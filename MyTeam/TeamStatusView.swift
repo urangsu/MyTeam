@@ -456,12 +456,26 @@ struct TeamStatusView: View {
                     )
                     .onSubmit { sendTeamMessage() }
 
-                Button(action: sendTeamMessage) {
-                    Image(systemName: "paperplane.fill")
-                        .foregroundColor((inputText.isEmpty && pendingAttachments.isEmpty) ? .gray.opacity(0.4) : .blue)
+                // ── 중지 버튼 (workflow 실행 중일 때만 표시) ──
+                if manager.isWorkflowRunning {
+                    Button(action: {
+                        guard let roomID = manager.currentRoomID else { return }
+                        WorkflowOrchestrator.shared.cancelCurrentWorkflow(roomID: roomID, manager: manager)
+                    }) {
+                        Image(systemName: "stop.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundColor(.red.opacity(0.8))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .help("작업 중지")
+                } else {
+                    Button(action: sendTeamMessage) {
+                        Image(systemName: "paperplane.fill")
+                            .foregroundColor((inputText.isEmpty && pendingAttachments.isEmpty) ? .gray.opacity(0.4) : .blue)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .disabled(inputText.isEmpty && pendingAttachments.isEmpty)
                 }
-                .buttonStyle(PlainButtonStyle())
-                .disabled(inputText.isEmpty && pendingAttachments.isEmpty)
             }
             .padding(10)
             .onDrop(of: [.fileURL], isTargeted: $isTargetedForDrop) { providers in

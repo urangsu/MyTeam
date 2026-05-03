@@ -73,6 +73,8 @@ class AgentWindowManager: ObservableObject {
     @Published var agentEmotions: [String: AnimationState] = [:]
     /// 현재 타이핑 중인 에이전트 ID Set (카톡 "..." 인디케이터용)
     @Published var typingAgentIDs: Set<String> = []
+    /// Workflow 실행 중 여부 — WorkflowOrchestrator가 set, UI가 중지 버튼 표시에 사용
+    @Published var isWorkflowRunning: Bool = false
     
     // ── 지능형 기억 보호 (Key Fact Buffer) ──
     // V1: 단일 전역 배열 (하위 호환 유지)

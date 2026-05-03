@@ -87,6 +87,12 @@ final class LLMConfigCatalog: ObservableObject {
 
     /// TTL(1시간) 만료 시 AIService discovery를 재실행해 캐시 갱신
     func refreshIfNeeded(_ provider: LLMProvider) async {
+        // Gemini provider 쿨다운 중이면 discovery 호출 금지
+        if provider == .gemini && AIService.shared.isGeminiProviderCoolingDown() {
+            AppLog.info("[LLMCatalog] Gemini 쿨다운 중 — discovery 스킵")
+            return
+        }
+
         guard var cfg = configs[provider] else { return }
         let isExpired = cfg.lastDiscoveryDate.map { Date().timeIntervalSince($0) > cacheTTL } ?? true
         guard isExpired else { return }

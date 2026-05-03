@@ -8,6 +8,28 @@ final class WorkflowOrchestrator {
     static let shared = WorkflowOrchestrator()
     private init() {}
 
+    // MARK: - 취소 지원
+    private var currentWorkflowTask: Task<Void, Never>?
+
+    /// 현재 실행 중인 workflow를 즉시 취소한다.
+    func cancelCurrentWorkflow(roomID: UUID, manager: AgentWindowManager) {
+        guard let task = currentWorkflowTask, !task.isCancelled else { return }
+        task.cancel()
+        currentWorkflowTask = nil
+        Task { @MainActor in
+            manager.typingAgentIDs.removeAll()
+            manager.isWorkflowRunning = false
+            manager.addChatLog(
+                agentID: "system", agentName: "작업봇",
+                text: "🛑 작업을 중지했습니다.", isUser: false,
+                roomID: roomID, isSystem: true
+            )
+        }
+        AppLog.info("[WorkflowOrchestrator] 워크플로우 취소됨")
+    }
+
+    // isWorkflowRunning은 AgentWindowManager.isWorkflowRunning(@Published)으로 관리
+
     // MARK: - Public entry point
 
     func dispatch(
@@ -15,11 +37,22 @@ final class WorkflowOrchestrator {
         roomID: UUID,
         manager: AgentWindowManager
     ) async {
+        // ── 이전 workflow가 남아 있으면 조용히 취소 ──
+        currentWorkflowTask?.cancel()
+        currentWorkflowTask = nil
+
+        // ── 새 요청 → 세션 예산 리셋 ──
+        AICallBudgetManager.shared.beginSession()
+
         // ── 파일/문서 생성 요청이면 IntentRouter 없이 즉시 Workflow로 ──
-        // API 비용 절감: 명확한 파일 생성 요청은 분류 호출을 스킵한다.
         if requiresFileCreation(userMessage) {
             AppLog.info("[WorkflowOrchestrator] 파일 생성 요청 감지 → workflow 즉시 실행 (IntentRouter 스킵)")
-            await runWorkflow(userMessage: userMessage, roomID: roomID, manager: manager)
+            await MainActor.run { manager.isWorkflowRunning = true }
+            let task = Task { await self.runWorkflow(userMessage: userMessage, roomID: roomID, manager: manager) }
+            currentWorkflowTask = task
+            await task.value
+            currentWorkflowTask = nil
+            await MainActor.run { manager.isWorkflowRunning = false }
             return
         }
 
@@ -83,6 +116,10 @@ final class WorkflowOrchestrator {
     // MARK: - Intent classification (1회)
 
     private func classifyIntent(message: String, manager: AgentWindowManager) async -> UserIntent {
+        guard AICallBudgetManager.shared.requestCall(.intentClassify) else {
+            AppLog.warning("[Budget] intent_classify 차단")
+            return .chitchat
+        }
         AppLog.info("[AICall] callType=intent_classify")
         do {
             let result = try await IntentRouter.shared.classify(
@@ -115,7 +152,12 @@ final class WorkflowOrchestrator {
     // MARK: - Workflow execution
 
     private func runWorkflow(userMessage: String, roomID: UUID, manager: AgentWindowManager) async {
-        await postChat(manager: manager, roomID: roomID, text: "⏳ 작업 계획을 수립하는 중입니다...", isSystem: true)
+        guard !Task.isCancelled else { return }
+
+        // ephemeral 진행 메시지 — 완료/실패 시 제거됨
+        let progressMsgID = await postEphemeralProgress(
+            manager: manager, roomID: roomID, text: "⏳ 작업 계획을 수립하는 중입니다..."
+        )
 
         // 15초 typing indicator 자동 해제 타이머
         let timeoutTask = Task {
@@ -126,14 +168,52 @@ final class WorkflowOrchestrator {
         }
         defer { timeoutTask.cancel() }
 
+        guard !Task.isCancelled else { return }
+
         switch await planWorkflowWithRepair(userMessage: userMessage) {
         case .failure(let msg):
-            await postChat(manager: manager, roomID: roomID, text: msg, isSystem: false)
+            guard !Task.isCancelled else { return }
+            await removeProgressAndPost(
+                manager: manager, roomID: roomID, progressID: progressMsgID, text: msg, isSystem: false
+            )
         case .success(let plan):
+            guard !Task.isCancelled else { return }
             let context = ToolExecutionContext.current()
             let result = await WorkflowEngine.shared.run(plan: plan, context: context)
-            await postChat(manager: manager, roomID: roomID, text: result.summary, isSystem: false)
+            guard !Task.isCancelled else { return }
+            await removeProgressAndPost(
+                manager: manager, roomID: roomID, progressID: progressMsgID, text: result.summary, isSystem: false
+            )
         }
+    }
+
+    // MARK: - Ephemeral progress 메시지 헬퍼
+
+    @MainActor
+    private func postEphemeralProgress(manager: AgentWindowManager, roomID: UUID, text: String) -> UUID {
+        let msgID = UUID()
+        guard let idx = manager.rooms.firstIndex(where: { $0.id == roomID }) else { return msgID }
+        let log = AgentWindowManager.ChatLog(
+            id: msgID, agentID: "system", agentName: "작업봇",
+            text: text, isUser: false, timestamp: Date(), isSystem: true, sources: []
+        )
+        manager.rooms[idx].messages.append(log)
+        return msgID
+    }
+
+    @MainActor
+    private func removeProgressAndPost(
+        manager: AgentWindowManager, roomID: UUID, progressID: UUID, text: String, isSystem: Bool
+    ) {
+        guard let idx = manager.rooms.firstIndex(where: { $0.id == roomID }) else { return }
+        // ephemeral 메시지 제거
+        manager.rooms[idx].messages.removeAll { $0.id == progressID }
+        // 실제 결과 추가
+        let log = AgentWindowManager.ChatLog(
+            id: UUID(), agentID: "system", agentName: "작업봇",
+            text: text, isUser: false, timestamp: Date(), isSystem: isSystem, sources: []
+        )
+        manager.rooms[idx].messages.append(log)
     }
 
     // MARK: - Planner with self-repair (최대 2회 시도)
@@ -159,6 +239,12 @@ final class WorkflowOrchestrator {
         previousError: String?
     ) async -> PlannerResult {
         let callType = previousError == nil ? "workflow_plan" : "workflow_repair"
+        let budgetType: AICallType = previousError == nil ? .workflowPlan : .workflowRepair
+        guard AICallBudgetManager.shared.requestCall(budgetType) else {
+            let msg = AICallBudgetManager.shared.blockedMessage(for: budgetType)
+            AppLog.warning("[Budget] \(callType) 차단")
+            return .failure(msg)
+        }
         AppLog.info("[AICall] callType=\(callType)")
         let prompt = buildPlannerPrompt(userMessage: userMessage, previousError: previousError)
         do {
