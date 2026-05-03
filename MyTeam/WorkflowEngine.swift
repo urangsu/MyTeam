@@ -9,6 +9,7 @@ final class WorkflowEngine {
     /// WorkflowPlan을 순차 실행하여 WorkflowResult를 반환한다.
     /// - isRequired step 실패 시 즉시 중단, 사용자 친화적 오류 메시지 포함.
     /// - isRequired=false step 실패 시 경고 후 계속 진행.
+    /// - invalidInput 실패 시 1회 LLM self-repair 후 재실행.
     func run(plan: WorkflowPlan, context: ToolExecutionContext) async -> WorkflowResult {
         var artifacts: [Artifact] = []
         var failedSteps: [(step: WorkflowStep, error: String)] = []
@@ -18,11 +19,24 @@ final class WorkflowEngine {
 
         for step in plan.steps {
             AppLog.info("[WorkflowEngine] 실행: '\(step.title)' [\(step.toolName)]")
-            let result = await ToolExecutor.shared.execute(
+            var result = await ToolExecutor.shared.execute(
                 step: step,
                 context: context,
                 sessionID: sessionID
             )
+
+            // invalidInput 실패 → step 단위 self-repair 1회 시도
+            if !result.success, let rawErr = result.error, isInputError(rawErr) {
+                AppLog.info("[WorkflowEngine] 입력 오류 감지 → step 수정 시도: '\(step.title)'")
+                if let repairedStep = await repairStep(step, error: rawErr, plan: plan) {
+                    AppLog.info("[WorkflowEngine] step 수정 완료 → 재실행: '\(step.title)'")
+                    result = await ToolExecutor.shared.execute(
+                        step: repairedStep,
+                        context: context,
+                        sessionID: sessionID
+                    )
+                }
+            }
 
             if result.success {
                 if let relPath = result.artifactPath {
@@ -46,7 +60,7 @@ final class WorkflowEngine {
                         preview: String(result.output.prefix(200)),
                         createdAt: ISO8601DateFormatter().string(from: Date())
                     )
-                    ArtifactStore.shared.registerArtifact(indexed)
+                    await ArtifactStore.shared.registerArtifact(indexed)
                 }
             } else {
                 let rawErr = result.error ?? "알 수 없는 오류"
@@ -62,13 +76,17 @@ final class WorkflowEngine {
             }
         }
 
-        // 완료 알림 (Finder 열기 hook 등 UI에서 수신)
+        // 완료 알림 (artifacts 포함 — UI 버튼 연결용)
         let workspaceURL = context.workspaceURL
+        let completedArtifacts = artifacts
         Task { @MainActor in
             NotificationCenter.default.post(
                 name: .workflowCompleted,
                 object: nil,
-                userInfo: ["workspaceURL": workspaceURL]
+                userInfo: [
+                    "workspaceURL": workspaceURL,
+                    "artifacts": completedArtifacts
+                ]
             )
         }
 
@@ -94,6 +112,7 @@ final class WorkflowEngine {
         if !artifacts.isEmpty {
             lines.append("📄 생성 파일:")
             artifacts.forEach { lines.append("  - \($0.path)") }
+            lines.append("📂 Finder에서 열기 가능: \(workspaceURL.path)")
         }
 
         if !failedSteps.isEmpty {
@@ -101,8 +120,9 @@ final class WorkflowEngine {
             failedSteps.forEach { lines.append("  - \($0.step.title): \($0.error)") }
         }
 
-        // 저장 위치 (Finder 열기 hook 준비)
-        lines.append("📁 저장 위치: \(workspaceURL.path)")
+        if !artifacts.isEmpty {
+            lines.append("📁 저장 위치: \(workspaceURL.path)")
+        }
 
         if let firstOutput = artifacts.first?.output, !firstOutput.isEmpty {
             lines.append("──────────────")
@@ -110,6 +130,71 @@ final class WorkflowEngine {
         }
 
         return lines.joined(separator: "\n")
+    }
+
+    // MARK: - Step-level self-repair
+
+    private func isInputError(_ error: String) -> Bool {
+        error.contains("입력 오류") || error.contains("invalidInput") || error.contains("필수")
+    }
+
+    private func repairStep(_ step: WorkflowStep, error: String, plan: WorkflowPlan) async -> WorkflowStep? {
+        let prompt = buildStepRepairPrompt(step: step, error: error, plan: plan)
+        do {
+            let (jsonText, _) = try await AIService.shared.getResponse(
+                text: prompt,
+                agentID: "planner",
+                chatHistory: []
+            )
+            let cleaned = extractJSON(from: jsonText)
+            guard let data = cleaned.data(using: .utf8) else { return nil }
+            return try JSONDecoder().decode(WorkflowStep.self, from: data)
+        } catch {
+            AppLog.warning("[WorkflowEngine] step 수정 실패: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    private func buildStepRepairPrompt(step: WorkflowStep, error: String, plan: WorkflowPlan) -> String {
+        let inputJSON = (try? String(data: JSONEncoder().encode(step.input), encoding: .utf8)) ?? "{}"
+        return """
+        아래 워크플로우 단계가 입력 오류로 실패했습니다.
+        JSON 블록(```json ... ```)으로 수정된 단계만 반환하세요. 다른 설명은 없어야 합니다.
+
+        워크플로우 제목: \(plan.title)
+        단계 제목: \(step.title)
+        도구: \(step.toolName)
+        현재 입력값: \(inputJSON)
+        오류 메시지: \(error)
+
+        수정된 단계 JSON 스키마:
+        {
+          "id": "\(step.id)",
+          "toolName": "\(step.toolName)",
+          "title": "\(step.title)",
+          "input": {"param": "수정된 값"},
+          "isRequired": \(step.isRequired),
+          "dependsOn": [],
+          "riskLevel": "\(step.riskLevel.rawValue)"
+        }
+        """
+    }
+
+    private func extractJSON(from text: String) -> String {
+        if let s = text.range(of: "```json"),
+           let e = text[s.upperBound...].range(of: "```") {
+            return String(text[s.upperBound..<e.lowerBound])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if let s = text.range(of: "```"),
+           let e = text[s.upperBound...].range(of: "```") {
+            return String(text[s.upperBound..<e.lowerBound])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if let s = text.firstIndex(of: "{"), let e = text.lastIndex(of: "}") {
+            return String(text[s...e])
+        }
+        return text
     }
 
     // MARK: - Helpers

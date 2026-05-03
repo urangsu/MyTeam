@@ -147,7 +147,13 @@ class TeamOrchestrator {
         let addressedAgent = mention?.activeAgent
         let unavailableMentionedAgent = (mention?.isActive == false) ? mention?.mentionedAgent : nil
         let toolPolicy = ToolPolicy.evaluate(userMessage)
-        let toolEvidence = await ToolEvidenceService.gather(for: userMessage, policy: toolPolicy)
+        // 증거 수집은 URL/파일/웹검색/최신정보 키워드가 있을 때만 실행
+        let toolEvidence: ToolEvidenceResult
+        if needsEvidenceGather(userMessage) {
+            toolEvidence = await ToolEvidenceService.gather(for: userMessage, policy: toolPolicy)
+        } else {
+            toolEvidence = .empty
+        }
         let groundedUserMessage = userMessage + toolEvidence.promptContext
 
         let alreadySpoke = await emitUnavailableMentionNoticeIfNeeded(
@@ -493,6 +499,19 @@ class TeamOrchestrator {
         prompt += "4. 답변 말머리(문장 시작)에 당신의 이름(예: [\(agent.name)], \(agent.name):)을 절대로 붙이지 마세요.\n"
 
         return prompt
+    }
+
+    // MARK: - Evidence gather 필요 여부 판단
+
+    private func needsEvidenceGather(_ message: String) -> Bool {
+        let lower = message.lowercased()
+        let triggers = [
+            "http", "https", "www.", ".com", ".kr", ".io",  // URL
+            "파일", "첨부", "자료",                            // 파일 참조
+            "웹", "검색", "찾아", "찾아봐", "최신", "뉴스",     // 웹 검색
+            "주가", "환율", "날씨", "오늘", "지금", "현재"       // 실시간 정보
+        ]
+        return triggers.contains { lower.contains($0) }
     }
 
     private func emitUnavailableMentionNoticeIfNeeded(

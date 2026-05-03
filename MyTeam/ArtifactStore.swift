@@ -44,9 +44,9 @@ struct IndexedArtifact: Codable {
     let createdAt: String   // ISO 8601
 }
 
-// MARK: - ArtifactStore
+// MARK: - ArtifactStore (actor — 동시 접근 직렬화)
 
-final class ArtifactStore {
+actor ArtifactStore {
     static let shared = ArtifactStore()
     private init() {}
 

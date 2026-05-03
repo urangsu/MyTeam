@@ -27,8 +27,31 @@ final class WorkflowOrchestrator {
                 manager: manager
             )
         case .task, .research, .decision:
-            await runWorkflow(userMessage: userMessage, roomID: roomID, manager: manager)
+            if requiresFileCreation(userMessage) {
+                await runWorkflow(userMessage: userMessage, roomID: roomID, manager: manager)
+            } else {
+                await TeamOrchestrator.shared.runTeamDiscussion(
+                    userMessage: userMessage,
+                    roomID: roomID,
+                    manager: manager
+                )
+            }
         }
+    }
+
+    // MARK: - File-creation heuristic
+
+    /// 파일/문서 생성 의도가 담긴 메시지인지 판단한다.
+    /// true → WorkflowEngine, false → TeamOrchestrator 토의
+    private func requiresFileCreation(_ message: String) -> Bool {
+        let lower = message.lowercased()
+        let keywords = [
+            "파일", "보고서", "ppt", "엑셀", "스프레드시트", "표로", "표를",
+            "저장", "초안", "문서", "생성해", "만들어", "작성해", "정리해줘",
+            "만들어줘", "만들어 줘", "작성해줘", "작성해 줘", "저장해줘",
+            "정리해 줘", "만들어주세요", "작성해주세요", "저장해주세요"
+        ]
+        return keywords.contains { lower.contains($0) }
     }
 
     // MARK: - Intent classification (1회)
