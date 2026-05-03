@@ -14,6 +14,11 @@ final class ToolRegistry {
         register(CreatePresentationPlanTool())
         register(CreateSpreadsheetPlanTool())
         register(OpenURLTool())
+        register(GeneratePPTXTool())
+        register(GenerateXLSXTool())
+        register(CreateGoogleSlidesTool())
+        register(CreateGoogleSheetsTool())
+        register(ExportDocumentTool())
     }
 
     func register(_ tool: WorkflowTool) {

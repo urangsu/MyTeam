@@ -503,6 +503,14 @@ class TeamOrchestrator {
 
     // MARK: - Evidence gather 필요 여부 판단
 
+    /// evidence gather 필요 여부. "오늘/지금/현재" 단독으로는 false.
+    ///
+    /// TEST true:  "오늘 날씨 알려줘"
+    /// TEST true:  "최신 뉴스 찾아줘"
+    /// TEST true:  "웹에서 자료 찾아줘"
+    /// TEST false: "오늘 좀 피곤하네"
+    /// TEST false: "지금 뭐해?"
+    /// TEST false: "내가 말한 내용 찾아줘"
     private func needsEvidenceGather(_ message: String) -> Bool {
         let lower = message.lowercased()
 
@@ -512,11 +520,16 @@ class TeamOrchestrator {
         // 첨부파일 / 링크 참조
         if lower.contains("첨부") { return true }
 
-        // 명시적 웹 검색 의도
-        if lower.contains("웹") || lower.contains("검색") ||
-           lower.contains("찾아줘") || lower.contains("찾아봐") { return true }
+        // "웹" / "검색" / "인터넷" 명시적 의도
+        if lower.contains("웹") || lower.contains("검색") || lower.contains("인터넷") { return true }
 
-        // 실시간/외부 정보 (오늘/지금/현재 단독 제외)
+        // "찾아" + 외부정보어 조합일 때만 true ("내가 말한 내용 찾아줘" 등 제외)
+        let externalSearchTriggers = ["웹", "인터넷", "날씨", "뉴스", "주가",
+                                      "환율", "가격", "버전", "최신", "자료"]
+        if lower.contains("찾아") &&
+           externalSearchTriggers.contains(where: { lower.contains($0) }) { return true }
+
+        // 실시간/외부 정보 단어 (오늘/지금/현재 단독 제외)
         let externalInfoWords = ["날씨", "뉴스", "주가", "환율", "가격", "버전",
                                  "최신정보", "최신 정보", "실시간"]
         if externalInfoWords.contains(where: { lower.contains($0) }) { return true }

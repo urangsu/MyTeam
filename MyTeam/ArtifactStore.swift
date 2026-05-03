@@ -28,6 +28,7 @@ enum ArtifactType: String, Codable {
     case presentation = "presentation"
     case spreadsheet  = "spreadsheet"
     case text         = "text"
+    case cloud        = "cloud"
     case other        = "other"
 }
 

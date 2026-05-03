@@ -238,11 +238,15 @@ final class WorkflowEngine {
 
     private func inferArtifactType(toolName: String) -> ArtifactType {
         switch toolName {
-        case "create_markdown_report":   return .report
-        case "create_presentation_plan": return .presentation
-        case "create_spreadsheet_plan":  return .spreadsheet
-        case "write_text_file":          return .text
-        default:                         return .other
+        case "create_markdown_report":                return .report
+        case "create_presentation_plan":              return .presentation
+        case "generate_pptx":                         return .presentation
+        case "create_spreadsheet_plan":               return .spreadsheet
+        case "generate_xlsx":                         return .spreadsheet
+        case "write_text_file":                       return .text
+        case "create_google_slides",
+             "create_google_sheets":                  return .cloud
+        default:                                      return .other
         }
     }
 

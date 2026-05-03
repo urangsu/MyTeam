@@ -43,15 +43,21 @@ final class WorkflowOrchestrator {
 
     /// 파일/문서 생성 의도가 담긴 메시지인지 판단한다.
     /// 산출물 명사 + 생성 동사가 함께 있을 때만 true.
-    /// "만들어" / "작성해" 동사 단독으로는 false.
+    /// 동사("만들어", "정리") 단독으로는 false.
+    ///
+    /// TEST true:  "MyTeam 소개 보고서 만들어줘"
+    /// TEST true:  "보고서 형태로 정리해줘"
+    /// TEST true:  "기능 목록을 표로 정리해줘"
+    /// TEST false: "이 아키텍처 문제점 정리해줘"
+    /// TEST false: "이 사업 아이디어 초안 봐줘"
     private func requiresFileCreation(_ message: String) -> Bool {
         let lower = message.lowercased()
 
         // 산출물 명사 (파일/문서 결과물)
         let artifactNouns = ["보고서", "ppt", "프레젠테이션", "발표자료", "엑셀",
                              "스프레드시트", "파일", "문서", "초안"]
-        // 생성 동사
-        let creationVerbs = ["만들어", "작성해", "생성해", "저장해"]
+        // 생성 동사 — "정리" 포함 (artifact noun과 조합할 때만 true)
+        let creationVerbs = ["만들어", "작성해", "생성해", "저장해", "정리"]
 
         let hasNoun = artifactNouns.contains { lower.contains($0) }
         let hasVerb = creationVerbs.contains { lower.contains($0) }
@@ -172,6 +178,14 @@ final class WorkflowOrchestrator {
             }
           ]
         }
+
+        [필수 2단계 규칙 — 반드시 지켜라]
+        - PPT/프레젠테이션 요청: 1단계 create_presentation_plan → 2단계 generate_pptx
+        - 엑셀/스프레드시트/표 요청: 1단계 create_spreadsheet_plan → 2단계 generate_xlsx
+        - 1단계의 output filename(filename 파라미터)과 2단계의 plan_filename이 반드시 같아야 한다.
+        - Google 슬라이드 요청: 1단계 create_presentation_plan → 2단계 create_google_slides
+        - Google 시트 요청: 1단계 create_spreadsheet_plan → 2단계 create_google_sheets
+        - output_filename은 한글 포함 가능. 확장자 포함 (예: MyTeam_소개.pptx, 기능표.xlsx).
 
         사용자 요청: \(userMessage)
         """
