@@ -77,16 +77,16 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                         let chunk = sentenceBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
                         sentenceBuffer = "" // 버퍼 즉시 플러시
 
-                        if !chunk.isEmpty && !Task.isCancelled {
+                        if let ttsChunk = Self.normalizedTTSChunk(chunk), !Task.isCancelled {
                             // ✅ 핵심: UI 콜백을 여기서 직접 호출하지 않음
                             // 대신 오디오 재생 시작 시점에 실행될 클로저를 파이프라인에 주입
                             await self.dispatchToInferencePipeline(
-                                text: chunk,
+                                text: ttsChunk,
                                 characterName: characterName,
                                 onPlaybackStarted: {
                                     // 이 클로저는 playerNode.play() 직후 AudioPlaybackService가 호출
                                     // ← 이 시점이 텍스트가 화면에 나타나야 하는 정확한 순간
-                                    onAudioPlaybackStarted(chunk)
+                                    onAudioPlaybackStarted(ttsChunk)
                                 }
                             )
                         }
@@ -95,11 +95,11 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
 
                 // 자투리 미완성 문장 처리
                 let remainder = sentenceBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !remainder.isEmpty && !Task.isCancelled {
+                if let ttsRemainder = Self.normalizedTTSChunk(remainder), !Task.isCancelled {
                     await self.dispatchToInferencePipeline(
-                        text: remainder,
+                        text: ttsRemainder,
                         characterName: characterName,
-                        onPlaybackStarted: { onAudioPlaybackStarted(remainder) }
+                        onPlaybackStarted: { onAudioPlaybackStarted(ttsRemainder) }
                     )
                 }
 
@@ -122,9 +122,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         // MLX Inference: 텍스트 → PCM AsyncStream
         let pcmStream = Qwen3TTSService.shared.generateTTSStream(text: text, characterName: characterName)
 
-        // 🎯 레퍼런스 음성 원본 그대로 재생 (피치/속도 변형 금지 — 사용자 요구)
-        let pitch: Float = 0.0   // AVAudioUnitTimePitch: cents 단위, 0 = 변형 없음
-        let rate: Float  = 1.0   // 1.0 = 원본 속도
+        let style = VoiceStyleCatalog.playbackStyle(for: characterName)
 
         // AudioPlaybackService: PCM 스트림 소비 + 재생 시작 시 Lip-Sync 콜백 발화
         // onPlaybackStarted는 playStream → appendRawPCM → playerNode.play() 직후 트리거됨
@@ -132,8 +130,8 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
             streamId: streamId,
             stream: pcmStream,
             characterName: characterName,
-            pitch: pitch,
-            rate: rate,
+            pitch: style.pitch,
+            rate: style.rate,
             textPayload: text,
             onPlaybackStarted: onPlaybackStarted  // 🎯 이 콜백이 UI 말풍선을 그림
         )
@@ -158,13 +156,32 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
             currentChunk.append(char)
             if char == "." || char == "?" || char == "!" || char == "\n" {
                 let trimmed = currentChunk.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !trimmed.isEmpty { chunks.append(trimmed) }
+                if let normalized = Self.normalizedTTSChunk(trimmed) { chunks.append(normalized) }
                 currentChunk = ""
             }
         }
         let finalTrimmed = currentChunk.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !finalTrimmed.isEmpty { chunks.append(finalTrimmed) }
+        if let normalized = Self.normalizedTTSChunk(finalTrimmed) { chunks.append(normalized) }
         return chunks
+    }
+
+    private nonisolated static func normalizedTTSChunk(_ text: String) -> String? {
+        var normalized = text
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            .replacingOccurrences(of: "[!?]{2,}", with: "!", options: .regularExpression)
+            .replacingOccurrences(of: "\\.{2,}", with: ".", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard normalized.contains(where: { $0.isTTSMeaningfulCharacter }) else {
+            return nil
+        }
+
+        if normalized.count > 90 {
+            normalized = String(normalized.prefix(90)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        return normalized.isEmpty ? nil : normalized
     }
 
     func speak(text: String, agentID: String? = nil, characterName: String? = nil) {
@@ -183,9 +200,10 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 if Task.isCancelled { break }
                 let streamId = "mlx_\(UUID().uuidString)"
                 let pcmStream = Qwen3TTSService.shared.generateTTSStream(text: sentence, characterName: character)
+                let style = VoiceStyleCatalog.playbackStyle(for: character)
                 // enqueue to audio player (it will play sequentially)
                 await playback.playStream(streamId: streamId, stream: pcmStream,
-                                          characterName: character, pitch: 1.0, rate: 1.0)
+                                          characterName: character, pitch: style.pitch, rate: style.rate)
             }
             await MainActor.run { self.isSpeaking = false }
         }
@@ -215,4 +233,52 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
     func stopChunkSpeaking() { abortPipelinedStream() }
     func prefetchChunk(text: String, characterName: String) { /* No-op: 레거시 호환 */ }
     func playAudioData(_ data: Data) { /* No-op */ }
+}
+
+private struct VoicePlaybackStyle {
+    let pitch: Float
+    let rate: Float
+
+    static let neutral = VoicePlaybackStyle(pitch: 0.0, rate: 1.0)
+
+    var clamped: VoicePlaybackStyle {
+        VoicePlaybackStyle(
+            pitch: min(360, max(-300, pitch)),
+            rate: min(1.14, max(0.90, rate))
+        )
+    }
+}
+
+private enum VoiceStyleCatalog {
+    static func playbackStyle(for characterName: String) -> VoicePlaybackStyle {
+        guard UserDefaults.standard.bool(forKey: "useAnimalCrossingTTS") else {
+            return .neutral
+        }
+        return (styles[characterName] ?? .neutral).clamped
+    }
+
+    private static let styles: [String: VoicePlaybackStyle] = [
+        "치코": VoicePlaybackStyle(pitch: 260, rate: 1.08),
+        "레오": VoicePlaybackStyle(pitch: -180, rate: 0.94),
+        "루나": VoicePlaybackStyle(pitch: 180, rate: 1.03),
+        "렉스": VoicePlaybackStyle(pitch: -260, rate: 0.92),
+        "핀": VoicePlaybackStyle(pitch: 320, rate: 1.10),
+        "모코": VoicePlaybackStyle(pitch: 90, rate: 0.97),
+        "케이": VoicePlaybackStyle(pitch: -120, rate: 0.98),
+        "래키": VoicePlaybackStyle(pitch: 120, rate: 1.06),
+        "폴라": VoicePlaybackStyle(pitch: -180, rate: 0.94),
+        "몽몽": VoicePlaybackStyle(pitch: 340, rate: 1.12),
+        "올리버": VoicePlaybackStyle(pitch: -80, rate: 0.96)
+    ]
+}
+
+private extension Character {
+    nonisolated var isTTSMeaningfulCharacter: Bool {
+        unicodeScalars.contains { scalar in
+            CharacterSet.alphanumerics.contains(scalar)
+                || (0xAC00...0xD7AF).contains(Int(scalar.value))
+                || (0x1100...0x11FF).contains(Int(scalar.value))
+                || (0x3130...0x318F).contains(Int(scalar.value))
+        }
+    }
 }

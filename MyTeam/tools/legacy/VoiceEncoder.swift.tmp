@@ -1,0 +1,3 @@
+#if false  // [DEAD CODE] 미사용 MLX 네이티브 포팅 시도, MLXInferenceService.swift가 실제 런타임. Swift 6 에러 억제용.
+
+#endif

@@ -101,6 +101,7 @@ class ConversationMemory {
         let parts = commandText.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
         let command = parts.first.map { String($0).lowercased() } ?? ""
         let argument = parts.count > 1 ? String(parts[1]).trimmingCharacters(in: .whitespacesAndNewlines) : ""
+        let agentName = currentAgent?.name ?? "시스템"
 
         func post(_ text: String, sources: [AgentWindowManager.SourceReference] = []) {
             manager.addChatLog(
@@ -161,32 +162,68 @@ class ConversationMemory {
                 post("압축할 만큼 대화가 많지 않습니다.")
                 return true
             }
-            let compacted = await compactHistory(messages: visibleMessages, maxMessages: 8)
+            post("대화를 요약 중입니다...")
+            // LLM 기반 요약 시도, 실패 시 정적 요약 fallback
+            let dialogText = visibleMessages.suffix(40)
+                .map { "\($0.isUser ? "사용자" : $0.agentName): \(String($0.text.prefix(200)))" }
+                .joined(separator: "\n")
+            let llmPrompt = """
+            다음 AI 팀 대화를 3~5문장으로 압축 요약해줘. \
+            핵심 결정사항, 중요 정보, 미완료 작업 위주로. 한국어로 답해.
+            \(dialogText)
+            """
+            let llmSummary = await AIService.shared.quickSummary(prompt: llmPrompt)
+            let useLLM = !llmSummary.hasPrefix("(요약 실패")
+            let compacted: [AgentWindowManager.ChatLog]
+            if useLLM {
+                // LLM 요약본 1개 + 최근 8개 메시지 유지
+                let summaryLog = AgentWindowManager.ChatLog(
+                    id: UUID(), agentID: "system", agentName: "시스템",
+                    text: "[AI 요약] \(llmSummary)",
+                    isUser: false, timestamp: visibleMessages.last?.timestamp ?? Date(),
+                    isSystem: false, sources: []
+                )
+                compacted = [summaryLog] + Array(visibleMessages.suffix(8))
+            } else {
+                compacted = await compactHistory(messages: visibleMessages, maxMessages: 8)
+            }
             manager.replaceMessages(roomID: roomID, with: compacted)
             manager.addChatLog(
-                agentID: "system",
-                agentName: "시스템",
-                text: "이전 대화를 요약하고 최근 흐름만 남겼습니다.",
-                isUser: false,
-                roomID: roomID
+                agentID: "system", agentName: "시스템",
+                text: useLLM ? "AI가 이전 대화를 요약했습니다." : "이전 대화를 요약하고 최근 흐름만 남겼습니다.",
+                isUser: false, roomID: roomID
             )
             return true
 
         case "/remember":
             guard !argument.isEmpty else {
-                post("저장할 내용을 같이 입력해 주세요. 예: /remember 사용자는 앱스토어 출시를 우선한다")
+                post("""
+                저장할 내용을 같이 입력해 주세요.
+                • /remember 내용 → 이 방 기억
+                • /remember @루나 내용 → 루나 전용 기억
+                • /remember :global 내용 → 수석님 전체 기억
+                """)
                 return true
             }
-            manager.addKeyFact(argument)
-            post("장기 기억에 저장했습니다: \(argument)")
+            // Scope prefix 파싱
+            let (scope, content) = parseMemoryScope(argument, roomID: roomID)
+            if content.isEmpty {
+                post("저장할 내용이 비어 있습니다.")
+                return true
+            }
+            manager.addScopedFact(content, scope: scope)
+            post("[\(scope.label)] 장기 기억에 저장했습니다: \(content)")
             return true
 
         case "/memory":
-            if manager.keyFacts.isEmpty {
+            let allFacts = manager.allScopedFacts(agentName: agentName, roomID: roomID)
+            if allFacts.isEmpty {
                 post("저장된 장기 기억이 없습니다.")
             } else {
-                let facts = manager.keyFacts.enumerated().map { "\($0.offset + 1). \($0.element)" }.joined(separator: "\n")
-                post("저장된 장기 기억\n\(facts)")
+                let lines = allFacts.flatMap { (label, facts) in
+                    ["\(label):"] + facts.enumerated().map { "  \($0.offset + 1). \($0.element)" }
+                }.joined(separator: "\n")
+                post("저장된 장기 기억\n\(lines)")
             }
             return true
 
@@ -199,19 +236,30 @@ class ConversationMemory {
                 manager.clearKeyFacts()
                 post("장기 기억을 모두 삭제했습니다.")
             } else {
-                let removed = manager.forgetKeyFact(matching: argument)
+                let removed = manager.forgetScopedFact(matching: argument, scope: nil)
+                    + manager.forgetKeyFact(matching: argument)
                 post(removed == 0 ? "일치하는 기억을 찾지 못했습니다." : "장기 기억 \(removed)개를 삭제했습니다.")
             }
             return true
 
         case "/open":
             guard !argument.isEmpty else {
-                post("열 URL이나 파일 경로를 입력해 주세요. 예: /open https://apple.com")
+                post("열 URL을 입력해 주세요. 예: /open https://apple.com")
                 return true
             }
             if let url = openableURL(from: argument) {
+                #if DEBUG
                 NSWorkspace.shared.open(url)
                 post("열었습니다: \(argument)")
+                #else
+                // Release (App Store) 빌드: 로컬 파일 경로 차단, URL만 허용
+                if url.scheme == "http" || url.scheme == "https" {
+                    NSWorkspace.shared.open(url)
+                    post("열었습니다: \(argument)")
+                } else {
+                    post("⚠️ 출시 빌드에서는 웹 URL만 열 수 있습니다.")
+                }
+                #endif
             } else {
                 post("열 수 있는 URL 또는 파일 경로가 아닙니다.")
             }
@@ -247,7 +295,21 @@ class ConversationMemory {
 
         case "/schedule":
             guard let parsed = parseSchedule(argument) else {
-                post("사용법: /schedule 09:00 오늘 주요뉴스 알려줘 또는 /schedule every 30m NVDA 주가 확인")
+                post("""
+                사용법:
+                /schedule 09:00 할 일          — 오늘(또는 내일) 09:00 실행
+                /schedule 9시 30분 할 일       — 한국어 시간 표기
+                /schedule 내일 09:00 할 일     — 내일 09:00 실행
+                /schedule 매일 09:00 할 일     — 매일 반복
+                /schedule 매주 월요일 09:00 할 일 — 매주 월요일 반복
+                /schedule every 30m 할 일     — 30분마다 반복
+                """)
+                return true
+            }
+            // Destructive action policy check at registration time
+            let (allowed, reason) = AutomationPolicy.isAllowed(parsed.prompt)
+            guard allowed else {
+                post("⚠️ 등록 실패: \(reason ?? "이 명령은 자동 실행에서 사용할 수 없습니다.")")
                 return true
             }
             let task = manager.addAutomationTask(
@@ -266,9 +328,12 @@ class ConversationMemory {
                 return true
             }
             let lines = tasks.enumerated().map { idx, task in
-                "\(idx + 1). \(task.scheduleText) · \(task.prompt)"
+                let status = task.isEnabled ? "✅" : "⏸"
+                let approval = task.requiresApproval ? " [승인필요]" : ""
+                let shortId = String(task.id.uuidString.prefix(6))
+                return "\(idx + 1). \(status) \(task.scheduleText) · \(task.title)\(approval)\n   ID: \(shortId) | \(task.prompt.prefix(50))"
             }.joined(separator: "\n")
-            post("스케줄 업무\n\(lines)")
+            post("스케줄 업무\n\(lines)\n\n편집: /edit-task {ID} {옵션}  |  /cancel {번호}")
             return true
 
         case "/cancel":
@@ -277,6 +342,44 @@ class ConversationMemory {
                 return true
             }
             post(manager.cancelAutomationTask(displayIndex: number) ? "스케줄 업무 \(number)번을 삭제했습니다." : "해당 번호의 스케줄 업무를 찾지 못했습니다.")
+            return true
+
+        case "/edit-task":
+            let editParts = argument.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
+            guard editParts.count >= 2 else {
+                post("사용법: /edit-task {ID앞6자} {옵션}\n옵션: HH:MM | --disable | --enable | --approval on|off")
+                return true
+            }
+            let taskResult = manager.editAutomationTask(idPrefix: String(editParts[0]), option: String(editParts[1]))
+            post(taskResult)
+            return true
+
+        case "/approve":
+            guard !argument.isEmpty else {
+                post("승인할 작업 ID를 입력해 주세요. 예: /approve abc123")
+                return true
+            }
+            let prefix = argument.lowercased()
+            if let task = manager.automationTasks.first(where: { $0.id.uuidString.lowercased().hasPrefix(prefix) }) {
+                manager.approveAutomationTask(id: task.id)
+                post("✅ '\(task.title)' 작업을 승인하고 실행합니다.")
+            } else {
+                post("해당 ID의 승인 대기 작업을 찾지 못했습니다.")
+            }
+            return true
+
+        case "/skip":
+            guard !argument.isEmpty else {
+                post("건너뜔 작업 ID를 입력해 주세요. 예: /skip abc123")
+                return true
+            }
+            let prefix = argument.lowercased()
+            if let task = manager.automationTasks.first(where: { $0.id.uuidString.lowercased().hasPrefix(prefix) }) {
+                manager.skipAutomationTask(id: task.id)
+                post("⏭️ '\(task.title)' 이번 회차를 건너뜠습니다.")
+            } else {
+                post("해당 ID의 작업을 찾지 못했습니다.")
+            }
             return true
 
         case "/silent":
@@ -309,10 +412,23 @@ class ConversationMemory {
         toolPolicy: ToolPolicyDecision
     ) -> String {
         let agentName = agent?.name ?? "에이전트"
+        let agentID   = agent?.id ?? ""
+        let role      = agent?.role ?? ""
+        let specialty = agentPersonas[agentID]?.specialty ?? ""
+
+        // 직업 전문성 힌트 (비어 있으면 생략)
+        let specialtyHint: String
+        if !specialty.isEmpty {
+            specialtyHint = "\n- 당신의 핵심 전문 분야는 '\(specialty)'입니다. 이 분야 질문에는 특히 깊이 있고 구체적인 답변을 제공하세요."
+        } else {
+            specialtyHint = ""
+        }
+        let roleHint = role.isEmpty ? "" : "\n- 당신은 '\(role)' 역할입니다. 전문성을 자연스럽게 드러내세요."
+
         return """
 
         [개인창 응답 정책]
-        - 지금은 팀 토론이 아니라 \(agentName)와 사용자의 1:1 대화입니다. 다른 캐릭터를 임의로 끼워 넣지 마세요.
+        - 지금은 팀 토론이 아니라 \(agentName)와 사용자의 1:1 대화입니다. 다른 캐릭터를 임의로 끼워 넣지 마세요.\(roleHint)\(specialtyHint)
         - 단순 확인, 잡담, 짧은 감정 반응은 1~3문장으로 짧게 답하세요.
         - 업무, 개발, 설계, 조사, 금융, 법률, 의사결정 질문은 근거-판단-다음 행동 순서로 답하세요.
         - 최신 정보나 금융/뉴스 질문은 제공된 도구 자료를 우선 사용하고, 모르면 추측하지 말고 확인 필요성을 말하세요.
@@ -351,38 +467,160 @@ class ConversationMemory {
     private static func parseSchedule(_ text: String) -> ParsedSchedule? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
+        let lower = trimmed.lowercased()
 
-        if trimmed.lowercased().hasPrefix("every ") {
+        // ── 반복 간격: every 30m / every 2h ──
+        if lower.hasPrefix("every ") {
             let parts = trimmed.split(separator: " ", maxSplits: 2, omittingEmptySubsequences: true)
-            guard parts.count == 3,
-                  let interval = parseInterval(String(parts[1])) else { return nil }
-            return ParsedSchedule(
-                nextRunAt: Date().addingTimeInterval(interval),
-                repeatInterval: interval,
-                prompt: String(parts[2])
-            )
+            // "every 30m 할 일" 형식 (3 parts)
+            if parts.count == 3, let interval = parseInterval(String(parts[1])) {
+                return ParsedSchedule(
+                    nextRunAt: Date().addingTimeInterval(interval),
+                    repeatInterval: interval,
+                    prompt: String(parts[2])
+                )
+            }
+            // "every day 09:00 할 일" 형식
+            if parts.count >= 4, ["day", "days"].contains(parts[1].lowercased()) {
+                let timePart = String(parts[2])
+                let promptPart = parts.dropFirst(3).joined(separator: " ")
+                if let date = parseTimeToken(timePart, dayOffset: 0) {
+                    return ParsedSchedule(nextRunAt: date, repeatInterval: 86400, prompt: promptPart)
+                }
+            }
         }
 
-        guard let regex = try? NSRegularExpression(pattern: #"^(\d{1,2}):(\d{2})\s+(.+)$"#),
-              let match = regex.firstMatch(in: trimmed, range: NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)),
-              let hourRange = Range(match.range(at: 1), in: trimmed),
-              let minuteRange = Range(match.range(at: 2), in: trimmed),
-              let promptRange = Range(match.range(at: 3), in: trimmed),
-              let hour = Int(trimmed[hourRange]),
-              let minute = Int(trimmed[minuteRange]),
-              hour >= 0, hour <= 23, minute >= 0, minute <= 59 else {
-            return nil
+        // ── 매일 / daily ──
+        let dailyPrefixes = ["매일 ", "daily "]
+        for prefix in dailyPrefixes {
+            if lower.hasPrefix(prefix) {
+                let rest = String(trimmed.dropFirst(prefix.count))
+                if let parsed = parseTimeAndPrompt(rest, repeatInterval: 86400) { return parsed }
+            }
         }
 
-        var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
-        components.hour = hour
-        components.minute = minute
-        components.second = 0
-        guard var date = Calendar.current.date(from: components) else { return nil }
-        if date <= Date() {
-            date = Calendar.current.date(byAdding: .day, value: 1, to: date) ?? date
+        // ── 매주 요일 ──
+        let weekdays: [(prefix: String, weekday: Int)] = [
+            ("매주 월요일", 2), ("매주 화요일", 3), ("매주 수요일", 4),
+            ("매주 목요일", 5), ("매주 금요일", 6), ("매주 토요일", 7), ("매주 일요일", 1),
+            ("every monday", 2), ("every tuesday", 3), ("every wednesday", 4),
+            ("every thursday", 5), ("every friday", 6), ("every saturday", 7), ("every sunday", 1),
+        ]
+        for wd in weekdays where lower.hasPrefix(wd.prefix) {
+            let rest = String(trimmed.dropFirst(wd.prefix.count)).trimmingCharacters(in: .whitespaces)
+            if let parsed = parseTimeAndPrompt(rest, repeatInterval: 604800, weekday: wd.weekday) { return parsed }
         }
-        return ParsedSchedule(nextRunAt: date, repeatInterval: nil, prompt: String(trimmed[promptRange]))
+
+        // ── 내일 / tomorrow ──
+        let tomorrowPrefixes = ["내일 ", "tomorrow "]
+        for prefix in tomorrowPrefixes {
+            if lower.hasPrefix(prefix) {
+                let rest = String(trimmed.dropFirst(prefix.count))
+                if let parsed = parseTimeAndPrompt(rest, dayOffset: 1) { return parsed }
+            }
+        }
+
+        // ── 한국어 시간: N시 [M분] 내용 ──
+        if let parsed = parseKoreanTime(trimmed) { return parsed }
+
+        // ── HH:MM 내용 ──
+        if let parsed = parseTimeAndPrompt(trimmed) { return parsed }
+
+        return nil
+    }
+
+    /// `HH:MM 내용` 또는 `HH시 [MM분] 내용` 파싱 공통 경로
+    private static func parseTimeAndPrompt(
+        _ text: String,
+        repeatInterval: TimeInterval? = nil,
+        dayOffset: Int = 0,
+        weekday: Int? = nil
+    ) -> ParsedSchedule? {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // HH:MM 패턴
+        if let regex = try? NSRegularExpression(pattern: #"^(\d{1,2}):(\d{2})\s+(.+)$"#),
+           let match = regex.firstMatch(in: t, range: NSRange(t.startIndex..<t.endIndex, in: t)),
+           let hourRange  = Range(match.range(at: 1), in: t),
+           let minuteRange = Range(match.range(at: 2), in: t),
+           let promptRange = Range(match.range(at: 3), in: t),
+           let hour   = Int(t[hourRange]),
+           let minute = Int(t[minuteRange]),
+           hour >= 0, hour <= 23, minute >= 0, minute <= 59 {
+            let prompt = String(t[promptRange])
+            let date = makeDate(hour: hour, minute: minute, dayOffset: dayOffset, weekday: weekday)
+            return ParsedSchedule(nextRunAt: date, repeatInterval: repeatInterval, prompt: prompt)
+        }
+
+        // 한국어 시간 (위임)
+        if dayOffset != 0 || repeatInterval != nil {
+            if let parsed = parseKoreanTime(t) {
+                let date = makeDate(
+                    hour: Calendar.current.component(.hour, from: parsed.nextRunAt),
+                    minute: Calendar.current.component(.minute, from: parsed.nextRunAt),
+                    dayOffset: dayOffset,
+                    weekday: weekday
+                )
+                return ParsedSchedule(nextRunAt: date, repeatInterval: repeatInterval, prompt: parsed.prompt)
+            }
+        }
+        return nil
+    }
+
+    /// `N시 [M분] 내용` 형식 파싱
+    private static func parseKoreanTime(_ text: String) -> ParsedSchedule? {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let regex = try? NSRegularExpression(pattern: #"^(\d{1,2})시(?:\s*(\d{1,2})분)?\s+(.+)$"#),
+              let match = regex.firstMatch(in: t, range: NSRange(t.startIndex..<t.endIndex, in: t)),
+              let hourRange   = Range(match.range(at: 1), in: t),
+              let hour = Int(t[hourRange]),
+              hour >= 0, hour <= 23,
+              let promptRange = Range(match.range(at: 3), in: t) else { return nil }
+
+        var minute = 0
+        if match.range(at: 2).location != NSNotFound,
+           let minRange = Range(match.range(at: 2), in: t),
+           let m = Int(t[minRange]) {
+            minute = m
+        }
+        let date = makeDate(hour: hour, minute: minute)
+        return ParsedSchedule(nextRunAt: date, repeatInterval: nil, prompt: String(t[promptRange]))
+    }
+
+    /// 시/분 + dayOffset + 요일 기준 Date 생성.
+    /// 해당 시각이 이미 지났으면 다음 날(또는 다음 해당 요일)로 이동.
+    private static func makeDate(hour: Int, minute: Int, dayOffset: Int = 0, weekday: Int? = nil) -> Date {
+        let cal = Calendar.current
+        var base = Date()
+        if dayOffset > 0 {
+            base = cal.date(byAdding: .day, value: dayOffset, to: base) ?? base
+        }
+        var comps = cal.dateComponents([.year, .month, .day], from: base)
+        comps.hour   = hour
+        comps.minute = minute
+        comps.second = 0
+        var date = cal.date(from: comps) ?? base
+
+        if let wd = weekday {
+            // 다음 해당 요일 찾기
+            while cal.component(.weekday, from: date) != wd {
+                date = cal.date(byAdding: .day, value: 1, to: date) ?? date
+            }
+        } else if dayOffset == 0 && date <= Date() {
+            date = cal.date(byAdding: .day, value: 1, to: date) ?? date
+        }
+        return date
+    }
+
+    /// "09:00" 같은 단독 시간 토큰을 Date로 변환 (오늘 기준, 지나면 내일)
+    private static func parseTimeToken(_ token: String, dayOffset: Int = 0) -> Date? {
+        guard let regex = try? NSRegularExpression(pattern: #"^(\d{1,2}):(\d{2})$"#),
+              let match = regex.firstMatch(in: token, range: NSRange(token.startIndex..<token.endIndex, in: token)),
+              let hRange = Range(match.range(at: 1), in: token),
+              let mRange = Range(match.range(at: 2), in: token),
+              let h = Int(token[hRange]), let m = Int(token[mRange]),
+              h >= 0, h <= 23, m >= 0, m <= 59 else { return nil }
+        return makeDate(hour: h, minute: m, dayOffset: dayOffset)
     }
 
     private static func parseInterval(_ token: String) -> TimeInterval? {
@@ -392,6 +630,32 @@ class ConversationMemory {
               let unitRange = Range(match.range(at: 2), in: token),
               let value = Double(token[valueRange]) else { return nil }
         return token[unitRange].lowercased() == "h" ? value * 3600 : value * 60
+    }
+
+    // MARK: - Memory Scope 파서
+
+    /// `/remember` 인자에서 scope prefix를 파싱.
+    /// - `@이름 내용` → character scope
+    /// - `:global 내용` → global scope
+    /// - `내용` → room scope (현재 방)
+    static func parseMemoryScope(
+        _ argument: String,
+        roomID: UUID?
+    ) -> (scope: AgentWindowManager.MemoryScope, content: String) {
+        let trimmed = argument.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("@") {
+            let rest = String(trimmed.dropFirst())
+            let parts = rest.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
+            let name = parts.first.map(String.init) ?? ""
+            let content = parts.count > 1 ? String(parts[1]) : ""
+            return (.character(name), content.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+        if trimmed.lowercased().hasPrefix(":global ") {
+            let content = String(trimmed.dropFirst(":global ".count))
+            return (.global, content.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+        let scope: AgentWindowManager.MemoryScope = roomID != nil ? .room(roomID!) : .global
+        return (scope, trimmed)
     }
 }
 
@@ -464,6 +728,7 @@ struct FileContentExtractor {
         guard let pdfDoc = PDFDocumentWrapper(url: url) else { return nil }
         return pdfDoc.string
     }
+
 }
 
 // MARK: - PDF 래퍼 (PDFKit 의존성 분리)

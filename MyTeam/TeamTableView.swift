@@ -89,6 +89,7 @@ struct TeamTableView: View {
                         AgentMenuPopupView(
                             isShowing: selectedAgentIndex == index,
                             popupOnLeft: index >= 3, // 4번째(index 3) 에이전트는 왼쪽에 표시
+                            isTeamLeader: manager.teamLeader()?.id == agent.id,
                             onChat: {
                                 selectedAgentIndex = nil
                                 manager.showChat(for: agent)
@@ -100,6 +101,17 @@ struct TeamTableView: View {
                             onSwap: {
                                 selectedAgentIndex = nil
                                 manager.showSwapWindow(replaceIndex: index)
+                            },
+                            onSetLeader: {
+                                selectedAgentIndex = nil
+                                if manager.teamLeader()?.id == agent.id {
+                                    // 팀장 해제: 첫 번째 다른 에이전트로 교체
+                                    if let other = manager.activeAgents.first(where: { $0.id != agent.id }) {
+                                        manager.setTeamLeader(agentID: other.id)
+                                    }
+                                } else {
+                                    manager.setTeamLeader(agentID: agent.id)
+                                }
                             }
                         )
                         // 1~3번째는 캐릭터의 오른쪽 바깥에, 4번째는 왼쪽 바깥으로 완전히 빠져나오게 배치

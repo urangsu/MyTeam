@@ -4,9 +4,11 @@ import SwiftUI
 struct AgentMenuPopupView: View {
     var isShowing: Bool
     var popupOnLeft: Bool = false // true면 왼쪽에 표시 (4번째 에이전트용)
+    var isTeamLeader: Bool = false
     var onChat: () -> Void
     var onSettings: () -> Void
     var onSwap: () -> Void
+    var onSetLeader: (() -> Void)? = nil
 
     var body: some View {
         if isShowing {
@@ -15,6 +17,14 @@ struct AgentMenuPopupView: View {
                 Divider().background(Color.white.opacity(0.1)).padding(.horizontal, 8)
                 MenuButton(icon: "slider.horizontal.3", text: "추가 설정", action: onSettings)
                 MenuButton(icon: "arrow.triangle.2.circlepath", text: "교체", action: onSwap)
+                if let onSetLeader {
+                    Divider().background(Color.white.opacity(0.1)).padding(.horizontal, 8)
+                    MenuButton(
+                        icon: isTeamLeader ? "crown.fill" : "crown",
+                        text: isTeamLeader ? "팀장 해제" : "팀장 설정",
+                        action: onSetLeader
+                    )
+                }
             }
             .frame(width: 120)
             .background(

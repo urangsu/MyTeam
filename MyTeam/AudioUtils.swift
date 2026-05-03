@@ -150,6 +150,7 @@ nonisolated func computeSTFT(
 
 // MARK: - VoiceEncoder Mel Spectrogram (40-bin, 16kHz)
 
+#if false  // [DEAD CODE] VoiceEncoder / ChatterboxPipeline 전용 — 현재 파이프라인에서 미사용
 nonisolated func voiceEncMelSpectrogram(wav: MLXArray) -> MLXArray {
     let sr = VoiceEncConfig.sampleRate
     let nFft = VoiceEncConfig.nFft       // 400
@@ -205,3 +206,4 @@ nonisolated func s3genMelSpectrogram(wav: MLXArray) -> MLXArray {
     // Already (T, 80) — return as-is
     return melSpec
 }
+#endif

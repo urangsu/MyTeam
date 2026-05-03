@@ -30,9 +30,9 @@ actor AudioPlaybackService: AudioPlayable {
         
         do {
             try engine.start()
-            print("[AudioPlayback] 엔진 시작 완료. 기준 포맷: \(engineFormat!)")
+            AppLog.info("[AudioPlayback] 엔진 시작 완료. 기준 포맷: \(engineFormat!)")
         } catch {
-            print("[AudioPlayback] 🚨 스피커 엔진 시작 실패: \(error)")
+            AppLog.error("[AudioPlayback] 스피커 엔진 시작 실패: \(error)")
         }
     }
     
@@ -58,7 +58,7 @@ actor AudioPlaybackService: AudioPlayable {
                 converters[formatKey] = newConverter
                 converter = newConverter
             } else {
-                print("[AudioPlayback] 🚨 AVAudioConverter 생성 실패")
+                AppLog.error("[AudioPlayback] AVAudioConverter 생성 실패")
                 return nil
             }
             
@@ -82,7 +82,7 @@ actor AudioPlaybackService: AudioPlayable {
             }
             
             if let err = error {
-                print("[AudioPlayback] 🚨 포맷 변환 에러: \(err)")
+                AppLog.error("[AudioPlayback] 포맷 변환 에러: \(err)")
                 return nil
             }
             return output
@@ -93,12 +93,19 @@ actor AudioPlaybackService: AudioPlayable {
     func appendRawPCM(command: PlaybackCommand) {
         // onPlaybackStarted 클로저를 actor 격리 컨텍스트 밖으로 먼저 캡처
         let lipSyncCallback: (@Sendable () -> Void)? = command.onPlaybackStarted
-        
+
         autoreleasepool {
-            guard command.streamId == currentActiveStreamId else { return }
-            
+            guard command.streamId == currentActiveStreamId else {
+                // ⚠️ Silent drop diagnostic: 무음 이슈 추적용
+                AppLog.info("[AudioPlayback] 🚫 버퍼 드랍: streamId=\(command.streamId.prefix(12)) active=\(currentActiveStreamId?.prefix(12) ?? "nil") (\(command.pcmData.count)B 버려짐)")
+                return
+            }
+
             let data = command.pcmData
-            guard !data.isEmpty else { return }
+            guard !data.isEmpty else {
+                AppLog.info("[AudioPlayback] 🚫 빈 버퍼 드랍: streamId=\(command.streamId.prefix(12))")
+                return
+            }
             let sourceFormat = command.format
             
             // 1. Data -> AVAudioPCMBuffer 구조 복원
@@ -122,8 +129,12 @@ actor AudioPlaybackService: AudioPlayable {
             
             // 5. Jitter Pre-buffering: 임계점까지 도달하면 비로소 엔진 start & 재생
             if !playerNode.isPlaying && queuedBufferCount >= playbackStartThreshold {
-                if !engine.isRunning { try? engine.start() }
+                if !engine.isRunning {
+                    do { try engine.start() }
+                    catch { AppLog.error("[AudioPlayback] engine.start() 실패: \(error)") }
+                }
                 playerNode.play()
+                AppLog.info("[AudioPlayback] ▶️ 재생 개시 (streamId=\(command.streamId.prefix(12)), queuedBuffers=\(queuedBufferCount), engineRunning=\(engine.isRunning), playerPlaying=\(playerNode.isPlaying))")
             }
             
             // 🎯 Perfect Lip-Sync: 첫 버퍼가 재생 큐에 등록되는 찰나에 UI 말풍선 트리거
@@ -152,7 +163,7 @@ actor AudioPlaybackService: AudioPlayable {
             
             // 사용을 다한 재사용 컨버터들을 정리(Evict)
             converters.removeAll()
-            print("[AudioPlayback] 🧹 세션(\(streamId)) 종료 및 오디오 노드 Detach, 컨버터 풀 Evict 완료")
+            AppLog.info("[AudioPlayback] 🧹 세션(\(streamId)) 종료 및 오디오 노드 Detach, 컨버터 풀 Evict 완료")
         }
     }
     
@@ -168,7 +179,7 @@ actor AudioPlaybackService: AudioPlayable {
                 engineFormat = engine.mainMixerNode.outputFormat(forBus: 0)
                 engine.connect(playerNode, to: timePitchNode, format: engineFormat)
                 engine.connect(timePitchNode, to: engine.mainMixerNode, format: engineFormat)
-                print("[AudioPlayback] 🔁 노드 재연결 완료. 포맷: \(engineFormat!)")
+                AppLog.info("[AudioPlayback] 🔁 노드 재연결 완료. 포맷: \(engineFormat!)")
             }
             
             currentActiveStreamId = streamId
@@ -191,18 +202,26 @@ actor AudioPlaybackService: AudioPlayable {
         textPayload: String? = nil,
         onPlaybackStarted: (@Sendable () -> Void)? = nil
     ) async {
-        // 1. 세션 환경 구성
-        prepareSession(streamId: streamId, characterName: characterName, pitch: pitch, rate: rate)
-        
         let format = AVAudioFormat(standardFormatWithSampleRate: 24000, channels: 1)! // HiFiGAN 출력 기준 포맷
-        
-        // 첫 번째 버퍼에만 Lip-Sync 콜백을 탑재 (그 이후 청크는 콜백 없음)
+
+        // 🔑 핵심 Fix: prepareSession을 스트림 시작 시가 아니라 첫 PCM chunk 도착 시에 호출.
+        //   이유: MLX 추론이 완료된 후에야 첫 chunk가 도착하기 때문에,
+        //         "추론 완료 순서"대로 세션이 교체됨.
+        //   기존: playStream 진입 즉시 prepareSession → 아직 추론 중인데 active 교체 → 이전 PCM 100% 드랍
+        var sessionReady = false
         var isFirstChunk = true
-        
-        // 2. 백프레셔 스트림 구독 (for await)
+
+        // 백프레셔 스트림 구독 (for await)
         for await pcmData in stream {
             guard !Task.isCancelled else { break }
-            
+
+            // 첫 데이터 도착 = 추론 완료 시점. 이때 세션 교체.
+            if !sessionReady {
+                prepareSession(streamId: streamId, characterName: characterName, pitch: pitch, rate: rate)
+                sessionReady = true
+                AppLog.info("[AudioPlayback] 🎬 세션 시작 (추론 완료 시점, streamId=\(streamId.prefix(12)), active=\(currentActiveStreamId?.prefix(12) ?? "nil"))")
+            }
+
             let command = PlaybackCommand(
                 streamId: streamId,
                 pcmData: pcmData,
@@ -218,19 +237,39 @@ actor AudioPlaybackService: AudioPlayable {
             isFirstChunk = false
             appendRawPCM(command: command)
         }
-        
+
         // 🔊 스트림 종료 후 안전망: 아직 playerNode가 play 안 됐으면 강제 시작
         // (짧은 문장 → threshold 미달 → 재생 안 되는 버그 방어)
         if !playerNode.isPlaying && queuedBufferCount > 0 {
-            if !engine.isRunning { try? engine.start() }
+            if !engine.isRunning {
+                do { try engine.start() }
+                catch { AppLog.error("[AudioPlayback] engine.start() 실패: \(error)") }
+            }
             playerNode.play()
-            print("[AudioPlayback] ⚡ 스트림 종료 후 강제 재생 시작 (queuedBuffers=\(queuedBufferCount))")
+            AppLog.info("[AudioPlayback] ⚡ 스트림 종료 후 강제 재생 시작 (queuedBuffers=\(queuedBufferCount))")
         }
     }
 
     func stopAll() {
 
         playerNode.stop()
+        if playerNode.engine != nil {
+            engine.disconnectNodeOutput(playerNode)
+            engine.disconnectNodeOutput(timePitchNode)
+            engine.detach(playerNode)
+            engine.detach(timePitchNode)
+        }
+        currentActiveStreamId = nil
+        queuedBufferCount = 0
+        converters.removeAll()
+    }
+
+    /// 앱 종료 전용 즉시 정지.
+    /// `engine.stop()`을 명시적으로 호출해 CoreAudio 렌더 스레드를 즉시 중단시킨다.
+    /// 렌더 콜백이 in-flight인 상태로 Swift 객체가 해제되면 AVAudioNode(ObjC) 메시지 접근 크래시 발생 — 이를 방지.
+    func stopEngineForTermination() {
+        playerNode.stop()
+        if engine.isRunning { engine.stop() }
         if playerNode.engine != nil {
             engine.disconnectNodeOutput(playerNode)
             engine.disconnectNodeOutput(timePitchNode)

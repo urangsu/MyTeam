@@ -61,15 +61,55 @@ class TeamOrchestrator {
         SpeechManager.shared.stopSpeaking()
 
         do {
+            let leader = manager.fallbackTeamLeader(for: roomID)
+            let mention = manager.resolveMentionedAgent(in: userMessage)
+            let addressedAgent = mention?.activeAgent
+            let unavailableMentionedAgent = (mention?.isActive == false) ? mention?.mentionedAgent : nil
+            let toolPolicy = ToolPolicy.evaluate(userMessage)
+            let toolEvidence = await ToolEvidenceService.gather(for: userMessage, policy: toolPolicy)
+            let groundedUserMessage = userMessage + toolEvidence.promptContext
+
             // 1. 의도 분류 및 리더 추천 (Intent Router)
-            let routing = try await IntentRouter.shared.classify(message: userMessage, activeAgents: agents)
+            let routing = try await IntentRouter.shared.classify(
+                message: userMessage,
+                activeAgents: agents,
+                leaderAgent: leader,
+                addressedAgent: addressedAgent,
+                unavailableMentionedAgent: unavailableMentionedAgent,
+                toolPolicy: toolPolicy
+            )
+            let turnBudget = min(max(routing.turnBudget ?? 3, 1), 5)
+            let alreadySpoke = await emitUnavailableMentionNoticeIfNeeded(
+                unavailableAgent: unavailableMentionedAgent,
+                leader: leader,
+                roomID: roomID,
+                manager: manager
+            )
             
-            if routing.intent == .task {
+            if routing.intent == .task || routing.intent == .research || routing.intent == .decision {
                 // [TRACK A] 업무 모드 (Task Mode)
-                await runTaskMode(routing: routing, userMessage: userMessage, roomID: roomID, manager: manager)
+                await runTaskMode(
+                    routing: routing,
+                    userMessage: groundedUserMessage,
+                    roomID: roomID,
+                    manager: manager,
+                    leader: leader,
+                    preferredFirstSpeaker: addressedAgent,
+                    alreadySpoke: alreadySpoke,
+                    sources: toolEvidence.sources
+                )
             } else {
                 // [TRACK B] 수다 모드 (Chitchat Mode) - 기존 릴레이 방식
-                await runChitchatMode(userMessage: userMessage, roomID: roomID, manager: manager, maxTurns: 3)
+                await runChitchatMode(
+                    userMessage: groundedUserMessage,
+                    roomID: roomID,
+                    manager: manager,
+                    maxTurns: turnBudget,
+                    leader: leader,
+                    preferredFirstSpeaker: addressedAgent,
+                    alreadySpoke: alreadySpoke,
+                    sources: toolEvidence.sources
+                )
             }
             
             // 3. 대화 완료 후 핵심 정보는 manager.keyFacts로 관리 (extractKeyFacts 제거)
@@ -89,27 +129,26 @@ class TeamOrchestrator {
         routing: IntentResult,
         userMessage: String,
         roomID: UUID,
-        manager: AgentWindowManager
+        manager: AgentWindowManager,
+        leader: AgentWindowManager.AgentConfig?,
+        preferredFirstSpeaker: AgentWindowManager.AgentConfig?,
+        alreadySpoke: Bool,
+        sources: [AgentWindowManager.SourceReference]
     ) async {
         guard let orders = routing.workOrders, !orders.isEmpty else { return }
         let agents = manager.activeAgents
+        var didSpeakInThisDiscussion = alreadySpoke
         
-        // 1. 첫 수행자의 주도적 제안 (Routing에 명시된 경우)
-        if let firstOrderID = orders.first?.agentID,
-           let firstAgent = agents.first(where: { $0.id == firstOrderID }),
+        // 1. 팀 리더의 주도적 제안 (Routing에 명시된 경우)
+        if let firstAgent = preferredFirstSpeaker ?? leader ?? orders.first.flatMap({ order in agents.first(where: { $0.id == order.agentID }) }),
            let proposal = routing.proactiveMessage {
             await MainActor.run {
                 manager.addChatLog(agentID: firstAgent.id, agentName: firstAgent.name, text: proposal, isUser: false, roomID: roomID)
-                if !manager.isSilentMode {
+                if !manager.isSilentMode && !didSpeakInThisDiscussion {
                     manager.setAgentSpeaking(agentID: firstAgent.id, text: proposal)
                     SpeechManager.shared.speak(text: proposal, agentID: firstAgent.id, characterName: firstAgent.name)
+                    didSpeakInThisDiscussion = true
                 }
-            }
-            // 첫 에이전트의 발성이 완료될 때까지 대기
-            var waitCount = 0
-            while manager.speakingAgentID == firstAgent.id && waitCount < 120 {
-                try? await Task.sleep(nanoseconds: 100_000_000)
-                waitCount += 1
             }
             try? await Task.sleep(nanoseconds: 600_000_000)  // 간격
         }
@@ -153,18 +192,12 @@ class TeamOrchestrator {
                 )
 
                 await MainActor.run {
-                    manager.addChatLog(agentID: agent.id, agentName: agent.name, text: responseText, isUser: false, roomID: roomID)
-                    if !manager.isSilentMode {
+                    manager.addChatLog(agentID: agent.id, agentName: agent.name, text: responseText, isUser: false, roomID: roomID, sources: sources)
+                    if !manager.isSilentMode && !didSpeakInThisDiscussion {
                         manager.setAgentSpeaking(agentID: agent.id, text: responseText)
                         SpeechManager.shared.speak(text: responseText, agentID: agent.id, characterName: agent.name)
+                        didSpeakInThisDiscussion = true
                     }
-                }
-
-                // 현재 에이전트의 발성이 완료될 때까지 대기
-                var waitCount = 0
-                while manager.speakingAgentID == agent.id && waitCount < 120 {  // 최대 120초 대기
-                    try? await Task.sleep(nanoseconds: 100_000_000)  // 0.1초씩 확인
-                    waitCount += 1
                 }
 
                 // 에이전트 간 자연스러운 간격
@@ -180,7 +213,7 @@ class TeamOrchestrator {
         // 3. 서포터의 짧은 리액션 (나머지 에이전트 중 1명)
         let workerIDs = Set(orders.map { $0.agentID })
         let availableSupporters = agents.filter { !workerIDs.contains($0.id) }
-        if let supporter = availableSupporters.randomElement() {
+        if let supporter = availableSupporters.first {
             try? await Task.sleep(nanoseconds: 800_000_000)
             let interjectionPrompt = "동료들의 전문적인 작업 결과에 대해 본인의 페르소나(\(supporter.role))에 맞게 아주 짧은 리액션이나 격려를 1문장만 하세요."
             if let (interText, _) = try? await AIService.shared.getResponse(
@@ -191,16 +224,11 @@ class TeamOrchestrator {
             ) {
                 await MainActor.run {
                     manager.addChatLog(agentID: supporter.id, agentName: supporter.name, text: interText, isUser: false, roomID: roomID)
-                    if !manager.isSilentMode {
+                    if !manager.isSilentMode && !didSpeakInThisDiscussion {
                         manager.setAgentSpeaking(agentID: supporter.id, text: interText)
                         SpeechManager.shared.speak(text: interText, agentID: supporter.id, characterName: supporter.name)
+                        didSpeakInThisDiscussion = true
                     }
-                }
-                // 서포터의 발성이 완료될 때까지 대기
-                var waitCount = 0
-                while manager.speakingAgentID == supporter.id && waitCount < 120 {
-                    try? await Task.sleep(nanoseconds: 100_000_000)
-                    waitCount += 1
                 }
             }
         }
@@ -212,38 +240,50 @@ class TeamOrchestrator {
         userMessage: String,
         roomID: UUID,
         manager: AgentWindowManager,
-        maxTurns: Int
+        maxTurns: Int,
+        leader: AgentWindowManager.AgentConfig?,
+        preferredFirstSpeaker: AgentWindowManager.AgentConfig?,
+        alreadySpoke: Bool,
+        sources: [AgentWindowManager.SourceReference]
     ) async {
         var lastSpeakerID: String? = nil
+        var didSpeakInThisDiscussion = alreadySpoke
         let agents = manager.activeAgents
 
         for turn in 0..<maxTurns {
             let history = manager.rooms.first(where: { $0.id == roomID })?.messages ?? []
-            guard let nextAgentID = await selectNextSpeaker(history: history, agents: agents, lastSpeakerID: lastSpeakerID, userMessage: userMessage) else { break }
+            let nextAgentID: String?
+            if turn == 0, let preferredID = preferredFirstSpeaker?.id {
+                nextAgentID = preferredID
+            } else if turn == 0, let leaderID = leader?.id {
+                nextAgentID = leaderID
+            } else {
+                nextAgentID = await selectNextSpeaker(history: history, agents: agents, lastSpeakerID: lastSpeakerID, userMessage: userMessage)
+            }
+            guard let nextAgentID else { break }
             guard let agent = agents.first(where: { $0.id == nextAgentID }) else { break }
 
             let prompt = buildDiscussionPrompt(agent: agent, history: history, turn: turn, totalAgents: agents.count)
 
             do {
-                let (responseText, _) = try await AIService.shared.getResponse(text: prompt, agentID: agent.id, chatHistory: Array(history.suffix(3)), agentConfig: agent)
+                let (responseText, _) = try await AIService.shared.getResponse(
+                    text: "\(prompt)\n\n[사용자 요청 및 도구 자료]\n\(userMessage)",
+                    agentID: agent.id,
+                    chatHistory: Array(history.suffix(3)),
+                    agentConfig: agent
+                )
                 await MainActor.run {
-                    manager.addChatLog(agentID: agent.id, agentName: agent.name, text: responseText, isUser: false, roomID: roomID)
-                    if !manager.isSilentMode {
+                    manager.addChatLog(agentID: agent.id, agentName: agent.name, text: responseText, isUser: false, roomID: roomID, sources: sources)
+                    if !manager.isSilentMode && !didSpeakInThisDiscussion {
                         manager.setAgentSpeaking(agentID: agent.id, text: responseText)
                         SpeechManager.shared.speak(text: responseText, agentID: agent.id, characterName: agent.name)
+                        didSpeakInThisDiscussion = true
                     }
                 }
                 lastSpeakerID = agent.id
 
-                // 현재 에이전트의 발성이 완료될 때까지 대기
-                var waitCount = 0
-                while manager.speakingAgentID == agent.id && waitCount < 120 {  // 최대 120초 대기
-                    try? await Task.sleep(nanoseconds: 100_000_000)  // 0.1초씩 확인
-                    waitCount += 1
-                }
-
                 // 다음 에이전트까지의 자연스러운 간격
-                try? await Task.sleep(nanoseconds: UInt64(Double.random(in: 0.5...1.0) * 1_000_000_000))
+                try? await Task.sleep(nanoseconds: 700_000_000)
             } catch { break }
         }
     }
@@ -310,8 +350,7 @@ class TeamOrchestrator {
                 let agentID = String(trimmed[match])
                 // 직전 화자 연속 방지
                 if agentID == lastSpeakerID {
-                    let others = agents.filter { $0.id != lastSpeakerID }
-                    return others.randomElement()?.id
+                    return deterministicFallbackSpeaker(agents: agents, lastSpeakerID: lastSpeakerID, userMessage: userMessage)
                 }
                 return agentID
             }
@@ -323,13 +362,41 @@ class TeamOrchestrator {
                 }
             }
 
-            // 매칭 실패 시 직전 화자 제외 랜덤
-            return agents.filter { $0.id != lastSpeakerID }.randomElement()?.id
+            return deterministicFallbackSpeaker(agents: agents, lastSpeakerID: lastSpeakerID, userMessage: userMessage)
 
         } catch {
-            // Selector 실패 시 직전 화자 제외 랜덤
-            return agents.filter { $0.id != lastSpeakerID }.randomElement()?.id
+            AppLog.warning("selector failed, using deterministic fallback: \(error.localizedDescription)", .ai)
+            return deterministicFallbackSpeaker(agents: agents, lastSpeakerID: lastSpeakerID, userMessage: userMessage)
         }
+    }
+
+    private func deterministicFallbackSpeaker(
+        agents: [AgentWindowManager.AgentConfig],
+        lastSpeakerID: String?,
+        userMessage: String
+    ) -> String? {
+        let candidates = agents.filter { $0.id != lastSpeakerID }
+        guard !candidates.isEmpty else { return nil }
+
+        let compact = userMessage.lowercased().replacingOccurrences(of: " ", with: "")
+        let roleHints: [(keywords: [String], roles: [String])] = [
+            (["법", "계약", "규정", "약관", "소송", "저작권", "개인정보"], ["법", "규정", "리스크", "보안"]),
+            (["보안", "권한", "샌드박스", "키체인", "api키", "위험"], ["보안", "리스크"]),
+            (["디자인", "ui", "ux", "화면", "버튼", "설정창"], ["디자인", "사용자", "ux"]),
+            (["사업", "전략", "출시", "가격", "판매", "수익"], ["전략", "비즈니스", "기획"]),
+            (["코드", "빌드", "버그", "구현", "컴파일", "아키텍처"], ["개발", "엔지니어", "기술"])
+        ]
+
+        for hint in roleHints where hint.keywords.contains(where: { compact.contains($0) }) {
+            if let matched = candidates.first(where: { agent in
+                let role = agent.role.lowercased()
+                return hint.roles.contains(where: { role.contains($0) })
+            }) {
+                return matched.id
+            }
+        }
+
+        return candidates.first?.id
     }
 
     // MARK: - 토의용 프롬프트 생성
@@ -380,5 +447,47 @@ class TeamOrchestrator {
         prompt += "4. 답변 말머리(문장 시작)에 당신의 이름(예: [\(agent.name)], \(agent.name):)을 절대로 붙이지 마세요.\n"
 
         return prompt
+    }
+
+    private func emitUnavailableMentionNoticeIfNeeded(
+        unavailableAgent: AgentWindowManager.AgentConfig?,
+        leader: AgentWindowManager.AgentConfig?,
+        roomID: UUID,
+        manager: AgentWindowManager
+    ) async -> Bool {
+        guard let unavailableAgent,
+              let speaker = leader ?? manager.activeAgents.first else {
+            return false
+        }
+
+        let text = unavailableNoticeText(speaker: speaker, unavailableName: unavailableAgent.name)
+        await MainActor.run {
+            manager.addChatLog(agentID: speaker.id, agentName: speaker.name, text: text, isUser: false, roomID: roomID)
+            if !manager.isSilentMode {
+                manager.setAgentSpeaking(agentID: speaker.id, text: text)
+                SpeechManager.shared.speak(text: text, agentID: speaker.id, characterName: speaker.name)
+            }
+        }
+
+        return true
+    }
+
+    /// 화자 캐릭터 성격에 맞는 "부재 안내" 문구 반환
+    private func unavailableNoticeText(speaker: AgentWindowManager.AgentConfig, unavailableName: String) -> String {
+        let n = unavailableName
+        switch speaker.name {
+        case "레오":    return "\(n)은 현재 팀에 없습니다. 제가 이어서 분석하겠습니다."
+        case "루나":    return "\(n) 지금 없는데! 걱정 마, 내가 할게~"
+        case "모코":    return "\(n)은 오늘 함께하지 못하네요. 제가 대신 진행할게요."
+        case "핀":      return "\(n) 없어요... 제가 해볼게요!"
+        case "치코":    return "\(n)이 지금 없네요. 제가 사용자 입장에서 답변드릴게요."
+        case "렉스":    return "...\(n)은 부재 중입니다. 제가 대신 검토하겠습니다."
+        case "케이":    return "\(n) 미확인. 제가 대신 처리하겠습니다."
+        case "래키":    return "\(n) 지금 없어요. 제가 볼게요!"
+        case "폴라":    return "아, \(n)이 없군요! 제가 커버할게요, 걱정 마세요!"
+        case "몽몽":    return "\(n)이 지금 없어요 ㅠ 제가 도와드릴게요!"
+        case "올리버":  return "\(n) 부재 확인. 제가 꼼꼼히 대신 진행하겠습니다."
+        default:        return "지금 \(n)는 이 팀에 없어서 제가 대신 볼게요."
+        }
     }
 }

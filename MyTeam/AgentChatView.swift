@@ -878,8 +878,17 @@ struct AgentChatView: View {
                     let agentName = manager.activeAgents.first(where: { $0.id == targetID })?.name
                         ?? manager.allAvailableAgents.first(where: { $0.id == targetID })?.name
                         ?? "에이전트"
-                    let agentConfig = manager.activeAgents.first(where: { $0.id == targetID })
+                    var agentConfig = manager.activeAgents.first(where: { $0.id == targetID })
                         ?? manager.allAvailableAgents.first(where: { $0.id == targetID })
+                    // P3 tool-capable 라우팅: tool 사용 시 가장 적합한 provider로 자동 전환
+                    if toolPolicy.needsTool, let cfg = agentConfig {
+                        let capability: LLMCapability = toolPolicy.needsFinance || toolPolicy.needsWeb ? .webSearch : .toolUse
+                        let best = await LLMConfigCatalog.shared.routeOrDefault(capability, fallback: cfg.llmProvider)
+                        if best != cfg.llmProvider {
+                            AppLog.debug("[Router] \(agentName) tool 요청 → \(cfg.llmProvider.displayName) → \(best.displayName) 라우팅")
+                            agentConfig = cfg.withProvider(best)
+                        }
+                    }
                     let personalPolicy = ConversationMemory.buildPersonalResponsePolicy(
                         for: agentConfig,
                         toolPolicy: toolPolicy

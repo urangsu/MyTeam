@@ -60,6 +60,13 @@ extension AgentWindowManager {
         /// 예: "meta-llama/llama-3-8b-instruct", "anthropic/claude-3-haiku"
         var openRouterModelId: String? = nil
 
+        /// 지정된 provider로 오버라이드한 복사본 반환 (원본 불변)
+        func withProvider(_ provider: LLMProvider) -> AgentConfig {
+            var copy = self
+            copy.llmProvider = provider
+            return copy
+        }
+
         mutating func applyDeskRouting(index: Int) {
             let providerKey = "llmProvider_desk_\(index)"
             let modelKey = "openRouterModelId_desk_\(index)"
@@ -71,9 +78,9 @@ extension AgentWindowManager {
                 llmProvider = provider
             }
 
-            if let model = UserDefaults.standard.string(forKey: modelKey), !model.isEmpty {
+            if let model = UserDefaults.standard.string(forKey: modelKey)?.trimmingCharacters(in: .whitespacesAndNewlines), !model.isEmpty {
                 openRouterModelId = model
-            } else if let model = UserDefaults.standard.string(forKey: "openRouterModelId"), !model.isEmpty {
+            } else if let model = UserDefaults.standard.string(forKey: "openRouterModelId")?.trimmingCharacters(in: .whitespacesAndNewlines), !model.isEmpty {
                 openRouterModelId = model
             }
         }

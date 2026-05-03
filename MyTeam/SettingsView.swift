@@ -61,23 +61,45 @@ private class LocationHelper: NSObject, ObservableObject, CLLocationManagerDeleg
         guard let loc = locations.first else { return }
         Task {
             do {
-                let geocoder = CLGeocoder()
-                let placemarks = try await geocoder.reverseGeocodeLocation(loc)
-                if let p = placemarks.first {
-                    await MainActor.run {
-                        let area = p.administrativeArea ?? ""
-                        let city = p.locality ?? ""
-                        self.locationText = "\(area) \(city)".trimmingCharacters(in: .whitespaces)
-                        self.isLoading = false
-                    }
-                } else {
-                    await MainActor.run {
-                        self.locationText = "주소 변환 실패"
-                        self.isLoading = false
-                    }
+                let locationName = try await Self.reverseGeocodedName(for: loc)
+                await MainActor.run {
+                    self.locationText = locationName.isEmpty ? "주소 변환 실패" : locationName
+                    self.isLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.locationText = "주소 변환 실패"
+                    self.isLoading = false
                 }
             }
         }
+    }
+
+    nonisolated private static func reverseGeocodedName(for location: CLLocation) async throws -> String {
+        if #available(macOS 26.0, *) {
+            guard let request = MKReverseGeocodingRequest(location: location) else { return "" }
+            let items = try await request.mapItems
+            guard let item = items.first else { return "" }
+            if let address = item.addressRepresentations?.cityWithContext(.short)
+                ?? item.addressRepresentations?.cityName {
+                return address
+            }
+            return item.address?.shortAddress ?? item.address?.fullAddress ?? ""
+        } else {
+            let geocoder = CLGeocoder()
+            let placemarks = try await geocoder.reverseGeocodeLocation(location)
+            if let placemark = placemarks.first {
+                return Self.compactLocationName(
+                    area: placemark.administrativeArea,
+                    city: placemark.locality
+                )
+            }
+            return ""
+        }
+    }
+
+    nonisolated private static func compactLocationName(area: String?, city: String?) -> String {
+        "\(area ?? "") \(city ?? "")".trimmingCharacters(in: .whitespaces)
     }
 
     // CLLocationManagerDelegate — 위치 수신 실패
@@ -113,19 +135,19 @@ struct SettingsView: View {
     @AppStorage("teamName")               private var teamName: String = "MyTeam"
     @AppStorage("teamNameColor")          private var teamNameColor: String = "#FFFFFF"
     @AppStorage("agentWindowOpacity")     private var agentWindowOpacity: Double = 0.0
-    @AppStorage("useAnimalCrossingTTS")   private var useAnimalCrossingTTS: Bool = true
-    @AppStorage("ttsModelId")             private var ttsModelId: String = ModelCatalog.defaultTTSModelId
+    @AppStorage("useAnimalCrossingTTS")   private var useAnimalCrossingTTS: Bool = false
 
     // ── API 설정
     @AppStorage("defaultLLMProvider") private var defaultProviderRaw: String = LLMProvider.gemini.rawValue
-    @AppStorage("openAIModelId")      private var openAIModelId: String = "gpt-4o"
+    @AppStorage("openAIModelId")      private var openAIModelId: String = ""
     @State private var geminiKey: String = ""
     @State private var openAIKey: String = ""
     @State private var claudeKey: String = ""
     @State private var openRouterKey: String = ""
-    @State private var openRouterModelId: String = "meta-llama/llama-3-8b-instruct"
+    @State private var openRouterModelId: String = ""
     @State private var selectedProvider: LLMProvider = .gemini
     @State private var validationStatus: ValidationStatus = .idle
+    @State private var showAdvancedModelSettings: Bool = false
 
     @State private var currentTab: Int = 0
     @StateObject private var gps = LocationHelper()
@@ -223,15 +245,17 @@ struct SettingsView: View {
                 }
             }
 
-            Section(header: Text("음성"), footer: Text("활성화 시 고품질 음성에 피치와 속도 변조를 덫씌워 캐릭터 느낌을 냅니다.")) {
+            Section("음성") {
+                Toggle(isOn: Binding(
+                    get: { !manager.isSilentMode },
+                    set: { manager.isSilentMode = !$0 }
+                )) {
+                    Label("음성 출력", systemImage: "waveform")
+                }
                 Toggle(isOn: $useAnimalCrossingTTS) {
-                    Label("동물의숲 효과", systemImage: "waveform")
+                    Label("동물의숲 효과", systemImage: "sparkles")
                 }
-                LabeledContent {
-                    TextField("", text: $ttsModelId)
-                } label: {
-                    Label("TTS 모델 ID", systemImage: "cpu")
-                }
+                .disabled(manager.isSilentMode)
             }
 
             Section("팀원창") {
@@ -275,9 +299,6 @@ struct SettingsView: View {
                     LabeledContent("OpenAI Key") {
                         SecureField("", text: $openAIKey)
                     }
-                    LabeledContent("Model ID") {
-                        TextField("gpt-4o", text: $openAIModelId)
-                    }
                 case .claude:
                     LabeledContent("Claude Key") {
                         SecureField("", text: $claudeKey)
@@ -285,9 +306,6 @@ struct SettingsView: View {
                 case .openRouter:
                     LabeledContent("OpenRouter Key") {
                         SecureField("", text: $openRouterKey)
-                    }
-                    LabeledContent("Model ID") {
-                        TextField("meta-llama/llama-3-8b-instruct", text: $openRouterModelId)
                     }
                 }
 
@@ -300,10 +318,90 @@ struct SettingsView: View {
                             .foregroundStyle(validationStatus.color)
                     }
                     Spacer()
+                    if !currentKey(for: selectedProvider).isEmpty {
+                        Button(role: .destructive) {
+                            deleteCurrentKey()
+                        } label: {
+                            Image(systemName: "trash")
+                                .font(.caption)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.red.opacity(0.7))
+                        .help("API 키 삭제")
+                    }
                     Button("검증") { validateCurrentKey() }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         .disabled(currentKey(for: selectedProvider).isEmpty)
+                }
+            }
+
+            Section {
+                DisclosureGroup(isExpanded: $showAdvancedModelSettings) {
+                    switch selectedProvider {
+                    case .openAI:
+                        LabeledContent("모델") {
+                            TextField("자동", text: $openAIModelId)
+                        }
+                    case .openRouter:
+                        LabeledContent("모델") {
+                            TextField("자동", text: $openRouterModelId)
+                        }
+                    default:
+                        EmptyView()
+                    }
+
+                    // 발견된 모델 목록
+                    let discoveredModels = LLMConfigCatalog.shared.configs[selectedProvider]?.discoveredModels ?? []
+                    if !discoveredModels.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("발견된 모델")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            ForEach(discoveredModels.prefix(8), id: \.self) { model in
+                                Button {
+                                    switch selectedProvider {
+                                    case .openAI:     openAIModelId = model
+                                    case .openRouter: openRouterModelId = model
+                                    default: break
+                                    }
+                                } label: {
+                                    HStack {
+                                        Text(model)
+                                            .font(.caption)
+                                            .foregroundStyle(.primary)
+                                        Spacer()
+                                        if (selectedProvider == .openAI && openAIModelId == model) ||
+                                           (selectedProvider == .openRouter && openRouterModelId == model) {
+                                            Image(systemName: "checkmark")
+                                                .font(.caption2)
+                                                .foregroundStyle(.blue)
+                                        }
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    } else {
+                        HStack {
+                            Text(selectedProvider == .openRouter ? "모델 ID를 직접 입력하세요" : "자동 선택 (검증 후 갱신)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Button {
+                                Task {
+                                    await LLMConfigCatalog.shared.refreshIfNeeded(selectedProvider)
+                                }
+                            } label: {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.caption)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                } label: {
+                    Label("고급 모델 설정", systemImage: "slider.horizontal.3")
                 }
             }
 
@@ -360,22 +458,43 @@ struct SettingsView: View {
         }
     }
 
+    private func deleteCurrentKey() {
+        let keychainKey: String
+        switch selectedProvider {
+        case .gemini:     keychainKey = "geminiAPIKey"; geminiKey = ""
+        case .openAI:     keychainKey = "openAIAPIKey"; openAIKey = ""
+        case .claude:     keychainKey = "claudeAPIKey"; claudeKey = ""
+        case .openRouter: keychainKey = "openRouterAPIKey"; openRouterKey = ""
+        }
+        _ = KeychainManager.delete(key: keychainKey)
+        validationStatus = .idle
+    }
+
     private func loadSettings() {
         if let k = KeychainManager.load(key: "geminiAPIKey")     { geminiKey = k }
         if let k = KeychainManager.load(key: "openAIAPIKey")     { openAIKey = k }
         if let k = KeychainManager.load(key: "claudeAPIKey")     { claudeKey = k }
         if let k = KeychainManager.load(key: "openRouterAPIKey") { openRouterKey = k }
         openRouterModelId = UserDefaults.standard.string(forKey: "openRouterModelId")
-            ?? "meta-llama/llama-3-8b-instruct"
+            ?? ""
         if let raw = LLMProvider(rawValue: defaultProviderRaw) { selectedProvider = raw }
     }
 
     private func saveSettings() {
+        openAIModelId = openAIModelId.trimmingCharacters(in: .whitespacesAndNewlines)
+        openRouterModelId = openRouterModelId.trimmingCharacters(in: .whitespacesAndNewlines)
         KeychainManager.save(key: "geminiAPIKey",     value: geminiKey)
         KeychainManager.save(key: "openAIAPIKey",     value: openAIKey)
         KeychainManager.save(key: "claudeAPIKey",     value: claudeKey)
         KeychainManager.save(key: "openRouterAPIKey", value: openRouterKey)
-        UserDefaults.standard.set(openRouterModelId, forKey: "openRouterModelId")
+        if openAIModelId.isEmpty {
+            UserDefaults.standard.removeObject(forKey: "openAIModelId")
+        }
+        if openRouterModelId.isEmpty {
+            UserDefaults.standard.removeObject(forKey: "openRouterModelId")
+        } else {
+            UserDefaults.standard.set(openRouterModelId, forKey: "openRouterModelId")
+        }
         defaultProviderRaw = selectedProvider.rawValue
     }
 }
@@ -391,7 +510,7 @@ private struct DeskRoutingRow: View {
         self.deskIndex = deskIndex
         _providerRaw = AppStorage(wrappedValue: LLMProvider.gemini.rawValue,
                                   "llmProvider_desk_\(deskIndex)")
-        _modelId     = AppStorage(wrappedValue: "meta-llama/llama-3-8b-instruct",
+        _modelId     = AppStorage(wrappedValue: "",
                                   "openRouterModelId_desk_\(deskIndex)")
     }
 
@@ -408,8 +527,14 @@ private struct DeskRoutingRow: View {
         }
 
         if providerRaw == LLMProvider.openRouter.rawValue {
-            LabeledContent("Model ID") {
-                TextField("meta-llama/llama-3-8b-instruct", text: $modelId)
+            DisclosureGroup {
+                LabeledContent("모델") {
+                    TextField("자동", text: $modelId)
+                }
+            } label: {
+                Text("고급 모델 설정")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }

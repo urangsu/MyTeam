@@ -75,11 +75,22 @@ class AgentWindowManager: ObservableObject {
     @Published var typingAgentIDs: Set<String> = []
     
     // ── 지능형 기억 보호 (Key Fact Buffer) ──
+    // V1: 단일 전역 배열 (하위 호환 유지)
     @AppStorage("keyFacts") private var keyFactsData: Data = Data()
     @Published var keyFacts: [String] = [] {
         didSet {
             if let data = try? JSONEncoder().encode(keyFacts) {
                 keyFactsData = data
+            }
+        }
+    }
+    // V2: scope별 사전 (global / room_{uuid} / char_{name})
+    // 형식: { "global": ["...", ...], "room_XXXX": [...], "char_루나": [...] }
+    @AppStorage("MyTeam.keyFactsV2") private var keyFactsScopedData: Data = Data()
+    private var keyFactsScoped: [String: [String]] = [:] {
+        didSet {
+            if let data = try? JSONEncoder().encode(keyFactsScoped) {
+                keyFactsScopedData = data
             }
         }
     }
@@ -96,6 +107,85 @@ class AgentWindowManager: ObservableObject {
     var persistentContext: String {
         guard !keyFacts.isEmpty else { return "" }
         return "\n[기억해야 할 핵심 정보]\n" + keyFacts.map { "- \($0)" }.joined(separator: "\n") + "\n"
+    }
+
+    /// scope별 기억을 병합해 시스템 프롬프트 컨텍스트 반환.
+    /// - agentName: 현재 에이전트 이름 (캐릭터 scope 조회용)
+    /// - roomID: 현재 방 ID (room scope 조회용)
+    func scopedMemoryContext(agentName: String, roomID: UUID?) -> String {
+        var facts: [String] = []
+        // 1. 전역 (수석님 관련) 기억
+        facts += keyFactsScoped["global"] ?? []
+        // 2. 방별 기억
+        if let rid = roomID { facts += keyFactsScoped["room_\(rid.uuidString)"] ?? [] }
+        // 3. 캐릭터별 기억
+        facts += keyFactsScoped["char_\(agentName)"] ?? []
+        // 4. 레거시 전역 기억 (V1 keyFacts — 마이그레이션 전까지 포함)
+        facts += keyFacts
+        // 중복 제거
+        facts = Array(NSOrderedSet(array: facts) as! [String])  // swiftlint:disable:this force_cast
+        guard !facts.isEmpty else { return "" }
+        return "\n[기억해야 할 핵심 정보]\n" + facts.map { "- \($0)" }.joined(separator: "\n") + "\n"
+    }
+
+    // MARK: - Scoped Key Facts API
+
+    enum MemoryScope {
+        case global
+        case room(UUID)
+        case character(String)
+        var key: String {
+            switch self {
+            case .global:           return "global"
+            case .room(let id):     return "room_\(id.uuidString)"
+            case .character(let n): return "char_\(n)"
+            }
+        }
+        var label: String {
+            switch self {
+            case .global:           return "전체 기억"
+            case .room:             return "방 기억"
+            case .character(let n): return "\(n) 전용 기억"
+            }
+        }
+    }
+
+    func addScopedFact(_ fact: String, scope: MemoryScope) {
+        let cleaned = fact.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return }
+        var bucket = keyFactsScoped[scope.key] ?? []
+        if !bucket.contains(cleaned) {
+            bucket.append(cleaned)
+            keyFactsScoped[scope.key] = bucket
+        }
+    }
+
+    func forgetScopedFact(matching query: String, scope: MemoryScope?) -> Int {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !q.isEmpty else { return 0 }
+        if let scope {
+            let before = keyFactsScoped[scope.key]?.count ?? 0
+            keyFactsScoped[scope.key]?.removeAll { $0.lowercased().contains(q) }
+            return before - (keyFactsScoped[scope.key]?.count ?? 0)
+        } else {
+            // 전체 scope에서 삭제
+            var total = 0
+            for key in keyFactsScoped.keys {
+                let before = keyFactsScoped[key]?.count ?? 0
+                keyFactsScoped[key]?.removeAll { $0.lowercased().contains(q) }
+                total += before - (keyFactsScoped[key]?.count ?? 0)
+            }
+            return total
+        }
+    }
+
+    func allScopedFacts(agentName: String, roomID: UUID?) -> [(scope: String, facts: [String])] {
+        var result: [(String, [String])] = []
+        if let g = keyFactsScoped["global"], !g.isEmpty { result.append(("🌐 전체", g)) }
+        if let rid = roomID, let r = keyFactsScoped["room_\(rid.uuidString)"], !r.isEmpty { result.append(("🏠 이 방", r)) }
+        if let c = keyFactsScoped["char_\(agentName)"], !c.isEmpty { result.append(("👤 \(agentName)", c)) }
+        if !keyFacts.isEmpty { result.append(("📌 레거시", keyFacts)) }
+        return result
     }
     
     // 팀 테이블 창 (하나)
@@ -141,9 +231,13 @@ class AgentWindowManager: ObservableObject {
             currentRoomID = rooms.first?.id
         }
         
-        // Key Facts 복구
+        // Key Facts 복구 (V1 레거시)
         if let decoded = try? JSONDecoder().decode([String].self, from: keyFactsData) {
             keyFacts = decoded
+        }
+        // Key Facts 복구 (V2 scoped)
+        if let decoded = try? JSONDecoder().decode([String: [String]].self, from: keyFactsScopedData) {
+            keyFactsScoped = decoded
         }
         if let decoded = try? JSONDecoder().decode([AutomationTask].self, from: automationTasksData) {
             automationTasks = decoded
@@ -160,7 +254,7 @@ class AgentWindowManager: ObservableObject {
             self?.checkIdle()
         }
         automationTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.runDueAutomationTasks() }
+            self?.runDueAutomationTasks()
         }
     }
 
@@ -293,6 +387,8 @@ class AgentWindowManager: ObservableObject {
                         "다시 작업 모드로 전환합니다!",
                         "잠금해제 소리만 기다렸다니까요, \(userTitle). 바로 일하러 가시죠!"]
         speakLocalEvent(text: fallback.randomElement()!, state: .greeting, isSystem: true)
+        // 절전 해제 시 모델 discovery TTL 체크 → 1시간 경과분 갱신
+        Task { await LLMConfigCatalog.shared.refreshAllIfNeeded() }
     }
 
     private func handleStartup() {
@@ -668,14 +764,6 @@ class AgentWindowManager: ObservableObject {
     }
 
     // MARK: - 창 크기 동적 조절 (SwiftUI에서 호출)
-    func updateStatusWindowWidth(_ width: CGFloat) {
-        // statusPanel의 크기를 변경 (teamPanel 아님!)
-        guard let panel = statusPanel else { return }
-        var frame = panel.frame
-        frame.size.width = width
-        panel.setFrame(frame, display: true, animate: true)
-    }
-
     func updateStatusWindowSize(width: CGFloat, height: CGFloat) {
         guard let panel = statusPanel else { return }
         var frame = panel.frame
@@ -762,7 +850,7 @@ class AgentWindowManager: ObservableObject {
     // MARK: - 스케줄 업무
 
     @discardableResult
-    func addAutomationTask(prompt: String, nextRunAt: Date, repeatInterval: TimeInterval? = nil, roomID: UUID? = nil) -> AutomationTask {
+    func addAutomationTask(prompt: String, nextRunAt: Date, repeatInterval: TimeInterval? = nil, roomID: UUID? = nil, assignedAgentID: String? = nil) -> AutomationTask {
         let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         let title = String(trimmed.prefix(28))
         let task = AutomationTask(
@@ -772,6 +860,7 @@ class AgentWindowManager: ObservableObject {
             nextRunAt: nextRunAt,
             repeatInterval: repeatInterval,
             roomID: roomID ?? currentRoomID,
+            assignedAgentID: assignedAgentID,
             isEnabled: true,
             createdAt: Date(),
             lastRunAt: nil
@@ -791,6 +880,81 @@ class AgentWindowManager: ObservableObject {
         return true
     }
 
+    /// /edit-task 명령 처리.
+    /// - idPrefix: 작업 UUID 앞 6자 이상
+    /// - options: "HH:MM" | "--disable" | "--enable" | "--approval on|off"
+    /// - Returns: 사용자에게 보여줄 결과 메시지
+    func editAutomationTask(idPrefix: String, option: String) -> String {
+        let prefix = idPrefix.lowercased()
+        guard let idx = automationTasks.firstIndex(where: { $0.id.uuidString.lowercased().hasPrefix(prefix) }) else {
+            return "작업 ID '\(idPrefix)'를 찾지 못했습니다. /tasks 로 목록을 확인하세요."
+        }
+        let opt = option.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if opt == "--disable" {
+            automationTasks[idx].isEnabled = false
+            return "'\(automationTasks[idx].title)' 작업을 비활성화했습니다."
+        } else if opt == "--enable" {
+            automationTasks[idx].isEnabled = true
+            return "'\(automationTasks[idx].title)' 작업을 활성화했습니다."
+        } else if opt == "--approval on" {
+            automationTasks[idx].requiresApproval = true
+            return "'\(automationTasks[idx].title)' 작업에 실행 전 승인을 설정했습니다."
+        } else if opt == "--approval off" {
+            automationTasks[idx].requiresApproval = false
+            return "'\(automationTasks[idx].title)' 작업의 승인 요건을 해제했습니다."
+        } else {
+            // HH:MM 시간 변경 파싱
+            let timeParts = opt.split(separator: ":")
+            guard timeParts.count == 2,
+                  let h = Int(timeParts[0]), let m = Int(timeParts[1]),
+                  (0...23).contains(h), (0...59).contains(m) else {
+                return "인식할 수 없는 옵션입니다. 예: /edit-task \(idPrefix) 09:30 | --disable | --enable | --approval on"
+            }
+            var cal = Calendar.current
+            var comps = cal.dateComponents([.year, .month, .day], from: automationTasks[idx].nextRunAt)
+            comps.hour = h; comps.minute = m; comps.second = 0
+            if let newDate = cal.date(from: comps) {
+                automationTasks[idx].nextRunAt = newDate > Date() ? newDate : cal.date(byAdding: .day, value: 1, to: newDate) ?? newDate
+            }
+            return "'\(automationTasks[idx].title)' 다음 실행 시간을 \(String(format: "%02d:%02d", h, m))로 변경했습니다."
+        }
+    }
+
+    // 승인 대기 중인 task ID Set
+    @Published var pendingApprovalTaskIDs: Set<UUID> = []
+
+    /// 승인 대기 중인 task를 승인하여 즉시 실행
+    func approveAutomationTask(id: UUID) {
+        pendingApprovalTaskIDs.remove(id)
+        guard let task = automationTasks.first(where: { $0.id == id }) else { return }
+        executeApprovedTask(task)
+    }
+
+    /// 승인 대기 중인 task를 이번 회차 건너뜀 (다음 실행 시각으로 미룸)
+    func skipAutomationTask(id: UUID) {
+        pendingApprovalTaskIDs.remove(id)
+        guard let idx = automationTasks.firstIndex(where: { $0.id == id }) else { return }
+        if let interval = automationTasks[idx].repeatInterval {
+            automationTasks[idx].nextRunAt = Date().addingTimeInterval(interval)
+        } else {
+            automationTasks.remove(at: idx)
+        }
+        addChatLog(agentID: "system", agentName: "스케줄",
+                   text: "⏭️ '\(automationTasks.first(where: { $0.id == id })?.title ?? "작업")'을 건너뜠습니다.",
+                   isUser: false, roomID: currentRoomID)
+    }
+
+    private func executeApprovedTask(_ task: AutomationTask) {
+        let targetRoomID = task.roomID ?? currentRoomID
+        Task { @MainActor in
+            let substitute = self.activeAgents.first(where: { $0.id == task.assignedAgentID })
+                ?? self.teamLeader() ?? self.activeAgents.first
+            if let agent = substitute {
+                _ = await ConversationMemory.handleChatCommand(task.prompt, roomID: targetRoomID, manager: self, currentAgent: agent)
+            }
+        }
+    }
+
     private func runDueAutomationTasks() {
         let now = Date()
         let dueTasks = automationTasks.filter { $0.isEnabled && $0.nextRunAt <= now }
@@ -798,7 +962,41 @@ class AgentWindowManager: ObservableObject {
 
         for task in dueTasks {
             guard let index = automationTasks.firstIndex(where: { $0.id == task.id }) else { continue }
+
+            // Destructive action policy check
+            let (allowed, reason) = AutomationPolicy.isAllowed(task.prompt)
+            guard allowed else {
+                AppLog.warning("[Schedule] 차단됨: \(task.title) — \(reason ?? "")")
+                addChatLog(
+                    agentID: "system",
+                    agentName: "스케줄",
+                    text: "⚠️ 스케줄 업무 차단: \(reason ?? "정책 위반")",
+                    isUser: false,
+                    roomID: task.roomID ?? currentRoomID
+                )
+                continue
+            }
+
             let targetRoomID = task.roomID ?? currentRoomID
+
+            // 승인 대기 처리: requiresApproval=true이고 아직 대기 중이 아니면 승인 요청
+            if task.requiresApproval && !pendingApprovalTaskIDs.contains(task.id) {
+                pendingApprovalTaskIDs.insert(task.id)
+                let shortId = String(task.id.uuidString.prefix(6))
+                addChatLog(
+                    agentID: "system", agentName: "스케줄",
+                    text: "✋ 스케줄 업무 승인 요청: \"\(task.title)\"\n/approve \(shortId) — 승인 실행\n/skip \(shortId) — 이번 회차 건너뜀\n(2분 내 응답 없으면 자동 실행)",
+                    isUser: false, roomID: targetRoomID
+                )
+                // 2분 타임아웃 후 자동 실행
+                Task { @MainActor [weak self] in
+                    try? await Task.sleep(nanoseconds: 120_000_000_000)
+                    guard let self, self.pendingApprovalTaskIDs.contains(task.id) else { return }
+                    self.pendingApprovalTaskIDs.remove(task.id)
+                    self.executeApprovedTask(task)
+                }
+                continue
+            }
 
             automationTasks[index].lastRunAt = now
             if let interval = task.repeatInterval {
@@ -816,11 +1014,37 @@ class AgentWindowManager: ObservableObject {
             )
 
             Task {
+                let assignedAgent = task.assignedAgentID.flatMap { assignedID in
+                    allAvailableAgents.first(where: { $0.id == assignedID })
+                }
+                let activeAssignee = task.assignedAgentID.flatMap { assignedID in
+                    activeAgents.first(where: { $0.id == assignedID })
+                }
+                let substitute = activeAssignee ?? fallbackTeamLeader(for: targetRoomID)
+
+                if let assignedAgent, activeAssignee == nil, let substitute {
+                    addChatLog(
+                        agentID: substitute.id,
+                        agentName: substitute.name,
+                        text: "\(assignedAgent.name)은 지금 팀에 없어서 제가 대신 할게요.",
+                        isUser: false,
+                        roomID: targetRoomID
+                    )
+                }
+
                 if task.prompt.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("/") {
-                    _ = await ConversationMemory.handleChatCommand(task.prompt, roomID: targetRoomID, manager: self, currentAgent: fallbackTeamLeader(for: targetRoomID))
+                    _ = await ConversationMemory.handleChatCommand(task.prompt, roomID: targetRoomID, manager: self, currentAgent: substitute)
                 } else if let roomID = targetRoomID {
+                    let scheduledPrompt: String
+                    if let activeAssignee {
+                        scheduledPrompt = "\(activeAssignee.name)가 담당해서 수행해줘. \(task.prompt)"
+                    } else if let substitute {
+                        scheduledPrompt = "\(substitute.name)가 담당해서 수행해줘. \(task.prompt)"
+                    } else {
+                        scheduledPrompt = task.prompt
+                    }
                     await TeamOrchestrator.shared.runTeamDiscussion(
-                        userMessage: task.prompt,
+                        userMessage: scheduledPrompt,
                         roomID: roomID,
                         manager: self
                     )

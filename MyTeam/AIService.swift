@@ -40,9 +40,11 @@ final class AIService {
         case .claude:
             return claudeStream(text: text, agentID: agentID, chatHistory: chatHistory)
         case .openRouter:
-            let modelId = agentConfig?.openRouterModelId
+            let configuredModel = agentConfig?.openRouterModelId
                 ?? UserDefaults.standard.string(forKey: "openRouterModelId")
-                ?? "meta-llama/llama-3-8b-instruct"
+            let modelId = configuredModel?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                ? configuredModel!.trimmingCharacters(in: .whitespacesAndNewlines)
+                : "openrouter/auto"
             return openRouterStream(text: text, agentID: agentID, chatHistory: chatHistory, modelId: modelId)
         }
     }
@@ -52,7 +54,7 @@ final class AIService {
     private var cachedOpenAIModelId: String?
 
     // MARK: - Gemini Self-Healing Discovery
-    private func discoverLatestGeminiModel(apiKey: String) async throws -> String {
+    func discoverLatestGeminiModel(apiKey: String) async throws -> String {
         guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models?key=\(apiKey)") else {
             throw AIServiceError.invalidResponse
         }
@@ -92,12 +94,12 @@ final class AIService {
             return "gemini-2.0-flash"
         }
         
-        print("[AIService] 🔍 Self-Healing: 최신 Gemini 모델 동적 색인 성공 -> \(bestModel)")
+        AppLog.info("[AIService] 🔍 Self-Healing: 최신 Gemini 모델 동적 색인 성공 -> \(bestModel)")
         return bestModel
     }
 
     // MARK: - Claude Model Discovery
-    private func discoverLatestClaudeModel(apiKey: String) async throws -> String {
+    func discoverLatestClaudeModel(apiKey: String) async throws -> String {
         guard let url = URL(string: "https://api.anthropic.com/v1/models") else {
             return "claude-opus-4-7"
         }
@@ -119,12 +121,12 @@ final class AIService {
             .sorted { $0.score > $1.score }
             .first?.id ?? "claude-opus-4-7"
 
-        print("[AIService] 🔍 Claude 모델 동적 색인 성공 -> \(best)")
+        AppLog.info("[AIService] 🔍 Claude 모델 동적 색인 성공 -> \(best)")
         return best
     }
 
     // MARK: - OpenAI Model Discovery
-    private func discoverLatestOpenAIModel(apiKey: String) async throws -> String {
+    func discoverLatestOpenAIModel(apiKey: String) async throws -> String {
         guard let url = URL(string: "https://api.openai.com/v1/models") else {
             return "gpt-4o"
         }
@@ -149,7 +151,7 @@ final class AIService {
             .sorted { $0.score > $1.score }
             .first?.id ?? "gpt-4o"
 
-        print("[AIService] 🔍 OpenAI 모델 동적 색인 성공 -> \(best)")
+        AppLog.info("[AIService] 🔍 OpenAI 모델 동적 색인 성공 -> \(best)")
         return best
     }
 
@@ -276,12 +278,12 @@ final class AIService {
                 do {
                     let (result, response) = try await session.bytes(for: request)
                     if let httpResp = response as? HTTPURLResponse, httpResp.statusCode != 200 {
-                        print("[AIService] ❌ Gemini HTTP \(httpResp.statusCode) (model: \(modelToUse), agent: \(agentID))")
+                        AppLog.error("[AIService] Gemini HTTP \(httpResp.statusCode) (model: \(modelToUse), agent: \(agentID))")
                         
                         // 404/429 시 Self-Healing 가동 (최대 2회 재시도)
                         if (httpResp.statusCode == 404 || httpResp.statusCode == 429) && retryCount < 2 {
                             let reason = httpResp.statusCode == 429 ? "Rate limit" : "모델 없음"
-                            print("[AIService] 🔄 \(reason) (\(httpResp.statusCode)). 다음 모델로 Self-Healing...")
+                            AppLog.info("[AIService] 🔄 \(reason) (\(httpResp.statusCode)). 다음 모델로 Self-Healing...")
                             cachedGeminiModelId = nil // 캐시 무효화
                             let newStream = geminiStream(text: text, agentID: agentID, chatHistory: chatHistory, retryCount: retryCount + 1)
                             for try await token in newStream {
@@ -299,7 +301,7 @@ final class AIService {
                         return
                     }
 
-                    print("[AIService] ⚡ Gemini SSE 채널 오픈 (model: \(modelToUse), agent: \(agentID))")
+                    AppLog.info("[AIService] ⚡ Gemini SSE 채널 오픈 (model: \(modelToUse), agent: \(agentID))")
                     for try await line in result.lines {
                         if Task.isCancelled { break }
                         if line.hasPrefix("data: ") {
@@ -375,7 +377,7 @@ final class AIService {
                         return
                     }
 
-                    print("[AIService] ⚡ Claude SSE 채널 오픈 (model: \(claudeModel), agent: \(agentID))")
+                    AppLog.info("[AIService] ⚡ Claude SSE 채널 오픈 (model: \(claudeModel), agent: \(agentID))")
                     for try await line in result.lines {
                         if Task.isCancelled { break }
                         if line.hasPrefix("data: ") {
@@ -455,7 +457,7 @@ final class AIService {
                         return
                     }
 
-                    print("[AIService] ⚡ OpenAI SSE 채널 오픈 (model: \(modelId), agent: \(agentID))")
+                    AppLog.info("[AIService] ⚡ OpenAI SSE 채널 오픈 (model: \(modelId), agent: \(agentID))")
                     for try await line in result.lines {
                         if Task.isCancelled { break }
                         if line.hasPrefix("data: ") {
@@ -523,7 +525,7 @@ final class AIService {
                         return
                     }
 
-                    print("[AIService] ⚡ OpenRouter SSE 채널 오픈 (model: \(modelId), agent: \(agentID))")
+                    AppLog.info("[AIService] ⚡ OpenRouter SSE 채널 오픈 (model: \(modelId), agent: \(agentID))")
                     for try await line in result.lines {
                         if Task.isCancelled { break }
                         if line.hasPrefix("data: ") {
@@ -618,6 +620,78 @@ final class AIService {
         return text
     }
 
+    // MARK: - Quick Summary (non-streaming, single-turn)
+    /// 짧은 요약/분류 등 단발 LLM 호출. 스트리밍 없이 전체 응답을 String으로 반환.
+    /// 사용 가능한 API 키를 Gemini → Claude → OpenAI 순서로 자동 선택.
+    func quickSummary(prompt: String) async -> String {
+        // 사용 가능한 provider 우선순위 탐색
+        let pairs: [(key: String, fn: (String) async throws -> String)] = [
+            ("geminiAPIKey", { key in try await self.geminiQuickCall(prompt: prompt, apiKey: key) }),
+            ("claudeAPIKey", { key in try await self.claudeQuickCall(prompt: prompt, apiKey: key) }),
+            ("openAIAPIKey", { key in try await self.openAIQuickCall(prompt: prompt, apiKey: key) }),
+        ]
+        for (keychainKey, fn) in pairs {
+            let apiKey = KeychainManager.load(key: keychainKey) ?? ""
+            guard !apiKey.isEmpty else { continue }
+            do { return try await fn(apiKey) } catch { continue }
+        }
+        return "(요약 실패: 사용 가능한 API 키가 없습니다)"
+    }
+
+    private func geminiQuickCall(prompt: String, apiKey: String) async throws -> String {
+        let modelId = cachedGeminiModelId ?? "gemini-2.0-flash"
+        guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(modelId):generateContent?key=\(apiKey)") else {
+            throw AIServiceError.invalidResponse
+        }
+        let body: [String: Any] = ["contents": [["role": "user", "parts": [["text": prompt]]]]]
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        let (data, _) = try await session.data(for: req)
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let candidates = json["candidates"] as? [[String: Any]],
+              let content = candidates.first?["content"] as? [String: Any],
+              let parts = content["parts"] as? [[String: Any]],
+              let text = parts.first?["text"] as? String else { throw AIServiceError.invalidResponse }
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func claudeQuickCall(prompt: String, apiKey: String) async throws -> String {
+        guard let url = URL(string: "https://api.anthropic.com/v1/messages") else { throw AIServiceError.invalidResponse }
+        let modelId = cachedClaudeModelId ?? "claude-haiku-4-5"
+        let body: [String: Any] = ["model": modelId, "max_tokens": 512,
+                                    "messages": [["role": "user", "content": prompt]]]
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+        req.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        let (data, _) = try await session.data(for: req)
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let content = json["content"] as? [[String: Any]],
+              let text = content.first?["text"] as? String else { throw AIServiceError.invalidResponse }
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func openAIQuickCall(prompt: String, apiKey: String) async throws -> String {
+        guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else { throw AIServiceError.invalidResponse }
+        let body: [String: Any] = ["model": "gpt-4o-mini", "max_tokens": 512,
+                                    "messages": [["role": "user", "content": prompt]]]
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        let (data, _) = try await session.data(for: req)
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = json["choices"] as? [[String: Any]],
+              let message = choices.first?["message"] as? [String: Any],
+              let text = message["content"] as? String else { throw AIServiceError.invalidResponse }
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     // MARK: - Claude with Tool Calling (non-streaming, multi-turn)
     /// Tool calling 루프 — LLM이 tool_use를 반환하면 실행 후 결과를 다시 보내고 최종 텍스트 응답을 받습니다.
     /// v1.1 실험적 기능. UI 통합 전 콘솔 테스트용.
@@ -633,7 +707,7 @@ final class AIService {
             throw AIServiceError.invalidResponse
         }
 
-        let tools = await MainActor.run { AgentToolRegistry.shared.anthropicToolsArray() }
+        let tools = AgentToolRegistry.shared.anthropicToolsArray()
         var messages = buildAnthropicMessages(text: text, chatHistory: chatHistory)
         let systemPrompt = buildSystemPrompt(agentID: agentID)
 
@@ -685,7 +759,7 @@ final class AIService {
                       let input = block["input"] as? [String: Any] else { continue }
                 let call = AgentToolCall(id: id, name: name, input: input)
                 let result = await AgentToolRegistry.shared.execute(call)
-                print("[AIService] 🔧 Tool \(name) → \(result.content.prefix(80))")
+                AppLog.debug("Tool \(name) -> \(result.content.prefix(80))", .ai)
                 toolResultsBlock.append([
                     "type": "tool_result",
                     "tool_use_id": result.toolUseId,
@@ -694,7 +768,7 @@ final class AIService {
                 ])
             }
             messages.append(["role": "user", "content": toolResultsBlock])
-            print("[AIService] 🔧 Tool iteration \(iteration + 1) 완료")
+            AppLog.debug("Tool iteration \(iteration + 1) completed", .ai)
         }
         throw AIServiceError.invalidResponse
     }
@@ -744,10 +818,57 @@ final class AIService {
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw AIServiceError.invalidResponse }
         guard (200..<300).contains(http.statusCode) else {
-            let body = String(data: data, encoding: .utf8) ?? ""
-            throw validationError("HTTP \(http.statusCode): \(String(body.prefix(160)))")
+            throw validationError(validationFailureMessage(provider: provider, statusCode: http.statusCode, data: data))
         }
         return "인증 성공 · 모델 목록 확인됨"
+    }
+
+    private func validationFailureMessage(provider: String, statusCode: Int, data: Data) -> String {
+        let providerName: String
+        switch provider.lowercased() {
+        case LLMProvider.gemini.rawValue: providerName = "Gemini"
+        case LLMProvider.openAI.rawValue: providerName = "OpenAI"
+        case LLMProvider.claude.rawValue: providerName = "Claude"
+        case LLMProvider.openRouter.rawValue: providerName = "OpenRouter"
+        default: providerName = provider
+        }
+
+        let reason: String
+        switch statusCode {
+        case 400: reason = "요청 형식이 맞지 않습니다."
+        case 401: reason = "API 키가 올바르지 않거나 만료되었습니다."
+        case 403: reason = "이 키에 모델 목록 조회 권한이 없습니다."
+        case 404: reason = "검증 엔드포인트를 찾지 못했습니다."
+        case 429: reason = "요청 한도에 걸렸습니다. 잠시 후 다시 시도하세요."
+        case 500...599: reason = "제공자 서버 오류입니다. 잠시 후 다시 시도하세요."
+        default: reason = extractProviderErrorMessage(from: data) ?? "검증에 실패했습니다."
+        }
+
+        if let detail = extractProviderErrorMessage(from: data), !detail.isEmpty {
+            return "\(providerName) HTTP \(statusCode): \(reason) (\(detail))"
+        }
+        return "\(providerName) HTTP \(statusCode): \(reason)"
+    }
+
+    private func extractProviderErrorMessage(from data: Data) -> String? {
+        guard
+            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
+            return nil
+        }
+
+        if let error = object["error"] as? [String: Any] {
+            if let message = error["message"] as? String {
+                return String(message.prefix(120))
+            }
+            if let type = error["type"] as? String {
+                return String(type.prefix(120))
+            }
+        }
+        if let message = object["message"] as? String {
+            return String(message.prefix(120))
+        }
+        return nil
     }
 
     private func validationError(_ message: String) -> NSError {

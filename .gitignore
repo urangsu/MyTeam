@@ -40,3 +40,12 @@ frames/
 # Models and Cache
 MyTeam/Resources/onnx_models/
 MyTeam/Resources/SpeechCache/
+
+# Worktree backups
+Backup_claude_worktrees/
+
+# Xcode user state
+*.xcuserstate
+
+# Legacy tools (kept in tools/legacy/)
+tools/legacy/

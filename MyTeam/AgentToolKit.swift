@@ -1,7 +1,7 @@
 import Foundation
 
 // MARK: - Tool Policy
-struct ToolPolicyDecision {
+struct ToolPolicyDecision: Sendable {
     let needsTool: Bool
     let needsWeb: Bool
     let needsFinance: Bool
@@ -23,7 +23,7 @@ struct ToolPolicyDecision {
     }
 }
 
-struct ToolEvidenceResult {
+struct ToolEvidenceResult: Sendable {
     let promptContext: String
     let sources: [AgentWindowManager.SourceReference]
 
@@ -144,50 +144,103 @@ enum ToolEvidenceService {
         var sources: [AgentWindowManager.SourceReference] = []
 
         for symbol in symbols.prefix(4) {
-            guard let encoded = symbol.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
-                  let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/\(encoded)?range=1d&interval=1m") else {
-                continue
-            }
+            // 한국 종목 코드 감지 (6자리 숫자 또는 .KS/.KQ suffix)
+            let isKorean = symbol.range(of: #"^\d{6}$"#, options: .regularExpression) != nil
+                || symbol.hasSuffix(".KS") || symbol.hasSuffix(".KQ")
 
-            do {
-                let (data, _) = try await URLSession.shared.data(from: url)
-                guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      let chart = json["chart"] as? [String: Any],
-                      let result = (chart["result"] as? [[String: Any]])?.first,
-                      let meta = result["meta"] as? [String: Any] else {
+            if isKorean {
+                // NAVER 금융 공개 API 사용 (한국 주식)
+                if let result = await fetchNaverFinanceQuote(symbol: symbol) {
+                    lines.append(result.line)
+                    sources.append(result.source)
                     continue
                 }
+            }
 
-                let name = meta["shortName"] as? String ?? meta["symbol"] as? String ?? symbol
-                let currency = meta["currency"] as? String ?? ""
-                let price = meta["regularMarketPrice"] as? Double
-                let previousClose = meta["previousClose"] as? Double
-                let exchange = meta["exchangeName"] as? String ?? meta["fullExchangeName"] as? String ?? ""
-                let marketTime = (meta["regularMarketTime"] as? TimeInterval).map { Date(timeIntervalSince1970: $0) }
-
-                var line = "- \(name) (\(symbol))"
-                if let price { line += ": \(formatNumber(price)) \(currency)" }
-                if let price, let previousClose, previousClose != 0 {
-                    let change = price - previousClose
-                    let percent = change / previousClose * 100
-                    line += " / 전일 대비 \(formatSigned(change)) (\(formatSigned(percent))%)"
-                }
-                if !exchange.isEmpty { line += " / 거래소: \(exchange)" }
-                if let marketTime { line += " / 기준: \(marketTime.formatted(date: .abbreviated, time: .shortened))" }
-                lines.append(line)
-
-                sources.append(AgentWindowManager.SourceReference(
-                    title: "Yahoo Finance \(symbol)",
-                    url: "https://finance.yahoo.com/quote/\(symbol)",
-                    provider: "Yahoo Finance",
-                    accessedAt: Date()
-                ))
-            } catch {
-                lines.append("- \(symbol): 금융 데이터 조회 실패 (\(error.localizedDescription))")
+            // Yahoo Finance v8 API (미국/글로벌 주식 및 NAVER 실패 시 fallback)
+            if let result = await fetchYahooFinanceQuote(symbol: symbol) {
+                lines.append(result.line)
+                sources.append(result.source)
+            } else {
+                lines.append("- \(symbol): 금융 데이터 조회 실패")
             }
         }
 
         return (lines.isEmpty ? "" : "[금융 데이터]\n" + lines.joined(separator: "\n"), sources)
+    }
+
+    private struct QuoteResult {
+        let line: String
+        let source: AgentWindowManager.SourceReference
+    }
+
+    /// NAVER 금융 공개 API (한국 주식)
+    private static func fetchNaverFinanceQuote(symbol: String) async -> QuoteResult? {
+        // 종목 코드 정규화 (6자리 숫자만 추출)
+        let code: String
+        if symbol.range(of: #"^\d{6}$"#, options: .regularExpression) != nil {
+            code = symbol
+        } else {
+            code = String(symbol.prefix(6))
+        }
+        guard let url = URL(string: "https://m.stock.naver.com/api/stock/\(code)/basic") else { return nil }
+        do {
+            var req = URLRequest(url: url)
+            req.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
+            let (data, resp) = try await URLSession.shared.data(for: req)
+            guard (resp as? HTTPURLResponse)?.statusCode == 200,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+            let name = json["stockName"] as? String ?? code
+            let priceStr = json["closePrice"] as? String ?? json["nowVal"] as? String ?? ""
+            let changeRate = json["compareToPreviousClosePrice"] as? String ?? ""
+            let changeSign = json["fluctuationsRatio"] as? String ?? ""
+            var line = "- \(name) (\(code)): \(priceStr) KRW"
+            if !changeRate.isEmpty { line += " / 전일 대비 \(changeRate) (\(changeSign)%)" }
+            let source = AgentWindowManager.SourceReference(
+                title: "NAVER 금융 \(name)",
+                url: "https://finance.naver.com/item/main.nhn?code=\(code)",
+                provider: "NAVER 금융",
+                accessedAt: Date()
+            )
+            return QuoteResult(line: line, source: source)
+        } catch { return nil }
+    }
+
+    /// Yahoo Finance v8 chart API (글로벌 주식)
+    private static func fetchYahooFinanceQuote(symbol: String) async -> QuoteResult? {
+        guard let encoded = symbol.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+              let url = URL(string: "https://query1.finance.yahoo.com/v8/finance/chart/\(encoded)?range=1d&interval=1m") else { return nil }
+        do {
+            var req = URLRequest(url: url)
+            req.setValue("Mozilla/5.0 (compatible)", forHTTPHeaderField: "User-Agent")
+            let (data, _) = try await URLSession.shared.data(for: req)
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let chart = json["chart"] as? [String: Any],
+                  let result = (chart["result"] as? [[String: Any]])?.first,
+                  let meta = result["meta"] as? [String: Any] else { return nil }
+            let name = meta["shortName"] as? String ?? meta["symbol"] as? String ?? symbol
+            let currency = meta["currency"] as? String ?? ""
+            let price = meta["regularMarketPrice"] as? Double
+            let previousClose = meta["previousClose"] as? Double
+            let exchange = meta["exchangeName"] as? String ?? meta["fullExchangeName"] as? String ?? ""
+            let marketTime = (meta["regularMarketTime"] as? TimeInterval).map { Date(timeIntervalSince1970: $0) }
+            var line = "- \(name) (\(symbol))"
+            if let price { line += ": \(formatNumber(price)) \(currency)" }
+            if let price, let previousClose, previousClose != 0 {
+                let change = price - previousClose
+                let percent = change / previousClose * 100
+                line += " / 전일 대비 \(formatSigned(change)) (\(formatSigned(percent))%)"
+            }
+            if !exchange.isEmpty { line += " / 거래소: \(exchange)" }
+            if let marketTime { line += " / 기준: \(marketTime.formatted(date: .abbreviated, time: .shortened))" }
+            let source = AgentWindowManager.SourceReference(
+                title: "Yahoo Finance \(symbol)",
+                url: "https://finance.yahoo.com/quote/\(symbol)",
+                provider: "Yahoo Finance",
+                accessedAt: Date()
+            )
+            return QuoteResult(line: line, source: source)
+        } catch { return nil }
     }
 
     private static func fetchURLContents(from message: String) async -> (context: String, sources: [AgentWindowManager.SourceReference]) {
@@ -210,8 +263,12 @@ enum ToolEvidenceService {
                 }
                 let raw = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .ascii) ?? ""
                 let title = extractHTMLTitle(from: raw) ?? url.host() ?? "웹페이지"
-                let text = cleanHTML(raw)
-                lines.append("- \(title)\n\(String(text.prefix(2200)))")
+                let description = extractMetaDescription(from: raw)
+                let body = extractMainContent(from: raw)
+                var entry = "- \(title)"
+                if let desc = description, !desc.isEmpty { entry += "\n요약: \(desc)" }
+                entry += "\n\(String(body.prefix(2000)))"
+                lines.append(entry)
                 sources.append(AgentWindowManager.SourceReference(
                     title: title,
                     url: url.absoluteString,
@@ -227,6 +284,124 @@ enum ToolEvidenceService {
     }
 
     private static func fetchWebEvidence(query: String) async -> (context: String, sources: [AgentWindowManager.SourceReference]) {
+        // 1순위: Gemini Google 검색 그라운딩 (API 키 있을 때)
+        let geminiResult = await fetchGeminiGrounding(query: query)
+        if !geminiResult.context.isEmpty { return geminiResult }
+
+        // 2순위: OpenAI web_search (API 키 있을 때)
+        let openAIResult = await fetchOpenAIWebSearch(query: query)
+        if !openAIResult.context.isEmpty { return openAIResult }
+
+        // 3순위: DuckDuckGo Instant Answer (키 불필요 폴백)
+        return await fetchDuckDuckGo(query: query)
+    }
+
+    // MARK: - Gemini Google 검색 그라운딩 (Google 공식 실시간 검색)
+
+    private static func fetchGeminiGrounding(query: String) async -> (context: String, sources: [AgentWindowManager.SourceReference]) {
+        let apiKey = KeychainManager.load(key: "geminiAPIKey") ?? ""
+        guard !apiKey.isEmpty else { return ("", []) }
+
+        let modelId = LLMConfigCatalog.shared.configs[.gemini]?.selectedModelId ?? "gemini-2.0-flash"
+        guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(modelId):generateContent?key=\(apiKey)") else {
+            return ("", [])
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 18
+
+        let body: [String: Any] = [
+            "contents": [["role": "user", "parts": [["text": query]]]],
+            "tools": [["google_search": [String: Any]()]],
+            "generationConfig": ["maxOutputTokens": 768, "temperature": 0.1]
+        ]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard (response as? HTTPURLResponse)?.statusCode == 200,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let candidates = json["candidates"] as? [[String: Any]],
+                  let first = candidates.first else { return ("", []) }
+
+            var text = ""
+            if let content = first["content"] as? [String: Any],
+               let parts = content["parts"] as? [[String: Any]] {
+                text = parts.compactMap { $0["text"] as? String }.joined(separator: " ")
+            }
+
+            var sources: [AgentWindowManager.SourceReference] = []
+            if let meta = first["groundingMetadata"] as? [String: Any],
+               let chunks = meta["groundingChunks"] as? [[String: Any]] {
+                for chunk in chunks.prefix(6) {
+                    if let web = chunk["web"] as? [String: Any],
+                       let uri = web["uri"] as? String,
+                       let title = web["title"] as? String, !uri.isEmpty {
+                        sources.append(AgentWindowManager.SourceReference(
+                            title: title, url: uri, provider: "Google 검색", accessedAt: Date()
+                        ))
+                    }
+                }
+            }
+
+            guard !text.isEmpty else { return ("", sources) }
+            AppLog.debug("[ToolEvidence] Gemini 그라운딩 성공 — 출처 \(sources.count)개")
+            return ("[웹 검색 자료 (Google)]\n\(String(text.prefix(1600)))", sources)
+        } catch {
+            AppLog.debug("[ToolEvidence] Gemini 그라운딩 실패: \(error.localizedDescription)")
+            return ("", [])
+        }
+    }
+
+    // MARK: - OpenAI web_search (Responses API)
+
+    private static func fetchOpenAIWebSearch(query: String) async -> (context: String, sources: [AgentWindowManager.SourceReference]) {
+        let apiKey = KeychainManager.load(key: "openAIAPIKey") ?? ""
+        guard !apiKey.isEmpty else { return ("", []) }
+
+        guard let url = URL(string: "https://api.openai.com/v1/responses") else { return ("", []) }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.timeoutInterval = 20
+
+        let body: [String: Any] = [
+            "model": "gpt-4o-mini",
+            "tools": [["type": "web_search_preview"]],
+            "input": query
+        ]
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard (response as? HTTPURLResponse)?.statusCode == 200,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let output = json["output"] as? [[String: Any]] else { return ("", []) }
+
+            var text = ""
+            for item in output where item["type"] as? String == "message" {
+                if let content = item["content"] as? [[String: Any]] {
+                    for c in content where c["type"] as? String == "output_text" {
+                        text += (c["text"] as? String) ?? ""
+                    }
+                }
+            }
+
+            guard !text.isEmpty else { return ("", []) }
+            AppLog.debug("[ToolEvidence] OpenAI web_search 성공")
+            return ("[웹 검색 자료 (OpenAI)]\n\(String(text.prefix(1600)))", [])
+        } catch {
+            AppLog.debug("[ToolEvidence] OpenAI web_search 실패: \(error.localizedDescription)")
+            return ("", [])
+        }
+    }
+
+    // MARK: - DuckDuckGo Instant Answer (폴백)
+
+    private static func fetchDuckDuckGo(query: String) async -> (context: String, sources: [AgentWindowManager.SourceReference]) {
         guard let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
               let url = URL(string: "https://api.duckduckgo.com/?q=\(encoded)&format=json&no_html=1&skip_disambig=1") else {
             return ("", [])
@@ -253,9 +428,7 @@ enum ToolEvidenceService {
 
             if let topics = json["RelatedTopics"] as? [[String: Any]] {
                 for topic in topics.prefix(3) {
-                    if let text = topic["Text"] as? String, !text.isEmpty {
-                        snippets.append(text)
-                    }
+                    if let text = topic["Text"] as? String, !text.isEmpty { snippets.append(text) }
                     if let firstURL = topic["FirstURL"] as? String, !firstURL.isEmpty {
                         let title = (topic["Text"] as? String).map { String($0.prefix(48)) } ?? "Related"
                         sources.append(AgentWindowManager.SourceReference(title: title, url: firstURL, provider: "DuckDuckGo", accessedAt: Date()))
@@ -273,12 +446,41 @@ enum ToolEvidenceService {
     static func extractFinanceSymbols(from message: String) -> [String] {
         var symbols: [String] = []
         let aliases: [String: String] = [
+            // 한국 대형주
             "삼성전자": "005930.KS", "삼성": "005930.KS",
+            "sk하이닉스": "000660.KS", "하이닉스": "000660.KS",
+            "lg에너지솔루션": "373220.KS",
+            "현대차": "005380.KS", "현대자동차": "005380.KS",
+            "기아": "000270.KS", "기아차": "000270.KS",
+            "카카오": "035720.KS",
+            "네이버": "035420.KS", "naver": "035420.KS",
+            "셀트리온": "068270.KS",
+            "삼성바이오로직스": "207940.KS",
+            "포스코": "005490.KS", "포스코홀딩스": "005490.KS",
+            "lg화학": "051910.KS",
+            "삼성sdi": "006400.KS",
+            "현대모비스": "012330.KS",
+            "sk이노베이션": "096770.KS",
+            "카카오뱅크": "323410.KS",
+            "크래프톤": "259960.KS",
+            "krafton": "259960.KS",
+            // 미국 주요주
             "테슬라": "TSLA", "엔비디아": "NVDA", "애플": "AAPL",
             "마이크로소프트": "MSFT", "구글": "GOOGL", "알파벳": "GOOGL",
             "아마존": "AMZN", "메타": "META",
+            "오픈ai": "MSFT",  // OpenAI는 비상장 → MS로 근사
+            "팔란티어": "PLTR",
+            "암": "ARM",
+            "브로드컴": "AVGO",
+            "인텔": "INTC",
+            "amd": "AMD",
+            "퀄컴": "QCOM",
+            // 가상자산
             "비트코인": "BTC-USD", "이더리움": "ETH-USD",
-            "bitcoin": "BTC-USD", "ethereum": "ETH-USD"
+            "솔라나": "SOL-USD", "리플": "XRP-USD",
+            "bitcoin": "BTC-USD", "ethereum": "ETH-USD",
+            "solana": "SOL-USD",
+            // 환율/지수 키워드는 심볼이 아니라 프롬프트에서 처리 (별도 로직)
         ]
         let lowered = message.lowercased()
         for (keyword, symbol) in aliases where lowered.contains(keyword.lowercased()) {
@@ -316,13 +518,93 @@ enum ToolEvidenceService {
         return cleanHTML(String(html[range]))
     }
 
+    /// meta description 추출
+    private static func extractMetaDescription(from html: String) -> String? {
+        let patterns = [
+            #"<meta[^>]+name=["']description["'][^>]+content=["']([^"']{20,}?)["']"#,
+            #"<meta[^>]+content=["']([^"']{20,}?)["'][^>]+name=["']description["']"#,
+            #"<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']{20,}?)["']"#,
+        ]
+        for pattern in patterns {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
+               let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..<html.endIndex, in: html)),
+               let range = Range(match.range(at: 1), in: html) {
+                let desc = cleanHTML(String(html[range]))
+                if !desc.isEmpty { return desc }
+            }
+        }
+        return nil
+    }
+
+    /// <article>, <main>, 본문 class/id 우선 추출 → 없으면 전체 HTML 사용
+    private static func extractMainContent(from html: String) -> String {
+        // 1. 시맨틱 태그 순서 시도
+        let semanticPatterns: [(String, NSRegularExpression.Options)] = [
+            (#"<article[^>]*>([\s\S]*?)</article>"#, [.caseInsensitive]),
+            (#"<main[^>]*>([\s\S]*?)</main>"#, [.caseInsensitive]),
+            // 일반 div id/class에서 content 키워드
+            (#"<div[^>]+(?:id|class)=["'][^"']*(?:article|content|post|entry|story|body|text)[^"']*["'][^>]*>([\s\S]{300,}?)</div>"#, [.caseInsensitive]),
+        ]
+        for (pattern, opts) in semanticPatterns {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: opts),
+               let match = regex.firstMatch(in: html, range: NSRange(html.startIndex..<html.endIndex, in: html)),
+               let range = Range(match.range(at: 1), in: html) {
+                let content = cleanHTML(String(html[range]))
+                if content.count >= 200 { return content }
+            }
+        }
+        // 2. <p> 태그들을 모아 본문 구성 (200자 이상인 단락 우선)
+        var paragraphs: [String] = []
+        if let pRegex = try? NSRegularExpression(pattern: #"<p[^>]*>([\s\S]*?)</p>"#, options: [.caseInsensitive]) {
+            let nsRange = NSRange(html.startIndex..<html.endIndex, in: html)
+            for match in pRegex.matches(in: html, range: nsRange) {
+                if let range = Range(match.range(at: 1), in: html) {
+                    let p = cleanHTML(String(html[range]))
+                    if p.count >= 40 { paragraphs.append(p) }
+                }
+            }
+        }
+        if paragraphs.count >= 2 {
+            return paragraphs.prefix(12).joined(separator: "\n")
+        }
+        // 3. 전체 HTML 스트립 (폴백)
+        return cleanHTML(html)
+    }
+
     private static func cleanHTML(_ html: String) -> String {
         var text = html
-        for pattern in [#"<script[\s\S]*?</script>"#, #"<style[\s\S]*?</style>"#, #"<[^>]+>"#] {
+        // script / style / 주석 제거
+        for pattern in [
+            #"<script[\s\S]*?</script>"#,
+            #"<style[\s\S]*?</style>"#,
+            #"<!--[\s\S]*?-->"#,
+            #"<nav[^>]*>[\s\S]*?</nav>"#,
+            #"<header[^>]*>[\s\S]*?</header>"#,
+            #"<footer[^>]*>[\s\S]*?</footer>"#,
+            #"<aside[^>]*>[\s\S]*?</aside>"#,
+            #"<[^>]+>"#  // 나머지 태그 일괄 제거
+        ] {
             text = text.replacingOccurrences(of: pattern, with: " ", options: [.regularExpression, .caseInsensitive])
         }
-        ["&nbsp;": " ", "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": "\"", "&#39;": "'"].forEach {
-            text = text.replacingOccurrences(of: $0.key, with: $0.value)
+        // HTML 엔티티
+        let entities: [String: String] = [
+            "&nbsp;": " ", "&amp;": "&", "&lt;": "<", "&gt;": ">",
+            "&quot;": "\"", "&#39;": "'", "&apos;": "'",
+            "&mdash;": "—", "&ndash;": "–", "&hellip;": "…",
+            "&laquo;": "«", "&raquo;": "»",
+        ]
+        entities.forEach { text = text.replacingOccurrences(of: $0.key, with: $0.value) }
+        // &#NNNN; 숫자 엔티티
+        if let numRegex = try? NSRegularExpression(pattern: #"&#(\d+);"#) {
+            let matches = numRegex.matches(in: text, range: NSRange(text.startIndex..<text.endIndex, in: text)).reversed()
+            for match in matches {
+                if let numRange = Range(match.range(at: 1), in: text),
+                   let code = Int(text[numRange]),
+                   let scalar = Unicode.Scalar(code) {
+                    let fullRange = Range(match.range, in: text)!
+                    text.replaceSubrange(fullRange, with: String(scalar))
+                }
+            }
         }
         return text
             .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
@@ -359,10 +641,6 @@ struct AgentTool: Sendable {
     }
 }
 
-extension AgentTool {
-    nonisolated var schemaForCopy: [String: Any] { inputSchema }
-}
-
 // MARK: - Tool 호출/결과
 struct AgentToolCall {
     let id: String
@@ -377,8 +655,7 @@ struct AgentToolResult {
 }
 
 // MARK: - Tool Registry
-@MainActor
-final class AgentToolRegistry {
+final class AgentToolRegistry: @unchecked Sendable {
     static let shared = AgentToolRegistry()
     private(set) var tools: [String: AgentTool] = [:]
 

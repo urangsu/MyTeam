@@ -20,8 +20,6 @@
 		0B026AA3559D5A0BF58FE729 /* tokenizer.json in Resources */ = {isa = PBXBuildFile; fileRef = BF53C2C9F2EEB3E269DFF4AB /* tokenizer.json */; };
 		0D08CB8C224BE257268AF036 /* 치코_speech_cache.json in Resources */ = {isa = PBXBuildFile; fileRef = 1A8B24355019850489A7BF1F /* 치코_speech_cache.json */; };
 		103F4D18DF8766548B655A66 /* 레오_03_i.wav in Resources */ = {isa = PBXBuildFile; fileRef = 2C0D6DC9A451D75B372DE63E /* 레오_03_i.wav */; };
-		1052DF0E3B24D5A5F397E8DA /* T3MLXModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 314B4D6617A8A16F6F56FD5C /* T3MLXModel.swift */; };
-		105A1FA6273E89DEC048603B /* BPETokenizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B5990CFB0F09F1A243F2D70 /* BPETokenizer.swift */; };
 		10FB7891CFA0471B5D0B3497 /* ka.wav in Resources */ = {isa = PBXBuildFile; fileRef = DEBFD92C369B75DB74DC369F /* ka.wav */; };
 		11BC8525E5FB07D2A2677CE1 /* 몽몽_en_manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = BF57D1E49C889078E31824B3 /* 몽몽_en_manifest.json */; };
 		12329E0E418B2855A3B147D0 /* 올리버_03_i.wav in Resources */ = {isa = PBXBuildFile; fileRef = 090CD37B208339839E6DC583 /* 올리버_03_i.wav */; };
@@ -29,14 +27,12 @@
 		13189ADA38AB800CD0DE1F53 /* 루나_02_e.wav in Resources */ = {isa = PBXBuildFile; fileRef = FF199F6C1BA3F6C5F6DB48BF /* 루나_02_e.wav */; };
 		1415F59DFE8060FE4307344B /* cho.wav in Resources */ = {isa = PBXBuildFile; fileRef = 877802A3AFB57C44726871DC /* cho.wav */; };
 		1673E206217687CFABA70F8D /* 몽몽_02_이.wav in Resources */ = {isa = PBXBuildFile; fileRef = 35B1E1510ACE691FB51852D6 /* 몽몽_02_이.wav */; };
-		1992E08E20244BC3CDC105B5 /* LlamaModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6332D8769DAD6FC52D04181E /* LlamaModel.swift */; };
 		1A62B27C523B7E0C0373DB2E /* 루나_en_manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = A0846299D54050B4A4DB6F7C /* 루나_en_manifest.json */; };
 		1BE941F61ED29AD73B8AA8B8 /* 치코_03_우.wav in Resources */ = {isa = PBXBuildFile; fileRef = 8171C896EBB23609A381C935 /* 치코_03_우.wav */; };
 		1CCF047F247F2A0C5DA5066E /* 몽몽_02_e.wav in Resources */ = {isa = PBXBuildFile; fileRef = D8CCF7CBC4254D153E7A4CA8 /* 몽몽_02_e.wav */; };
 		1D57315B2B7BF9A306A90047 /* so.wav in Resources */ = {isa = PBXBuildFile; fileRef = D68916CDE6388E33FF2DA2C7 /* so.wav */; };
 		1EA33793A2A6D50A195816C6 /* 몽몽_ko_manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 3593144AB57C49A4BA4A4C11 /* 몽몽_ko_manifest.json */; };
 		21C246D02B2716AC337935F7 /* 치코_03_う.wav in Resources */ = {isa = PBXBuildFile; fileRef = 9974645391E943F34EDED1C2 /* 치코_03_う.wav */; };
-		2225B1E7E8DE50B652D90BB7 /* TTSServiceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20A74CE707617BB6A4BF6428 /* TTSServiceManager.swift */; };
 		238E2F5847901911A90CADA0 /* ra.wav in Resources */ = {isa = PBXBuildFile; fileRef = F61B5DA95488CACECC362B48 /* ra.wav */; };
 		243772B48E7512E2BB3FB0A3 /* ConversationMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65BCAD4E2923B21CBE65C81A /* ConversationMemory.swift */; };
 		24AA703A650799647D0C3223 /* 케이_01_아.wav in Resources */ = {isa = PBXBuildFile; fileRef = 31A5A76887A1DA7BBB9B3056 /* 케이_01_아.wav */; };
@@ -47,8 +43,6 @@
 		2AFE358A85F22B28B59910D9 /* 치코_01_a.wav in Resources */ = {isa = PBXBuildFile; fileRef = C3E7C1672B95B6D827546A7F /* 치코_01_a.wav */; };
 		2B11FE4D2C574EC1B7C24457 /* 래키_ja_manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 0F7F7819D7403AAA7E26D3F9 /* 래키_ja_manifest.json */; };
 		2B2C2FD3F89A1F2131C5263C /* ke.wav in Resources */ = {isa = PBXBuildFile; fileRef = 38F48A505E2285A8E3BC2327 /* ke.wav */; };
-		2CE249AADD2CA14C341C6844 /* OnDeviceTTSManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CE9F7AE2C3DF5D7BD5AA338 /* OnDeviceTTSManager.swift */; };
-		2ECC48AE8C64FE9F80D95953 /* ChatterboxConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50FBC3ACD817B577E6DFB087 /* ChatterboxConfig.swift */; };
 		2ED6559B9CCC568A8B98666C /* nu.wav in Resources */ = {isa = PBXBuildFile; fileRef = B8A2F49C78B95F9D7D8709AA /* nu.wav */; };
 		30DD3A23639A796E46D19E86 /* 케이_03_우.wav in Resources */ = {isa = PBXBuildFile; fileRef = CB9280E984B87E7701016C61 /* 케이_03_우.wav */; };
 		359C4C532B55B8C381DBE13D /* ri.wav in Resources */ = {isa = PBXBuildFile; fileRef = 40FE24426FF9723324CD44E8 /* ri.wav */; };
@@ -56,7 +50,6 @@
 		35E5B0F5E940D1899375B424 /* 모코_02_이.wav in Resources */ = {isa = PBXBuildFile; fileRef = 0C82FA289507AEE8D8C65749 /* 모코_02_이.wav */; };
 		37EFF6191CAAC4A0274323A5 /* 치코_02_い.wav in Resources */ = {isa = PBXBuildFile; fileRef = A20B91A95FD269D9B01FC17A /* 치코_02_い.wav */; };
 		390BC798CFE3EDCA92D02AF1 /* 모코.json in Resources */ = {isa = PBXBuildFile; fileRef = AE89F1BEB7A120E9CD4B3707 /* 모코.json */; };
-		399E40AE5463247A484236CD /* WebSocketClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5AC7671DFB0108E1A46BE3C /* WebSocketClient.swift */; };
 		3A3DE31169E708FA2CEC82DE /* 모코_03_i.wav in Resources */ = {isa = PBXBuildFile; fileRef = DF7CCCA407E64569EC55A587 /* 모코_03_i.wav */; };
 		3BC35BE37A71EF82F9ADC361 /* ho.wav in Resources */ = {isa = PBXBuildFile; fileRef = A1CF4233374E9DA6865967B0 /* ho.wav */; };
 		3C907D843F8B2DDB7F83914F /* 렉스_en_manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 6355D51413FA4CCF6214159E /* 렉스_en_manifest.json */; };
@@ -67,14 +60,12 @@
 		405009EE2CA267B97B763761 /* 래키_03_우.wav in Resources */ = {isa = PBXBuildFile; fileRef = DA5A6BAD90B59A587A73F2D7 /* 래키_03_우.wav */; };
 		40A4ADE1EA8F8CEBF20676D3 /* 모코_01_아.wav in Resources */ = {isa = PBXBuildFile; fileRef = 3CA51F22816310D7408A9254 /* 모코_01_아.wav */; };
 		415644F53394918F63191B13 /* u.wav in Resources */ = {isa = PBXBuildFile; fileRef = F3BA86BF13E275E905B51CEB /* u.wav */; };
-		425D577054F824A25A6842E3 /* LiveAudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26D1DFE1DF661D877429B660 /* LiveAudioManager.swift */; };
 		425E4DDF970BFAFD3B78BEA3 /* hifigan_full.onnx in Resources */ = {isa = PBXBuildFile; fileRef = 6A9C263DE630F56AEDCD5596 /* hifigan_full.onnx */; };
 		42F13981373DA11F1C15AA37 /* 레오_en_manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 15AA9EFF9608898FC43362F8 /* 레오_en_manifest.json */; };
 		451BAF502448F0F9C9E27AFB /* 핀.json in Resources */ = {isa = PBXBuildFile; fileRef = 1FE670CC2689AD2BD6DA062D /* 핀.json */; };
 		4924284FDAA78FAF8E22621F /* AgentSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE40DDDEB4EC29F57CBEBF2B /* AgentSettingsView.swift */; };
 		4A32A0C688A592302543E9CC /* 래키_en_manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 84802B26FC19C1A6311D37D0 /* 래키_en_manifest.json */; };
 		4B5D90E2F128DDB37123EBA0 /* MLX in Frameworks */ = {isa = PBXBuildFile; productRef = 080E0E1B2AA039294162D44C /* MLX */; };
-		4BE5563BBDC64C948685FA3E /* WebSocketStreamManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35362392BA227E8375C30548 /* WebSocketStreamManager.swift */; };
 		4BE83B9B28BD3298B434A0AB /* 레오_03_우.wav in Resources */ = {isa = PBXBuildFile; fileRef = 716DD5FE747AA711316877F8 /* 레오_03_우.wav */; };
 		4C9093D3097AEEA89BCA3767 /* ne.wav in Resources */ = {isa = PBXBuildFile; fileRef = 2EF0447B99B519D848C9BB8C /* ne.wav */; };
 		4C923D82AC28FF12CAA0E79E /* 올리버_ko_manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = FFAF08D6091A076B26E958F1 /* 올리버_ko_manifest.json */; };
@@ -111,6 +102,7 @@
 		624503498323E76D169116FF /* CharacterSpriteScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32E40E7F7C4267AC38CAB6DF /* CharacterSpriteScene.swift */; };
 		63B1DDFE7603CD8F398A63A6 /* AgentChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4CE1B65D76CBB6F52678B90 /* AgentChatView.swift */; };
 		643EACEF5ADAF52DAE3B6C58 /* AgentConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = F25EF9DF54BC65C3CD0318BE /* AgentConfig.swift */; };
+		B7D4E2A1C93F5018E46A7B3D /* LLMConfigCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3F8C6D27B1E4509D2C835FA /* LLMConfigCatalog.swift */; };
 		AABBCC1100000000000A0001 /* AgentToolKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABBCC1100000000000A0002 /* AgentToolKit.swift */; };
 		655E18285F65C19DC8F3F54D /* Cangjie5_TC.json in Resources */ = {isa = PBXBuildFile; fileRef = A92AA304F2623E04144C118A /* Cangjie5_TC.json */; };
 		669A879497F110563BAFBE7D /* 렉스_ko_manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = D00DF7A268169FADA918C6F3 /* 렉스_ko_manifest.json */; };
@@ -161,7 +153,6 @@
 		8BCE47AB9F81EFF97CF953F6 /* se.wav in Resources */ = {isa = PBXBuildFile; fileRef = D367ACB3D34A6EE58D813CB5 /* se.wav */; };
 		8CE66FFE41BE17DEDB289333 /* mi.wav in Resources */ = {isa = PBXBuildFile; fileRef = B34EA9A2483BB30A223B546F /* mi.wav */; };
 		8D9CD6420D30EE8DE4862826 /* AudioPlayable.swift in Sources */ = {isa = PBXBuildFile; fileRef = A69B673FC7EA6D2F4648453B /* AudioPlayable.swift */; };
-		8E755ECD296B9AEA96F59830 /* ChatterboxPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B263F34662A4E9BE5A7A74C /* ChatterboxPipeline.swift */; };
 		8F753622F3A76902D48F8117 /* eo.wav in Resources */ = {isa = PBXBuildFile; fileRef = B33AAEE2C77B168F4ADF852E /* eo.wav */; };
 		8FB29EC3516A02D37EAC8669 /* 래키_02_이.wav in Resources */ = {isa = PBXBuildFile; fileRef = 0039D97EE025B341550D9953 /* 래키_02_이.wav */; };
 		920806C0F242D281D2E41C04 /* 올리버.json in Resources */ = {isa = PBXBuildFile; fileRef = 4B14C37EFD1D3A3B37CBD685 /* 올리버.json */; };
@@ -187,17 +178,14 @@
 		A0007331BEBA8A58107B15B0 /* ui.wav in Resources */ = {isa = PBXBuildFile; fileRef = 141D1E9882DE3CE10CBEB76E /* ui.wav */; };
 		A09CBE81102F330961E19698 /* ku.wav in Resources */ = {isa = PBXBuildFile; fileRef = 1E2E6B3B500D5302C5028B7F /* ku.wav */; };
 		A211C82ACA31A4AC2C64C248 /* MLXRandom in Frameworks */ = {isa = PBXBuildFile; productRef = E02FD46B15A0E577B70D106A /* MLXRandom */; };
-		A22346F7D7C752E85F14BA18 /* HiFTGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67671949737A91D1114C8228 /* HiFTGenerator.swift */; };
 		A33174037AB322FFB26C1BE4 /* 치코.json in Resources */ = {isa = PBXBuildFile; fileRef = B75E6866ACD32088C5EB094F /* 치코.json */; };
 		A49E6167CF1DFA358EA782E9 /* AgentSeatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EC8F92712131EB5088D15E6 /* AgentSeatView.swift */; };
 		A4C10D28C419D79718E99579 /* s3gen_enc_full.onnx in Resources */ = {isa = PBXBuildFile; fileRef = 06F04BE2CE7E8746828FE6C6 /* s3gen_enc_full.onnx */; };
 		A5664751CDAF402B5AEED2B6 /* bo.wav in Resources */ = {isa = PBXBuildFile; fileRef = 1AD10F0934B65635AB326D1B /* bo.wav */; };
 		A641F777FD6B907E4373D196 /* 루나_01_a.wav in Resources */ = {isa = PBXBuildFile; fileRef = 88E6D0909666408F181D0064 /* 루나_01_a.wav */; };
-		A66E80FF45F63B508A44691B /* T3Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = D373E518BD8F4070536F95BA /* T3Model.swift */; };
 		A7A3AB4FFC39229ED0E4C25A /* ki.wav in Resources */ = {isa = PBXBuildFile; fileRef = FA784AA882082EAA3EED083E /* ki.wav */; };
 		A981B238612D24CC78D16D5B /* su.wav in Resources */ = {isa = PBXBuildFile; fileRef = A82D6E32D3122A4BD7430E5C /* su.wav */; };
 		AAAA0001BBBB2222CCCC0001 /* onnxruntime in Frameworks */ = {isa = PBXBuildFile; productRef = AAAA0001BBBB2222CCCC0002 /* onnxruntime */; };
-		AB20C4961A39882717DD36DE /* MLXInferenceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B968FFF2CAF1CD57AF911AA8 /* MLXInferenceService.swift */; };
 		AD348A22466F0D71C89C8DC4 /* 올리버_01_a.wav in Resources */ = {isa = PBXBuildFile; fileRef = C7E5FCC9C78E17ECC303ECC9 /* 올리버_01_a.wav */; };
 		AE6A6819E64A29596AA8BB11 /* 레오_01_아.wav in Resources */ = {isa = PBXBuildFile; fileRef = ADE5739B07510ECC3E06F791 /* 레오_01_아.wav */; };
 		AEA6CC25476D0A502F719158 /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4A4934564B89278F311E912 /* AIService.swift */; };
@@ -216,14 +204,13 @@
 		BD1C4D54635CFA4DEAAB6EFD /* to.wav in Resources */ = {isa = PBXBuildFile; fileRef = 46DCEDEF8335C3116A726111 /* to.wav */; };
 		BF9497D70EA7BE6BEC506E67 /* 몽몽_01_아.wav in Resources */ = {isa = PBXBuildFile; fileRef = F74A4F65D62959CA49045452 /* 몽몽_01_아.wav */; };
 		C002945A75D71C2027724184 /* ha.wav in Resources */ = {isa = PBXBuildFile; fileRef = A63183C98A098C9822AC53C3 /* ha.wav */; };
-		C1FA60E9B4CDCB9C383DD3E3 /* MLXModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EA5A20BB3A8C99587207AFD /* MLXModelManager.swift */; };
-		C22617C58752E198B4B8E576 /* KanaDecomposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FD8C2308EAE321B74023D50 /* KanaDecomposer.swift */; };
 		C270C59B0D0E7986D9516D92 /* 모코_01_a.wav in Resources */ = {isa = PBXBuildFile; fileRef = 7B74CB34411281FD2E286F0D /* 모코_01_a.wav */; };
 		C2D2FFE9460755124C76303E /* 올리버_02_이.wav in Resources */ = {isa = PBXBuildFile; fileRef = EBE45C0CFDFA90B730473D9F /* 올리버_02_이.wav */; };
 		C40B4F4ADECF108571464899 /* ma.wav in Resources */ = {isa = PBXBuildFile; fileRef = B13F3E3B8A38D0CEA3439593 /* ma.wav */; };
 		C4A6F13A31A7829351E8BF7D /* 루나_02_い.wav in Resources */ = {isa = PBXBuildFile; fileRef = B0F32A366EA4CE519C3E091F /* 루나_02_い.wav */; };
 		C4C40641A33964162DF74B5C /* 렉스_03_i.wav in Resources */ = {isa = PBXBuildFile; fileRef = 75C2A8B27F523E25F805736C /* 렉스_03_i.wav */; };
 		C68BD3A468FB7B4DA3444DB7 /* IntentRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 290914D5CBD26CA52655F62A /* IntentRouter.swift */; };
+		A1B2C3D4E5F60001DEADBEEF /* AutomationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60002DEADBEEF /* AutomationPolicy.swift */; };
 		C7F14F7669BC28F96968BC0E /* e.wav in Resources */ = {isa = PBXBuildFile; fileRef = D61E9A2432A47E14044DBF28 /* e.wav */; };
 		C98FB430223A9348B6FD4F0B /* 케이_02_이.wav in Resources */ = {isa = PBXBuildFile; fileRef = DDC86F6197019712E455D165 /* 케이_02_이.wav */; };
 		C993082A69B14B047D7002A6 /* 래키_03_う.wav in Resources */ = {isa = PBXBuildFile; fileRef = 093943A41ADD711355D4DF47 /* 래키_03_う.wav */; };
@@ -236,7 +223,6 @@
 		CF9753B99E5AD7B5CA765B69 /* 폴라_01_아.wav in Resources */ = {isa = PBXBuildFile; fileRef = D446B42E60CE3E0B9607DA47 /* 폴라_01_아.wav */; };
 		D06A2F0510035B2B9D002687 /* AgentMenuPopupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 831A9193F81CEB521FA263A9 /* AgentMenuPopupView.swift */; };
 		D26CF5E00556150649F5FFE1 /* TeamTableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D985A9868949EA3C7BAC8D38 /* TeamTableView.swift */; };
-		D50D0C85B1C464670B86083E /* T3CondEnc.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A9C55FB78B2FEF3673188F5 /* T3CondEnc.swift */; };
 		D5CA253D6A0BC8B4AF1E1FC7 /* CharacterVoiceConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2E3CE54DB16D3480AFD5027 /* CharacterVoiceConfig.swift */; };
 		D60B8A98F83FF44364FF5105 /* no.wav in Resources */ = {isa = PBXBuildFile; fileRef = 151690B88F4F83D52DCF20E7 /* no.wav */; };
 		D688748C4A20B503F23730B5 /* 래키_03_i.wav in Resources */ = {isa = PBXBuildFile; fileRef = 15E1BD408CA65994A4DADB0E /* 래키_03_i.wav */; };
@@ -265,7 +251,6 @@
 		ED54092F882E8A53FDFCA102 /* 렉스_01_a.wav in Resources */ = {isa = PBXBuildFile; fileRef = 4ECE15427E15C70C0D3B2033 /* 렉스_01_a.wav */; };
 		EDD389FF8DBEFB2238C23E87 /* ChatComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8134F5DCEAE6B2A61F684FEB /* ChatComponents.swift */; };
 		EDD8FCBFC72DD70644920B26 /* 렉스_02_e.wav in Resources */ = {isa = PBXBuildFile; fileRef = AF2DA8B1AE4280E08013C5DC /* 렉스_02_e.wav */; };
-		EDFAE771D0C66D44CC596DD6 /* VoiceEncoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = D04C4F6BC4B1123CC5766519 /* VoiceEncoder.swift */; };
 		EE47666FFAA38C38331F1616 /* 레오.json in Resources */ = {isa = PBXBuildFile; fileRef = 339B949B9FA6EB8E61A25006 /* 레오.json */; };
 		EE9CD124856658ECE9D70E2E /* 몽몽_03_う.wav in Resources */ = {isa = PBXBuildFile; fileRef = 92A59E1A3FE867BB7E819AA4 /* 몽몽_03_う.wav */; };
 		EEB336C1347F83E63C0F5E61 /* 케이_ko_manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = CA19960B29FE5D621471BDC5 /* 케이_ko_manifest.json */; };
@@ -343,7 +328,6 @@
 		0F1BB38465BB993A923C5ED2 /* 치코_resting_001.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_resting_001.png"; path = "Resources/Sprites/치코/치코_resting_001.png"; sourceTree = "<group>"; };
 		0F6C7E2E44C47AA04359BE06 /* 치코_praise_010.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_praise_010.png"; path = "Resources/Sprites/치코/치코_praise_010.png"; sourceTree = "<group>"; };
 		0F7F7819D7403AAA7E26D3F9 /* 래키_ja_manifest.json */ = {isa = PBXFileReference; includeInIndex = 1; name = "래키_ja_manifest.json"; path = "Resources/CharacterPhonemes/래키_reference/ja/래키_ja_manifest.json"; sourceTree = "<group>"; };
-		0FD8C2308EAE321B74023D50 /* KanaDecomposer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KanaDecomposer.swift; sourceTree = "<group>"; };
 		10595D5C22D9AA1672C89795 /* AudioCaptureService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AudioCaptureService.swift; sourceTree = "<group>"; };
 		108B03D963D12F87FDD17C9D /* t3_mlx_weights_fp16.safetensors */ = {isa = PBXFileReference; includeInIndex = 1; name = t3_mlx_weights_fp16.safetensors; path = Resources/onnx_models/t3_mlx_weights_fp16.safetensors; sourceTree = "<group>"; };
 		10F3F2C1C221B1A74E2B851F /* 치코_backwork_022.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_backwork_022.png"; path = "Resources/Sprites/치코/치코_backwork_022.png"; sourceTree = "<group>"; };
@@ -391,7 +375,6 @@
 		1C36737E97933EE8CB9EE3C6 /* 치코_backwork_016.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_backwork_016.png"; path = "Resources/Sprites/치코/치코_backwork_016.png"; sourceTree = "<group>"; };
 		1C5FA08E66264CAC0130CCD4 /* 치코_greeting_015.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_greeting_015.png"; path = "Resources/Sprites/치코/치코_greeting_015.png"; sourceTree = "<group>"; };
 		1C7D2B6C44ACFC8ECD4C79E4 /* me.wav */ = {isa = PBXFileReference; includeInIndex = 1; name = me.wav; path = Resources/Phonemes/me.wav; sourceTree = "<group>"; };
-		1CE9F7AE2C3DF5D7BD5AA338 /* OnDeviceTTSManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnDeviceTTSManager.swift; sourceTree = "<group>"; };
 		1D2F334BA0BF379CF1FFF237 /* 치코_praise_003.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_praise_003.png"; path = "Resources/Sprites/치코/치코_praise_003.png"; sourceTree = "<group>"; };
 		1E2E00478F6279C13DD38ACF /* 치코_disagree_022.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_disagree_022.png"; path = "Resources/Sprites/치코/치코_disagree_022.png"; sourceTree = "<group>"; };
 		1E2E6B3B500D5302C5028B7F /* ku.wav */ = {isa = PBXFileReference; includeInIndex = 1; name = ku.wav; path = Resources/Phonemes/ku.wav; sourceTree = "<group>"; };
@@ -406,7 +389,6 @@
 		1FE670CC2689AD2BD6DA062D /* 핀.json */ = {isa = PBXFileReference; includeInIndex = 1; name = "핀.json"; path = "Resources/PrecomputedVoice/핀.json"; sourceTree = "<group>"; };
 		200FF8D18D4C7BABAD09C4EB /* 루나_test.json */ = {isa = PBXFileReference; includeInIndex = 1; name = "루나_test.json"; path = "Resources/SpeechCache/루나_test.json"; sourceTree = "<group>"; };
 		208440286CA482FC04AF0225 /* 치코_landing_042.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_landing_042.png"; path = "Resources/Sprites/치코/치코_landing_042.png"; sourceTree = "<group>"; };
-		20A74CE707617BB6A4BF6428 /* TTSServiceManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TTSServiceManager.swift; sourceTree = "<group>"; };
 		20ACDBE32407541FAC8FC97D /* 치코_typing_010.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_typing_010.png"; path = "Resources/Sprites/치코/치코_typing_010.png"; sourceTree = "<group>"; };
 		20F95EA464F2CD84C9E6E0BB /* 렉스_reference.mp3 */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = audio.mp3; name = "렉스_reference.mp3"; path = "Resources/ReferenceAudio/렉스_reference.mp3"; sourceTree = "<group>"; };
 		20FAE3CAA4ABD8FB302E7628 /* 치코_thinking_021.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_thinking_021.png"; path = "Resources/Sprites/치코/치코_thinking_021.png"; sourceTree = "<group>"; };
@@ -431,7 +413,6 @@
 		25B1764821874BE7B48F4DB3 /* eu.wav */ = {isa = PBXFileReference; includeInIndex = 1; name = eu.wav; path = Resources/Phonemes/eu.wav; sourceTree = "<group>"; };
 		261F294D0071A219C94C4067 /* AudioPlaybackService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AudioPlaybackService.swift; sourceTree = "<group>"; };
 		26532D7569FF2888F42E0A1B /* 치코_sad_004.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_sad_004.png"; path = "Resources/Sprites/치코/치코_sad_004.png"; sourceTree = "<group>"; };
-		26D1DFE1DF661D877429B660 /* LiveAudioManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LiveAudioManager.swift; sourceTree = "<group>"; };
 		276927D998C8D4DBE2F10D34 /* 치코_angry_004.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_angry_004.png"; path = "Resources/Sprites/치코/치코_angry_004.png"; sourceTree = "<group>"; };
 		278B80BD96B9E55E3ABEE140 /* 치코_thinking_013.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_thinking_013.png"; path = "Resources/Sprites/치코/치코_thinking_013.png"; sourceTree = "<group>"; };
 		27A387E4FA1F1AB67068231A /* 치코_drag_009.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_drag_009.png"; path = "Resources/Sprites/치코/치코_drag_009.png"; sourceTree = "<group>"; };
@@ -442,6 +423,7 @@
 		28CCF27168DE98FE8E886105 /* 치코_thinking_023.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_thinking_023.png"; path = "Resources/Sprites/치코/치코_thinking_023.png"; sourceTree = "<group>"; };
 		28F7763D438F91AAA871FA03 /* 치코_clockout_043.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_clockout_043.png"; path = "Resources/Sprites/치코/치코_clockout_043.png"; sourceTree = "<group>"; };
 		290914D5CBD26CA52655F62A /* IntentRouter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IntentRouter.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60002DEADBEEF /* AutomationPolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AutomationPolicy.swift; sourceTree = "<group>"; };
 		290C7C774F191CB1CA8D7DFD /* 치코_clockin_027.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_clockin_027.png"; path = "Resources/Sprites/치코/치코_clockin_027.png"; sourceTree = "<group>"; };
 		29778C69224B42B866A455FD /* 치코_drop_004.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_drop_004.png"; path = "Resources/Sprites/치코/치코_drop_004.png"; sourceTree = "<group>"; };
 		2A23304D60BDD9BD7682D47B /* 렉스.json */ = {isa = PBXFileReference; includeInIndex = 1; name = "렉스.json"; path = "Resources/PrecomputedVoice/렉스.json"; sourceTree = "<group>"; };
@@ -467,7 +449,6 @@
 		2EF0447B99B519D848C9BB8C /* ne.wav */ = {isa = PBXFileReference; includeInIndex = 1; name = ne.wav; path = Resources/Phonemes/ne.wav; sourceTree = "<group>"; };
 		2F63B3AC2B4B399815369ABE /* 몽몽_02_い.wav */ = {isa = PBXFileReference; includeInIndex = 1; name = "몽몽_02_い.wav"; path = "Resources/CharacterPhonemes/몽몽_reference/ja/몽몽_02_い.wav"; sourceTree = "<group>"; };
 		30B6EF87E8AEFD51AC4C984D /* 치코_greeting_008.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_greeting_008.png"; path = "Resources/Sprites/치코/치코_greeting_008.png"; sourceTree = "<group>"; };
-		314B4D6617A8A16F6F56FD5C /* T3MLXModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = T3MLXModel.swift; sourceTree = "<group>"; };
 		31797E77A6833EB6BE1F0AA6 /* ya.wav */ = {isa = PBXFileReference; includeInIndex = 1; name = ya.wav; path = Resources/Phonemes/ya.wav; sourceTree = "<group>"; };
 		31A5A76887A1DA7BBB9B3056 /* 케이_01_아.wav */ = {isa = PBXFileReference; includeInIndex = 1; name = "케이_01_아.wav"; path = "Resources/CharacterPhonemes/케이_reference/ko/케이_01_아.wav"; sourceTree = "<group>"; };
 		31D1DB343F0EFB65F09D8FD9 /* 치코_sad_008.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_sad_008.png"; path = "Resources/Sprites/치코/치코_sad_008.png"; sourceTree = "<group>"; };
@@ -486,7 +467,6 @@
 		3440667806509E5CDA09DB28 /* re.wav */ = {isa = PBXFileReference; includeInIndex = 1; name = re.wav; path = Resources/Phonemes/re.wav; sourceTree = "<group>"; };
 		346D172B902E871AE282BBE0 /* 치코_drag_018.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_drag_018.png"; path = "Resources/Sprites/치코/치코_drag_018.png"; sourceTree = "<group>"; };
 		346EFADFE43859307481E2A3 /* 치코_clockin_045.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_clockin_045.png"; path = "Resources/Sprites/치코/치코_clockin_045.png"; sourceTree = "<group>"; };
-		35362392BA227E8375C30548 /* WebSocketStreamManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WebSocketStreamManager.swift; sourceTree = "<group>"; };
 		3581DA1C8E84E01C76882F7D /* 치코_speaking_005.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_speaking_005.png"; path = "Resources/Sprites/치코/치코_speaking_005.png"; sourceTree = "<group>"; };
 		3593144AB57C49A4BA4A4C11 /* 몽몽_ko_manifest.json */ = {isa = PBXFileReference; includeInIndex = 1; name = "몽몽_ko_manifest.json"; path = "Resources/CharacterPhonemes/몽몽_reference/ko/몽몽_ko_manifest.json"; sourceTree = "<group>"; };
 		35B1E1510ACE691FB51852D6 /* 몽몽_02_이.wav */ = {isa = PBXFileReference; includeInIndex = 1; name = "몽몽_02_이.wav"; path = "Resources/CharacterPhonemes/몽몽_reference/ko/몽몽_02_이.wav"; sourceTree = "<group>"; };
@@ -567,7 +547,6 @@
 		499421611CD45D2E6D3590D6 /* ChatModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
 		49EC7849F2091F85B942C5A8 /* 치코_praise_022.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_praise_022.png"; path = "Resources/Sprites/치코/치코_praise_022.png"; sourceTree = "<group>"; };
 		49FAB19A8337E72F102F4081 /* 치코_ko_manifest.json */ = {isa = PBXFileReference; includeInIndex = 1; name = "치코_ko_manifest.json"; path = "Resources/CharacterPhonemes/치코_reference/ko/치코_ko_manifest.json"; sourceTree = "<group>"; };
-		4A9C55FB78B2FEF3673188F5 /* T3CondEnc.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = T3CondEnc.swift; sourceTree = "<group>"; };
 		4AB4BF27FE0F096782028889 /* 치코_clockin_039.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_clockin_039.png"; path = "Resources/Sprites/치코/치코_clockin_039.png"; sourceTree = "<group>"; };
 		4AB8C5FEA8751F20DC7D0CE3 /* 치코_confused_022.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_confused_022.png"; path = "Resources/Sprites/치코/치코_confused_022.png"; sourceTree = "<group>"; };
 		4AE6F60207F43782201F797A /* 치코_clockin_018.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_clockin_018.png"; path = "Resources/Sprites/치코/치코_clockin_018.png"; sourceTree = "<group>"; };
@@ -591,7 +570,6 @@
 		504A1B6666FD98358727956E /* 치코_clockin_020.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_clockin_020.png"; path = "Resources/Sprites/치코/치코_clockin_020.png"; sourceTree = "<group>"; };
 		508B547A854E5E705DB4CB65 /* 치코_drag_017.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_drag_017.png"; path = "Resources/Sprites/치코/치코_drag_017.png"; sourceTree = "<group>"; };
 		50C993ABBF8BE66F9FB8CA2A /* 치코_sad_013.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_sad_013.png"; path = "Resources/Sprites/치코/치코_sad_013.png"; sourceTree = "<group>"; };
-		50FBC3ACD817B577E6DFB087 /* ChatterboxConfig.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatterboxConfig.swift; sourceTree = "<group>"; };
 		515B4C61342DC6D334FD77CF /* 치코_joy_010.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_joy_010.png"; path = "Resources/Sprites/치코/치코_joy_010.png"; sourceTree = "<group>"; };
 		51816C3DF9DC2C6F5BE7B296 /* 레오_02_e.wav */ = {isa = PBXFileReference; includeInIndex = 1; name = "레오_02_e.wav"; path = "Resources/CharacterPhonemes/레오_reference/en/레오_02_e.wav"; sourceTree = "<group>"; };
 		51A85199682959E3B8A5CE27 /* 치코_confused_028.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_confused_028.png"; path = "Resources/Sprites/치코/치코_confused_028.png"; sourceTree = "<group>"; };
@@ -650,7 +628,6 @@
 		621A2384D24CC4B6823459A2 /* 치코_clockout_015.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_clockout_015.png"; path = "Resources/Sprites/치코/치코_clockout_015.png"; sourceTree = "<group>"; };
 		629EE2297983B3D0CC679A34 /* 치코_typing_return_017.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_typing_return_017.png"; path = "Resources/Sprites/치코/치코_typing_return_017.png"; sourceTree = "<group>"; };
 		62B86E8CD73312482C7CF184 /* 치코_agree_024.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_agree_024.png"; path = "Resources/Sprites/치코/치코_agree_024.png"; sourceTree = "<group>"; };
-		6332D8769DAD6FC52D04181E /* LlamaModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LlamaModel.swift; sourceTree = "<group>"; };
 		6355D51413FA4CCF6214159E /* 렉스_en_manifest.json */ = {isa = PBXFileReference; includeInIndex = 1; name = "렉스_en_manifest.json"; path = "Resources/CharacterPhonemes/렉스_reference/en/렉스_en_manifest.json"; sourceTree = "<group>"; };
 		639A68026DB1B0363B5954C9 /* 치코_clockin_033.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_clockin_033.png"; path = "Resources/Sprites/치코/치코_clockin_033.png"; sourceTree = "<group>"; };
 		63C5CB50B2CB19E32B3F515B /* 치코_idle_loop_001.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_idle_loop_001.png"; path = "Resources/Sprites/치코/치코_idle_loop_001.png"; sourceTree = "<group>"; };
@@ -674,7 +651,6 @@
 		66F8B475C552C127436DE240 /* 치코_sleeping_024.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_sleeping_024.png"; path = "Resources/Sprites/치코/치코_sleeping_024.png"; sourceTree = "<group>"; };
 		6717BC1F5A70FB853273E7D8 /* 치코_disagree_020.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_disagree_020.png"; path = "Resources/Sprites/치코/치코_disagree_020.png"; sourceTree = "<group>"; };
 		6722A2168E4774D4FE3B761E /* 치코_clockout_031.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_clockout_031.png"; path = "Resources/Sprites/치코/치코_clockout_031.png"; sourceTree = "<group>"; };
-		67671949737A91D1114C8228 /* HiFTGenerator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HiFTGenerator.swift; sourceTree = "<group>"; };
 		67780252514558D0507B4E3B /* 올리버_01_아.wav */ = {isa = PBXFileReference; includeInIndex = 1; name = "올리버_01_아.wav"; path = "Resources/CharacterPhonemes/올리버_reference/ko/올리버_01_아.wav"; sourceTree = "<group>"; };
 		67898DA89DC3A4B99B8BC36C /* 치코_typing_024.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_typing_024.png"; path = "Resources/Sprites/치코/치코_typing_024.png"; sourceTree = "<group>"; };
 		67B38B1D0F269BDC55AB93C2 /* 치코_drop_019.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_drop_019.png"; path = "Resources/Sprites/치코/치코_drop_019.png"; sourceTree = "<group>"; };
@@ -747,7 +723,6 @@
 		7AFBF8895CCE095EA1F59764 /* 치코_idle_loop_018.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_idle_loop_018.png"; path = "Resources/Sprites/치코/치코_idle_loop_018.png"; sourceTree = "<group>"; };
 		7B1F86EF5ED6918B1E3CEF93 /* yo.wav */ = {isa = PBXFileReference; includeInIndex = 1; name = yo.wav; path = Resources/Phonemes/yo.wav; sourceTree = "<group>"; };
 		7B306CA014DC17738FF83BBF /* 치코_drag_019.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_drag_019.png"; path = "Resources/Sprites/치코/치코_drag_019.png"; sourceTree = "<group>"; };
-		7B5990CFB0F09F1A243F2D70 /* BPETokenizer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BPETokenizer.swift; sourceTree = "<group>"; };
 		7B6213FD6396831C7963A292 /* Contents.json */ = {isa = PBXFileReference; includeInIndex = 1; name = Contents.json; path = "Assets.xcassets/핀_profile.imageset/Contents.json"; sourceTree = "<group>"; };
 		7B74CB34411281FD2E286F0D /* 모코_01_a.wav */ = {isa = PBXFileReference; includeInIndex = 1; name = "모코_01_a.wav"; path = "Resources/CharacterPhonemes/모코_reference/en/모코_01_a.wav"; sourceTree = "<group>"; };
 		7BC0E0738CB45AB25A3CFEA7 /* 치코_landing_016.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_landing_016.png"; path = "Resources/Sprites/치코/치코_landing_016.png"; sourceTree = "<group>"; };
@@ -759,7 +734,6 @@
 		7DAFC998B64B936147966D7A /* Contents.json */ = {isa = PBXFileReference; includeInIndex = 1; name = Contents.json; path = "Assets.xcassets/루이_profile.imageset/Contents.json"; sourceTree = "<group>"; };
 		7DD3CD3D6DF4EA6B3D3F5737 /* 치코_sad_022.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_sad_022.png"; path = "Resources/Sprites/치코/치코_sad_022.png"; sourceTree = "<group>"; };
 		7E6D413E817107118DBEFD51 /* 치코_landing_008.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_landing_008.png"; path = "Resources/Sprites/치코/치코_landing_008.png"; sourceTree = "<group>"; };
-		7EA5A20BB3A8C99587207AFD /* MLXModelManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MLXModelManager.swift; sourceTree = "<group>"; };
 		7ED4D6F75AABF4B7E99B94E4 /* 치코_landing_029.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_landing_029.png"; path = "Resources/Sprites/치코/치코_landing_029.png"; sourceTree = "<group>"; };
 		7EE7F764C205E8FC0AC5D07F /* grapheme_mtl_merged_expanded_v1.json */ = {isa = PBXFileReference; includeInIndex = 1; name = grapheme_mtl_merged_expanded_v1.json; path = Resources/onnx_models/grapheme_mtl_merged_expanded_v1.json; sourceTree = "<group>"; };
 		7F3A1E5677E5AA6E62EA22FA /* 치코_angry_016.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_angry_016.png"; path = "Resources/Sprites/치코/치코_angry_016.png"; sourceTree = "<group>"; };
@@ -805,7 +779,6 @@
 		8AD10A7C9919B5A03B81166B /* 치코_agree_032.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_agree_032.png"; path = "Resources/Sprites/치코/치코_agree_032.png"; sourceTree = "<group>"; };
 		8AE2A3FE743CD7335B406B8D /* 치코_typing_005.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_typing_005.png"; path = "Resources/Sprites/치코/치코_typing_005.png"; sourceTree = "<group>"; };
 		8B14C5DF8FDDC42986C79832 /* 치코_clockout_018.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_clockout_018.png"; path = "Resources/Sprites/치코/치코_clockout_018.png"; sourceTree = "<group>"; };
-		8B263F34662A4E9BE5A7A74C /* ChatterboxPipeline.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatterboxPipeline.swift; sourceTree = "<group>"; };
 		8B3796F771424938A4B53995 /* 치코_sad_021.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_sad_021.png"; path = "Resources/Sprites/치코/치코_sad_021.png"; sourceTree = "<group>"; };
 		8B385FB57263038C58AC3577 /* 치코_thinking_011.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_thinking_011.png"; path = "Resources/Sprites/치코/치코_thinking_011.png"; sourceTree = "<group>"; };
 		8B38CED65D24BD996540045E /* 치코_drag_014.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_drag_014.png"; path = "Resources/Sprites/치코/치코_drag_014.png"; sourceTree = "<group>"; };
@@ -990,7 +963,6 @@
 		B8C963A7FEA6425DEF4DC5DB /* 치코_greeting_012.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_greeting_012.png"; path = "Resources/Sprites/치코/치코_greeting_012.png"; sourceTree = "<group>"; };
 		B9161F1C1D4098D49F751048 /* 치코_01_あ.wav */ = {isa = PBXFileReference; includeInIndex = 1; name = "치코_01_あ.wav"; path = "Resources/CharacterPhonemes/치코_reference/ja/치코_01_あ.wav"; sourceTree = "<group>"; };
 		B9555A24A0111C03E23645AC /* Contents.json */ = {isa = PBXFileReference; includeInIndex = 1; name = Contents.json; path = "Assets.xcassets/래키_profile.imageset/Contents.json"; sourceTree = "<group>"; };
-		B968FFF2CAF1CD57AF911AA8 /* MLXInferenceService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MLXInferenceService.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6012345678902 /* ModelCatalog.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelCatalog.swift; sourceTree = "<group>"; };
 		CAFE0001DEAD1111BEEF0002 /* Qwen3TTSService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Qwen3TTSService.swift; sourceTree = "<group>"; };
 		B96CFCEAA8BF460D9280D12B /* 치코_angry_031.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_angry_031.png"; path = "Resources/Sprites/치코/치코_angry_031.png"; sourceTree = "<group>"; };
@@ -1087,7 +1059,6 @@
 		CF6173A864821C69121FA032 /* 치코_greeting_027.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_greeting_027.png"; path = "Resources/Sprites/치코/치코_greeting_027.png"; sourceTree = "<group>"; };
 		CF74A9E69B965298B05D414E /* 치코_angry_005.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_angry_005.png"; path = "Resources/Sprites/치코/치코_angry_005.png"; sourceTree = "<group>"; };
 		D00DF7A268169FADA918C6F3 /* 렉스_ko_manifest.json */ = {isa = PBXFileReference; includeInIndex = 1; name = "렉스_ko_manifest.json"; path = "Resources/CharacterPhonemes/렉스_reference/ko/렉스_ko_manifest.json"; sourceTree = "<group>"; };
-		D04C4F6BC4B1123CC5766519 /* VoiceEncoder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VoiceEncoder.swift; sourceTree = "<group>"; };
 		D07EF0909E8FF26787EB4A71 /* 치코_typing_031.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_typing_031.png"; path = "Resources/Sprites/치코/치코_typing_031.png"; sourceTree = "<group>"; };
 		D0BD2EDDDCCC59C46BE2F927 /* 치코_clockout_011.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_clockout_011.png"; path = "Resources/Sprites/치코/치코_clockout_011.png"; sourceTree = "<group>"; };
 		D0EF4B589DC9CC2E8B3DC079 /* 치코_clockout_012.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_clockout_012.png"; path = "Resources/Sprites/치코/치코_clockout_012.png"; sourceTree = "<group>"; };
@@ -1098,7 +1069,6 @@
 		D3213EA5DD949DF357F9D6EA /* 치코_sleeping_019.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_sleeping_019.png"; path = "Resources/Sprites/치코/치코_sleeping_019.png"; sourceTree = "<group>"; };
 		D363AA499658AA651718B202 /* 치코_disagree_024.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_disagree_024.png"; path = "Resources/Sprites/치코/치코_disagree_024.png"; sourceTree = "<group>"; };
 		D367ACB3D34A6EE58D813CB5 /* se.wav */ = {isa = PBXFileReference; includeInIndex = 1; name = se.wav; path = Resources/Phonemes/se.wav; sourceTree = "<group>"; };
-		D373E518BD8F4070536F95BA /* T3Model.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = T3Model.swift; sourceTree = "<group>"; };
 		D4222A1130E84943BA4D8931 /* 치코_praise_018.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_praise_018.png"; path = "Resources/Sprites/치코/치코_praise_018.png"; sourceTree = "<group>"; };
 		D425E38FA7D69DFDB61F82F3 /* 치코_confused_024.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_confused_024.png"; path = "Resources/Sprites/치코/치코_confused_024.png"; sourceTree = "<group>"; };
 		D446B42E60CE3E0B9607DA47 /* 폴라_01_아.wav */ = {isa = PBXFileReference; includeInIndex = 1; name = "폴라_01_아.wav"; path = "Resources/CharacterPhonemes/폴라_reference/ko/폴라_01_아.wav"; sourceTree = "<group>"; };
@@ -1209,6 +1179,7 @@
 		F21697B99782898EB4F8E7C5 /* he.wav */ = {isa = PBXFileReference; includeInIndex = 1; name = he.wav; path = Resources/Phonemes/he.wav; sourceTree = "<group>"; };
 		F25E5D6E1F2F6ED9F53AC43B /* 치코_profile.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_profile.png"; path = "Assets.xcassets/치코_profile.imageset/치코_profile.png"; sourceTree = "<group>"; };
 		F25EF9DF54BC65C3CD0318BE /* AgentConfig.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentConfig.swift; sourceTree = "<group>"; };
+		A3F8C6D27B1E4509D2C835FA /* LLMConfigCatalog.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LLMConfigCatalog.swift; sourceTree = "<group>"; };
 		AABBCC1100000000000A0002 /* AgentToolKit.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentToolKit.swift; sourceTree = "<group>"; };
 		F265EDC9BD104441FB259EAC /* 치코_clockin_046.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_clockin_046.png"; path = "Resources/Sprites/치코/치코_clockin_046.png"; sourceTree = "<group>"; };
 		F2B963EF57C056AE583368EE /* 치코_agree_005.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_agree_005.png"; path = "Resources/Sprites/치코/치코_agree_005.png"; sourceTree = "<group>"; };
@@ -1227,7 +1198,6 @@
 		F52FCD3F835C8948F67D257D /* 치코_sad_024.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_sad_024.png"; path = "Resources/Sprites/치코/치코_sad_024.png"; sourceTree = "<group>"; };
 		F543F927B42D017E3769AC3B /* 치코_idle_loop_007.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_idle_loop_007.png"; path = "Resources/Sprites/치코/치코_idle_loop_007.png"; sourceTree = "<group>"; };
 		F5A9C5C23AFF9D55A08339DE /* 치코_resting_007.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_resting_007.png"; path = "Resources/Sprites/치코/치코_resting_007.png"; sourceTree = "<group>"; };
-		F5AC7671DFB0108E1A46BE3C /* WebSocketClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WebSocketClient.swift; sourceTree = "<group>"; };
 		F5FF32F4761D4128EB7D1E4F /* a.wav */ = {isa = PBXFileReference; includeInIndex = 1; name = a.wav; path = Resources/Phonemes/a.wav; sourceTree = "<group>"; };
 		F61B5DA95488CACECC362B48 /* ra.wav */ = {isa = PBXFileReference; includeInIndex = 1; name = ra.wav; path = Resources/Phonemes/ra.wav; sourceTree = "<group>"; };
 		F633BB0853F7E8FC61DF152D /* 치코_drop_005.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_drop_005.png"; path = "Resources/Sprites/치코/치코_drop_005.png"; sourceTree = "<group>"; };
@@ -1296,13 +1266,6 @@
 			isa = PBXGroup;
 			children = (
 				E2EE60189BC5025E127B3DEC /* AudioUtils.swift */,
-				50FBC3ACD817B577E6DFB087 /* ChatterboxConfig.swift */,
-				8B263F34662A4E9BE5A7A74C /* ChatterboxPipeline.swift */,
-				67671949737A91D1114C8228 /* HiFTGenerator.swift */,
-				6332D8769DAD6FC52D04181E /* LlamaModel.swift */,
-				4A9C55FB78B2FEF3673188F5 /* T3CondEnc.swift */,
-				D373E518BD8F4070536F95BA /* T3Model.swift */,
-				D04C4F6BC4B1123CC5766519 /* VoiceEncoder.swift */,
 			);
 			name = MyTeam;
 			sourceTree = "<group>";
@@ -1321,8 +1284,8 @@
 				8EAD91A347512A83BC142D85 /* MyTeam */,
 				01A9062370B278BF30DB65F0 /* AgentWindowManager.swift */,
 				F25EF9DF54BC65C3CD0318BE /* AgentConfig.swift */,
+				A3F8C6D27B1E4509D2C835FA /* LLMConfigCatalog.swift */,
 				AABBCC1100000000000A0002 /* AgentToolKit.swift */,
-				B968FFF2CAF1CD57AF911AA8 /* MLXInferenceService.swift */,
 				A1B2C3D4E5F6012345678902 /* ModelCatalog.swift */,
 				CAFE0001DEAD1111BEEF0002 /* Qwen3TTSService.swift */,
 				5E6EEB16BFFDC4C88B1A9577 /* SettingsView.swift */,
@@ -1336,34 +1299,26 @@
 				D6A5FC1EDBE0B54D2795D32C /* SpriteAgentView.swift */,
 				2D8FBD0BE788AA2795F5609A /* Color+Hex.swift */,
 				58DE787777335D29EB058548 /* KeychainManager.swift */,
-				35362392BA227E8375C30548 /* WebSocketStreamManager.swift */,
 				A69B673FC7EA6D2F4648453B /* AudioPlayable.swift */,
 				C7ED79B0980636754B825212 /* TeamOrchestrator.swift */,
-				0FD8C2308EAE321B74023D50 /* KanaDecomposer.swift */,
 				9CD70C5ADE01F161133B9E08 /* TrafficLightsView.swift */,
 				290914D5CBD26CA52655F62A /* IntentRouter.swift */,
+				A1B2C3D4E5F60002DEADBEEF /* AutomationPolicy.swift */,
 				661EC23D9637BB3CDD6B343F /* FloatingPanel.swift */,
 				D985A9868949EA3C7BAC8D38 /* TeamTableView.swift */,
-				F5AC7671DFB0108E1A46BE3C /* WebSocketClient.swift */,
 				499421611CD45D2E6D3590D6 /* ChatModels.swift */,
 				CF2028A9749418F9EEE1AD57 /* AgentSwapView.swift */,
 				261F294D0071A219C94C4067 /* AudioPlaybackService.swift */,
-				7EA5A20BB3A8C99587207AFD /* MLXModelManager.swift */,
 				E0BC09726A7BD26E6E1F06F5 /* Notifications.swift */,
 				44885B1F55E31C5F25348FE4 /* SpeechManager.swift */,
 				CC7B1E809756063AC511E915 /* PermissionsManager.swift */,
 				10595D5C22D9AA1672C89795 /* AudioCaptureService.swift */,
-				7B5990CFB0F09F1A243F2D70 /* BPETokenizer.swift */,
 				D4CE1B65D76CBB6F52678B90 /* AgentChatView.swift */,
-				20A74CE707617BB6A4BF6428 /* TTSServiceManager.swift */,
-				1CE9F7AE2C3DF5D7BD5AA338 /* OnDeviceTTSManager.swift */,
 				1EC8F92712131EB5088D15E6 /* AgentSeatView.swift */,
 				65BCAD4E2923B21CBE65C81A /* ConversationMemory.swift */,
-				26D1DFE1DF661D877429B660 /* LiveAudioManager.swift */,
 				831A9193F81CEB521FA263A9 /* AgentMenuPopupView.swift */,
 				A2E3CE54DB16D3480AFD5027 /* CharacterVoiceConfig.swift */,
 				8134F5DCEAE6B2A61F684FEB /* ChatComponents.swift */,
-				314B4D6617A8A16F6F56FD5C /* T3MLXModel.swift */,
 				32E40E7F7C4267AC38CAB6DF /* CharacterSpriteScene.swift */,
 				75E81EAF90D801F28126E03A /* TeamStatusView.swift */,
 				B33AAEE2C77B168F4ADF852E /* eo.wav */,
@@ -2671,17 +2626,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				72637E03A46FFDD47296CCCE /* AudioUtils.swift in Sources */,
-				2ECC48AE8C64FE9F80D95953 /* ChatterboxConfig.swift in Sources */,
-				8E755ECD296B9AEA96F59830 /* ChatterboxPipeline.swift in Sources */,
-				A22346F7D7C752E85F14BA18 /* HiFTGenerator.swift in Sources */,
-				1992E08E20244BC3CDC105B5 /* LlamaModel.swift in Sources */,
-				D50D0C85B1C464670B86083E /* T3CondEnc.swift in Sources */,
-				A66E80FF45F63B508A44691B /* T3Model.swift in Sources */,
-				EDFAE771D0C66D44CC596DD6 /* VoiceEncoder.swift in Sources */,
 				72F20090AC8DCBD20E9F41E0 /* AgentWindowManager.swift in Sources */,
 				643EACEF5ADAF52DAE3B6C58 /* AgentConfig.swift in Sources */,
+				B7D4E2A1C93F5018E46A7B3D /* LLMConfigCatalog.swift in Sources */,
 				AABBCC1100000000000A0001 /* AgentToolKit.swift in Sources */,
-				AB20C4961A39882717DD36DE /* MLXInferenceService.swift in Sources */,
 				A1B2C3D4E5F6012345678901 /* ModelCatalog.swift in Sources */,
 				CAFE0001DEAD1111BEEF0001 /* Qwen3TTSService.swift in Sources */,
 				CB661F8E34B37A83BD132210 /* SettingsView.swift in Sources */,
@@ -2695,34 +2643,26 @@
 				3FB8E317323920402DF3900F /* SpriteAgentView.swift in Sources */,
 				D9305FF97EB94924350CF6C7 /* Color+Hex.swift in Sources */,
 				DA2DA9B78DEFF38A348360EC /* KeychainManager.swift in Sources */,
-				4BE5563BBDC64C948685FA3E /* WebSocketStreamManager.swift in Sources */,
 				8D9CD6420D30EE8DE4862826 /* AudioPlayable.swift in Sources */,
 				DB71EEFDFE1B8BB5BA3F3C1B /* TeamOrchestrator.swift in Sources */,
-				C22617C58752E198B4B8E576 /* KanaDecomposer.swift in Sources */,
 				7D6F311AA1C6DF47B6D59421 /* TrafficLightsView.swift in Sources */,
 				C68BD3A468FB7B4DA3444DB7 /* IntentRouter.swift in Sources */,
+				A1B2C3D4E5F60001DEADBEEF /* AutomationPolicy.swift in Sources */,
 				93D23E9406D88CA97DD589D4 /* FloatingPanel.swift in Sources */,
 				D26CF5E00556150649F5FFE1 /* TeamTableView.swift in Sources */,
-				399E40AE5463247A484236CD /* WebSocketClient.swift in Sources */,
 				DDA3FB158A24C162390FCF34 /* ChatModels.swift in Sources */,
 				7B9A3946C5D91C7CFAC40494 /* AgentSwapView.swift in Sources */,
 				988B0C6F9C81695A726604AE /* AudioPlaybackService.swift in Sources */,
-				C1FA60E9B4CDCB9C383DD3E3 /* MLXModelManager.swift in Sources */,
 				3F1A23AA1D789273A0006D94 /* Notifications.swift in Sources */,
 				60BE9026DEF17264C71B9697 /* SpeechManager.swift in Sources */,
 				83A8E7A152A015ED5FFA30D2 /* PermissionsManager.swift in Sources */,
 				50F124C45A44B6E3A29CAA32 /* AudioCaptureService.swift in Sources */,
-				105A1FA6273E89DEC048603B /* BPETokenizer.swift in Sources */,
 				63B1DDFE7603CD8F398A63A6 /* AgentChatView.swift in Sources */,
-				2225B1E7E8DE50B652D90BB7 /* TTSServiceManager.swift in Sources */,
-				2CE249AADD2CA14C341C6844 /* OnDeviceTTSManager.swift in Sources */,
 				A49E6167CF1DFA358EA782E9 /* AgentSeatView.swift in Sources */,
 				243772B48E7512E2BB3FB0A3 /* ConversationMemory.swift in Sources */,
-				425D577054F824A25A6842E3 /* LiveAudioManager.swift in Sources */,
 				D06A2F0510035B2B9D002687 /* AgentMenuPopupView.swift in Sources */,
 				D5CA253D6A0BC8B4AF1E1FC7 /* CharacterVoiceConfig.swift in Sources */,
 				EDD389FF8DBEFB2238C23E87 /* ChatComponents.swift in Sources */,
-				1052DF0E3B24D5A5F397E8DA /* T3MLXModel.swift in Sources */,
 				624503498323E76D169116FF /* CharacterSpriteScene.swift in Sources */,
 				0A8DBCA631F8CD2D74B83DBF /* TeamStatusView.swift in Sources */,
 			);
@@ -2859,7 +2799,7 @@
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = NO;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
 				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;

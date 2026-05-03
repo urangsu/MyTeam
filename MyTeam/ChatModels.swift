@@ -43,9 +43,12 @@ extension AgentWindowManager {
         var nextRunAt: Date
         var repeatInterval: TimeInterval?
         var roomID: UUID?
+        var assignedAgentID: String?
         var isEnabled: Bool
         var createdAt: Date
         var lastRunAt: Date?
+        /// true면 실행 전 채팅창에 승인 요청. 2분 내 /approve {id} 없으면 자동 실행.
+        var requiresApproval: Bool = false
 
         var scheduleText: String {
             if let repeatInterval {

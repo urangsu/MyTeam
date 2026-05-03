@@ -44,6 +44,8 @@ class FloatingPanel: NSPanel {
         self.hasShadow = false
         self.level = .floating
         self.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        self.isRestorable = false
+        self.identifier = NSUserInterfaceItemIdentifier("MyTeam.\(agentID)")
 
         self.acceptsMouseMovedEvents = true
 
@@ -127,7 +129,7 @@ class FloatingPanel: NSPanel {
     func savePosition() {
         UserDefaults.standard.set(self.frame.origin.x, forKey: "\(agentID)_x")
         UserDefaults.standard.set(self.frame.origin.y, forKey: "\(agentID)_y")
-        if shouldPersistSize {
+        if persistencePolicy.persistSize {
             UserDefaults.standard.set(self.frame.size.width, forKey: "\(agentID)_w")
             UserDefaults.standard.set(self.frame.size.height, forKey: "\(agentID)_h")
         } else {
@@ -145,12 +147,22 @@ class FloatingPanel: NSPanel {
         keepInsideVisibleScreen()
     }
 
-    private var shouldPersistSize: Bool {
-        agentID.hasPrefix("chat_") || agentID == "status_window" || agentID == "settings_window"
+    private var persistencePolicy: PersistencePolicy {
+        switch agentID {
+        case "team", "swap_window", "agent_settings_window":
+            return PersistencePolicy(persistSize: false)
+        case "status_window", "settings_window":
+            return PersistencePolicy(persistSize: true)
+        default:
+            if agentID.hasPrefix("chat_") {
+                return PersistencePolicy(persistSize: true)
+            }
+            return PersistencePolicy(persistSize: false)
+        }
     }
 
     private func restoreSizeIfAvailable(defaultSize: NSSize) {
-        guard shouldPersistSize else { return }
+        guard persistencePolicy.persistSize else { return }
         let width = UserDefaults.standard.double(forKey: "\(agentID)_w")
         let height = UserDefaults.standard.double(forKey: "\(agentID)_h")
         guard width >= max(240, minSize.width), height >= max(40, minSize.height) else { return }
@@ -172,6 +184,10 @@ class FloatingPanel: NSPanel {
         self.setFrameOrigin(frame.origin)
     }
 
+}
+
+private struct PersistencePolicy {
+    let persistSize: Bool
 }
 
 // MARK: - WindowDragBlocker

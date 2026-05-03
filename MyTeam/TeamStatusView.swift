@@ -16,6 +16,11 @@ struct TeamStatusView: View {
     @State private var inputText: String = ""
     @State private var pendingAttachments: [ChatAttachment] = []
     @State private var isTargetedForDrop: Bool = false
+    @State private var isSchedulePanelPresented: Bool = false
+    @State private var scheduleDraftTime: String = "09:00"
+    @State private var scheduleDraftPrompt: String = ""
+    @State private var scheduleDraftAgentID: String = "auto"
+    @State private var scheduleDraftError: String? = nil
     
     private var bgColor: Color {
         manager.isDarkMode ? Color.black.opacity(isCollapsed ? 0.4 : 0.8) : Color.white.opacity(isCollapsed ? 0.3 : 0.75)
@@ -222,6 +227,9 @@ struct TeamStatusView: View {
                     secondaryButton: .cancel(Text("취소"))
                 )
             }
+
+            Divider().background(textColor.opacity(0.06))
+            scheduleSidebarButton
         }
         .frame(width: 140)
         .background(manager.isDarkMode ? Color.white.opacity(0.03) : Color.black.opacity(0.03))
@@ -267,11 +275,56 @@ struct TeamStatusView: View {
                 Image(systemName: "plus.circle.fill")
                     .font(.system(size: 14))
                     .foregroundColor(.blue)
+                    .frame(width: 22, height: 22)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
+            .help("채팅방 추가")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+    }
+
+    private var scheduleSidebarButton: some View {
+        Button {
+            withAnimation(.spring(response: 0.26, dampingFraction: 0.82)) {
+                isSchedulePanelPresented.toggle()
+            }
+        } label: {
+            HStack(spacing: 8) {
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: "clock.badge.checkmark")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(isSchedulePanelPresented ? .orange : textColor.opacity(0.5))
+                    if !manager.automationTasks.isEmpty {
+                        Circle()
+                            .fill(Color.orange)
+                            .frame(width: 6, height: 6)
+                            .offset(x: 4, y: -3)
+                    }
+                }
+                Text("스케줄")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(textColor.opacity(isSchedulePanelPresented ? 0.78 : 0.48))
+                Spacer()
+                if !manager.automationTasks.isEmpty {
+                    Text("\(manager.automationTasks.count)")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.orange)
+                }
+            }
+            .padding(.horizontal, 12)
+            .frame(height: 38)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isSchedulePanelPresented ? Color.orange.opacity(0.10) : Color.clear)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .help("스케줄 업무")
     }
 
     private var chatroomLogView: some View {
@@ -346,7 +399,10 @@ struct TeamStatusView: View {
 
             // ── 하단: 입력창 (팀 채팅 + 첨부파일) ──
             Divider().background(textColor.opacity(0.08))
-            scheduleTasksStrip
+            if isSchedulePanelPresented {
+                scheduleTasksPanel
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
 
             // 첨부파일 미리보기
             if !pendingAttachments.isEmpty {
@@ -403,7 +459,7 @@ struct TeamStatusView: View {
         }
     }
 
-    private var scheduleTasksStrip: some View {
+    private var scheduleTasksPanel: some View {
         VStack(alignment: .leading, spacing: 7) {
             HStack(spacing: 6) {
                 Image(systemName: "clock.badge.checkmark")
@@ -421,13 +477,25 @@ struct TeamStatusView: View {
                         .padding(.vertical, 2)
                         .background(Capsule().fill(Color.orange.opacity(0.12)))
                 }
+                Button {
+                    withAnimation(.spring(response: 0.24, dampingFraction: 0.85)) {
+                        isSchedulePanelPresented = false
+                    }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(textColor.opacity(0.38))
+                }
+                .buttonStyle(.plain)
             }
+
+            scheduleComposer
 
             if manager.automationTasks.isEmpty {
                 HStack(spacing: 6) {
-                    Image(systemName: "plus.circle")
+                    Image(systemName: "tray")
                         .font(.system(size: 10))
-                    Text("/schedule 09:00 오늘 주요뉴스")
+                    Text("등록된 스케줄 업무가 없습니다.")
                         .font(.system(size: 10))
                         .lineLimit(1)
                     Spacer()
@@ -446,9 +514,58 @@ struct TeamStatusView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .background(
-            Rectangle()
-                .fill(manager.isDarkMode ? Color.white.opacity(0.025) : Color.black.opacity(0.018))
+            RoundedRectangle(cornerRadius: 10)
+                .fill(manager.isDarkMode ? Color.white.opacity(0.06) : Color.white.opacity(0.92))
+                .shadow(color: .black.opacity(manager.isDarkMode ? 0.18 : 0.08), radius: 12, x: 0, y: 5)
         )
+        .padding(.horizontal, 10)
+        .padding(.top, 8)
+    }
+
+    private var scheduleComposer: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                TextField("09:00", text: $scheduleDraftTime)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 10, weight: .semibold))
+                    .frame(width: 42)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 5)
+                    .background(RoundedRectangle(cornerRadius: 7).fill(textColor.opacity(0.06)))
+
+                Picker("", selection: $scheduleDraftAgentID) {
+                    Text("자동").tag("auto")
+                    ForEach(manager.allAvailableAgents) { agent in
+                        Text(scheduleAgentMenuLabel(for: agent)).tag(agent.id)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(width: 76)
+
+                TextField("업무 내용", text: $scheduleDraftPrompt)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 10))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(RoundedRectangle(cornerRadius: 7).fill(textColor.opacity(0.06)))
+
+                Button(action: addScheduleFromPanel) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(canAddSchedule ? .orange : textColor.opacity(0.25))
+                }
+                .buttonStyle(.plain)
+                .disabled(!canAddSchedule)
+                .help("스케줄 추가")
+            }
+
+            if let scheduleDraftError {
+                Text(scheduleDraftError)
+                    .font(.system(size: 9))
+                    .foregroundColor(.red.opacity(0.85))
+            }
+        }
     }
 
     private func scheduleTaskChip(index: Int, task: AgentWindowManager.AutomationTask) -> some View {
@@ -459,7 +576,7 @@ struct TeamStatusView: View {
                 .frame(width: 16, height: 16)
                 .background(Circle().fill(Color.orange))
             VStack(alignment: .leading, spacing: 1) {
-                Text(task.scheduleText)
+                Text(scheduleChipTitle(for: task))
                     .font(.system(size: 9, weight: .bold))
                     .foregroundColor(.orange)
                 Text(task.prompt)
@@ -484,6 +601,68 @@ struct TeamStatusView: View {
                         .stroke(Color.orange.opacity(0.18), lineWidth: 1)
                 )
         )
+    }
+
+    private var canAddSchedule: Bool {
+        !scheduleDraftPrompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && parseScheduleDraftDate() != nil
+    }
+
+    private func scheduleChipTitle(for task: AgentWindowManager.AutomationTask) -> String {
+        guard let assignedID = task.assignedAgentID,
+              let agent = manager.allAvailableAgents.first(where: { $0.id == assignedID }) else {
+            return task.scheduleText
+        }
+        let status = manager.activeAgents.contains(where: { $0.id == assignedID }) ? "" : " 없음"
+        return "\(task.scheduleText) · \(agent.name)\(status)"
+    }
+
+    private func scheduleAgentMenuLabel(for agent: AgentWindowManager.AgentConfig) -> String {
+        manager.activeAgents.contains(where: { $0.id == agent.id })
+            ? agent.name
+            : "\(agent.name) 없음"
+    }
+
+    private func addScheduleFromPanel() {
+        let prompt = scheduleDraftPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !prompt.isEmpty else {
+            scheduleDraftError = "업무 내용을 입력해 주세요."
+            return
+        }
+        guard let nextRunAt = parseScheduleDraftDate() else {
+            scheduleDraftError = "시간은 09:00 형식으로 입력해 주세요."
+            return
+        }
+
+        let assignedID = scheduleDraftAgentID == "auto" ? nil : scheduleDraftAgentID
+        manager.addAutomationTask(
+            prompt: prompt,
+            nextRunAt: nextRunAt,
+            roomID: manager.currentRoomID,
+            assignedAgentID: assignedID
+        )
+        scheduleDraftPrompt = ""
+        scheduleDraftError = nil
+    }
+
+    private func parseScheduleDraftDate() -> Date? {
+        let parts = scheduleDraftTime
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .split(separator: ":")
+        guard parts.count == 2,
+              let hour = Int(parts[0]),
+              let minute = Int(parts[1]),
+              (0...23).contains(hour),
+              (0...59).contains(minute) else {
+            return nil
+        }
+
+        var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        components.hour = hour
+        components.minute = minute
+        components.second = 0
+        guard let today = Calendar.current.date(from: components) else { return nil }
+        return today > Date() ? today : Calendar.current.date(byAdding: .day, value: 1, to: today)
     }
 
     private func openTeamFilePicker() {
