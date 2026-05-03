@@ -6,6 +6,51 @@
 
 ---
 
+## 2026-05-03
+
+### WorkflowOrchestrator + 업무 실행 엔진 추가
+
+**구현 완료:**
+- `TextSanitizer.removeNameTags` 버그픽스: agentPersonas 이름 목록과 일치할 때만 태그 제거. "좋아: 그렇게" 같은 일반 문장 보존.
+- `AIService text passthrough` 코드 인스펙션 완료 — 버그 없음 확인. geminiStream/claudeStream/openAIStream/openRouterStream 모두 text 올바르게 전달.
+- `Keychain 마이그레이션` 이미 완료됨 확인 (MyTeamApp.swift:121, KeychainManager.migrateFromUserDefaultsIfNeeded).
+
+**신규 파일 (MyTeam/MyTeam/*.swift flat):**
+| 파일 | 역할 |
+|------|------|
+| AgentTool.swift | WorkflowTool 프로토콜, ToolInput/ToolResult/ToolError, safeWorkspaceURL |
+| ToolExecutionContext.swift | Workspace URL, sessionID, isDryRun |
+| ArtifactStore.swift | action_log.jsonl append-only 기록 |
+| WorkflowModels.swift | WorkflowPlan/Step/Result/Artifact |
+| ReadFileTool.swift | Workspace 내 파일 읽기 |
+| WriteTextFileTool.swift | Workspace 내 파일 쓰기 |
+| CreateMarkdownReportTool.swift | .md 보고서 생성 |
+| CreatePresentationPlanTool.swift | deck_plan.json 생성 |
+| CreateSpreadsheetPlanTool.swift | workbook_plan.json 생성 |
+| OpenURLTool.swift | http/https URL 열기 |
+| ToolRegistry.swift | MVP 도구 싱글턴 등록 |
+| ToolExecutor.swift | step 단위 실행 + 로그 + high/destructive 차단 |
+| WorkflowEngine.swift | 순차 실행, isRequired 실패 시 중단 |
+| WorkflowOrchestrator.swift | LLM 플래너 + IntentRouter 라우팅 진입점 |
+
+**TeamStatusView 변경:**
+- `TeamOrchestrator.runTeamDiscussion()` 직접 호출 → `WorkflowOrchestrator.dispatch()`로 교체.
+- CHITCHAT/QUICK_ANSWER → TeamOrchestrator 위임.
+- TASK/RESEARCH/DECISION → WorkflowEngine 실행.
+
+**보안:**
+- Workspace = `~/Library/Application Support/MyTeam/Workspace/` (샌드박스 안전).
+- path traversal(`../`) 차단, Workspace 외부 접근 금지.
+- OpenURLTool: http/https scheme만 허용.
+- high/destructive riskLevel 도구 실행 차단 (MVP).
+- 모든 tool call → `action_log.jsonl` append.
+
+**경로 규칙 명시:**
+- Swift 파일 실제 위치: `MyTeam/MyTeam/*.swift` (flat).
+- Antigravity/Claude/Codex는 이 경로만 수정.
+
+---
+
 ## 프로젝트 기준
 
 MyTeam은 macOS 데스크톱에 4명의 캐릭터 AI 에이전트가 상주하는 SwiftUI/AppKit 앱이다.

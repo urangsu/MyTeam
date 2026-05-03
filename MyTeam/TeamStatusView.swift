@@ -722,10 +722,10 @@ struct TeamStatusView: View {
             isUser: true
         )
 
-        // TeamOrchestrator: 화면의 activeAgents에서 LLM Selector가 화자 선택
+        // WorkflowOrchestrator: CHITCHAT → TeamOrchestrator, TASK → WorkflowEngine
         Task {
             guard let roomID = manager.currentRoomID else { return }
-            await TeamOrchestrator.shared.runTeamDiscussion(
+            await WorkflowOrchestrator.shared.dispatch(
                 userMessage: fullText,
                 roomID: roomID,
                 manager: manager

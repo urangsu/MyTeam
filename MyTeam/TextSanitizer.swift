@@ -45,23 +45,32 @@ enum TextSanitizer {
     }
 
     // MARK: - 이름 태그 제거
-    /// [레오], **루나**:, 치코 -, 켄 ： 등 다양한 형식의 이름 태그 제거
+    /// 알려진 에이전트 이름([레오], 레오:, **루나**: 등)만 제거.
+    /// 일반 문장("좋아: 그렇게", "안녕하세요 수석님")은 보존.
     private static func removeNameTags(_ text: String) -> String {
-        // 다국어 문자 인식 범위: 한글, 영어, 일본어 3자 이상 15자 이하
-        let pattern = """
-        ^\\s*
-        (?:\\*\\*|\\*)?              # ** 또는 * 선택사항
-        (?:\\[)?                     # [ 선택사항
-        ([\\p{L}\\p{M}0-9]{1,15})   # 문자/숫자 1~15자
-        (?:\\])?                     # ] 선택사항
-        (?:\\*\\*|\\*)?              # ** 또는 * 선택사항
-        \\s*[:：\\-]\\s*             # :, ：, - 등 구분자
-        """
-        return text.replacingOccurrences(
-            of: pattern,
-            with: "",
-            options: .regularExpression
-        )
+        let knownNames = Set(agentPersonas.values.map { $0.name })
+
+        // 패턴 1: [이름] 대괄호 형식 — 구분자 없어도 제거 ([레오] 좋습니다 → 좋습니다)
+        let bracketPattern = "^\\s*\\[([\\p{L}\\p{M}0-9]{1,15})\\]\\s*(?:[:：\\-]\\s*)?"
+        if let regex = try? NSRegularExpression(pattern: bracketPattern),
+           let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+           let nameRange = Range(match.range(at: 1), in: text),
+           knownNames.contains(String(text[nameRange])),
+           let fullRange = Range(match.range, in: text) {
+            return String(text[fullRange.upperBound...])
+        }
+
+        // 패턴 2: **이름**: / 이름: / 이름 - 등 — 구분자 필수 (레오: 좋습니다 → 좋습니다)
+        let delimPattern = "^\\s*(?:\\*\\*|\\*)?([\\p{L}\\p{M}0-9]{1,15})(?:\\*\\*|\\*)?\\s*[:：\\-]\\s*"
+        if let regex = try? NSRegularExpression(pattern: delimPattern),
+           let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+           let nameRange = Range(match.range(at: 1), in: text),
+           knownNames.contains(String(text[nameRange])),
+           let fullRange = Range(match.range, in: text) {
+            return String(text[fullRange.upperBound...])
+        }
+
+        return text
     }
 
     // MARK: - 이모지 제거

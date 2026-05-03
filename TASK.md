@@ -2,6 +2,10 @@
 
 > 위치: `/Users/su/Desktop/MyTeam/TASK.md`
 > 목적: 앞으로 가야 할 길만 관리한다. 완료 이력은 `DEVLOG.md`에 남긴다.
+>
+> **경로 규칙:** 실제 Swift 파일 위치는 `MyTeam/MyTeam/*.swift` (flat).
+> Antigravity/Claude/Codex는 이 경로만 수정한다. 루트 `MyTeam/*.swift`는 없다.
+> 신규 파일도 `MyTeam/MyTeam/` flat에 추가 후 Xcode target에 포함.
 
 ---
 

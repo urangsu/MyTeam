@@ -269,6 +269,20 @@
 		FBF184E612490DAC0E68E03B /* mo.wav in Resources */ = {isa = PBXBuildFile; fileRef = 5EBDAB442DAE8209E86E4878 /* mo.wav */; };
 		FCF86130C1400EF99B2D892A /* AgentPersona.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5236D928FAFCC0DCC7946D62 /* AgentPersona.swift */; };
 		BB22CC33DD44EE55FF660011 /* Sprites in Resources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF66 /* Sprites */; };
+		BE979DE181375F061EA43298 /* AgentTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C799682E79CACCFD76A60BD /* AgentTool.swift */; };
+		111430F721A4324B4168CAC9 /* ToolExecutionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4CCA73098C61D43348816D /* ToolExecutionContext.swift */; };
+		C5B27729D07F30FB9748FE9F /* ArtifactStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CB1E803CFA2E3C0EBDACE2A /* ArtifactStore.swift */; };
+		1E390C64DE9E901266AEE194 /* WorkflowModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10743EF3CE0C35706D62BD2 /* WorkflowModels.swift */; };
+		C2C69AF7AF7C2C435363192D /* ReadFileTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCA0E795F99C51D5E3A684F9 /* ReadFileTool.swift */; };
+		4DBC9D1E1F6A355D41A6DE23 /* WriteTextFileTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 039AC491587CA07A2010033E /* WriteTextFileTool.swift */; };
+		F72566B0AA8E2181DC8BDBAB /* CreateMarkdownReportTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A123E9AEB9E0CCA49471D90 /* CreateMarkdownReportTool.swift */; };
+		33AFCDF7B63CDFC38AE9E2E5 /* CreatePresentationPlanTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C1390D95DD6B33C6246B7F7 /* CreatePresentationPlanTool.swift */; };
+		EDD51A34150CEE6DFF68B8E5 /* CreateSpreadsheetPlanTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FC3366815CA296267D8C9B8 /* CreateSpreadsheetPlanTool.swift */; };
+		47BD7ACF48ECEE204AAFE98B /* OpenURLTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77A60589AAE42B4978FA07F6 /* OpenURLTool.swift */; };
+		E9CDC9EB5E5DDF5374DE9D93 /* ToolRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C6474A28EC564261A2BC194 /* ToolRegistry.swift */; };
+		036D386602838C8C97115C0D /* ToolExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD601D29125CA14A4EE9FEE /* ToolExecutor.swift */; };
+		E0F0C88B5A0046AAF135089E /* WorkflowEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63E16FBE4F0F639B62AA9420 /* WorkflowEngine.swift */; };
+		4E7509048AFCC2A89F563885 /* WorkflowOrchestrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B3A586A21D123882C9B2BF2 /* WorkflowOrchestrator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -1244,6 +1258,20 @@
 		FFAF08D6091A076B26E958F1 /* 올리버_ko_manifest.json */ = {isa = PBXFileReference; includeInIndex = 1; name = "올리버_ko_manifest.json"; path = "Resources/CharacterPhonemes/올리버_reference/ko/올리버_ko_manifest.json"; sourceTree = "<group>"; };
 		FFF30E4DF0306AF2E765F5E9 /* 치코_drag_013.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_drag_013.png"; path = "Resources/Sprites/치코/치코_drag_013.png"; sourceTree = "<group>"; };
 		AA11BB22CC33DD44EE55FF66 /* Sprites */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Sprites; path = Resources/Sprites; sourceTree = "<group>"; };
+		5C799682E79CACCFD76A60BD /* AgentTool.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentTool.swift; sourceTree = "<group>"; };
+		7B4CCA73098C61D43348816D /* ToolExecutionContext.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ToolExecutionContext.swift; sourceTree = "<group>"; };
+		1CB1E803CFA2E3C0EBDACE2A /* ArtifactStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ArtifactStore.swift; sourceTree = "<group>"; };
+		C10743EF3CE0C35706D62BD2 /* WorkflowModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowModels.swift; sourceTree = "<group>"; };
+		FCA0E795F99C51D5E3A684F9 /* ReadFileTool.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReadFileTool.swift; sourceTree = "<group>"; };
+		039AC491587CA07A2010033E /* WriteTextFileTool.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WriteTextFileTool.swift; sourceTree = "<group>"; };
+		4A123E9AEB9E0CCA49471D90 /* CreateMarkdownReportTool.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CreateMarkdownReportTool.swift; sourceTree = "<group>"; };
+		0C1390D95DD6B33C6246B7F7 /* CreatePresentationPlanTool.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CreatePresentationPlanTool.swift; sourceTree = "<group>"; };
+		2FC3366815CA296267D8C9B8 /* CreateSpreadsheetPlanTool.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CreateSpreadsheetPlanTool.swift; sourceTree = "<group>"; };
+		77A60589AAE42B4978FA07F6 /* OpenURLTool.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OpenURLTool.swift; sourceTree = "<group>"; };
+		6C6474A28EC564261A2BC194 /* ToolRegistry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ToolRegistry.swift; sourceTree = "<group>"; };
+		FAD601D29125CA14A4EE9FEE /* ToolExecutor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ToolExecutor.swift; sourceTree = "<group>"; };
+		63E16FBE4F0F639B62AA9420 /* WorkflowEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowEngine.swift; sourceTree = "<group>"; };
+		6B3A586A21D123882C9B2BF2 /* WorkflowOrchestrator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowOrchestrator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1295,6 +1323,20 @@
 				FE40DDDEB4EC29F57CBEBF2B /* AgentSettingsView.swift */,
 				F4A4934564B89278F311E912 /* AIService.swift */,
 				E07A776E1F93029A136405E9 /* TextSanitizer.swift */,
+				5C799682E79CACCFD76A60BD /* AgentTool.swift */,
+				7B4CCA73098C61D43348816D /* ToolExecutionContext.swift */,
+				1CB1E803CFA2E3C0EBDACE2A /* ArtifactStore.swift */,
+				C10743EF3CE0C35706D62BD2 /* WorkflowModels.swift */,
+				FCA0E795F99C51D5E3A684F9 /* ReadFileTool.swift */,
+				039AC491587CA07A2010033E /* WriteTextFileTool.swift */,
+				4A123E9AEB9E0CCA49471D90 /* CreateMarkdownReportTool.swift */,
+				0C1390D95DD6B33C6246B7F7 /* CreatePresentationPlanTool.swift */,
+				2FC3366815CA296267D8C9B8 /* CreateSpreadsheetPlanTool.swift */,
+				77A60589AAE42B4978FA07F6 /* OpenURLTool.swift */,
+				6C6474A28EC564261A2BC194 /* ToolRegistry.swift */,
+				FAD601D29125CA14A4EE9FEE /* ToolExecutor.swift */,
+				63E16FBE4F0F639B62AA9420 /* WorkflowEngine.swift */,
+				6B3A586A21D123882C9B2BF2 /* WorkflowOrchestrator.swift */,
 				5236D928FAFCC0DCC7946D62 /* AgentPersona.swift */,
 				D6A5FC1EDBE0B54D2795D32C /* SpriteAgentView.swift */,
 				2D8FBD0BE788AA2795F5609A /* Color+Hex.swift */,
@@ -2639,6 +2681,20 @@
 				4924284FDAA78FAF8E22621F /* AgentSettingsView.swift in Sources */,
 				AEA6CC25476D0A502F719158 /* AIService.swift in Sources */,
 				5AD8869D648BDE90AAF364F0 /* TextSanitizer.swift in Sources */,
+				BE979DE181375F061EA43298 /* AgentTool.swift in Sources */,
+				111430F721A4324B4168CAC9 /* ToolExecutionContext.swift in Sources */,
+				C5B27729D07F30FB9748FE9F /* ArtifactStore.swift in Sources */,
+				1E390C64DE9E901266AEE194 /* WorkflowModels.swift in Sources */,
+				C2C69AF7AF7C2C435363192D /* ReadFileTool.swift in Sources */,
+				4DBC9D1E1F6A355D41A6DE23 /* WriteTextFileTool.swift in Sources */,
+				F72566B0AA8E2181DC8BDBAB /* CreateMarkdownReportTool.swift in Sources */,
+				33AFCDF7B63CDFC38AE9E2E5 /* CreatePresentationPlanTool.swift in Sources */,
+				EDD51A34150CEE6DFF68B8E5 /* CreateSpreadsheetPlanTool.swift in Sources */,
+				47BD7ACF48ECEE204AAFE98B /* OpenURLTool.swift in Sources */,
+				E9CDC9EB5E5DDF5374DE9D93 /* ToolRegistry.swift in Sources */,
+				036D386602838C8C97115C0D /* ToolExecutor.swift in Sources */,
+				E0F0C88B5A0046AAF135089E /* WorkflowEngine.swift in Sources */,
+				4E7509048AFCC2A89F563885 /* WorkflowOrchestrator.swift in Sources */,
 				FCF86130C1400EF99B2D892A /* AgentPersona.swift in Sources */,
 				3FB8E317323920402DF3900F /* SpriteAgentView.swift in Sources */,
 				D9305FF97EB94924350CF6C7 /* Color+Hex.swift in Sources */,
