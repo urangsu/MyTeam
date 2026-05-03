@@ -16,16 +16,32 @@ struct ActionLogEntry: Codable {
         artifact: String? = nil,
         error: String? = nil
     ) -> ActionLogEntry {
-        ActionLogEntry(
-            ts: ts,
-            session: session,
-            tool: tool,
-            input: input,
-            result: result,
-            artifact: artifact,
-            error: error
-        )
+        ActionLogEntry(ts: ts, session: session, tool: tool, input: input,
+                       result: result, artifact: artifact, error: error)
     }
+}
+
+// MARK: - ArtifactType
+
+enum ArtifactType: String, Codable {
+    case report       = "report"
+    case presentation = "presentation"
+    case spreadsheet  = "spreadsheet"
+    case text         = "text"
+    case other        = "other"
+}
+
+// MARK: - IndexedArtifact
+
+struct IndexedArtifact: Codable {
+    let id: String          // UUID
+    let workflowID: String  // session ID
+    let title: String
+    let type: ArtifactType
+    let filename: String    // Workspace 내 파일명
+    let path: String        // 절대 경로
+    let preview: String     // 내용 첫 200자
+    let createdAt: String   // ISO 8601
 }
 
 // MARK: - ArtifactStore
@@ -44,9 +60,8 @@ final class ArtifactStore {
         return url
     }
 
-    var actionLogURL: URL {
-        workspaceURL.appendingPathComponent("action_log.jsonl")
-    }
+    var actionLogURL: URL { workspaceURL.appendingPathComponent("action_log.jsonl") }
+    var artifactIndexURL: URL { workspaceURL.appendingPathComponent("artifacts.json") }
 
     // MARK: - Action Log (append-only JSONL)
 
@@ -63,5 +78,27 @@ final class ArtifactStore {
         } else {
             try? logLine.write(to: logURL, atomically: false, encoding: .utf8)
         }
+    }
+
+    // MARK: - Artifact Index (artifacts.json)
+
+    func registerArtifact(_ artifact: IndexedArtifact) {
+        var list = loadArtifacts()
+        list.append(artifact)
+        guard let data = try? JSONEncoder().encode(list) else { return }
+        try? data.write(to: artifactIndexURL, options: .atomic)
+        AppLog.info("[ArtifactStore] 등록: \(artifact.filename) (\(artifact.type.rawValue))")
+    }
+
+    func loadArtifacts() -> [IndexedArtifact] {
+        guard let data = try? Data(contentsOf: artifactIndexURL),
+              let list = try? JSONDecoder().decode([IndexedArtifact].self, from: data) else {
+            return []
+        }
+        return list
+    }
+
+    func artifacts(forWorkflowID id: String) -> [IndexedArtifact] {
+        loadArtifacts().filter { $0.workflowID == id }
     }
 }

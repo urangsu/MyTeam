@@ -2,11 +2,13 @@ import Foundation
 
 // MARK: - WorkflowOrchestrator
 // TeamStatusView.sendTeamMessage()의 단일 진입점.
-// IntentRouter 결과에 따라 TeamOrchestrator(수다) 또는 WorkflowEngine(업무)으로 라우팅한다.
+// IntentRouter를 1회만 호출하고 CHITCHAT → runChitchatOnly(), TASK → WorkflowEngine으로 라우팅.
 
 final class WorkflowOrchestrator {
     static let shared = WorkflowOrchestrator()
     private init() {}
+
+    // MARK: - Public entry point
 
     func dispatch(
         userMessage: String,
@@ -18,7 +20,8 @@ final class WorkflowOrchestrator {
 
         switch intent {
         case .chitchat, .quickAnswer:
-            await TeamOrchestrator.shared.runTeamDiscussion(
+            // IntentRouter는 이미 1회 호출됨. TeamOrchestrator는 다시 분류하지 않는 전용 메서드 사용.
+            await TeamOrchestrator.shared.runChitchatOnly(
                 userMessage: userMessage,
                 roomID: roomID,
                 manager: manager
@@ -28,12 +31,9 @@ final class WorkflowOrchestrator {
         }
     }
 
-    // MARK: - Private
+    // MARK: - Intent classification (1회)
 
-    private func classifyIntent(
-        message: String,
-        manager: AgentWindowManager
-    ) async -> UserIntent {
+    private func classifyIntent(message: String, manager: AgentWindowManager) async -> UserIntent {
         do {
             let result = try await IntentRouter.shared.classify(
                 message: message,
@@ -41,69 +41,85 @@ final class WorkflowOrchestrator {
             )
             return result.intent
         } catch {
-            AppLog.warning("[WorkflowOrchestrator] IntentRouter 실패, chitchat으로 폴백: \(error)")
+            AppLog.warning("[WorkflowOrchestrator] IntentRouter 실패, chitchat 폴백: \(error)")
             return .chitchat
         }
     }
 
-    private func runWorkflow(
-        userMessage: String,
-        roomID: UUID,
-        manager: AgentWindowManager
-    ) async {
-        // 1. 진행 중 메시지 표시
-        await MainActor.run {
-            manager.addChatLog(
-                agentID: "system",
-                agentName: "작업봇",
-                text: "⏳ 작업 계획을 수립하는 중입니다...",
-                isUser: false,
-                roomID: roomID,
-                isSystem: true
-            )
-        }
+    // MARK: - Workflow execution
 
-        // 2. LLM 플래너로 WorkflowPlan 생성
-        guard let plan = await planWorkflow(userMessage: userMessage) else {
-            AppLog.warning("[WorkflowOrchestrator] 플래닝 실패 → TeamOrchestrator 폴백")
-            await TeamOrchestrator.shared.runTeamDiscussion(
-                userMessage: userMessage,
-                roomID: roomID,
-                manager: manager
-            )
+    private func runWorkflow(userMessage: String, roomID: UUID, manager: AgentWindowManager) async {
+        // 진행 중 알림
+        await postChat(manager: manager, roomID: roomID, text: "⏳ 작업 계획을 수립하는 중입니다...", isSystem: true)
+
+        // LLM 플래너 (self-repair 포함) — 실패 시 fallback 없이 에러 표시
+        guard let plan = await planWorkflowWithRepair(userMessage: userMessage) else {
+            await postChat(manager: manager, roomID: roomID,
+                           text: "❌ 작업 계획 생성에 실패했습니다.\n요청을 더 구체적으로 작성해 주시거나, 잠시 후 다시 시도해 주세요.",
+                           isSystem: false)
             return
         }
 
-        // 3. WorkflowEngine 실행
         let context = ToolExecutionContext.current()
         let result = await WorkflowEngine.shared.run(plan: plan, context: context)
+        await postChat(manager: manager, roomID: roomID, text: result.summary, isSystem: false)
+    }
 
-        // 4. 결과 채팅방에 추가 (TTS 없음)
-        await MainActor.run {
-            manager.addChatLog(
-                agentID: "system",
-                agentName: "작업봇",
-                text: result.summary,
-                isUser: false,
-                roomID: roomID,
-                isSystem: false
+    // MARK: - Planner with self-repair (최대 2회 시도)
+
+    private func planWorkflowWithRepair(userMessage: String) async -> WorkflowPlan? {
+        // 1차 시도
+        let (plan1, error1) = await attemptPlan(userMessage: userMessage, previousError: nil)
+        if let plan = plan1 { return plan }
+
+        // 2차 시도 — 1차 오류를 프롬프트에 포함해 self-repair 요청
+        let repairHint = error1 ?? "JSON 파싱에 실패했습니다."
+        AppLog.info("[WorkflowOrchestrator] Self-repair 시도: \(repairHint)")
+        let (plan2, _) = await attemptPlan(userMessage: userMessage, previousError: repairHint)
+        return plan2
+    }
+
+    private func attemptPlan(
+        userMessage: String,
+        previousError: String?
+    ) async -> (WorkflowPlan?, String?) {
+        let prompt = buildPlannerPrompt(userMessage: userMessage, previousError: previousError)
+        do {
+            let (jsonText, _) = try await AIService.shared.getResponse(
+                text: prompt,
+                agentID: "planner",
+                chatHistory: []
             )
+            let cleaned = extractJSON(from: jsonText)
+            guard let data = cleaned.data(using: .utf8) else {
+                return (nil, "JSON 문자열을 Data로 변환하지 못했습니다.")
+            }
+            let plan = try JSONDecoder().decode(WorkflowPlan.self, from: data)
+            return (plan, nil)
+        } catch let decodeError as DecodingError {
+            let msg = "JSON 디코딩 실패: \(decodeError.localizedDescription)"
+            AppLog.error("[WorkflowOrchestrator] \(msg)")
+            return (nil, msg)
+        } catch {
+            let msg = "LLM 호출 실패: \(error.localizedDescription)"
+            AppLog.error("[WorkflowOrchestrator] \(msg)")
+            return (nil, msg)
         }
     }
 
-    // MARK: - LLM Planner
+    // MARK: - Planner prompt builder
 
-    private func planWorkflow(userMessage: String) async -> WorkflowPlan? {
+    private func buildPlannerPrompt(userMessage: String, previousError: String?) -> String {
         let toolSchemas = ToolRegistry.shared.toolSchemaDescription
-        let plannerPrompt = """
+        var prompt = """
         당신은 업무 워크플로우 계획자입니다.
         사용자 요청을 분석하고 아래 도구들을 사용하는 실행 계획을 JSON으로 반환하세요.
-        JSON만 반환하고 다른 설명은 없어야 합니다.
+        JSON 블록(```json ... ```)만 반환하고 다른 설명은 없어야 합니다.
 
         사용 가능한 도구:
         \(toolSchemas)
 
-        출력 JSON 스키마 (모든 필드 필수):
+        출력 JSON 스키마:
         {
           "title": "워크플로우 제목",
           "steps": [
@@ -122,39 +138,50 @@ final class WorkflowOrchestrator {
         사용자 요청: \(userMessage)
         """
 
-        do {
-            let (jsonText, _) = try await AIService.shared.getResponse(
-                text: plannerPrompt,
-                agentID: "planner",
-                chatHistory: []
-            )
-            let cleaned = extractJSON(from: jsonText)
-            guard let data = cleaned.data(using: .utf8) else { return nil }
-            return try JSONDecoder().decode(WorkflowPlan.self, from: data)
-        } catch {
-            AppLog.error("[WorkflowOrchestrator] planWorkflow 실패: \(error)")
-            return nil
+        if let err = previousError {
+            prompt += "\n\n[이전 시도 오류 — 수정 후 재생성]\n\(err)"
         }
+        return prompt
     }
 
+    // MARK: - JSON extraction
+
     private func extractJSON(from text: String) -> String {
-        // ```json ... ``` 블록 추출
-        if let startRange = text.range(of: "```json"),
-           let endRange = text[startRange.upperBound...].range(of: "```") {
-            return String(text[startRange.upperBound..<endRange.lowerBound])
+        // ```json ... ``` 블록
+        if let s = text.range(of: "```json"),
+           let e = text[s.upperBound...].range(of: "```") {
+            return String(text[s.upperBound..<e.lowerBound])
                 .trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        // ``` ... ``` 블록 (언어 없는 경우)
-        if let startRange = text.range(of: "```"),
-           let endRange = text[startRange.upperBound...].range(of: "```") {
-            return String(text[startRange.upperBound..<endRange.lowerBound])
+        // ``` ... ``` 블록 (언어 없음)
+        if let s = text.range(of: "```"),
+           let e = text[s.upperBound...].range(of: "```") {
+            return String(text[s.upperBound..<e.lowerBound])
                 .trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        // { ... } 최외곽 중괄호
-        if let start = text.firstIndex(of: "{"),
-           let end = text.lastIndex(of: "}") {
-            return String(text[start...end])
+        // 최외곽 { ... }
+        if let s = text.firstIndex(of: "{"), let e = text.lastIndex(of: "}") {
+            return String(text[s...e])
         }
         return text
+    }
+
+    // MARK: - Chat helper
+
+    @MainActor
+    private func postChat(
+        manager: AgentWindowManager,
+        roomID: UUID,
+        text: String,
+        isSystem: Bool
+    ) {
+        manager.addChatLog(
+            agentID: "system",
+            agentName: "작업봇",
+            text: text,
+            isUser: false,
+            roomID: roomID,
+            isSystem: isSystem
+        )
     }
 }

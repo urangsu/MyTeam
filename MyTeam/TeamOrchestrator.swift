@@ -123,6 +123,52 @@ class TeamOrchestrator {
         }
     }
 
+    // MARK: - 수다 전용 진입점 (IntentRouter 없음)
+
+    /// WorkflowOrchestrator에서 이미 CHITCHAT/QUICK_ANSWER로 분류된 메시지를 받아
+    /// IntentRouter를 다시 호출하지 않고 곧바로 수다 모드로 진행한다.
+    func runChitchatOnly(
+        userMessage: String,
+        roomID: UUID,
+        manager: AgentWindowManager,
+        maxTurns: Int = 3
+    ) async {
+        let now = Date()
+        guard now.timeIntervalSince(lastDiscussionTime) >= discussionCooldown else { return }
+        lastDiscussionTime = now
+
+        let agents = manager.activeAgents
+        guard !agents.isEmpty else { return }
+
+        SpeechManager.shared.stopSpeaking()
+
+        let leader = manager.fallbackTeamLeader(for: roomID)
+        let mention = manager.resolveMentionedAgent(in: userMessage)
+        let addressedAgent = mention?.activeAgent
+        let unavailableMentionedAgent = (mention?.isActive == false) ? mention?.mentionedAgent : nil
+        let toolPolicy = ToolPolicy.evaluate(userMessage)
+        let toolEvidence = await ToolEvidenceService.gather(for: userMessage, policy: toolPolicy)
+        let groundedUserMessage = userMessage + toolEvidence.promptContext
+
+        let alreadySpoke = await emitUnavailableMentionNoticeIfNeeded(
+            unavailableAgent: unavailableMentionedAgent,
+            leader: leader,
+            roomID: roomID,
+            manager: manager
+        )
+
+        await runChitchatMode(
+            userMessage: groundedUserMessage,
+            roomID: roomID,
+            manager: manager,
+            maxTurns: maxTurns,
+            leader: leader,
+            preferredFirstSpeaker: addressedAgent,
+            alreadySpoke: alreadySpoke,
+            sources: toolEvidence.sources
+        )
+    }
+
     // MARK: - [TRACK A] 업무 모드 (Task Mode)
     
     private func runTaskMode(
