@@ -367,16 +367,42 @@ class AgentWindowManager: ObservableObject {
         return .speaking
     }
 
+    // MARK: - LocalEventKind — 이벤트 종류와 설정 플래그를 1:1로 정확히 매핑
+
+    private enum LocalEventKind {
+        case startup   // 앱 시작
+        case wake      // 잠금 해제 (didWake)
+        case idle      // 15분 대기
+        case sleep     // 30분 수면
+
+        /// 해당 이벤트의 UserDefaults 활성 플래그 키
+        var defaultsKey: String {
+            switch self {
+            case .startup: return "startupGreetingEnabled"
+            case .wake:    return "wakeGreetingEnabled"
+            case .idle:    return "idleGreetingEnabled"
+            case .sleep:   return "sleepGreetingEnabled"
+            }
+        }
+
+        /// AnimationState 변환 (CharacterDialogues 대사 선택용)
+        var animationState: AnimationState {
+            switch self {
+            case .startup, .wake: return .greeting
+            case .idle:           return .idle
+            case .sleep:          return .sleeping
+            }
+        }
+    }
+
     private func checkIdle() {
         let idleSeconds = Date().timeIntervalSince(lastInteractionTime)
         if idleSeconds >= 1800 && idleSeconds < 1860 {
-            // 30분 이상 → 수면 대사
             let fallback = ["...Zzzz...", "자고 있었어요~"]
-            speakLocalEvent(text: fallback.randomElement()!, state: .sleeping, isSystem: true)
+            speakLocalEvent(text: fallback.randomElement()!, kind: .sleep)
         } else if idleSeconds >= 900 && idleSeconds < 960 {
-            // 15분 → 대기 대사
             let fallback = ["안 안뉐하셨죠?", "졸고 있었던 거 아니에요!", "보고 싶었어요.", "계속 대기 중!"]
-            speakLocalEvent(text: fallback.randomElement()!, state: .idle, isSystem: true)
+            speakLocalEvent(text: fallback.randomElement()!, kind: .idle)
         }
     }
 
@@ -386,8 +412,7 @@ class AgentWindowManager: ObservableObject {
         let fallback = ["\(userTitle), 드디어 오셨네요!", "기다리고 있었어요!",
                         "다시 작업 모드로 전환합니다!",
                         "잠금해제 소리만 기다렸다니까요, \(userTitle). 바로 일하러 가시죠!"]
-        speakLocalEvent(text: fallback.randomElement()!, state: .greeting, isSystem: true)
-        // 절전 해제 시 모델 discovery TTL 체크 → 1시간 경과분 갱신
+        speakLocalEvent(text: fallback.randomElement()!, kind: .wake)
         Task { await LLMConfigCatalog.shared.refreshAllIfNeeded() }
     }
 
@@ -395,36 +420,23 @@ class AgentWindowManager: ObservableObject {
         let userTitle = UserDefaults.standard.string(forKey: "userTitle") ?? "사용자님"
         let fallback = ["반가워요! 오늘 하루도 잘 부탁드려요.", "접속 완료! 어떤 일부터 할까요?",
                         "준비 끝!", "\(userTitle), 에이전트 가동 시작합니다!"]
-        speakLocalEvent(text: fallback.randomElement()!, state: .greeting, isSystem: true)
+        speakLocalEvent(text: fallback.randomElement()!, kind: .startup)
     }
 
-    /// 로컬 시스템 이벤트: TTS만 재생. 채팅 로그에는 절대 기록하지 않음.
-    /// (시작 인사/idle/wake 대사가 채팅을 오염시키는 문제 방지)
-    private func speakLocalEvent(text: String, state: AnimationState? = nil, isSystem: Bool = false) {
-        // 기본값은 모두 비활성. UserDefaults로 실험적 활성화 가능.
-        if state == .greeting || state == .idle || state == .sleeping {
-            let key: String
-            switch state {
-            case .greeting: key = "startupGreetingEnabled"
-            case .idle:     key = "idleGreetingEnabled"
-            case .sleeping: key = "wakeGreetingEnabled"
-            default:        key = ""
-            }
-            guard !key.isEmpty && UserDefaults.standard.bool(forKey: key) else {
-                AppLog.info("[SystemEvent] '\(state?.rawValue ?? "")' 인사 비활성 (채팅 오염 차단)")
-                return
-            }
+    /// 로컬 시스템 이벤트 전용 메서드.
+    /// - 채팅 로그에 절대 기록하지 않음.
+    /// - 각 이벤트 종류별 UserDefaults 플래그가 false면 TTS도 실행하지 않음 (기본값 false).
+    private func speakLocalEvent(text: String, kind: LocalEventKind) {
+        guard UserDefaults.standard.bool(forKey: kind.defaultsKey) else {
+            AppLog.info("[SystemEvent] '\(kind.defaultsKey)' 비활성 — 스킵")
+            return
         }
-
         guard !isSilentMode else { return }
         guard let agent = activeAgents.first else { return }
-        let line: String
-        if let state, let charLine = CharacterDialogues.randomLine(for: agent.name, state: state) {
-            line = charLine
-        } else {
-            line = text
-        }
-        // 채팅 로그에 추가하지 않음 — TTS만 재생
+
+        let state = kind.animationState
+        let line = CharacterDialogues.randomLine(for: agent.name, state: state) ?? text
+        // 채팅 로그 추가 없음 — TTS만
         setAgentSpeaking(agentID: agent.id, text: line)
         SpeechManager.shared.speak(text: line, agentID: agent.id, characterName: agent.name)
     }

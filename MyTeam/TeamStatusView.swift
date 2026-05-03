@@ -718,31 +718,32 @@ struct TeamStatusView: View {
         inputText = ""
         pendingAttachments = []
 
+        // ── 단일 Task 안에서 순서대로 처리 — 중복 dispatch 원천 차단 ──
         Task {
+            // a) memory/slash command 처리 — true면 일반 dispatch 없이 종료
             if await ConversationMemory.handleChatCommand(
                 text,
                 roomID: manager.currentRoomID,
                 manager: manager,
                 currentAgent: manager.fallbackTeamLeader()
-            ) {
-                return
+            ) { return }
+
+            // b) slash command도 여기서 종료 (위에서 이미 처리 안 된 경우)
+            guard !text.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("/") else { return }
+
+            // c) 사용자 채팅 로그 추가
+            let attachmentContext = ConversationMemory.buildAttachmentContext(from: attachments)
+            let fullText = attachmentContext.isEmpty ? text : text + attachmentContext
+
+            await MainActor.run {
+                manager.addChatLog(
+                    agentID: "user", agentName: "나",
+                    text: text.isEmpty ? "[첨부파일 \(attachments.count)개]" : text,
+                    isUser: true
+                )
             }
-        }
 
-        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("/") else { return }
-
-        // 첨부파일 컨텍스트 포함
-        let attachmentContext = ConversationMemory.buildAttachmentContext(from: attachments)
-        let fullText = attachmentContext.isEmpty ? text : text + attachmentContext
-
-        manager.addChatLog(
-            agentID: "user", agentName: "나",
-            text: text.isEmpty ? "[첨부파일 \(attachments.count)개]" : text,
-            isUser: true
-        )
-
-        // WorkflowOrchestrator: CHITCHAT → TeamOrchestrator, TASK → WorkflowEngine
-        Task {
+            // d) WorkflowOrchestrator dispatch — 한 번만
             guard let roomID = manager.currentRoomID else { return }
             await WorkflowOrchestrator.shared.dispatch(
                 userMessage: fullText,

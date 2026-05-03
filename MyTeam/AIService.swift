@@ -53,11 +53,17 @@ final class AIService {
     private var cachedClaudeModelId: String?
     private var cachedOpenAIModelId: String?
 
-    /// 429 쿨다운 블랙리스트 — 모델 ID → 쿨다운 만료 시각
+    /// 모델별 429 쿨다운 — [modelId: 만료 시각]
     private var gemini429Cooldown: [String: Date] = [:]
-    private let gemini429CooldownSeconds: TimeInterval = 120 // 2분
+    private let gemini429CooldownSeconds: TimeInterval = 120 // 모델 단위: 2분
 
-    /// 해당 모델이 현재 쿨다운 중인지 확인
+    /// Provider-level 글로벌 쿨다운 — 2회 연속 429 시 Gemini 전체 2분 차단
+    private var globalGeminiCooldownUntil: Date? = nil
+    private let globalGeminiCooldownSeconds: TimeInterval = 120
+    private var consecutive429Count: Int = 0
+
+    // MARK: - 모델 단위 쿨다운
+
     private func isGeminiModelCoolingDown(_ modelId: String) -> Bool {
         guard let expiry = gemini429Cooldown[modelId] else { return false }
         if Date() > expiry {
@@ -67,12 +73,59 @@ final class AIService {
         return true
     }
 
-    /// 모델을 429 쿨다운에 추가
     private func markGeminiModel429(_ modelId: String) {
         gemini429Cooldown[modelId] = Date().addingTimeInterval(gemini429CooldownSeconds)
-        AppLog.warning("[AIService] 429 쿨다운 등록: \(modelId) (\(Int(gemini429CooldownSeconds))초)")
-        // 캐시도 무효화
         if cachedGeminiModelId == modelId { cachedGeminiModelId = nil }
+
+        // 2회 연속 → provider 전체 쿨다운
+        consecutive429Count += 1
+        if consecutive429Count >= 2 {
+            let until = Date().addingTimeInterval(globalGeminiCooldownSeconds)
+            globalGeminiCooldownUntil = until
+            AppLog.warning("[AIService] 🔴 Gemini 전체 쿨다운 시작 (\(Int(globalGeminiCooldownSeconds))초) — 연속 429 \(consecutive429Count)회")
+        } else {
+            AppLog.warning("[AIService] 429 쿨다운 등록: \(modelId) (연속 \(consecutive429Count)회)")
+        }
+    }
+
+    /// 성공 시 연속 카운터 리셋
+    private func resetGemini429Counter() {
+        consecutive429Count = 0
+    }
+
+    // MARK: - Provider 전체 쿨다운 검사
+
+    /// true면 Gemini 전체가 쿨다운 중 (discovery 포함 모든 호출 차단)
+    private func isGeminiProviderCoolingDown() -> Bool {
+        guard let until = globalGeminiCooldownUntil else { return false }
+        if Date() > until {
+            globalGeminiCooldownUntil = nil
+            consecutive429Count = 0
+            AppLog.info("[AIService] 🟢 Gemini 전체 쿨다운 해제")
+            return false
+        }
+        let remaining = Int(until.timeIntervalSinceNow)
+        AppLog.info("[AIService] ⏳ Gemini 전체 쿨다운 중 (잔여 \(remaining)초)")
+        return true
+    }
+
+    /// Gemini가 쿨다운 중일 때 사용 가능한 대체 provider 스트림
+    /// Claude → OpenRouter → 실패 순
+    private func fallbackProviderStream(
+        text: String,
+        agentID: String,
+        chatHistory: [AgentWindowManager.ChatLog]
+    ) -> AsyncThrowingStream<String, Error>? {
+        if let claudeKey = KeychainManager.load(key: "claudeAPIKey"), !claudeKey.isEmpty {
+            AppLog.info("[AIService] Gemini 쿨다운 → Claude fallback")
+            return claudeStream(text: text, agentID: agentID, chatHistory: chatHistory)
+        }
+        let openRouterKey = KeychainManager.load(key: "openRouterAPIKey") ?? ""
+        if !openRouterKey.isEmpty {
+            AppLog.info("[AIService] Gemini 쿨다운 → OpenRouter fallback")
+            return openRouterStream(text: text, agentID: agentID, chatHistory: chatHistory, modelId: "openrouter/auto")
+        }
+        return nil
     }
 
     // MARK: - Gemini Self-Healing Discovery
@@ -264,6 +317,22 @@ final class AIService {
                 await MainActor.run { isProcessing = true }
                 defer { Task { @MainActor in isProcessing = false } }
 
+                // ── Provider-level 전체 쿨다운 검사 ──
+                if isGeminiProviderCoolingDown() {
+                    // 대체 provider로 투명 재라우팅
+                    if let alt = fallbackProviderStream(text: text, agentID: agentID, chatHistory: chatHistory) {
+                        do {
+                            for try await token in alt { continuation.yield(token) }
+                            continuation.finish()
+                        } catch {
+                            continuation.finish(throwing: error)
+                        }
+                    } else {
+                        continuation.finish(throwing: AIServiceError.httpError(429, "⚠️ API 사용량 제한에 걸렸습니다. 잠시 후 다시 시도해 주세요."))
+                    }
+                    return
+                }
+
                 let apiKey = KeychainManager.load(key: "geminiAPIKey") ?? ""
                 guard !apiKey.isEmpty else {
                     continuation.finish(throwing: AIServiceError.noAPIKeys)
@@ -349,6 +418,7 @@ final class AIService {
                     }
 
                     AppLog.info("[AIService] ⚡ Gemini SSE 채널 오픈 (model: \(modelToUse), agent: \(agentID))")
+                    resetGemini429Counter() // 성공 → 연속 카운터 리셋
                     for try await line in result.lines {
                         if Task.isCancelled { break }
                         if line.hasPrefix("data: ") {

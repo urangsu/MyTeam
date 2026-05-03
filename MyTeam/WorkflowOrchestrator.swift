@@ -96,54 +96,68 @@ final class WorkflowOrchestrator {
         }
     }
 
+    // MARK: - PlannerResult — 실패 이유를 사용자까지 보존
+
+    private enum PlannerResult {
+        case success(WorkflowPlan)
+        case failure(String)   // 사용자에게 그대로 표시할 메시지
+
+        var plan: WorkflowPlan? {
+            if case .success(let p) = self { return p }
+            return nil
+        }
+        var failureMessage: String? {
+            if case .failure(let m) = self { return m }
+            return nil
+        }
+    }
+
     // MARK: - Workflow execution
 
     private func runWorkflow(userMessage: String, roomID: UUID, manager: AgentWindowManager) async {
-        // 진행 중 알림
         await postChat(manager: manager, roomID: roomID, text: "⏳ 작업 계획을 수립하는 중입니다...", isSystem: true)
 
         // 15초 typing indicator 자동 해제 타이머
         let timeoutTask = Task {
             try? await Task.sleep(nanoseconds: 15_000_000_000)
             if !Task.isCancelled {
-                await MainActor.run {
-                    manager.typingAgentIDs.removeAll()
-                }
+                await MainActor.run { manager.typingAgentIDs.removeAll() }
             }
         }
         defer { timeoutTask.cancel() }
 
-        // LLM 플래너 (self-repair 포함) — 실패 시 fallback 없이 에러 표시
-        guard let plan = await planWorkflowWithRepair(userMessage: userMessage) else {
-            await postChat(manager: manager, roomID: roomID,
-                           text: "❌ 작업 계획 생성에 실패했습니다.\n요청을 더 구체적으로 작성해 주시거나, 잠시 후 다시 시도해 주세요.",
-                           isSystem: false)
-            return
+        switch await planWorkflowWithRepair(userMessage: userMessage) {
+        case .failure(let msg):
+            await postChat(manager: manager, roomID: roomID, text: msg, isSystem: false)
+        case .success(let plan):
+            let context = ToolExecutionContext.current()
+            let result = await WorkflowEngine.shared.run(plan: plan, context: context)
+            await postChat(manager: manager, roomID: roomID, text: result.summary, isSystem: false)
         }
-
-        let context = ToolExecutionContext.current()
-        let result = await WorkflowEngine.shared.run(plan: plan, context: context)
-        await postChat(manager: manager, roomID: roomID, text: result.summary, isSystem: false)
     }
 
     // MARK: - Planner with self-repair (최대 2회 시도)
 
-    private func planWorkflowWithRepair(userMessage: String) async -> WorkflowPlan? {
+    private func planWorkflowWithRepair(userMessage: String) async -> PlannerResult {
         // 1차 시도
-        let (plan1, error1) = await attemptPlan(userMessage: userMessage, previousError: nil)
-        if let plan = plan1 { return plan }
+        let result1 = await attemptPlan(userMessage: userMessage, previousError: nil)
+        if case .success = result1 { return result1 }
+        guard case .failure(let error1) = result1 else { return result1 }
 
-        // 2차 시도 — 1차 오류를 프롬프트에 포함해 self-repair 요청
-        let repairHint = error1 ?? "JSON 파싱에 실패했습니다."
-        AppLog.info("[WorkflowOrchestrator] Self-repair 시도: \(repairHint)")
-        let (plan2, _) = await attemptPlan(userMessage: userMessage, previousError: repairHint)
-        return plan2
+        // 429나 provider 오류는 재시도해도 소용없음 — 즉시 반환
+        if error1.contains("사용량 제한") || error1.contains("429") {
+            return result1
+        }
+
+        // 2차 시도 — JSON/decode 오류에 대해서만 self-repair
+        AppLog.info("[WorkflowOrchestrator] Self-repair 시도: \(error1)")
+        return await attemptPlan(userMessage: userMessage, previousError: error1)
     }
 
     private func attemptPlan(
         userMessage: String,
         previousError: String?
-    ) async -> (WorkflowPlan?, String?) {
+    ) async -> PlannerResult {
         let callType = previousError == nil ? "workflow_plan" : "workflow_repair"
         AppLog.info("[AICall] callType=\(callType)")
         let prompt = buildPlannerPrompt(userMessage: userMessage, previousError: previousError)
@@ -155,25 +169,24 @@ final class WorkflowOrchestrator {
             )
             let cleaned = extractJSON(from: jsonText)
             guard let data = cleaned.data(using: .utf8) else {
-                return (nil, "JSON 문자열을 Data로 변환하지 못했습니다.")
+                return .failure("❌ 작업 계획 생성에 실패했습니다 (JSON 변환 오류).\n다시 시도해 주세요.")
             }
             let plan = try JSONDecoder().decode(WorkflowPlan.self, from: data)
-            return (plan, nil)
+            return .success(plan)
         } catch let decodeError as DecodingError {
-            let msg = "JSON 디코딩 실패: \(decodeError.localizedDescription)"
-            AppLog.error("[WorkflowOrchestrator] \(msg)")
-            return (nil, msg)
+            let msg = "❌ 작업 계획 생성에 실패했습니다 (JSON 형식 오류).\n요청을 더 구체적으로 작성해 주세요."
+            AppLog.error("[WorkflowOrchestrator] JSON decode: \(decodeError.localizedDescription)")
+            return .failure(msg)
         } catch {
             let errStr = error.localizedDescription
-            // 429 → 사용자 친화적 메시지
             if errStr.contains("429") || errStr.contains("사용량 제한") || errStr.contains("Rate limit") {
                 let msg = "⚠️ API 사용량 제한에 걸렸습니다. 잠시 후 다시 시도해 주세요."
                 AppLog.warning("[WorkflowOrchestrator] 429 감지: \(errStr)")
-                return (nil, msg)
+                return .failure(msg)
             }
-            let msg = "LLM 호출 실패: \(errStr)"
-            AppLog.error("[WorkflowOrchestrator] \(msg)")
-            return (nil, msg)
+            let msg = "❌ 작업 계획 생성에 실패했습니다.\n요청을 다시 작성하거나 잠시 후 시도해 주세요."
+            AppLog.error("[WorkflowOrchestrator] LLM 호출 실패: \(errStr)")
+            return .failure(msg)
         }
     }
 
