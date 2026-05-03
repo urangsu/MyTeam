@@ -75,6 +75,8 @@ class AgentWindowManager: ObservableObject {
     @Published var typingAgentIDs: Set<String> = []
     /// Workflow 실행 중 여부 — WorkflowOrchestrator가 set, UI가 중지 버튼 표시에 사용
     @Published var isWorkflowRunning: Bool = false
+    /// 최근 완료된 workflow artifact 목록 — 채팅 하단 ArtifactCardView에 표시
+    @Published var recentArtifacts: [IndexedArtifact] = []
     
     // ── 지능형 기억 보호 (Key Fact Buffer) ──
     // V1: 단일 전역 배열 (하위 호환 유지)
@@ -247,6 +249,23 @@ class AgentWindowManager: ObservableObject {
 
         // 잠금 해제 감지 (didWake만 — sessionDidBecomeActive는 앱 시작 시도 발화해서 중복 유발)
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(handleWake), name: NSWorkspace.didWakeNotification, object: nil)
+
+        // WorkflowEngine 완료 시 recentArtifacts 갱신 (채팅에서 ArtifactCardView 표시)
+        NotificationCenter.default.addObserver(
+            forName: .workflowCompleted, object: nil, queue: .main
+        ) { [weak self] notification in
+            guard let self else { return }
+            if let artifacts = notification.userInfo?["artifacts"] as? [Artifact] {
+                // WorkflowEngine.Artifact → IndexedArtifact 변환 (ArtifactStore에서 최신 로드)
+                Task {
+                    let indexed = await ArtifactStore.shared.loadArtifacts()
+                    // workflow 완료 직후 등록된 것들만 (최근 5개)
+                    let recent = Array(indexed.suffix(5))
+                    await MainActor.run { self.recentArtifacts = recent }
+                }
+                _ = artifacts  // 미사용 경고 억제
+            }
+        }
 
         // 앱 최초 시작 인사말 — 랜덤 1명만
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { self.handleStartup() }

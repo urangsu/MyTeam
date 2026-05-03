@@ -416,6 +416,21 @@ struct TeamStatusView: View {
                 }
             }
 
+            // ── Artifact 카드 (workflow 완료 후 생성 파일 빠른 열기) ──
+            if !manager.recentArtifacts.isEmpty {
+                Divider().background(textColor.opacity(0.06))
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(manager.recentArtifacts, id: \.id) { artifact in
+                            ArtifactCardView(artifact: artifact)
+                                .frame(width: 240)
+                        }
+                    }
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                }
+                .frame(maxHeight: 110)
+            }
+
             // ── 하단: 입력창 (팀 채팅 + 첨부파일) ──
             Divider().background(textColor.opacity(0.08))
             if isSchedulePanelPresented {

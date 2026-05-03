@@ -278,6 +278,7 @@
 		DB11B510C4C747239EB72DF3AE32B227 /* CreateGoogleSlidesTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC888AAE706F42B9BAD2A88471CCD440 /* CreateGoogleSlidesTool.swift */; };
 		7878BBA0CCAB43D598CA4302558AE954 /* DocumentGenerationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 475455D1F38F4C0394D9D0C51AC0252F /* DocumentGenerationService.swift */; };
 		E15B08D0B72E4AF49B9EB09ECE4BE00B /* DocumentModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D233C8E2E74D4E59967AF9411ADE4426 /* DocumentModels.swift */; };
+		A3F92CC1B0E04D8E9F1234567890ABCD /* DocumentPackageValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1D04EF2C3A14F7A8E9012345678BCDE /* DocumentPackageValidator.swift */; };
 		E857C1C5364047D489E58C6CB9C5F6C9 /* ExportDocumentTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD5E5B6755F244BBA3FB50ED63EF572E /* ExportDocumentTool.swift */; };
 		A9A30C7A3E474CB7965271C4D5EDC64E /* GeneratePPTXTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEDA6751FFAB4A13BE2F1F47AB093B71 /* GeneratePPTXTool.swift */; };
 		91414FF600AF47618391A439BA621FAC /* GenerateXLSXTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 659C44E03FF9407DAB9590E9B97C1049 /* GenerateXLSXTool.swift */; };
@@ -1280,6 +1281,7 @@
 		FC888AAE706F42B9BAD2A88471CCD440 /* CreateGoogleSlidesTool.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CreateGoogleSlidesTool.swift; sourceTree = "<group>"; };
 		475455D1F38F4C0394D9D0C51AC0252F /* DocumentGenerationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DocumentGenerationService.swift; sourceTree = "<group>"; };
 		D233C8E2E74D4E59967AF9411ADE4426 /* DocumentModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DocumentModels.swift; sourceTree = "<group>"; };
+		B1D04EF2C3A14F7A8E9012345678BCDE /* DocumentPackageValidator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DocumentPackageValidator.swift; sourceTree = "<group>"; };
 		AD5E5B6755F244BBA3FB50ED63EF572E /* ExportDocumentTool.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExportDocumentTool.swift; sourceTree = "<group>"; };
 		DEDA6751FFAB4A13BE2F1F47AB093B71 /* GeneratePPTXTool.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GeneratePPTXTool.swift; sourceTree = "<group>"; };
 		659C44E03FF9407DAB9590E9B97C1049 /* GenerateXLSXTool.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GenerateXLSXTool.swift; sourceTree = "<group>"; };
@@ -1358,6 +1360,7 @@
 				FC888AAE706F42B9BAD2A88471CCD440 /* CreateGoogleSlidesTool.swift */,
 				475455D1F38F4C0394D9D0C51AC0252F /* DocumentGenerationService.swift */,
 				D233C8E2E74D4E59967AF9411ADE4426 /* DocumentModels.swift */,
+				B1D04EF2C3A14F7A8E9012345678BCDE /* DocumentPackageValidator.swift */,
 				AD5E5B6755F244BBA3FB50ED63EF572E /* ExportDocumentTool.swift */,
 				DEDA6751FFAB4A13BE2F1F47AB093B71 /* GeneratePPTXTool.swift */,
 				659C44E03FF9407DAB9590E9B97C1049 /* GenerateXLSXTool.swift */,
@@ -2729,6 +2732,7 @@
 				DB11B510C4C747239EB72DF3AE32B227 /* CreateGoogleSlidesTool.swift in Sources */,
 				7878BBA0CCAB43D598CA4302558AE954 /* DocumentGenerationService.swift in Sources */,
 				E15B08D0B72E4AF49B9EB09ECE4BE00B /* DocumentModels.swift in Sources */,
+				A3F92CC1B0E04D8E9F1234567890ABCD /* DocumentPackageValidator.swift in Sources */,
 				E857C1C5364047D489E58C6CB9C5F6C9 /* ExportDocumentTool.swift in Sources */,
 				A9A30C7A3E474CB7965271C4D5EDC64E /* GeneratePPTXTool.swift in Sources */,
 				91414FF600AF47618391A439BA621FAC /* GenerateXLSXTool.swift in Sources */,

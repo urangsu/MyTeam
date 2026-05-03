@@ -380,10 +380,17 @@ final class AIService {
                 request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
                 do {
-                    let (result, response) = try await session.bytes(for: request)
+                    // withTaskCancellationHandler: 취소 시 즉시 로그 + CancellationError 전파
+                    // session.bytes()는 구조화된 동시성을 지원 — Task 취소 시 await에서 throw됨
+                    let (result, response) = try await withTaskCancellationHandler {
+                        try await session.bytes(for: request)
+                    } onCancel: {
+                        AppLog.info("[AIService] Gemini request cancelled (task cancellation)")
+                    }
+
                     if let httpResp = response as? HTTPURLResponse, httpResp.statusCode != 200 {
                         AppLog.error("[AIService] Gemini HTTP \(httpResp.statusCode) (model: \(modelToUse), agent: \(agentID))")
-                        
+
                         // 404/429 self-healing (최대 1회 재시도 — retryCount 2 이상이면 즉시 실패)
                         if httpResp.statusCode == 429 {
                             markGeminiModel429(modelToUse) // 쿨다운 블랙리스트 등록
@@ -424,7 +431,10 @@ final class AIService {
                     AppLog.info("[AIService] ⚡ Gemini SSE 채널 오픈 (model: \(modelToUse), agent: \(agentID))")
                     resetGemini429Counter() // 성공 → 연속 카운터 리셋
                     for try await line in result.lines {
-                        if Task.isCancelled { break }
+                        if Task.isCancelled {
+                            AppLog.info("[AIService] Gemini stream loop cancelled")
+                            break
+                        }
                         if line.hasPrefix("data: ") {
                             let dataStr = String(line.dropFirst(6))
                             if dataStr == "[DONE]" { break }
@@ -435,7 +445,12 @@ final class AIService {
                     }
                     continuation.finish()
                 } catch {
-                    continuation.finish(throwing: error)
+                    if Task.isCancelled || (error as? URLError)?.code == .cancelled {
+                        AppLog.info("[AIService] Gemini request cancelled")
+                        continuation.finish()
+                    } else {
+                        continuation.finish(throwing: error)
+                    }
                 }
             }
         }

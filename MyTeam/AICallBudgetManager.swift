@@ -43,27 +43,32 @@ final class AICallBudgetManager {
     private var lastBlockWasRolling = false
 
     // MARK: - 세션 리셋 (새 사용자 요청마다 호출)
+    // ⚠️ rollingCallLog는 여기서 절대 초기화하지 않는다.
+    //    세션이 새로 시작돼도 60초 rolling window는 앱 전체 기준으로 유지돼야 한다.
+    //    초기화하면 사용자가 연속 요청할 때마다 카운터가 리셋되어 rate limit이 무력화된다.
 
     func beginSession(id: String = UUID().uuidString) {
         sessionID = id
         counts = [:]
-        rollingCallLog = []
-        lastBlockWasRolling = false
+        // rollingCallLog — 초기화 금지 (rolling window는 세션 경계와 독립)
         AppLog.info("[Budget] 세션 시작: \(id)")
     }
 
     // MARK: - Rolling window 체크
 
     /// true = rolling budget 내, false = 1분당 한도 초과
+    /// rollingCallLog prune은 여기서만 수행한다.
     private func checkRollingLimit(for type: AICallType) -> Bool {
         guard type != .tts else { return true }  // TTS는 rolling 제외
         let now = Date()
+        // 오래된 항목 prune (60초 초과)
         rollingCallLog = rollingCallLog.filter { now.timeIntervalSince($0) < rollingWindowSeconds }
         if rollingCallLog.count >= rollingWindowLimit {
             lastBlockWasRolling = true
-            AppLog.warning("[Budget] 🚫 Rolling limit 초과 (\(rollingCallLog.count)/\(rollingWindowLimit) in \(Int(rollingWindowSeconds))s)")
+            AppLog.warning("[Budget] 🚫 Rolling limit 초과 (\(rollingCallLog.count)/\(rollingWindowLimit) in last \(Int(rollingWindowSeconds))s)")
             return false
         }
+        // 허용 — 기록 추가, 플래그 초기화
         lastBlockWasRolling = false
         rollingCallLog.append(now)
         return true
@@ -74,14 +79,15 @@ final class AICallBudgetManager {
     /// true = 호출 허용, false = 예산 초과로 차단 (세션 한도 또는 rolling 한도)
     @discardableResult
     func requestCall(_ type: AICallType) -> Bool {
-        // Rolling window 체크 먼저 (전역 속도 제한)
+        // 1) Rolling window 체크 먼저 (전역 속도 제한 — 세션 경계와 무관)
         guard checkRollingLimit(for: type) else { return false }
 
+        // 2) 세션 내 호출 횟수 체크
         let current = counts[type, default: 0]
         let limit   = limits[type, default: 1]
 
         if current >= limit {
-            AppLog.warning("[Budget] 🚫 \(type.rawValue) 예산 초과 (사용: \(current)/\(limit))")
+            AppLog.warning("[Budget] 🚫 \(type.rawValue) 세션 한도 초과 (사용: \(current)/\(limit))")
             return false
         }
         counts[type] = current + 1
