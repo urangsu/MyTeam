@@ -742,6 +742,9 @@ struct TeamStatusView: View {
 
     private func sendTeamMessage() {
         guard !inputText.isEmpty || !pendingAttachments.isEmpty else { return }
+        // roomID를 Task 진입 전에 캡처 — 비동기 중 방 전환으로 인한 오염 차단
+        guard let roomIDAtSend = manager.currentRoomID else { return }
+
         let text = inputText
         let attachments = pendingAttachments
         inputText = ""
@@ -749,34 +752,34 @@ struct TeamStatusView: View {
 
         // ── 단일 Task 안에서 순서대로 처리 — 중복 dispatch 원천 차단 ──
         Task {
-            // a) memory/slash command 처리 — true면 일반 dispatch 없이 종료
+            // a) memory/slash command 처리 — roomIDAtSend 고정
             if await ConversationMemory.handleChatCommand(
                 text,
-                roomID: manager.currentRoomID,
+                roomID: roomIDAtSend,
                 manager: manager,
                 currentAgent: manager.fallbackTeamLeader()
             ) { return }
 
-            // b) slash command도 여기서 종료 (위에서 이미 처리 안 된 경우)
+            // b) slash command 종료
             guard !text.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("/") else { return }
 
-            // c) 사용자 채팅 로그 추가
+            // c) 사용자 채팅 로그 — roomIDAtSend 명시 (Task 내부에서 currentRoomID 읽기 금지)
             let attachmentContext = ConversationMemory.buildAttachmentContext(from: attachments)
             let fullText = attachmentContext.isEmpty ? text : text + attachmentContext
 
             await MainActor.run {
                 manager.addChatLog(
+                    roomID: roomIDAtSend,
                     agentID: "user", agentName: "나",
                     text: text.isEmpty ? "[첨부파일 \(attachments.count)개]" : text,
                     isUser: true
                 )
             }
 
-            // d) WorkflowOrchestrator dispatch — 한 번만
-            guard let roomID = manager.currentRoomID else { return }
+            // d) WorkflowOrchestrator dispatch — roomIDAtSend 고정
             await WorkflowOrchestrator.shared.dispatch(
                 userMessage: fullText,
-                roomID: roomID,
+                roomID: roomIDAtSend,
                 manager: manager
             )
         }

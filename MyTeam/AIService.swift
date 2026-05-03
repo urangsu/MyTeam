@@ -77,15 +77,12 @@ final class AIService {
         gemini429Cooldown[modelId] = Date().addingTimeInterval(gemini429CooldownSeconds)
         if cachedGeminiModelId == modelId { cachedGeminiModelId = nil }
 
-        // 2회 연속 → provider 전체 쿨다운
+        // Aggressive protection: 429 1회 발생 즉시 provider 전체 쿨다운
+        // (이전: 2회 연속 후 쿨다운 → 데모 모드에서는 1회도 낭비 방지)
         consecutive429Count += 1
-        if consecutive429Count >= 2 {
-            let until = Date().addingTimeInterval(globalGeminiCooldownSeconds)
-            globalGeminiCooldownUntil = until
-            AppLog.warning("[AIService] 🔴 Gemini 전체 쿨다운 시작 (\(Int(globalGeminiCooldownSeconds))초) — 연속 429 \(consecutive429Count)회")
-        } else {
-            AppLog.warning("[AIService] 429 쿨다운 등록: \(modelId) (연속 \(consecutive429Count)회)")
-        }
+        let until = Date().addingTimeInterval(globalGeminiCooldownSeconds)
+        globalGeminiCooldownUntil = until
+        AppLog.warning("[AIService] 🔴 Gemini 전체 쿨다운 시작 (\(Int(globalGeminiCooldownSeconds))초) — 429 \(consecutive429Count)회째, model: \(modelId)")
     }
 
     /// 성공 시 연속 카운터 리셋
@@ -391,23 +388,23 @@ final class AIService {
                     if let httpResp = response as? HTTPURLResponse, httpResp.statusCode != 200 {
                         AppLog.error("[AIService] Gemini HTTP \(httpResp.statusCode) (model: \(modelToUse), agent: \(agentID))")
 
-                        // 404/429 self-healing (최대 1회 재시도 — retryCount 2 이상이면 즉시 실패)
+                        // Aggressive protection: 429 즉시 provider cooldown + fallback 시도 (재시도 없음)
                         if httpResp.statusCode == 429 {
-                            markGeminiModel429(modelToUse) // 쿨다운 블랙리스트 등록
-                            if retryCount < 1 {
-                                AppLog.info("[AIService] 🔄 429 → flash 폴백 재시도 (retryCount=\(retryCount + 1))")
-                                cachedGeminiModelId = fallbackFlash
-                                let newStream = geminiStream(text: text, agentID: agentID, chatHistory: chatHistory, retryCount: retryCount + 1)
-                                for try await token in newStream {
-                                    continuation.yield(token)
+                            markGeminiModel429(modelToUse) // provider 전체 쿨다운 시작
+                            // fallback provider(Claude/OpenRouter)가 있으면 투명 재라우팅
+                            if let alt = fallbackProviderStream(text: text, agentID: agentID, chatHistory: chatHistory) {
+                                AppLog.info("[AIService] 429 → fallback provider로 즉시 전환 (flash 재시도 없음)")
+                                do {
+                                    for try await token in alt { continuation.yield(token) }
+                                    continuation.finish()
+                                } catch {
+                                    continuation.finish(throwing: error)
                                 }
-                                continuation.finish()
-                                return
                             } else {
-                                AppLog.error("[AIService] 429 재시도 초과 → 즉시 실패")
-                                continuation.finish(throwing: AIServiceError.httpError(429, "API 사용량 제한 초과. 잠시 후 다시 시도해 주세요."))
-                                return
+                                AppLog.error("[AIService] 429 + fallback 없음 → 즉시 사용자 안내")
+                                continuation.finish(throwing: AIServiceError.httpError(429, "⚠️ Gemini 사용량 제한에 걸렸습니다. \(Int(globalGeminiCooldownSeconds))초 후 자동으로 해제됩니다."))
                             }
+                            return
                         }
                         if httpResp.statusCode == 404 && retryCount < 1 {
                             AppLog.info("[AIService] 🔄 404 → 모델 재발견 재시도")

@@ -104,12 +104,13 @@ class ConversationMemory {
         let agentName = currentAgent?.name ?? "시스템"
 
         func post(_ text: String, sources: [AgentWindowManager.SourceReference] = []) {
+            guard let rid = roomID else { return }
             manager.addChatLog(
+                roomID: rid,
                 agentID: "system",
                 agentName: "시스템",
                 text: text,
                 isUser: false,
-                roomID: roomID,
                 sources: sources
             )
         }
@@ -143,11 +144,11 @@ class ConversationMemory {
             }
             manager.clearMessages(roomID: roomID)
             manager.addChatLog(
+                roomID: roomID,  // non-optional here (guard let roomID above)
                 agentID: "system",
                 agentName: "시스템",
                 text: "현재 방 대화를 지웠습니다.",
-                isUser: false,
-                roomID: roomID
+                isUser: false
             )
             return true
 
@@ -189,9 +190,10 @@ class ConversationMemory {
             }
             manager.replaceMessages(roomID: roomID, with: compacted)
             manager.addChatLog(
+                roomID: roomID,
                 agentID: "system", agentName: "시스템",
                 text: useLLM ? "AI가 이전 대화를 요약했습니다." : "이전 대화를 요약하고 최근 흐름만 남겼습니다.",
-                isUser: false, roomID: roomID
+                isUser: false
             )
             return true
 

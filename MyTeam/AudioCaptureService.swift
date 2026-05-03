@@ -27,7 +27,11 @@ final class AudioCaptureService: NSObject, ObservableObject, @unchecked Sendable
     private let speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: "ko-KR"))
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
-    private let audioEngine = AVAudioEngine()
+    // lazy: 마이크 버튼 클릭 시 startRecording() 첫 호출 전까지 AVAudioEngine을 생성하지 않는다.
+    // 앱 시작 시 "Could not find default device for dIn" 반복 로그를 막기 위한 조치.
+    private lazy var audioEngine: AVAudioEngine = AVAudioEngine()
+    /// 엔진이 실제로 초기화된 적 있는지 추적 (stopRecording에서 guard 용도)
+    private var audioEngineInitialized: Bool = false
 
     // Barge-in 감지: 재생 중에도 마이크는 열려 있음.
     // AI가 말하는 중에 사용자가 끼어들면 이 콜백이 발동됨.
@@ -70,11 +74,15 @@ final class AudioCaptureService: NSObject, ObservableObject, @unchecked Sendable
 
     // MARK: - 녹음 정지
     func stopRecording() {
-        if audioEngine.isRunning {
-            audioEngine.stop()
-            recognitionRequest?.endAudio()
+        // audioEngineInitialized 가드: 엔진이 한 번도 시작된 적 없으면 inputNode에 접근하지 않는다.
+        // (inputNode 접근 자체가 "Could not find default device for dIn" 로그를 유발할 수 있음)
+        if audioEngineInitialized {
+            if audioEngine.isRunning {
+                audioEngine.stop()
+                recognitionRequest?.endAudio()
+            }
+            audioEngine.inputNode.removeTap(onBus: 0)
         }
-        audioEngine.inputNode.removeTap(onBus: 0)
 
         recognitionTask?.cancel()
         recognitionRequest = nil
@@ -88,6 +96,9 @@ final class AudioCaptureService: NSObject, ObservableObject, @unchecked Sendable
 
     // MARK: - 엔진 셋업 (백그라운드 스레드에서 실행, 메인 스레드 블로킹 없음)
     private func setupAndStartEngine() throws {
+        // 첫 setup 시 초기화 플래그 set — stopRecording이 inputNode에 안전하게 접근하게 됨
+        audioEngineInitialized = true
+
         recognitionTask?.cancel()
         recognitionTask = nil
         recognitionRequest = nil

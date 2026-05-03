@@ -118,7 +118,7 @@ class TeamOrchestrator {
         } catch {
             print("Orchestration Error: \(error)")
             await MainActor.run {
-                manager.addChatLog(agentID: "system", agentName: "시스템", text: "팀 업무 수행 중 오류가 발생했습니다: \(error.localizedDescription)", isUser: false, roomID: roomID)
+                manager.addChatLog(roomID: roomID, agentID: "system", agentName: "시스템", text: "팀 업무 수행 중 오류가 발생했습니다: \(error.localizedDescription)", isUser: false)
             }
         }
     }
@@ -195,7 +195,7 @@ class TeamOrchestrator {
         if let firstAgent = preferredFirstSpeaker ?? leader ?? orders.first.flatMap({ order in agents.first(where: { $0.id == order.agentID }) }),
            let proposal = routing.proactiveMessage {
             await MainActor.run {
-                manager.addChatLog(agentID: firstAgent.id, agentName: firstAgent.name, text: proposal, isUser: false, roomID: roomID)
+                manager.addChatLog(roomID: roomID, agentID: firstAgent.id, agentName: firstAgent.name, text: proposal, isUser: false)
                 if !manager.isSilentMode && !didSpeakInThisDiscussion {
                     manager.setAgentSpeaking(agentID: firstAgent.id, text: proposal)
                     SpeechManager.shared.speak(text: proposal, agentID: firstAgent.id, characterName: firstAgent.name)
@@ -244,7 +244,7 @@ class TeamOrchestrator {
                 )
 
                 await MainActor.run {
-                    manager.addChatLog(agentID: agent.id, agentName: agent.name, text: responseText, isUser: false, roomID: roomID, sources: sources)
+                    manager.addChatLog(roomID: roomID, agentID: agent.id, agentName: agent.name, text: responseText, isUser: false, sources: sources)
                     if !manager.isSilentMode && !didSpeakInThisDiscussion {
                         manager.setAgentSpeaking(agentID: agent.id, text: responseText)
                         SpeechManager.shared.speak(text: responseText, agentID: agent.id, characterName: agent.name)
@@ -275,7 +275,7 @@ class TeamOrchestrator {
                 agentConfig: supporter
             ) {
                 await MainActor.run {
-                    manager.addChatLog(agentID: supporter.id, agentName: supporter.name, text: interText, isUser: false, roomID: roomID)
+                    manager.addChatLog(roomID: roomID, agentID: supporter.id, agentName: supporter.name, text: interText, isUser: false)
                     if !manager.isSilentMode && !didSpeakInThisDiscussion {
                         manager.setAgentSpeaking(agentID: supporter.id, text: interText)
                         SpeechManager.shared.speak(text: interText, agentID: supporter.id, characterName: supporter.name)
@@ -325,7 +325,7 @@ class TeamOrchestrator {
                     agentConfig: agent
                 )
                 await MainActor.run {
-                    manager.addChatLog(agentID: agent.id, agentName: agent.name, text: responseText, isUser: false, roomID: roomID, sources: sources)
+                    manager.addChatLog(roomID: roomID, agentID: agent.id, agentName: agent.name, text: responseText, isUser: false, sources: sources)
                     if !manager.isSilentMode && !didSpeakInThisDiscussion {
                         manager.setAgentSpeaking(agentID: agent.id, text: responseText)
                         SpeechManager.shared.speak(text: responseText, agentID: agent.id, characterName: agent.name)
@@ -550,7 +550,7 @@ class TeamOrchestrator {
 
         let text = unavailableNoticeText(speaker: speaker, unavailableName: unavailableAgent.name)
         await MainActor.run {
-            manager.addChatLog(agentID: speaker.id, agentName: speaker.name, text: text, isUser: false, roomID: roomID)
+            manager.addChatLog(roomID: roomID, agentID: speaker.id, agentName: speaker.name, text: text, isUser: false)
             if !manager.isSilentMode {
                 manager.setAgentSpeaking(agentID: speaker.id, text: text)
                 SpeechManager.shared.speak(text: text, agentID: speaker.id, characterName: speaker.name)

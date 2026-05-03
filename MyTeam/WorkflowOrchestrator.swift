@@ -20,9 +20,8 @@ final class WorkflowOrchestrator {
             manager.typingAgentIDs.removeAll()
             manager.isWorkflowRunning = false
             manager.addChatLog(
-                agentID: "system", agentName: "작업봇",
-                text: "🛑 작업을 중지했습니다.", isUser: false,
-                roomID: roomID, isSystem: true
+                roomID: roomID, agentID: "system", agentName: "작업봇",
+                text: "🛑 작업을 중지했습니다.", isUser: false, isSystem: true
             )
         }
         AppLog.info("[WorkflowOrchestrator] 워크플로우 취소됨")
@@ -356,11 +355,11 @@ final class WorkflowOrchestrator {
         isSystem: Bool
     ) {
         manager.addChatLog(
+            roomID: roomID,
             agentID: "system",
             agentName: "작업봇",
             text: text,
             isUser: false,
-            roomID: roomID,
             isSystem: isSystem
         )
     }

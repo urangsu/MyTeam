@@ -825,7 +825,8 @@ struct AgentChatView: View {
         let text = inputText
         let attachments = pendingAttachments
         let targetID = activeAgentID ?? config.id
-        let roomID = agentRoomID ?? manager.currentRoomID
+        // roomID를 언래핑: nil이면 전송 불가 (오염 방지)
+        guard let roomID = agentRoomID ?? manager.currentRoomID else { return }
 
         inputText = ""
         pendingAttachments = []
@@ -848,9 +849,9 @@ struct AgentChatView: View {
         let fullText = attachmentContext.isEmpty ? text : text + attachmentContext
 
         manager.addChatLog(
-            agentID: targetID, agentName: "나",
+            roomID: roomID, agentID: targetID, agentName: "나",
             text: text.isEmpty ? "[첨부파일 \(attachments.count)개]" : text,
-            isUser: true, roomID: roomID
+            isUser: true
         )
 
         Task {
@@ -859,7 +860,7 @@ struct AgentChatView: View {
                 // activeAgents(화면의 4명)만 참여
                 await TeamOrchestrator.shared.runTeamDiscussion(
                     userMessage: fullText,
-                    roomID: roomID ?? UUID(),
+                    roomID: roomID,
                     manager: manager
                 )
             } else {
@@ -910,8 +911,8 @@ struct AgentChatView: View {
                         // 무음 모드: 즉시 화면에 띄우고 종료
                         _ = await MainActor.run {
                             manager.typingAgentIDs.remove(targetID)
-                            manager.addChatLog(agentID: targetID, agentName: agentName,
-                                               text: responseText, isUser: false, roomID: roomID, sources: toolEvidence.sources)
+                            manager.addChatLog(roomID: roomID, agentID: targetID, agentName: agentName,
+                                               text: responseText, isUser: false, sources: toolEvidence.sources)
                         }
                     } else {
                         // 1. 타이핑 인디케이터 ON
@@ -932,8 +933,8 @@ struct AgentChatView: View {
                                 // 이 클로저는 MainActor로 스케줄링됨 (Playback 시작 찰나)
                                 DispatchQueue.main.async {
                                     manager.typingAgentIDs.remove(targetID)
-                                    manager.addChatLog(agentID: targetID, agentName: agentName,
-                                                       text: chunk, isUser: false, roomID: roomID, sources: toolEvidence.sources)
+                                    manager.addChatLog(roomID: roomID, agentID: targetID, agentName: agentName,
+                                                       text: chunk, isUser: false, sources: toolEvidence.sources)
                                     manager.setAgentSpeaking(agentID: targetID, text: chunk)
                                 }
                             }
@@ -942,7 +943,7 @@ struct AgentChatView: View {
                 } catch {
                     _ = await MainActor.run {
                         manager.typingAgentIDs.remove(targetID)
-                        manager.addChatLog(agentID: targetID, agentName: "시스템", text: error.localizedDescription, isUser: false, roomID: roomID)
+                        manager.addChatLog(roomID: roomID, agentID: targetID, agentName: "시스템", text: error.localizedDescription, isUser: false)
                     }
                 }
             }

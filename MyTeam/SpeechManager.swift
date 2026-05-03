@@ -238,8 +238,10 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         currentStreamTask?.cancel()
         currentStreamTask = nil
 
-        // MLX 추론 루프 취소
-        Task { await Qwen3TTSService.shared.cancelCurrentInference() }
+        // MLX 추론 루프 취소 — qwenEnabled일 때만 호출 (qwenDisabled 상태에서 cancel 로그 방지)
+        if qwenEnabled {
+            Task { await Qwen3TTSService.shared.cancelCurrentInference() }
+        }
 
         // 오디오 엔진 즉각 정지
         Task { await playback.stopAll() }

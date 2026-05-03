@@ -280,6 +280,8 @@ class AgentWindowManager: ObservableObject {
                     AppLog.warning("[AgentWindowManager] workflowCompleted에 workflowID 없음 — suffix(5) fallback (데이터 오염 위험)")
                     recent = Array(all.suffix(5))
                 }
+                // Task.yield: 현재 layout pass 완료 후 업데이트 — layout recursion 방지
+                await Task.yield()
                 await MainActor.run { self.recentArtifacts = recent }
             }
         }
@@ -863,7 +865,28 @@ class AgentWindowManager: ObservableObject {
         return NSSize(width: width, height: height)
     }
 
-    // MARK: - 채팅 로그 추가 (현재 방에 저장)
+    // MARK: - 채팅 로그 추가
+
+    /// roomID 명시 필수형 — 비동기 Task 안에서는 반드시 이것을 사용한다.
+    /// 발신 시점의 roomID를 캡처해서 전달해야 race condition / room 오염을 막는다.
+    func addChatLog(
+        roomID: UUID,
+        agentID: String,
+        agentName: String,
+        text: String,
+        isUser: Bool,
+        isSystem: Bool = false,
+        sources: [SourceReference] = []
+    ) {
+        guard let index = rooms.firstIndex(where: { $0.id == roomID }) else { return }
+        let newLog = ChatLog(id: UUID(), agentID: agentID, agentName: agentName,
+                             text: text, isUser: isUser, timestamp: Date(), isSystem: isSystem, sources: sources)
+        rooms[index].messages.append(newLog)
+    }
+
+    /// ⚠️ currentRoomID를 내부에서 읽어 비동기 컨텍스트에서 race condition 위험이 있습니다.
+    /// 비동기 Task 내부에서는 addChatLog(roomID:...) 명시형을 사용하세요.
+    @available(*, deprecated, message: "Use addChatLog(roomID:agentID:agentName:text:isUser:) in async contexts to avoid room contamination")
     func addChatLog(
         agentID: String,
         agentName: String,
@@ -873,12 +896,10 @@ class AgentWindowManager: ObservableObject {
         isSystem: Bool = false,
         sources: [SourceReference] = []
     ) {
-        let targetID = roomID ?? currentRoomID
-        guard let rid = targetID,
-              let index = rooms.firstIndex(where: { $0.id == rid }) else { return }
-        let newLog = ChatLog(id: UUID(), agentID: agentID, agentName: agentName,
-                             text: text, isUser: isUser, timestamp: Date(), isSystem: isSystem, sources: sources)
-        rooms[index].messages.append(newLog)
+        let rid = roomID ?? currentRoomID
+        guard let rid else { return }
+        addChatLog(roomID: rid, agentID: agentID, agentName: agentName,
+                   text: text, isUser: isUser, isSystem: isSystem, sources: sources)
     }
 
     func replaceMessages(roomID: UUID, with messages: [ChatLog]) {
@@ -1003,9 +1024,11 @@ class AgentWindowManager: ObservableObject {
         } else {
             automationTasks.remove(at: idx)
         }
-        addChatLog(agentID: "system", agentName: "스케줄",
-                   text: "⏭️ '\(automationTasks.first(where: { $0.id == id })?.title ?? "작업")'을 건너뜠습니다.",
-                   isUser: false, roomID: currentRoomID)
+        if let rid = currentRoomID {
+            addChatLog(roomID: rid, agentID: "system", agentName: "스케줄",
+                       text: "⏭️ '\(automationTasks.first(where: { $0.id == id })?.title ?? "작업")'을 건너뜠습니다.",
+                       isUser: false)
+        }
     }
 
     private func executeApprovedTask(_ task: AutomationTask) {
@@ -1031,13 +1054,11 @@ class AgentWindowManager: ObservableObject {
             let (allowed, reason) = AutomationPolicy.isAllowed(task.prompt)
             guard allowed else {
                 AppLog.warning("[Schedule] 차단됨: \(task.title) — \(reason ?? "")")
-                addChatLog(
-                    agentID: "system",
-                    agentName: "스케줄",
-                    text: "⚠️ 스케줄 업무 차단: \(reason ?? "정책 위반")",
-                    isUser: false,
-                    roomID: task.roomID ?? currentRoomID
-                )
+                if let rid = task.roomID ?? currentRoomID {
+                    addChatLog(roomID: rid, agentID: "system", agentName: "스케줄",
+                               text: "⚠️ 스케줄 업무 차단: \(reason ?? "정책 위반")",
+                               isUser: false)
+                }
                 continue
             }
 
@@ -1047,11 +1068,11 @@ class AgentWindowManager: ObservableObject {
             if task.requiresApproval && !pendingApprovalTaskIDs.contains(task.id) {
                 pendingApprovalTaskIDs.insert(task.id)
                 let shortId = String(task.id.uuidString.prefix(6))
-                addChatLog(
-                    agentID: "system", agentName: "스케줄",
-                    text: "✋ 스케줄 업무 승인 요청: \"\(task.title)\"\n/approve \(shortId) — 승인 실행\n/skip \(shortId) — 이번 회차 건너뜀\n(2분 내 응답 없으면 자동 실행)",
-                    isUser: false, roomID: targetRoomID
-                )
+                if let rid = targetRoomID {
+                    addChatLog(roomID: rid, agentID: "system", agentName: "스케줄",
+                               text: "✋ 스케줄 업무 승인 요청: \"\(task.title)\"\n/approve \(shortId) — 승인 실행\n/skip \(shortId) — 이번 회차 건너뜀\n(2분 내 응답 없으면 자동 실행)",
+                               isUser: false)
+                }
                 // 2분 타임아웃 후 자동 실행
                 Task { @MainActor [weak self] in
                     try? await Task.sleep(nanoseconds: 120_000_000_000)
@@ -1069,13 +1090,11 @@ class AgentWindowManager: ObservableObject {
                 automationTasks.remove(at: index)
             }
 
-            addChatLog(
-                agentID: "system",
-                agentName: "스케줄",
-                text: "스케줄 업무 실행: \(task.prompt)",
-                isUser: false,
-                roomID: targetRoomID
-            )
+            if let rid = targetRoomID {
+                addChatLog(roomID: rid, agentID: "system", agentName: "스케줄",
+                           text: "스케줄 업무 실행: \(task.prompt)",
+                           isUser: false)
+            }
 
             Task {
                 let assignedAgent = task.assignedAgentID.flatMap { assignedID in
@@ -1086,14 +1105,10 @@ class AgentWindowManager: ObservableObject {
                 }
                 let substitute = activeAssignee ?? fallbackTeamLeader(for: targetRoomID)
 
-                if let assignedAgent, activeAssignee == nil, let substitute {
-                    addChatLog(
-                        agentID: substitute.id,
-                        agentName: substitute.name,
-                        text: "\(assignedAgent.name)은 지금 팀에 없어서 제가 대신 할게요.",
-                        isUser: false,
-                        roomID: targetRoomID
-                    )
+                if let assignedAgent, activeAssignee == nil, let substitute, let rid = targetRoomID {
+                    addChatLog(roomID: rid, agentID: substitute.id, agentName: substitute.name,
+                               text: "\(assignedAgent.name)은 지금 팀에 없어서 제가 대신 할게요.",
+                               isUser: false)
                 }
 
                 if task.prompt.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("/") {
