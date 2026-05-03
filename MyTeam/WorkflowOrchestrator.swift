@@ -48,11 +48,12 @@ final class WorkflowOrchestrator {
         if requiresFileCreation(userMessage) {
             AppLog.info("[WorkflowOrchestrator] 파일 생성 요청 감지 → workflow 즉시 실행 (IntentRouter 스킵)")
             await MainActor.run { manager.isWorkflowRunning = true }
+            // defer: cancel/failure/success/early return 모든 경로에서 false 보장
+            defer { Task { @MainActor in manager.isWorkflowRunning = false } }
             let task = Task { await self.runWorkflow(userMessage: userMessage, roomID: roomID, manager: manager) }
             currentWorkflowTask = task
             await task.value
             currentWorkflowTask = nil
-            await MainActor.run { manager.isWorkflowRunning = false }
             return
         }
 
@@ -205,6 +206,8 @@ final class WorkflowOrchestrator {
     private func removeProgressAndPost(
         manager: AgentWindowManager, roomID: UUID, progressID: UUID, text: String, isSystem: Bool
     ) {
+        // TODO: P1 — ChatLog 삽입 방식 대신 manager.workflowStatusText(@Published)로 분리
+        //       rooms 저장과 결합도가 높아 데모 이후 별도 UI state로 교체할 것.
         guard let idx = manager.rooms.firstIndex(where: { $0.id == roomID }) else { return }
         // ephemeral 메시지 제거
         manager.rooms[idx].messages.removeAll { $0.id == progressID }
