@@ -175,11 +175,13 @@ final class WorkflowOrchestrator {
         defer {
             let capturedStatus = finalStatus
             let capturedEvent = finalEvent
-            Task { @MainActor in
-                WorkflowRunStore.shared.finish(workflowID: workflowID, status: capturedStatus)
-                manager.currentWorkflowID = nil
+            // 단일 Task로 finish → publish 순서를 보장한다.
+            Task { [weak self] in
+                await self?.finishWorkflowRun(
+                    workflowID: workflowID, manager: manager,
+                    status: capturedStatus, event: capturedEvent
+                )
             }
-            Task { await AgentEventBus.shared.publish(capturedEvent) }
         }
 
         Task { await AgentEventBus.shared.publish(.workflowStarted(workflowID: workflowID, roomID: roomID)) }
@@ -400,5 +402,23 @@ final class WorkflowOrchestrator {
             isUser: false,
             isSystem: isSystem
         )
+    }
+
+    // MARK: - Workflow finish helper
+
+    /// finish → event publish 순서를 보장한다.
+    /// WorkflowRunStore.finish 완료 후 AgentEventBus.publish를 호출한다.
+    private func finishWorkflowRun(
+        workflowID: UUID,
+        manager: AgentWindowManager,
+        status: WorkflowStatus,
+        event: AgentEvent
+    ) async {
+        AppLog.debug("[WorkflowOrchestrator] finishWorkflowRun status=\(status.rawValue) workflowID=\(workflowID.uuidString.prefix(8))")
+        await MainActor.run {
+            WorkflowRunStore.shared.finish(workflowID: workflowID, status: status)
+            manager.currentWorkflowID = nil
+        }
+        await AgentEventBus.shared.publish(event)
     }
 }

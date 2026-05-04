@@ -6,7 +6,7 @@ struct CreateGoogleSheetsTool: WorkflowTool {
     let name = "create_google_sheets"
     let description = "plan JSON을 Google Sheets로 내보낸다 (Phase B — 현재 OAuth 연결 필요)"
     let riskLevel: ToolRiskLevel = .moderate
-    let scope: ToolScope = .artifactGeneration
+    let scope: ToolScope = .officeLive
     let inputSchema: [String: String] = [
         "plan_filename": "create_spreadsheet_plan이 생성한 plan JSON 파일명"
     ]

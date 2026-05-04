@@ -6,6 +6,7 @@ struct WriteTextFileTool: WorkflowTool {
     let name = "write_text_file"
     let description = "텍스트 내용을 Workspace에 파일로 저장한다"
     let riskLevel: ToolRiskLevel = .moderate
+    let scope: ToolScope = .artifactGeneration
     let inputSchema: [String: String] = [
         "filename": "저장할 파일명 (예: output.txt)",
         "content": "저장할 텍스트 내용"

@@ -6,6 +6,7 @@ struct ReadFileTool: WorkflowTool {
     let name = "read_file"
     let description = "Workspace 내 텍스트 파일을 읽어 내용을 반환한다"
     let riskLevel: ToolRiskLevel = .safe
+    let scope: ToolScope = .documentEditing
     let inputSchema: [String: String] = [
         "filename": "읽을 파일명 (Workspace 상대 경로, 예: report.md)"
     ]

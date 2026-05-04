@@ -34,6 +34,10 @@ struct RuntimeDiagnosticsSnapshot {
     // Workspace
     let workspacePath: String
 
+    // AgentEventBus
+    let recentEventCount: Int
+    let latestEventSummary: String?
+
     // MARK: - Human-readable summary
 
     var summary: String {
@@ -54,6 +58,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("stt: initialized=\(sttInitialized) recording=\(sttRecording) starting=\(sttStarting)")
         lines.append("recentArtifacts: \(recentArtifactsCount)")
         lines.append("workspace: \(workspacePath)")
+        lines.append("recentEvents: \(recentEventCount) | latest: \(latestEventSummary ?? "none")")
 
         return lines.joined(separator: "\n  ")
     }
@@ -66,8 +71,8 @@ final class RuntimeDiagnosticsService {
     static let shared = RuntimeDiagnosticsService()
     private init() {}
 
-    /// 현재 상태 스냅샷 생성 (모든 접근은 @MainActor)
-    func snapshot(manager: AgentWindowManager) -> RuntimeDiagnosticsSnapshot {
+    /// 현재 상태 스냅샷 생성
+    func snapshot(manager: AgentWindowManager) async -> RuntimeDiagnosticsSnapshot {
         let speech = SpeechManager.shared
         let ai = AIService.shared
         let budget = AICallBudgetManager.shared
@@ -75,6 +80,10 @@ final class RuntimeDiagnosticsService {
 
         let qwen = speech.qwenDiagnostics
         let workspacePath = ToolExecutionContext.workspaceURL.path
+
+        let recentEvents = await AgentEventBus.shared.allRecentEvents(limit: 100)
+        let latestEvent = recentEvents.last
+        let latestSummary = latestEvent.map { "\($0.type.rawValue) wf=\($0.workflowID?.uuidString.prefix(8) ?? "-")" }
 
         return RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
@@ -90,13 +99,17 @@ final class RuntimeDiagnosticsService {
             sttRecording: capture.isRecording,
             sttStarting: capture.isStarting,
             recentArtifactsCount: manager.recentArtifacts.count,
-            workspacePath: workspacePath
+            workspacePath: workspacePath,
+            recentEventCount: recentEvents.count,
+            latestEventSummary: latestSummary
         )
     }
 
     /// 콘솔에 현재 상태 출력 (디버그용)
     func dump(manager: AgentWindowManager) {
-        let snap = snapshot(manager: manager)
-        AppLog.info(snap.summary)
+        Task { @MainActor in
+            let snap = await self.snapshot(manager: manager)
+            AppLog.info(snap.summary)
+        }
     }
 }

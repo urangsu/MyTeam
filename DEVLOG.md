@@ -6,6 +6,79 @@
 
 ---
 
+## 2026-05-04 (P0 안정화 Round 5 — DirectChat 통합 + ToolScope 전수 + evidence 오탐 제거 + finish 순서)
+
+### 빌드 결과
+- **BUILD SUCCEEDED** · error 0 · warning 0
+- 기준 커밋: `a20ca6c` (Round 4)
+
+### 구현 완료
+
+| 항목 | 파일 | 내용 |
+|------|------|------|
+| DirectChat silent mode 통합 | AgentChatView.swift | `getResponse()` 단발 경로 제거. silent mode도 `getResponseStream()` → 토큰 누적 → 말풍선 1개. `[DirectChat] silent getResponseStream opened` 로그 추가 |
+| DirectChat roomID/targetID 캡처 | AgentChatView.swift | `roomIDAtSend` / `targetIDAtSend` 캡처변수로 두 경로(silent/normal) 통일. 오염 방지 |
+| evidence gate 오탐 제거 | AgentChatView.swift | "알려줘", "찾아줘", "찾아봐" 단독 키워드 삭제. 외부정보(최신/뉴스/날씨/주가/환율/가격/버전)와 명시적웹(웹/검색/인터넷/구글)만 evidence 허용 |
+| evidence reason 세분화 | AgentChatView.swift | `attachment` / `url` / `explicit_web` / `external_info_keyword` 4종 |
+| ToolScope 전수 분류 | ReadFileTool, WriteTextFileTool, OpenURLTool | `.documentEditing` / `.artifactGeneration` / `.browserDOM` 명시 |
+| Google 툴 scope 수정 | CreateGoogleSlidesTool, CreateGoogleSheetsTool | `.artifactGeneration` → `.officeLive` |
+| ToolRegistry scope 경고 | ToolRegistry.swift | `register()` 시 file/artifact/url/export 계열이 `.chatBasic`이면 `[ToolRegistry] scope 누락 의심` warning |
+| finish/event 순서 보장 | WorkflowOrchestrator.swift | `finishWorkflowRun()` 헬퍼 추가. 단일 Task에서 `WorkflowRunStore.finish` → `AgentEventBus.publish` 순서 보장 |
+| RuntimeDiagnostics event 정보 | RuntimeDiagnosticsService.swift | `recentEventCount` + `latestEventSummary` 필드 추가. `snapshot()` async화 |
+| OpenURLTool warning 수정 | OpenURLTool.swift | `_ = await MainActor.run` (unused result 경고 제거) |
+
+### ToolScope 분류표 (전체)
+
+| 도구 | scope |
+|------|-------|
+| read_file | `.documentEditing` |
+| write_text_file | `.artifactGeneration` |
+| create_markdown_report | `.artifactGeneration` |
+| create_presentation_plan | `.artifactGeneration` |
+| create_spreadsheet_plan | `.artifactGeneration` |
+| generate_pptx | `.artifactGeneration` |
+| generate_xlsx | `.artifactGeneration` |
+| export_document | `.artifactGeneration` |
+| create_google_slides | `.officeLive` |
+| create_google_sheets | `.officeLive` |
+| open_url | `.browserDOM` |
+
+### 수동 검증 항목
+
+| 시나리오 | 기대 결과 | 확인 |
+|----------|-----------|------|
+| silent mode ON → 치코 개인창 | `[DirectChat] silent getResponseStream opened` 로그, 치코 방에만 말풍선 | ☐ |
+| silent mode OFF → 치코 개인창 | SpeechManager TTS 재생, 치코 방에만 말풍선 | ☐ |
+| "오늘 기분 어때?" → DirectChat | `evidence skipped (no URL/keyword/attachment)` | ☐ |
+| "이 UI 느낌 알려줘" → DirectChat | `evidence skipped` | ☐ |
+| "최신 뉴스 알려줘" → DirectChat | `evidence enabled reason=external_info_keyword` | ☐ |
+| "웹에서 찾아줘" → DirectChat | `evidence enabled reason=explicit_web` | ☐ |
+| 첨부파일 있음 → DirectChat | `evidence enabled reason=attachment` | ☐ |
+| artifactGeneration workflow | `open_url` / `create_google_slides` 실행 시 `[ToolExecutor] scope 차단` | ☐ |
+| workflow 완료 | finish 로그 → workflowCompleted 로그 순서 | ☐ |
+| 취소 | finish cancelled 1회, workflowCancelled 1회 | ☐ |
+| RuntimeDiagnostics dump | `recentEvents: N | latest: workflowCompleted wf=...` | ☐ |
+
+### evidence 로그 예시 (기대)
+```
+[DirectChat] evidence skipped (no URL/keyword/attachment)
+[DirectChat] evidence enabled reason=external_info_keyword
+[DirectChat] evidence enabled reason=explicit_web
+[DirectChat] evidence enabled reason=attachment
+```
+
+### finish/event 순서 로그 예시 (기대)
+```
+[WorkflowOrchestrator] finishWorkflowRun status=completed workflowID=a1b2c3d4
+[AgentEvent] workflowCompleted workflow=a1b2c3d4
+```
+
+### getResponse 단발 경로 제거 여부
+- AgentChatView.swift DirectChat silent mode: **제거 완료** (`getResponse` → `getResponseStream` + 토큰 누적)
+- WorkflowOrchestrator.swift planner/repair 경로: `getResponse` 유지 (스트림 불필요한 플래너 JSON 파싱 경로, 의도적)
+
+---
+
 ## 2026-05-04 (P0 안정화 Round 4 — 단일-종료 + 스코프 가드 + evidence 게이트)
 
 ### 구현 완료

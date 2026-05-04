@@ -809,17 +809,18 @@ struct AgentChatView: View {
 
     // MARK: - DirectChat Evidence Gate
     /// 개인 채팅에서 ToolEvidenceService/ToolPolicy가 필요한지 판단.
-    /// 아래 조건 중 하나라도 해당하면 true:
-    ///   (a) URL 포함  (b) 외부 정보 키워드 명시  (c) 첨부파일 있음
+    /// 조건: (a) URL 포함  (b) 첨부파일  (c) 명시적 웹 키워드  (d) 외부 정보 키워드
+    /// "알려줘/찾아줘/찾아봐" 단독은 일반 대화로 처리 — 오탐 방지.
     private static func directChatNeedsEvidence(_ text: String, hasAttachments: Bool) -> Bool {
         if hasAttachments { return true }
         let lower = text.lowercased()
-        // (a) URL
         if lower.contains("http://") || lower.contains("https://") { return true }
-        // (b) 외부 정보 키워드
-        let externalKeywords = ["웹", "검색", "최신", "뉴스", "날씨", "주가", "환율", "가격", "버전",
-                                 "인터넷", "찾아봐", "찾아줘", "알려줘"]
-        if externalKeywords.contains(where: { lower.contains($0) }) { return true }
+        // 명시적 웹/검색 의도
+        let explicitWebKeywords = ["웹", "검색", "인터넷", "구글"]
+        if explicitWebKeywords.contains(where: { lower.contains($0) }) { return true }
+        // 시의성 있는 외부 정보 (단독으로도 evidence 필요)
+        let externalInfoKeywords = ["최신", "뉴스", "날씨", "주가", "환율", "가격", "버전"]
+        if externalInfoKeywords.contains(where: { lower.contains($0) }) { return true }
         return false
     }
 
@@ -827,7 +828,9 @@ struct AgentChatView: View {
         if hasAttachments { return "attachment" }
         let lower = text.lowercased()
         if lower.contains("http://") || lower.contains("https://") { return "url" }
-        return "keyword"
+        let explicitWebKeywords = ["웹", "검색", "인터넷", "구글"]
+        if explicitWebKeywords.contains(where: { lower.contains($0) }) { return "explicit_web" }
+        return "external_info_keyword"
     }
 
     // MARK: - 프로필/상태
@@ -966,44 +969,46 @@ struct AgentChatView: View {
                         + personalPolicy
                         + toolEvidence.promptContext
 
-                    AppLog.info("[DirectChat] response targetAgentID=\(targetID) provider=\(agentConfig?.llmProvider.displayName ?? "nil")")
+                    AppLog.info("[DirectChat] response targetAgentID=\(targetID) provider=\(agentConfig?.llmProvider.displayName ?? "nil") silentMode=\(manager.isSilentMode)")
+                    let roomIDAtSend = roomID
+                    let targetIDAtSend = targetID
                     // ── 순차 스트리밍: SpeechManager 백그라운드 위임 ──
                     if manager.isSilentMode {
-                        _ = await MainActor.run { manager.typingAgentIDs.insert(targetID) }
-                        let (responseText, _) = try await AIService.shared.getResponse(
-                            text: groundedText,
-                            agentID: targetID,
-                            chatHistory: history,
-                            agentConfig: agentConfig
+                        _ = await MainActor.run { manager.typingAgentIDs.insert(targetIDAtSend) }
+                        let tokenStream = AIService.shared.getResponseStream(
+                            text: groundedText, agentID: targetIDAtSend,
+                            chatHistory: history, agentConfig: agentConfig
                         )
-                        // 무음 모드: 즉시 화면에 띄우고 종료
+                        AppLog.debug("[DirectChat] silent getResponseStream opened targetAgentID=\(targetIDAtSend)")
+                        var accumulated = ""
+                        for try await token in tokenStream {
+                            accumulated += token
+                        }
                         _ = await MainActor.run {
-                            manager.typingAgentIDs.remove(targetID)
-                            manager.addChatLog(roomID: roomID, agentID: targetID, agentName: agentName,
-                                               text: responseText, isUser: false, sources: toolEvidence.sources)
+                            manager.typingAgentIDs.remove(targetIDAtSend)
+                            manager.addChatLog(roomID: roomIDAtSend, agentID: targetIDAtSend, agentName: agentName,
+                                               text: accumulated, isUser: false, sources: toolEvidence.sources)
                         }
                     } else {
                         // 1. 타이핑 인디케이터 ON
-                        _ = await MainActor.run { manager.typingAgentIDs.insert(targetID) }
+                        _ = await MainActor.run { manager.typingAgentIDs.insert(targetIDAtSend) }
 
-                        // 2. SSE 스트림 오픈 (단일 String이 아니라 AsyncThrowingStream 획득을 위해 별도 메서드 사용, 호환성을 위해 AIService 업데이트가 필요하나 일단 getResponseStream을 호출)
+                        // 2. SSE 스트림 오픈
                         let tokenStream = AIService.shared.getResponseStream(
-                            text: groundedText, agentID: targetID, chatHistory: history, agentConfig: agentConfig
+                            text: groundedText, agentID: targetIDAtSend, chatHistory: history, agentConfig: agentConfig
                         )
 
                         // 3. SpeechManager에 SSE→오디오 배관 완전 위임
-                        //    - 청크 완성/오디오 시작 시말풍선 UI 콜백 호출
                         SpeechManager.shared.processRealtimeSSEStream(
-                            agentID: targetID,
+                            agentID: targetIDAtSend,
                             characterName: agentName,
                             tokenStream: tokenStream,
                             onAudioPlaybackStarted: { chunk in
-                                // 이 클로저는 MainActor로 스케줄링됨 (Playback 시작 찰나)
                                 DispatchQueue.main.async {
-                                    manager.typingAgentIDs.remove(targetID)
-                                    manager.addChatLog(roomID: roomID, agentID: targetID, agentName: agentName,
+                                    manager.typingAgentIDs.remove(targetIDAtSend)
+                                    manager.addChatLog(roomID: roomIDAtSend, agentID: targetIDAtSend, agentName: agentName,
                                                        text: chunk, isUser: false, sources: toolEvidence.sources)
-                                    manager.setAgentSpeaking(agentID: targetID, text: chunk)
+                                    manager.setAgentSpeaking(agentID: targetIDAtSend, text: chunk)
                                 }
                             }
                         )
@@ -1011,7 +1016,7 @@ struct AgentChatView: View {
                 } catch {
                     _ = await MainActor.run {
                         manager.typingAgentIDs.remove(targetID)
-                        manager.addChatLog(roomID: roomID, agentID: targetID, agentName: "시스템", text: error.localizedDescription, isUser: false)
+                        manager.addChatLog(roomID: roomID, agentID: "system", agentName: "시스템", text: error.localizedDescription, isUser: false)
                     }
                 }
             }
