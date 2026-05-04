@@ -281,7 +281,10 @@ final class WorkflowOrchestrator {
     // MARK: - Planner prompt builder
 
     private func buildPlannerPrompt(userMessage: String, previousError: String?) -> String {
-        let toolSchemas = ToolRegistry.shared.toolSchemaDescription
+        // 파일 생성 요청: artifactGeneration scope만 노출 (chatBasic 포함)
+        // browserDOM / officeLive / diagnostics는 명시적 활성화 없이 노출 금지
+        let activeScopes: Set<ToolScope> = [.chatBasic, .artifactGeneration]
+        let toolSchemas = ToolRegistry.shared.toolSchemaDescription(for: activeScopes)
         var prompt = """
         당신은 업무 워크플로우 계획자입니다.
         사용자 요청을 분석하고 아래 도구들을 사용하는 실행 계획을 JSON으로 반환하세요.

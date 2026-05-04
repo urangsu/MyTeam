@@ -30,8 +30,8 @@ final class AudioCaptureService: NSObject, ObservableObject, @unchecked Sendable
     // lazy: 마이크 버튼 클릭 시 startRecording() 첫 호출 전까지 AVAudioEngine을 생성하지 않는다.
     // 앱 시작 시 "Could not find default device for dIn" 반복 로그를 막기 위한 조치.
     private lazy var audioEngine: AVAudioEngine = AVAudioEngine()
-    /// 엔진이 실제로 초기화된 적 있는지 추적 (stopRecording에서 guard 용도)
-    private var audioEngineInitialized: Bool = false
+    /// 엔진이 실제로 초기화된 적 있는지 추적 (stopRecording guard + 진단용)
+    private(set) var audioEngineInitialized: Bool = false
 
     // Barge-in 감지: 재생 중에도 마이크는 열려 있음.
     // AI가 말하는 중에 사용자가 끼어들면 이 콜백이 발동됨.

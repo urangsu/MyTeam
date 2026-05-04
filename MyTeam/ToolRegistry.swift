@@ -29,17 +29,29 @@ final class ToolRegistry {
         tools[name]
     }
 
-    /// LLM 플래너 프롬프트에 포함할 도구 스키마 설명
-    var toolSchemaDescription: String {
-        tools.values
-            .sorted { $0.name < $1.name }
-            .map { tool in
-                let params = tool.inputSchema
-                    .sorted { $0.key < $1.key }
-                    .map { "  - \($0.key): \($0.value)" }
-                    .joined(separator: "\n")
-                return "- \(tool.name) [\(tool.riskLevel.rawValue)]: \(tool.description)\n\(params)"
-            }
-            .joined(separator: "\n")
+    /// 특정 scope에 해당하는 도구 목록
+    func tools(for scopes: Set<ToolScope>) -> [WorkflowTool] {
+        tools.values.filter { scopes.contains($0.scope) }.sorted { $0.name < $1.name }
     }
+
+    /// LLM 플래너 프롬프트에 포함할 도구 스키마 설명 (scope 필터 지원)
+    func toolSchemaDescription(for scopes: Set<ToolScope>? = nil) -> String {
+        let list: [WorkflowTool]
+        if let scopes {
+            list = tools(for: scopes)
+        } else {
+            list = tools.values.sorted { $0.name < $1.name }
+        }
+        return list.map { tool in
+            let params = tool.inputSchema
+                .sorted { $0.key < $1.key }
+                .map { "  - \($0.key): \($0.value)" }
+                .joined(separator: "\n")
+            return "- \(tool.name) [\(tool.riskLevel.rawValue)]: \(tool.description)\n\(params)"
+        }.joined(separator: "\n")
+    }
+
+    /// 하위 호환: scope 없이 전체 반환 (deprecated 경고로 표시)
+    @available(*, deprecated, message: "Use toolSchemaDescription(for:) with explicit scopes")
+    var toolSchemaDescription: String { toolSchemaDescription(for: nil) }
 }

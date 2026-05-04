@@ -6,6 +6,7 @@ struct GenerateXLSXTool: WorkflowTool {
     let name = "generate_xlsx"
     let description = "plan JSON 파일을 읽어 XLSX 스프레드시트 파일을 생성한다"
     let riskLevel: ToolRiskLevel = .moderate
+    let scope: ToolScope = .artifactGeneration
     let inputSchema: [String: String] = [
         "plan_filename": "create_spreadsheet_plan이 생성한 plan JSON 파일명",
         "output_filename": "생성할 .xlsx 파일명 (예: spreadsheet.xlsx)"

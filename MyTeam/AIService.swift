@@ -106,6 +106,13 @@ final class AIService {
         return true
     }
 
+    /// 진단: Gemini 쿨다운 잔여 시간 (쿨다운 없으면 nil)
+    var geminiCooldownRemainingSeconds: Double? {
+        guard let until = globalGeminiCooldownUntil else { return nil }
+        let remaining = until.timeIntervalSinceNow
+        return remaining > 0 ? remaining : nil
+    }
+
     /// Gemini가 쿨다운 중일 때 사용 가능한 대체 provider 스트림
     /// Claude → OpenRouter → 실패 순
     private func fallbackProviderStream(

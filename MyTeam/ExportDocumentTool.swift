@@ -7,6 +7,7 @@ struct ExportDocumentTool: WorkflowTool {
     let name = "export_document"
     let description = "문서 플랜을 지정 대상으로 내보낸다 (localPPTX / localXLSX / googleSlides / googleSheets)"
     let riskLevel: ToolRiskLevel = .moderate
+    let scope: ToolScope = .artifactGeneration
     let inputSchema: [String: String] = [
         "plan_filename":   "plan JSON 파일명",
         "output_filename": "출력 파일명 (로컬 내보내기 시 필수)",

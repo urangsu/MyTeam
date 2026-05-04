@@ -6,6 +6,7 @@ struct CreateMarkdownReportTool: WorkflowTool {
     let name = "create_markdown_report"
     let description = "제목과 본문으로 마크다운 보고서 파일을 생성한다"
     let riskLevel: ToolRiskLevel = .moderate
+    let scope: ToolScope = .artifactGeneration
     let inputSchema: [String: String] = [
         "filename": "저장할 파일명 (예: report.md)",
         "title":    "보고서 제목",

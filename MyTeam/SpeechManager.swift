@@ -32,6 +32,11 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
     /// 세션 내 Qwen3 불가 캐시 — 한 번 실패하면 세션 내 재시도 없음
     private var qwenUnavailable: Bool = false
 
+    /// 진단: Qwen TTS 활성화 여부 및 세션 내 비가용 캐시 상태
+    var qwenDiagnostics: (enabled: Bool, unavailable: Bool) {
+        (qwenEnabled, qwenUnavailable)
+    }
+
     private init() {
         capture.$isRecording.assign(to: &$isRecording)
         capture.$isStarting.assign(to: &$isStarting)

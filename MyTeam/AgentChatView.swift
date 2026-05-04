@@ -119,12 +119,15 @@ struct AgentChatView: View {
         }
         .onAppear {
             activeAgentID = config.id
+            let targetID = config.id
             if let firstRoom = agentRooms.first {
                 agentRoomID = firstRoom.id
             } else {
-                let targetID = config.id
                 manager.createAgentRoom(name: "\(config.name) 대화 1", agentID: targetID)
-                agentRoomID = manager.rooms.last?.id
+                // last?.id 대신 agentID로 정확히 찾아 오염 방지
+                agentRoomID = manager.rooms.last(where: {
+                    $0.agentIDs.count == 1 && $0.agentIDs[0] == targetID
+                })?.id
             }
             // 초기 창 크기 강제 설정 (SwiftUI 레이아웃 완료 후 실행)
             DispatchQueue.main.async {
@@ -405,8 +408,19 @@ struct AgentChatView: View {
                         Button(action: {
                             withAnimation {
                                 activeAgentID = agent.id
-                                let rooms = manager.rooms.filter { $0.agentIDs.contains(agent.id) }
-                                agentRoomID = rooms.first?.id ?? manager.currentRoomID
+                                let personalRooms = manager.rooms.filter {
+                                    $0.agentIDs.count == 1 && $0.agentIDs[0] == agent.id
+                                }
+                                if let firstRoom = personalRooms.first {
+                                    agentRoomID = firstRoom.id
+                                } else {
+                                    // 개인방 없으면 생성 — currentRoomID로 fallback 금지
+                                    let agentName = manager.activeAgents.first(where: { $0.id == agent.id })?.name ?? "대화"
+                                    manager.createAgentRoom(name: "\(agentName) 대화 1", agentID: agent.id)
+                                    agentRoomID = manager.rooms.last(where: {
+                                        $0.agentIDs.count == 1 && $0.agentIDs[0] == agent.id
+                                    })?.id
+                                }
                             }
                             isEditingProjects = false
                         }) {
@@ -825,8 +839,21 @@ struct AgentChatView: View {
         let text = inputText
         let attachments = pendingAttachments
         let targetID = activeAgentID ?? config.id
-        // roomID를 언래핑: nil이면 전송 불가 (오염 방지)
-        guard let roomID = agentRoomID ?? manager.currentRoomID else { return }
+        // agentRoomID nil이면 개인방 생성 — currentRoomID fallback 금지
+        let roomID: UUID
+        if let rid = agentRoomID {
+            roomID = rid
+        } else {
+            let agentName = manager.activeAgents.first(where: { $0.id == targetID })?.name
+                ?? manager.allAvailableAgents.first(where: { $0.id == targetID })?.name
+                ?? config.name
+            manager.createAgentRoom(name: "\(agentName) 대화 1", agentID: targetID)
+            guard let newRoomID = manager.rooms.last(where: {
+                $0.agentIDs.count == 1 && $0.agentIDs[0] == targetID
+            })?.id else { return }
+            agentRoomID = newRoomID
+            roomID = newRoomID
+        }
 
         inputText = ""
         pendingAttachments = []

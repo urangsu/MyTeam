@@ -6,6 +6,7 @@ struct GeneratePPTXTool: WorkflowTool {
     let name = "generate_pptx"
     let description = "plan JSON 파일을 읽어 PPTX 프레젠테이션 파일을 생성한다"
     let riskLevel: ToolRiskLevel = .moderate
+    let scope: ToolScope = .artifactGeneration
     let inputSchema: [String: String] = [
         "plan_filename": "create_presentation_plan이 생성한 plan JSON 파일명",
         "output_filename": "생성할 .pptx 파일명 (예: presentation.pptx)"

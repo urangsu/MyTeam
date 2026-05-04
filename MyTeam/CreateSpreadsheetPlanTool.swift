@@ -9,6 +9,7 @@ struct CreateSpreadsheetPlanTool: WorkflowTool {
     let name = "create_spreadsheet_plan"
     let description = "표 데이터를 JSON 파일로 저장한다 (XLSXWriter 호환 구조)"
     let riskLevel: ToolRiskLevel = .moderate
+    let scope: ToolScope = .artifactGeneration
     let inputSchema: [String: String] = [
         "filename":  "저장할 파일명 (예: workbook_plan.json)",
         "title":     "스프레드시트 제목",

@@ -9,6 +9,7 @@ struct CreatePresentationPlanTool: WorkflowTool {
     let name = "create_presentation_plan"
     let description = "PPT 슬라이드 초안을 JSON 파일로 저장한다 (PPTXWriter 호환 구조)"
     let riskLevel: ToolRiskLevel = .moderate
+    let scope: ToolScope = .artifactGeneration
     let inputSchema: [String: String] = [
         "filename":    "저장할 파일명 (예: deck_plan.json)",
         "title":       "프레젠테이션 제목",

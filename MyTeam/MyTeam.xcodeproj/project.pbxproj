@@ -297,6 +297,9 @@
 		036D386602838C8C97115C0D /* ToolExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD601D29125CA14A4EE9FEE /* ToolExecutor.swift */; };
 		E0F0C88B5A0046AAF135089E /* WorkflowEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63E16FBE4F0F639B62AA9420 /* WorkflowEngine.swift */; };
 		4E7509048AFCC2A89F563885 /* WorkflowOrchestrator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B3A586A21D123882C9B2BF2 /* WorkflowOrchestrator.swift */; };
+		F5FD136C912E35606C0291CE /* WorkflowRunStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 962F3701172B73193DD2A951 /* WorkflowRunStore.swift */; };
+		C3E4DD5A76B50CFAC5BAFA00 /* RuntimeDiagnosticsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4301F4D69018ECBD18A843D4 /* RuntimeDiagnosticsService.swift */; };
+		C788875BF58907DFDEDA77B6 /* AgentEventStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFA087CDDFE1403B5D438BC2 /* AgentEventStream.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -1300,6 +1303,9 @@
 		FAD601D29125CA14A4EE9FEE /* ToolExecutor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ToolExecutor.swift; sourceTree = "<group>"; };
 		63E16FBE4F0F639B62AA9420 /* WorkflowEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowEngine.swift; sourceTree = "<group>"; };
 		6B3A586A21D123882C9B2BF2 /* WorkflowOrchestrator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowOrchestrator.swift; sourceTree = "<group>"; };
+		962F3701172B73193DD2A951 /* WorkflowRunStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowRunStore.swift; sourceTree = "<group>"; };
+		4301F4D69018ECBD18A843D4 /* RuntimeDiagnosticsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeDiagnosticsService.swift; sourceTree = "<group>"; };
+		BFA087CDDFE1403B5D438BC2 /* AgentEventStream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentEventStream.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1379,6 +1385,9 @@
 				FAD601D29125CA14A4EE9FEE /* ToolExecutor.swift */,
 				63E16FBE4F0F639B62AA9420 /* WorkflowEngine.swift */,
 				6B3A586A21D123882C9B2BF2 /* WorkflowOrchestrator.swift */,
+				962F3701172B73193DD2A951 /* WorkflowRunStore.swift */,
+				4301F4D69018ECBD18A843D4 /* RuntimeDiagnosticsService.swift */,
+				BFA087CDDFE1403B5D438BC2 /* AgentEventStream.swift */,
 				5236D928FAFCC0DCC7946D62 /* AgentPersona.swift */,
 				D6A5FC1EDBE0B54D2795D32C /* SpriteAgentView.swift */,
 				2D8FBD0BE788AA2795F5609A /* Color+Hex.swift */,
@@ -2751,6 +2760,9 @@
 				036D386602838C8C97115C0D /* ToolExecutor.swift in Sources */,
 				E0F0C88B5A0046AAF135089E /* WorkflowEngine.swift in Sources */,
 				4E7509048AFCC2A89F563885 /* WorkflowOrchestrator.swift in Sources */,
+				F5FD136C912E35606C0291CE /* WorkflowRunStore.swift in Sources */,
+				C3E4DD5A76B50CFAC5BAFA00 /* RuntimeDiagnosticsService.swift in Sources */,
+				C788875BF58907DFDEDA77B6 /* AgentEventStream.swift in Sources */,
 				FCF86130C1400EF99B2D892A /* AgentPersona.swift in Sources */,
 				3FB8E317323920402DF3900F /* SpriteAgentView.swift in Sources */,
 				D9305FF97EB94924350CF6C7 /* Color+Hex.swift in Sources */,

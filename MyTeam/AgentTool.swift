@@ -9,6 +9,20 @@ enum ToolRiskLevel: String, Codable, Hashable {
     case destructive // 삭제, 불가역 작업 — MVP에서 실행 금지
 }
 
+// MARK: - Tool Scope
+// 요청 유형별로 필요한 tool만 LLM에 노출.
+// 기본 노출 금지 항목: Accessibility, global input, shell 계열.
+
+enum ToolScope: String, CaseIterable {
+    case chatBasic          // 읽기·요약·URL 열기 (기본 채팅)
+    case artifactGeneration // 파일/PPT/XLSX 생성
+    case documentEditing    // 기존 파일 편집
+    case browserDOM         // 브라우저 DOM 조작 (명시적 활성화 필요)
+    case officeLive         // 오피스 앱 live bridge (명시적 활성화 필요)
+    case schedule           // 스케줄 관리
+    case diagnostics        // 런타임 진단 (내부 전용)
+}
+
 // MARK: - Tool Input / Result
 
 struct ToolInput {
@@ -50,9 +64,16 @@ protocol WorkflowTool {
     var name: String { get }
     var description: String { get }
     var riskLevel: ToolRiskLevel { get }
+    /// 이 도구가 속하는 scope — 기본 chatBasic
+    var scope: ToolScope { get }
     /// paramName → 설명 (LLM 플래너에게 노출)
     var inputSchema: [String: String] { get }
     func execute(input: ToolInput, context: ToolExecutionContext) async throws -> ToolResult
+}
+
+extension WorkflowTool {
+    /// scope를 선언하지 않은 기존 도구는 chatBasic 기본값 사용
+    var scope: ToolScope { .chatBasic }
 }
 
 // MARK: - Shared path-safety helper
