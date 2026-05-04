@@ -45,7 +45,8 @@ struct AgentChatView: View {
     }
 
     private var chatHistory: [AgentWindowManager.ChatLog] {
-        let roomID = agentRoomID ?? manager.currentRoomID
+        // 개인창: agentRoomID nil이면 빈 배열 — currentRoomID fallback 금지
+        guard let roomID = agentRoomID else { return [] }
         let logs = manager.rooms.first(where: { $0.id == roomID })?.messages ?? []
         let targetID = activeAgentID ?? config.id
         if isPersonalChat {
@@ -177,8 +178,13 @@ struct AgentChatView: View {
                         // 방이 없으면 즉시 생성 (팀 채팅방으로 fallback 방지)
                         let agentName = manager.activeAgents.first(where: { $0.id == id })?.name ?? "대화"
                         manager.createAgentRoom(name: "\(agentName) 대화 1", agentID: id)
-                        if let newRoom = manager.rooms.last {
-                            agentRoomID = newRoom.id
+                        // rooms.last 대신 agentIDs 기반 정확 탐색 — 오염 방지
+                        if let created = manager.rooms.last(where: {
+                            $0.agentIDs.count == 1 && $0.agentIDs[0] == id
+                        }) {
+                            agentRoomID = created.id
+                        } else {
+                            AppLog.error("[DirectChat] 개인방 생성 후 탐색 실패 agentID=\(id)")
                         }
                     }
                 }
@@ -258,8 +264,9 @@ struct AgentChatView: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(textColor)
                 if selectedTab == 1 {
-                    let roomID = agentRoomID ?? manager.currentRoomID
-                    if let room = manager.rooms.first(where: { $0.id == roomID }) {
+                    // agentRoomID 기준만 — currentRoomID fallback 금지
+                    if let rid = agentRoomID,
+                       let room = manager.rooms.first(where: { $0.id == rid }) {
                         Text(room.name)
                             .font(.system(size: 11))
                             .foregroundColor(config.color.opacity(0.8))
@@ -665,13 +672,10 @@ struct AgentChatView: View {
             .padding(.trailing, isEditingMessages ? 12 : 0)
 
             // 삭제 버튼 (항상 우측)
-            if isEditingMessages {
-                let roomID = agentRoomID ?? manager.currentRoomID
+            if isEditingMessages, let roomID = agentRoomID {
                 Button(action: {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                        if let rID = roomID {
-                            manager.deleteMessage(roomID: rID, messageID: log.id)
-                        }
+                        manager.deleteMessage(roomID: roomID, messageID: log.id)
                     }
                 }) {
                     Image(systemName: "xmark.circle.fill")
@@ -892,6 +896,9 @@ struct AgentChatView: View {
                 )
             } else {
                 // ── 개별 채팅: 해당 에이전트 단독 응답 ──
+                // WorkflowOrchestrator / TeamOrchestrator 호출 금지
+                // Selector 호출 금지 — 이 경로는 항상 targetID 에이전트 단독 응답
+                AppLog.info("[DirectChat] submit roomID=\(roomID.uuidString.prefix(8)) targetAgentID=\(targetID)")
                 var history = manager.rooms.first(where: { $0.id == roomID })?.messages ?? []
                 
                 // 과거 페르소나 오염 방지를 위한 엄격한 슬라이딩 윈도우 한도 적용 (최신 5개)
@@ -911,7 +918,7 @@ struct AgentChatView: View {
                     // P3 tool-capable 라우팅: tool 사용 시 가장 적합한 provider로 자동 전환
                     if toolPolicy.needsTool, let cfg = agentConfig {
                         let capability: LLMCapability = toolPolicy.needsFinance || toolPolicy.needsWeb ? .webSearch : .toolUse
-                        let best = await LLMConfigCatalog.shared.routeOrDefault(capability, fallback: cfg.llmProvider)
+                        let best = LLMConfigCatalog.shared.routeOrDefault(capability, fallback: cfg.llmProvider)
                         if best != cfg.llmProvider {
                             AppLog.debug("[Router] \(agentName) tool 요청 → \(cfg.llmProvider.displayName) → \(best.displayName) 라우팅")
                             agentConfig = cfg.withProvider(best)
@@ -926,6 +933,7 @@ struct AgentChatView: View {
                         + personalPolicy
                         + toolEvidence.promptContext
 
+                    AppLog.info("[DirectChat] response targetAgentID=\(targetID) provider=\(agentConfig?.llmProvider.displayName ?? "nil")")
                     // ── 순차 스트리밍: SpeechManager 백그라운드 위임 ──
                     if manager.isSilentMode {
                         _ = await MainActor.run { manager.typingAgentIDs.insert(targetID) }

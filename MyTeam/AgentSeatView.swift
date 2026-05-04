@@ -137,7 +137,9 @@ struct AgentSeatView: View {
         .onTapGesture(count: 2) {
             let fallback = ["안녕하세요!", "네, 불렀나요?", "무엇을 도와드릴까요?", "여기 있습니다!"]
             let text = CharacterDialogues.randomLine(for: config.name, state: .greeting) ?? fallback.randomElement()!
-            AgentWindowManager.shared.addChatLog(agentID: config.id, agentName: config.name, text: text, isUser: false, isSystem: true)
+            if let rid = AgentWindowManager.shared.currentRoomID {
+                AgentWindowManager.shared.addChatLog(roomID: rid, agentID: config.id, agentName: config.name, text: text, isUser: false, isSystem: true)
+            }
             if !AgentWindowManager.shared.isSilentMode {
                 AgentWindowManager.shared.setAgentSpeaking(agentID: config.id, text: text)
                 SpeechManager.shared.speak(text: text, agentID: config.id, characterName: config.name)

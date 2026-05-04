@@ -14,12 +14,22 @@ final class WorkflowEngine {
         var artifacts: [Artifact] = []
         var failedSteps: [(step: WorkflowStep, error: String)] = []
         let sessionID = context.sessionID
+        let workflowID = context.workflowID
+        let roomID = context.roomID
 
         AppLog.info("[WorkflowEngine] 시작: '\(plan.title)' (\(plan.steps.count)단계)")
 
         for step in plan.steps {
             AppLog.info("[WorkflowEngine] 실행: '\(step.title)' [\(step.toolName)]")
             var executedStep = step  // repair 성공 시 repairedStep으로 교체
+
+            // ── step 시작 기록 ──
+            let stepRecord = StepExecutionRecord(stepID: step.id, toolName: step.toolName,
+                                                  inputSummary: step.title)
+            await MainActor.run { WorkflowRunStore.shared.recordStep(workflowID: workflowID, step: stepRecord) }
+            await AgentEventBus.shared.publish(.toolCallStarted(workflowID: workflowID, stepID: step.id, toolName: step.toolName))
+
+            let stepStart = Date()
             var result = await ToolExecutor.shared.execute(
                 step: step,
                 context: context,
@@ -40,7 +50,20 @@ final class WorkflowEngine {
                 }
             }
 
+            let durationMs = Int(Date().timeIntervalSince(stepStart) * 1000)
+
             if result.success {
+                // ── step 성공 기록 ──
+                await MainActor.run {
+                    WorkflowRunStore.shared.updateStep(workflowID: workflowID, stepID: executedStep.id) { rec in
+                        rec.status = .completed
+                        rec.endedAt = Date()
+                        rec.outputSummary = String(result.output.prefix(100))
+                    }
+                }
+                await AgentEventBus.shared.publish(.toolCallFinished(workflowID: workflowID, stepID: executedStep.id,
+                                                                     toolName: executedStep.toolName, durationMs: durationMs, success: true))
+
                 if let relPath = result.artifactPath {
                     let absPath = context.workspaceURL.appendingPathComponent(relPath).path
                     // artifact 기록은 실제 실행된 step(executedStep) 기준
@@ -64,11 +87,25 @@ final class WorkflowEngine {
                         createdAt: ISO8601DateFormatter().string(from: Date())
                     )
                     await ArtifactStore.shared.registerArtifact(indexed)
+                    await MainActor.run { WorkflowRunStore.shared.addArtifact(workflowID: workflowID, relativePath: relPath) }
+                    await AgentEventBus.shared.publish(.artifactCreated(workflowID: workflowID, roomID: roomID, path: relPath))
                 }
             } else {
                 let rawErr = result.error ?? "알 수 없는 오류"
                 let friendlyErr = friendlyError(rawErr, step: executedStep)
                 failedSteps.append((step: executedStep, error: friendlyErr))
+
+                // ── step 실패 기록 ──
+                await MainActor.run {
+                    WorkflowRunStore.shared.updateStep(workflowID: workflowID, stepID: executedStep.id) { rec in
+                        rec.status = .failed
+                        rec.endedAt = Date()
+                        rec.errorMessage = rawErr
+                    }
+                    WorkflowRunStore.shared.recordError(workflowID: workflowID, stepID: executedStep.id, message: rawErr)
+                }
+                await AgentEventBus.shared.publish(.toolCallFinished(workflowID: workflowID, stepID: executedStep.id,
+                                                                     toolName: executedStep.toolName, durationMs: durationMs, success: false))
 
                 if executedStep.isRequired {
                     AppLog.error("[WorkflowEngine] 필수 단계 실패 → 중단: '\(executedStep.title)' — \(rawErr)")

@@ -43,9 +43,16 @@ final class WorkflowOrchestrator {
         // ── 새 요청 → 세션 예산 리셋 ──
         AICallBudgetManager.shared.beginSession()
 
+        // ── 이벤트: userMessageSubmitted ──
+        let eventRoomID = roomID
+        let eventMsg = userMessage
+        Task { await AgentEventBus.shared.publish(.userMessageSubmitted(roomID: eventRoomID, message: eventMsg)) }
+
         // ── 파일/문서 생성 요청이면 IntentRouter 없이 즉시 Workflow로 ──
         if requiresFileCreation(userMessage) {
             AppLog.info("[WorkflowOrchestrator] 파일 생성 요청 감지 → workflow 즉시 실행 (IntentRouter 스킵)")
+            Task { await AgentEventBus.shared.publish(AgentEvent(type: .routeDecided, roomID: eventRoomID,
+                                                                  payload: AgentEventPayload(message: "artifactGeneration"))) }
             await MainActor.run { manager.isWorkflowRunning = true }
             // defer: cancel/failure/success/early return 모든 경로에서 false 보장
             defer { Task { @MainActor in manager.isWorkflowRunning = false } }
@@ -154,8 +161,20 @@ final class WorkflowOrchestrator {
     private func runWorkflow(userMessage: String, roomID: UUID, manager: AgentWindowManager) async {
         guard !Task.isCancelled else { return }
 
+        // ── workflowID 생성 (이번 workflow의 추적 키) ──
+        let workflowID = UUID()
+        await MainActor.run {
+            manager.currentWorkflowID = workflowID
+            WorkflowRunStore.shared.begin(workflowID: workflowID, roomID: roomID, userMessage: userMessage)
+        }
+        defer {
+            Task { @MainActor in manager.currentWorkflowID = nil }
+        }
+
+        Task { await AgentEventBus.shared.publish(.workflowStarted(workflowID: workflowID, roomID: roomID)) }
+
         // ephemeral 진행 메시지 — 완료/실패 시 제거됨
-        let progressMsgID = await postEphemeralProgress(
+        let progressMsgID = postEphemeralProgress(
             manager: manager, roomID: roomID, text: "⏳ 작업 계획을 수립하는 중입니다..."
         )
 
@@ -168,22 +187,32 @@ final class WorkflowOrchestrator {
         }
         defer { timeoutTask.cancel() }
 
-        guard !Task.isCancelled else { return }
+        guard !Task.isCancelled else {
+            await MainActor.run { WorkflowRunStore.shared.finish(workflowID: workflowID, status: .cancelled) }
+            Task { await AgentEventBus.shared.publish(.workflowCancelled(workflowID: workflowID, roomID: roomID)) }
+            return
+        }
 
         switch await planWorkflowWithRepair(userMessage: userMessage) {
         case .failure(let msg):
             guard !Task.isCancelled else { return }
-            await removeProgressAndPost(
-                manager: manager, roomID: roomID, progressID: progressMsgID, text: msg, isSystem: false
-            )
+            await MainActor.run {
+                WorkflowRunStore.shared.finish(workflowID: workflowID, status: .failed)
+                removeProgressAndPost(manager: manager, roomID: roomID, progressID: progressMsgID, text: msg, isSystem: false)
+            }
+            Task { await AgentEventBus.shared.publish(.modelCallFailed(workflowID: workflowID, provider: "planner", error: msg)) }
         case .success(let plan):
             guard !Task.isCancelled else { return }
-            let context = ToolExecutionContext.current()
+            let context = ToolExecutionContext.current(workflowID: workflowID, roomID: roomID)
             let result = await WorkflowEngine.shared.run(plan: plan, context: context)
             guard !Task.isCancelled else { return }
-            await removeProgressAndPost(
-                manager: manager, roomID: roomID, progressID: progressMsgID, text: result.summary, isSystem: false
-            )
+            let status: WorkflowStatus = result.failedSteps.isEmpty ? .completed : .failed
+            let artifactCount = result.artifacts.count
+            await MainActor.run {
+                WorkflowRunStore.shared.finish(workflowID: workflowID, status: status)
+                removeProgressAndPost(manager: manager, roomID: roomID, progressID: progressMsgID, text: result.summary, isSystem: false)
+            }
+            Task { await AgentEventBus.shared.publish(.workflowCompleted(workflowID: workflowID, roomID: roomID, artifactCount: artifactCount)) }
         }
     }
 

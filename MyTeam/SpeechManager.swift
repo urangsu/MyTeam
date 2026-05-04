@@ -141,24 +141,17 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         let streamId = "mlx_\(UUID().uuidString)"
         AppLog.info("[AICall] callType=tts characterName=\(characterName)")
 
-        do {
-            let pcmStream = Qwen3TTSService.shared.generateTTSStream(text: text, characterName: characterName)
-            let style = VoiceStyleCatalog.playbackStyle(for: characterName)
-            await playback.playStream(
-                streamId: streamId,
-                stream: pcmStream,
-                characterName: characterName,
-                pitch: style.pitch,
-                rate: style.rate,
-                textPayload: text,
-                onPlaybackStarted: onPlaybackStarted
-            )
-        } catch {
-            // Qwen 실패 → 세션 내 캐시, 채팅에는 표시 안 함
-            qwenUnavailable = true
-            AppLog.warning("[SpeechManager] Qwen3 TTS 실패 (세션 내 이후 스킵): \(error.localizedDescription)")
-            onPlaybackStarted() // 말풍선은 계속 표시
-        }
+        let pcmStream = Qwen3TTSService.shared.generateTTSStream(text: text, characterName: characterName)
+        let style = VoiceStyleCatalog.playbackStyle(for: characterName)
+        await playback.playStream(
+            streamId: streamId,
+            stream: pcmStream,
+            characterName: characterName,
+            pitch: style.pitch,
+            rate: style.rate,
+            textPayload: text,
+            onPlaybackStarted: onPlaybackStarted
+        )
     }
 
     // MARK: - 권한 요청

@@ -175,7 +175,9 @@ struct TeamTableView: View {
                     Button(action: {
                         let agent = manager.activeAgents.randomElement() ?? manager.activeAgents[0]
                         let text = "오늘 너무 고생하셨습니다. 앱을 곧 종료할게요!"
-                        manager.addChatLog(agentID: agent.id, agentName: agent.name, text: text, isUser: false, isSystem: true)
+                        if let rid = manager.currentRoomID {
+                            manager.addChatLog(roomID: rid, agentID: agent.id, agentName: agent.name, text: text, isUser: false, isSystem: true)
+                        }
                         if !manager.isSilentMode { SpeechManager.shared.speak(text: text) }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
                             NSApplication.shared.terminate(nil)
@@ -215,7 +217,9 @@ struct TeamTableView: View {
             if let agent = manager.activeAgents.randomElement() {
                 let fallback = ["어?! 잠깐만요!", "으아아!", "헉!"]
                 let line = CharacterDialogues.randomLine(for: agent.name, state: .drag) ?? fallback.randomElement()!
-                manager.addChatLog(agentID: agent.id, agentName: agent.name, text: line, isUser: false, isSystem: true)
+                if let rid = manager.currentRoomID {
+                    manager.addChatLog(roomID: rid, agentID: agent.id, agentName: agent.name, text: line, isUser: false, isSystem: true)
+                }
                 if !manager.isSilentMode {
                     manager.setAgentSpeaking(agentID: agent.id, text: line)
                     SpeechManager.shared.speak(text: line, agentID: agent.id, characterName: agent.name)
@@ -243,7 +247,9 @@ struct TeamTableView: View {
             if let agent = manager.activeAgents.randomElement() {
                 let fallback = ["휴, 다시 돌아왔네요.", "무사히 착지!"]
                 let line = CharacterDialogues.randomLine(for: agent.name, state: .landing) ?? fallback.randomElement()!
-                manager.addChatLog(agentID: agent.id, agentName: agent.name, text: line, isUser: false, isSystem: true)
+                if let rid = manager.currentRoomID {
+                    manager.addChatLog(roomID: rid, agentID: agent.id, agentName: agent.name, text: line, isUser: false, isSystem: true)
+                }
                 if !manager.isSilentMode {
                     manager.setAgentSpeaking(agentID: agent.id, text: line)
                     SpeechManager.shared.speak(text: line, agentID: agent.id, characterName: agent.name)
@@ -277,10 +283,10 @@ struct TeamTableView: View {
 
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("/") else { return }
 
-        manager.addChatLog(agentID: "user", agentName: "나", text: text, isUser: true)
+        guard let roomID = manager.currentRoomID else { return }
+        manager.addChatLog(roomID: roomID, agentID: "user", agentName: "나", text: text, isUser: true)
 
         Task {
-            guard let roomID = manager.currentRoomID else { return }
             await TeamOrchestrator.shared.runTeamDiscussion(
                 userMessage: text,
                 roomID: roomID,

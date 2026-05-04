@@ -75,6 +75,9 @@ class AgentWindowManager: ObservableObject {
     @Published var typingAgentIDs: Set<String> = []
     /// Workflow 실행 중 여부 — WorkflowOrchestrator가 set, UI가 중지 버튼 표시에 사용
     @Published var isWorkflowRunning: Bool = false
+    /// 현재 실행 중인 workflow UUID — RuntimeDiagnosticsService 및 UI 진행 표시에 사용.
+    /// workflow 완료/실패/취소 시 nil로 리셋.
+    @Published var currentWorkflowID: UUID? = nil
     /// 최근 완료된 workflow artifact 목록 — 채팅 하단 ArtifactCardView에 표시.
     /// TODO: room scope 분리 — 현재는 앱 전역이라 여러 채팅방에서 artifact가 섞일 수 있음.
     ///       제품 구조에서는 recentArtifactsByRoom: [UUID: [IndexedArtifact]] 또는

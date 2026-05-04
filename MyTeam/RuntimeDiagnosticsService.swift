@@ -74,12 +74,12 @@ final class RuntimeDiagnosticsService {
         let capture = AudioCaptureService.shared
 
         let qwen = speech.qwenDiagnostics
-        let workspacePath = ToolExecutionContext.current().workspaceURL.path
+        let workspacePath = ToolExecutionContext.workspaceURL.path
 
         return RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
             currentRoomID: manager.currentRoomID,
-            activeWorkflowID: nil,          // WorkflowEngine에서 주입 예정
+            activeWorkflowID: manager.currentWorkflowID,
             isWorkflowRunning: manager.isWorkflowRunning,
             geminiCooldownRemainingSeconds: ai.geminiCooldownRemainingSeconds,
             geminiConsecutive429Count: 0,   // AIService 내부 — 필요 시 노출 확장
