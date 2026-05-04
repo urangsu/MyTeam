@@ -6,6 +6,38 @@
 
 ---
 
+## 2026-05-04 (P0 안정화 Round 4 — 단일-종료 + 스코프 가드 + evidence 게이트)
+
+### 구현 완료
+
+| 항목 | 파일 | 내용 |
+|------|------|------|
+| finish() 단일화 | WorkflowOrchestrator.swift | `finalStatus`/`finalEvent` + `defer` 패턴. 모든 분기가 `finish()` 1회만 호출. `manager.currentWorkflowID = nil`도 defer에 통합 |
+| event 단일화 | WorkflowOrchestrator.swift | `workflowCompleted`/`workflowCancelled`/`workflowFailed` 이벤트도 defer 내 1회만 발행 |
+| DirectChat evidence gate | AgentChatView.swift | `directChatNeedsEvidence()` — URL/외부키워드/첨부파일 없으면 `ToolEvidenceService.gather` 완전 스킵. 불필요한 웹 검색 API 호출 차단 |
+| ToolScope executor guard | ToolExecutor.swift + WorkflowEngine.swift | `execute(allowedScopes:)` 파라미터 추가. WorkflowEngine은 `[.chatBasic, .artifactGeneration]`만 허용. scope 불일치 시 실행 전 차단 |
+| workflowID default 제거 | ToolExecutionContext.swift | `current(workflowID: UUID = UUID())` → `current(workflowID: UUID)`. 누락 시 컴파일 오류 |
+| consecutive429Count 노출 | AIService.swift | `private` → `private(set)`. 진단 읽기 허용 |
+| RuntimeDiagnostics 연결 | RuntimeDiagnosticsService.swift | `geminiConsecutive429Count` — `0` 하드코딩 → `ai.consecutive429Count` 실값 연결 |
+
+### 수동 검증 항목
+
+| 시나리오 | 기대 결과 | 확인 |
+|----------|-----------|------|
+| "최신 뉴스 알려줘" → DirectChat | evidence enabled (keyword=최신/뉴스) | ☐ |
+| "오늘 기분 어때?" → DirectChat | evidence skipped | ☐ |
+| "이 파일 분석해줘" + 첨부 → DirectChat | evidence enabled (attachment) | ☐ |
+| WorkflowEngine 실행 중 취소 | finish() 1회 / workflowCancelled 1회 | ☐ |
+| ToolScope 차단 시 로그 | `[ToolExecutor] scope 차단: ...` | ☐ |
+| RuntimeDiagnostics dump | `geminiCooldown: none` vs `429×N` 실값 | ☐ |
+
+### 알려진 남은 항목 (TASK.md 참조)
+- DirectChat 무음 모드 경로에서 getResponse → getResponseStream 통합 미완
+- AgentEventBus subscriber 연결 (UI 이벤트 스트림) 미구현
+- ToolScope `.schedule` / `.diagnostics` 도구 분류 미완
+
+---
+
 ## 2026-05-03 (2차 — 안정화 마무리 + 데모 검증)
 
 ### 안정화 완료 사항

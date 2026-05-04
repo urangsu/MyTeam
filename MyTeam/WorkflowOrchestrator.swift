@@ -167,8 +167,19 @@ final class WorkflowOrchestrator {
             manager.currentWorkflowID = workflowID
             WorkflowRunStore.shared.begin(workflowID: workflowID, roomID: roomID, userMessage: userMessage)
         }
+
+        // ── finish/이벤트 단일화: 모든 종료 경로(완료/실패/취소/early return)에서
+        //    정확히 1회만 호출됨. 분기마다 finish()를 직접 호출하지 말 것. ──
+        var finalStatus: WorkflowStatus = .cancelled
+        var finalEvent: AgentEvent = .workflowCancelled(workflowID: workflowID, roomID: roomID)
         defer {
-            Task { @MainActor in manager.currentWorkflowID = nil }
+            let capturedStatus = finalStatus
+            let capturedEvent = finalEvent
+            Task { @MainActor in
+                WorkflowRunStore.shared.finish(workflowID: workflowID, status: capturedStatus)
+                manager.currentWorkflowID = nil
+            }
+            Task { await AgentEventBus.shared.publish(capturedEvent) }
         }
 
         Task { await AgentEventBus.shared.publish(.workflowStarted(workflowID: workflowID, roomID: roomID)) }
@@ -187,32 +198,27 @@ final class WorkflowOrchestrator {
         }
         defer { timeoutTask.cancel() }
 
-        guard !Task.isCancelled else {
-            await MainActor.run { WorkflowRunStore.shared.finish(workflowID: workflowID, status: .cancelled) }
-            Task { await AgentEventBus.shared.publish(.workflowCancelled(workflowID: workflowID, roomID: roomID)) }
-            return
-        }
+        // 취소 검사 — finalStatus = .cancelled (기본값) 유지
+        guard !Task.isCancelled else { return }
 
         switch await planWorkflowWithRepair(userMessage: userMessage) {
         case .failure(let msg):
-            guard !Task.isCancelled else { return }
+            // 취소 중이어도 실패 이유는 기록
+            finalStatus = .failed
+            finalEvent = .modelCallFailed(workflowID: workflowID, provider: "planner", error: msg)
             await MainActor.run {
-                WorkflowRunStore.shared.finish(workflowID: workflowID, status: .failed)
                 removeProgressAndPost(manager: manager, roomID: roomID, progressID: progressMsgID, text: msg, isSystem: false)
             }
-            Task { await AgentEventBus.shared.publish(.modelCallFailed(workflowID: workflowID, provider: "planner", error: msg)) }
         case .success(let plan):
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else { return }  // finalStatus = .cancelled 유지
             let context = ToolExecutionContext.current(workflowID: workflowID, roomID: roomID)
             let result = await WorkflowEngine.shared.run(plan: plan, context: context)
-            guard !Task.isCancelled else { return }
-            let status: WorkflowStatus = result.failedSteps.isEmpty ? .completed : .failed
-            let artifactCount = result.artifacts.count
+            guard !Task.isCancelled else { return }  // finalStatus = .cancelled 유지
+            finalStatus = result.failedSteps.isEmpty ? .completed : .failed
+            finalEvent = .workflowCompleted(workflowID: workflowID, roomID: roomID, artifactCount: result.artifacts.count)
             await MainActor.run {
-                WorkflowRunStore.shared.finish(workflowID: workflowID, status: status)
                 removeProgressAndPost(manager: manager, roomID: roomID, progressID: progressMsgID, text: result.summary, isSystem: false)
             }
-            Task { await AgentEventBus.shared.publish(.workflowCompleted(workflowID: workflowID, roomID: roomID, artifactCount: artifactCount)) }
         }
     }
 

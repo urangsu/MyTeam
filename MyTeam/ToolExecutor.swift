@@ -12,7 +12,8 @@ final class ToolExecutor {
     func execute(
         step: WorkflowStep,
         context: ToolExecutionContext,
-        sessionID: String
+        sessionID: String,
+        allowedScopes: Set<ToolScope>? = nil
     ) async -> ToolResult {
         let ts = ISO8601DateFormatter().string(from: Date())
         let baseEntry = ActionLogEntry(
@@ -31,6 +32,19 @@ final class ToolExecutor {
             await ArtifactStore.shared.appendActionLog(baseEntry.with(result: "blocked", error: msg))
             AppLog.warning("[ToolExecutor] \(msg): \(step.toolName)")
             return ToolResult.failure(msg)
+        }
+
+        // scope 화이트리스트 차단 (allowedScopes 지정 시 도구의 scope가 허용 목록에 없으면 차단)
+        if let allowedScopes {
+            // 도구를 먼저 조회해서 scope를 확인
+            if let tool = ToolRegistry.shared.lookup(name: step.toolName) {
+                if !allowedScopes.contains(tool.scope) {
+                    let msg = "허용되지 않은 도구 scope '\(tool.scope.rawValue)': \(step.toolName)"
+                    await ArtifactStore.shared.appendActionLog(baseEntry.with(result: "blocked", error: msg))
+                    AppLog.warning("[ToolExecutor] scope 차단: \(msg)")
+                    return ToolResult.failure(msg)
+                }
+            }
         }
 
         // dry-run 모드

@@ -23,8 +23,9 @@ struct ToolExecutionContext {
 
     /// 현재 세션의 컨텍스트를 생성한다.
     /// Workspace 폴더: ~/Library/Application Support/MyTeam/Workspace/
+    /// workflowID는 항상 명시적으로 전달해야 한다 — default 제거로 호출자가 누락을 컴파일 타임에 감지.
     static func current(
-        workflowID: UUID = UUID(),
+        workflowID: UUID,
         roomID: UUID,
         isDryRun: Bool = false
     ) -> ToolExecutionContext {

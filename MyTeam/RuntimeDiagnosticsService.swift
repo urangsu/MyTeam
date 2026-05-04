@@ -82,7 +82,7 @@ final class RuntimeDiagnosticsService {
             activeWorkflowID: manager.currentWorkflowID,
             isWorkflowRunning: manager.isWorkflowRunning,
             geminiCooldownRemainingSeconds: ai.geminiCooldownRemainingSeconds,
-            geminiConsecutive429Count: 0,   // AIService 내부 — 필요 시 노출 확장
+            geminiConsecutive429Count: ai.consecutive429Count,
             budgetUsageDescription: budget.usageDescription(),
             qwenEnabled: qwen.enabled,
             qwenUnavailable: qwen.unavailable,

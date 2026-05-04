@@ -807,6 +807,29 @@ struct AgentChatView: View {
         )
     }
 
+    // MARK: - DirectChat Evidence Gate
+    /// 개인 채팅에서 ToolEvidenceService/ToolPolicy가 필요한지 판단.
+    /// 아래 조건 중 하나라도 해당하면 true:
+    ///   (a) URL 포함  (b) 외부 정보 키워드 명시  (c) 첨부파일 있음
+    private static func directChatNeedsEvidence(_ text: String, hasAttachments: Bool) -> Bool {
+        if hasAttachments { return true }
+        let lower = text.lowercased()
+        // (a) URL
+        if lower.contains("http://") || lower.contains("https://") { return true }
+        // (b) 외부 정보 키워드
+        let externalKeywords = ["웹", "검색", "최신", "뉴스", "날씨", "주가", "환율", "가격", "버전",
+                                 "인터넷", "찾아봐", "찾아줘", "알려줘"]
+        if externalKeywords.contains(where: { lower.contains($0) }) { return true }
+        return false
+    }
+
+    private static func directChatEvidenceReason(_ text: String, hasAttachments: Bool) -> String {
+        if hasAttachments { return "attachment" }
+        let lower = text.lowercased()
+        if lower.contains("http://") || lower.contains("https://") { return "url" }
+        return "keyword"
+    }
+
     // MARK: - 프로필/상태
     private var agentStatusView: some View {
         VStack(spacing: 20) {
@@ -908,8 +931,18 @@ struct AgentChatView: View {
                 history = await ConversationMemory.compactHistory(messages: history)
 
                 do {
+                    // DirectChat evidence gate — 명확한 외부 정보 요청일 때만 evidence gather 허용
+                    // 조건: URL 포함 / 외부 키워드 / 첨부파일 있음
                     let toolPolicy = ToolPolicy.evaluate(fullText)
-                    let toolEvidence = await ToolEvidenceService.gather(for: fullText, policy: toolPolicy)
+                    let needsEvidence = Self.directChatNeedsEvidence(fullText, hasAttachments: !attachments.isEmpty)
+                    let toolEvidence: ToolEvidenceResult
+                    if needsEvidence {
+                        AppLog.info("[DirectChat] evidence enabled reason=\(Self.directChatEvidenceReason(fullText, hasAttachments: !attachments.isEmpty))")
+                        toolEvidence = await ToolEvidenceService.gather(for: fullText, policy: toolPolicy)
+                    } else {
+                        AppLog.info("[DirectChat] evidence skipped (no URL/keyword/attachment)")
+                        toolEvidence = .empty
+                    }
                     let agentName = manager.activeAgents.first(where: { $0.id == targetID })?.name
                         ?? manager.allAvailableAgents.first(where: { $0.id == targetID })?.name
                         ?? "에이전트"

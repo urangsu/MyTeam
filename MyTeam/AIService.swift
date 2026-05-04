@@ -60,7 +60,7 @@ final class AIService {
     /// Provider-level 글로벌 쿨다운 — 2회 연속 429 시 Gemini 전체 2분 차단
     private var globalGeminiCooldownUntil: Date? = nil
     private let globalGeminiCooldownSeconds: TimeInterval = 120
-    private var consecutive429Count: Int = 0
+    private(set) var consecutive429Count: Int = 0
 
     // MARK: - 모델 단위 쿨다운
 

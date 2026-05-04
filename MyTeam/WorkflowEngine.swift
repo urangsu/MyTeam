@@ -29,11 +29,14 @@ final class WorkflowEngine {
             await MainActor.run { WorkflowRunStore.shared.recordStep(workflowID: workflowID, step: stepRecord) }
             await AgentEventBus.shared.publish(.toolCallStarted(workflowID: workflowID, stepID: step.id, toolName: step.toolName))
 
+            // WorkflowEngine은 chatBasic + artifactGeneration scope만 허용
+            let allowedScopes: Set<ToolScope> = [.chatBasic, .artifactGeneration]
             let stepStart = Date()
             var result = await ToolExecutor.shared.execute(
                 step: step,
                 context: context,
-                sessionID: sessionID
+                sessionID: sessionID,
+                allowedScopes: allowedScopes
             )
 
             // invalidInput 실패 → step 단위 self-repair 1회 시도
@@ -45,7 +48,8 @@ final class WorkflowEngine {
                     result = await ToolExecutor.shared.execute(
                         step: repairedStep,
                         context: context,
-                        sessionID: sessionID
+                        sessionID: sessionID,
+                        allowedScopes: allowedScopes
                     )
                 }
             }
