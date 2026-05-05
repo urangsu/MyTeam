@@ -6,6 +6,58 @@
 
 ---
 
+## 2026-05-05 (Round 8 — Korean character count local skill)
+
+### 구현 완료
+
+| 항목 | 파일 | 내용 |
+|------|------|------|
+| 한국어 글자 수 계산 엔진 | `KoreanTextMetricsService.swift` | `String.count`, whitespace 제외 글자 수, UTF-8 bytes, 한국 제출폼 기준 bytes, 줄 수, 문단 수를 로컬 계산 |
+| 로컬 스킬 실행기 | `LocalSkillExecutor.swift` | `korean.character-count` 활성화 시 LLM/API/IntentRouter/WorkflowEngine 전에 즉시 처리 |
+| 실행 경로 연결 | `WorkflowOrchestrator.swift` | high-risk check 후, 파일 생성/IntentRouter/AICallBudgetManager.requestCall 전에 local skill early return |
+| 스킬 매니페스트 보강 | `BuiltInKoreanSkills.swift` | 완전 로컬 처리, 외부 API 호출 없음, 공백 포함/제외·UTF-8·한국 제출폼 bytes 설명 보강 |
+| Settings 스킬 탭 안정화 | `SettingsView.swift` | 검색, 활성 개수 즉시 갱신, risk/processing label, high-risk disabled toggle 처리 |
+
+### 계산 기준
+
+- 공백 포함: Swift `String.count`
+- 공백 제외: whitespace/newline 제외
+- UTF-8 bytes: 실제 UTF-8 데이터 길이
+- 한국 제출폼 기준 bytes: 한글/비ASCII 2바이트, 영문/숫자/ASCII 1바이트 근사값
+
+### 테스트 예시
+
+```
+사용자: 글자 수 세줘: 안녕하세요
+→ 한국어 글자 수 세기 · 로컬 처리
+→ 공백 포함 5자 / 공백 제외 5자 / UTF-8 15 bytes / 한국 제출폼 기준 10 bytes
+```
+
+### 실행 정책
+
+- 외부 API 호출 없음
+- 웹 검색/뉴스/DART/법령 실제 호출 없음
+- LLM/IntentRouter/WorkflowEngine 호출 전 local result를 게시
+- 로그:
+  - `[Skill] local execute korean.character-count`
+  - `[Skill] local result posted roomID=...`
+
+### 빌드 결과
+
+- **BUILD SUCCEEDED** · error 0
+- 새 MyTeam 코드 경고 없음. Xcode destination/AppIntents 안내성 출력만 확인.
+
+### 남은 과제
+
+- 맞춤법 검사 실제 구현
+- privacy/terms 문서 생성
+- User skill import UI
+- RuntimeDiagnostics UI
+- ActivityTimeline
+- Korean accounting-tax 파일 업로드 기반 실행
+
+---
+
 ## 2026-05-05 (P0 안정화 Round 7-2 — Skill allowedScopes 실행 경로 연결 + 보안 마무리 + 핫픽스)
 
 ### 핫픽스

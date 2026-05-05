@@ -92,6 +92,30 @@ final class WorkflowOrchestrator {
             }
         }
 
+        // ── Local skill execution (외부 API 호출 없이 즉시 처리) ──
+        let localResult = LocalSkillExecutor.executeIfPossible(skills: enabledSkills, userMessage: userMessage)
+        switch localResult {
+        case .handled(let message, let skillID):
+            AppLog.info("[Skill] local execute \(skillID)")
+            await MainActor.run {
+                manager.addChatLog(roomID: roomID, agentID: "system", agentName: "시스템",
+                                   text: message, isUser: false, isSystem: true, skillID: skillID)
+            }
+            AppLog.info("[Skill] local result posted roomID=\(roomID)")
+            return
+        case .needsInput(let message, let skillID):
+            AppLog.info("[Skill] local input required for \(skillID)")
+            await MainActor.run {
+                manager.addChatLog(roomID: roomID, agentID: "system", agentName: "시스템",
+                                   text: message, isUser: false, isSystem: true, skillID: skillID)
+            }
+            AppLog.info("[Skill] local result posted roomID=\(roomID)")
+            return
+        case .notHandled:
+            // 계속 진행
+            break
+        }
+
         // ── 파일/문서 생성 요청이면 IntentRouter 없이 즉시 Workflow로 ──
         if requiresFileCreation(userMessage) {
             // skill match 없으면 기본 artifact scopes 추가

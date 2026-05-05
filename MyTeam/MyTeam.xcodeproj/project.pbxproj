@@ -272,6 +272,8 @@
 		4B0A4C3CBD119219532BBE0E /* SkillManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C3D524BB4645D6C262C8EA5 /* SkillManifest.swift */; };
 		2EE1B3B590B0FF0260E0EB9F /* BuiltInKoreanSkills.swift in Sources */ = {isa = PBXBuildFile; fileRef = 643F876AD6C7EE967C80E0A5 /* BuiltInKoreanSkills.swift */; };
 		B9C24B5B228895C1362B22CE /* SkillRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDBAFF8BBDF5F24F0277B03E /* SkillRegistry.swift */; };
+		A8C800000000000000000002 /* KoreanTextMetricsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8C800000000000000000001 /* KoreanTextMetricsService.swift */; };
+		A8C800000000000000000004 /* LocalSkillExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8C800000000000000000003 /* LocalSkillExecutor.swift */; };
 		094EE7E1A73885A5472F9E9D /* UserSkillStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0FE7F45205ED6A4AF4269B0 /* UserSkillStore.swift */; };
 		BE979DE181375F061EA43298 /* AgentTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C799682E79CACCFD76A60BD /* AgentTool.swift */; };
 		111430F721A4324B4168CAC9 /* ToolExecutionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4CCA73098C61D43348816D /* ToolExecutionContext.swift */; };
@@ -1282,6 +1284,8 @@
 		2C3D524BB4645D6C262C8EA5 /* SkillManifest.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SkillManifest.swift; sourceTree = "<group>"; };
 		643F876AD6C7EE967C80E0A5 /* BuiltInKoreanSkills.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BuiltInKoreanSkills.swift; sourceTree = "<group>"; };
 		EDBAFF8BBDF5F24F0277B03E /* SkillRegistry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SkillRegistry.swift; sourceTree = "<group>"; };
+		A8C800000000000000000001 /* KoreanTextMetricsService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KoreanTextMetricsService.swift; sourceTree = "<group>"; };
+		A8C800000000000000000003 /* LocalSkillExecutor.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalSkillExecutor.swift; sourceTree = "<group>"; };
 		F0FE7F45205ED6A4AF4269B0 /* UserSkillStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UserSkillStore.swift; sourceTree = "<group>"; };
 		5C799682E79CACCFD76A60BD /* AgentTool.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentTool.swift; sourceTree = "<group>"; };
 		7B4CCA73098C61D43348816D /* ToolExecutionContext.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ToolExecutionContext.swift; sourceTree = "<group>"; };
@@ -1368,6 +1372,8 @@
 				2C3D524BB4645D6C262C8EA5 /* SkillManifest.swift */,
 				643F876AD6C7EE967C80E0A5 /* BuiltInKoreanSkills.swift */,
 				EDBAFF8BBDF5F24F0277B03E /* SkillRegistry.swift */,
+				A8C800000000000000000001 /* KoreanTextMetricsService.swift */,
+				A8C800000000000000000003 /* LocalSkillExecutor.swift */,
 				F0FE7F45205ED6A4AF4269B0 /* UserSkillStore.swift */,
 				5C799682E79CACCFD76A60BD /* AgentTool.swift */,
 				7B4CCA73098C61D43348816D /* ToolExecutionContext.swift */,
@@ -2747,6 +2753,8 @@
 				4B0A4C3CBD119219532BBE0E /* SkillManifest.swift in Sources */,
 				2EE1B3B590B0FF0260E0EB9F /* BuiltInKoreanSkills.swift in Sources */,
 				B9C24B5B228895C1362B22CE /* SkillRegistry.swift in Sources */,
+				A8C800000000000000000002 /* KoreanTextMetricsService.swift in Sources */,
+				A8C800000000000000000004 /* LocalSkillExecutor.swift in Sources */,
 				094EE7E1A73885A5472F9E9D /* UserSkillStore.swift in Sources */,
 				BE979DE181375F061EA43298 /* AgentTool.swift in Sources */,
 				111430F721A4324B4168CAC9 /* ToolExecutionContext.swift in Sources */,

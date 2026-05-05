@@ -284,3 +284,69 @@ struct TypingIndicatorView: View {
         }
     }
 }
+// MARK: - SkillResultCardView
+/// 스킬 실행 결과를 카드 형태로 표시 (예: 글자 수 세기)
+struct SkillResultCardView: View {
+    let skillID: String
+    let text: String
+    let isDarkMode: Bool
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 10, weight: .bold))
+                Text(skillName)
+                    .font(.system(size: 10, weight: .bold))
+                Spacer()
+                Text("Local")
+                    .font(.system(size: 8, weight: .bold))
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
+                    .background(Color.green.opacity(0.2))
+                    .foregroundColor(.green)
+                    .cornerRadius(3)
+            }
+            .foregroundColor(.secondary)
+            
+            Text(text)
+                .font(.system(size: 13))
+                .lineSpacing(4)
+                .foregroundColor(isDarkMode ? .white : .black)
+                .textSelection(.enabled)
+            
+            HStack {
+                Spacer()
+                Button(action: {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(text, forType: .string)
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "doc.on.doc")
+                        Text("복사")
+                    }
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.blue)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(isDarkMode ? Color.white.opacity(0.06) : Color.black.opacity(0.03))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.05), lineWidth: 0.5)
+                )
+        )
+        .frame(maxWidth: 280)
+    }
+    
+    private var skillName: String {
+        switch skillID {
+        case "korean.character-count": return "글자 수 세기"
+        default: return "Skill Result"
+        }
+    }
+}
