@@ -658,28 +658,18 @@ struct AgentChatView: View {
     @ViewBuilder
     private func deletableMessageBubble(log: AgentWindowManager.ChatLog) -> some View {
         ZStack(alignment: .topTrailing) {
-            if let skillID = log.skillID {
-                SkillResultCardView(
-                    skillID: skillID,
-                    text: log.text,
-                    isDarkMode: manager.isDarkMode
-                )
-                .jiggle(isEditingMessages)
-                .padding(.trailing, isEditingMessages ? 12 : 0)
-            } else {
-                IMMessageBubble(
-                    text: log.text,
-                    isUser: log.isUser,
-                    agentName: log.isUser ? "나" : log.agentName,
-                    agentImageName: log.isUser ? "" : (log.agentID == "team_all" ? "" : manager.allAvailableAgents.first(where: { $0.id == log.agentID })?.fallbackImageName ?? currentAgent.fallbackImageName),
-                    agentColor: log.isUser ? .blue : currentAgent.color,
-                    isDarkMode: manager.isDarkMode,
-                    timestamp: log.timestamp,
-                    sources: log.sources
-                )
-                .jiggle(isEditingMessages)
-                .padding(.trailing, isEditingMessages ? 12 : 0)
-            }
+            IMMessageBubble(
+                text: log.text,
+                isUser: log.isUser,
+                agentName: log.isUser ? "나" : log.agentName,
+                agentImageName: log.isUser ? "" : (log.agentID == "team_all" ? "" : manager.allAvailableAgents.first(where: { $0.id == log.agentID })?.fallbackImageName ?? currentAgent.fallbackImageName),
+                agentColor: log.isUser ? .blue : currentAgent.color,
+                isDarkMode: manager.isDarkMode,
+                timestamp: log.timestamp,
+                sources: log.sources
+            )
+            .jiggle(isEditingMessages)
+            .padding(.trailing, isEditingMessages ? 12 : 0)
 
             // 삭제 버튼 (항상 우측)
             if isEditingMessages, let roomID = agentRoomID {

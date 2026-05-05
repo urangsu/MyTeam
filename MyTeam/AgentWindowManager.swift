@@ -133,8 +133,7 @@ class AgentWindowManager: ObservableObject {
         // 4. 레거시 전역 기억 (V1 keyFacts — 마이그레이션 전까지 포함)
         facts += keyFacts
         // 중복 제거
-        var seenFacts = Set<String>()
-        facts = facts.filter { seenFacts.insert($0).inserted }
+        facts = Array(NSOrderedSet(array: facts) as! [String])  // swiftlint:disable:this force_cast
         guard !facts.isEmpty else { return "" }
         return "\n[기억해야 할 핵심 정보]\n" + facts.map { "- \($0)" }.joined(separator: "\n") + "\n"
     }
@@ -880,13 +879,11 @@ class AgentWindowManager: ObservableObject {
         text: String,
         isUser: Bool,
         isSystem: Bool = false,
-        sources: [SourceReference] = [],
-        skillID: String? = nil
+        sources: [SourceReference] = []
     ) {
         guard let index = rooms.firstIndex(where: { $0.id == roomID }) else { return }
         let newLog = ChatLog(id: UUID(), agentID: agentID, agentName: agentName,
-                             text: text, isUser: isUser, timestamp: Date(), isSystem: isSystem, 
-                             sources: sources, skillID: skillID)
+                             text: text, isUser: isUser, timestamp: Date(), isSystem: isSystem, sources: sources)
         rooms[index].messages.append(newLog)
     }
 
@@ -900,13 +897,12 @@ class AgentWindowManager: ObservableObject {
         isUser: Bool,
         roomID: UUID? = nil,
         isSystem: Bool = false,
-        sources: [SourceReference] = [],
-        skillID: String? = nil
+        sources: [SourceReference] = []
     ) {
         let rid = roomID ?? currentRoomID
         guard let rid else { return }
         addChatLog(roomID: rid, agentID: agentID, agentName: agentName,
-                   text: text, isUser: isUser, isSystem: isSystem, sources: sources, skillID: skillID)
+                   text: text, isUser: isUser, isSystem: isSystem, sources: sources)
     }
 
     func replaceMessages(roomID: UUID, with messages: [ChatLog]) {
@@ -1002,7 +998,7 @@ class AgentWindowManager: ObservableObject {
                   (0...23).contains(h), (0...59).contains(m) else {
                 return "인식할 수 없는 옵션입니다. 예: /edit-task \(idPrefix) 09:30 | --disable | --enable | --approval on"
             }
-            let cal = Calendar.current
+            var cal = Calendar.current
             var comps = cal.dateComponents([.year, .month, .day], from: automationTasks[idx].nextRunAt)
             comps.hour = h; comps.minute = m; comps.second = 0
             if let newDate = cal.date(from: comps) {
