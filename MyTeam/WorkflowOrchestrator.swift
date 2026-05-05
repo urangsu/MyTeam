@@ -48,21 +48,24 @@ final class WorkflowOrchestrator {
         let eventMsg = userMessage
         Task { await AgentEventBus.shared.publish(.userMessageSubmitted(roomID: eventRoomID, message: eventMsg)) }
 
-        // ── Skill match (Korean Skills 등) ──
+        // ── Skill match (Korean Skills 등) + allowedScopes 계산 ──
         let enabledSkills = SkillRegistry.shared.matchEnabledSkills(for: userMessage)
+        var effectiveScopes: Set<ToolScope> = [.chatBasic]  // 항상 chatBasic 포함
+
         if !enabledSkills.isEmpty {
             let names = enabledSkills.map { $0.id }.joined(separator: ", ")
             let scopeStr = enabledSkills.flatMap { $0.allowedScopes.map { $0.rawValue } }.joined(separator: ",")
             AppLog.info("[Skill] matched enabled \(names) scopes=[\(scopeStr)]")
 
-            // High-risk 스킬 match → 안내 메시지 후 early return (isWorkflowRunning은 아직 true로 바뀌지 않음)
-            if let highRiskSkill = enabledSkills.first(where: {
-                $0.riskLevel == .reservation || $0.riskLevel == .payment || $0.riskLevel == .accountLogin
-            }) {
+            // effectiveScopes에 enabled skills의 scopes 추가
+            effectiveScopes.formUnion(enabledSkills.flatMap { $0.allowedScopes })
+
+            // High-risk 스킬 match → 안내 메시지 후 early return
+            if let highRiskSkill = enabledSkills.first(where: { SkillRegistry.isHighRiskSkill($0) }) {
                 await MainActor.run {
                     manager.addChatLog(
                         roomID: roomID, agentID: "system", agentName: "시스템",
-                        text: "이 스킬은 로그인/예약/결제 등 민감 작업이므로 아직 비활성화되어 있습니다. (\(highRiskSkill.name))",
+                        text: "'\(highRiskSkill.name)' 스킬은 로그인/개인정보/예약/결제 등 민감 작업이므로 현재 버전에서는 실행할 수 없습니다.",
                         isUser: false, isSystem: true
                     )
                 }
@@ -74,12 +77,15 @@ final class WorkflowOrchestrator {
                 .filter { !SkillRegistry.shared.isSkillEnabled(id: $0.id) }
 
             if let disabledSkill = disabledMatch.first {
-                AppLog.info("[Skill] matched disabled '\(disabledSkill.id)' — 설정에서 활성화 필요")
+                AppLog.info("[Skill] matched disabled '\(disabledSkill.id)'")
+                let isHighRisk = SkillRegistry.isHighRiskSkill(disabledSkill)
+                let message = isHighRisk
+                    ? "'\(disabledSkill.name)' 스킬은 로그인/개인정보/예약/결제 등 민감 작업이므로 아직 비활성화되어 있습니다. 현재 버전에서는 사용할 수 없습니다."
+                    : "'\(disabledSkill.name)' 스킬은 현재 비활성화되어 있습니다. 설정 > 스킬 탭에서 활성화할 수 있습니다."
                 await MainActor.run {
                     manager.addChatLog(
                         roomID: roomID, agentID: "system", agentName: "시스템",
-                        text: "'\(disabledSkill.name)' 스킬은 현재 비활성화되어 있습니다. 설정 > 스킬 탭에서 활성화할 수 있습니다.",
-                        isUser: false, isSystem: true
+                        text: message, isUser: false, isSystem: true
                     )
                 }
                 return
@@ -88,13 +94,17 @@ final class WorkflowOrchestrator {
 
         // ── 파일/문서 생성 요청이면 IntentRouter 없이 즉시 Workflow로 ──
         if requiresFileCreation(userMessage) {
-            AppLog.info("[WorkflowOrchestrator] 파일 생성 요청 감지 → workflow 즉시 실행 (IntentRouter 스킵)")
+            // skill match 없으면 기본 artifact scopes 추가
+            if enabledSkills.isEmpty {
+                effectiveScopes.insert(.artifactGeneration)
+            }
+            AppLog.info("[WorkflowOrchestrator] 파일 생성 요청 감지 → workflow 즉시 실행 scopes=\(effectiveScopes.map { $0.rawValue }.sorted())")
             Task { await AgentEventBus.shared.publish(AgentEvent(type: .routeDecided, roomID: eventRoomID,
                                                                   payload: AgentEventPayload(message: "artifactGeneration"))) }
             await MainActor.run { manager.isWorkflowRunning = true }
             // defer: cancel/failure/success/early return 모든 경로에서 false 보장
             defer { Task { @MainActor in manager.isWorkflowRunning = false } }
-            let task = Task { await self.runWorkflow(userMessage: userMessage, roomID: roomID, manager: manager) }
+            let task = Task { await self.runWorkflow(userMessage: userMessage, roomID: roomID, manager: manager, allowedScopes: effectiveScopes) }
             currentWorkflowTask = task
             await task.value
             currentWorkflowTask = nil
@@ -196,7 +206,7 @@ final class WorkflowOrchestrator {
 
     // MARK: - Workflow execution
 
-    private func runWorkflow(userMessage: String, roomID: UUID, manager: AgentWindowManager) async {
+    private func runWorkflow(userMessage: String, roomID: UUID, manager: AgentWindowManager, allowedScopes: Set<ToolScope>) async {
         guard !Task.isCancelled else { return }
 
         // ── workflowID 생성 (이번 workflow의 추적 키) ──
@@ -241,7 +251,7 @@ final class WorkflowOrchestrator {
         // 취소 검사 — finalStatus = .cancelled (기본값) 유지
         guard !Task.isCancelled else { return }
 
-        switch await planWorkflowWithRepair(userMessage: userMessage) {
+        switch await planWorkflowWithRepair(userMessage: userMessage, allowedScopes: allowedScopes) {
         case .failure(let msg):
             // 취소 중이어도 실패 이유는 기록
             finalStatus = .failed
@@ -252,7 +262,7 @@ final class WorkflowOrchestrator {
         case .success(let plan):
             guard !Task.isCancelled else { return }  // finalStatus = .cancelled 유지
             let context = ToolExecutionContext.current(workflowID: workflowID, roomID: roomID)
-            let result = await WorkflowEngine.shared.run(plan: plan, context: context)
+            let result = await WorkflowEngine.shared.run(plan: plan, context: context, allowedScopes: allowedScopes)
             guard !Task.isCancelled else { return }  // finalStatus = .cancelled 유지
             finalStatus = result.failedSteps.isEmpty ? .completed : .failed
             finalEvent = .workflowCompleted(workflowID: workflowID, roomID: roomID, artifactCount: result.artifacts.count)
@@ -295,9 +305,9 @@ final class WorkflowOrchestrator {
 
     // MARK: - Planner with self-repair (최대 2회 시도)
 
-    private func planWorkflowWithRepair(userMessage: String) async -> PlannerResult {
+    private func planWorkflowWithRepair(userMessage: String, allowedScopes: Set<ToolScope>) async -> PlannerResult {
         // 1차 시도
-        let result1 = await attemptPlan(userMessage: userMessage, previousError: nil)
+        let result1 = await attemptPlan(userMessage: userMessage, previousError: nil, allowedScopes: allowedScopes)
         if case .success = result1 { return result1 }
         guard case .failure(let error1) = result1 else { return result1 }
 
@@ -308,12 +318,13 @@ final class WorkflowOrchestrator {
 
         // 2차 시도 — JSON/decode 오류에 대해서만 self-repair
         AppLog.info("[WorkflowOrchestrator] Self-repair 시도: \(error1)")
-        return await attemptPlan(userMessage: userMessage, previousError: error1)
+        return await attemptPlan(userMessage: userMessage, previousError: error1, allowedScopes: allowedScopes)
     }
 
     private func attemptPlan(
         userMessage: String,
-        previousError: String?
+        previousError: String?,
+        allowedScopes: Set<ToolScope>
     ) async -> PlannerResult {
         let callType = previousError == nil ? "workflow_plan" : "workflow_repair"
         let budgetType: AICallType = previousError == nil ? .workflowPlan : .workflowRepair
@@ -323,7 +334,7 @@ final class WorkflowOrchestrator {
             return .failure(msg)
         }
         AppLog.info("[AICall] callType=\(callType)")
-        let prompt = buildPlannerPrompt(userMessage: userMessage, previousError: previousError)
+        let prompt = buildPlannerPrompt(userMessage: userMessage, previousError: previousError, allowedScopes: allowedScopes)
         do {
             let (jsonText, _) = try await AIService.shared.getResponse(
                 text: prompt,
@@ -355,11 +366,9 @@ final class WorkflowOrchestrator {
 
     // MARK: - Planner prompt builder
 
-    private func buildPlannerPrompt(userMessage: String, previousError: String?) -> String {
-        // 파일 생성 요청: artifactGeneration scope만 노출 (chatBasic 포함)
-        // browserDOM / officeLive / diagnostics는 명시적 활성화 없이 노출 금지
-        let activeScopes: Set<ToolScope> = [.chatBasic, .artifactGeneration]
-        let toolSchemas = ToolRegistry.shared.toolSchemaDescription(for: activeScopes)
+    private func buildPlannerPrompt(userMessage: String, previousError: String?, allowedScopes: Set<ToolScope>) -> String {
+        // allowedScopes: skill match 또는 기본값 [.chatBasic, .artifactGeneration]
+        let toolSchemas = ToolRegistry.shared.toolSchemaDescription(for: allowedScopes)
         var prompt = """
         당신은 업무 워크플로우 계획자입니다.
         사용자 요청을 분석하고 아래 도구들을 사용하는 실행 계획을 JSON으로 반환하세요.

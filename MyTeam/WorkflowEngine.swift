@@ -10,7 +10,7 @@ final class WorkflowEngine {
     /// - isRequired step 실패 시 즉시 중단, 사용자 친화적 오류 메시지 포함.
     /// - isRequired=false step 실패 시 경고 후 계속 진행.
     /// - invalidInput 실패 시 1회 LLM self-repair 후 재실행.
-    func run(plan: WorkflowPlan, context: ToolExecutionContext) async -> WorkflowResult {
+    func run(plan: WorkflowPlan, context: ToolExecutionContext, allowedScopes: Set<ToolScope> = [.chatBasic, .artifactGeneration]) async -> WorkflowResult {
         var artifacts: [Artifact] = []
         var failedSteps: [(step: WorkflowStep, error: String)] = []
         let sessionID = context.sessionID

@@ -439,16 +439,40 @@ struct SettingsView: View {
 
     // MARK: - Tab 4: 스킬 설정
     private var skillsTab: some View {
-        let builtInCount = SkillRegistry.shared.builtInSkills().count
+        let builtInSkills = SkillRegistry.shared.builtInSkills().sorted { $0.id < $1.id }
         let enabledCount = SkillRegistry.shared.allEnabledSkills().count
-        let highRiskCount = SkillRegistry.shared.builtInSkills().filter {
-            $0.riskLevel == .reservation || $0.riskLevel == .payment || $0.riskLevel == .accountLogin
-        }.count
         return Form {
-            Section("Korean Built-in Skills") {
-                LabeledContent("등록된 built-in", value: "\(builtInCount)개")
-                LabeledContent("활성화됨", value: "\(enabledCount)개")
-                LabeledContent("high-risk (비활성)", value: "\(highRiskCount)개")
+            Section("Built-in 스킬 (\(enabledCount)/\(builtInSkills.count) 활성화)") {
+                ForEach(builtInSkills, id: \.id) { skill in
+                    let isEnabled = SkillRegistry.shared.isSkillEnabled(id: skill.id)
+                    let isHighRisk = SkillRegistry.isHighRiskSkill(skill)
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(skill.name)
+                                .font(.body)
+                            Text(skill.id)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        if isHighRisk && !isEnabled {
+                            Text("위험")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.orange.opacity(0.15))
+                                .cornerRadius(4)
+                        }
+                        Toggle("", isOn: Binding(
+                            get: { isEnabled },
+                            set: { newValue in
+                                SkillRegistry.shared.setSkillEnabled(id: skill.id, enabled: newValue)
+                            }
+                        ))
+                        .disabled(isHighRisk && !isEnabled)  // high-risk disabled는 toggle disabled
+                    }
+                }
             }
             Section("사용자 추가 스킬") {
                 Text("다음 단계에서 지원 예정입니다.")

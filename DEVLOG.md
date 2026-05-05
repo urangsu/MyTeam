@@ -6,6 +6,59 @@
 
 ---
 
+## 2026-05-05 (P0 안정화 Round 7-2 — Skill allowedScopes 실행 경로 연결 + 보안 마무리)
+
+### 빌드 결과
+- **BUILD SUCCEEDED** · error 0 · warning 0
+
+### 구현 완료
+
+| 항목 | 파일 | 내용 |
+|------|------|------|
+| allowedScopes 실제 주입 | WorkflowOrchestrator, WorkflowEngine | dispatch()에서 effectiveScopes 계산 → runWorkflow/planWorkflow/attemptPlan/buildPlannerPrompt → WorkflowEngine.run(allowedScopes:) 전달. skill match 없으면 [.chatBasic, .artifactGeneration] 기본값 |
+| SkillIDValidator 공통화 | SkillRegistry | nonisolated static isValidSkillID(_ id: String) 추가. a-z A-Z 0-9 . _ - 만 허용, / \ .. ~ 공백 금지 |
+| 검증 규칙 강화 | SkillRegistry | validateSkill() Rule 1-1: id whitelist 검증. UserSkillStore는 같은 validator 재사용 |
+| Disabled vs high-risk 분리 | SkillRegistry + WorkflowOrchestrator | nonisolated static isHighRiskSkill(_ skill: SkillManifest) 추가. enabled high-risk: "현재 버전 실행 불가". disabled high-risk: "민감 작업 비활성". disabled safe: "설정에서 활성화" |
+| SettingsView skill toggle | SettingsView | skill 목록 표시, 각 항목 enabled toggle, high-risk disabled는 toggle disabled 처리. law-search/dart 토글 가능 |
+
+### allowedScopes 전달 파이프라인 로그 예시
+
+```
+[Skill] matched enabled korean.naver-news scopes=[chatBasic,browserDOM]
+[WorkflowOrchestrator] 파일 생성 요청 감지 → workflow 즉시 실행 scopes=[artifactGeneration,browserDOM,chatBasic]
+```
+
+### Disabled/High-risk 안내 분리
+
+```
+사용자: "법령 검색해줘"
+→ [Skill] matched disabled 'korean.law-search'
+→ 시스템: "'한국 법령 검색' 스킬은 현재 비활성화되어 있습니다. 설정 > 스킬 탭에서 활성화할 수 있습니다."
+
+사용자: (future high-risk skill match 상황)
+→ 시스템: "'{스킬명}' 스킬은 로그인/개인정보/예약/결제 등 민감 작업이므로 아직 비활성화되어 있습니다. 현재 버전에서는 사용할 수 없습니다."
+```
+
+### SkillIDValidator 정책
+
+✅ `good.skill-1`, `my-custom_skill`, `korean.law-search`
+❌ `../evil`, `evil/skill`, `bad skill`, `skill..name`, `~home`
+
+### Settings toggle 검증
+
+- korean.law-search off → "법령 검색" → disabled 안내 → Settings toggle on → 다시 "법령 검색" → enabled match + 로그
+- high-risk disabled skill → toggle disabled (UI 비활성)
+- 외부 API 호출: 없음 (manifest-only)
+
+### 미구현 (Round 8+)
+
+- Skill match 기반 schema 제한 (allowedScopes → planner schema 필터)
+- User skill import UI
+- korean.accounting-tax 파일 업로드 기반 실행
+- CODEF/홈택스/은행/카드/증권 자동화 (BYOK + 명시 승인)
+
+---
+
 ## 2026-05-05 (P0 안정화 Round 6 — Korean Skill Catalog)
 
 ### 빌드 결과

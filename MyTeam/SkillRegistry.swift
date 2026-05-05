@@ -10,6 +10,7 @@ enum SkillValidationError: Error, LocalizedError {
     case highRiskRequiresApproval
     case highRiskRequiresDisabledByDefault
     case unknownWorkflowTool(String)
+    case invalidID(String)
 
     var errorDescription: String? {
         switch self {
@@ -27,6 +28,8 @@ enum SkillValidationError: Error, LocalizedError {
             return "high-risk 스킬(reservation/payment/accountLogin)은 defaultEnabled=false이어야 합니다."
         case .unknownWorkflowTool(let toolName):
             return "workflowTemplate 에 등록되지 않은 도구: \(toolName)"
+        case .invalidID(let reason):
+            return "스킬 ID 형식 오류: \(reason)"
         }
     }
 }
@@ -85,6 +88,28 @@ final class SkillRegistry {
         }.sorted { $0.id < $1.id }
     }
 
+    // MARK: - Helpers
+
+    /// Skill ID whitelist 검증: a-z A-Z 0-9 . _ - 만 허용
+    nonisolated static func isValidSkillID(_ id: String) -> Bool {
+        guard !id.isEmpty else { return false }
+        let allowedChars = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-")
+        let hasOnlyAllowed = id.allSatisfy { $0.unicodeScalars.allSatisfy { allowedChars.contains($0) } }
+        return hasOnlyAllowed && !id.contains("..")
+    }
+
+    /// High-risk skill 판별: riskLevel 또는 requiredPermissions 기반
+    nonisolated static func isHighRiskSkill(_ skill: SkillManifest) -> Bool {
+        let highRiskLevels: Set<SkillRiskLevel> = [.personalData, .accountLogin, .externalWrite, .reservation, .payment, .regulated]
+        if highRiskLevels.contains(skill.riskLevel) { return true }
+
+        let dangerousPermissions: Set<SkillPermission> = [
+            .requiresUserLogin, .readsPersonalData, .sendsMessage, .makesReservation,
+            .handlesPayment, .financialData, .browserAutomation, .officeLive
+        ]
+        return skill.requiredPermissions.contains { dangerousPermissions.contains($0) }
+    }
+
     // MARK: - Validation
 
     func validateSkill(_ skill: SkillManifest) throws {
@@ -92,6 +117,11 @@ final class SkillRegistry {
         if skill.id.isEmpty      { throw SkillValidationError.emptyField("id") }
         if skill.name.isEmpty    { throw SkillValidationError.emptyField("name") }
         if skill.version.isEmpty { throw SkillValidationError.emptyField("version") }
+
+        // Rule 1-1: id whitelist 검증
+        guard Self.isValidSkillID(skill.id) else {
+            throw SkillValidationError.invalidID("a-z, A-Z, 0-9, '.', '-', '_' 만 허용. 금지: '/', '\\\\', '..', 공백")
+        }
 
         // Rule 2: triggers 비어 있으면 실패
         if skill.triggers.isEmpty { throw SkillValidationError.emptyTriggers }
