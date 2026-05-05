@@ -269,6 +269,10 @@
 		FBF184E612490DAC0E68E03B /* mo.wav in Resources */ = {isa = PBXBuildFile; fileRef = 5EBDAB442DAE8209E86E4878 /* mo.wav */; };
 		FCF86130C1400EF99B2D892A /* AgentPersona.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5236D928FAFCC0DCC7946D62 /* AgentPersona.swift */; };
 		BB22CC33DD44EE55FF660011 /* Sprites in Resources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF66 /* Sprites */; };
+		4B0A4C3CBD119219532BBE0E /* SkillManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C3D524BB4645D6C262C8EA5 /* SkillManifest.swift */; };
+		2EE1B3B590B0FF0260E0EB9F /* BuiltInKoreanSkills.swift in Sources */ = {isa = PBXBuildFile; fileRef = 643F876AD6C7EE967C80E0A5 /* BuiltInKoreanSkills.swift */; };
+		B9C24B5B228895C1362B22CE /* SkillRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDBAFF8BBDF5F24F0277B03E /* SkillRegistry.swift */; };
+		094EE7E1A73885A5472F9E9D /* UserSkillStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0FE7F45205ED6A4AF4269B0 /* UserSkillStore.swift */; };
 		BE979DE181375F061EA43298 /* AgentTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C799682E79CACCFD76A60BD /* AgentTool.swift */; };
 		111430F721A4324B4168CAC9 /* ToolExecutionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4CCA73098C61D43348816D /* ToolExecutionContext.swift */; };
 		C5B27729D07F30FB9748FE9F /* ArtifactStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CB1E803CFA2E3C0EBDACE2A /* ArtifactStore.swift */; };
@@ -1275,6 +1279,10 @@
 		FFAF08D6091A076B26E958F1 /* 올리버_ko_manifest.json */ = {isa = PBXFileReference; includeInIndex = 1; name = "올리버_ko_manifest.json"; path = "Resources/CharacterPhonemes/올리버_reference/ko/올리버_ko_manifest.json"; sourceTree = "<group>"; };
 		FFF30E4DF0306AF2E765F5E9 /* 치코_drag_013.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_drag_013.png"; path = "Resources/Sprites/치코/치코_drag_013.png"; sourceTree = "<group>"; };
 		AA11BB22CC33DD44EE55FF66 /* Sprites */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Sprites; path = Resources/Sprites; sourceTree = "<group>"; };
+		2C3D524BB4645D6C262C8EA5 /* SkillManifest.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SkillManifest.swift; sourceTree = "<group>"; };
+		643F876AD6C7EE967C80E0A5 /* BuiltInKoreanSkills.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BuiltInKoreanSkills.swift; sourceTree = "<group>"; };
+		EDBAFF8BBDF5F24F0277B03E /* SkillRegistry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SkillRegistry.swift; sourceTree = "<group>"; };
+		F0FE7F45205ED6A4AF4269B0 /* UserSkillStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UserSkillStore.swift; sourceTree = "<group>"; };
 		5C799682E79CACCFD76A60BD /* AgentTool.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentTool.swift; sourceTree = "<group>"; };
 		7B4CCA73098C61D43348816D /* ToolExecutionContext.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ToolExecutionContext.swift; sourceTree = "<group>"; };
 		1CB1E803CFA2E3C0EBDACE2A /* ArtifactStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ArtifactStore.swift; sourceTree = "<group>"; };
@@ -1357,6 +1365,10 @@
 				FE40DDDEB4EC29F57CBEBF2B /* AgentSettingsView.swift */,
 				F4A4934564B89278F311E912 /* AIService.swift */,
 				E07A776E1F93029A136405E9 /* TextSanitizer.swift */,
+				2C3D524BB4645D6C262C8EA5 /* SkillManifest.swift */,
+				643F876AD6C7EE967C80E0A5 /* BuiltInKoreanSkills.swift */,
+				EDBAFF8BBDF5F24F0277B03E /* SkillRegistry.swift */,
+				F0FE7F45205ED6A4AF4269B0 /* UserSkillStore.swift */,
 				5C799682E79CACCFD76A60BD /* AgentTool.swift */,
 				7B4CCA73098C61D43348816D /* ToolExecutionContext.swift */,
 				1CB1E803CFA2E3C0EBDACE2A /* ArtifactStore.swift */,
@@ -2732,6 +2744,10 @@
 				4924284FDAA78FAF8E22621F /* AgentSettingsView.swift in Sources */,
 				AEA6CC25476D0A502F719158 /* AIService.swift in Sources */,
 				5AD8869D648BDE90AAF364F0 /* TextSanitizer.swift in Sources */,
+				4B0A4C3CBD119219532BBE0E /* SkillManifest.swift in Sources */,
+				2EE1B3B590B0FF0260E0EB9F /* BuiltInKoreanSkills.swift in Sources */,
+				B9C24B5B228895C1362B22CE /* SkillRegistry.swift in Sources */,
+				094EE7E1A73885A5472F9E9D /* UserSkillStore.swift in Sources */,
 				BE979DE181375F061EA43298 /* AgentTool.swift in Sources */,
 				111430F721A4324B4168CAC9 /* ToolExecutionContext.swift in Sources */,
 				C5B27729D07F30FB9748FE9F /* ArtifactStore.swift in Sources */,

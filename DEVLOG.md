@@ -6,6 +6,95 @@
 
 ---
 
+## 2026-05-05 (P0 안정화 Round 6 — Korean Skill Catalog)
+
+### 빌드 결과
+- **BUILD SUCCEEDED** · error 0 · warning 0
+- 기준 커밋: Round 5 (main 브랜치)
+
+### 구현 완료
+
+| 항목 | 파일 | 내용 |
+|------|------|------|
+| ToolScope Codable 추가 | AgentTool.swift | `SkillManifest.allowedScopes: [ToolScope]` Codable 합성을 위해 `Codable` 프로토콜 추가 |
+| SkillManifest 구조 정의 | SkillManifest.swift (신규) | SkillCategory·SkillPermission·SkillRiskLevel·SkillOutputType enum + SkillManifest struct. `backendHint: String?`, `notes: [String]?` 미래 확장 필드 포함 |
+| BuiltInKoreanSkills 10개 | BuiltInKoreanSkills.swift (신규) | 날씨·미세먼지·맞춤법·글자수·네이버뉴스·블로그리서치·개인정보약관·HWP·법령검색·DART. 기본 활성 8개, 비활성 2개(law-search, dart) |
+| SkillRegistry 싱글턴 | SkillRegistry.swift (신규) | `final class`, `UserDefaults` 기반 enable/disable 영속화, trigger match, validation 6-rule |
+| UserSkillStore 스켈레톤 | UserSkillStore.swift (신규) | `actor`, `~/Library/Application Support/MyTeam/UserSkills/` 저장, dangerous permission warning flags |
+| Skill match 라우팅 | WorkflowOrchestrator.swift | `dispatch()` 상단에 `SkillRegistry.shared.matchSkills()` 삽입. high-risk(reservation/payment/accountLogin) 조기 반환 + 시스템 메시지 |
+| SettingsView 스킬 탭 | SettingsView.swift | 4번째 탭 "스킬" 추가, frame 380→420, `skillsTab` 플레이스홀더 (built-in 10개 / 활성화 8개 / high-risk 0개 표시) |
+
+### Built-in 스킬 10개 목록
+
+| # | ID | 카테고리 | defaultEnabled | riskLevel |
+|---|----|---------|--------------:|-----------|
+| 1 | korean.weather | koreanLife | ✅ true | publicData |
+| 2 | korean.fine-dust | koreanLife | ✅ true | publicData |
+| 3 | korean.spell-check | koreanWriting | ✅ true | safeReadOnly |
+| 4 | korean.character-count | koreanWriting | ✅ true | safeReadOnly |
+| 5 | korean.naver-news | koreanLife | ✅ true | publicData |
+| 6 | korean.naver-blog-research | koreanWriting | ✅ true | publicData |
+| 7 | korean.privacy-terms | koreanBusiness | ✅ true | publicData |
+| 8 | korean.hwp-read | document | ✅ true | safeReadOnly |
+| 9 | korean.law-search | koreanLegal | ❌ false | publicData |
+| 10 | korean.dart | koreanFinance | ❌ false | publicData |
+
+### High-risk 스킬 정책 (기본 비활성 — Round 6 미구현)
+
+`riskLevel` ∈ `{reservation, payment, accountLogin}` → `validateSkill` 에서 `defaultEnabled=false` 강제.
+
+| 카테고리 | 해당 스킬/기능 | 이유 |
+|---|---|---|
+| accountLogin | CODEF 자동 수집 (은행·카드·증권) | 타사 계정 크리덴셜 필요 |
+| accountLogin | 홈택스 / 정부24 자동화 | 공공 계정 로그인, 민감 세금 정보 |
+| reservation | KTX/SRT 예매, 캐치테이블/야놀자 | 실제 예약/결제 수반 |
+| payment | 쿠팡 / 번개장터 구매 | 실제 결제 |
+| sendsMessage | 카카오톡 메시지 전송 | 메시지 오발송 위험 |
+
+Round 7 이상에서 BYOK + 명시 승인 구조로만 구현.
+
+### UserSkillStore 저장 경로
+```
+~/Library/Application Support/MyTeam/UserSkills/<id>.skill.json
+```
+- `isEnabled: false` 고정 (설치 즉시 활성화 불가)
+- dangerous permission 포함 시 `warningFlags` 기록
+
+### Skill match 로그 예시
+```
+[Skill] matched korean.weather scopes=[chatBasic]
+[Skill] matched korean.naver-news,korean.naver-blog-research scopes=[chatBasic,browserDOM,chatBasic,browserDOM,artifactGeneration]
+```
+
+### FutureKoreanSkills 후보 (DEVLOG 기록만 — BuiltInKoreanSkills.all 미포함)
+
+**korean.accounting-tax** (한국 사업자 장부·세무 정리)
+- `riskLevel: .personalData`, `defaultEnabled: false`, `requiresApprovalEveryRun: true`
+- 1단계: 업로드 파일(CSV/엑셀) 기반 장부 정리만 허용
+- 2단계(CODEF/홈택스/은행/카드): BYOK + 명시 승인 단계에서만 구현
+- `backendHint: nil` — 1단계는 로컬 파일만
+
+### 수동 검증 체크리스트
+
+- [ ] `SkillRegistry.shared.builtInSkills().count` == 10
+- [ ] `SkillRegistry.shared.allEnabledSkills().count` == 8
+- [ ] `SkillRegistry.shared.matchSkills(for: "오늘 날씨 어때").first?.id` == `"korean.weather"`
+- [ ] "오늘 날씨 어때" dispatch 로그: `[Skill] matched korean.weather scopes=[chatBasic]`
+- [ ] SettingsView "스킬" 탭: 등록된 built-in 10개, 활성화됨 8개, high-risk(비활성) 0개
+- [ ] `validateSkill` — triggers 비어 있는 스킬 → `SkillValidationError.emptyTriggers`
+- [ ] `validateSkill` — riskLevel=.reservation, requiresApprovalEveryRun=false → `highRiskRequiresApproval`
+- [ ] `UserSkillStore.skillsDirectory` 경로: `~/Library/Application Support/MyTeam/UserSkills/`
+- [ ] 스킬 match 없는 메시지 ("안녕") → `matchedSkills.isEmpty`, 기존 dispatch 흐름 유지
+
+### 미구현 (Round 7 이후)
+- 실제 외부 API 호출 (날씨/미세먼지/DART/법령검색 등)
+- Skill Gallery UI, remote install
+- `SkillRegistry.userSkills()` — UserSkillStore 연동
+- SkillManifest 기반 allowedScopes → WorkflowEngine 동적 주입
+- korean.accounting-tax (파일 업로드 기반부터 단계적 구현)
+
+---
+
 ## 2026-05-04 (P0 안정화 Round 5 — DirectChat 통합 + ToolScope 전수 + evidence 오탐 제거 + finish 순서)
 
 ### 빌드 결과

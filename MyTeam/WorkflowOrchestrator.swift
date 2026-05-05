@@ -48,6 +48,27 @@ final class WorkflowOrchestrator {
         let eventMsg = userMessage
         Task { await AgentEventBus.shared.publish(.userMessageSubmitted(roomID: eventRoomID, message: eventMsg)) }
 
+        // ── Skill match (Korean Skills 등) ──
+        let matchedSkills = SkillRegistry.shared.matchSkills(for: userMessage)
+        if !matchedSkills.isEmpty {
+            let names = matchedSkills.map { $0.id }.joined(separator: ", ")
+            let scopeStr = matchedSkills.flatMap { $0.allowedScopes.map { $0.rawValue } }.joined(separator: ",")
+            AppLog.info("[Skill] matched \(names) scopes=[\(scopeStr)]")
+        }
+        // High-risk 스킬 match → 안내 메시지 후 early return (isWorkflowRunning은 아직 true로 바뀌지 않음)
+        if let highRiskSkill = matchedSkills.first(where: {
+            $0.riskLevel == .reservation || $0.riskLevel == .payment || $0.riskLevel == .accountLogin
+        }) {
+            await MainActor.run {
+                manager.addChatLog(
+                    roomID: roomID, agentID: "system", agentName: "시스템",
+                    text: "이 스킬은 로그인/예약/결제 등 민감 작업이므로 아직 비활성화되어 있습니다. (\(highRiskSkill.name))",
+                    isUser: false, isSystem: true
+                )
+            }
+            return
+        }
+
         // ── 파일/문서 생성 요청이면 IntentRouter 없이 즉시 Workflow로 ──
         if requiresFileCreation(userMessage) {
             AppLog.info("[WorkflowOrchestrator] 파일 생성 요청 감지 → workflow 즉시 실행 (IntentRouter 스킵)")

@@ -13,7 +13,7 @@ enum ToolRiskLevel: String, Codable, Hashable {
 // 요청 유형별로 필요한 tool만 LLM에 노출.
 // 기본 노출 금지 항목: Accessibility, global input, shell 계열.
 
-enum ToolScope: String, CaseIterable {
+enum ToolScope: String, Codable, CaseIterable {
     case chatBasic          // 읽기·요약·URL 열기 (기본 채팅)
     case artifactGeneration // 파일/PPT/XLSX 생성
     case documentEditing    // 기존 파일 편집

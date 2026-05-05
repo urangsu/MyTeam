@@ -167,6 +167,7 @@ struct SettingsView: View {
                     Text("사용자 설정").tag(0)
                     Text("API 설정").tag(1)
                     Text("데스크 라우팅").tag(2)
+                    Text("스킬").tag(3)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
@@ -190,12 +191,14 @@ struct SettingsView: View {
                 switch currentTab {
                 case 0: userSettingsTab
                 case 1: apiSettingsTab
+                case 2: deskRoutingTab
+                case 3: skillsTab
                 default: deskRoutingTab
                 }
             }
         }
         .preferredColorScheme(manager.isDarkMode ? .dark : .light)
-        .frame(width: 380, height: 420)
+        .frame(width: 420, height: 420)
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear { loadSettings() }
         .onChange(of: gps.locationText) { _, newVal in
@@ -428,6 +431,28 @@ struct SettingsView: View {
                 Button("저장") { saveSettings() }
                     .buttonStyle(.borderedProminent)
                     .frame(maxWidth: .infinity)
+            }
+        }
+        .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+    }
+
+    // MARK: - Tab 4: 스킬 설정
+    private var skillsTab: some View {
+        let builtInCount = SkillRegistry.shared.builtInSkills().count
+        let enabledCount = SkillRegistry.shared.allEnabledSkills().count
+        let highRiskCount = SkillRegistry.shared.builtInSkills().filter {
+            $0.riskLevel == .reservation || $0.riskLevel == .payment || $0.riskLevel == .accountLogin
+        }.count
+        return Form {
+            Section("Korean Built-in Skills") {
+                LabeledContent("등록된 built-in", value: "\(builtInCount)개")
+                LabeledContent("활성화됨", value: "\(enabledCount)개")
+                LabeledContent("high-risk (비활성)", value: "\(highRiskCount)개")
+            }
+            Section("사용자 추가 스킬") {
+                Text("다음 단계에서 지원 예정입니다.")
+                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
