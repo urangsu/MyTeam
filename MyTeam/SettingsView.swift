@@ -418,27 +418,6 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
-    }
-
-    // MARK: - Tab 3: 데스크 라우팅 (4개 데스크)
-    private var deskRoutingTab: some View {
-        Form {
-            ForEach(0..<4, id: \.self) { index in
-                Section("데스크 \(index + 1)") {
-                    DeskRoutingRow(deskIndex: index)
-                }
-            }
-
-            Section {
-                Button("저장") { saveSettings() }
-                    .buttonStyle(.borderedProminent)
-                    .frame(maxWidth: .infinity)
-            }
-        }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
-    }
-
     // MARK: - Tab 4: 스킬 설정
     private var skillsTab: some View {
         let allSkills = SkillRegistry.shared.builtInSkills().sorted { $0.id < $1.id }
@@ -447,8 +426,7 @@ struct SettingsView: View {
             : allSkills.filter { skill in
                 skill.name.lowercased().contains(skillSearchText.lowercased()) ||
                 skill.id.lowercased().contains(skillSearchText.lowercased()) ||
-                skill.description.lowercased().contains(skillSearchText.lowercased()) ||
-                skill.triggers.contains { $0.lowercased().contains(skillSearchText.lowercased()) }
+                skill.description.lowercased().contains(skillSearchText.lowercased())
             }
         let enabledCount = SkillRegistry.shared.allEnabledSkills().count
 
@@ -458,7 +436,7 @@ struct SettingsView: View {
                 Text("내 팀의 능력 관리")
                     .font(.system(size: 16, weight: .bold))
                     .foregroundColor(.primary)
-                Text("내 팀이 사용할 수 있는 한국형 업무 능력입니다. 필요한 스킬만 켜두면 팀원이 대화 중 자동으로 사용합니다.")
+                Text("내 팀이 대화 중 자동으로 사용할 수 있는 한국형 업무 스킬입니다.")
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
             }
@@ -623,58 +601,6 @@ private struct SkillRowView: View {
     let onToggle: (Bool) -> Void
 
     var body: some View {
-        let isHighRisk = SkillRegistry.isHighRiskSkill(skill)
-        HStack(alignment: .top, spacing: 10) {
-            Text(iconForCategory(skill.category))
-                .frame(width: 24)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(skill.name)
-                    .font(.body)
-                Text(skill.description.isEmpty ? skill.id : skill.description)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                HStack(spacing: 6) {
-                    label(riskLabel(for: skill.riskLevel), color: isHighRisk ? .orange : riskColor(for: skill.riskLevel))
-                    label(processingLabel(for: skill), color: processingColor(for: skill))
-                    if isHighRisk && !isEnabled {
-                        label("잠김", color: .orange)
-                    }
-                }
-            }
-
-            Spacer()
-
-            Toggle("", isOn: Binding(
-                get: { isEnabled },
-                set: { onToggle($0) }
-            ))
-            .labelsHidden()
-            .disabled(isHighRisk && !isEnabled)
-        }
-    }
-
-    private func label(_ text: String, color: Color) -> some View {
-        Text(text)
-            .font(.caption2)
-            .foregroundStyle(color)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(color.opacity(0.12))
-            .cornerRadius(4)
-    }
-
-    private func iconForCategory(_ category: SkillCategory) -> String {
-        switch category {
-        case .koreanLife: return "☁"
-        case .koreanWriting: return "가"
-        case .koreanBusiness: return "💼"
-        case .koreanLegal: return "⚖"
-        case .koreanFinance: return "▦"
-        case .document: return "📄"
-        case .diagnostics: return "◇"
-        default: return "•"
         }
     }
 
