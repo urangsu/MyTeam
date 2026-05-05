@@ -9,6 +9,7 @@ enum SkillValidationError: Error, LocalizedError {
     case emptyScopeList
     case highRiskRequiresApproval
     case highRiskRequiresDisabledByDefault
+    case unknownWorkflowTool(String)
 
     var errorDescription: String? {
         switch self {
@@ -24,6 +25,8 @@ enum SkillValidationError: Error, LocalizedError {
             return "high-risk 스킬은 requiresApprovalEveryRun=true이어야 합니다."
         case .highRiskRequiresDisabledByDefault:
             return "high-risk 스킬(reservation/payment/accountLogin)은 defaultEnabled=false이어야 합니다."
+        case .unknownWorkflowTool(let toolName):
+            return "workflowTemplate 에 등록되지 않은 도구: \(toolName)"
         }
     }
 }
@@ -67,11 +70,19 @@ final class SkillRegistry {
     // MARK: - Skill Match
 
     /// 메시지 텍스트에 트리거 키워드가 포함된 활성화 스킬을 반환한다.
-    func matchSkills(for message: String) -> [SkillManifest] {
+    func matchEnabledSkills(for message: String) -> [SkillManifest] {
         let lower = message.lowercased()
         return allEnabledSkills().filter { skill in
             skill.triggers.contains { lower.contains($0.lowercased()) }
         }
+    }
+
+    /// 메시지 텍스트에 트리거 키워드가 포함된 모든 스킬(활성화/비활성화)을 반환한다.
+    func matchAllSkills(for message: String) -> [SkillManifest] {
+        let lower = message.lowercased()
+        return skills.values.filter { skill in
+            skill.triggers.contains { lower.contains($0.lowercased()) }
+        }.sorted { $0.id < $1.id }
     }
 
     // MARK: - Validation
@@ -103,6 +114,15 @@ final class SkillRegistry {
         let defaultOffRequired: Set<SkillRiskLevel> = [.reservation, .payment, .accountLogin]
         if defaultOffRequired.contains(skill.riskLevel) && skill.defaultEnabled {
             throw SkillValidationError.highRiskRequiresDisabledByDefault
+        }
+
+        // Rule 7: workflowTemplate 내 toolName은 ToolRegistry에 존재해야 함
+        if let template = skill.workflowTemplate {
+            for toolName in template {
+                guard ToolRegistry.shared.lookup(name: toolName) != nil else {
+                    throw SkillValidationError.unknownWorkflowTool(toolName)
+                }
+            }
         }
     }
 

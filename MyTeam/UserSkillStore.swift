@@ -82,6 +82,14 @@ actor UserSkillStore {
         guard !manifest.id.isEmpty, !manifest.name.isEmpty else {
             throw SkillStoreError.invalidManifest("id 또는 name이 비어 있습니다.")
         }
+
+        // 1-1. id whitelist 검증: a-z, A-Z, 0-9, ".", "-", "_" 만 허용
+        let allowedIdChars = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-")
+        let idHasOnlyAllowed = manifest.id.allSatisfy { $0.unicodeScalars.allSatisfy { allowedIdChars.contains($0) } }
+        guard idHasOnlyAllowed && !manifest.id.contains("..") else {
+            throw SkillStoreError.invalidManifest("스킬 ID는 a-z, A-Z, 0-9, '.', '-', '_'만 포함할 수 있습니다. (금지: '/', '\\\\', '..', 공백)")
+        }
+
         guard !manifest.triggers.isEmpty else {
             throw SkillStoreError.invalidManifest("triggers가 비어 있습니다.")
         }
