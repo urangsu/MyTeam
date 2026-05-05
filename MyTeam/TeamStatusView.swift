@@ -386,7 +386,12 @@ struct TeamStatusView: View {
                                         .font(.system(size: 9, weight: .bold))
                                         .foregroundColor(log.isUser ? .blue : (manager.allAvailableAgents.first(where: { $0.id == log.agentID })?.color ?? .orange))
                                     if log.skillID == "korean.character-count" {
-                                        KoreanTextMetricsResultCardView(text: log.text, isDarkMode: manager.isDarkMode)
+                                        SkillResultRendererView(
+                                            skillID: log.skillID,
+                                            text: log.text,
+                                            isDarkMode: manager.isDarkMode,
+                                            isUser: log.isUser
+                                        )
                                     } else {
                                         Text(log.text)
                                             .font(.system(size: 12))

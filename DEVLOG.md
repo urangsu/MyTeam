@@ -6,6 +6,36 @@
 
 ---
 
+## 2026-05-05 (Round 8-3 — Skill Result Renderer + Skill Center Polish)
+
+### 빌드 목표
+- 스킬 결과 렌더링을 공통화하여 AgentChatView/TeamStatusView의 중복 분기 제거
+- SettingsView의 스킬 탭을 "스킬 센터"처럼 정리
+- RuntimeDiagnostics 미니 placeholder 추가 (정식 UI 아님)
+
+### 구현 완료
+
+| 항목 | 파일 | 내용 |
+|------|------|------|
+| 스킬 결과 공통 렌더러 | SkillResultRendererView.swift (신규) | ViewBuilder 함수로 skillID에 따라 카드 또는 텍스트 반환, 중복 분기 제거 |
+| AgentChatView 정리 | AgentChatView.swift | character-count 직접 분기 제거, SkillResultRendererView 사용 |
+| TeamStatusView 정리 | TeamStatusView.swift | character-count 직접 분기 제거, SkillResultRendererView 사용 |
+| SettingsView 개선 | SettingsView.swift | 검색 기능 유지, card 형태 row, risk/processing label, skill center 느낌 |
+
+### 스킬 렌더링 통합
+- `SkillResultRendererView(skillID: log.skillID, text: log.text, isDarkMode: manager.isDarkMode, isUser: log.isUser)`
+- skillID에 따라 적절한 카드 렌더링, 미지원하면 일반 텍스트
+- 파싱 실패 시에도 graceful fallback
+
+### 다음 작업 후보
+- KoreanTextMetricsResultCardView.swift 정리 (SkillResultRendererView.swift의 KoreanCharacterCountCardView와 통합)
+- RuntimeDiagnostics full UI
+- ActivityTimeline
+- User skill import UI
+- 개인정보처리방침/약관 생성 artifact skill
+
+---
+
 ## 2026-05-05 (Round 8-2 — Skill Result Card UI + Local Skill Polish)
 
 ### 빌드 목표

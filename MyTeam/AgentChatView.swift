@@ -703,7 +703,12 @@ struct AgentChatView: View {
                             .foregroundColor(.green.opacity(0.9))
                     }
 
-                    KoreanTextMetricsResultCardView(text: log.text, isDarkMode: manager.isDarkMode)
+                    SkillResultRendererView(
+                        skillID: log.skillID,
+                        text: log.text,
+                        isDarkMode: manager.isDarkMode,
+                        isUser: log.isUser
+                    )
 
                     if let ts = Optional(log.timestamp) {
                         Text(ts, style: .time)
