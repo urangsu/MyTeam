@@ -82,20 +82,19 @@
 | Skill match 라우팅 | WorkflowOrchestrator.swift | `dispatch()` 상단에 `SkillRegistry.shared.matchSkills()` 삽입. high-risk(reservation/payment/accountLogin) 조기 반환 + 시스템 메시지 |
 | SettingsView 스킬 탭 | SettingsView.swift | 4번째 탭 "스킬" 추가, frame 380→420, `skillsTab` 플레이스홀더 (built-in 10개 / 활성화 8개 / high-risk 0개 표시) |
 
-### Built-in 스킬 10개 목록
+### Built-in 스킬 9개 목록
 
 | # | ID | 카테고리 | defaultEnabled | riskLevel |
 |---|----|---------|--------------:|-----------|
 | 1 | korean.weather | koreanLife | ✅ true | publicData |
 | 2 | korean.fine-dust | koreanLife | ✅ true | publicData |
 | 3 | korean.spell-check | koreanWriting | ✅ true | safeReadOnly |
-| 4 | korean.character-count | koreanWriting | ✅ true | safeReadOnly |
-| 5 | korean.naver-news | koreanLife | ✅ true | publicData |
-| 6 | korean.naver-blog-research | koreanWriting | ✅ true | publicData |
-| 7 | korean.privacy-terms | koreanBusiness | ✅ true | publicData |
-| 8 | korean.hwp-read | document | ✅ true | safeReadOnly |
-| 9 | korean.law-search | koreanLegal | ❌ false | publicData |
-| 10 | korean.dart | koreanFinance | ❌ false | publicData |
+| 4 | korean.naver-news | koreanLife | ✅ true | publicData |
+| 5 | korean.naver-blog-research | koreanWriting | ✅ true | publicData |
+| 6 | korean.privacy-terms | koreanBusiness | ✅ true | publicData |
+| 7 | korean.hwp-read | document | ✅ true | safeReadOnly |
+| 8 | korean.law-search | koreanLegal | ❌ false | publicData |
+| 9 | korean.dart | koreanFinance | ❌ false | publicData |
 
 ### High-risk 스킬 정책 (기본 비활성 — Round 6 미구현)
 
