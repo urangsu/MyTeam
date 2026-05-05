@@ -17,7 +17,7 @@ final class WorkflowEngine {
         let workflowID = context.workflowID
         let roomID = context.roomID
 
-        AppLog.info("[WorkflowEngine] 시작: '\(plan.title)' (\(plan.steps.count)단계)")
+        AppLog.info("[WorkflowEngine] 시작: '\(plan.title)' (\(plan.steps.count)단계) allowedScopes=\(allowedScopes.map { $0.rawValue }.sorted())")
 
         for step in plan.steps {
             AppLog.info("[WorkflowEngine] 실행: '\(step.title)' [\(step.toolName)]")
@@ -29,8 +29,6 @@ final class WorkflowEngine {
             await MainActor.run { WorkflowRunStore.shared.recordStep(workflowID: workflowID, step: stepRecord) }
             await AgentEventBus.shared.publish(.toolCallStarted(workflowID: workflowID, stepID: step.id, toolName: step.toolName))
 
-            // WorkflowEngine은 chatBasic + artifactGeneration scope만 허용
-            let allowedScopes: Set<ToolScope> = [.chatBasic, .artifactGeneration]
             let stepStart = Date()
             var result = await ToolExecutor.shared.execute(
                 step: step,

@@ -6,7 +6,13 @@
 
 ---
 
-## 2026-05-05 (P0 안정화 Round 7-2 — Skill allowedScopes 실행 경로 연결 + 보안 마무리)
+## 2026-05-05 (P0 안정화 Round 7-2 — Skill allowedScopes 실행 경로 연결 + 보안 마무리 + 핫픽스)
+
+### 핫픽스
+- **allowedScopes shadowing 버그** — WorkflowEngine 루프 내부에서 로컬 allowedScopes 재선언으로 함수 파라미터 덮어쓰던 버그 수정. 
+  - korean.naver-news의 browserDOM scope가 ToolExecutor까지 전달 안 되던 문제 해결
+  - 로컬 선언 제거, 함수 파라미터 allowedScopes 그대로 전달
+  - 시작 로그에 allowedScopes 출력
 
 ### 빌드 결과
 - **BUILD SUCCEEDED** · error 0 · warning 0
@@ -52,7 +58,6 @@
 
 ### 미구현 (Round 8+)
 
-- Skill match 기반 schema 제한 (allowedScopes → planner schema 필터)
 - User skill import UI
 - korean.accounting-tax 파일 업로드 기반 실행
 - CODEF/홈택스/은행/카드/증권 자동화 (BYOK + 명시 승인)
