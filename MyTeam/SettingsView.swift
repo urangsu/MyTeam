@@ -505,6 +505,10 @@ struct SettingsView: View {
                     Text("다음 단계에서 지원 예정입니다.")
                         .foregroundStyle(.secondary)
                 }
+
+                Section("시스템 진단") {
+                    RuntimeDiagnosticsPlaceholder(manager: manager)
+                }
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
@@ -613,6 +617,94 @@ private struct DeskRoutingRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+        }
+    }
+}
+
+// MARK: - RuntimeDiagnosticsPlaceholder
+struct RuntimeDiagnosticsPlaceholder: View {
+    @ObservedObject var manager: AgentWindowManager
+    @State private var diagnostics: RuntimeDiagnosticsSnapshot?
+    @State private var isLoading: Bool = false
+    @State private var errorMessage: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header with refresh button
+            HStack {
+                Text("시스템 상태")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                Spacer()
+                Button(action: refreshDiagnostics) {
+                    if isLoading {
+                        ProgressView()
+                            .scaleEffect(0.8, anchor: .center)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.caption)
+                    }
+                }
+                .buttonStyle(.plain)
+                .disabled(isLoading)
+            }
+
+            // Diagnostics content or error
+            if let error = errorMessage {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            } else if let diag = diagnostics {
+                VStack(alignment: .leading, spacing: 8) {
+                    DiagnosticRow(label: "워크플로우", value: diag.isWorkflowRunning ? "실행 중" : "대기")
+                    DiagnosticRow(label: "이벤트", value: "\(diag.recentEventCount)건")
+                    if let summary = diag.latestEventSummary, !summary.isEmpty {
+                        DiagnosticRow(label: "최근", value: summary)
+                    }
+                    let geminiStatus = (diag.geminiCooldownRemainingSeconds ?? 0) > 0
+                        ? "쿨다운 \(Int(diag.geminiCooldownRemainingSeconds ?? 0))s"
+                        : "준비됨"
+                    DiagnosticRow(label: "Gemini", value: geminiStatus)
+                }
+            } else {
+                Text("새로고침을 눌러 진단 정보를 불러옵니다.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 8)
+        .onAppear {
+            refreshDiagnostics()
+        }
+    }
+
+    private func refreshDiagnostics() {
+        isLoading = true
+        errorMessage = nil
+        Task {
+            let snapshot = await RuntimeDiagnosticsService.shared.snapshot(manager: manager)
+            await MainActor.run {
+                self.diagnostics = snapshot
+                self.isLoading = false
+            }
+        }
+    }
+}
+
+private struct DiagnosticRow: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 60, alignment: .leading)
+            Text(value)
+                .font(.caption)
+                .fontWeight(.semibold)
+            Spacer()
         }
     }
 }

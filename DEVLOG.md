@@ -6,6 +6,39 @@
 
 ---
 
+## 2026-05-06 (Round 8-4 — Finalize Skill Center + Diagnostics Placeholder)
+
+### 빌드 목표
+- SkillResultRendererView 공통화 완료 (중복 분기 제거)
+- SettingsView 스킬 센터 기본 구현 확인
+- RuntimeDiagnostics 미니 placeholder 추가
+- 추가 스킬 렌더러 TODO 주석 추가
+
+### 구현 완료
+
+| 항목 | 파일 | 내용 |
+|------|------|------|
+| 스킬 렌더러 통합 | SkillResultRendererView.swift | KoreanTextMetricsResultCardView 직접 사용, 중복 카드 제거 |
+| AgentChatView 정리 | AgentChatView.swift | `if log.skillID != nil` 체크로 일반화, direct character-count 분기 제거 |
+| TeamStatusView 정리 | TeamStatusView.swift | `if log.skillID != nil` 체크로 일반화, direct character-count 분기 제거 |
+| RuntimeDiagnostics UI | SettingsView.swift | 시스템 진단 섹션 추가 (워크플로우, 이벤트, Gemini 상태 표시) |
+| 향후 스킬 TODO | SkillResultRendererView.swift | korean.spell-check, korean.privacy-terms, runtime.diagnostics, korean.accounting-tax 카드 TODO 추가 |
+
+### 검증 완료
+- AgentChatView 'korean.character-count' 검색 0건 ✅
+- TeamStatusView 'korean.character-count' 검색 0건 ✅
+- SkillResultRendererView 중복 카드 검색 0건 ✅
+- BUILD SUCCEEDED ✅
+
+### 남은 과제
+- 개인정보처리방침·이용약관 artifact skill
+- 맞춤법 검사 실제 구현
+- RuntimeDiagnostics full UI + ActivityTimeline
+- User Skill import UI
+- korean.accounting-tax 파일 업로드 기반 정리
+
+---
+
 ## 2026-05-05 (Round 8-3 — Skill Result Renderer + Skill Center Polish)
 
 ### 빌드 목표

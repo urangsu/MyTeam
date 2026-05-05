@@ -684,7 +684,8 @@ struct AgentChatView: View {
 
     @ViewBuilder
     private func bubbleContent(for log: AgentWindowManager.ChatLog) -> some View {
-        if log.skillID == "korean.character-count" {
+        // Skill result: use skill-specific rendering with custom wrapping
+        if log.skillID != nil {
             HStack(alignment: .bottom, spacing: 8) {
                 if !log.isUser {
                     Image(systemName: "function")
@@ -720,6 +721,7 @@ struct AgentChatView: View {
                 if log.isUser { Spacer().frame(width: 8) }
             }
         } else {
+            // Regular chat: use standard message bubble
             IMMessageBubble(
                 text: log.text,
                 isUser: log.isUser,
