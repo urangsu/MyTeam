@@ -385,14 +385,18 @@ struct TeamStatusView: View {
                                     Text(log.isUser ? "나" : log.agentName)
                                         .font(.system(size: 9, weight: .bold))
                                         .foregroundColor(log.isUser ? .blue : (manager.allAvailableAgents.first(where: { $0.id == log.agentID })?.color ?? .orange))
-                                    Text(log.text)
-                                        .font(.system(size: 12))
-                                        .foregroundColor(log.isUser ? .white : textColor.opacity(0.9))
-                                        .padding(.horizontal, 10).padding(.vertical, 6)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 12)
-                                                .fill(log.isUser ? Color.blue : (manager.isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.06)))
-                                        )
+                                    if log.skillID == "korean.character-count" {
+                                        KoreanTextMetricsResultCardView(text: log.text, isDarkMode: manager.isDarkMode)
+                                    } else {
+                                        Text(log.text)
+                                            .font(.system(size: 12))
+                                            .foregroundColor(log.isUser ? .white : textColor.opacity(0.9))
+                                            .padding(.horizontal, 10).padding(.vertical, 6)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 12)
+                                                    .fill(log.isUser ? Color.blue : (manager.isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.06)))
+                                            )
+                                    }
                                     if !log.sources.isEmpty {
                                         SourceChipsView(sources: log.sources, isDarkMode: manager.isDarkMode)
                                             .frame(maxWidth: 220, alignment: .leading)

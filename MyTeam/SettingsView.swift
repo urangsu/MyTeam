@@ -150,6 +150,8 @@ struct SettingsView: View {
     @State private var showAdvancedModelSettings: Bool = false
 
     @State private var currentTab: Int = 0
+    @State private var skillSearchText: String = ""
+    @State private var skillRefreshToken: UUID = UUID()
     @StateObject private var gps = LocationHelper()
 
     private var plaqueColor: Binding<Color> {
@@ -439,48 +441,74 @@ struct SettingsView: View {
 
     // MARK: - Tab 4: 스킬 설정
     private var skillsTab: some View {
+        let _ = skillRefreshToken
         let builtInSkills = SkillRegistry.shared.builtInSkills().sorted { $0.id < $1.id }
-        let enabledCount = SkillRegistry.shared.allEnabledSkills().count
-        return Form {
-            Section("Built-in 스킬 (\(enabledCount)/\(builtInSkills.count) 활성화)") {
-                ForEach(builtInSkills, id: \.id) { skill in
-                    let isEnabled = SkillRegistry.shared.isSkillEnabled(id: skill.id)
-                    let isHighRisk = SkillRegistry.isHighRiskSkill(skill)
-                    HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(skill.name)
-                                .font(.body)
-                            Text(skill.id)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        if isHighRisk && !isEnabled {
-                            Text("위험")
-                                .font(.caption)
-                                .foregroundStyle(.orange)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(Color.orange.opacity(0.15))
-                                .cornerRadius(4)
-                        }
-                        Toggle("", isOn: Binding(
-                            get: { isEnabled },
-                            set: { newValue in
-                                SkillRegistry.shared.setSkillEnabled(id: skill.id, enabled: newValue)
-                            }
-                        ))
-                        .disabled(isHighRisk && !isEnabled)  // high-risk disabled는 toggle disabled
-                    }
-                }
+        let filteredSkills = skillSearchText.isEmpty
+            ? builtInSkills
+            : builtInSkills.filter { skill in
+                let query = skillSearchText.lowercased()
+                return skill.name.lowercased().contains(query)
+                    || skill.id.lowercased().contains(query)
+                    || skill.description.lowercased().contains(query)
+                    || skill.triggers.contains(where: { $0.lowercased().contains(query) })
             }
-            Section("사용자 추가 스킬") {
-                Text("다음 단계에서 지원 예정입니다.")
+        let enabledCount = SkillRegistry.shared.allEnabledSkills().count
+        return VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                TextField("스킬 이름, ID, 설명 검색", text: $skillSearchText)
+                    .textFieldStyle(.roundedBorder)
+
+                Text("\(enabledCount)/\(builtInSkills.count)")
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.secondary)
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 14)
+            .padding(.bottom, 4)
+
+            Form {
+                Section("Built-in 스킬 (\(enabledCount)/\(builtInSkills.count) 활성화)") {
+                    ForEach(filteredSkills, id: \.id) { skill in
+                        let isEnabled = SkillRegistry.shared.isSkillEnabled(id: skill.id)
+                        let isHighRisk = SkillRegistry.isHighRiskSkill(skill)
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(skill.name)
+                                    .font(.body)
+                                Text(skill.id)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if isHighRisk && !isEnabled {
+                                Text("민감 작업")
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.orange.opacity(0.15))
+                                    .cornerRadius(4)
+                            }
+                            Toggle("", isOn: Binding(
+                                get: { isEnabled },
+                                set: { newValue in
+                                    SkillRegistry.shared.setSkillEnabled(id: skill.id, enabled: newValue)
+                                    skillRefreshToken = UUID()
+                                }
+                            ))
+                            .disabled(isHighRisk && !isEnabled)
+                        }
+                    }
+                }
+
+                Section("사용자 추가 스킬") {
+                    Text("다음 단계에서 지원 예정입니다.")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .formStyle(.grouped)
+            .scrollContentBackground(.hidden)
         }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
     }
 
     // MARK: - 내부 로직

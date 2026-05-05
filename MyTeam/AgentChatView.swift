@@ -658,16 +658,7 @@ struct AgentChatView: View {
     @ViewBuilder
     private func deletableMessageBubble(log: AgentWindowManager.ChatLog) -> some View {
         ZStack(alignment: .topTrailing) {
-            IMMessageBubble(
-                text: log.text,
-                isUser: log.isUser,
-                agentName: log.isUser ? "나" : log.agentName,
-                agentImageName: log.isUser ? "" : (log.agentID == "team_all" ? "" : manager.allAvailableAgents.first(where: { $0.id == log.agentID })?.fallbackImageName ?? currentAgent.fallbackImageName),
-                agentColor: log.isUser ? .blue : currentAgent.color,
-                isDarkMode: manager.isDarkMode,
-                timestamp: log.timestamp,
-                sources: log.sources
-            )
+            bubbleContent(for: log)
             .jiggle(isEditingMessages)
             .padding(.trailing, isEditingMessages ? 12 : 0)
 
@@ -689,6 +680,52 @@ struct AgentChatView: View {
             }
         }
         .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private func bubbleContent(for log: AgentWindowManager.ChatLog) -> some View {
+        if log.skillID == "korean.character-count" {
+            HStack(alignment: .bottom, spacing: 8) {
+                if !log.isUser {
+                    Image(systemName: "function")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 28, height: 28)
+                        .foregroundColor(.green.opacity(0.8))
+                } else {
+                    Spacer()
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    if !log.isUser {
+                        Text(log.agentName)
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.green.opacity(0.9))
+                    }
+
+                    KoreanTextMetricsResultCardView(text: log.text, isDarkMode: manager.isDarkMode)
+
+                    if let ts = Optional(log.timestamp) {
+                        Text(ts, style: .time)
+                            .font(.system(size: 9))
+                            .foregroundColor(.gray.opacity(0.5))
+                    }
+                }
+
+                if log.isUser { Spacer().frame(width: 8) }
+            }
+        } else {
+            IMMessageBubble(
+                text: log.text,
+                isUser: log.isUser,
+                agentName: log.isUser ? "나" : log.agentName,
+                agentImageName: log.isUser ? "" : (log.agentID == "team_all" ? "" : manager.allAvailableAgents.first(where: { $0.id == log.agentID })?.fallbackImageName ?? currentAgent.fallbackImageName),
+                agentColor: log.isUser ? .blue : currentAgent.color,
+                isDarkMode: manager.isDarkMode,
+                timestamp: log.timestamp,
+                sources: log.sources
+            )
+        }
     }
 
     // MARK: - 입력창

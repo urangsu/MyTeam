@@ -40,9 +40,6 @@ final class WorkflowOrchestrator {
         currentWorkflowTask?.cancel()
         currentWorkflowTask = nil
 
-        // ── 새 요청 → 세션 예산 리셋 ──
-        AICallBudgetManager.shared.beginSession()
-
         // ── 이벤트: userMessageSubmitted ──
         let eventRoomID = roomID
         let eventMsg = userMessage
@@ -91,6 +88,48 @@ final class WorkflowOrchestrator {
                 return
             }
         }
+
+        // ── local skill은 예산/IntentRouter/WorkflowEngine 전에 처리 ──
+        let localResult = LocalSkillExecutor.executeIfPossible(skills: enabledSkills, userMessage: userMessage)
+        switch localResult {
+        case .handled(let message, let skillID):
+            AppLog.info("[Skill] local execute \(skillID)")
+            await MainActor.run {
+                manager.addChatLog(
+                    roomID: roomID,
+                    agentID: "system",
+                    agentName: "스킬",
+                    text: message,
+                    isUser: false,
+                    isSystem: false,
+                    skillID: skillID
+                )
+            }
+            AppLog.info("[Skill] local result posted roomID=\(roomID.uuidString)")
+            return
+
+        case .needsInput(let message, let skillID):
+            AppLog.info("[Skill] local execute \(skillID)")
+            await MainActor.run {
+                manager.addChatLog(
+                    roomID: roomID,
+                    agentID: "system",
+                    agentName: "스킬",
+                    text: message,
+                    isUser: false,
+                    isSystem: false,
+                    skillID: skillID
+                )
+            }
+            AppLog.info("[Skill] local result posted roomID=\(roomID.uuidString)")
+            return
+
+        case .notHandled:
+            break
+        }
+
+        // ── 새 요청 → 세션 예산 리셋 ──
+        AICallBudgetManager.shared.beginSession()
 
         // ── 파일/문서 생성 요청이면 IntentRouter 없이 즉시 Workflow로 ──
         if requiresFileCreation(userMessage) {

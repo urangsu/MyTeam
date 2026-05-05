@@ -26,6 +26,7 @@ extension AgentWindowManager {
         var isSystem: Bool = false  // 드래그/이벤트 등 시스템 대사 (채팅창에 표시 안 함)
         var attachments: [ChatAttachment] = []  // 첨부파일
         var sources: [SourceReference] = []  // 웹 검색/자료 출처
+        var skillID: String? = nil
     }
 
     struct SourceReference: Identifiable, Codable, Hashable {

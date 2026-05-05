@@ -879,11 +879,12 @@ class AgentWindowManager: ObservableObject {
         text: String,
         isUser: Bool,
         isSystem: Bool = false,
-        sources: [SourceReference] = []
+        sources: [SourceReference] = [],
+        skillID: String? = nil
     ) {
         guard let index = rooms.firstIndex(where: { $0.id == roomID }) else { return }
         let newLog = ChatLog(id: UUID(), agentID: agentID, agentName: agentName,
-                             text: text, isUser: isUser, timestamp: Date(), isSystem: isSystem, sources: sources)
+                             text: text, isUser: isUser, timestamp: Date(), isSystem: isSystem, sources: sources, skillID: skillID)
         rooms[index].messages.append(newLog)
     }
 
@@ -897,12 +898,13 @@ class AgentWindowManager: ObservableObject {
         isUser: Bool,
         roomID: UUID? = nil,
         isSystem: Bool = false,
-        sources: [SourceReference] = []
+        sources: [SourceReference] = [],
+        skillID: String? = nil
     ) {
         let rid = roomID ?? currentRoomID
         guard let rid else { return }
         addChatLog(roomID: rid, agentID: agentID, agentName: agentName,
-                   text: text, isUser: isUser, isSystem: isSystem, sources: sources)
+                   text: text, isUser: isUser, isSystem: isSystem, sources: sources, skillID: skillID)
     }
 
     func replaceMessages(roomID: UUID, with messages: [ChatLog]) {

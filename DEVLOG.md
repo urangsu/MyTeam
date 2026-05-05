@@ -6,6 +6,49 @@
 
 ---
 
+## 2026-05-05 (Round 8-2 — Skill Result Card UI + Local Skill Polish)
+
+### 빌드 목표
+- `korean.character-count`는 계속 **완전 로컬 처리**
+- local skill 경로에서는 `AICallBudgetManager`, `IntentRouter`, `WorkflowEngine` 미호출
+- SettingsView는 대규모 리팩터링 없이 검색/토글 반응성만 보강
+
+### 구현 완료
+
+| 항목 | 파일 | 내용 |
+|------|------|------|
+| 로컬 글자 수 계산 서비스 | KoreanTextMetricsService.swift (신규) | 입력 텍스트 추출, 글자 수/bytes/줄 수/문단 수 계산, 카드용 결과 파싱 추가 |
+| local skill executor | LocalSkillExecutor.swift (신규) | `korean.character-count` 요청을 LLM 없이 즉시 처리 |
+| 결과 카드 UI | KoreanTextMetricsResultCardView.swift (신규) | 제목, `로컬 처리` 배지, metric grid, 제출폼 기준 안내를 카드 형태로 렌더링 |
+| budget 이전 local skill 처리 | WorkflowOrchestrator.swift | skill match 후 local skill handled/needsInput이면 `beginSession()` 이전에 즉시 반환 |
+| chat log skill 식별 | ChatModels.swift, AgentWindowManager.swift | `ChatLog.skillID` 추가, `addChatLog(... skillID:)` 지원 |
+| skill card 렌더링 | TeamStatusView.swift, AgentChatView.swift | `skillID == "korean.character-count"`이면 일반 말풍선 대신 카드 렌더링 |
+| Settings 스모크 개선 | SettingsView.swift | 검색 필드, `skillRefreshToken`, enabled count 즉시 반영 |
+
+### local skill 경로 보장
+
+기대 로그:
+```
+[Skill] local execute korean.character-count
+[Skill] local result posted roomID=...
+```
+
+없어야 하는 로그:
+```
+[AICall] callType=intent_classify
+[AICall] callType=workflow_plan
+```
+
+### 남은 과제
+
+- SkillResultPayload 구조화
+- 한국어 맞춤법 검사 실제 구현
+- 개인정보처리방침/약관 생성 완성
+- User skill import UI
+- RuntimeDiagnostics UI
+
+---
+
 ## 2026-05-05 (P0 안정화 Round 7-2 — Skill allowedScopes 실행 경로 연결 + 보안 마무리 + 핫픽스)
 
 ### 핫픽스
@@ -82,19 +125,20 @@
 | Skill match 라우팅 | WorkflowOrchestrator.swift | `dispatch()` 상단에 `SkillRegistry.shared.matchSkills()` 삽입. high-risk(reservation/payment/accountLogin) 조기 반환 + 시스템 메시지 |
 | SettingsView 스킬 탭 | SettingsView.swift | 4번째 탭 "스킬" 추가, frame 380→420, `skillsTab` 플레이스홀더 (built-in 10개 / 활성화 8개 / high-risk 0개 표시) |
 
-### Built-in 스킬 9개 목록
+### Built-in 스킬 10개 목록
 
 | # | ID | 카테고리 | defaultEnabled | riskLevel |
 |---|----|---------|--------------:|-----------|
 | 1 | korean.weather | koreanLife | ✅ true | publicData |
 | 2 | korean.fine-dust | koreanLife | ✅ true | publicData |
 | 3 | korean.spell-check | koreanWriting | ✅ true | safeReadOnly |
-| 4 | korean.naver-news | koreanLife | ✅ true | publicData |
-| 5 | korean.naver-blog-research | koreanWriting | ✅ true | publicData |
-| 6 | korean.privacy-terms | koreanBusiness | ✅ true | publicData |
-| 7 | korean.hwp-read | document | ✅ true | safeReadOnly |
-| 8 | korean.law-search | koreanLegal | ❌ false | publicData |
-| 9 | korean.dart | koreanFinance | ❌ false | publicData |
+| 4 | korean.character-count | koreanWriting | ✅ true | safeReadOnly |
+| 5 | korean.naver-news | koreanLife | ✅ true | publicData |
+| 6 | korean.naver-blog-research | koreanWriting | ✅ true | publicData |
+| 7 | korean.privacy-terms | koreanBusiness | ✅ true | publicData |
+| 8 | korean.hwp-read | document | ✅ true | safeReadOnly |
+| 9 | korean.law-search | koreanLegal | ❌ false | publicData |
+| 10 | korean.dart | koreanFinance | ❌ false | publicData |
 
 ### High-risk 스킬 정책 (기본 비활성 — Round 6 미구현)
 

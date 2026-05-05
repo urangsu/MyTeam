@@ -10,6 +10,7 @@ enum BuiltInKoreanSkills {
         weatherSkill,
         fineDustSkill,
         spellCheckSkill,
+        characterCountSkill,
         naverNewsSkill,
         naverBlogResearchSkill,
         privacyTermsSkill,
@@ -81,7 +82,28 @@ enum BuiltInKoreanSkills {
         requiresApprovalEveryRun: false
     )
 
-    // MARK: - 4. 네이버 뉴스 검색
+    // MARK: - 4. 한국어 글자 수 세기
+
+    private static let characterCountSkill = SkillManifest(
+        id: "korean.character-count",
+        name: "한국어 글자 수 세기",
+        version: "1.1",
+        description: "한국어 텍스트의 공백 포함/제외 글자 수, UTF-8 bytes, 제출폼 기준 bytes를 완전 로컬로 계산한다",
+        locale: "ko-KR",
+        category: .koreanWriting,
+        triggers: ["글자 수", "글자수", "byte", "바이트", "자소서", "NEIS"],
+        allowedScopes: [.chatBasic],
+        requiredPermissions: [],
+        requiredLogin: false,
+        riskLevel: .safeReadOnly,
+        promptTemplate: "사용자가 한국어 글자 수 계산을 요청했습니다. 공백 포함/제외 글자 수, UTF-8 bytes, 제출폼 기준 bytes, 줄 수, 문단 수를 완전 로컬로 계산하세요. 외부 API 호출은 없습니다.",
+        outputType: .chat,
+        isBuiltIn: true,
+        defaultEnabled: true,
+        requiresApprovalEveryRun: false
+    )
+
+    // MARK: - 5. 네이버 뉴스 검색
 
     private static let naverNewsSkill = SkillManifest(
         id: "korean.naver-news",
@@ -102,7 +124,7 @@ enum BuiltInKoreanSkills {
         requiresApprovalEveryRun: false
     )
 
-    // MARK: - 5. 네이버 블로그 리서치
+    // MARK: - 6. 네이버 블로그 리서치
 
     private static let naverBlogResearchSkill = SkillManifest(
         id: "korean.naver-blog-research",
@@ -123,7 +145,7 @@ enum BuiltInKoreanSkills {
         requiresApprovalEveryRun: false
     )
 
-    // MARK: - 6. 개인정보처리방침·이용약관 생성
+    // MARK: - 7. 개인정보처리방침·이용약관 생성
 
     private static let privacyTermsSkill = SkillManifest(
         id: "korean.privacy-terms",
@@ -144,7 +166,7 @@ enum BuiltInKoreanSkills {
         requiresApprovalEveryRun: false
     )
 
-    // MARK: - 7. HWP 문서 조회/변환
+    // MARK: - 8. HWP 문서 조회/변환
 
     private static let hwpReadSkill = SkillManifest(
         id: "korean.hwp-read",
@@ -165,7 +187,7 @@ enum BuiltInKoreanSkills {
         requiresApprovalEveryRun: false
     )
 
-    // MARK: - 8. 한국 법령 검색
+    // MARK: - 9. 한국 법령 검색
 
     private static let lawSearchSkill = SkillManifest(
         id: "korean.law-search",
@@ -200,7 +222,7 @@ enum BuiltInKoreanSkills {
         ]
     )
 
-    // MARK: - 9. DART 공시 조회
+    // MARK: - 10. DART 공시 조회
 
     private static let dartSkill = SkillManifest(
         id: "korean.dart",
