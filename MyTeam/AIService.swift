@@ -868,6 +868,31 @@ final class AIService {
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    // MARK: - Generate Privacy Terms (Skill: korean.privacy-terms)
+
+    /// 개인정보처리방침/이용약관을 생성한다.
+    /// 사용 가능한 provider 우선순위로 탐색하여 처음 성공한 provider의 결과를 반환한다.
+    func generatePrivacyTerms(prompt: String) async throws -> String {
+        let pairs: [(key: String, fn: (String) async throws -> String)] = [
+            ("geminiAPIKey", { key in try await self.geminiQuickCall(prompt: prompt, apiKey: key) }),
+            ("claudeAPIKey", { key in try await self.claudeQuickCall(prompt: prompt, apiKey: key) }),
+            ("openAIAPIKey", { key in try await self.openAIQuickCall(prompt: prompt, apiKey: key) }),
+        ]
+        for (keychainKey, fn) in pairs {
+            let apiKey = KeychainManager.load(key: keychainKey) ?? ""
+            guard !apiKey.isEmpty else { continue }
+            do {
+                let result = try await fn(apiKey)
+                AppLog.info("[PrivacyTermsGen] LLM 생성 완료 (\(keychainKey.replacingOccurrences(of: "APIKey", with: "")))")
+                return result
+            } catch {
+                AppLog.warning("[PrivacyTermsGen] \(keychainKey) 실패: \(error)")
+                continue
+            }
+        }
+        throw AIServiceError.noAPIKeys
+    }
+
     // MARK: - Claude with Tool Calling (non-streaming, multi-turn)
     /// Tool calling 루프 — LLM이 tool_use를 반환하면 실행 후 결과를 다시 보내고 최종 텍스트 응답을 받습니다.
     /// v1.1 실험적 기능. UI 통합 전 콘솔 테스트용.

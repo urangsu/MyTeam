@@ -131,6 +131,22 @@ final class WorkflowOrchestrator {
         // ── 새 요청 → 세션 예산 리셋 ──
         AICallBudgetManager.shared.beginSession()
 
+        // ── Workflow-based 스킬: korean.privacy-terms ──
+        if let privacySkill = enabledSkills.first(where: { $0.id == "korean.privacy-terms" }) {
+            if let request = KoreanPrivacyTermsService.extractRequest(from: userMessage) {
+                AppLog.info("[Skill] workflow korean.privacy-terms scopes=[\(privacySkill.allowedScopes.map { $0.rawValue }.joined(separator: ","))]")
+                effectiveScopes.formUnion(privacySkill.allowedScopes)
+                effectiveScopes.insert(.artifactGeneration)  // 항상 artifact 생성
+                await MainActor.run { manager.isWorkflowRunning = true }
+                defer { Task { @MainActor in manager.isWorkflowRunning = false } }
+                let task = Task { await self.runPrivacyTermsWorkflow(request: request, userMessage: userMessage, roomID: roomID, manager: manager, allowedScopes: effectiveScopes) }
+                currentWorkflowTask = task
+                await task.value
+                currentWorkflowTask = nil
+                return
+            }
+        }
+
         // ── 파일/문서 생성 요청이면 IntentRouter 없이 즉시 Workflow로 ──
         if requiresFileCreation(userMessage) {
             // skill match 없으면 기본 artifact scopes 추가
@@ -488,6 +504,120 @@ final class WorkflowOrchestrator {
             isUser: false,
             isSystem: isSystem
         )
+    }
+
+    // MARK: - Privacy Terms Workflow (Skill-specific)
+
+    /// korean.privacy-terms 스킬용 workflow
+    /// 추출된 요청을 바탕으로 LLM을 호출하여 privacy policy/terms of use를 생성한다.
+    private func runPrivacyTermsWorkflow(
+        request: KoreanPrivacyTermsRequest,
+        userMessage: String,
+        roomID: UUID,
+        manager: AgentWindowManager,
+        allowedScopes: Set<ToolScope>
+    ) async {
+        guard !Task.isCancelled else { return }
+
+        let workflowID = UUID()
+        await MainActor.run {
+            manager.currentWorkflowID = workflowID
+            WorkflowRunStore.shared.begin(workflowID: workflowID, roomID: roomID, userMessage: userMessage)
+        }
+
+        var finalStatus: WorkflowStatus = .cancelled
+        var finalEvent: AgentEvent = .workflowCancelled(workflowID: workflowID, roomID: roomID)
+        defer {
+            let capturedStatus = finalStatus
+            let capturedEvent = finalEvent
+            Task { [weak self] in
+                await self?.finishWorkflowRun(
+                    workflowID: workflowID, manager: manager,
+                    status: capturedStatus, event: capturedEvent
+                )
+            }
+        }
+
+        Task { await AgentEventBus.shared.publish(.workflowStarted(workflowID: workflowID, roomID: roomID)) }
+
+        let progressMsgID = postEphemeralProgress(
+            manager: manager, roomID: roomID,
+            text: "⏳ \(request.serviceName)의 개인정보처리방침을 생성하는 중입니다..."
+        )
+
+        let timeoutTask = Task {
+            try? await Task.sleep(nanoseconds: 15_000_000_000)
+            if !Task.isCancelled {
+                await MainActor.run { manager.typingAgentIDs.removeAll() }
+            }
+        }
+        defer { timeoutTask.cancel() }
+
+        guard !Task.isCancelled else { return }
+
+        // Budget check
+        guard AICallBudgetManager.shared.requestCall(.privacyTermsGen) else {
+            finalStatus = .failed
+            finalEvent = .modelCallFailed(workflowID: workflowID, provider: "budget", error: "예산 초과")
+            await MainActor.run {
+                removeProgressAndPost(
+                    manager: manager, roomID: roomID, progressID: progressMsgID,
+                    text: "⚠️ 작업 예산이 초과되었습니다.", isSystem: true
+                )
+            }
+            return
+        }
+
+        // Build prompt and call LLM
+        let prompt = KoreanPrivacyTermsService.buildPrompt(for: request)
+
+        do {
+            // Call LLM to generate privacy policy/terms
+            let generatedContent = try await AIService.shared.generatePrivacyTerms(prompt: prompt)
+            guard !Task.isCancelled else { return }
+
+            // Add safety disclaimer
+            let contentWithDisclaimer = KoreanPrivacyTermsArtifactWriter.addSafetyDisclaimer(to: generatedContent)
+
+            // Save artifact
+            if let artifact = await KoreanPrivacyTermsArtifactWriter.saveArtifact(
+                content: contentWithDisclaimer,
+                for: request,
+                workflowID: workflowID.uuidString
+            ) {
+                finalStatus = .completed
+                finalEvent = .workflowCompleted(workflowID: workflowID, roomID: roomID, artifactCount: 1)
+                await MainActor.run {
+                    removeProgressAndPost(
+                        manager: manager, roomID: roomID, progressID: progressMsgID,
+                        text: "✅ \(artifact.title) 생성 완료!\n파일: \(artifact.filename)",
+                        isSystem: false
+                    )
+                }
+                AppLog.info("[PrivacyTermsWorkflow] 완료 artifact=\(request.filename)")
+            } else {
+                finalStatus = .failed
+                finalEvent = .modelCallFailed(workflowID: workflowID, provider: "artifact", error: "파일 저장 실패")
+                await MainActor.run {
+                    removeProgressAndPost(
+                        manager: manager, roomID: roomID, progressID: progressMsgID,
+                        text: "❌ 파일 저장에 실패했습니다.",
+                        isSystem: true
+                    )
+                }
+            }
+        } catch {
+            finalStatus = .failed
+            finalEvent = .modelCallFailed(workflowID: workflowID, provider: "llm", error: error.localizedDescription)
+            await MainActor.run {
+                removeProgressAndPost(
+                    manager: manager, roomID: roomID, progressID: progressMsgID,
+                    text: "❌ 생성 중 오류가 발생했습니다: \(error.localizedDescription)",
+                    isSystem: true
+                )
+            }
+            AppLog.error("[PrivacyTermsWorkflow] LLM 호출 실패: \(error)")
+        }
     }
 
     // MARK: - Workflow finish helper

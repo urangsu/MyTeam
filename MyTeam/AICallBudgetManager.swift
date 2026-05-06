@@ -9,6 +9,7 @@ enum AICallType: String {
     case chitchat        = "chitchat"
     case selector        = "selector"
     case tts             = "tts"
+    case privacyTermsGen = "privacy_terms_gen"
 }
 
 // MARK: - AICallBudgetManager
@@ -26,12 +27,13 @@ final class AICallBudgetManager {
 
     // MARK: - 정책 (요청당 최대 허용 횟수)
     private let limits: [AICallType: Int] = [
-        .intentClassify: 1,   // 파일 생성 요청에서는 0 (dispatch에서 스킵됨)
-        .workflowPlan:   1,
-        .workflowRepair: 1,
-        .chitchat:       2,
-        .selector:       3,
-        .tts:            .max  // TTS는 횟수 제한 없음
+        .intentClassify:  1,   // 파일 생성 요청에서는 0 (dispatch에서 스킵됨)
+        .workflowPlan:    1,
+        .workflowRepair:  1,
+        .chitchat:        2,
+        .selector:        3,
+        .tts:             .max,  // TTS는 횟수 제한 없음
+        .privacyTermsGen: 1      // 개인정보처리방침·약관 생성은 요청당 1회
     ]
 
     // MARK: - Rolling window (전체 LLM 호출량 분당 제한)
@@ -115,6 +117,8 @@ final class AICallBudgetManager {
             return "⚠️ 너무 많은 에이전트 선택 요청이 발생했습니다."
         case .tts:
             return ""
+        case .privacyTermsGen:
+            return "⚠️ 개인정보처리방침·약관 생성 요청이 너무 자주 발생했습니다. 잠시 후 다시 시도해 주세요."
         }
     }
 

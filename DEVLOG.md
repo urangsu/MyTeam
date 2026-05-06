@@ -6,6 +6,58 @@
 
 ---
 
+## 2026-05-06 (Round 9 — Korean Privacy Terms Artifact Skill)
+
+### 빌드 목표
+- LLM 기반 개인정보처리방침·이용약관 artifact 생성 스킬 구현
+- 사용자 요청에서 회사명, 서비스명 추출
+- 생성된 Markdown을 Workspace artifact로 저장
+- 안전 면책문구 포함 및 budget 관리
+
+### 구현 완료
+
+| 항목 | 파일 | 내용 |
+|------|------|------|
+| 서비스 레이어 | KoreanPrivacyTermsService.swift | 요청 추출, 프롬프트 빌드, 파일명 생성 |
+| Artifact 저장 | KoreanPrivacyTermsArtifactWriter.swift | LLM 생성 결과를 Workspace에 저장, artifact 등록 |
+| Workflow 라우팅 | WorkflowOrchestrator.swift | privacy-terms 스킬 감지 → runPrivacyTermsWorkflow() 실행 |
+| LLM 호출 | AIService.swift | generatePrivacyTerms(prompt:) — 사용 가능한 provider 우선순위로 탐색 |
+| Budget 관리 | AICallBudgetManager.swift | .privacyTermsGen 호출 타입 추가, 요청당 1회 제한 |
+| Skill 설정 | BuiltInKoreanSkills.swift | korean.privacy-terms 스킬 이미 등록됨 (defaultEnabled: true) |
+
+### 스킬 흐름
+
+1. 사용자 메시지: "회사명 서비스명의 개인정보처리방침 만들어줘"
+2. SkillRegistry.matchEnabledSkills() → korean.privacy-terms 감지
+3. KoreanPrivacyTermsService.extractRequest() → 회사명, 서비스명, 문서타입 추출
+4. WorkflowOrchestrator.runPrivacyTermsWorkflow()
+   - 프롬프트 빌드
+   - AIService.generatePrivacyTerms() → LLM 호출
+   - 안전 면책문구 추가
+   - KoreanPrivacyTermsArtifactWriter.saveArtifact() → Workspace에 저장
+5. ✅ 완료: artifact 등록, 사용자에게 결과 표시
+
+### 검증 완료
+- BUILD SUCCEEDED ✅
+- 신규 파일 2개 project.pbxproj 등록 ✅
+- AICallBudgetManager switch 문 exhaustive ✅
+- KoreanPrivacyTermsService 타입 정의 완료 ✅
+
+### 주요 결정사항
+- **Workflow-based**: 스킬이 LLM 호출이므로 WorkflowEngine이 아닌 직접 AIService 호출로 빠른 응답
+- **Budget 카운트**: privacy-terms-gen은 별도 타입으로 요청당 1회만 허용
+- **Markdown + 면책**: AI 생성 결과에 필수 면책문구 자동 추가
+- **파일명**: "회사_서비스_개인정보처리방침_연도.md" 형식
+
+### 남은 과제
+- Privacy-terms artifact card UI (SkillResultRendererView 추가 TODO 주석 이미 있음)
+- 맞춤법 검사 실제 구현
+- RuntimeDiagnostics full UI
+- User Skill import UI
+- korean.accounting-tax 파일 업로드 기반 정리
+
+---
+
 ## 2026-05-06 (Round 8-4 — Finalize Skill Center + Diagnostics Placeholder)
 
 ### 빌드 목표

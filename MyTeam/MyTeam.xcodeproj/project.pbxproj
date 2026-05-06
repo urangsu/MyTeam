@@ -704,6 +704,13 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>092B861A5DFB4711A987A730</key>
+		<dict>
+			<key>fileRef</key>
+			<string>99A37C51D74744089DE6D8BE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
 		<key>093943A41ADD711355D4DF47</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -3118,6 +3125,17 @@
 			<string>치코_sleeping_045.png</string>
 			<key>path</key>
 			<string>Resources/Sprites/치코/치코_sleeping_045.png</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>33BDB0206ACA43B6A84A3528</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>KoreanPrivacyTermsService.swift</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
@@ -8882,6 +8900,8 @@
 			<array>
 				<string>E2EE60189BC5025E127B3DEC</string>
 				<string>6C28576ED0AA7ADD533DE690</string>
+				<string>33BDB0206ACA43B6A84A3528</string>
+				<string>99A37C51D74744089DE6D8BE</string>
 			</array>
 			<key>isa</key>
 			<string>PBXGroup</string>
@@ -10295,6 +10315,8 @@
 				<string>624503498323E76D169116FF</string>
 				<string>0A8DBCA631F8CD2D74B83DBF</string>
 				<string>F7583E86A3CCAD06F4BF6515</string>
+				<string>E38592CE24144381A131C1B9</string>
+				<string>092B861A5DFB4711A987A730</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -11822,6 +11844,17 @@
 			<string>치코_clockout_003.png</string>
 			<key>path</key>
 			<string>Resources/Sprites/치코/치코_clockout_003.png</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>99A37C51D74744089DE6D8BE</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>KoreanPrivacyTermsArtifactWriter.swift</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
@@ -16774,6 +16807,13 @@
 			<string>Resources/Sprites/치코/치코_greeting_001.png</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
+		</dict>
+		<key>E38592CE24144381A131C1B9</key>
+		<dict>
+			<key>fileRef</key>
+			<string>33BDB0206ACA43B6A84A3528</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
 		</dict>
 		<key>E3BCED940DAD6E0579E695C7</key>
 		<dict>
