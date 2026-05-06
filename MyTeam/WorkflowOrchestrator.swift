@@ -133,10 +133,50 @@ final class WorkflowOrchestrator {
 
         // ── Workflow-based 스킬: korean.privacy-terms ──
         if let privacySkill = enabledSkills.first(where: { $0.id == "korean.privacy-terms" }) {
+            // 1단계: 소유권 확인 (타사 공식 문서 방지)
+            if KoreanPrivacyTermsService.needsOwnershipConfirmation(for: userMessage) {
+                AppLog.info("[Skill] privacy-terms 소유권 확인 필요")
+                await MainActor.run {
+                    manager.addChatLog(
+                        roomID: roomID, agentID: "system", agentName: "스킬",
+                        text: """
+                        이 기능은 수석님이 직접 운영하거나 출시 준비 중인 서비스의 정책 초안 생성용입니다.
+
+                        타사/공공기관의 공식 문서처럼 보이는 문서는 생성할 수 없습니다.
+
+                        직접 운영하는 서비스라면 아래처럼 말씀해 주세요:
+                        "내가 출시할 IMMM 앱 개인정보처리방침과 이용약관 초안 만들어줘. Firebase 분석과 광고를 쓰고 결제는 없어."
+                        """,
+                        isUser: false, isSystem: true
+                    )
+                }
+                return  // LLM 호출 없음, isWorkflowRunning 변화 없음
+            }
+
+            // 2단계: 요청 추출 및 필수 정보 확인
             if let request = KoreanPrivacyTermsService.extractRequest(from: userMessage) {
+                // serviceName 유효성 확인
+                if request.serviceName.trimmingCharacters(in: .whitespaces).isEmpty {
+                    AppLog.info("[Skill] privacy-terms 서비스명 부족")
+                    await MainActor.run {
+                        manager.addChatLog(
+                            roomID: roomID, agentID: "system", agentName: "스킬",
+                            text: """
+                            개인정보처리방침·이용약관 초안을 만들려면 서비스명 또는 앱 이름이 필요합니다.
+
+                            예:
+                            "내 IMMM 앱의 개인정보처리방침과 이용약관 초안 만들어줘"
+                            """,
+                            isUser: false, isSystem: true
+                        )
+                    }
+                    return  // LLM 호출 없음
+                }
+
+                // 3단계: Workflow 실행
                 AppLog.info("[Skill] workflow korean.privacy-terms scopes=[\(privacySkill.allowedScopes.map { $0.rawValue }.joined(separator: ","))]")
                 effectiveScopes.formUnion(privacySkill.allowedScopes)
-                effectiveScopes.insert(.artifactGeneration)  // 항상 artifact 생성
+                effectiveScopes.insert(.artifactGeneration)
                 await MainActor.run { manager.isWorkflowRunning = true }
                 defer { Task { @MainActor in manager.isWorkflowRunning = false } }
                 let task = Task { await self.runPrivacyTermsWorkflow(request: request, userMessage: userMessage, roomID: roomID, manager: manager, allowedScopes: effectiveScopes) }
@@ -579,12 +619,14 @@ final class WorkflowOrchestrator {
             // Add safety disclaimer
             let contentWithDisclaimer = KoreanPrivacyTermsArtifactWriter.addSafetyDisclaimer(to: generatedContent)
 
-            // Save artifact
-            if let artifact = await KoreanPrivacyTermsArtifactWriter.saveArtifact(
-                content: contentWithDisclaimer,
-                for: request,
-                workflowID: workflowID.uuidString
-            ) {
+            // Save artifact (throws on error)
+            do {
+                let artifact = try await KoreanPrivacyTermsArtifactWriter.write(
+                    markdown: contentWithDisclaimer,
+                    for: request,
+                    workflowID: workflowID,
+                    roomID: roomID
+                )
                 finalStatus = .completed
                 finalEvent = .workflowCompleted(workflowID: workflowID, roomID: roomID, artifactCount: 1)
                 await MainActor.run {
@@ -595,16 +637,17 @@ final class WorkflowOrchestrator {
                     )
                 }
                 AppLog.info("[PrivacyTermsWorkflow] 완료 artifact=\(request.filename)")
-            } else {
+            } catch {
                 finalStatus = .failed
-                finalEvent = .modelCallFailed(workflowID: workflowID, provider: "artifact", error: "파일 저장 실패")
+                finalEvent = .modelCallFailed(workflowID: workflowID, provider: "artifact", error: error.localizedDescription)
                 await MainActor.run {
                     removeProgressAndPost(
                         manager: manager, roomID: roomID, progressID: progressMsgID,
-                        text: "❌ 파일 저장에 실패했습니다.",
+                        text: "❌ 파일 저장에 실패했습니다: \(error.localizedDescription)",
                         isSystem: true
                     )
                 }
+                AppLog.error("[PrivacyTermsWorkflow] 파일 저장 실패: \(error)")
             }
         } catch {
             finalStatus = .failed

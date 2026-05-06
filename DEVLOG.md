@@ -58,6 +58,55 @@
 
 ---
 
+## 2026-05-06 (Round 9 Hotfix — Korean Privacy Terms Security Hardening)
+
+### 보안 강화 목표
+- 위조 기업 문서 생성 방지 (ownership confirmation)
+- 서비스명 필수 입력 검증 (빈 값 거부)
+- LLM 호출 비용 관리 (provider fallback 제한)
+- UUID 기반 artifact 추적 강화
+
+### 구현 완료
+
+| 항목 | 파일 | 내용 |
+|------|------|------|
+| 요청 검증 | KoreanPrivacyTermsService.swift | extractRequest() returns nil if serviceName empty; added needsMoreInfo() + needsOwnershipConfirmation() |
+| 소유권 확인 | WorkflowOrchestrator.swift | dispatch() 상단에 ownership check → 기업명 키워드 + 소유 문맥 검증 후 early return |
+| Provider 제한 | AIService.swift | generatePrivacyTerms() Gemini 먼저 시도, 쿨다운 시 Claude 1회만 fallback (OpenAI 제외) |
+| Artifact 저장 | KoreanPrivacyTermsArtifactWriter.swift | write() 시그니처 변경 (UUID workflowID/roomID), 추적 로그 강화 |
+| 면책문구 | KoreanPrivacyTermsArtifactWriter.swift | "출시 준비용 초안", "법무팀 검토 필수", "기술 검수" 명시 |
+| 워크플로우 정리 | WorkflowOrchestrator.swift | serviceName 부재/ownership 실패 시 isWorkflowRunning 설정 전 early return (UI stuck 방지) |
+
+### 주요 검증 항목
+
+| 검증 항목 | 기대 결과 | 상태 |
+|---|---|---|
+| serviceName 비어있을 때 | extractRequest() returns nil, 사용자 프롬프트 "회사/서비스명을 말씀해 주세요" | ✅ |
+| "삼성 갤럭시 개인정보처리방침 만들어줘" | needsOwnershipConfirmation() 감지 → 정책 위반 경고 early return | ✅ |
+| "우리 갤럭시 앱 개인정보처리방침 만들어줘" | ownership context 있음 → 계속 진행 | ✅ |
+| Gemini 쿨다운 중 요청 | Claude fallback 1회만, OpenAI 시도 없음 | ✅ |
+| 프라이버시 생성 budget 초과 | AICallBudgetManager 1회 제한, 초과 시 차단 메시지 | ✅ |
+| Artifact roomID/workflowID 로그 | `[KoreanPrivacyTermsWriter] artifact 저장: ... workflowID=xxxx... roomID=yyyy...` | ✅ |
+
+### 모든 hotfix 항목 완료
+- ✅ KoreanPrivacyTermsRequest 구조 강화 (serviceName 필수)
+- ✅ needsMoreInfo() 구현
+- ✅ needsOwnershipConfirmation() + WorkflowOrchestrator 통합
+- ✅ 키워드 플래그 추출 (detectAds, detectPayments 등)
+- ✅ buildPrompt() 강화 (기능별 사용 현황 섹션)
+- ✅ Provider fallback 제한 (Gemini → Claude 1회만)
+- ✅ ArtifactWriter UUID 추적 (workflowID, roomID)
+- ✅ 면책문구 강화 (출시 준비용 초안, 법무팀 검토)
+- ✅ WorkflowOrchestrator 상태 정리 (early return)
+- ✅ BUILD SUCCEEDED
+
+### 주의사항
+- **High-risk 스킬 차단**: riskLevel ∈ {reservation, payment, accountLogin} 의 스킬은 defaultEnabled: false + requiresApprovalEveryRun: true 필수
+- **Provider 추가 금지**: OpenAI를 privacy-terms 생성에 사용하지 않음 (비용 관리)
+- **Gemini 쿨다운 존중**: 1분 내 429 응답 1회 → 120초 전체 provider 차단 (fallback만 사용)
+
+---
+
 ## 2026-05-06 (Round 8-4 — Finalize Skill Center + Diagnostics Placeholder)
 
 ### 빌드 목표

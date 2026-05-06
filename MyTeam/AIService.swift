@@ -873,23 +873,37 @@ final class AIService {
     /// 개인정보처리방침/이용약관을 생성한다.
     /// 사용 가능한 provider 우선순위로 탐색하여 처음 성공한 provider의 결과를 반환한다.
     func generatePrivacyTerms(prompt: String) async throws -> String {
-        let pairs: [(key: String, fn: (String) async throws -> String)] = [
-            ("geminiAPIKey", { key in try await self.geminiQuickCall(prompt: prompt, apiKey: key) }),
-            ("claudeAPIKey", { key in try await self.claudeQuickCall(prompt: prompt, apiKey: key) }),
-            ("openAIAPIKey", { key in try await self.openAIQuickCall(prompt: prompt, apiKey: key) }),
-        ]
-        for (keychainKey, fn) in pairs {
-            let apiKey = KeychainManager.load(key: keychainKey) ?? ""
-            guard !apiKey.isEmpty else { continue }
+        // ── Provider 선택 전략: Gemini 우선, 쿨다운 시 Claude 1회만 fallback ──
+        // OpenAI는 프라이버시 생성 목적으로는 사용하지 않음 (비용 관리)
+
+        // 1. Gemini 시도 (쿨다운 중이 아닐 때)
+        if !isGeminiProviderCoolingDown() {
+            if let geminiKey = KeychainManager.load(key: "geminiAPIKey"), !geminiKey.isEmpty {
+                do {
+                    let result = try await geminiQuickCall(prompt: prompt, apiKey: geminiKey)
+                    AppLog.info("[PrivacyTermsGen] LLM 생성 완료 (Gemini)")
+                    return result
+                } catch {
+                    AppLog.warning("[PrivacyTermsGen] Gemini 실패: \(error) — Claude fallback 시도")
+                    // Gemini 실패 시 아래의 fallback 진행
+                }
+            }
+        } else {
+            AppLog.warning("[PrivacyTermsGen] Gemini 쿨다운 중 — Claude fallback 시도")
+        }
+
+        // 2. Claude fallback (1회만, Gemini 부재/실패 시)
+        if let claudeKey = KeychainManager.load(key: "claudeAPIKey"), !claudeKey.isEmpty {
             do {
-                let result = try await fn(apiKey)
-                AppLog.info("[PrivacyTermsGen] LLM 생성 완료 (\(keychainKey.replacingOccurrences(of: "APIKey", with: "")))")
+                let result = try await claudeQuickCall(prompt: prompt, apiKey: claudeKey)
+                AppLog.info("[PrivacyTermsGen] LLM 생성 완료 (Claude fallback)")
                 return result
             } catch {
-                AppLog.warning("[PrivacyTermsGen] \(keychainKey) 실패: \(error)")
-                continue
+                AppLog.warning("[PrivacyTermsGen] Claude fallback 실패: \(error)")
+                // fallback 1회 초과 금지 — OpenAI 시도 없음
             }
         }
+
         throw AIServiceError.noAPIKeys
     }
 
