@@ -6,6 +6,48 @@
 
 ---
 
+## 2026-05-08 (Round 12 — StoreKit 2 Skeleton for Character Products)
+
+### 빌드 목표
+- Character 상품 결제를 위한 StoreKit 2 skeleton 추가
+- 첫 premium character 상품은 세나를 기준으로 product catalog 정리
+- 실제 구매 버튼 연결, entitlement propagation, premium 해금은 다음 단계로 보류
+- 기존 BYOK / Pro / CharacterDLC / Markdown / PrivacyTerms 동작 유지
+
+### 구현 완료
+
+| 항목 | 파일 | 내용 |
+|------|------|------|
+| 상품 ID 카탈로그 | ProductIDCatalog.swift | 캐릭터 DLC 및 Pro 구독 product id 상수 정의 |
+| StoreKit skeleton | PurchaseManager.swift | `Product.products`, `purchase`, `Transaction.updates`, `currentEntitlements` 뼈대 추가 |
+| productID 상수화 | CharacterCatalog.swift | premium 캐릭터 productID를 `ProductIDCatalog` 상수로 교체 |
+| mapping validator | CharacterCatalog.swift | DEBUG에서 built-in `agentID` ↔ `agentPersonas` 경고 로그 추가 |
+| DEBUG 노출 정리 | CharacterGalleryView.swift | 내부 `agentID` 텍스트를 DEBUG에서만 노출하도록 정리 |
+| 갤러리 문구 보강 | CharacterGalleryView.swift | 구매 버튼 비활성 / StoreKit 다음 단계 안내 문구 추가 |
+
+### 주요 결정사항
+
+- **StoreKit import 위치 제한**: `StoreKit` import는 `PurchaseManager.swift`에만 추가
+- **실제 구매 미연결**: 구매 버튼은 계속 disabled, `PurchaseManager.purchase()` UI 연결 없음
+- **entitlement 미연결**: `AppEntitlementManager`, `CharacterEntitlementManager`는 StoreKit 결과를 아직 반영하지 않음
+- **premium 미해금 유지**: 구매 성공 가정 로직을 넣지 않았고, premium 상태는 그대로 `출시 예정/잠김`
+- **StoreKit config 파일은 이번 라운드 제외**: Xcode local StoreKit configuration은 수동 생성 필요로 남김
+
+### 빌드 상태
+- BUILD SUCCEEDED ✅
+- StoreKit import는 `PurchaseManager.swift`에만 존재 ✅
+- 실제 구매 버튼 미연결 ✅
+- premium 캐릭터 미해금 ✅
+
+### 다음 단계
+- StoreKit config sandbox test
+- Character purchase button wiring
+- restore purchases UI
+- entitlement propagation
+- Pro subscription gating
+
+---
+
 ## 2026-05-07 (Round 11.5 — Monetization Foundation before StoreKit)
 
 ### 빌드 목표

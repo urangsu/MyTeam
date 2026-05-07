@@ -31,6 +31,11 @@ struct CharacterGalleryView: View {
             .padding(16)
         }
         .background(Color(NSColor.windowBackgroundColor))
+#if DEBUG
+        .onAppear {
+            CharacterCatalog.validateBuiltInAgentMappings()
+        }
+#endif
     }
 
     private func section(title: String, characters: [CharacterDLC]) -> some View {
@@ -39,7 +44,7 @@ struct CharacterGalleryView: View {
                 .font(.system(size: 14, weight: .semibold))
 
             if title == "프리미엄 캐릭터" {
-                Text("캐릭터 언락은 추후 결제로 연결되고, 모델 사용량은 BYOK 중심으로 운영됩니다.")
+                Text("프리미엄 캐릭터는 향후 StoreKit 구매로 해제됩니다. 이번 버전에서는 구매 버튼이 비활성화되어 있습니다.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -87,11 +92,13 @@ private struct CharacterGalleryCard: View {
             chipWrap(items: character.specialty, tint: .blue.opacity(0.12), textColor: .blue)
             chipWrap(items: character.bundledSkillIDs.map(skillLabel), tint: .green.opacity(0.12), textColor: .green)
 
+#if DEBUG
             if let agentID = character.agentID {
                 Text("연결 예정 agentID: \(agentID)")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(.secondary)
             }
+#endif
 
             HStack {
                 statusBadge

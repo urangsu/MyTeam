@@ -30,7 +30,7 @@ enum CharacterCatalog {
             previewVoiceAssetName: "세나_preview",
             bundledSkillIDs: ["korean.privacy-terms"],
             recommendedProvider: "openai",
-            productID: "com.myteam.character.sena",
+            productID: ProductIDCatalog.Character.sena,
             priceDisplay: "₩3,900",
             isBuiltIn: false,
             isPremium: true,
@@ -50,7 +50,7 @@ enum CharacterCatalog {
             previewVoiceAssetName: "카이_preview",
             bundledSkillIDs: ["korean.hwp-read"],
             recommendedProvider: "claude",
-            productID: "com.myteam.character.kai",
+            productID: ProductIDCatalog.Character.kai,
             priceDisplay: "₩3,900",
             isBuiltIn: false,
             isPremium: true,
@@ -70,7 +70,7 @@ enum CharacterCatalog {
             previewVoiceAssetName: "유나_preview",
             bundledSkillIDs: ["korean.naver-blog-research", "korean.naver-news"],
             recommendedProvider: "gemini",
-            productID: "com.myteam.character.yuna",
+            productID: ProductIDCatalog.Character.yuna,
             priceDisplay: "₩3,900",
             isBuiltIn: false,
             isPremium: true,
@@ -82,6 +82,24 @@ enum CharacterCatalog {
 
     static func character(id: String) -> CharacterDLC? {
         all.first { $0.id == id }
+    }
+
+    static func validateBuiltInAgentMappings() {
+        for character in builtIn {
+            guard let agentID = character.agentID else {
+                AppLog.warning("[CharacterCatalog] missing agentID for \(character.id)")
+                continue
+            }
+
+            guard let persona = agentPersonas[agentID] else {
+                AppLog.warning("[CharacterCatalog] invalid agentID \(agentID) for \(character.name)")
+                continue
+            }
+
+            if persona.name != character.name {
+                AppLog.warning("[CharacterCatalog] name mismatch \(character.name) ↔︎ \(persona.name)")
+            }
+        }
     }
 
     private static func makeBuiltIn(
