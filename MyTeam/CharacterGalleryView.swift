@@ -19,6 +19,10 @@ struct CharacterGalleryView: View {
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    Text("프리미엄 캐릭터는 향후 StoreKit 구매로 해제됩니다. AI 사용량은 기본 제공량을 초과하면 개인 API 키 연결을 권장합니다.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary.opacity(0.9))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 section(title: "기본 캐릭터", characters: CharacterCatalog.builtIn)
@@ -33,6 +37,13 @@ struct CharacterGalleryView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title)
                 .font(.system(size: 14, weight: .semibold))
+
+            if title == "프리미엄 캐릭터" {
+                Text("캐릭터 언락은 추후 결제로 연결되고, 모델 사용량은 BYOK 중심으로 운영됩니다.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(characters) { character in
@@ -75,6 +86,12 @@ private struct CharacterGalleryCard: View {
 
             chipWrap(items: character.specialty, tint: .blue.opacity(0.12), textColor: .blue)
             chipWrap(items: character.bundledSkillIDs.map(skillLabel), tint: .green.opacity(0.12), textColor: .green)
+
+            if let agentID = character.agentID {
+                Text("연결 예정 agentID: \(agentID)")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
 
             HStack {
                 statusBadge

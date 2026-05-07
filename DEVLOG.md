@@ -6,6 +6,46 @@
 
 ---
 
+## 2026-05-07 (Round 11.5 — Monetization Foundation before StoreKit)
+
+### 빌드 목표
+- StoreKit 2 구현 전 수익화/권한 모델 skeleton 정리
+- CharacterDLC와 기존 agent 시스템을 나중에 연결할 수 있도록 agentID 매핑 필드 추가
+- Pro / BYOK / 기본 제공량 정책을 코드 상수와 placeholder entitlement로 정리
+- 기존 채팅, 스킬, Markdown, 캐릭터 갤러리 동작 유지
+
+### 구현 완료
+
+| 항목 | 파일 | 내용 |
+|------|------|------|
+| agent 연결 필드 | CharacterDLC.swift / CharacterCatalog.swift | `agentID` optional 추가, built-in 11명에 기존 `agent_1` ~ `agent_11` 매핑 반영 |
+| 플랜 skeleton | MonetizationPlan.swift | `MyTeamPlan`, `PlanLimits`, `MonetizationPlanCatalog` placeholder 정책 추가 |
+| 앱 entitlement | AppEntitlementManager.swift | 현재 plan / limits / BYOK / 캐릭터 보유 여부를 읽는 placeholder 추가 |
+| BYOK 정책 | BYOKPolicy.swift | BYOK 지원 여부, 기본 제공량 분리 원칙, 지원 provider 목록 명시 |
+| 설정 UI 보강 | SettingsView.swift | 캐릭터 탭 상단에 plan summary 카드 추가, `Pro 준비 중` disabled 버튼 추가 |
+| 갤러리 문구 보강 | CharacterGalleryView.swift | StoreKit 예정 / BYOK 권장 문구와 built-in agentID 표시 추가 |
+
+### 주요 결정사항
+
+- **StoreKit 미구현**: 결제 프레임워크 import, transaction 처리, restore purchase는 아직 연결하지 않음
+- **Enforcement 미구현**: included usage / artifact / active agents 제한은 정책값만 두고 실제 차단은 하지 않음
+- **BYOK 우선 구조**: 포함 사용량은 온보딩용 placeholder로만 두고, 초과 사용은 개인 API 키 연결 정책을 코드에 명시
+- **agentID는 표시용 매핑만**: 기존 라우팅, 팀 편입, agent 배열은 건드리지 않음
+
+### 빌드 상태
+- BUILD SUCCEEDED ✅
+- StoreKit import 없음 ✅
+- 실제 결제 / 차단 로직 없음 ✅
+
+### 다음 단계
+- StoreKit 2 skeleton
+- ProductID catalog
+- Transaction listener
+- restore purchases
+- first premium character sandbox test
+
+---
+
 ## 2026-05-07 (Round 10 — Native Markdown Rendering)
 
 ### 빌드 목표

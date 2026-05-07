@@ -759,6 +759,27 @@
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
+		<key>094EE7E1A73885A5472F9EA5</key>
+		<dict>
+			<key>fileRef</key>
+			<string>F0FE7F45205ED6A4AF4269C5</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>094EE7E1A73885A5472F9EA6</key>
+		<dict>
+			<key>fileRef</key>
+			<string>F0FE7F45205ED6A4AF4269C6</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>094EE7E1A73885A5472F9EA7</key>
+		<dict>
+			<key>fileRef</key>
+			<string>F0FE7F45205ED6A4AF4269C7</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
 		<key>09848A151CEECD3025F7579C</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -9178,6 +9199,9 @@
 				<string>F0FE7F45205ED6A4AF4269C2</string>
 				<string>F0FE7F45205ED6A4AF4269C3</string>
 				<string>F0FE7F45205ED6A4AF4269C4</string>
+				<string>F0FE7F45205ED6A4AF4269C5</string>
+				<string>F0FE7F45205ED6A4AF4269C6</string>
+				<string>F0FE7F45205ED6A4AF4269C7</string>
 				<string>5C799682E79CACCFD76A60BD</string>
 				<string>7B4CCA73098C61D43348816D</string>
 				<string>1CB1E803CFA2E3C0EBDACE2A</string>
@@ -10317,6 +10341,9 @@
 				<string>094EE7E1A73885A5472F9EA2</string>
 				<string>094EE7E1A73885A5472F9EA3</string>
 				<string>094EE7E1A73885A5472F9EA4</string>
+				<string>094EE7E1A73885A5472F9EA5</string>
+				<string>094EE7E1A73885A5472F9EA6</string>
+				<string>094EE7E1A73885A5472F9EA7</string>
 				<string>BE979DE181375F061EA43298</string>
 				<string>111430F721A4324B4168CAC9</string>
 				<string>C5B27729D07F30FB9748FE9F</string>
@@ -17803,6 +17830,45 @@
 			<string>sourcecode.swift</string>
 			<key>path</key>
 			<string>CharacterGalleryView.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>F0FE7F45205ED6A4AF4269C5</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>MonetizationPlan.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>F0FE7F45205ED6A4AF4269C6</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>AppEntitlementManager.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>F0FE7F45205ED6A4AF4269C7</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>BYOKPolicy.swift</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>

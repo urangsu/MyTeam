@@ -2,22 +2,23 @@ import Foundation
 
 enum CharacterCatalog {
     static let builtIn: [CharacterDLC] = [
-        makeBuiltIn(id: "leo", name: "레오", subtitle: "시장과 수익 구조를 먼저 보는 전략가", portrait: "레오_profile", sprite: "leo_placeholder", bundledSkillIDs: ["korean.weather", "korean.dart"]),
-        makeBuiltIn(id: "luna", name: "루나", subtitle: "캠페인 감각이 빠른 콘텐츠 메이커", portrait: "루나_profile", sprite: "luna_placeholder", bundledSkillIDs: ["korean.naver-news", "korean.naver-blog-research"]),
-        makeBuiltIn(id: "moko", name: "모코", subtitle: "일정을 정리하고 우선순위를 잡는 PM", portrait: "모코_profile", sprite: "moko_placeholder", bundledSkillIDs: ["korean.weather"]),
-        makeBuiltIn(id: "rex", name: "렉스", subtitle: "규제와 리스크를 먼저 보는 법률 검토자", portrait: "렉스_profile", sprite: "rex_placeholder", bundledSkillIDs: ["korean.law-search"]),
-        makeBuiltIn(id: "chiko", name: "치코", subtitle: "사용자 흐름을 집요하게 보는 UX 메이트", portrait: "치코_profile", sprite: "치코", bundledSkillIDs: ["korean.naver-blog-research"]),
-        makeBuiltIn(id: "kei", name: "케이", subtitle: "로그와 권한 경계를 따지는 보안 분석가", portrait: "케이_profile", sprite: "kei_placeholder", bundledSkillIDs: ["korean.dart"]),
-        makeBuiltIn(id: "lucky", name: "래키", subtitle: "API와 서버 병목을 파고드는 백엔드 메이트", portrait: "래키_profile", sprite: "lucky_placeholder", bundledSkillIDs: ["korean.hwp-read"]),
-        makeBuiltIn(id: "pola", name: "폴라", subtitle: "거래 구조와 제안을 정리하는 BD 파트너", portrait: "폴라_profile", sprite: "pola_placeholder", bundledSkillIDs: ["korean.naver-news"]),
-        makeBuiltIn(id: "mongmong", name: "몽몽", subtitle: "공감과 응대를 챙기는 CS 메이트", portrait: "몽몽_profile", sprite: "mongmong_placeholder", bundledSkillIDs: ["korean.weather"]),
-        makeBuiltIn(id: "oliver", name: "올리버", subtitle: "엣지 케이스를 집요하게 찾는 QA 엔지니어", portrait: "올리버_profile", sprite: "oliver_placeholder", bundledSkillIDs: ["korean.hwp-read"]),
-        makeBuiltIn(id: "pin", name: "핀", subtitle: "시각 밀도를 다듬는 UI 디자이너", portrait: "핀_profile", sprite: "pin_placeholder", bundledSkillIDs: ["korean.naver-blog-research"])
+        makeBuiltIn(id: "leo", agentID: "agent_1", name: "레오", subtitle: "시장과 수익 구조를 먼저 보는 전략가", portrait: "레오_profile", sprite: "leo_placeholder", bundledSkillIDs: ["korean.weather", "korean.dart"]),
+        makeBuiltIn(id: "luna", agentID: "agent_2", name: "루나", subtitle: "캠페인 감각이 빠른 콘텐츠 메이커", portrait: "루나_profile", sprite: "luna_placeholder", bundledSkillIDs: ["korean.naver-news", "korean.naver-blog-research"]),
+        makeBuiltIn(id: "moko", agentID: "agent_3", name: "모코", subtitle: "일정을 정리하고 우선순위를 잡는 PM", portrait: "모코_profile", sprite: "moko_placeholder", bundledSkillIDs: ["korean.weather"]),
+        makeBuiltIn(id: "rex", agentID: "agent_6", name: "렉스", subtitle: "규제와 리스크를 먼저 보는 법률 검토자", portrait: "렉스_profile", sprite: "rex_placeholder", bundledSkillIDs: ["korean.law-search"]),
+        makeBuiltIn(id: "chiko", agentID: "agent_5", name: "치코", subtitle: "사용자 흐름을 집요하게 보는 UX 메이트", portrait: "치코_profile", sprite: "치코", bundledSkillIDs: ["korean.naver-blog-research"]),
+        makeBuiltIn(id: "kei", agentID: "agent_7", name: "케이", subtitle: "로그와 권한 경계를 따지는 보안 분석가", portrait: "케이_profile", sprite: "kei_placeholder", bundledSkillIDs: ["korean.dart"]),
+        makeBuiltIn(id: "lucky", agentID: "agent_8", name: "래키", subtitle: "API와 서버 병목을 파고드는 백엔드 메이트", portrait: "래키_profile", sprite: "lucky_placeholder", bundledSkillIDs: ["korean.hwp-read"]),
+        makeBuiltIn(id: "pola", agentID: "agent_9", name: "폴라", subtitle: "거래 구조와 제안을 정리하는 BD 파트너", portrait: "폴라_profile", sprite: "pola_placeholder", bundledSkillIDs: ["korean.naver-news"]),
+        makeBuiltIn(id: "mongmong", agentID: "agent_10", name: "몽몽", subtitle: "공감과 응대를 챙기는 CS 메이트", portrait: "몽몽_profile", sprite: "mongmong_placeholder", bundledSkillIDs: ["korean.weather"]),
+        makeBuiltIn(id: "oliver", agentID: "agent_11", name: "올리버", subtitle: "엣지 케이스를 집요하게 찾는 QA 엔지니어", portrait: "올리버_profile", sprite: "oliver_placeholder", bundledSkillIDs: ["korean.hwp-read"]),
+        makeBuiltIn(id: "pin", agentID: "agent_4", name: "핀", subtitle: "시각 밀도를 다듬는 UI 디자이너", portrait: "핀_profile", sprite: "pin_placeholder", bundledSkillIDs: ["korean.naver-blog-research"])
     ]
 
     static let premium: [CharacterDLC] = [
         CharacterDLC(
             id: "char.premium.sena",
+            agentID: nil,
             name: "세나",
             subtitle: "앱 출시 문구와 정책을 마감까지 끌고 가는 PM",
             role: "앱 출시 PM",
@@ -37,6 +38,7 @@ enum CharacterCatalog {
         ),
         CharacterDLC(
             id: "char.premium.kai",
+            agentID: nil,
             name: "카이",
             subtitle: "구조와 품질을 같이 보는 Swift 아키텍트",
             role: "코드 리뷰 아키텍트",
@@ -56,6 +58,7 @@ enum CharacterCatalog {
         ),
         CharacterDLC(
             id: "char.premium.yuna",
+            agentID: nil,
             name: "유나",
             subtitle: "블로그, SEO, 썸네일까지 묶어서 보는 콘텐츠 전략가",
             role: "콘텐츠 전략가",
@@ -83,6 +86,7 @@ enum CharacterCatalog {
 
     private static func makeBuiltIn(
         id: String,
+        agentID: String?,
         name: String,
         subtitle: String,
         portrait: String,
@@ -92,6 +96,7 @@ enum CharacterCatalog {
         let persona = personaForBuiltIn(name: name)
         return CharacterDLC(
             id: "char.builtin.\(id)",
+            agentID: agentID,
             name: name,
             subtitle: subtitle,
             role: persona.role,

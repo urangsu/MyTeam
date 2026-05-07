@@ -128,6 +128,7 @@ private class LocationHelper: NSObject, ObservableObject, CLLocationManagerDeleg
 // MARK: - SettingsView
 struct SettingsView: View {
     @EnvironmentObject var manager: AgentWindowManager
+    @ObservedObject private var appEntitlementManager = AppEntitlementManager.shared
 
     // ── 사용자 설정
     @AppStorage("userTitle")              private var userTitle: String = "수석님"
@@ -519,7 +520,51 @@ struct SettingsView: View {
 
     // MARK: - Tab 5: 캐릭터
     private var charactersTab: some View {
-        CharacterGalleryView()
+        VStack(spacing: 0) {
+            planSummaryCard
+            Divider()
+            CharacterGalleryView()
+        }
+    }
+
+    private var planSummaryCard: some View {
+        let limits = appEntitlementManager.currentLimits
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("플랜")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("현재 플랜: \(appEntitlementManager.currentPlan.displayName)")
+                        .font(.system(size: 12, weight: .medium))
+                    Text("기본 제공량은 온보딩용 placeholder이며, 초과 사용은 개인 API 키 연결을 전제로 합니다.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer()
+                Button("Pro 준비 중") {}
+                    .buttonStyle(.borderedProminent)
+                    .disabled(true)
+            }
+
+            HStack(spacing: 8) {
+                planBadge("일 \(limits.includedAIMessagesPerDay)회")
+                planBadge("BYOK 지원")
+                planBadge("결제 출시 예정")
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Color(NSColor.windowBackgroundColor))
+    }
+
+    private func planBadge(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(Capsule().fill(Color.secondary.opacity(0.12)))
     }
 
     // MARK: - 내부 로직

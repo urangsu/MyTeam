@@ -2,6 +2,7 @@ import Foundation
 
 struct CharacterDLC: Codable, Identifiable, Hashable {
     let id: String
+    let agentID: String?
     let name: String
     let subtitle: String
     let role: String
