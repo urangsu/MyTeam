@@ -1,8 +1,12 @@
 import SwiftUI
 import AppKit
+#if DEBUG
+import StoreKit
+#endif
 
 struct CharacterGalleryView: View {
     private let entitlementManager = CharacterEntitlementManager.shared
+    @ObservedObject private var purchaseManager = PurchaseManager.shared
 
     private let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -34,6 +38,9 @@ struct CharacterGalleryView: View {
 #if DEBUG
         .onAppear {
             CharacterCatalog.validateBuiltInAgentMappings()
+            Task {
+                await purchaseManager.loadProductsIfNeeded()
+            }
         }
 #endif
     }
@@ -58,6 +65,20 @@ struct CharacterGalleryView: View {
                     )
                 }
             }
+
+#if DEBUG
+            if title == "프리미엄 캐릭터" {
+                HStack {
+                    Spacer()
+                    Button("구매 상태 새로고침") {
+                        Task {
+                            await purchaseManager.refreshPurchasedProducts()
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+#endif
         }
     }
 }
@@ -65,6 +86,7 @@ struct CharacterGalleryView: View {
 private struct CharacterGalleryCard: View {
     let character: CharacterDLC
     let accessState: CharacterAccessState
+    @ObservedObject private var purchaseManager = PurchaseManager.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -102,6 +124,11 @@ private struct CharacterGalleryCard: View {
 
             HStack {
                 statusBadge
+#if DEBUG
+                if isDebugPurchased {
+                    debugPurchasedBadge
+                }
+#endif
                 Spacer()
                 if let priceDisplay = character.priceDisplay {
                     Text(priceDisplay)
@@ -110,9 +137,11 @@ private struct CharacterGalleryCard: View {
                 }
             }
 
-            Button(buttonTitle) {}
+            Button(buttonTitle) {
+                handleButtonTap()
+            }
                 .buttonStyle(.borderedProminent)
-                .disabled(true)
+                .disabled(isActionDisabled)
                 .frame(maxWidth: .infinity)
         }
         .padding(14)
@@ -173,11 +202,71 @@ private struct CharacterGalleryCard: View {
     }
 
     private var buttonTitle: String {
+#if DEBUG
+        if isDebugSenaCharacter {
+            if isDebugPurchased {
+                return "구매 확인됨"
+            }
+            if debugProduct != nil {
+                return "테스트 구매"
+            }
+            return "상품 준비 중"
+        }
+#endif
         switch accessState {
         case .owned: return "사용 가능"
         case .comingSoon: return "출시 예정"
         case .locked: return "구매 준비 중"
         }
+    }
+
+    private var isActionDisabled: Bool {
+#if DEBUG
+        if isDebugSenaCharacter {
+            return debugProduct == nil || isDebugPurchased
+        }
+#endif
+        return true
+    }
+
+#if DEBUG
+    private var isDebugSenaCharacter: Bool {
+        character.id == "char.premium.sena" && character.productID == ProductIDCatalog.Character.sena
+    }
+
+    private var debugProduct: Product? {
+        guard isDebugSenaCharacter, let productID = character.productID else { return nil }
+        return purchaseManager.product(for: productID)
+    }
+
+    private var isDebugPurchased: Bool {
+        guard let productID = character.productID else { return false }
+        return purchaseManager.isPurchased(productID)
+    }
+
+    private var debugPurchasedBadge: some View {
+        Text("구매 확인됨")
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(.blue)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(Color.blue.opacity(0.14)))
+    }
+#else
+    private var isDebugPurchased: Bool { false }
+#endif
+
+    private func handleButtonTap() {
+#if DEBUG
+        guard let product = debugProduct, !isDebugPurchased else { return }
+        Task {
+            do {
+                try await purchaseManager.purchase(product)
+            } catch {
+                AppLog.warning("[StoreKit] sena debug purchase failed: \(error.localizedDescription)")
+            }
+        }
+#endif
     }
 
     private func chipWrap(items: [String], tint: Color, textColor: Color) -> some View {

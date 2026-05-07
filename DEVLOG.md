@@ -6,6 +6,47 @@
 
 ---
 
+## 2026-05-08 (Round 13 — StoreKit Local Test + Sena Purchase Wiring)
+
+### 빌드 목표
+- StoreKit 2 skeleton을 DEBUG용 local test wiring까지 연결
+- 세나 1개만 테스트 구매 버튼 활성화
+- `purchasedProductIDs`에 세나 product id가 들어오는지 확인 가능한 UI 뼈대 추가
+- entitlement propagation, premium 해금, 팀 편입은 다음 단계로 보류
+
+### 구현 완료
+
+| 항목 | 파일 | 내용 |
+|------|------|------|
+| product helper | PurchaseManager.swift | `product(for:)`, `isPurchased(_:)`, `loadProductsIfNeeded()` 추가 |
+| DEBUG 구매 wiring | CharacterGalleryView.swift | DEBUG에서만 세나 `테스트 구매` 버튼 활성화 |
+| 구매 상태 확인 | CharacterGalleryView.swift | 세나 구매 시 `구매 확인됨` debug badge 표시 |
+| restore skeleton | CharacterGalleryView.swift | DEBUG에서 `구매 상태 새로고침` 버튼 추가 |
+| release 보호 | CharacterGalleryView.swift | release에서는 구매 버튼 비활성 상태 유지 |
+| StoreKit config | - | `.storekit` 파일은 이번 라운드에 자동 생성하지 않았고 Xcode 수동 생성 필요로 유지 |
+
+### 주요 결정사항
+
+- **세나만 테스트**: 카이/유나는 계속 비활성 상태 유지
+- **StoreKit import 범위 최소화**: `PurchaseManager.swift`와 DEBUG UI가 있는 `CharacterGalleryView.swift`로 제한
+- **premium 미해금 유지**: `purchasedProductIDs`는 debug 상태 확인용이며 entitlement에는 아직 반영하지 않음
+- **팀 편입 미구현**: 세나 구매가 확인돼도 팀에 자동 추가하지 않음
+
+### 빌드 상태
+- BUILD SUCCEEDED ✅
+- 세나 DEBUG 구매 버튼 wiring 완료 ✅
+- premium entitlement 미반영 유지 ✅
+
+### 다음 단계
+- MyTeam.storekit Xcode 수동 생성 + sandbox test
+- entitlement propagation
+- CharacterEntitlementManager 연결
+- restore purchases 정식 UI
+- Pro subscription gating
+- purchase error UX
+
+---
+
 ## 2026-05-08 (Round 12 — StoreKit 2 Skeleton for Character Products)
 
 ### 빌드 목표

@@ -36,6 +36,20 @@ final class PurchaseManager: ObservableObject {
         }
     }
 
+    func loadProductsIfNeeded() async {
+        if products.isEmpty {
+            await loadProducts()
+        }
+    }
+
+    func product(for id: String) -> Product? {
+        products.first { $0.id == id }
+    }
+
+    func isPurchased(_ productID: String) -> Bool {
+        purchasedProductIDs.contains(productID)
+    }
+
     func purchase(_ product: Product) async throws {
         let result = try await product.purchase()
 
