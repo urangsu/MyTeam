@@ -246,6 +246,46 @@
 
 ---
 
+## 2026-05-07 (Round 11 — CharacterDLC Model + Read-only Character Gallery)
+
+### 빌드 결과
+- **BUILD SUCCEEDED** · error 0 · new warning 0
+
+### 구현 완료
+
+| 항목 | 파일 | 내용 |
+|------|------|------|
+| CharacterDLC 모델 | `CharacterDLC.swift` | persona, sprite, role, bundled skill preset, preview voice/theme, 향후 StoreKit product id까지 담는 판매 단위 모델 추가 |
+| CharacterCatalog | `CharacterCatalog.swift` | built-in 11명과 premium 3명(세나/카이/유나)을 read-only catalog로 분리 |
+| entitlement placeholder | `CharacterEntitlementManager.swift` | built-in은 owned, premium은 comingSoon/locked로만 판정하는 결제 전 단계 관리자 |
+| read-only 갤러리 UI | `CharacterGalleryView.swift` | 기본 캐릭터/프리미엄 캐릭터 섹션, 상태 배지, bundled skill chips, disabled 버튼 제공 |
+| Settings 캐릭터 탭 | `SettingsView.swift` | 5번째 탭 `캐릭터` 추가, 폭만 `420 → 460`으로 소폭 조정 |
+
+### 정책 고정
+
+- StoreKit 2 **미구현**
+- premium 캐릭터 **실제 팀 편입 미연결**
+- 구매 버튼 **전부 disabled**
+- 기존 Agent roster / team routing / Markdown / skill 실행 경로 **미변경**
+
+### Round 11 premium 후보
+
+| 이름 | 역할 | productID | 표시가 |
+|------|------|-----------|--------|
+| 세나 | 앱 출시 PM | `com.myteam.character.sena` | `₩3,900` |
+| 카이 | 코드 리뷰 아키텍트 | `com.myteam.character.kai` | `₩3,900` |
+| 유나 | 콘텐츠 전략가 | `com.myteam.character.yuna` | `₩3,900` |
+
+### 다음 단계
+
+- StoreKit 2 skeleton
+- first premium character product wiring
+- character asset pipeline
+- feature gating
+- BYOK/basic usage gating
+
+---
+
 ## 2026-05-05 (Round 8-2 — Skill Result Card UI + Local Skill Polish)
 
 ### 빌드 목표

@@ -170,6 +170,7 @@ struct SettingsView: View {
                     Text("API 설정").tag(1)
                     Text("데스크 라우팅").tag(2)
                     Text("스킬").tag(3)
+                    Text("캐릭터").tag(4)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
@@ -195,12 +196,13 @@ struct SettingsView: View {
                 case 1: apiSettingsTab
                 case 2: deskRoutingTab
                 case 3: skillsTab
+                case 4: charactersTab
                 default: deskRoutingTab
                 }
             }
         }
         .preferredColorScheme(manager.isDarkMode ? .dark : .light)
-        .frame(width: 420, height: 420)
+        .frame(width: 460, height: 420)
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear { loadSettings() }
         .onChange(of: gps.locationText) { _, newVal in
@@ -513,6 +515,11 @@ struct SettingsView: View {
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
         }
+    }
+
+    // MARK: - Tab 5: 캐릭터
+    private var charactersTab: some View {
+        CharacterGalleryView()
     }
 
     // MARK: - 내부 로직
