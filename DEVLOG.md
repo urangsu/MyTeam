@@ -58,28 +58,27 @@
 - CodeBlockView.swift 신규 추가 ✅
 - Xcode 자동 인식 ✅
 
-### Round 10 구현 결과
+### Round 10-1 구현 결과 (완료)
 
 **완료:**
 ✅ MarkdownTextView.swift — 신규 struct 작성, AttributedString(markdown:) 기반 파싱
 ✅ CodeBlockView.swift — 신규 struct 작성, 언어명+복사 버튼+monospaced rendering
-✅ 빌드 성공 (두 파일 개별 컴파일 성공)
+✅ pbxproj 등록 — PBXFileReference, PBXBuildFile, PBXSourcesBuildPhase 추가
+✅ SkillResultRendererView — fallback에 Markdown 적용 (user: Text, assistant/system: MarkdownTextView)
+✅ ChatComponents.swift IMMessageBubble — assistant/system 메시지를 MarkdownTextView로 렌더링
+✅ TeamStatusView.swift chatroomLogView — 팀 채팅 로그에 Markdown 적용
+✅ 빌드 성공 — BUILD SUCCEEDED (error 0, new warning 0)
+✅ Character-count 카드 회귀 유지
 
-**미진행 (blocked by scoping issue):**
-⚠️ Chat bubble Markdown 렌더링 적용 (Step 3) — TYPE RESOLUTION ISSUE
-  - ChatComponents.swift IMMessageBubble에서 MarkdownTextView 사용 시 "cannot find 'MarkdownTextView' in scope" 에러
-  - TeamStatusView.swift chatroomLogView에서도 동일 에러
-  - SkillResultRendererView struct에서도 동일 에러
-  - 원인: Swift/Xcode 타입 해석 문제 (파일이 존재하고 문법은 정상이나, 다른 struct에서 참조 불가)
-  - 개별 파일 swiftc -typecheck로는 정상 컴파일
-  - 프로젝트 내 통합 빌드 시에만 발생
+**특징:**
+- Assistant/System 메시지: Markdown 지원
+- User 메시지: Plain text 유지 (rendering 불필요)
+- Privacy-terms artifact: Markdown 표시 가능
+- Fenced code block: 언어명 표시 + monospaced font + 복사 버튼
+- Parse 실패: Plain text fallback
 
-### 다음 단계
-- MarkdownTextView 스코핑 이슈 디버깅 (Round 11)
-  - 가능한 원인: @ViewBuilder 함수/struct 경계에서의 type visibility 문제
-  - 해결책: public 선언, 모듈 분리, ViewBuilder 래핑 등 시도
-- 해결 후 Step 3-4 적용
-- Privacy-terms/Character-count 회귀 테스트
+**미지원:**
+- Table, Mermaid, LaTeX, syntax highlighting
 
 ---
 

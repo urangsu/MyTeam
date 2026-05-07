@@ -78,14 +78,34 @@ struct IMMessageBubble: View {
                         .foregroundColor(agentColor.opacity(0.85))
                 }
 
-                Text(text)
-                    .font(.system(size: 14))
-                    .foregroundColor(isUser ? .white : (isDarkMode ? .white : .black))
+                // Assistant/System 메시지는 Markdown으로 렌더링, User는 plain text 유지
+                if isUser {
+                    Text(text)
+                        .font(.system(size: 14))
+                        .foregroundColor(.white)
+                        .textSelection(.enabled)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 9)
+                        .background(RoundedRectangle(cornerRadius: 18).fill(bubbleBg))
+                        .frame(maxWidth: 260, alignment: .trailing)
+                        .contextMenu {
+                            Button(action: {
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(text, forType: .string)
+                            }) {
+                                Label("복사", systemImage: "doc.on.doc")
+                            }
+                        }
+                } else {
+                    MarkdownTextView(
+                        text: text,
+                        isDarkMode: isDarkMode
+                    )
                     .textSelection(.enabled)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 9)
                     .background(RoundedRectangle(cornerRadius: 18).fill(bubbleBg))
-                    .frame(maxWidth: 260, alignment: isUser ? .trailing : .leading)
+                    .frame(maxWidth: 260, alignment: .leading)
                     .contextMenu {
                         Button(action: {
                             NSPasteboard.general.clearContents()
@@ -94,6 +114,7 @@ struct IMMessageBubble: View {
                             Label("복사", systemImage: "doc.on.doc")
                         }
                     }
+                }
 
                 if !sources.isEmpty {
                     SourceChipsView(sources: sources, isDarkMode: isDarkMode)

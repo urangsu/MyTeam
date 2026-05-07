@@ -393,14 +393,26 @@ struct TeamStatusView: View {
                                             isUser: log.isUser
                                         )
                                     } else {
-                                        Text(log.text)
-                                            .font(.system(size: 12))
-                                            .foregroundColor(log.isUser ? .white : textColor.opacity(0.9))
+                                        if log.isUser {
+                                            Text(log.text)
+                                                .font(.system(size: 12))
+                                                .foregroundColor(.white)
+                                                .padding(.horizontal, 10).padding(.vertical, 6)
+                                                .background(
+                                                    RoundedRectangle(cornerRadius: 12)
+                                                        .fill(Color.blue)
+                                                )
+                                        } else {
+                                            MarkdownTextView(
+                                                text: log.text,
+                                                isDarkMode: manager.isDarkMode
+                                            )
                                             .padding(.horizontal, 10).padding(.vertical, 6)
                                             .background(
                                                 RoundedRectangle(cornerRadius: 12)
-                                                    .fill(log.isUser ? Color.blue : (manager.isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.06)))
+                                                    .fill(manager.isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.06))
                                             )
+                                        }
                                     }
                                     if !log.sources.isEmpty {
                                         SourceChipsView(sources: log.sources, isDarkMode: manager.isDarkMode)

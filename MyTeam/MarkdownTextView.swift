@@ -6,7 +6,6 @@ import SwiftUI
 struct MarkdownTextView: View {
     let text: String
     let isDarkMode: Bool
-    let isUser: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {

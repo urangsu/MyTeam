@@ -32,8 +32,15 @@ struct SkillResultRendererView: View {
 
     @ViewBuilder
     private var fallbackContent: some View {
-        Text(text)
-            .font(.system(size: 12))
-            .foregroundColor(isUser ? .white : (isDarkMode ? .white.opacity(0.9) : .black.opacity(0.9)))
+        if isUser {
+            Text(text)
+                .font(.system(size: 12))
+                .foregroundColor(.white)
+        } else {
+            MarkdownTextView(
+                text: text,
+                isDarkMode: isDarkMode
+            )
+        }
     }
 }

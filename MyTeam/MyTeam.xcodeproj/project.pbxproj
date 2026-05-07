@@ -8073,6 +8073,33 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>EJQTMA4CMVL3TT4OEE1CV8DP</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>MarkdownTextView.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>GHM3FIWYA993WVU9SYCOOGFR</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>CodeBlockView.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+
 		<key>814D25485C163D889CF36E3B</key>
 		<dict>
 			<key>fileRef</key>
@@ -10317,6 +10344,8 @@
 				<string>F7583E86A3CCAD06F4BF6515</string>
 				<string>E38592CE24144381A131C1B9</string>
 				<string>092B861A5DFB4711A987A730</string>
+				<string>8S3IISQCOKNXYVX21EW4QZAU</string>
+				<string>YCIMZBF4YNNMDCSQA61Z9UF9</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -13056,6 +13085,21 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>8S3IISQCOKNXYVX21EW4QZAU</key>
+		<dict>
+			<key>fileRef</key>
+			<string>EJQTMA4CMVL3TT4OEE1CV8DP</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>YCIMZBF4YNNMDCSQA61Z9UF9</key>
+		<dict>
+			<key>fileRef</key>
+			<string>GHM3FIWYA993WVU9SYCOOGFR</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+
 		<key>AA11BB22CC33DD44EE55FF66</key>
 		<dict>
 			<key>isa</key>
