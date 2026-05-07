@@ -4,40 +4,36 @@ import SwiftUI
 /// 스킬 실행 결과를 공통으로 렌더링한다.
 /// skillID를 보고 적절한 카드 콘텐츠를 반환한다.
 /// 스킬이 처리 가능하지 않으면 일반 텍스트를 반환한다.
-@ViewBuilder
-func SkillResultRendererView(
-    skillID: String?,
-    text: String,
-    isDarkMode: Bool,
-    isUser: Bool
-) -> some View {
-    if let skillID = skillID {
-        switch skillID {
-        case "korean.character-count":
-            // TODO: Consider custom card vs KoreanTextMetricsResultCardView
-            KoreanTextMetricsResultCardView(text: text, isDarkMode: isDarkMode)
+struct SkillResultRendererView: View {
+    let skillID: String?
+    let text: String
+    let isDarkMode: Bool
+    let isUser: Bool
 
-        // TODO: korean.spell-check result card
-        // TODO: korean.privacy-terms artifact card
-        // TODO: runtime.diagnostics card
-        // TODO: korean.accounting-tax summary card
+    var body: some View {
+        if let skillID = skillID {
+            switch skillID {
+            case "korean.character-count":
+                // TODO: Consider custom card vs KoreanTextMetricsResultCardView
+                KoreanTextMetricsResultCardView(text: text, isDarkMode: isDarkMode)
 
-        default:
-            fallbackTextContent(text: text, isDarkMode: isDarkMode, isUser: isUser)
+            // TODO: korean.spell-check result card
+            // TODO: korean.privacy-terms artifact card
+            // TODO: runtime.diagnostics card
+            // TODO: korean.accounting-tax summary card
+
+            default:
+                fallbackContent
+            }
+        } else {
+            fallbackContent
         }
-    } else {
-        fallbackTextContent(text: text, isDarkMode: isDarkMode, isUser: isUser)
     }
-}
 
-// MARK: - Fallback Content
-@ViewBuilder
-private func fallbackTextContent(
-    text: String,
-    isDarkMode: Bool,
-    isUser: Bool
-) -> some View {
-    Text(text)
-        .font(.system(size: 12))
-        .foregroundColor(isUser ? .white : (isDarkMode ? .white.opacity(0.9) : .black.opacity(0.9)))
+    @ViewBuilder
+    private var fallbackContent: some View {
+        Text(text)
+            .font(.system(size: 12))
+            .foregroundColor(isUser ? .white : (isDarkMode ? .white.opacity(0.9) : .black.opacity(0.9)))
+    }
 }

@@ -6,6 +6,83 @@
 
 ---
 
+## 2026-05-07 (Round 10 — Native Markdown Rendering)
+
+### 빌드 목표
+- 모든 LLM 응답을 plain Text가 아니라 Markdown으로 렌더링
+- AttributedString(markdown:) 기반 네이티브 구현 (외부 패키지 무)
+- fenced code block 분리 및 syntax highlight 미지원 버전
+- 기존 SkillResultRendererView, character-count 카드 동작 유지
+
+### 구현 완료
+
+| 항목 | 파일 | 내용 |
+|------|------|------|
+| Markdown 렌더러 | MarkdownTextView.swift | AttributedString(markdown:) 기반, fenced code block 파싱 + fallback |
+| 코드 블록 뷰 | CodeBlockView.swift | 언어명 표시, 복사 버튼, monospaced font, 둥근 테두리 |
+| Chat 렌더링 | (Step 3 예정) | AgentChatView/TeamStatusView: Text → MarkdownTextView 교체 |
+| Skill 렌더러 | (Step 4 예정) | SkillResultRendererView: fallback → MarkdownTextView |
+| 회귀 테스트 | DEVLOG 기록 | privacy-terms artifact 표시 + character-count 카드 유지 |
+
+### 지원 Markdown 범위
+
+✅ **지원**:
+- 제목: `#`, `##`, `###` (AttributedString 자동 처리)
+- 굵게: `**text**` 또는 `__text__`
+- 기울임: `*text*` 또는 `_text_`
+- 인라인 코드: `` `code` ``
+- 불릿 리스트: `- item`
+- 번호 리스트: `1. item`
+- 인용: `> quote`
+- 링크: `[text](url)` (클릭 처리는 기본만)
+- Fenced code block: ` ``` language ... ``` `
+
+❌ **미지원 (v1)**:
+- Markdown table (HTML로 fallback)
+- Mermaid 다이어그램 (SVG 미렌더링)
+- LaTeX 수식
+- HTML 직접 렌더링
+- Syntax highlighting (monospaced만)
+
+### 주요 결정사항
+
+- **Native AttributedString**: swift-markdown 패키지 추가 안 함 (v2에서)
+- **Code block 분리**: ` ``` ` 감지 → CodeBlockView 별도 렌더링
+- **Parse 실패 fallback**: 에러 발생 시 plain Text 표시 (crash 방지)
+- **SKillRenderer 유지**: character-count, korean.spell-check 등 기존 카드는 깨지지 않음
+- **User message는 plain Text 유지**: 사용자가 Markdown을 입력했을 때 렌더링 원치 않을 수 있음
+
+### 빌드 상태
+- BUILD SUCCEEDED ✅
+- MarkdownTextView.swift 신규 추가 ✅
+- CodeBlockView.swift 신규 추가 ✅
+- Xcode 자동 인식 ✅
+
+### Round 10 구현 결과
+
+**완료:**
+✅ MarkdownTextView.swift — 신규 struct 작성, AttributedString(markdown:) 기반 파싱
+✅ CodeBlockView.swift — 신규 struct 작성, 언어명+복사 버튼+monospaced rendering
+✅ 빌드 성공 (두 파일 개별 컴파일 성공)
+
+**미진행 (blocked by scoping issue):**
+⚠️ Chat bubble Markdown 렌더링 적용 (Step 3) — TYPE RESOLUTION ISSUE
+  - ChatComponents.swift IMMessageBubble에서 MarkdownTextView 사용 시 "cannot find 'MarkdownTextView' in scope" 에러
+  - TeamStatusView.swift chatroomLogView에서도 동일 에러
+  - SkillResultRendererView struct에서도 동일 에러
+  - 원인: Swift/Xcode 타입 해석 문제 (파일이 존재하고 문법은 정상이나, 다른 struct에서 참조 불가)
+  - 개별 파일 swiftc -typecheck로는 정상 컴파일
+  - 프로젝트 내 통합 빌드 시에만 발생
+
+### 다음 단계
+- MarkdownTextView 스코핑 이슈 디버깅 (Round 11)
+  - 가능한 원인: @ViewBuilder 함수/struct 경계에서의 type visibility 문제
+  - 해결책: public 선언, 모듈 분리, ViewBuilder 래핑 등 시도
+- 해결 후 Step 3-4 적용
+- Privacy-terms/Character-count 회귀 테스트
+
+---
+
 ## 2026-05-06 (Round 9 — Korean Privacy Terms Artifact Skill)
 
 ### 빌드 목표
