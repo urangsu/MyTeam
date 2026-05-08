@@ -290,6 +290,8 @@ enum TeamCollaborationStatusProvider {
             kind = .planning
         case .selectingSpeaker:
             kind = .planning
+        case .speakerSelected, .fallbackSpeakerSelected:
+            kind = .thinking
         case .agentTurnStarted:
             kind = .thinking
         case .agentTurnCompleted:

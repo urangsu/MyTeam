@@ -5,6 +5,8 @@ struct TeamRuntimeState: Equatable {
         case idle
         case discussionStarted
         case selectingSpeaker
+        case speakerSelected
+        case fallbackSpeakerSelected
         case agentTurnStarted
         case agentTurnCompleted
         case discussionCompleted
@@ -22,6 +24,15 @@ struct TeamRuntimeState: Equatable {
 
     var isRecent: Bool {
         Date().timeIntervalSince(timestamp) <= 30
+    }
+
+    var isActive: Bool {
+        switch kind {
+        case .discussionStarted, .selectingSpeaker, .speakerSelected, .fallbackSpeakerSelected, .agentTurnStarted:
+            return true
+        case .idle, .agentTurnCompleted, .discussionCompleted, .discussionFailed:
+            return false
+        }
     }
 
     static func discussionStarted(roomID: UUID, detail: String = "팀 의견을 정리하는 중입니다.") -> TeamRuntimeState {
@@ -47,6 +58,25 @@ struct TeamRuntimeState: Equatable {
             detail: detail,
             timestamp: Date(),
             fallbackUsed: false
+        )
+    }
+
+    static func speakerSelected(
+        roomID: UUID,
+        agentID: String,
+        agentName: String,
+        detail: String,
+        fallbackUsed: Bool = false
+    ) -> TeamRuntimeState {
+        TeamRuntimeState(
+            kind: fallbackUsed ? .fallbackSpeakerSelected : .speakerSelected,
+            roomID: roomID,
+            agentID: agentID,
+            agentName: agentName,
+            title: fallbackUsed ? "담당자 자동 선택" : "담당자 선택",
+            detail: detail,
+            timestamp: Date(),
+            fallbackUsed: fallbackUsed
         )
     }
 

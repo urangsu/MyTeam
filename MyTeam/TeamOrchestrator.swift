@@ -236,12 +236,12 @@ class TeamOrchestrator {
                 )
             )
             await MainActor.run {
-                manager.teamRuntimeState = TeamRuntimeState.agentTurnStarted(
+                manager.teamRuntimeState = TeamRuntimeState.speakerSelected(
                     roomID: roomID,
                     agentID: firstAgent.id,
                     agentName: firstAgent.name,
-                    detail: "첫 의견을 정리하는 중입니다.",
-                    fallbackUsed: false
+                    detail: "첫 의견을 정리할 담당자를 정했습니다.",
+                    fallbackUsed: preferredFirstSpeaker == nil && leader == nil
                 )
             }
             await MainActor.run {
@@ -492,6 +492,15 @@ class TeamOrchestrator {
                     message: selection?.reason
                 )
             )
+            await MainActor.run {
+                manager.teamRuntimeState = TeamRuntimeState.speakerSelected(
+                    roomID: roomID,
+                    agentID: agent.id,
+                    agentName: agent.name,
+                    detail: selection?.usedFallback == true ? "대체 담당자가 선택되었습니다." : "담당자가 선택되었습니다.",
+                    fallbackUsed: selection?.usedFallback ?? false
+                )
+            }
 
             let prompt = buildDiscussionPrompt(agent: agent, history: history, turn: turn, totalAgents: agents.count)
 
