@@ -6,6 +6,36 @@
 
 ---
 
+## 2026-05-09 (Round 20 — App Launch Result UX + Artifact UX)
+
+### 빌드 목표
+- App Launch Pack 결과 메시지를 제품답게 정리
+- artifact 카드에 파일명 / 타입 / 저장 위치 / Finder 열기 / 경로 복사를 명확히 노출
+- 위임모드 auto-resume과 충돌하지 않도록 유지
+
+### 구현 완료
+
+| 항목 | 파일 | 내용 |
+|------|------|------|
+| prompt quality | AppLaunchSkillService.swift | 앱 이름 질문 UX / 작성 가정 / 공통 규칙 강화 |
+| completion message | AppLaunchArtifactWriter.swift | 완료 메시지와 실패 메시지 helper 추가 |
+| workflow messaging | WorkflowOrchestrator.swift | App Launch 완료/실패 문구를 helper 기반으로 정리 |
+| artifact card UX | ArtifactCardView.swift | 파일명, 타입, 저장 위치, Finder에서 열기, 경로 복사 표시 강화 |
+
+### 주요 결정사항
+
+- **artifact 저장 구조 유지**: ArtifactStore / IndexedArtifact는 건드리지 않는다.
+- **실제 자동 실행 미수정**: delegation auto-resume은 유지하고 App Launch와 충돌하지 않게만 정리한다.
+- **LLM 호출 미추가**: prompt와 메시지 품질만 개선한다.
+- **StoreKit / entitlement 미수정**: 결제·해금 경로는 건드리지 않는다.
+
+### 빌드 상태
+- BUILD SUCCEEDED ✅
+- new warning 0 ✅
+
+### 다음 단계
+- Round 21: Router Burn-in + Tool Contract Validation
+
 ## 2026-05-09 (Round 19.7 — Delegation Resume + Safe Auto-Continue)
 
 ### 빌드 목표
@@ -26,8 +56,9 @@
 
 ### 주요 결정사항
 
-- **실제 approval UI 미구현**: 승인 흐름은 텍스트 기반 skeleton만 유지한다.
-- **실제 자동 실행 미구현**: 결제 / 로그인 / 삭제 / 외부 전송은 자동으로 진행하지 않는다.
+- **approval UI 미구현**: 승인 흐름은 텍스트 기반 skeleton만 유지한다.
+- **안전한 pending request auto-resume 구현**: 승인 후 허용 범위의 pending request는 기존 routing으로 자동 재개한다.
+- **위험 작업 자동 실행 미구현**: 결제 / 로그인 / 삭제 / 외부 전송은 자동으로 진행하지 않는다.
 - **LLM 호출 미추가**: pending request 저장과 재개 판단은 로컬 문자열 / 상태 기반이다.
 - **StoreKit / entitlement 미수정**: 결제·해금 경로는 건드리지 않는다.
 
