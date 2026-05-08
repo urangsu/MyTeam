@@ -6,6 +6,38 @@
 
 ---
 
+## 2026-05-09 (Round 19.7 — Delegation Resume + Safe Auto-Continue)
+
+### 빌드 목표
+- 위임 요청의 원래 실행 의도를 room별 pending request로 보관
+- 승인 시 안전한 요청만 기존 routing으로 자동 재개
+- blocked / requires-reapproval 범위는 자동 재개하지 않음
+
+### 구현 완료
+
+| 항목 | 파일 | 내용 |
+|------|------|------|
+| pending execution | DelegatedExecutionRequest.swift | room별 pending delegated execution request 모델 추가 |
+| detector | DelegatedWorkflowDetector.swift | normalized execution message / route hint / execution request 생성 helper 추가 |
+| room 저장 | AgentWindowManager.swift | pending delegated execution request room별 메모리 저장 추가 |
+| recursion guard | WorkflowOrchestrator.swift | delegation 자동 재개 시 `skipDelegationMode`로 재귀 감지 방지 |
+| safe resume | WorkflowOrchestrator.swift | 승인 후 안전한 pending request는 기존 routing으로 재진입 |
+| diagnostics | RuntimeDiagnosticsService.swift | pending delegation route hint / status 요약 추가 |
+
+### 주요 결정사항
+
+- **실제 approval UI 미구현**: 승인 흐름은 텍스트 기반 skeleton만 유지한다.
+- **실제 자동 실행 미구현**: 결제 / 로그인 / 삭제 / 외부 전송은 자동으로 진행하지 않는다.
+- **LLM 호출 미추가**: pending request 저장과 재개 판단은 로컬 문자열 / 상태 기반이다.
+- **StoreKit / entitlement 미수정**: 결제·해금 경로는 건드리지 않는다.
+
+### 빌드 상태
+- BUILD SUCCEEDED ✅
+- new warning 0 ✅
+
+### 다음 단계
+- Round 20: App Launch Result UX + Artifact UX
+
 ## 2026-05-09 (Round 19.6 — Delegation Mode Activation)
 
 ### 빌드 목표
