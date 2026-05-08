@@ -14,7 +14,7 @@
 
 ## Current Execution Plan — 2026-05
 
-### Product Principle
+### Product Principle — Natural Language First Execution
 
 MyTeam은 사용자가 명령어를 외워서 쓰는 앱이 아니다.
 
@@ -43,23 +43,41 @@ MyTeam은 사용자가 명령어를 외워서 쓰는 앱이 아니다.
 - LLM 호출 없이 처리 가능한 local skill은 LLM보다 먼저 실행한다.
 - artifact 생성 요청은 가능한 한 명시적 파일 결과로 남긴다.
 - 팀 협업창은 현재 어떤 agent/tool/workflow가 동작 중인지 보여줘야 한다.
+- 모델 판단 자율성은 높이되, 실행은 scope / risk / approval policy로 통제한다.
+
+### Autonomy Policy
+
+- Level 1: Answer Only
+- Level 2: Local Skill
+- Level 3: LLM Skill
+- Level 4: Artifact Workflow / Tool Workflow
+- Level 5: External Write / Payment / Login
+
+- Level 1~3은 비교적 자유롭게 실행 가능하다.
+- Level 4는 scope / risk 검증이 필요하다.
+- Level 5 이상은 기본 차단 또는 명시 승인 필요하다.
+- 로그인, 결제, 예약, 외부 전송, destructive action은 자동 실행 금지다.
 
 ### Now
 
-#### Round 19 — Team Runtime Cohesion + Collaboration Status
+#### Recently Completed
+
+- Round 19.5 — TurnProfile + RouteTrace + DryRun Skeleton
+- Round 19 — Team Runtime Cohesion + Collaboration Status
+
+#### Round 19.6 — Delegation Mode Activation
 
 목표:
 
-- TeamOrchestrator agent turn event 기록
-- speaker selection event 기록
-- team discussion started/completed/failed event 기록
-- TeamStatusView가 현재 agent/task/status 표시
-- workflow/event 기반 상태 표시
-- idle 문구 rotation 유지
-- schedule popover 유지
-- IntentRouter 이중 호출 제거 또는 최소화 검토
-- LLM 호출 추가 금지
-- StoreKit/entitlement 변경 금지
+- 위임 의도 감지
+- 위임모드 draft / awaitingApproval 상태 저장
+- 승인 표현 감지
+- 승인 시 active 상태 전환
+- 종료 표현 감지
+- 종료 시 cancelled 상태 전환
+- 안전한 범위와 위험 범위 분리
+- 결제 / 로그인 / 삭제는 차단
+- 실제 자동 실행 / approval UI / dry-run UI는 아직 미구현
 
 ### Next
 
