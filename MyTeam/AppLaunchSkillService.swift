@@ -22,9 +22,7 @@ enum AppLaunchSkillService {
             return .launchChecklist
         }
 
-        if containsAny(lower, [
-            "수익화 점검표", "수익화 리뷰", "수익화 전략", "bm 점검", "비즈니스 모델 점검", "monetization review", "monetization checklist"
-        ]) {
+        if containsAny(lower, explicitMonetizationDocumentKeywords) {
             return .monetizationReview
         }
 
@@ -58,62 +56,69 @@ enum AppLaunchSkillService {
     }
 
     static func buildPrompt(_ request: AppLaunchSkillRequest) -> String {
-        let featureLines = request.coreFeatures.isEmpty
-            ? "- 핵심 기능: (사용자 설명을 바탕으로 자연스럽게 보강)"
-            : request.coreFeatures.map { "- \($0)" }.joined(separator: "\n")
-
         let categoryLine = request.appCategory.map { "앱 카테고리: \($0)" } ?? "앱 카테고리: 미지정"
         let userLine = request.targetUser.map { "타깃 사용자: \($0)" } ?? "타깃 사용자: 미지정"
         let monetizationLine = request.monetizationModel.map { "수익화 모델: \($0)" } ?? "수익화 모델: 미지정"
         let toneLine = request.tone.map { "톤: \($0)" } ?? "톤: 간결하고 출시 준비용"
         let noteBlock = request.notes.map { "\n추가 메모:\n\($0)" } ?? ""
+        let assumptions = buildAssumptionLines(for: request)
+        let coreFeatureLines = buildCoreFeatureLines(for: request)
 
         let sectionInstructions: String
         switch request.skillType {
         case .appStoreCopy:
             sectionInstructions = """
             # \(request.appName) 앱스토어 설명문 초안
-            ## 한 줄 소개
-            ## Subtitle 후보
-            ## Promotional Text 후보
-            ## Description
-            ## 주요 기능
-            ## 추천 키워드
-            ## 스크린샷 캡션 후보
-            ## 심사 전 확인사항
+            ## 0. 작성 가정
+            ## 1. 한 줄 소개
+            ## 2. Subtitle 후보 5개
+            ## 3. Promotional Text 후보 5개
+            ## 4. Description 초안
+            ## 5. 주요 기능 불릿
+            ## 6. 추천 키워드
+            ## 7. 스크린샷 캡션 후보
+            ## 8. 앱 심사 전 확인사항
+            ## 9. 다음 수정 포인트
             """
         case .onboardingCopy:
             sectionInstructions = """
             # \(request.appName) 온보딩 문구 초안
-            ## 3-step 온보딩
-            ## 첫 실행 환영 문구
-            ## 권한 요청 전 안내문
-            ## 빈 상태 문구
-            ## CTA 버튼 문구
+            ## 0. 작성 가정
+            ## 1. 3-step 온보딩
+            ## 2. 첫 실행 환영 문구
+            ## 3. 권한 요청 전 안내문
+            ## 4. 빈 상태 문구
+            ## 5. CTA 버튼 문구
+            ## 6. 에러/로딩 문구
+            ## 7. 다음 수정 포인트
             """
         case .launchChecklist:
             sectionInstructions = """
             # \(request.appName) 출시 체크리스트
-            ## 앱스토어 메타데이터
-            ## 개인정보/약관
-            ## 분석/광고/결제 SDK
-            ## 권한 문구
-            ## 테스트
-            ## 심사 제출
-            ## 출시 후 모니터링
+            ## 0. 작성 가정
+            ## 1. 앱스토어 메타데이터
+            ## 2. 개인정보/약관
+            ## 3. 분석/광고/결제 SDK
+            ## 4. 권한 문구
+            ## 5. 기능 테스트
+            ## 6. 결제/구독 테스트
+            ## 7. 심사 제출 전 점검
+            ## 8. 출시 후 모니터링
+            ## 9. 우선순위 높은 TODO
             """
         case .monetizationReview:
             sectionInstructions = """
             # \(request.appName) 수익화 점검표
-            ## 현재 BM 가정
-            ## 광고
-            ## 구독
-            ## 인앱결제
-            ## 가격 실험
-            ## 무료/Pro 경계
-            ## BYOK 정책
-            ## 리스크
-            ## 다음 액션
+            ## 0. 작성 가정
+            ## 1. 현재 BM 가정
+            ## 2. 무료/Pro 경계
+            ## 3. BYOK 정책
+            ## 4. 캐릭터 DLC 가능성
+            ## 5. 구독 가격 후보
+            ## 6. 인앱결제 후보
+            ## 7. 광고 적용 여부
+            ## 8. 리스크
+            ## 9. 다음 액션
             """
         }
 
@@ -122,14 +127,25 @@ enum AppLaunchSkillService {
         외부 API, 웹 검색, App Store Connect 호출 없이, 제공된 정보만으로 한국어 Markdown 초안을 작성하세요.
         출력은 Markdown 본문만 작성하고 코드펜스는 쓰지 마세요.
 
+        공통 작성 원칙:
+        - 실제 출시 실무자가 바로 수정할 수 있는 초안으로 작성하세요.
+        - 과장된 마케팅 문구보다 명확한 가치 제안을 우선하세요.
+        - 정보가 부족하면 반드시 "작성 가정" 섹션에 명시하세요.
+        - 한국어 앱스토어/랜딩페이지 문체에 맞추세요.
+        - 불필요한 장문을 피하고, 제목/소제목/불릿 중심으로 작성하세요.
+        - 각 섹션마다 바로 복사 가능한 문장을 제공하세요.
+        - 모호한 부분은 "다음 수정 포인트"로 분리하세요.
+        
+        작성 가정에 반영할 정보:
+        \(assumptions)
+
         \(sectionInstructions)
 
         \(categoryLine)
         \(userLine)
         \(monetizationLine)
         \(toneLine)
-        핵심 기능:
-        \(featureLines)
+        \(coreFeatureLines)
         \(noteBlock)
 
         문서 하단에는 반드시 아래 안전 문구를 한 줄 추가하세요.
@@ -143,11 +159,25 @@ enum AppLaunchSkillService {
     }
 
     static func questionMessage(for skillType: AppLaunchSkillType) -> String {
-        """
+        let example: String
+        switch skillType {
+        case .appStoreCopy:
+            example = "IMMM 앱스토어 설명문 만들어줘. 20대용 포토부스 앱이고, 4컷 사진과 프레임 꾸미기가 핵심이야."
+        case .onboardingCopy:
+            example = "IMMM 온보딩 문구 만들어줘. 첫 실행에서 사진 꾸미기 흐름이 바로 보이게 해줘."
+        case .launchChecklist:
+            example = "IMMM 출시 체크리스트 만들어줘. 앱스토어 심사와 개인정보/약관부터 정리하고 싶어."
+        case .monetizationReview:
+            example = "IMMM 수익화 점검표 만들어줘. 무료/Pro와 캐릭터 DLC를 어떻게 나눌지 보고 싶어."
+        }
+
+        return """
         앱 출시 문서를 만들려면 앱 이름이 필요합니다.
 
         예:
-        IMMM \(skillType.displayName) 만들어줘. 20대용 포토부스 앱이고, 4컷 사진과 프레임 꾸미기가 핵심이야.
+        \(example)
+
+        앱 이름만 알려주셔도 초안은 만들 수 있습니다.
         """
     }
 
@@ -155,8 +185,20 @@ enum AppLaunchSkillService {
         keywords.contains { lower.contains($0) }
     }
 
+    private static var explicitMonetizationDocumentKeywords: [String] {
+        [
+            "수익화 점검표",
+            "수익화 리뷰",
+            "수익화 전략",
+            "bm 점검",
+            "비즈니스 모델 점검",
+            "monetization review",
+            "monetization checklist"
+        ]
+    }
+
     private static func extractAppName(from message: String, skillType: AppLaunchSkillType) -> String? {
-        let explicitNameMarkers = ["앱 이름은", "앱명은", "앱 이름:", "앱명:", "이름은", "이름:"]
+        let explicitNameMarkers = ["앱 이름은", "앱명은", "앱 이름:", "앱명:", "이름은", "이름:", "앱은", "앱:", "앱 이름 =", "앱명 ="]
 
         for marker in explicitNameMarkers {
             if let range = message.range(of: marker, options: .caseInsensitive) {
@@ -165,6 +207,10 @@ enum AppLaunchSkillService {
                     return candidate
                 }
             }
+        }
+
+        if let candidate = extractQuotedAppName(from: message) {
+            return candidate
         }
 
         for keyword in skillTypeKeywords(skillType) {
@@ -179,6 +225,20 @@ enum AppLaunchSkillService {
             }
         }
 
+        return nil
+    }
+
+    private static func extractQuotedAppName(from message: String) -> String? {
+        let patterns = [
+            #"앱 이름은\s*["“](.+?)["”]"#,
+            #"앱명은\s*["“](.+?)["”]"#,
+            #"앱은\s*["“](.+?)["”]"#
+        ]
+        for pattern in patterns {
+            if let match = message.firstMatch(of: pattern), let candidate = sanitizeCandidate(match) {
+                return candidate
+            }
+        }
         return nil
     }
 
@@ -277,5 +337,71 @@ enum AppLaunchSkillService {
         let collapsed = String(mapped).replacingOccurrences(of: " ", with: "_")
         let trimmed = collapsed.trimmingCharacters(in: CharacterSet(charactersIn: "_"))
         return trimmed.isEmpty ? "app" : trimmed
+    }
+
+    private static func buildAssumptionLines(for request: AppLaunchSkillRequest) -> String {
+        var lines: [String] = []
+        if let category = request.appCategory {
+            lines.append("- 앱 카테고리: \(category)")
+        } else {
+            lines.append("- 앱 카테고리는 미지정이므로 출시 문서 관점에서 가장 일반적인 표현으로 정리")
+        }
+
+        if let targetUser = request.targetUser {
+            lines.append("- 타깃 사용자: \(targetUser)")
+        } else {
+            lines.append("- 타깃 사용자는 미지정이므로 일반 사용자 기준으로 작성")
+        }
+
+        if request.coreFeatures.isEmpty {
+            lines.append("- 핵심 기능은 사용자 설명을 바탕으로 일반적인 출시 초안 수준에서 보강")
+        } else {
+            lines.append("- 핵심 기능은 사용자가 언급한 항목을 우선 반영")
+        }
+
+        if let monetizationModel = request.monetizationModel {
+            lines.append("- 수익화 가정: \(monetizationModel)")
+        } else {
+            lines.append("- 수익화 정보는 미지정이므로 무료 중심 초안으로 작성하고, 필요 시 후속 검토 항목으로 분리")
+        }
+
+        if let tone = request.tone {
+            lines.append("- 톤: \(tone)")
+        } else {
+            lines.append("- 톤은 간결하고 출시 준비용으로 가정")
+        }
+
+        return lines.joined(separator: "\n")
+    }
+
+    private static func buildCoreFeatureLines(for request: AppLaunchSkillRequest) -> String {
+        if request.coreFeatures.isEmpty {
+            return """
+            핵심 기능:
+            - 사용자의 설명을 바탕으로 출시 초안에 맞게 보강
+            """
+        }
+
+        let lines = request.coreFeatures.map { "- \($0)" }.joined(separator: "\n")
+        return """
+        핵심 기능:
+        \(lines)
+        """
+    }
+
+}
+
+private extension String {
+    func firstMatch(of pattern: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
+            return nil
+        }
+        let range = NSRange(startIndex..<endIndex, in: self)
+        guard let match = regex.firstMatch(in: self, options: [], range: range),
+              match.numberOfRanges >= 2,
+              let resultRange = Range(match.range(at: 1), in: self) else {
+            return nil
+        }
+        return String(self[resultRange]).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

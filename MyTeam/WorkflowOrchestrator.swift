@@ -787,7 +787,14 @@ final class WorkflowOrchestrator {
                 await MainActor.run {
                     removeProgressAndPost(
                         manager: manager, roomID: roomID, progressID: progressMsgID,
-                        text: "✅ \(artifact.title) 생성 완료!\n파일: \(artifact.filename)",
+                        text: """
+                        ✅ \(artifact.title)을 생성했습니다.
+
+                        파일: \(artifact.filename)
+                        📂 Workspace/Finder에서 열 수 있습니다.
+
+                        문서는 초안이므로 실제 앱 구조와 심사 기준에 맞게 수정해 주세요.
+                        """,
                         isSystem: false
                     )
                 }
