@@ -53,12 +53,40 @@ final class WorkflowOrchestrator {
             let names = enabledSkills.map { $0.id }.joined(separator: ", ")
             let scopeStr = enabledSkills.flatMap { $0.allowedScopes.map { $0.rawValue } }.joined(separator: ",")
             AppLog.info("[Skill] matched enabled \(names) scopes=[\(scopeStr)]")
+            await MainActor.run {
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .skillMatched,
+                    message: "enabled skills: \(names)"
+                )
+            }
 
             // effectiveScopes에 enabled skills의 scopes 추가
             effectiveScopes.formUnion(enabledSkills.flatMap { $0.allowedScopes })
 
             // High-risk 스킬 match → 안내 메시지 후 early return
             if let highRiskSkill = enabledSkills.first(where: { SkillRegistry.isHighRiskSkill($0) }) {
+                await MainActor.run {
+                    self.recordRouteTrace(
+                        manager: manager,
+                        roomID: roomID,
+                        step: .blocked,
+                        message: "high-risk skill blocked: \(highRiskSkill.id)"
+                    )
+                    self.recordTurnProfile(
+                        manager: manager,
+                        roomID: roomID,
+                        userMessage: userMessage,
+                        route: .blockedHighRiskSkill,
+                        reason: "high-risk skill blocked: \(highRiskSkill.id)",
+                        matchedSkills: enabledSkills,
+                        effectiveScopes: effectiveScopes,
+                        expectedOutput: "block notice",
+                        requiresApproval: true,
+                        blockedTools: []
+                    )
+                }
                 await MainActor.run {
                     manager.addChatLog(
                         roomID: roomID, agentID: "system", agentName: "시스템",
@@ -80,6 +108,27 @@ final class WorkflowOrchestrator {
                     ? "'\(disabledSkill.name)' 스킬은 로그인/개인정보/예약/결제 등 민감 작업이므로 아직 비활성화되어 있습니다. 현재 버전에서는 사용할 수 없습니다."
                     : "'\(disabledSkill.name)' 스킬은 현재 비활성화되어 있습니다. 설정 > 스킬 탭에서 활성화할 수 있습니다."
                 await MainActor.run {
+                    self.recordRouteTrace(
+                        manager: manager,
+                        roomID: roomID,
+                        step: .disabledSkillMatched,
+                        message: "disabled skill: \(disabledSkill.id)"
+                    )
+                    self.recordTurnProfile(
+                        manager: manager,
+                        roomID: roomID,
+                        userMessage: userMessage,
+                        route: .disabledSkill,
+                        reason: "disabled skill matched: \(disabledSkill.id)",
+                        matchedSkills: [],
+                        disabledSkills: [disabledSkill],
+                        effectiveScopes: effectiveScopes,
+                        expectedOutput: "disable notice",
+                        requiresApproval: false,
+                        blockedTools: []
+                    )
+                }
+                await MainActor.run {
                     manager.addChatLog(
                         roomID: roomID, agentID: "system", agentName: "시스템",
                         text: message, isUser: false, isSystem: true
@@ -94,6 +143,26 @@ final class WorkflowOrchestrator {
         switch localResult {
         case .handled(let message, let skillID):
             AppLog.info("[Skill] local execute \(skillID)")
+            await MainActor.run {
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .localSkillHandled,
+                    message: "local skill handled: \(skillID)"
+                )
+                self.recordTurnProfile(
+                    manager: manager,
+                    roomID: roomID,
+                    userMessage: userMessage,
+                    route: .localSkill,
+                    reason: "local skill handled: \(skillID)",
+                    matchedSkills: enabledSkills.filter { $0.id == skillID },
+                    effectiveScopes: effectiveScopes,
+                    expectedOutput: "local skill result",
+                    requiresApproval: false,
+                    blockedTools: []
+                )
+            }
             await MainActor.run {
                 manager.addChatLog(
                     roomID: roomID,
@@ -110,6 +179,26 @@ final class WorkflowOrchestrator {
 
         case .needsInput(let message, let skillID):
             AppLog.info("[Skill] local execute \(skillID)")
+            await MainActor.run {
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .localSkillHandled,
+                    message: "local skill needs input: \(skillID)"
+                )
+                self.recordTurnProfile(
+                    manager: manager,
+                    roomID: roomID,
+                    userMessage: userMessage,
+                    route: .localSkill,
+                    reason: "local skill needs input: \(skillID)",
+                    matchedSkills: enabledSkills.filter { $0.id == skillID },
+                    effectiveScopes: effectiveScopes,
+                    expectedOutput: "input request",
+                    requiresApproval: false,
+                    blockedTools: []
+                )
+            }
             await MainActor.run {
                 manager.addChatLog(
                     roomID: roomID,
@@ -135,6 +224,25 @@ final class WorkflowOrchestrator {
         if let launchType = AppLaunchSkillService.detectSkillType(from: userMessage),
            enabledSkills.contains(where: { $0.id == launchType.skillID }) {
             let request = AppLaunchSkillService.extractRequest(from: userMessage, skillType: launchType)
+            await MainActor.run {
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .appLaunchDetected,
+                    message: "app launch detected: \(launchType.skillID)"
+                )
+                self.recordTurnProfile(
+                    manager: manager,
+                    roomID: roomID,
+                    userMessage: userMessage,
+                    route: .appLaunchPack,
+                    reason: "app launch skill detected: \(launchType.skillID)",
+                    matchedSkills: enabledSkills.filter { $0.id == launchType.skillID },
+                    effectiveScopes: effectiveScopes,
+                    expectedOutput: "markdown artifact",
+                    requiresApproval: false
+                )
+            }
             let missing = AppLaunchSkillService.needsMoreInfo(request)
             if !missing.isEmpty {
                 AppLog.info("[Skill] app-launch-pack missing info: \(missing.joined(separator: ", "))")
@@ -172,6 +280,25 @@ final class WorkflowOrchestrator {
 
         // ── Workflow-based 스킬: korean.privacy-terms ──
         if let privacySkill = enabledSkills.first(where: { $0.id == "korean.privacy-terms" }) {
+            await MainActor.run {
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .privacyTermsDetected,
+                    message: "privacy terms detected: \(privacySkill.id)"
+                )
+                self.recordTurnProfile(
+                    manager: manager,
+                    roomID: roomID,
+                    userMessage: userMessage,
+                    route: .privacyTerms,
+                    reason: "privacy terms skill detected: \(privacySkill.id)",
+                    matchedSkills: [privacySkill],
+                    effectiveScopes: effectiveScopes,
+                    expectedOutput: "privacy terms artifact",
+                    requiresApproval: false
+                )
+            }
             // 1단계: 소유권 확인 (타사 공식 문서 방지)
             if KoreanPrivacyTermsService.needsOwnershipConfirmation(for: userMessage) {
                 AppLog.info("[Skill] privacy-terms 소유권 확인 필요")
@@ -233,6 +360,25 @@ final class WorkflowOrchestrator {
                 effectiveScopes.insert(.artifactGeneration)
             }
             AppLog.info("[WorkflowOrchestrator] 파일 생성 요청 감지 → workflow 즉시 실행 scopes=\(effectiveScopes.map { $0.rawValue }.sorted())")
+            await MainActor.run {
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .fileCreationDetected,
+                    message: "file creation workflow detected"
+                )
+                self.recordTurnProfile(
+                    manager: manager,
+                    roomID: roomID,
+                    userMessage: userMessage,
+                    route: .artifactWorkflow,
+                    reason: "file creation heuristic matched",
+                    matchedSkills: enabledSkills,
+                    effectiveScopes: effectiveScopes,
+                    expectedOutput: "artifact file",
+                    requiresApproval: false
+                )
+            }
             Task { await AgentEventBus.shared.publish(AgentEvent(type: .routeDecided, roomID: eventRoomID,
                                                                   payload: AgentEventPayload(message: "artifactGeneration"))) }
             await MainActor.run { manager.isWorkflowRunning = true }
@@ -249,9 +395,57 @@ final class WorkflowOrchestrator {
         let routing = await classifyRouting(message: userMessage, manager: manager)
         let intent = routing.intent
         AppLog.info("[WorkflowOrchestrator] Intent: \(intent.rawValue)")
+        let isFallbackRouting =
+            routing.intent == .chitchat &&
+            routing.taskCategory == nil &&
+            routing.workOrders == nil &&
+            routing.proactiveMessage == nil &&
+            routing.responseDepth == .short &&
+            routing.turnBudget == 2 &&
+            routing.needsTool == false &&
+            routing.needsWeb == false &&
+            routing.riskLevel == .low &&
+            routing.requiresFinalSummary == false
+        if isFallbackRouting {
+            await MainActor.run {
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .fallback,
+                    message: "IntentRouter fallback -> chitchat"
+                )
+            }
+        }
+        await MainActor.run {
+            self.recordRouteTrace(
+                manager: manager,
+                roomID: roomID,
+                step: .intentClassified,
+                message: "intent=\(intent.rawValue) route=\(routing.intent.rawValue)"
+            )
+        }
 
         switch intent {
         case .chitchat, .quickAnswer:
+            await MainActor.run {
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .directChatSelected,
+                    message: "direct chat selected: \(intent.rawValue)"
+                )
+                self.recordTurnProfile(
+                    manager: manager,
+                    roomID: roomID,
+                    userMessage: userMessage,
+                    route: intent == .chitchat ? .chitchat : .directChat,
+                    reason: isFallbackRouting ? "IntentRouter fallback" : "IntentRouter selected \(intent.rawValue)",
+                    matchedSkills: enabledSkills,
+                    effectiveScopes: effectiveScopes,
+                    expectedOutput: "direct chat response",
+                    requiresApproval: false
+                )
+            }
             // IntentRouter는 이미 1회 호출됨. TeamOrchestrator는 다시 분류하지 않는 전용 메서드 사용.
             await TeamOrchestrator.shared.runChitchatOnly(
                 userMessage: userMessage,
@@ -259,6 +453,25 @@ final class WorkflowOrchestrator {
                 manager: manager
             )
         case .task, .research, .decision:
+            await MainActor.run {
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .teamDiscussionSelected,
+                    message: "team discussion selected: \(intent.rawValue)"
+                )
+                self.recordTurnProfile(
+                    manager: manager,
+                    roomID: roomID,
+                    userMessage: userMessage,
+                    route: .teamDiscussion,
+                    reason: "IntentRouter selected \(intent.rawValue)",
+                    matchedSkills: enabledSkills,
+                    effectiveScopes: effectiveScopes,
+                    expectedOutput: "team discussion response",
+                    requiresApproval: false
+                )
+            }
             await TeamOrchestrator.shared.runTeamDiscussion(
                 userMessage: userMessage,
                 roomID: roomID,
@@ -326,6 +539,56 @@ final class WorkflowOrchestrator {
 
     private func classifyIntent(message: String, manager: AgentWindowManager) async -> UserIntent {
         await classifyRouting(message: message, manager: manager).intent
+    }
+
+    @MainActor
+    private func recordRouteTrace(
+        manager: AgentWindowManager,
+        roomID: UUID,
+        step: RouteTrace.Step,
+        message: String
+    ) {
+        manager.appendRouteTrace(
+            RouteTrace(
+                id: UUID(),
+                roomID: roomID,
+                step: step,
+                message: message,
+                timestamp: Date()
+            )
+        )
+    }
+
+    @MainActor
+    private func recordTurnProfile(
+        manager: AgentWindowManager,
+        roomID: UUID,
+        userMessage: String,
+        route: TurnProfile.Route,
+        reason: String,
+        matchedSkills: [SkillManifest],
+        disabledSkills: [SkillManifest] = [],
+        effectiveScopes: Set<ToolScope>,
+        expectedOutput: String,
+        requiresApproval: Bool = false,
+        blockedTools: [String] = []
+    ) {
+        let profile = TurnProfile(
+            id: UUID(),
+            roomID: roomID,
+            userMessagePreview: String(userMessage.prefix(120)),
+            selectedRoute: route,
+            routeReason: reason,
+            matchedSkillIDs: matchedSkills.map(\.id),
+            disabledSkillIDs: disabledSkills.map(\.id),
+            effectiveScopes: effectiveScopes.map(\.rawValue).sorted(),
+            candidateTools: ToolRegistry.shared.tools(for: effectiveScopes).map(\.name),
+            blockedTools: blockedTools,
+            expectedOutput: expectedOutput,
+            requiresApproval: requiresApproval,
+            createdAt: Date()
+        )
+        manager.recordTurnProfile(profile)
     }
 
     // MARK: - PlannerResult — 실패 이유를 사용자까지 보존
