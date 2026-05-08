@@ -36,6 +36,34 @@ enum DelegatedWorkflowDetector {
         "자동 진행 그만"
     ]
 
+    private static let appLaunchKeywords = [
+        "앱스토어 설명문",
+        "앱스토어",
+        "온보딩",
+        "출시 체크리스트",
+        "수익화 점검표",
+        "랜딩페이지",
+        "릴리즈 노트",
+        "스크린샷 캡션"
+    ]
+
+    private static let privacyTermsKeywords = [
+        "개인정보처리방침",
+        "이용약관",
+        "정책 초안"
+    ]
+
+    private static let artifactWorkflowKeywords = [
+        "ppt",
+        "피피티",
+        "엑셀",
+        "스프레드시트",
+        "보고서",
+        "파일",
+        "문서",
+        "초안"
+    ]
+
     static func isDelegationRequest(_ message: String) -> Bool {
         let lower = message.lowercased()
         return containsAny(lower, keywords: requestKeywords)
@@ -73,6 +101,19 @@ enum DelegatedWorkflowDetector {
         let lower = message.lowercased()
         var scopes: [DelegationContract.Scope] = []
 
+        if containsAny(lower, keywords: appLaunchKeywords + privacyTermsKeywords + [
+            "앱스토어 설명문",
+            "온보딩",
+            "출시 체크리스트",
+            "수익화 점검표",
+            "랜딩페이지",
+            "릴리즈 노트",
+            "스크린샷 캡션"
+        ]) {
+            scopes.append(.artifactCreation)
+            scopes.append(.llmSkill)
+        }
+
         if containsAny(lower, keywords: ["답변", "요약", "설명", "정리", "응답"]) {
             scopes.append(.answerOnly)
         }
@@ -82,7 +123,7 @@ enum DelegatedWorkflowDetector {
         if containsAny(lower, keywords: ["llm", "모델", "추론", "분석", "생성"]) {
             scopes.append(.llmSkill)
         }
-        if containsAny(lower, keywords: ["markdown", "md", "문서", "파일", "보고서", "체크리스트", "초안", "artifact", "산출물"]) {
+        if containsAny(lower, keywords: ["markdown", "md", "문서", "파일", "보고서", "체크리스트", "초안", "artifact", "산출물"] + artifactWorkflowKeywords) {
             scopes.append(.artifactCreation)
         }
         if containsAny(lower, keywords: ["툴", "도구", "브라우저", "웹", "검색", "외부"]) {
@@ -102,6 +143,66 @@ enum DelegatedWorkflowDetector {
         }
 
         return dedupe(scopes)
+    }
+
+    static func normalizedExecutionMessage(from message: String) -> String {
+        var cleaned = message
+        for keyword in requestKeywords + approvalKeywords + cancelKeywords + ["위임모드", "전체 진행", "자동 진행"] {
+            cleaned = cleaned.replacingOccurrences(
+                of: keyword,
+                with: " ",
+                options: [.caseInsensitive, .diacriticInsensitive],
+                range: nil
+            )
+        }
+
+        cleaned = cleaned
+            .replacingOccurrences(of: "맡겨줘", with: " ", options: [.caseInsensitive, .diacriticInsensitive], range: nil)
+            .replacingOccurrences(of: "알아서", with: " ", options: [.caseInsensitive, .diacriticInsensitive], range: nil)
+            .replacingOccurrences(of: "기획부터 결과까지", with: " ", options: [.caseInsensitive, .diacriticInsensitive], range: nil)
+            .replacingOccurrences(of: "처음부터 끝까지", with: " ", options: [.caseInsensitive, .diacriticInsensitive], range: nil)
+            .replacingOccurrences(of: "전체 진행해줘", with: " ", options: [.caseInsensitive, .diacriticInsensitive], range: nil)
+            .replacingOccurrences(of: "알아서 해줘", with: " ", options: [.caseInsensitive, .diacriticInsensitive], range: nil)
+
+        let normalized = cleaned
+            .components(separatedBy: .whitespacesAndNewlines)
+            .joined(separator: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let shortened = String(normalized.prefix(480))
+        return shortened.isEmpty ? "사용자가 요청한 작업" : shortened
+    }
+
+    static func inferRouteHint(from message: String) -> String? {
+        let lower = message.lowercased()
+
+        if containsAny(lower, keywords: appLaunchKeywords + ["앱스토어 설명문", "온보딩", "출시 체크리스트", "수익화 점검표"]) {
+            return "appLaunchPack"
+        }
+        if containsAny(lower, keywords: privacyTermsKeywords) {
+            return "privacyTerms"
+        }
+        if containsAny(lower, keywords: artifactWorkflowKeywords) {
+            return "artifactWorkflow"
+        }
+        return "teamDiscussion"
+    }
+
+    static func buildExecutionRequest(
+        roomID: UUID,
+        contract: DelegationContract,
+        message: String
+    ) -> DelegatedExecutionRequest {
+        DelegatedExecutionRequest(
+            id: UUID(),
+            roomID: roomID,
+            contractID: contract.id,
+            originalMessagePreview: String(message.prefix(120)),
+            normalizedExecutionMessage: normalizedExecutionMessage(from: message),
+            routeHint: inferRouteHint(from: message),
+            status: .pendingApproval,
+            createdAt: Date()
+        )
     }
 
     static func buildContract(roomID: UUID, message: String) -> DelegationContract {

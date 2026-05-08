@@ -8,6 +8,9 @@ struct RouteTrace: Identifiable, Equatable {
         case delegationDetected
         case delegationApproved
         case delegationCancelled
+        case delegationResumePrepared
+        case delegationResumed
+        case delegationResumeBlocked
         case approvalRequired
         case approvalBlocked
         case appLaunchDetected

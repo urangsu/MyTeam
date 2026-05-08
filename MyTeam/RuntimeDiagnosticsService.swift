@@ -42,6 +42,8 @@ struct RuntimeDiagnosticsSnapshot {
     let delegationModeStatus: String?
     let activeDelegationGoal: String?
     let delegatedPlanStepCount: Int
+    let pendingDelegatedRouteHint: String?
+    let pendingDelegatedExecutionStatus: String?
 
     // Workspace
     let workspacePath: String
@@ -85,6 +87,9 @@ struct RuntimeDiagnosticsSnapshot {
         } else {
             lines.append("delegation: inactive")
         }
+        if let pendingDelegatedRouteHint {
+            lines.append("delegationPending: \(pendingDelegatedRouteHint) status=\(pendingDelegatedExecutionStatus ?? "nil")")
+        }
         lines.append("workspace: \(workspacePath)")
         lines.append("recentEvents: \(recentEventCount) | latest: \(latestEventSummary ?? "none")")
 
@@ -118,6 +123,7 @@ final class RuntimeDiagnosticsService {
         let delegationState = currentRoomID.flatMap { manager.delegationModeState(for: $0) }
         let delegationContract = currentRoomID.flatMap { manager.activeDelegationContract(for: $0) }
         let delegationPlan = currentRoomID.flatMap { manager.delegatedWorkflowPlan(for: $0) }
+        let pendingDelegatedRequest = currentRoomID.flatMap { manager.pendingDelegatedExecutionRequest(for: $0) }
 
         return RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
@@ -141,6 +147,8 @@ final class RuntimeDiagnosticsService {
             delegationModeStatus: delegationState.map { $0.status.rawValue },
             activeDelegationGoal: delegationContract?.goal ?? delegationState?.detail,
             delegatedPlanStepCount: delegationPlan?.steps.count ?? 0,
+            pendingDelegatedRouteHint: pendingDelegatedRequest?.routeHint,
+            pendingDelegatedExecutionStatus: pendingDelegatedRequest?.status.rawValue,
             workspacePath: workspacePath,
             recentEventCount: recentEvents.count,
             latestEventSummary: latestSummary

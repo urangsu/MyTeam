@@ -34,7 +34,8 @@ final class WorkflowOrchestrator {
     func dispatch(
         userMessage: String,
         roomID: UUID,
-        manager: AgentWindowManager
+        manager: AgentWindowManager,
+        skipDelegationMode: Bool = false
     ) async {
         // ── 이전 workflow가 남아 있으면 조용히 취소 ──
         currentWorkflowTask?.cancel()
@@ -47,13 +48,15 @@ final class WorkflowOrchestrator {
 
         var effectiveScopes: Set<ToolScope> = [.chatBasic]  // 항상 chatBasic 포함
 
-        if await handleDelegationMode(
-            userMessage: userMessage,
-            roomID: roomID,
-            manager: manager,
-            effectiveScopes: effectiveScopes
-        ) {
-            return
+        if !skipDelegationMode {
+            if await handleDelegationMode(
+                userMessage: userMessage,
+                roomID: roomID,
+                manager: manager,
+                effectiveScopes: effectiveScopes
+            ) {
+                return
+            }
         }
 
         // ── Skill match (Korean Skills 등) + allowedScopes 계산 ──
@@ -680,6 +683,7 @@ final class WorkflowOrchestrator {
         let isCancel = DelegatedWorkflowDetector.isDelegationCancel(userMessage)
         let currentState = await MainActor.run { manager.delegationModeState(for: roomID) }
         let currentContract = await MainActor.run { manager.activeDelegationContract(for: roomID) }
+        let pendingRequest = await MainActor.run { manager.pendingDelegatedExecutionRequest(for: roomID) }
 
         if isApproval,
            let currentState,
@@ -721,6 +725,60 @@ final class WorkflowOrchestrator {
                     isSystem: true
                 )
             }
+
+            let shouldAutoResume = pendingRequest.map { request in
+                request.status != .cancelled &&
+                request.status != .blocked &&
+                currentContract.blockedScopes.isEmpty &&
+                currentContract.requiresReapprovalScopes.isEmpty &&
+                !request.normalizedExecutionMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            } ?? false
+
+            if shouldAutoResume, let request = pendingRequest {
+                let resumedRequest = request.updating(status: .resumed)
+                await MainActor.run {
+                    manager.recordPendingDelegatedExecutionRequest(resumedRequest)
+                    self.recordRouteTrace(
+                        manager: manager,
+                        roomID: roomID,
+                        step: .delegationResumed,
+                        message: "delegation resumed: \(resumedRequest.routeHint ?? "unknown")"
+                    )
+                }
+                await self.dispatch(
+                    userMessage: resumedRequest.normalizedExecutionMessage,
+                    roomID: roomID,
+                    manager: manager,
+                    skipDelegationMode: true
+                )
+            } else if pendingRequest != nil {
+                await MainActor.run {
+                    if let pendingRequest {
+                        let blockedStatus = pendingRequest.updating(status: .blocked)
+                        manager.recordPendingDelegatedExecutionRequest(blockedStatus)
+                    }
+                    self.recordRouteTrace(
+                        manager: manager,
+                        roomID: roomID,
+                        step: .delegationResumeBlocked,
+                        message: "delegation resume blocked"
+                    )
+                }
+                await MainActor.run {
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "시스템",
+                        text: """
+                        위임모드를 시작했습니다.
+                        다만 이 요청에는 다시 확인이 필요한 범위가 있어 자동으로 이어서 실행하지 않았습니다.
+                        먼저 진행할 작업을 하나 지정해 주세요.
+                        """,
+                        isUser: false,
+                        isSystem: true
+                    )
+                }
+            }
             return true
         }
 
@@ -736,6 +794,7 @@ final class WorkflowOrchestrator {
                 if let cancelledContract {
                     manager.recordDelegationContract(cancelledContract)
                 }
+                manager.clearPendingDelegatedExecutionRequest(for: roomID)
                 manager.updateDelegationModeState(cancelledState)
                 self.recordRouteTrace(
                     manager: manager,
@@ -770,6 +829,11 @@ final class WorkflowOrchestrator {
 
         let contract = DelegatedWorkflowDetector.buildContract(roomID: roomID, message: userMessage)
         let plan = DelegatedWorkflowDetector.buildPlan(for: contract)
+        let executionRequest = DelegatedWorkflowDetector.buildExecutionRequest(
+            roomID: roomID,
+            contract: contract,
+            message: userMessage
+        )
         let state = DelegationModeState(
             roomID: roomID,
             status: .awaitingApproval,
@@ -782,12 +846,19 @@ final class WorkflowOrchestrator {
         await MainActor.run {
             manager.recordDelegationContract(contract)
             manager.recordDelegatedWorkflowPlan(plan)
+            manager.recordPendingDelegatedExecutionRequest(executionRequest)
             manager.updateDelegationModeState(state)
             self.recordRouteTrace(
                 manager: manager,
                 roomID: roomID,
                 step: .delegationDetected,
                 message: "delegation request detected: \(contract.goal)"
+            )
+            self.recordRouteTrace(
+                manager: manager,
+                roomID: roomID,
+                step: .delegationResumePrepared,
+                message: "pending execution prepared: \(executionRequest.routeHint ?? "unknown")"
             )
             if !contract.requiresReapprovalScopes.isEmpty {
                 self.recordRouteTrace(
