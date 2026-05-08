@@ -6,6 +6,38 @@
 
 ---
 
+## 2026-05-09 (Round 19.5 — TurnProfile + RouteTrace + DryRun Skeleton)
+
+### 빌드 목표
+- 자연어 요청의 실행 경로를 turn profile과 route trace로 구조화
+- room별 마지막 turn profile과 최근 route trace를 진단용으로 보관
+- 실제 dry-run UI나 approval UI는 아직 구현하지 않음
+
+### 구현 완료
+
+| 항목 | 파일 | 내용 |
+|------|------|------|
+| turn profile | TurnProfile.swift | route, reason, scopes, skill IDs, candidate tools를 담는 lightweight model 추가 |
+| route trace | RouteTrace.swift | routing 판단 흐름을 step/message/timestamp로 남기는 모델 추가 |
+| dry-run skeleton | DryRunPlan.swift | 향후 approval preview용 action skeleton 추가 |
+| room별 profile 저장 | AgentWindowManager.swift | `lastTurnProfileByRoom`, `routeTracesByRoom` 및 기록 helper 추가 |
+| routing 기록 | WorkflowOrchestrator.swift | skill match, local skill, app launch, privacy terms, file creation, intent classification, direct chat, team discussion trace 기록 |
+| diagnostics | RuntimeDiagnosticsService.swift | 마지막 route/profile 요약과 route trace 개수 스냅샷 추가 |
+
+### 주요 결정사항
+
+- **저장용 DB 아님**: 모든 profile/trace는 메모리 기반 진단용 상태로만 유지
+- **LLM 호출 미추가**: route trace와 turn profile은 기존 경로를 따라 기록만 수행
+- **기존 런타임 유지**: TeamRuntimeState, BYOK, 팀 이름 명패, App Launch Pack, Markdown 렌더링은 그대로 유지
+- **실제 dry-run UI 미구현**: `/why`, `/last`에 대응할 기반만 먼저 마련
+
+### 빌드 상태
+- BUILD SUCCEEDED ✅
+- new warning 0 ✅
+
+### 다음 단계
+- Round 20: App Launch Result UX + Artifact UX
+
 ## 2026-05-08 (Round 13 — StoreKit Local Test + Sena Purchase Wiring)
 
 ### 빌드 목표
