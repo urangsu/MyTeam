@@ -133,7 +133,7 @@ class AgentWindowManager: ObservableObject {
         // 4. 레거시 전역 기억 (V1 keyFacts — 마이그레이션 전까지 포함)
         facts += keyFacts
         // 중복 제거
-        facts = Array(NSOrderedSet(array: facts) as! [String])  // swiftlint:disable:this force_cast
+        facts = NSOrderedSet(array: facts).array.compactMap { $0 as? String }
         guard !facts.isEmpty else { return "" }
         return "\n[기억해야 할 핵심 정보]\n" + facts.map { "- \($0)" }.joined(separator: "\n") + "\n"
     }
@@ -1000,7 +1000,7 @@ class AgentWindowManager: ObservableObject {
                   (0...23).contains(h), (0...59).contains(m) else {
                 return "인식할 수 없는 옵션입니다. 예: /edit-task \(idPrefix) 09:30 | --disable | --enable | --approval on"
             }
-            var cal = Calendar.current
+            let cal = Calendar.current
             var comps = cal.dateComponents([.year, .month, .day], from: automationTasks[idx].nextRunAt)
             comps.hour = h; comps.minute = m; comps.second = 0
             if let newDate = cal.date(from: comps) {

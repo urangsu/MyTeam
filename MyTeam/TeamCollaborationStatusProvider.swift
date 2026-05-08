@@ -3,75 +3,149 @@ import Foundation
 enum TeamCollaborationStatusProvider {
     static func currentStatus(
         isWorkflowRunning: Bool,
-        latestEventSummary: String?,
+        workflowStatus: WorkflowStatus?,
+        latestEventType: AgentEventType?,
+        latestToolName: String?,
+        latestEventTimestamp: Date?,
         idleIndex: Int,
         currentTask: String? = nil,
         activeAgentNames: [String] = []
     ) -> TeamCollaborationStatus {
         let normalizedTask = (currentTask ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalizedSummary = latestEventSummary?.lowercased() ?? ""
+        let now = Date()
+        let isRecent = latestEventTimestamp.map { now.timeIntervalSince($0) <= 25 } ?? false
 
-        if isWorkflowRunning {
-            if normalizedSummary.contains("workflowcompleted") {
-                return TeamCollaborationStatus(
-                    kind: .completed,
-                    title: "작업 완료",
-                    detail: normalizedTask.isEmpty ? "결과를 정리하는 중입니다." : normalizedTask,
-                    agentName: nil
-                )
-            }
-
-            if normalizedSummary.contains("workflowcancelled") || normalizedSummary.contains("modelcallfailed") || normalizedSummary.contains("validationfailed") {
-                return TeamCollaborationStatus(
-                    kind: .failed,
-                    title: "확인 필요",
-                    detail: normalizedTask.isEmpty ? "작업이 멈췄습니다." : normalizedTask,
-                    agentName: nil
-                )
-            }
-
-            if normalizedSummary.contains("artifactcreated") || taskMentionsArtifact(normalizedTask) {
-                return TeamCollaborationStatus(
-                    kind: .generatingArtifact,
-                    title: artifactTitle(for: normalizedTask),
-                    detail: normalizedTask.isEmpty ? "산출물을 정리하는 중입니다." : normalizedTask,
-                    agentName: nil
-                )
-            }
-
-            if normalizedSummary.contains("toolcallstarted") || normalizedSummary.contains("modelcallstarted") {
-                return TeamCollaborationStatus(
-                    kind: taskMentionsResearch(normalizedTask) ? .gathering : .thinking,
-                    title: workingTitle(for: normalizedTask, fallback: "검토 중"),
-                    detail: normalizedTask.isEmpty ? "현재 작업을 처리 중입니다." : normalizedTask,
-                    agentName: nil
-                )
-            }
-
-            if normalizedSummary.contains("routedecided") || normalizedSummary.contains("workflowstarted") {
-                return TeamCollaborationStatus(
-                    kind: .planning,
-                    title: workingTitle(for: normalizedTask, fallback: "계획 수립 중"),
-                    detail: normalizedTask.isEmpty ? "작업 방향을 정리하는 중입니다." : normalizedTask,
-                    agentName: nil
-                )
-            }
-
-            return TeamCollaborationStatus(
-                kind: .waitingForUser,
-                title: workingTitle(for: normalizedTask, fallback: "사용자 확인 대기 중"),
-                detail: normalizedTask.isEmpty ? "팀이 다음 입력을 기다리고 있습니다." : normalizedTask,
-                agentName: nil
+        if workflowStatus == .failed, isRecent {
+            return status(
+                kind: .failed,
+                title: "확인 필요",
+                detail: normalizedTask.isEmpty ? "작업을 다시 확인해 주세요." : normalizedTask,
+                timestamp: latestEventTimestamp
             )
         }
 
-        let agentName = pickIdleAgentName(activeAgentNames: activeAgentNames, idleIndex: idleIndex)
-        let idleLine = idleLine(for: agentName, index: idleIndex)
-        return TeamCollaborationStatus(
-            kind: .idle,
-            title: idleLine,
-            detail: "대기중",
-            agentName: agentName
+        if workflowStatus == .completed, isRecent {
+            return status(
+                kind: .completed,
+                title: "완료",
+                detail: normalizedTask.isEmpty ? "파일 생성이 끝났습니다." : normalizedTask,
+                timestamp: latestEventTimestamp
+            )
+        }
+
+        guard isWorkflowRunning || isRecent else {
+            return idleStatus(idleIndex: idleIndex, activeAgentNames: activeAgentNames)
+        }
+
+        if let latestEventType {
+            switch latestEventType {
+            case .workflowCancelled, .modelCallFailed, .validationFailed:
+                return status(
+                    kind: .failed,
+                    title: "확인 필요",
+                    detail: normalizedTask.isEmpty ? "작업이 멈췄습니다." : normalizedTask,
+                    timestamp: latestEventTimestamp
+                )
+
+            case .workflowCompleted:
+                return status(
+                    kind: .completed,
+                    title: "완료",
+                    detail: normalizedTask.isEmpty ? "파일 생성이 끝났습니다." : normalizedTask,
+                    timestamp: latestEventTimestamp
+                )
+
+            case .artifactCreated:
+                return status(
+                    kind: .generatingArtifact,
+                    title: "파일 생성 중",
+                    detail: normalizedTask.isEmpty ? "산출물을 저장하는 중입니다." : normalizedTask,
+                    timestamp: latestEventTimestamp
+                )
+
+            case .workflowStarted, .routeDecided:
+                return status(
+                    kind: .planning,
+                    title: "계획 수립 중",
+                    detail: normalizedTask.isEmpty ? "작업 방향을 정리하는 중입니다." : normalizedTask,
+                    timestamp: latestEventTimestamp
+                )
+
+            case .toolCallStarted, .toolCallFinished:
+                return toolStatus(
+                    toolName: latestToolName,
+                    normalizedTask: normalizedTask,
+                    timestamp: latestEventTimestamp
+                )
+
+            case .modelCallStarted, .modelCallCompleted:
+                return status(
+                    kind: taskMentionsResearch(normalizedTask) ? .gathering : .thinking,
+                    title: taskMentionsResearch(normalizedTask) ? "자료 확인 중" : "검토 중",
+                    detail: normalizedTask.isEmpty ? "현재 작업을 처리 중입니다." : normalizedTask,
+                    timestamp: latestEventTimestamp
+                )
+
+            case .userMessageSubmitted:
+                return status(
+                    kind: .waitingForUser,
+                    title: "사용자 확인 대기 중",
+                    detail: normalizedTask.isEmpty ? "입력 내용을 정리하는 중입니다." : normalizedTask,
+                    timestamp: latestEventTimestamp
+                )
+            }
+        }
+
+        if workflowStatus == .running || isWorkflowRunning {
+            return status(
+                kind: .waitingForUser,
+                title: workingTitle(for: normalizedTask, fallback: "사용자 확인 대기 중"),
+                detail: normalizedTask.isEmpty ? "팀이 다음 입력을 기다리고 있습니다." : normalizedTask,
+                timestamp: latestEventTimestamp
+            )
+        }
+
+        return idleStatus(idleIndex: idleIndex, activeAgentNames: activeAgentNames)
+    }
+
+    private static func status(
+        kind: TeamCollaborationStatus.Kind,
+        title: String,
+        detail: String,
+        timestamp: Date?
+    ) -> TeamCollaborationStatus {
+        TeamCollaborationStatus(kind: kind, title: title, detail: detail, agentName: nil, timestamp: timestamp)
+    }
+
+    private static func toolStatus(
+        toolName: String?,
+        normalizedTask: String,
+        timestamp: Date?
+    ) -> TeamCollaborationStatus {
+        let name = (toolName ?? "").lowercased()
+        if name.contains("create_presentation_plan") {
+            return status(kind: .planning, title: "PPT 구성 중", detail: normalizedTask.isEmpty ? "발표자료 구조를 잡는 중입니다." : normalizedTask, timestamp: timestamp)
+        }
+        if name.contains("generate_pptx") || name.contains("create_google_slides") {
+            return status(kind: .generatingArtifact, title: "PPT 파일 생성 중", detail: normalizedTask.isEmpty ? "슬라이드를 저장하는 중입니다." : normalizedTask, timestamp: timestamp)
+        }
+        if name.contains("create_spreadsheet_plan") {
+            return status(kind: .planning, title: "표 구조 정리 중", detail: normalizedTask.isEmpty ? "스프레드시트 구조를 잡는 중입니다." : normalizedTask, timestamp: timestamp)
+        }
+        if name.contains("generate_xlsx") || name.contains("create_google_sheets") {
+            return status(kind: .generatingArtifact, title: "엑셀 파일 생성 중", detail: normalizedTask.isEmpty ? "스프레드시트를 저장하는 중입니다." : normalizedTask, timestamp: timestamp)
+        }
+        if name.contains("create_markdown_report") {
+            return status(kind: .writing, title: "문서 초안 작성 중", detail: normalizedTask.isEmpty ? "Markdown 문서를 준비하는 중입니다." : normalizedTask, timestamp: timestamp)
+        }
+        if name.contains("write_text_file") {
+            return status(kind: .writing, title: "파일 저장 중", detail: normalizedTask.isEmpty ? "텍스트 파일을 저장하는 중입니다." : normalizedTask, timestamp: timestamp)
+        }
+        return status(
+            kind: .thinking,
+            title: workingTitle(for: normalizedTask, fallback: "검토 중"),
+            detail: normalizedTask.isEmpty ? "현재 작업을 처리 중입니다." : normalizedTask,
+            timestamp: timestamp
         )
     }
 
@@ -98,20 +172,16 @@ enum TeamCollaborationStatusProvider {
         return fallback
     }
 
-    private static func artifactTitle(for task: String) -> String {
-        let lowered = task.lowercased()
-        if lowered.contains("ppt") || lowered.contains("슬라이드") {
-            return "PPT 구성 중"
-        }
-        if lowered.contains("엑셀") || lowered.contains("스프레드시트") {
-            return "엑셀 구조 정리 중"
-        }
-        return "결과 정리 중"
-    }
-
-    private static func taskMentionsArtifact(_ task: String) -> Bool {
-        let lowered = task.lowercased()
-        return lowered.contains("ppt") || lowered.contains("슬라이드") || lowered.contains("엑셀") || lowered.contains("표")
+    private static func idleStatus(idleIndex: Int, activeAgentNames: [String]) -> TeamCollaborationStatus {
+        let agentName = pickIdleAgentName(activeAgentNames: activeAgentNames, idleIndex: idleIndex)
+        let idleLine = idleLine(for: agentName, index: idleIndex)
+        return TeamCollaborationStatus(
+            kind: .idle,
+            title: idleLine,
+            detail: "대기중",
+            agentName: agentName,
+            timestamp: Date()
+        )
     }
 
     private static func taskMentionsResearch(_ task: String) -> Bool {

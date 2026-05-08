@@ -22,8 +22,11 @@ struct TeamStatusView: View {
     @State private var scheduleDraftAgentID: String = "auto"
     @State private var scheduleDraftError: String? = nil
     @State private var collaborationStatusTick: Int = 0
-    @State private var collaborationStatusTimer: Timer? = nil
-    @State private var latestEventSummary: String? = nil
+    @State private var collaborationStatusRefreshTask: Task<Void, Never>? = nil
+    @State private var latestEventType: AgentEventType? = nil
+    @State private var latestEventTimestamp: Date? = nil
+    @State private var latestToolName: String? = nil
+    @State private var currentWorkflowStatus: WorkflowStatus? = nil
     
     private var bgColor: Color {
         manager.isDarkMode ? Color.black.opacity(isCollapsed ? 0.4 : 0.8) : Color.white.opacity(isCollapsed ? 0.3 : 0.75)
@@ -43,7 +46,10 @@ struct TeamStatusView: View {
     private var collaborationStatus: TeamCollaborationStatus {
         TeamCollaborationStatusProvider.currentStatus(
             isWorkflowRunning: manager.isWorkflowRunning,
-            latestEventSummary: latestEventSummary,
+            workflowStatus: currentWorkflowStatus,
+            latestEventType: latestEventType,
+            latestToolName: latestToolName,
+            latestEventTimestamp: latestEventTimestamp,
             idleIndex: collaborationStatusTick,
             currentTask: manager.currentMainTask,
             activeAgentNames: manager.activeAgents.map(\.name)
@@ -167,48 +173,84 @@ struct TeamStatusView: View {
         .shadow(color: Color.black.opacity(manager.isDarkMode ? 0.3 : 0.08), radius: 15, x: 0, y: 8)
         .padding(10)
         .onAppear {
-            refreshCollaborationStatus()
-            collaborationStatusTimer?.invalidate()
-            collaborationStatusTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
-                collaborationStatusTick += 1
-                refreshCollaborationStatus()
-            }
+            startCollaborationStatusRefreshLoop()
         }
         .onChange(of: manager.isWorkflowRunning) { _, _ in
-            refreshCollaborationStatus()
+            Task { await refreshCollaborationStatus() }
         }
         .onChange(of: manager.currentWorkflowID?.uuidString ?? "") { _, _ in
-            refreshCollaborationStatus()
+            Task { await refreshCollaborationStatus() }
         }
         .onDisappear {
-            collaborationStatusTimer?.invalidate()
-            collaborationStatusTimer = nil
+            collaborationStatusRefreshTask?.cancel()
+            collaborationStatusRefreshTask = nil
         }
     }
     
     // MARK: - 하위 뷰 (에이전트 리스트)
-    private var agentListView: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                Image(systemName: collaborationStatus.kind == .idle ? "pause.circle.fill" : "sparkles")
-                    .foregroundColor(collaborationStatus.kind == .idle ? .secondary : .cyan)
-                    .font(.system(size: 13))
-                VStack(alignment: .leading, spacing: 1) {
+    private var collaborationStatusBanner: some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(collaborationStatus.accentColor.opacity(0.14))
+                    .frame(width: 28, height: 28)
+                Image(systemName: collaborationStatus.iconName)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(collaborationStatus.accentColor)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
                     Text(collaborationStatus.title)
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(textColor.opacity(0.72))
+                        .foregroundColor(textColor.opacity(0.8))
                         .lineLimit(1)
-                    if !collaborationStatus.detail.isEmpty {
-                        Text(collaborationStatus.detail)
-                            .font(.system(size: 10))
-                            .foregroundColor(textColor.opacity(0.42))
+                    if let agentName = collaborationStatus.agentName {
+                        Text(agentName)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(textColor.opacity(0.45))
                             .lineLimit(1)
                     }
                 }
-                Spacer()
+                if !collaborationStatus.detail.isEmpty {
+                    Text(collaborationStatus.detail)
+                        .font(.system(size: 10))
+                        .foregroundColor(textColor.opacity(0.48))
+                        .lineLimit(1)
+                }
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
+
+            Spacer()
+
+            if collaborationStatus.kind == .completed {
+                Text("최근")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(.green)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color.green.opacity(0.12)))
+            } else if collaborationStatus.kind == .failed {
+                Text("확인")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(.red)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color.red.opacity(0.12)))
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(collaborationStatus.accentColor.opacity(manager.isDarkMode ? 0.10 : 0.08))
+        )
+        .padding(.horizontal, 16)
+        .padding(.top, 10)
+    }
+
+    private var agentListView: some View {
+        VStack(spacing: 0) {
+            collaborationStatusBanner
             
             Divider().background(textColor.opacity(0.05))
             
@@ -636,7 +678,52 @@ struct TeamStatusView: View {
     }
 
     private var schedulePopupCard: some View {
-        scheduleTasksPanel
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "clock.badge.checkmark")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.orange)
+                Text("스케줄 근무")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(textColor.opacity(0.8))
+                Spacer()
+                Button {
+                    withAnimation(.spring(response: 0.24, dampingFraction: 0.85)) {
+                        isSchedulePanelPresented = false
+                    }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(textColor.opacity(0.38))
+                }
+                .buttonStyle(.plain)
+            }
+
+            Text("아직 예약된 근무가 없습니다.")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(textColor.opacity(0.78))
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text("곧 팀원이 정해진 시간에 자동으로 작업하는 기능이 추가됩니다.")
+                .font(.system(size: 10))
+                .foregroundColor(textColor.opacity(0.55))
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text("현재 버전에서는 수동 실행만 지원합니다.\n자동 작업 예약은 준비 중입니다.")
+                .font(.system(size: 9))
+                .foregroundColor(textColor.opacity(0.42))
+                .fixedSize(horizontal: false, vertical: true)
+
+            Button("스케줄 관리 준비 중") { }
+                .buttonStyle(.bordered)
+                .disabled(true)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(manager.isDarkMode ? Color.black.opacity(0.92) : Color.white.opacity(0.98))
+                .shadow(color: .black.opacity(manager.isDarkMode ? 0.22 : 0.12), radius: 16, x: 0, y: 6)
+        )
     }
 
     private var scheduleComposer: some View {
@@ -782,28 +869,47 @@ struct TeamStatusView: View {
         return today > Date() ? today : Calendar.current.date(byAdding: .day, value: 1, to: today)
     }
 
-    private func refreshCollaborationStatus() {
-        Task {
-            let workflowID = manager.currentWorkflowID
-            let recentEvents = await AgentEventBus.shared.allRecentEvents(limit: 50)
-            let scopedEvents = recentEvents.filter { event in
-                guard let workflowID else { return true }
-                return event.workflowID == workflowID
+    private func startCollaborationStatusRefreshLoop() {
+        collaborationStatusRefreshTask?.cancel()
+        collaborationStatusRefreshTask = Task {
+            while !Task.isCancelled {
+                await refreshCollaborationStatus()
+                let shouldStayHot = await MainActor.run { manager.isWorkflowRunning }
+                let interval: UInt64 = shouldStayHot ? 4_000_000_000 : 30_000_000_000
+                do {
+                    try await Task.sleep(nanoseconds: interval)
+                } catch {
+                    break
+                }
             }
-            let latest = scopedEvents.last ?? recentEvents.last
-            let summary = latest.map { event in
-                let payloadBits = [
-                    event.payload.agentName,
-                    event.payload.toolName,
-                    event.payload.provider,
-                    event.payload.message,
-                    event.payload.errorMessage
-                ].compactMap { $0 }.joined(separator: " ")
-                return payloadBits.isEmpty ? event.type.rawValue : "\(event.type.rawValue) \(payloadBits)"
-            }
+        }
+    }
 
-            await MainActor.run {
-                self.latestEventSummary = summary
+    private func refreshCollaborationStatus() async {
+        let roomID = await MainActor.run { manager.currentRoomID }
+        let workflowID = await MainActor.run { manager.currentWorkflowID }
+        let recentEvents: [AgentEvent]
+        if let roomID {
+            recentEvents = await AgentEventBus.shared.recentEvents(for: roomID, limit: 50)
+        } else {
+            recentEvents = await AgentEventBus.shared.allRecentEvents(limit: 50)
+        }
+        let scopedEvents = recentEvents.filter { event in
+            guard let workflowID else { return true }
+            return event.workflowID == workflowID
+        }
+        let latest = scopedEvents.last ?? recentEvents.last
+        let workflowStatus = await MainActor.run {
+            workflowID.flatMap { WorkflowRunStore.shared.record(for: $0)?.status }
+        }
+
+        await MainActor.run {
+            self.latestEventType = latest?.type
+            self.latestEventTimestamp = latest?.timestamp
+            self.latestToolName = latest?.payload.toolName
+            self.currentWorkflowStatus = workflowStatus
+            if !manager.isWorkflowRunning {
+                self.collaborationStatusTick += 1
             }
         }
     }
