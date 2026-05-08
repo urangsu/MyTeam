@@ -1,0 +1,70 @@
+{
+  "identifier" : "MyTeam Local StoreKit Configuration",
+  "nonRenewingSubscriptions" : [ ],
+  "products" : [
+    {
+      "displayPrice" : "₩3,900",
+      "familyShareable" : false,
+      "internalID" : "1",
+      "localizations" : [
+        {
+          "description" : "세나 프리미엄 캐릭터",
+          "displayName" : "세나",
+          "languageTag" : "ko"
+        }
+      ],
+      "productID" : "com.myteam.character.sena",
+      "productType" : "NonConsumable",
+      "referenceName" : "세나"
+    }
+  ],
+  "subscriptionGroups" : [
+    {
+      "id" : "pro",
+      "localizations" : [
+        {
+          "name" : "MyTeam Pro",
+          "languageTag" : "ko"
+        }
+      ],
+      "name" : "MyTeam Pro",
+      "subscriptions" : [
+        {
+          "displayPrice" : "₩9,900",
+          "familyShareable" : false,
+          "introductoryOffers" : [ ],
+          "localizations" : [
+            {
+              "description" : "MyTeam Pro Monthly",
+              "displayName" : "MyTeam Pro Monthly",
+              "languageTag" : "ko"
+            }
+          ],
+          "productID" : "com.myteam.pro.monthly",
+          "productType" : "AutoRenewableSubscription",
+          "referenceName" : "MyTeam Pro Monthly",
+          "subscriptionGroupID" : "pro",
+          "subscriptionPeriod" : "P1M"
+        },
+        {
+          "displayPrice" : "₩89,000",
+          "familyShareable" : false,
+          "introductoryOffers" : [ ],
+          "localizations" : [
+            {
+              "description" : "MyTeam Pro Yearly",
+              "displayName" : "MyTeam Pro Yearly",
+              "languageTag" : "ko"
+            }
+          ],
+          "productID" : "com.myteam.pro.yearly",
+          "productType" : "AutoRenewableSubscription",
+          "referenceName" : "MyTeam Pro Yearly",
+          "subscriptionGroupID" : "pro",
+          "subscriptionPeriod" : "P1Y"
+        }
+      ]
+    }
+  ],
+  "version" : 1
+}
