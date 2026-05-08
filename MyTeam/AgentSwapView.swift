@@ -7,6 +7,7 @@ struct AgentSwapView: View {
     let onClose: () -> Void
     
     @EnvironmentObject var manager: AgentWindowManager
+    @State private var showComingSoonPopover = false
     
     let columns = [
         GridItem(.flexible()),
@@ -74,18 +75,19 @@ struct AgentSwapView: View {
     }
     
     private var addAgentCard: some View {
-        // "상점 가기" 역할의 더미 카드 (+)
-        Button(action: {
-            print("상점 열기 (미구현)")
-        }) {
+        Button(action: { showComingSoonPopover = true }) {
             VStack {
-                Image(systemName: "plus")
-                    .font(.system(size: 32, weight: .medium))
+                Image(systemName: "sparkles")
+                    .font(.system(size: 30, weight: .semibold))
                     .foregroundColor(.gray.opacity(0.8))
-                Text("새 에이전트 고용")
-                    .font(.system(size: 12, weight: .medium))
+                Text("출시 예정")
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.gray)
                     .padding(.top, 12)
+                Text("캐릭터 갤러리에서 보기")
+                    .font(.system(size: 11))
+                    .foregroundColor(.gray.opacity(0.8))
+                    .padding(.top, 2)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 180)
@@ -94,6 +96,22 @@ struct AgentSwapView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
+        .popover(isPresented: $showComingSoonPopover, arrowEdge: .top) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("프리미엄 캐릭터는 준비 중입니다.")
+                    .font(.system(size: 13, weight: .semibold))
+                Text("현재는 기본 팀원과 앱 출시 스킬팩을 먼저 사용할 수 있습니다.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("닫기") {
+                    showComingSoonPopover = false
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding(16)
+            .frame(width: 260)
+        }
     }
 }
 

@@ -583,7 +583,7 @@ struct SettingsView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
-                Button("Pro 준비 중") {}
+                Button("출시 예정") {}
                     .buttonStyle(.borderedProminent)
                     .disabled(true)
             }
