@@ -78,6 +78,8 @@ class AgentWindowManager: ObservableObject {
     /// 현재 실행 중인 workflow UUID — RuntimeDiagnosticsService 및 UI 진행 표시에 사용.
     /// workflow 완료/실패/취소 시 nil로 리셋.
     @Published var currentWorkflowID: UUID? = nil
+    /// 현재 팀 협업 런타임 상태 — 팀 토론/화자 선택/턴 진행을 UI에 반영.
+    @Published var teamRuntimeState: TeamRuntimeState? = nil
     /// 최근 완료된 workflow artifact 목록 — 채팅 하단 ArtifactCardView에 표시.
     /// TODO: room scope 분리 — 현재는 앱 전역이라 여러 채팅방에서 artifact가 섞일 수 있음.
     ///       제품 구조에서는 recentArtifactsByRoom: [UUID: [IndexedArtifact]] 또는

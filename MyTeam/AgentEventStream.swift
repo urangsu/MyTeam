@@ -22,6 +22,13 @@ enum AgentEventType: String, Codable {
     case validationFailed
     case workflowCancelled
     case workflowCompleted
+    case teamDiscussionStarted
+    case teamDiscussionCompleted
+    case teamDiscussionFailed
+    case speakerSelectionStarted
+    case speakerSelectionCompleted
+    case agentTurnStarted
+    case agentTurnCompleted
 }
 
 // MARK: - AgentEvent
@@ -61,6 +68,7 @@ struct AgentEventPayload: Codable {
     let artifactPath: String?
     let durationMs: Int?
     let errorMessage: String?
+    let fallbackUsed: Bool?
 
     static let empty = AgentEventPayload()
 
@@ -73,7 +81,8 @@ struct AgentEventPayload: Codable {
         provider: String? = nil,
         artifactPath: String? = nil,
         durationMs: Int? = nil,
-        errorMessage: String? = nil
+        errorMessage: String? = nil,
+        fallbackUsed: Bool? = nil
     ) {
         self.agentID = agentID
         self.agentName = agentName
@@ -84,6 +93,7 @@ struct AgentEventPayload: Codable {
         self.artifactPath = artifactPath
         self.durationMs = durationMs
         self.errorMessage = errorMessage
+        self.fallbackUsed = fallbackUsed
     }
 }
 
@@ -170,5 +180,69 @@ extension AgentEvent {
     static func artifactCreated(workflowID: UUID, roomID: UUID, path: String) -> AgentEvent {
         AgentEvent(type: .artifactCreated, workflowID: workflowID, roomID: roomID,
                    payload: AgentEventPayload(artifactPath: path))
+    }
+
+    static func teamDiscussionStarted(roomID: UUID, message: String? = nil) -> AgentEvent {
+        AgentEvent(type: .teamDiscussionStarted, roomID: roomID,
+                   payload: AgentEventPayload(message: message))
+    }
+
+    static func teamDiscussionCompleted(roomID: UUID, message: String? = nil) -> AgentEvent {
+        AgentEvent(type: .teamDiscussionCompleted, roomID: roomID,
+                   payload: AgentEventPayload(message: message))
+    }
+
+    static func teamDiscussionFailed(roomID: UUID, message: String? = nil) -> AgentEvent {
+        AgentEvent(type: .teamDiscussionFailed, roomID: roomID,
+                   payload: AgentEventPayload(message: message))
+    }
+
+    static func speakerSelectionStarted(roomID: UUID, message: String? = nil) -> AgentEvent {
+        AgentEvent(type: .speakerSelectionStarted, roomID: roomID,
+                   payload: AgentEventPayload(message: message))
+    }
+
+    static func speakerSelectionCompleted(
+        roomID: UUID,
+        agentID: String?,
+        agentName: String?,
+        fallbackUsed: Bool,
+        message: String? = nil
+    ) -> AgentEvent {
+        AgentEvent(
+            type: .speakerSelectionCompleted,
+            roomID: roomID,
+            payload: AgentEventPayload(
+                agentID: agentID,
+                agentName: agentName,
+                message: message,
+                fallbackUsed: fallbackUsed
+            )
+        )
+    }
+
+    static func agentTurnStarted(roomID: UUID, agentID: String, agentName: String, fallbackUsed: Bool = false, message: String? = nil) -> AgentEvent {
+        AgentEvent(
+            type: .agentTurnStarted,
+            roomID: roomID,
+            payload: AgentEventPayload(
+                agentID: agentID,
+                agentName: agentName,
+                message: message,
+                fallbackUsed: fallbackUsed
+            )
+        )
+    }
+
+    static func agentTurnCompleted(roomID: UUID, agentID: String, agentName: String, message: String? = nil) -> AgentEvent {
+        AgentEvent(
+            type: .agentTurnCompleted,
+            roomID: roomID,
+            payload: AgentEventPayload(
+                agentID: agentID,
+                agentName: agentName,
+                message: message
+            )
+        )
     }
 }
