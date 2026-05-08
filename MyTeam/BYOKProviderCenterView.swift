@@ -1,13 +1,21 @@
 import SwiftUI
 
 struct BYOKProviderCenterView: View {
-    private let statuses = BYOKProviderStatusService.loadStatuses()
+    @State private var statuses: [BYOKProviderStatus] = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("API 키 연결")
-                    .font(.system(size: 14, weight: .semibold))
+                HStack(alignment: .firstTextBaseline) {
+                    Text("API 키 연결")
+                        .font(.system(size: 14, weight: .semibold))
+                    Spacer()
+                    Button("상태 새로고침") {
+                        reloadStatuses()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
                 Text("MyTeam은 기본 제공량 이후 사용자의 개인 API 키로 동작할 수 있습니다.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
@@ -26,9 +34,14 @@ struct BYOKProviderCenterView: View {
                 .fill(Color(NSColor.controlBackgroundColor))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: 12)
                 .stroke(Color.black.opacity(0.05), lineWidth: 1)
         )
+        .onAppear(perform: reloadStatuses)
+    }
+
+    private func reloadStatuses() {
+        statuses = BYOKProviderStatusService.loadStatuses()
     }
 
     private func providerRow(_ status: BYOKProviderStatus) -> some View {
