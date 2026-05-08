@@ -5,15 +5,9 @@ enum AppLaunchSkillService {
         let lower = message.lowercased()
 
         if containsAny(lower, [
-            "수익화", "monetization", "구독", "광고", "인앱결제", "in-app", "price", "가격", "bm", "비즈니스 모델"
+            "앱스토어", "app store", "소개문", "설명문", "메타데이터", "subtitle", "promotional text"
         ]) {
-            return .monetizationReview
-        }
-
-        if containsAny(lower, [
-            "출시 체크리스트", "앱 출시 준비", "배포 전 점검", "심사 준비", "launch checklist"
-        ]) {
-            return .launchChecklist
+            return .appStoreCopy
         }
 
         if containsAny(lower, [
@@ -23,9 +17,15 @@ enum AppLaunchSkillService {
         }
 
         if containsAny(lower, [
-            "앱스토어", "app store", "소개문", "설명문", "메타데이터", "subtitle", "promotional text"
+            "출시 체크리스트", "앱 출시 준비", "배포 전 점검", "심사 준비", "launch checklist"
         ]) {
-            return .appStoreCopy
+            return .launchChecklist
+        }
+
+        if containsAny(lower, [
+            "수익화 점검표", "수익화 리뷰", "수익화 전략", "bm 점검", "비즈니스 모델 점검", "monetization review", "monetization checklist"
+        ]) {
+            return .monetizationReview
         }
 
         return nil
@@ -156,18 +156,13 @@ enum AppLaunchSkillService {
     }
 
     private static func extractAppName(from message: String, skillType: AppLaunchSkillType) -> String? {
-        let markerGroups: [[String]] = [
-            ["앱 이름은", "앱명은", "앱 이름:", "앱명:", "이름은", "이름:"],
-            skillTypeKeywords(skillType)
-        ]
+        let explicitNameMarkers = ["앱 이름은", "앱명은", "앱 이름:", "앱명:", "이름은", "이름:"]
 
-        for group in markerGroups {
-            for marker in group {
-                if let range = message.range(of: marker, options: .caseInsensitive) {
-                    let suffix = message[range.upperBound...]
-                    if let candidate = firstToken(from: suffix) {
-                        return candidate
-                    }
+        for marker in explicitNameMarkers {
+            if let range = message.range(of: marker, options: .caseInsensitive) {
+                let suffix = message[range.upperBound...]
+                if let candidate = firstMeaningfulToken(from: String(suffix)) {
+                    return candidate
                 }
             }
         }
@@ -176,6 +171,9 @@ enum AppLaunchSkillService {
             if let range = message.range(of: keyword, options: .caseInsensitive) {
                 let prefix = message[..<range.lowerBound].trimmingCharacters(in: .whitespacesAndNewlines)
                 if let candidate = lastMeaningfulToken(from: prefix) {
+                    return candidate
+                }
+                if let candidate = firstMeaningfulToken(from: prefix) {
                     return candidate
                 }
             }
@@ -193,32 +191,45 @@ enum AppLaunchSkillService {
         case .launchChecklist:
             return ["출시 체크리스트", "앱 출시 준비", "배포 전 점검", "심사 준비", "launch checklist"]
         case .monetizationReview:
-            return ["수익화", "monetization", "구독", "광고", "인앱결제", "price", "가격", "bm", "비즈니스 모델"]
+            return ["수익화 점검표", "수익화 리뷰", "수익화 전략", "bm 점검", "비즈니스 모델 점검", "monetization review", "monetization checklist"]
         }
     }
 
-    private static func firstToken(from substring: Substring) -> String? {
-        let cleaned = substring
+    private static func firstMeaningfulToken(from text: String) -> String? {
+        let cleaned = text
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet(charactersIn: ":-,，。.!?"))
         guard !cleaned.isEmpty else { return nil }
         let words = cleaned.split(whereSeparator: { $0.isWhitespace || ":-,，。.!?".contains($0) }).map(String.init)
-        guard let first = words.first else { return nil }
-        return sanitizeCandidate(first)
+        for word in words {
+            if let candidate = sanitizeCandidate(word) {
+                return candidate
+            }
+        }
+        return nil
     }
 
     private static func lastMeaningfulToken(from text: String) -> String? {
         let words = text
             .split(whereSeparator: { $0.isWhitespace || ":-,，。.!?".contains($0) })
             .map(String.init)
-        guard let last = words.last else { return nil }
-        return sanitizeCandidate(last)
+        for word in words.reversed() {
+            if let candidate = sanitizeCandidate(word) {
+                return candidate
+            }
+        }
+        return nil
     }
 
     private static func sanitizeCandidate(_ value: String) -> String? {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        var trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let suffixes = ["이라는", "라는", "앱의", "어플의", "서비스의", "이고", "이며", "입니다", "이에요", "예요", "인데", "이고요"]
+        for suffix in suffixes where trimmed.hasSuffix(suffix) {
+            trimmed.removeLast(suffix.count)
+            trimmed = trimmed.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
         guard trimmed.count >= 2 else { return nil }
-        let noise = ["앱스토어", "설명문", "온보딩", "체크리스트", "수익화", "문구", "만들어줘", "작성해줘"]
+        let noise = ["앱스토어", "설명문", "온보딩", "체크리스트", "수익화", "문구", "만들어줘", "작성해줘", "앱", "어플", "앱명", "이름", "문서", "초안"]
         guard !noise.contains(where: { trimmed.contains($0) }) else { return nil }
         return trimmed
     }
