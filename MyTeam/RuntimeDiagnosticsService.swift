@@ -31,6 +31,13 @@ struct RuntimeDiagnosticsSnapshot {
     // Artifacts
     let recentArtifactsCount: Int
 
+    // Routing / Turn profile
+    let lastTurnRoute: String?
+    let lastRouteReason: String?
+    let lastMatchedSkills: [String]
+    let lastEffectiveScopes: [String]
+    let recentRouteTraceCount: Int
+
     // Workspace
     let workspacePath: String
 
@@ -57,6 +64,17 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("qwen: enabled=\(qwenEnabled) unavailable=\(qwenUnavailable)")
         lines.append("stt: initialized=\(sttInitialized) recording=\(sttRecording) starting=\(sttStarting)")
         lines.append("recentArtifacts: \(recentArtifactsCount)")
+        lines.append("lastTurnRoute: \(lastTurnRoute ?? "nil")")
+        if let reason = lastRouteReason, !reason.isEmpty {
+            lines.append("lastRouteReason: \(reason)")
+        }
+        if !lastMatchedSkills.isEmpty {
+            lines.append("matchedSkills: \(lastMatchedSkills.joined(separator: ", "))")
+        }
+        if !lastEffectiveScopes.isEmpty {
+            lines.append("effectiveScopes: \(lastEffectiveScopes.joined(separator: ", "))")
+        }
+        lines.append("recentRouteTraceCount: \(recentRouteTraceCount)")
         lines.append("workspace: \(workspacePath)")
         lines.append("recentEvents: \(recentEventCount) | latest: \(latestEventSummary ?? "none")")
 
@@ -84,10 +102,13 @@ final class RuntimeDiagnosticsService {
         let recentEvents = await AgentEventBus.shared.allRecentEvents(limit: 100)
         let latestEvent = recentEvents.last
         let latestSummary = latestEvent.map { "\($0.type.rawValue) wf=\($0.workflowID?.uuidString.prefix(8) ?? "-")" }
+        let currentRoomID = manager.currentRoomID
+        let lastProfile = currentRoomID.flatMap { manager.lastTurnProfile(for: $0) }
+        let recentRouteTraceCount = currentRoomID.map { manager.recentRouteTraces(for: $0).count } ?? 0
 
         return RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
-            currentRoomID: manager.currentRoomID,
+            currentRoomID: currentRoomID,
             activeWorkflowID: manager.currentWorkflowID,
             isWorkflowRunning: manager.isWorkflowRunning,
             geminiCooldownRemainingSeconds: ai.geminiCooldownRemainingSeconds,
@@ -99,6 +120,11 @@ final class RuntimeDiagnosticsService {
             sttRecording: capture.isRecording,
             sttStarting: capture.isStarting,
             recentArtifactsCount: manager.recentArtifacts.count,
+            lastTurnRoute: lastProfile.map { $0.selectedRoute.rawValue },
+            lastRouteReason: lastProfile?.routeReason,
+            lastMatchedSkills: lastProfile?.matchedSkillIDs ?? [],
+            lastEffectiveScopes: lastProfile?.effectiveScopes ?? [],
+            recentRouteTraceCount: recentRouteTraceCount,
             workspacePath: workspacePath,
             recentEventCount: recentEvents.count,
             latestEventSummary: latestSummary

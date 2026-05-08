@@ -80,6 +80,10 @@ class AgentWindowManager: ObservableObject {
     @Published var currentWorkflowID: UUID? = nil
     /// 현재 팀 협업 런타임 상태 — 팀 토론/화자 선택/턴 진행을 UI에 반영.
     @Published var teamRuntimeState: TeamRuntimeState? = nil
+    /// room별 마지막 turn profile — /why, /last, diagnostics용 읽기 전용 상태.
+    @Published var lastTurnProfileByRoom: [UUID: TurnProfile] = [:]
+    /// room별 route trace — 최근 route 판단 흐름 기록.
+    @Published var routeTracesByRoom: [UUID: [RouteTrace]] = [:]
     /// 최근 완료된 workflow artifact 목록 — 채팅 하단 ArtifactCardView에 표시.
     /// TODO: room scope 분리 — 현재는 앱 전역이라 여러 채팅방에서 artifact가 섞일 수 있음.
     ///       제품 구조에서는 recentArtifactsByRoom: [UUID: [IndexedArtifact]] 또는
@@ -114,6 +118,31 @@ class AgentWindowManager: ObservableObject {
                 automationTasksData = data
             }
         }
+    }
+
+    @MainActor
+    func recordTurnProfile(_ profile: TurnProfile) {
+        lastTurnProfileByRoom[profile.roomID] = profile
+    }
+
+    @MainActor
+    func appendRouteTrace(_ trace: RouteTrace) {
+        var traces = routeTracesByRoom[trace.roomID] ?? []
+        traces.append(trace)
+        if traces.count > 50 {
+            traces = Array(traces.suffix(50))
+        }
+        routeTracesByRoom[trace.roomID] = traces
+    }
+
+    @MainActor
+    func lastTurnProfile(for roomID: UUID) -> TurnProfile? {
+        lastTurnProfileByRoom[roomID]
+    }
+
+    @MainActor
+    func recentRouteTraces(for roomID: UUID, limit: Int = 50) -> [RouteTrace] {
+        Array((routeTracesByRoom[roomID] ?? []).suffix(limit))
     }
     
     var persistentContext: String {
