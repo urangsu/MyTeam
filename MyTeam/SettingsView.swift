@@ -134,7 +134,8 @@ struct SettingsView: View {
     @AppStorage("userTitle")              private var userTitle: String = "수석님"
     @AppStorage("userLocation")           private var userLocation: String = "전남 광양"
     @AppStorage("teamName")               private var teamName: String = "MyTeam"
-    @AppStorage("teamNameColor")          private var teamNameColor: String = "#FFFFFF"
+    @AppStorage(TeamNameplateAppearanceSettings.enabledKey) private var teamNameplateEnabled: Bool = TeamNameplateAppearanceSettings.defaultEnabled
+    @AppStorage(TeamNameplateAppearanceSettings.colorHexKey) private var teamNameplateColorHex: String = TeamNameplateAppearanceSettings.defaultColorHex
     @AppStorage("agentWindowOpacity")     private var agentWindowOpacity: Double = 0.0
     @AppStorage("useAnimalCrossingTTS")   private var useAnimalCrossingTTS: Bool = false
 
@@ -155,10 +156,10 @@ struct SettingsView: View {
     @State private var skillRefreshToken: UUID = UUID()
     @StateObject private var gps = LocationHelper()
 
-    private var plaqueColor: Binding<Color> {
+    private var teamNameplateColorBinding: Binding<Color> {
         Binding(
-            get: { Color(hex: teamNameColor) ?? .white },
-            set: { teamNameColor = $0.hexString }
+            get: { TeamNameplateAppearanceSettings.color(from: teamNameplateColorHex) },
+            set: { teamNameplateColorHex = $0.hexString }
         )
     }
 
@@ -203,9 +204,12 @@ struct SettingsView: View {
             }
         }
         .preferredColorScheme(manager.isDarkMode ? .dark : .light)
-        .frame(width: 460, height: 420)
+        .frame(width: 500, height: 600)
         .background(Color(NSColor.windowBackgroundColor))
-        .onAppear { loadSettings() }
+        .onAppear {
+            TeamNameplateAppearanceSettings.migrateLegacyValuesIfNeeded()
+            loadSettings()
+        }
         .onChange(of: gps.locationText) { _, newVal in
             if !newVal.isEmpty { userLocation = newVal }
         }
@@ -244,12 +248,44 @@ struct SettingsView: View {
                 LabeledContent {
                     HStack(spacing: 6) {
                         TextField("", text: $teamName)
-                        ColorPicker("", selection: plaqueColor, supportsOpacity: false)
-                            .labelsHidden()
-                            .frame(width: 36)
                     }
                 } label: {
                     Label("팀 이름", systemImage: "flag.fill")
+                }
+
+                Toggle("팀 이름 명패 표시", isOn: $teamNameplateEnabled)
+
+                LabeledContent {
+                    ColorPicker("", selection: teamNameplateColorBinding, supportsOpacity: false)
+                        .labelsHidden()
+                        .frame(width: 36)
+                        .disabled(!teamNameplateEnabled)
+                } label: {
+                    Label("명패 색상", systemImage: "paintpalette.fill")
+                }
+
+                HStack(spacing: 8) {
+                    Text("미리보기")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if teamNameplateEnabled {
+                        Text(teamName.isEmpty ? "MyTeam" : teamName)
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundColor(TeamNameplateAppearanceSettings.color(from: teamNameplateColorHex).isDark ? .white : .black.opacity(0.85))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 5)
+                            .background(
+                                Capsule()
+                                    .fill(TeamNameplateAppearanceSettings.color(from: teamNameplateColorHex).opacity(0.12))
+                                    .overlay(
+                                        Capsule().stroke(TeamNameplateAppearanceSettings.color(from: teamNameplateColorHex).opacity(0.18), lineWidth: 1)
+                                    )
+                            )
+                    } else {
+                        Text("숨김")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
 
@@ -286,6 +322,11 @@ struct SettingsView: View {
     // MARK: - Tab 2: API 설정
     private var apiSettingsTab: some View {
         Form {
+            Section("BYOK / 사용 정책") {
+                BYOKProviderCenterView()
+                UsagePolicyCardView()
+            }
+
             Section("기본 제공자") {
                 Picker("제공자", selection: $selectedProvider) {
                     Text("Gemini").tag(LLMProvider.gemini)

@@ -21,6 +21,9 @@ struct TeamStatusView: View {
     @State private var scheduleDraftPrompt: String = ""
     @State private var scheduleDraftAgentID: String = "auto"
     @State private var scheduleDraftError: String? = nil
+    @State private var collaborationStatusTick: Int = 0
+    @State private var collaborationStatusTimer: Timer? = nil
+    @State private var latestEventSummary: String? = nil
     
     private var bgColor: Color {
         manager.isDarkMode ? Color.black.opacity(isCollapsed ? 0.4 : 0.8) : Color.white.opacity(isCollapsed ? 0.3 : 0.75)
@@ -35,6 +38,16 @@ struct TeamStatusView: View {
 
     private var panelHeight: CGFloat {
         isCollapsed ? 40 : 480
+    }
+
+    private var collaborationStatus: TeamCollaborationStatus {
+        TeamCollaborationStatusProvider.currentStatus(
+            isWorkflowRunning: manager.isWorkflowRunning,
+            latestEventSummary: latestEventSummary,
+            idleIndex: collaborationStatusTick,
+            currentTask: manager.currentMainTask,
+            activeAgentNames: manager.activeAgents.map(\.name)
+        )
     }
     
     var body: some View {
@@ -142,21 +155,56 @@ struct TeamStatusView: View {
                     .stroke(textColor.opacity(0.2), lineWidth: 1)
             }
         )
+        .overlay(alignment: .topTrailing) {
+            if isSchedulePanelPresented {
+                schedulePopupCard
+                    .frame(width: 330)
+                    .padding(.trailing, 18)
+                    .padding(.top, 56)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
         .shadow(color: Color.black.opacity(manager.isDarkMode ? 0.3 : 0.08), radius: 15, x: 0, y: 8)
         .padding(10)
+        .onAppear {
+            refreshCollaborationStatus()
+            collaborationStatusTimer?.invalidate()
+            collaborationStatusTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
+                collaborationStatusTick += 1
+                refreshCollaborationStatus()
+            }
+        }
+        .onChange(of: manager.isWorkflowRunning) { _, _ in
+            refreshCollaborationStatus()
+        }
+        .onChange(of: manager.currentWorkflowID?.uuidString ?? "") { _, _ in
+            refreshCollaborationStatus()
+        }
+        .onDisappear {
+            collaborationStatusTimer?.invalidate()
+            collaborationStatusTimer = nil
+        }
     }
     
     // MARK: - 하위 뷰 (에이전트 리스트)
     private var agentListView: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
-                Image(systemName: "bolt.fill")
-                    .foregroundColor(.cyan)
+                Image(systemName: collaborationStatus.kind == .idle ? "pause.circle.fill" : "sparkles")
+                    .foregroundColor(collaborationStatus.kind == .idle ? .secondary : .cyan)
                     .font(.system(size: 13))
-                Text(manager.currentMainTask)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(textColor.opacity(0.6))
-                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(collaborationStatus.title)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(textColor.opacity(0.72))
+                        .lineLimit(1)
+                    if !collaborationStatus.detail.isEmpty {
+                        Text(collaborationStatus.detail)
+                            .font(.system(size: 10))
+                            .foregroundColor(textColor.opacity(0.42))
+                            .lineLimit(1)
+                    }
+                }
                 Spacer()
             }
             .padding(.horizontal, 20)
@@ -454,10 +502,6 @@ struct TeamStatusView: View {
 
             // ── 하단: 입력창 (팀 채팅 + 첨부파일) ──
             Divider().background(textColor.opacity(0.08))
-            if isSchedulePanelPresented {
-                scheduleTasksPanel
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
 
             // 첨부파일 미리보기
             if !pendingAttachments.isEmpty {
@@ -589,6 +633,10 @@ struct TeamStatusView: View {
         )
         .padding(.horizontal, 10)
         .padding(.top, 8)
+    }
+
+    private var schedulePopupCard: some View {
+        scheduleTasksPanel
     }
 
     private var scheduleComposer: some View {
@@ -732,6 +780,32 @@ struct TeamStatusView: View {
         components.second = 0
         guard let today = Calendar.current.date(from: components) else { return nil }
         return today > Date() ? today : Calendar.current.date(byAdding: .day, value: 1, to: today)
+    }
+
+    private func refreshCollaborationStatus() {
+        Task {
+            let workflowID = manager.currentWorkflowID
+            let recentEvents = await AgentEventBus.shared.allRecentEvents(limit: 50)
+            let scopedEvents = recentEvents.filter { event in
+                guard let workflowID else { return true }
+                return event.workflowID == workflowID
+            }
+            let latest = scopedEvents.last ?? recentEvents.last
+            let summary = latest.map { event in
+                let payloadBits = [
+                    event.payload.agentName,
+                    event.payload.toolName,
+                    event.payload.provider,
+                    event.payload.message,
+                    event.payload.errorMessage
+                ].compactMap { $0 }.joined(separator: " ")
+                return payloadBits.isEmpty ? event.type.rawValue : "\(event.type.rawValue) \(payloadBits)"
+            }
+
+            await MainActor.run {
+                self.latestEventSummary = summary
+            }
+        }
     }
 
     private func openTeamFilePicker() {

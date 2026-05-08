@@ -12,8 +12,8 @@ struct TeamTableView: View {
     @State private var selectedAgentIndex: Int? = nil
 
     @AppStorage("teamName") private var teamName: String = "MyTeam"
-    @AppStorage("showTeamName") private var showTeamName: Bool = true
-    @AppStorage("teamNameColor") private var teamNameColor: String = "#FFFFFF"
+    @AppStorage(TeamNameplateAppearanceSettings.enabledKey) private var teamNameplateEnabled: Bool = TeamNameplateAppearanceSettings.defaultEnabled
+    @AppStorage(TeamNameplateAppearanceSettings.colorHexKey) private var teamNameplateColorHex: String = TeamNameplateAppearanceSettings.defaultColorHex
     @AppStorage("agentWindowOpacity") private var agentWindowOpacity: Double = 0.0
 
     // 드래그 스팸 방지: 한 번의 드래그 제스처 당 알림 1회만 발생
@@ -23,14 +23,14 @@ struct TeamTableView: View {
     @State private var hasSpokenOnDragEnded: Bool = false
 
     private var plaqueBaseColor: Color {
-        Color(hex: teamNameColor) ?? .white
+        TeamNameplateAppearanceSettings.color(from: teamNameplateColorHex)
     }
 
     var body: some View {
         VStack(spacing: 0) {
 
             // ── 팀 명칭 배지 (클릭 시 도래깃 이동) ──
-            if showTeamName && !teamName.isEmpty {
+            if teamNameplateEnabled && !teamName.isEmpty {
                 Text(teamName)
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .foregroundColor(plaqueBaseColor.isDark ? .white : .black.opacity(0.85))
