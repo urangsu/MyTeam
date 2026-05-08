@@ -6,6 +6,40 @@
 
 ---
 
+## 2026-05-09 (Round 19.6 — Delegation Mode Activation)
+
+### 빌드 목표
+- 자연어 위임 표현을 room별 delegation contract / plan / state로 기록
+- 승인 전에는 실제 자동 실행을 시작하지 않음
+- 결제 / 로그인 / 삭제는 차단 정책으로 분리
+
+### 구현 완료
+
+| 항목 | 파일 | 내용 |
+|------|------|------|
+| delegation state | DelegationModeState.swift | room별 delegation mode 상태 모델 추가 |
+| delegation contract | DelegationContract.swift | 위임 범위, 차단 범위, 승인 범위를 담는 contract 모델 추가 |
+| delegation plan | DelegatedWorkflowPlan.swift | 위임 작업의 단계 skeleton 추가 |
+| approval policy | ApprovalPolicy.swift | auto allowed / approval required / blocked 정책 추가 |
+| delegation detector | DelegatedWorkflowDetector.swift | 위임 요청 / 승인 / 종료 문구 감지 helper 추가 |
+| room 저장 | AgentWindowManager.swift | delegation state / contract / plan room별 메모리 저장 추가 |
+| routing | WorkflowOrchestrator.swift | 위임 요청 시 awaitingApproval 상태 저장, 승인/종료 skeleton 연결 |
+| diagnostics | RuntimeDiagnosticsService.swift | delegation 상태 / goal / plan step count 요약 추가 |
+
+### 주요 결정사항
+
+- **실제 자동 실행 미구현**: 위임모드는 준비 상태와 승인 흐름만 기록한다.
+- **approval UI 미구현**: 상태 전환과 안내 메시지만 남긴다.
+- **LLM 호출 미추가**: 위임 감지와 plan 생성은 로컬 문자열 기반으로만 처리한다.
+- **StoreKit / entitlement 미수정**: 결제·해금 경로는 건드리지 않는다.
+
+### 빌드 상태
+- BUILD SUCCEEDED ✅
+- new warning 0 ✅
+
+### 다음 단계
+- Round 20: App Launch Result UX + Artifact UX
+
 ## 2026-05-09 (Round 19.5 — TurnProfile + RouteTrace + DryRun Skeleton)
 
 ### 빌드 목표

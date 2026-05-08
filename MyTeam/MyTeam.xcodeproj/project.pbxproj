@@ -10533,6 +10533,11 @@
 				<string>5AC8AFF55E9242DCB7F0F78D</string>
 				<string>42DBB1953A104CC6B5012266</string>
 				<string>5E93BCEB0F1745B08FA75A59</string>
+				<string>B19D61E3A0014AAAB1000011</string>
+				<string>B19D61E3A0014AAAB1000012</string>
+				<string>B19D61E3A0014AAAB1000013</string>
+				<string>B19D61E3A0014AAAB1000014</string>
+				<string>B19D61E3A0014AAAB1000015</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -18214,6 +18219,71 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>B19D61E3A0014AAAB0000011</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>DelegationModeState.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>B19D61E3A0014AAAB0000012</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>DelegationContract.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>B19D61E3A0014AAAB0000013</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>DelegatedWorkflowPlan.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>B19D61E3A0014AAAB0000014</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>ApprovalPolicy.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>B19D61E3A0014AAAB0000015</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>DelegatedWorkflowDetector.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
 		<key>A11B22C33D44E55F66010018</key>
 		<dict>
 			<key>fileRef</key>
@@ -18239,6 +18309,41 @@
 		<dict>
 			<key>fileRef</key>
 			<string>B205196CF6714ED8B0301822</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>B19D61E3A0014AAAB1000011</key>
+		<dict>
+			<key>fileRef</key>
+			<string>B19D61E3A0014AAAB0000011</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>B19D61E3A0014AAAB1000012</key>
+		<dict>
+			<key>fileRef</key>
+			<string>B19D61E3A0014AAAB0000012</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>B19D61E3A0014AAAB1000013</key>
+		<dict>
+			<key>fileRef</key>
+			<string>B19D61E3A0014AAAB0000013</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>B19D61E3A0014AAAB1000014</key>
+		<dict>
+			<key>fileRef</key>
+			<string>B19D61E3A0014AAAB0000014</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>B19D61E3A0014AAAB1000015</key>
+		<dict>
+			<key>fileRef</key>
+			<string>B19D61E3A0014AAAB0000015</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>

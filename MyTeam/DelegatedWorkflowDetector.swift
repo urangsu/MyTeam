@@ -1,0 +1,220 @@
+import Foundation
+
+enum DelegatedWorkflowDetector {
+    private static let requestKeywords = [
+        "맡길게",
+        "알아서 해줘",
+        "끝까지 진행해줘",
+        "기획부터 결과까지",
+        "처음부터 끝까지",
+        "완성해줘",
+        "다 만들어줘",
+        "전체 진행해줘",
+        "내가 허락할게",
+        "알아서 만들어줘"
+    ]
+
+    private static let approvalKeywords = [
+        "응 진행해",
+        "진행해",
+        "승인",
+        "허락",
+        "그대로 해",
+        "그 범위로 해",
+        "오케이",
+        "좋아 진행",
+        "위임모드 시작"
+    ]
+
+    private static let cancelKeywords = [
+        "그만",
+        "중단",
+        "멈춰",
+        "취소",
+        "위임모드 종료",
+        "위임 취소",
+        "자동 진행 그만"
+    ]
+
+    static func isDelegationRequest(_ message: String) -> Bool {
+        let lower = message.lowercased()
+        return containsAny(lower, keywords: requestKeywords)
+    }
+
+    static func isDelegationApproval(_ message: String) -> Bool {
+        let lower = message.lowercased()
+        return containsAny(lower, keywords: approvalKeywords)
+    }
+
+    static func isDelegationCancel(_ message: String) -> Bool {
+        let lower = message.lowercased()
+        return containsAny(lower, keywords: cancelKeywords)
+    }
+
+    static func inferGoal(from message: String) -> String {
+        var cleaned = message
+        for keyword in requestKeywords + approvalKeywords + cancelKeywords {
+            cleaned = cleaned.replacingOccurrences(of: keyword, with: " ", options: [.caseInsensitive, .diacriticInsensitive], range: nil)
+        }
+        cleaned = cleaned.replacingOccurrences(of: "위임모드", with: " ", options: [.caseInsensitive, .diacriticInsensitive], range: nil)
+        cleaned = cleaned.replacingOccurrences(of: "자동 진행", with: " ", options: [.caseInsensitive, .diacriticInsensitive], range: nil)
+        cleaned = cleaned.replacingOccurrences(of: "맡기", with: " ", options: [.caseInsensitive, .diacriticInsensitive], range: nil)
+        cleaned = cleaned.replacingOccurrences(of: "진행해", with: " ", options: [.caseInsensitive, .diacriticInsensitive], range: nil)
+        cleaned = cleaned.replacingOccurrences(of: "해줘", with: " ", options: [.caseInsensitive, .diacriticInsensitive], range: nil)
+
+        let normalized = cleaned
+            .replacingOccurrences(of: "  ", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return normalized.isEmpty ? "사용자가 요청한 작업" : normalized
+    }
+
+    static func inferRequestedScopes(from message: String) -> [DelegationContract.Scope] {
+        let lower = message.lowercased()
+        var scopes: [DelegationContract.Scope] = []
+
+        if containsAny(lower, keywords: ["답변", "요약", "설명", "정리", "응답"]) {
+            scopes.append(.answerOnly)
+        }
+        if containsAny(lower, keywords: ["로컬", "local", "스킬", "skill", "글자 수", "문서 내", "내부"]) {
+            scopes.append(.localSkill)
+        }
+        if containsAny(lower, keywords: ["llm", "모델", "추론", "분석", "생성"]) {
+            scopes.append(.llmSkill)
+        }
+        if containsAny(lower, keywords: ["markdown", "md", "문서", "파일", "보고서", "체크리스트", "초안", "artifact", "산출물"]) {
+            scopes.append(.artifactCreation)
+        }
+        if containsAny(lower, keywords: ["툴", "도구", "브라우저", "웹", "검색", "외부"]) {
+            scopes.append(.toolExecution)
+        }
+        if containsAny(lower, keywords: ["메일", "이메일", "슬랙", "slack", "보내", "전송", "공유"]) {
+            scopes.append(.externalWrite)
+        }
+        if containsAny(lower, keywords: ["결제", "구매", "청구", "가격", "돈"]) {
+            scopes.append(.payment)
+        }
+        if containsAny(lower, keywords: ["로그인", "인증", "계정", "sign in", "signin"]) {
+            scopes.append(.login)
+        }
+        if containsAny(lower, keywords: ["삭제", "지워", "제거", "덮어쓰기", "destroy", "remove"]) {
+            scopes.append(.destructive)
+        }
+
+        return dedupe(scopes)
+    }
+
+    static func buildContract(roomID: UUID, message: String) -> DelegationContract {
+        let goal = inferGoal(from: message)
+        let requestedScopes = inferRequestedScopes(from: message)
+        let approvalDecisions = ApprovalPolicy.decision(for: requestedScopes)
+        let blockedScopes = requestedScopes.enumerated().compactMap { index, scope in
+            if case .blocked = approvalDecisions[index] { return scope }
+            return nil
+        }
+        let reapprovalScopes = requestedScopes.enumerated().compactMap { index, scope in
+            if case .requiresApproval = approvalDecisions[index] { return scope }
+            return nil
+        }
+
+        var expectedOutputs = ["자연어 응답 초안"]
+        if requestedScopes.contains(.artifactCreation) {
+            expectedOutputs.append("Markdown 산출물")
+        }
+        if requestedScopes.contains(.localSkill) {
+            expectedOutputs.append("로컬 스킬 결과")
+        }
+        if requestedScopes.contains(.llmSkill) {
+            expectedOutputs.append("LLM 결과 초안")
+        }
+
+        return DelegationContract(
+            id: UUID(),
+            roomID: roomID,
+            userMessagePreview: String(message.prefix(120)),
+            goal: goal,
+            allowedScopes: [.answerOnly, .localSkill, .llmSkill, .artifactCreation],
+            blockedScopes: dedupe(blockedScopes),
+            requiresReapprovalScopes: dedupe(reapprovalScopes),
+            expectedOutputs: dedupe(expectedOutputs),
+            status: .awaitingApproval,
+            createdAt: Date(),
+            expiresAt: Calendar.current.date(byAdding: .hour, value: 24, to: Date())
+        )
+    }
+
+    static func buildPlan(for contract: DelegationContract) -> DelegatedWorkflowPlan {
+        var steps: [DelegatedWorkflowPlan.Step] = [
+            step(.understand, "요청 이해", "위임 의도와 작업 목표를 정리합니다.", expectedOutput: "작업 목표 요약", requiresApproval: false),
+            step(.plan, "실행 계획", "허용 범위와 제한 범위를 나눠 계획합니다.", expectedOutput: "실행 계획", requiresApproval: false)
+        ]
+
+        if !contract.requiresReapprovalScopes.isEmpty {
+            steps.append(step(.requiresApproval, "추가 승인 필요", "외부 전송·도구 실행처럼 다시 확인이 필요한 범위를 표시합니다.", expectedOutput: "승인 필요 항목", requiresApproval: true))
+        }
+
+        if !contract.blockedScopes.isEmpty {
+            steps.append(step(.blocked, "차단 항목 확인", "결제·로그인·삭제처럼 자동 진행이 막힌 범위를 표시합니다.", expectedOutput: "차단 항목", requiresApproval: true))
+        }
+
+        if contract.expectedOutputs.contains(where: { $0.localizedCaseInsensitiveContains("Markdown") }) {
+            steps.append(step(.createArtifact, "문서 생성", "요청에 맞는 Markdown 초안을 준비합니다.", expectedOutput: "Markdown artifact", requiresApproval: false))
+        } else {
+            steps.append(step(.generateText, "답변 생성", "요청 내용을 바탕으로 초안을 준비합니다.", expectedOutput: "텍스트 응답", requiresApproval: false))
+        }
+
+        steps.append(step(.verify, "검토", "실제 실행 전 결과의 범위와 위험을 한 번 더 확인합니다.", expectedOutput: "검토 결과", requiresApproval: false))
+        steps.append(step(.summarize, "요약", "사용자가 바로 이해할 수 있는 안내로 정리합니다.", expectedOutput: "최종 요약", requiresApproval: false))
+
+        return DelegatedWorkflowPlan(
+            id: UUID(),
+            contractID: contract.id,
+            roomID: contract.roomID,
+            title: contract.goal,
+            steps: steps,
+            expectedArtifacts: contract.expectedOutputs,
+            riskSummary: riskSummary(for: contract),
+            createdAt: Date()
+        )
+    }
+
+    private static func step(
+        _ kind: DelegatedWorkflowPlan.Step.Kind,
+        _ title: String,
+        _ detail: String,
+        expectedOutput: String?,
+        requiresApproval: Bool
+    ) -> DelegatedWorkflowPlan.Step {
+        DelegatedWorkflowPlan.Step(
+            id: UUID(),
+            kind: kind,
+            title: title,
+            detail: detail,
+            expectedOutput: expectedOutput,
+            requiresApproval: requiresApproval
+        )
+    }
+
+    private static func containsAny(_ text: String, keywords: [String]) -> Bool {
+        keywords.contains { text.contains($0.lowercased()) }
+    }
+
+    private static func dedupe<T: Hashable>(_ values: [T]) -> [T] {
+        var seen = Set<T>()
+        return values.filter { seen.insert($0).inserted }
+    }
+
+    private static func riskSummary(for contract: DelegationContract) -> String {
+        var parts: [String] = []
+        if !contract.requiresReapprovalScopes.isEmpty {
+            parts.append("외부 전송/도구 실행은 승인 필요")
+        }
+        if !contract.blockedScopes.isEmpty {
+            parts.append("결제/로그인/삭제는 차단")
+        }
+        if parts.isEmpty {
+            parts.append("자동 허용 범위만 포함")
+        }
+        return parts.joined(separator: " · ")
+    }
+}

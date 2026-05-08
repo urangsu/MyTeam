@@ -38,6 +38,11 @@ struct RuntimeDiagnosticsSnapshot {
     let lastEffectiveScopes: [String]
     let recentRouteTraceCount: Int
 
+    // Delegation
+    let delegationModeStatus: String?
+    let activeDelegationGoal: String?
+    let delegatedPlanStepCount: Int
+
     // Workspace
     let workspacePath: String
 
@@ -75,6 +80,11 @@ struct RuntimeDiagnosticsSnapshot {
             lines.append("effectiveScopes: \(lastEffectiveScopes.joined(separator: ", "))")
         }
         lines.append("recentRouteTraceCount: \(recentRouteTraceCount)")
+        if let delegationModeStatus {
+            lines.append("delegation: \(delegationModeStatus) goal=\(activeDelegationGoal ?? "nil") steps=\(delegatedPlanStepCount)")
+        } else {
+            lines.append("delegation: inactive")
+        }
         lines.append("workspace: \(workspacePath)")
         lines.append("recentEvents: \(recentEventCount) | latest: \(latestEventSummary ?? "none")")
 
@@ -105,6 +115,9 @@ final class RuntimeDiagnosticsService {
         let currentRoomID = manager.currentRoomID
         let lastProfile = currentRoomID.flatMap { manager.lastTurnProfile(for: $0) }
         let recentRouteTraceCount = currentRoomID.map { manager.recentRouteTraces(for: $0).count } ?? 0
+        let delegationState = currentRoomID.flatMap { manager.delegationModeState(for: $0) }
+        let delegationContract = currentRoomID.flatMap { manager.activeDelegationContract(for: $0) }
+        let delegationPlan = currentRoomID.flatMap { manager.delegatedWorkflowPlan(for: $0) }
 
         return RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
@@ -125,6 +138,9 @@ final class RuntimeDiagnosticsService {
             lastMatchedSkills: lastProfile?.matchedSkillIDs ?? [],
             lastEffectiveScopes: lastProfile?.effectiveScopes ?? [],
             recentRouteTraceCount: recentRouteTraceCount,
+            delegationModeStatus: delegationState.map { $0.status.rawValue },
+            activeDelegationGoal: delegationContract?.goal ?? delegationState?.detail,
+            delegatedPlanStepCount: delegationPlan?.steps.count ?? 0,
             workspacePath: workspacePath,
             recentEventCount: recentEvents.count,
             latestEventSummary: latestSummary

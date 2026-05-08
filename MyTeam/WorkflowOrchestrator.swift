@@ -45,9 +45,19 @@ final class WorkflowOrchestrator {
         let eventMsg = userMessage
         Task { await AgentEventBus.shared.publish(.userMessageSubmitted(roomID: eventRoomID, message: eventMsg)) }
 
+        var effectiveScopes: Set<ToolScope> = [.chatBasic]  // 항상 chatBasic 포함
+
+        if await handleDelegationMode(
+            userMessage: userMessage,
+            roomID: roomID,
+            manager: manager,
+            effectiveScopes: effectiveScopes
+        ) {
+            return
+        }
+
         // ── Skill match (Korean Skills 등) + allowedScopes 계산 ──
         let enabledSkills = SkillRegistry.shared.matchEnabledSkills(for: userMessage)
-        var effectiveScopes: Set<ToolScope> = [.chatBasic]  // 항상 chatBasic 포함
 
         if !enabledSkills.isEmpty {
             let names = enabledSkills.map { $0.id }.joined(separator: ", ")
@@ -589,6 +599,233 @@ final class WorkflowOrchestrator {
             createdAt: Date()
         )
         manager.recordTurnProfile(profile)
+    }
+
+    private func delegationAwaitingDetail(for contract: DelegationContract) -> String {
+        var parts: [String] = []
+        parts.append("목표: \(contract.goal)")
+
+        let autoAllowed = contract.allowedScopes.map(\.rawValue).joined(separator: ", ")
+        if !autoAllowed.isEmpty {
+            parts.append("자동 진행 가능: \(autoAllowed)")
+        }
+
+        if !contract.requiresReapprovalScopes.isEmpty {
+            let scopes = contract.requiresReapprovalScopes.map(\.rawValue).joined(separator: ", ")
+            parts.append("다시 확인 필요: \(scopes)")
+        }
+
+        if !contract.blockedScopes.isEmpty {
+            let scopes = contract.blockedScopes.map(\.rawValue).joined(separator: ", ")
+            parts.append("차단: \(scopes)")
+        }
+
+        return parts.joined(separator: " · ")
+    }
+
+    private func delegationGuideMessage(for contract: DelegationContract) -> String {
+        var lines = [
+            "위임모드를 준비했습니다.",
+            "",
+            "목표: \(contract.goal)",
+            "",
+            "자동 진행 가능:",
+            "문서 기획",
+            "초안 작성",
+            "Markdown 파일 생성",
+            "결과 요약",
+            ""
+        ]
+
+        if !contract.requiresReapprovalScopes.isEmpty || !contract.blockedScopes.isEmpty {
+            lines.append("다시 확인 필요:")
+        }
+        if !contract.requiresReapprovalScopes.isEmpty {
+            lines.append("외부 전송")
+            lines.append("도구 실행")
+        }
+        if !contract.blockedScopes.isEmpty {
+            lines.append("결제")
+            lines.append("로그인")
+            lines.append("파일 삭제")
+        }
+
+        lines.append("")
+        lines.append("이 범위로 진행하려면 ‘진행해’라고 말해 주세요.")
+        return lines.joined(separator: "\n")
+    }
+
+    private func delegationApprovalMessage() -> String {
+        """
+        위임모드를 시작했습니다.
+        허용된 범위 안에서 작업을 이어가겠습니다.
+        """
+    }
+
+    private func delegationCancelMessage() -> String {
+        """
+        위임모드를 종료했습니다.
+        이후 작업은 다시 확인하면서 진행합니다.
+        """
+    }
+
+    private func handleDelegationMode(
+        userMessage: String,
+        roomID: UUID,
+        manager: AgentWindowManager,
+        effectiveScopes: Set<ToolScope>
+    ) async -> Bool {
+        let isRequest = DelegatedWorkflowDetector.isDelegationRequest(userMessage)
+        let isApproval = DelegatedWorkflowDetector.isDelegationApproval(userMessage)
+        let isCancel = DelegatedWorkflowDetector.isDelegationCancel(userMessage)
+        let currentState = await MainActor.run { manager.delegationModeState(for: roomID) }
+        let currentContract = await MainActor.run { manager.activeDelegationContract(for: roomID) }
+
+        if isApproval,
+           let currentState,
+           let currentContract,
+           currentState.status == .awaitingApproval || currentState.status == .draft {
+            let approvedContract = currentContract.updating(status: .approved)
+            let activeState = currentState.updating(
+                status: .active,
+                contractID: approvedContract.id,
+                title: "위임모드 활성화",
+                detail: "허용된 범위 안에서 작업을 이어가겠습니다."
+            )
+            await MainActor.run {
+                manager.recordDelegationContract(approvedContract)
+                manager.updateDelegationModeState(activeState)
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .delegationApproved,
+                    message: "delegation approved: \(approvedContract.goal)"
+                )
+                self.recordTurnProfile(
+                    manager: manager,
+                    roomID: roomID,
+                    userMessage: userMessage,
+                    route: .delegationMode,
+                    reason: "delegation approved",
+                    matchedSkills: [],
+                    effectiveScopes: effectiveScopes,
+                    expectedOutput: "delegation mode active",
+                    requiresApproval: false
+                )
+                manager.addChatLog(
+                    roomID: roomID,
+                    agentID: "system",
+                    agentName: "시스템",
+                    text: delegationApprovalMessage(),
+                    isUser: false,
+                    isSystem: true
+                )
+            }
+            return true
+        }
+
+        if isCancel, let currentState, currentState.status != .inactive {
+            let cancelledContract = currentContract?.updating(status: .cancelled)
+            let cancelledState = currentState.updating(
+                status: .cancelled,
+                contractID: currentContract?.id,
+                title: "위임모드 종료",
+                detail: "이후 작업은 다시 확인하면서 진행합니다."
+            )
+            await MainActor.run {
+                if let cancelledContract {
+                    manager.recordDelegationContract(cancelledContract)
+                }
+                manager.updateDelegationModeState(cancelledState)
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .delegationCancelled,
+                    message: "delegation cancelled"
+                )
+                self.recordTurnProfile(
+                    manager: manager,
+                    roomID: roomID,
+                    userMessage: userMessage,
+                    route: .delegationMode,
+                    reason: "delegation cancelled",
+                    matchedSkills: [],
+                    effectiveScopes: effectiveScopes,
+                    expectedOutput: "delegation mode cancelled",
+                    requiresApproval: false
+                )
+                manager.addChatLog(
+                    roomID: roomID,
+                    agentID: "system",
+                    agentName: "시스템",
+                    text: delegationCancelMessage(),
+                    isUser: false,
+                    isSystem: true
+                )
+            }
+            return true
+        }
+
+        guard isRequest else { return false }
+
+        let contract = DelegatedWorkflowDetector.buildContract(roomID: roomID, message: userMessage)
+        let plan = DelegatedWorkflowDetector.buildPlan(for: contract)
+        let state = DelegationModeState(
+            roomID: roomID,
+            status: .awaitingApproval,
+            contractID: contract.id,
+            title: "위임모드 준비",
+            detail: delegationAwaitingDetail(for: contract),
+            updatedAt: Date()
+        )
+
+        await MainActor.run {
+            manager.recordDelegationContract(contract)
+            manager.recordDelegatedWorkflowPlan(plan)
+            manager.updateDelegationModeState(state)
+            self.recordRouteTrace(
+                manager: manager,
+                roomID: roomID,
+                step: .delegationDetected,
+                message: "delegation request detected: \(contract.goal)"
+            )
+            if !contract.requiresReapprovalScopes.isEmpty {
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .approvalRequired,
+                    message: "requires approval: \(contract.requiresReapprovalScopes.map(\.rawValue).joined(separator: ", "))"
+                )
+            }
+            if !contract.blockedScopes.isEmpty {
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .approvalBlocked,
+                    message: "blocked scopes: \(contract.blockedScopes.map(\.rawValue).joined(separator: ", "))"
+                )
+            }
+            self.recordTurnProfile(
+                manager: manager,
+                roomID: roomID,
+                userMessage: userMessage,
+                route: .delegationMode,
+                reason: "delegation request detected",
+                matchedSkills: [],
+                effectiveScopes: effectiveScopes,
+                expectedOutput: "delegation contract and plan",
+                requiresApproval: true
+            )
+            manager.addChatLog(
+                roomID: roomID,
+                agentID: "system",
+                agentName: "시스템",
+                text: delegationGuideMessage(for: contract),
+                isUser: false,
+                isSystem: true
+            )
+        }
+        return true
     }
 
     // MARK: - PlannerResult — 실패 이유를 사용자까지 보존

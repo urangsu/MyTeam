@@ -84,6 +84,12 @@ class AgentWindowManager: ObservableObject {
     @Published var lastTurnProfileByRoom: [UUID: TurnProfile] = [:]
     /// room별 route trace — 최근 route 판단 흐름 기록.
     @Published var routeTracesByRoom: [UUID: [RouteTrace]] = [:]
+    /// room별 delegation mode 상태.
+    @Published var delegationModeStatesByRoom: [UUID: DelegationModeState] = [:]
+    /// room별 delegation contract.
+    @Published var activeDelegationContractsByRoom: [UUID: DelegationContract] = [:]
+    /// room별 delegation workflow plan.
+    @Published var delegatedWorkflowPlansByRoom: [UUID: DelegatedWorkflowPlan] = [:]
     /// 최근 완료된 workflow artifact 목록 — 채팅 하단 ArtifactCardView에 표시.
     /// TODO: room scope 분리 — 현재는 앱 전역이라 여러 채팅방에서 artifact가 섞일 수 있음.
     ///       제품 구조에서는 recentArtifactsByRoom: [UUID: [IndexedArtifact]] 또는
@@ -143,6 +149,36 @@ class AgentWindowManager: ObservableObject {
     @MainActor
     func recentRouteTraces(for roomID: UUID, limit: Int = 50) -> [RouteTrace] {
         Array((routeTracesByRoom[roomID] ?? []).suffix(limit))
+    }
+
+    @MainActor
+    func updateDelegationModeState(_ state: DelegationModeState) {
+        delegationModeStatesByRoom[state.roomID] = state
+    }
+
+    @MainActor
+    func recordDelegationContract(_ contract: DelegationContract) {
+        activeDelegationContractsByRoom[contract.roomID] = contract
+    }
+
+    @MainActor
+    func recordDelegatedWorkflowPlan(_ plan: DelegatedWorkflowPlan) {
+        delegatedWorkflowPlansByRoom[plan.roomID] = plan
+    }
+
+    @MainActor
+    func delegationModeState(for roomID: UUID) -> DelegationModeState? {
+        delegationModeStatesByRoom[roomID]
+    }
+
+    @MainActor
+    func activeDelegationContract(for roomID: UUID) -> DelegationContract? {
+        activeDelegationContractsByRoom[roomID]
+    }
+
+    @MainActor
+    func delegatedWorkflowPlan(for roomID: UUID) -> DelegatedWorkflowPlan? {
+        delegatedWorkflowPlansByRoom[roomID]
     }
     
     var persistentContext: String {
