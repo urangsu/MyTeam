@@ -47,6 +47,7 @@ struct TeamStatusView: View {
         TeamCollaborationStatusProvider.currentStatus(
             isWorkflowRunning: manager.isWorkflowRunning,
             workflowStatus: currentWorkflowStatus,
+            teamRuntimeState: manager.teamRuntimeState,
             latestEventType: latestEventType,
             latestToolName: latestToolName,
             latestEventTimestamp: latestEventTimestamp,

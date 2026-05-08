@@ -47,7 +47,8 @@ class TeamOrchestrator {
         userMessage: String,
         roomID: UUID,
         manager: AgentWindowManager,
-        maxTurns: Int = 6
+        maxTurns: Int = 6,
+        precomputedRouting: IntentResult? = nil
     ) async {
         // 디바운싱: 마지막 토의로부터 2초 이상 경과해야만 진행
         let now = Date()
@@ -70,14 +71,19 @@ class TeamOrchestrator {
             let groundedUserMessage = userMessage + toolEvidence.promptContext
 
             // 1. 의도 분류 및 리더 추천 (Intent Router)
-            let routing = try await IntentRouter.shared.classify(
-                message: userMessage,
-                activeAgents: agents,
-                leaderAgent: leader,
-                addressedAgent: addressedAgent,
-                unavailableMentionedAgent: unavailableMentionedAgent,
-                toolPolicy: toolPolicy
-            )
+            let routing: IntentResult
+            if let precomputedRouting {
+                routing = precomputedRouting
+            } else {
+                routing = try await IntentRouter.shared.classify(
+                    message: userMessage,
+                    activeAgents: agents,
+                    leaderAgent: leader,
+                    addressedAgent: addressedAgent,
+                    unavailableMentionedAgent: unavailableMentionedAgent,
+                    toolPolicy: toolPolicy
+                )
+            }
             let turnBudget = min(max(routing.turnBudget ?? 3, 1), 5)
             let alreadySpoke = await emitUnavailableMentionNoticeIfNeeded(
                 unavailableAgent: unavailableMentionedAgent,
@@ -85,10 +91,17 @@ class TeamOrchestrator {
                 roomID: roomID,
                 manager: manager
             )
+            await MainActor.run {
+                manager.teamRuntimeState = TeamRuntimeState.discussionStarted(
+                    roomID: roomID,
+                    detail: "팀 협업을 시작했습니다."
+                )
+            }
+            await AgentEventBus.shared.publish(.teamDiscussionStarted(roomID: roomID, message: userMessage.prefix(80).description))
             
             if routing.intent == .task || routing.intent == .research || routing.intent == .decision {
                 // [TRACK A] 업무 모드 (Task Mode)
-                await runTaskMode(
+                _ = await runTaskMode(
                     routing: routing,
                     userMessage: groundedUserMessage,
                     roomID: roomID,
@@ -100,7 +113,7 @@ class TeamOrchestrator {
                 )
             } else {
                 // [TRACK B] 수다 모드 (Chitchat Mode) - 기존 릴레이 방식
-                await runChitchatMode(
+                _ = await runChitchatMode(
                     userMessage: groundedUserMessage,
                     roomID: roomID,
                     manager: manager,
@@ -162,8 +175,17 @@ class TeamOrchestrator {
             roomID: roomID,
             manager: manager
         )
+        await MainActor.run {
+            manager.teamRuntimeState = TeamRuntimeState.discussionStarted(
+                roomID: roomID,
+                detail: "팀 협업을 시작했습니다."
+            )
+        }
+        await AgentEventBus.shared.publish(
+            .teamDiscussionStarted(roomID: roomID, message: userMessage.prefix(80).description)
+        )
 
-        await runChitchatMode(
+        _ = await runChitchatMode(
             userMessage: groundedUserMessage,
             roomID: roomID,
             manager: manager,
@@ -186,14 +208,42 @@ class TeamOrchestrator {
         preferredFirstSpeaker: AgentWindowManager.AgentConfig?,
         alreadySpoke: Bool,
         sources: [AgentWindowManager.SourceReference]
-    ) async {
-        guard let orders = routing.workOrders, !orders.isEmpty else { return }
+    ) async -> Bool {
+        guard let orders = routing.workOrders, !orders.isEmpty else { return false }
         let agents = manager.activeAgents
         var didSpeakInThisDiscussion = alreadySpoke
-        
+
+        await AgentEventBus.shared.publish(
+            .speakerSelectionStarted(roomID: roomID, message: "업무 담당자를 배정하는 중입니다.")
+        )
+        await MainActor.run {
+            manager.teamRuntimeState = TeamRuntimeState.selectingSpeaker(
+                roomID: roomID,
+                detail: "업무 담당자를 배정하는 중입니다."
+            )
+        }
+
         // 1. 팀 리더의 주도적 제안 (Routing에 명시된 경우)
         if let firstAgent = preferredFirstSpeaker ?? leader ?? orders.first.flatMap({ order in agents.first(where: { $0.id == order.agentID }) }),
            let proposal = routing.proactiveMessage {
+            await AgentEventBus.shared.publish(
+                .speakerSelectionCompleted(
+                    roomID: roomID,
+                    agentID: firstAgent.id,
+                    agentName: firstAgent.name,
+                    fallbackUsed: preferredFirstSpeaker == nil && leader == nil,
+                    message: "팀 리더의 첫 제안"
+                )
+            )
+            await MainActor.run {
+                manager.teamRuntimeState = TeamRuntimeState.agentTurnStarted(
+                    roomID: roomID,
+                    agentID: firstAgent.id,
+                    agentName: firstAgent.name,
+                    detail: "첫 의견을 정리하는 중입니다.",
+                    fallbackUsed: false
+                )
+            }
             await MainActor.run {
                 manager.addChatLog(roomID: roomID, agentID: firstAgent.id, agentName: firstAgent.name, text: proposal, isUser: false)
                 if !manager.isSilentMode && !didSpeakInThisDiscussion {
@@ -201,6 +251,14 @@ class TeamOrchestrator {
                     SpeechManager.shared.speak(text: proposal, agentID: firstAgent.id, characterName: firstAgent.name)
                     didSpeakInThisDiscussion = true
                 }
+            }
+            await MainActor.run {
+                manager.teamRuntimeState = TeamRuntimeState.agentTurnCompleted(
+                    roomID: roomID,
+                    agentID: firstAgent.id,
+                    agentName: firstAgent.name,
+                    detail: "첫 제안을 마쳤습니다."
+                )
             }
             try? await Task.sleep(nanoseconds: 600_000_000)  // 간격
         }
@@ -236,6 +294,24 @@ class TeamOrchestrator {
             """
 
             do {
+                await AgentEventBus.shared.publish(
+                    .agentTurnStarted(
+                        roomID: roomID,
+                        agentID: agent.id,
+                        agentName: agent.name,
+                        fallbackUsed: false,
+                        message: order.subTask
+                    )
+                )
+                await MainActor.run {
+                    manager.teamRuntimeState = TeamRuntimeState.agentTurnStarted(
+                        roomID: roomID,
+                        agentID: agent.id,
+                        agentName: agent.name,
+                        detail: order.subTask,
+                        fallbackUsed: false
+                    )
+                }
                 let (responseText, _) = try await AIService.shared.getResponse(
                     text: "\(taskPrompt)\n\n[사용자 지시]: \(userMessage)",
                     agentID: agent.id,
@@ -251,6 +327,22 @@ class TeamOrchestrator {
                         didSpeakInThisDiscussion = true
                     }
                 }
+                await AgentEventBus.shared.publish(
+                    .agentTurnCompleted(
+                        roomID: roomID,
+                        agentID: agent.id,
+                        agentName: agent.name,
+                        message: responseText.prefix(80).description
+                    )
+                )
+                await MainActor.run {
+                    manager.teamRuntimeState = TeamRuntimeState.agentTurnCompleted(
+                        roomID: roomID,
+                        agentID: agent.id,
+                        agentName: agent.name,
+                        detail: "응답을 마쳤습니다."
+                    )
+                }
 
                 // 에이전트 간 자연스러운 간격
                 if index < orders.count - 1 {
@@ -259,6 +351,19 @@ class TeamOrchestrator {
 
             } catch {
                 print("Work Order Execution Error (\(agent.name)): \(error)")
+                await MainActor.run {
+                    manager.teamRuntimeState = TeamRuntimeState.discussionFailed(
+                        roomID: roomID,
+                        detail: error.localizedDescription
+                    )
+                }
+                await AgentEventBus.shared.publish(
+                    .teamDiscussionFailed(
+                        roomID: roomID,
+                        message: error.localizedDescription.prefix(120).description
+                    )
+                )
+                return false
             }
         }
         
@@ -275,6 +380,24 @@ class TeamOrchestrator {
                 agentConfig: supporter
             ) {
                 await MainActor.run {
+                    manager.teamRuntimeState = TeamRuntimeState.agentTurnStarted(
+                        roomID: roomID,
+                        agentID: supporter.id,
+                        agentName: supporter.name,
+                        detail: "동료의 작업을 짧게 정리하는 중입니다.",
+                        fallbackUsed: false
+                    )
+                }
+                await AgentEventBus.shared.publish(
+                    .agentTurnStarted(
+                        roomID: roomID,
+                        agentID: supporter.id,
+                        agentName: supporter.name,
+                        fallbackUsed: false,
+                        message: "서포터 리액션"
+                    )
+                )
+                await MainActor.run {
                     manager.addChatLog(roomID: roomID, agentID: supporter.id, agentName: supporter.name, text: interText, isUser: false)
                     if !manager.isSilentMode && !didSpeakInThisDiscussion {
                         manager.setAgentSpeaking(agentID: supporter.id, text: interText)
@@ -282,8 +405,35 @@ class TeamOrchestrator {
                         didSpeakInThisDiscussion = true
                     }
                 }
+                await MainActor.run {
+                    manager.teamRuntimeState = TeamRuntimeState.agentTurnCompleted(
+                        roomID: roomID,
+                        agentID: supporter.id,
+                        agentName: supporter.name,
+                        detail: "짧은 리액션을 마쳤습니다."
+                    )
+                }
+                await AgentEventBus.shared.publish(
+                    .agentTurnCompleted(
+                        roomID: roomID,
+                        agentID: supporter.id,
+                        agentName: supporter.name,
+                        message: interText.prefix(80).description
+                    )
+                )
             }
         }
+
+        await MainActor.run {
+            manager.teamRuntimeState = TeamRuntimeState.discussionCompleted(
+                roomID: roomID,
+                detail: "팀 의견 정리 완료"
+            )
+        }
+        await AgentEventBus.shared.publish(
+            .teamDiscussionCompleted(roomID: roomID, message: "팀 의견 정리 완료")
+        )
+        return true
     }
 
     // MARK: - [TRACK B] 수다 모드 (Chitchat Mode)
@@ -297,27 +447,73 @@ class TeamOrchestrator {
         preferredFirstSpeaker: AgentWindowManager.AgentConfig?,
         alreadySpoke: Bool,
         sources: [AgentWindowManager.SourceReference]
-    ) async {
+    ) async -> Bool {
         var lastSpeakerID: String? = nil
         var didSpeakInThisDiscussion = alreadySpoke
         let agents = manager.activeAgents
+        var discussionSucceeded = false
 
         for turn in 0..<maxTurns {
             let history = manager.rooms.first(where: { $0.id == roomID })?.messages ?? []
-            let nextAgentID: String?
-            if turn == 0, let preferredID = preferredFirstSpeaker?.id {
-                nextAgentID = preferredID
-            } else if turn == 0, let leaderID = leader?.id {
-                nextAgentID = leaderID
-            } else {
-                nextAgentID = await selectNextSpeaker(history: history, agents: agents, lastSpeakerID: lastSpeakerID, userMessage: userMessage)
+            await MainActor.run {
+                manager.teamRuntimeState = TeamRuntimeState.selectingSpeaker(
+                    roomID: roomID,
+                    detail: "다음 담당자를 선택하는 중입니다."
+                )
             }
-            guard let nextAgentID else { break }
+            await AgentEventBus.shared.publish(
+                .speakerSelectionStarted(roomID: roomID, message: "다음 담당자를 선택하는 중입니다.")
+            )
+            let selection: SpeakerSelection?
+            if turn == 0, let preferredID = preferredFirstSpeaker?.id {
+                selection = SpeakerSelection(
+                    agentID: preferredID,
+                    usedFallback: false,
+                    reason: "지명 화자 우선"
+                )
+            } else if turn == 0, let leaderID = leader?.id {
+                selection = SpeakerSelection(
+                    agentID: leaderID,
+                    usedFallback: false,
+                    reason: "팀장 우선"
+                )
+            } else {
+                selection = await selectNextSpeaker(history: history, agents: agents, lastSpeakerID: lastSpeakerID, userMessage: userMessage)
+            }
+            guard let nextAgentID = selection?.agentID else { break }
             guard let agent = agents.first(where: { $0.id == nextAgentID }) else { break }
+
+            await AgentEventBus.shared.publish(
+                .speakerSelectionCompleted(
+                    roomID: roomID,
+                    agentID: agent.id,
+                    agentName: agent.name,
+                    fallbackUsed: selection?.usedFallback ?? false,
+                    message: selection?.reason
+                )
+            )
 
             let prompt = buildDiscussionPrompt(agent: agent, history: history, turn: turn, totalAgents: agents.count)
 
             do {
+                await MainActor.run {
+                    manager.teamRuntimeState = TeamRuntimeState.agentTurnStarted(
+                        roomID: roomID,
+                        agentID: agent.id,
+                        agentName: agent.name,
+                        detail: selection?.usedFallback == true ? "대체 화자로 응답을 준비하는 중입니다." : "응답을 준비하는 중입니다.",
+                        fallbackUsed: selection?.usedFallback ?? false
+                    )
+                }
+                await AgentEventBus.shared.publish(
+                    .agentTurnStarted(
+                        roomID: roomID,
+                        agentID: agent.id,
+                        agentName: agent.name,
+                        fallbackUsed: selection?.usedFallback ?? false,
+                        message: prompt.prefix(80).description
+                    )
+                )
                 let (responseText, _) = try await AIService.shared.getResponse(
                     text: "\(prompt)\n\n[사용자 요청 및 도구 자료]\n\(userMessage)",
                     agentID: agent.id,
@@ -332,24 +528,72 @@ class TeamOrchestrator {
                         didSpeakInThisDiscussion = true
                     }
                 }
+                await AgentEventBus.shared.publish(
+                    .agentTurnCompleted(
+                        roomID: roomID,
+                        agentID: agent.id,
+                        agentName: agent.name,
+                        message: responseText.prefix(80).description
+                    )
+                )
+                await MainActor.run {
+                    manager.teamRuntimeState = TeamRuntimeState.agentTurnCompleted(
+                        roomID: roomID,
+                        agentID: agent.id,
+                        agentName: agent.name,
+                        detail: "응답을 마쳤습니다."
+                    )
+                }
                 lastSpeakerID = agent.id
 
                 // 다음 에이전트까지의 자연스러운 간격
                 try? await Task.sleep(nanoseconds: 700_000_000)
-            } catch { break }
+                discussionSucceeded = true
+            } catch {
+                await MainActor.run {
+                    manager.teamRuntimeState = TeamRuntimeState.discussionFailed(
+                        roomID: roomID,
+                        detail: error.localizedDescription
+                    )
+                }
+                await AgentEventBus.shared.publish(
+                    .teamDiscussionFailed(
+                        roomID: roomID,
+                        message: error.localizedDescription.prefix(120).description
+                    )
+                )
+                return false
+            }
         }
+
+        await MainActor.run {
+            manager.teamRuntimeState = TeamRuntimeState.discussionCompleted(
+                roomID: roomID,
+                detail: "팀 의견 정리 완료"
+            )
+        }
+        await AgentEventBus.shared.publish(
+            .teamDiscussionCompleted(roomID: roomID, message: "팀 의견 정리 완료")
+        )
+        return discussionSucceeded || maxTurns == 0
     }
 
     // MARK: - LLM Selector (AutoGen 패턴)
 
     /// 대화 맥락을 분석하여 다음에 발언할 에이전트를 선택한다.
     /// nil 반환 = 대화 자연 종료 ("DONE")
+    private struct SpeakerSelection {
+        let agentID: String?
+        let usedFallback: Bool
+        let reason: String
+    }
+
     private func selectNextSpeaker(
         history: [AgentWindowManager.ChatLog],
         agents: [AgentWindowManager.AgentConfig],
         lastSpeakerID: String?,
         userMessage: String
-    ) async -> String? {
+    ) async -> SpeakerSelection? {
         let agentDescriptions = agents.map { agent -> String in
             let persona = agentPersonas[agent.id]
             return "- \(agent.name)(\(agent.id)): \(persona?.role ?? agent.role)"
@@ -404,13 +648,13 @@ class TeamOrchestrator {
                 if agentID == lastSpeakerID {
                     return deterministicFallbackSpeaker(agents: agents, lastSpeakerID: lastSpeakerID, userMessage: userMessage)
                 }
-                return agentID
+                return SpeakerSelection(agentID: agentID, usedFallback: false, reason: "selector matched agent id")
             }
 
             // 이름으로 매칭 시도
             for agent in agents where agent.id != lastSpeakerID {
                 if trimmed.contains(agent.name.lowercased()) {
-                    return agent.id
+                    return SpeakerSelection(agentID: agent.id, usedFallback: false, reason: "selector matched agent name")
                 }
             }
 
@@ -426,7 +670,7 @@ class TeamOrchestrator {
         agents: [AgentWindowManager.AgentConfig],
         lastSpeakerID: String?,
         userMessage: String
-    ) -> String? {
+    ) -> SpeakerSelection? {
         let candidates = agents.filter { $0.id != lastSpeakerID }
         guard !candidates.isEmpty else { return nil }
 
@@ -444,11 +688,12 @@ class TeamOrchestrator {
                 let role = agent.role.lowercased()
                 return hint.roles.contains(where: { role.contains($0) })
             }) {
-                return matched.id
+                return SpeakerSelection(agentID: matched.id, usedFallback: true, reason: "deterministic fallback by role hint")
             }
         }
 
-        return candidates.first?.id
+        guard let matched = candidates.first else { return nil }
+        return SpeakerSelection(agentID: matched.id, usedFallback: true, reason: "deterministic fallback")
     }
 
     // MARK: - 토의용 프롬프트 생성

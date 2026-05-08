@@ -4,6 +4,7 @@ enum TeamCollaborationStatusProvider {
     static func currentStatus(
         isWorkflowRunning: Bool,
         workflowStatus: WorkflowStatus?,
+        teamRuntimeState: TeamRuntimeState?,
         latestEventType: AgentEventType?,
         latestToolName: String?,
         latestEventTimestamp: Date?,
@@ -33,7 +34,82 @@ enum TeamCollaborationStatusProvider {
             )
         }
 
-        guard isWorkflowRunning || isRecent else {
+        if isWorkflowRunning || workflowStatus == .running {
+            if let latestEventType {
+                switch latestEventType {
+                case .workflowCancelled, .modelCallFailed, .validationFailed:
+                    return status(
+                        kind: .failed,
+                        title: "확인 필요",
+                        detail: normalizedTask.isEmpty ? "작업이 멈췄습니다." : normalizedTask,
+                        timestamp: latestEventTimestamp
+                    )
+
+                case .workflowCompleted:
+                    return status(
+                        kind: .completed,
+                        title: "완료",
+                        detail: normalizedTask.isEmpty ? "파일 생성이 끝났습니다." : normalizedTask,
+                        timestamp: latestEventTimestamp
+                    )
+
+                case .artifactCreated:
+                    return status(
+                        kind: .generatingArtifact,
+                        title: "파일 생성 중",
+                        detail: normalizedTask.isEmpty ? "산출물을 저장하는 중입니다." : normalizedTask,
+                        timestamp: latestEventTimestamp
+                    )
+
+                case .workflowStarted, .routeDecided:
+                    return status(
+                        kind: .planning,
+                        title: "계획 수립 중",
+                        detail: normalizedTask.isEmpty ? "작업 방향을 정리하는 중입니다." : normalizedTask,
+                        timestamp: latestEventTimestamp
+                    )
+
+                case .toolCallStarted, .toolCallFinished:
+                    return toolStatus(
+                        toolName: latestToolName,
+                        normalizedTask: normalizedTask,
+                        timestamp: latestEventTimestamp
+                    )
+
+                case .modelCallStarted, .modelCallCompleted:
+                    return status(
+                        kind: taskMentionsResearch(normalizedTask) ? .gathering : .thinking,
+                        title: taskMentionsResearch(normalizedTask) ? "자료 확인 중" : "검토 중",
+                        detail: normalizedTask.isEmpty ? "현재 작업을 처리 중입니다." : normalizedTask,
+                        timestamp: latestEventTimestamp
+                    )
+
+                case .userMessageSubmitted:
+                    return status(
+                        kind: .waitingForUser,
+                        title: "사용자 확인 대기 중",
+                        detail: normalizedTask.isEmpty ? "입력 내용을 정리하는 중입니다." : normalizedTask,
+                        timestamp: latestEventTimestamp
+                    )
+
+                default:
+                    break
+                }
+            }
+
+            return status(
+                kind: .waitingForUser,
+                title: workingTitle(for: normalizedTask, fallback: "사용자 확인 대기 중"),
+                detail: normalizedTask.isEmpty ? "팀이 다음 입력을 기다리고 있습니다." : normalizedTask,
+                timestamp: latestEventTimestamp
+            )
+        }
+
+        if let runtimeState = teamRuntimeState, runtimeState.kind != .idle, runtimeState.isRecent {
+            return status(from: runtimeState)
+        }
+
+        guard isRecent else {
             return idleStatus(idleIndex: idleIndex, activeAgentNames: activeAgentNames)
         }
 
@@ -68,6 +144,62 @@ enum TeamCollaborationStatusProvider {
                     kind: .planning,
                     title: "계획 수립 중",
                     detail: normalizedTask.isEmpty ? "작업 방향을 정리하는 중입니다." : normalizedTask,
+                    timestamp: latestEventTimestamp
+                )
+
+            case .teamDiscussionStarted:
+                return status(
+                    kind: .planning,
+                    title: "팀 협업 시작",
+                    detail: normalizedTask.isEmpty ? "팀이 의견을 정리하는 중입니다." : normalizedTask,
+                    timestamp: latestEventTimestamp
+                )
+
+            case .speakerSelectionStarted:
+                return status(
+                    kind: .planning,
+                    title: "다음 담당자 선택 중",
+                    detail: normalizedTask.isEmpty ? "말할 사람을 고르는 중입니다." : normalizedTask,
+                    timestamp: latestEventTimestamp
+                )
+
+            case .speakerSelectionCompleted:
+                return status(
+                    kind: .thinking,
+                    title: "담당자 선택 완료",
+                    detail: normalizedTask.isEmpty ? "발언 순서를 정리했습니다." : normalizedTask,
+                    timestamp: latestEventTimestamp
+                )
+
+            case .agentTurnStarted:
+                return status(
+                    kind: .thinking,
+                    title: "검토 중",
+                    detail: normalizedTask.isEmpty ? "에이전트가 답변을 준비하는 중입니다." : normalizedTask,
+                    timestamp: latestEventTimestamp
+                )
+
+            case .agentTurnCompleted:
+                return status(
+                    kind: .completed,
+                    title: "응답 완료",
+                    detail: normalizedTask.isEmpty ? "에이전트 응답이 반영되었습니다." : normalizedTask,
+                    timestamp: latestEventTimestamp
+                )
+
+            case .teamDiscussionCompleted:
+                return status(
+                    kind: .completed,
+                    title: "팀 협업 완료",
+                    detail: normalizedTask.isEmpty ? "논의가 정리되었습니다." : normalizedTask,
+                    timestamp: latestEventTimestamp
+                )
+
+            case .teamDiscussionFailed:
+                return status(
+                    kind: .failed,
+                    title: "확인 필요",
+                    detail: normalizedTask.isEmpty ? "팀 협업 중 문제가 발생했습니다." : normalizedTask,
                     timestamp: latestEventTimestamp
                 )
 
@@ -146,6 +278,33 @@ enum TeamCollaborationStatusProvider {
             title: workingTitle(for: normalizedTask, fallback: "검토 중"),
             detail: normalizedTask.isEmpty ? "현재 작업을 처리 중입니다." : normalizedTask,
             timestamp: timestamp
+        )
+    }
+
+    private static func status(from runtimeState: TeamRuntimeState) -> TeamCollaborationStatus {
+        let kind: TeamCollaborationStatus.Kind
+        switch runtimeState.kind {
+        case .idle:
+            kind = .idle
+        case .discussionStarted:
+            kind = .planning
+        case .selectingSpeaker:
+            kind = .planning
+        case .agentTurnStarted:
+            kind = .thinking
+        case .agentTurnCompleted:
+            kind = .completed
+        case .discussionCompleted:
+            kind = .completed
+        case .discussionFailed:
+            kind = .failed
+        }
+        return TeamCollaborationStatus(
+            kind: kind,
+            title: runtimeState.title,
+            detail: runtimeState.detail,
+            agentName: runtimeState.agentName,
+            timestamp: runtimeState.timestamp
         )
     }
 

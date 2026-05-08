@@ -246,7 +246,8 @@ final class WorkflowOrchestrator {
         }
 
         // ── 그 외: IntentRouter 1회 호출 ──
-        let intent = await classifyIntent(message: userMessage, manager: manager)
+        let routing = await classifyRouting(message: userMessage, manager: manager)
+        let intent = routing.intent
         AppLog.info("[WorkflowOrchestrator] Intent: \(intent.rawValue)")
 
         switch intent {
@@ -261,7 +262,8 @@ final class WorkflowOrchestrator {
             await TeamOrchestrator.shared.runTeamDiscussion(
                 userMessage: userMessage,
                 roomID: roomID,
-                manager: manager
+                manager: manager,
+                precomputedRouting: routing
             )
         }
     }
@@ -304,10 +306,10 @@ final class WorkflowOrchestrator {
 
     // MARK: - Intent classification (1회)
 
-    private func classifyIntent(message: String, manager: AgentWindowManager) async -> UserIntent {
+    private func classifyRouting(message: String, manager: AgentWindowManager) async -> IntentResult {
         guard AICallBudgetManager.shared.requestCall(.intentClassify) else {
             AppLog.warning("[Budget] intent_classify 차단")
-            return .chitchat
+            return .fallback
         }
         AppLog.info("[AICall] callType=intent_classify")
         do {
@@ -315,11 +317,15 @@ final class WorkflowOrchestrator {
                 message: message,
                 activeAgents: manager.activeAgents
             )
-            return result.intent
+            return result
         } catch {
             AppLog.warning("[WorkflowOrchestrator] IntentRouter 실패, chitchat 폴백: \(error)")
-            return .chitchat
+            return .fallback
         }
+    }
+
+    private func classifyIntent(message: String, manager: AgentWindowManager) async -> UserIntent {
+        await classifyRouting(message: message, manager: manager).intent
     }
 
     // MARK: - PlannerResult — 실패 이유를 사용자까지 보존
