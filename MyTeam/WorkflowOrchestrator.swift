@@ -131,6 +131,45 @@ final class WorkflowOrchestrator {
         // ── 새 요청 → 세션 예산 리셋 ──
         AICallBudgetManager.shared.beginSession()
 
+        // ── App Launch Pack 스킬: 앱스토어 설명문/온보딩/체크리스트/수익화 점검표 ──
+        if let launchType = AppLaunchSkillService.detectSkillType(from: userMessage),
+           enabledSkills.contains(where: { $0.id == launchType.skillID }) {
+            let request = AppLaunchSkillService.extractRequest(from: userMessage, skillType: launchType)
+            let missing = AppLaunchSkillService.needsMoreInfo(request)
+            if !missing.isEmpty {
+                AppLog.info("[Skill] app-launch-pack missing info: \(missing.joined(separator: ", "))")
+                await MainActor.run {
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "스킬",
+                        text: AppLaunchSkillService.questionMessage(for: launchType),
+                        isUser: false,
+                        isSystem: true,
+                        skillID: launchType.skillID
+                    )
+                }
+                return
+            }
+
+            effectiveScopes.formUnion(enabledSkills.flatMap { $0.allowedScopes })
+            await MainActor.run { manager.isWorkflowRunning = true }
+            defer { Task { @MainActor in manager.isWorkflowRunning = false } }
+            let task = Task {
+                await self.runAppLaunchPackWorkflow(
+                    request: request,
+                    userMessage: userMessage,
+                    roomID: roomID,
+                    manager: manager,
+                    allowedScopes: effectiveScopes
+                )
+            }
+            currentWorkflowTask = task
+            await task.value
+            currentWorkflowTask = nil
+            return
+        }
+
         // ── Workflow-based 스킬: korean.privacy-terms ──
         if let privacySkill = enabledSkills.first(where: { $0.id == "korean.privacy-terms" }) {
             // 1단계: 소유권 확인 (타사 공식 문서 방지)
@@ -660,6 +699,122 @@ final class WorkflowOrchestrator {
                 )
             }
             AppLog.error("[PrivacyTermsWorkflow] LLM 호출 실패: \(error)")
+        }
+    }
+
+    // MARK: - App Launch Pack Workflow
+
+    private func runAppLaunchPackWorkflow(
+        request: AppLaunchSkillRequest,
+        userMessage: String,
+        roomID: UUID,
+        manager: AgentWindowManager,
+        allowedScopes: Set<ToolScope>
+    ) async {
+        guard !Task.isCancelled else { return }
+        AppLog.info("[AppLaunchWorkflow] scopes=[\(allowedScopes.map { $0.rawValue }.sorted().joined(separator: ","))]")
+
+        let workflowID = UUID()
+        await MainActor.run {
+            manager.currentWorkflowID = workflowID
+            WorkflowRunStore.shared.begin(workflowID: workflowID, roomID: roomID, userMessage: userMessage)
+        }
+
+        var finalStatus: WorkflowStatus = .cancelled
+        var finalEvent: AgentEvent = .workflowCancelled(workflowID: workflowID, roomID: roomID)
+        defer {
+            let capturedStatus = finalStatus
+            let capturedEvent = finalEvent
+            Task { [weak self] in
+                await self?.finishWorkflowRun(
+                    workflowID: workflowID, manager: manager,
+                    status: capturedStatus, event: capturedEvent
+                )
+            }
+        }
+
+        Task { await AgentEventBus.shared.publish(.workflowStarted(workflowID: workflowID, roomID: roomID)) }
+
+        let progressMsgID = postEphemeralProgress(
+            manager: manager, roomID: roomID,
+            text: "⏳ \(request.skillType.displayName)을 생성하는 중입니다..."
+        )
+
+        let timeoutTask = Task {
+            try? await Task.sleep(nanoseconds: 15_000_000_000)
+            if !Task.isCancelled {
+                await MainActor.run { manager.typingAgentIDs.removeAll() }
+            }
+        }
+        defer { timeoutTask.cancel() }
+
+        guard !Task.isCancelled else { return }
+
+        let budgetType: AICallType = .appLaunchPack
+        guard AICallBudgetManager.shared.requestCall(budgetType) else {
+            finalStatus = .failed
+            finalEvent = .modelCallFailed(workflowID: workflowID, provider: "budget", error: "예산 초과")
+            await MainActor.run {
+                removeProgressAndPost(
+                    manager: manager, roomID: roomID, progressID: progressMsgID,
+                    text: "⚠️ 작업 예산이 초과되었습니다.", isSystem: true
+                )
+            }
+            return
+        }
+        AppLog.info("[AICall] callType=\(budgetType.rawValue)")
+
+        let prompt = AppLaunchSkillService.buildPrompt(request)
+
+        do {
+            let generatedMarkdown = try await AIService.shared.getResponse(
+                text: prompt,
+                agentID: "planner",
+                chatHistory: []
+            )
+            guard !Task.isCancelled else { return }
+
+            do {
+                let artifact = try await AppLaunchArtifactWriter.write(
+                    markdown: generatedMarkdown.text,
+                    request: request,
+                    workflowID: workflowID,
+                    roomID: roomID,
+                    stepID: request.skillType.skillID
+                )
+                finalStatus = .completed
+                finalEvent = .workflowCompleted(workflowID: workflowID, roomID: roomID, artifactCount: 1)
+                await MainActor.run {
+                    removeProgressAndPost(
+                        manager: manager, roomID: roomID, progressID: progressMsgID,
+                        text: "✅ \(artifact.title) 생성 완료!\n파일: \(artifact.filename)",
+                        isSystem: false
+                    )
+                }
+                AppLog.info("[AppLaunchWorkflow] 완료 artifact=\(artifact.filename)")
+            } catch {
+                finalStatus = .failed
+                finalEvent = .modelCallFailed(workflowID: workflowID, provider: "artifact", error: error.localizedDescription)
+                await MainActor.run {
+                    removeProgressAndPost(
+                        manager: manager, roomID: roomID, progressID: progressMsgID,
+                        text: "❌ 파일 저장에 실패했습니다: \(error.localizedDescription)",
+                        isSystem: true
+                    )
+                }
+                AppLog.error("[AppLaunchWorkflow] 파일 저장 실패: \(error)")
+            }
+        } catch {
+            finalStatus = .failed
+            finalEvent = .modelCallFailed(workflowID: workflowID, provider: "llm", error: error.localizedDescription)
+            await MainActor.run {
+                removeProgressAndPost(
+                    manager: manager, roomID: roomID, progressID: progressMsgID,
+                    text: "❌ 생성 중 오류가 발생했습니다: \(error.localizedDescription)",
+                    isSystem: true
+                )
+            }
+            AppLog.error("[AppLaunchWorkflow] LLM 호출 실패: \(error)")
         }
     }
 

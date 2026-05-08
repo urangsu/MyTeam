@@ -16,7 +16,11 @@ enum BuiltInKoreanSkills {
         privacyTermsSkill,
         hwpReadSkill,
         lawSearchSkill,
-        dartSkill
+        dartSkill,
+        appStoreCopySkill,
+        onboardingCopySkill,
+        launchChecklistSkill,
+        monetizationReviewSkill
     ]
 
     // MARK: - 1. 한국 날씨
@@ -253,5 +257,89 @@ enum BuiltInKoreanSkills {
             "수치 미확인 시 추측 금지",
             "미구현: DART Open API 연동 (Round 7 이후)"
         ]
+    )
+
+    // MARK: - 11. 앱스토어 설명문 생성
+
+    private static let appStoreCopySkill = SkillManifest(
+        id: "korean.app-store-copy",
+        name: "앱스토어 설명문 생성",
+        version: "1.0",
+        description: "앱스토어 소개문, Subtitle, Promotional Text, Description 초안을 생성한다",
+        locale: "ko-KR",
+        category: .koreanBusiness,
+        triggers: ["앱스토어", "App Store", "소개문", "설명문", "메타데이터", "subtitle", "promotional text"],
+        allowedScopes: [.artifactGeneration, .documentEditing],
+        requiredPermissions: [.createArtifact],
+        requiredLogin: false,
+        riskLevel: .safeReadOnly,
+        promptTemplate: "사용자가 앱스토어 설명문 초안을 요청했습니다. 앱의 핵심 가치, 주요 기능, 추천 키워드, 심사 전 확인사항을 포함한 마크다운 초안을 작성하세요.",
+        outputType: .artifact,
+        isBuiltIn: true,
+        defaultEnabled: true,
+        requiresApprovalEveryRun: false
+    )
+
+    // MARK: - 12. 온보딩 문구 생성
+
+    private static let onboardingCopySkill = SkillManifest(
+        id: "korean.onboarding-copy",
+        name: "온보딩 문구 생성",
+        version: "1.0",
+        description: "첫 실행 온보딩, 환영 문구, 권한 안내, 빈 상태 문구, CTA 문구를 생성한다",
+        locale: "ko-KR",
+        category: .koreanBusiness,
+        triggers: ["온보딩", "첫 화면", "튜토리얼", "시작 문구", "welcome", "onboarding"],
+        allowedScopes: [.artifactGeneration, .documentEditing],
+        requiredPermissions: [.createArtifact],
+        requiredLogin: false,
+        riskLevel: .safeReadOnly,
+        promptTemplate: "사용자가 온보딩 문구 초안을 요청했습니다. 3-step 온보딩, 첫 실행 환영 문구, 권한 안내, 빈 상태 문구, CTA 문구를 포함한 마크다운 초안을 작성하세요.",
+        outputType: .artifact,
+        isBuiltIn: true,
+        defaultEnabled: true,
+        requiresApprovalEveryRun: false
+    )
+
+    // MARK: - 13. 출시 체크리스트 생성
+
+    private static let launchChecklistSkill = SkillManifest(
+        id: "korean.launch-checklist",
+        name: "출시 체크리스트 생성",
+        version: "1.0",
+        description: "앱 출시 전 메타데이터, 약관, SDK, 권한, 테스트, 심사, 모니터링 체크리스트를 생성한다",
+        locale: "ko-KR",
+        category: .koreanBusiness,
+        triggers: ["출시 체크리스트", "앱 출시 준비", "배포 전 점검", "심사 준비"],
+        allowedScopes: [.artifactGeneration, .documentEditing],
+        requiredPermissions: [.createArtifact],
+        requiredLogin: false,
+        riskLevel: .safeReadOnly,
+        promptTemplate: "사용자가 출시 체크리스트 초안을 요청했습니다. 앱스토어 메타데이터, 개인정보/약관, 분석/광고/결제 SDK, 권한 문구, 테스트, 심사 제출, 출시 후 모니터링 항목을 포함한 마크다운 초안을 작성하세요.",
+        outputType: .artifact,
+        isBuiltIn: true,
+        defaultEnabled: true,
+        requiresApprovalEveryRun: false
+    )
+
+    // MARK: - 14. 수익화 점검표 생성
+
+    private static let monetizationReviewSkill = SkillManifest(
+        id: "korean.monetization-review",
+        name: "수익화 점검표 생성",
+        version: "1.0",
+        description: "광고, 구독, 인앱결제, 가격 실험, 무료/Pro 경계, BYOK 정책을 점검하는 문서를 생성한다",
+        locale: "ko-KR",
+        category: .koreanBusiness,
+        triggers: ["수익화", "구독", "광고", "인앱결제", "가격", "BM", "monetization"],
+        allowedScopes: [.artifactGeneration, .documentEditing],
+        requiredPermissions: [.createArtifact],
+        requiredLogin: false,
+        riskLevel: .safeReadOnly,
+        promptTemplate: "사용자가 수익화 점검표 초안을 요청했습니다. 현재 BM 가정, 광고, 구독, 인앱결제, 가격 실험, 무료/Pro 경계, BYOK 정책, 리스크, 다음 액션을 포함한 마크다운 초안을 작성하세요.",
+        outputType: .artifact,
+        isBuiltIn: true,
+        defaultEnabled: true,
+        requiresApprovalEveryRun: false
     )
 }

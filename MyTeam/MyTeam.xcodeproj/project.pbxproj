@@ -4885,6 +4885,34 @@
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
+		<key>A10000000000000000000011</key>
+		<dict>
+			<key>fileRef</key>
+			<string>A10000000000000000000001</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>A10000000000000000000012</key>
+		<dict>
+			<key>fileRef</key>
+			<string>A10000000000000000000002</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>A10000000000000000000013</key>
+		<dict>
+			<key>fileRef</key>
+			<string>A10000000000000000000003</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>A10000000000000000000014</key>
+		<dict>
+			<key>fileRef</key>
+			<string>A10000000000000000000004</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
 		<key>4EB6DB16460B6A6F0222FCFC</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -6682,6 +6710,58 @@
 			<string>sourcecode.swift</string>
 			<key>path</key>
 			<string>WorkflowOrchestrator.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>A10000000000000000000001</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>AppLaunchSkillType.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>A10000000000000000000002</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>AppLaunchSkillRequest.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>A10000000000000000000003</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>AppLaunchSkillService.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>A10000000000000000000004</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>AppLaunchArtifactWriter.swift</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
@@ -9256,6 +9336,10 @@
 				<string>FAD601D29125CA14A4EE9FEE</string>
 				<string>63E16FBE4F0F639B62AA9420</string>
 				<string>6B3A586A21D123882C9B2BF2</string>
+				<string>A10000000000000000000001</string>
+				<string>A10000000000000000000002</string>
+				<string>A10000000000000000000003</string>
+				<string>A10000000000000000000004</string>
 				<string>962F3701172B73193DD2A951</string>
 				<string>4301F4D69018ECBD18A843D4</string>
 				<string>BFA087CDDFE1403B5D438BC2</string>
@@ -10384,6 +10468,10 @@
 				<string>A8C800000000000000000101</string>
 				<string>A8C800000000000000000103</string>
 				<string>A8C800000000000000000105</string>
+				<string>A10000000000000000000011</string>
+				<string>A10000000000000000000012</string>
+				<string>A10000000000000000000013</string>
+				<string>A10000000000000000000014</string>
 				<string>6EAE473CB9DB41F982D6FD8BC4476AA6</string>
 				<string>DB11B510C4C747239EB72DF3AE32B227</string>
 				<string>7878BBA0CCAB43D598CA4302558AE954</string>
