@@ -12,6 +12,116 @@
 
 ---
 
+## Current Execution Plan — 2026-05
+
+### Product Principle
+
+MyTeam은 사용자가 명령어를 외워서 쓰는 앱이 아니다.
+
+사용자는 자연어로 요청한다.
+앱은 요청을 해석해서 알맞은 경로를 자동 선택한다.
+
+가능한 실행 경로:
+
+- Local Skill
+- Korean Skill
+- App Launch Pack
+- Privacy Terms
+- Artifact Workflow
+- Team Discussion
+- Direct Chat
+- Tool Execution
+- Command Shortcut
+
+원칙:
+
+- 명령어는 power user용 shortcut이다.
+- 일반 사용자는 자연어만 써도 된다.
+- 자연어 요청은 먼저 skill/router/policy를 거쳐 적합한 실행 경로로 간다.
+- 위험 작업은 scope, risk, approval policy로 차단한다.
+- 모델이 잘못된 tool을 선택해도 ToolExecutor hard guard에서 다시 막는다.
+- LLM 호출 없이 처리 가능한 local skill은 LLM보다 먼저 실행한다.
+- artifact 생성 요청은 가능한 한 명시적 파일 결과로 남긴다.
+- 팀 협업창은 현재 어떤 agent/tool/workflow가 동작 중인지 보여줘야 한다.
+
+### Now
+
+#### Round 19 — Team Runtime Cohesion + Collaboration Status
+
+목표:
+
+- TeamOrchestrator agent turn event 기록
+- speaker selection event 기록
+- team discussion started/completed/failed event 기록
+- TeamStatusView가 현재 agent/task/status 표시
+- workflow/event 기반 상태 표시
+- idle 문구 rotation 유지
+- schedule popover 유지
+- IntentRouter 이중 호출 제거 또는 최소화 검토
+- LLM 호출 추가 금지
+- StoreKit/entitlement 변경 금지
+
+### Next
+
+#### Round 20 — App Launch Result UX + Artifact UX
+
+목표:
+
+- App Launch Pack prompt 품질 개선
+- App Launch Pack 완료 메시지 개선
+- 생성된 artifact 카드 UX 강화
+- Finder에서 열기
+- 경로 복사
+- 실패 이유 표시
+- recent artifact card 강화
+- 기존 ArtifactStore 구조 대수정 금지
+
+### Later
+
+#### Round 21 — App Launch Pack Expansion
+
+목표:
+
+- 스크린샷 캡션 생성
+- 앱 권한 요청 문구 생성
+- 앱 심사 대응 답변 초안
+- 랜딩페이지 히어로 문구
+- 릴리즈 노트 생성
+
+#### Round 22 — Blog / Content Pack
+
+목표:
+
+- 네이버 블로그 제목 후보
+- 모바일 최적화 본문
+- 썸네일 문구
+- SEO 키워드
+- 맛집/체험단 후기 구조
+- 인스타/스레드 요약 문구
+
+#### Round 23 — Accounting / Tax Pack
+
+목표:
+
+- 엑셀 장부 정리
+- 계정과목 후보
+- 증빙 체크리스트
+- 부가세/면세/과세 구분 보조
+- 법적 판단/신고 대행 금지
+- “검토용 초안” 원칙 유지
+
+### Deferred
+
+- StoreKit entitlement propagation
+- Premium character team add flow
+- SwiftData migration
+- TTS retuning
+- Full QA regression
+- StoreKit production purchase
+- Pro gating enforcement
+
+---
+
 ## 목표
 
 Mac App Store에 출시 가능한 macOS 네이티브 AI 팀 앱.
@@ -25,6 +135,8 @@ Mac App Store에 출시 가능한 macOS 네이티브 AI 팀 앱.
 4. TTS가 캐릭터별로 일관되고 3~4초 목표에 가까운가?
 
 ---
+
+> 아래 P0~P5는 legacy backlog다. 현재 작업 우선순위는 상단 Current Execution Plan을 따른다.
 
 ## P0 — 출시 경로 블로커
 
