@@ -62,22 +62,20 @@ MyTeam은 사용자가 명령어를 외워서 쓰는 앱이 아니다.
 
 #### Recently Completed
 
+- Round 19.6 — Delegation Mode Activation
 - Round 19.5 — TurnProfile + RouteTrace + DryRun Skeleton
 - Round 19 — Team Runtime Cohesion + Collaboration Status
 
-#### Round 19.6 — Delegation Mode Activation
+#### Round 19.7 — Delegation Resume + Safe Auto-Continue
 
 목표:
 
-- 위임 의도 감지
-- 위임모드 draft / awaitingApproval 상태 저장
-- 승인 표현 감지
-- 승인 시 active 상태 전환
-- 종료 표현 감지
-- 종료 시 cancelled 상태 전환
-- 안전한 범위와 위험 범위 분리
-- 결제 / 로그인 / 삭제는 차단
-- 실제 자동 실행 / approval UI / dry-run UI는 아직 미구현
+- 위임 요청 시 pending execution request 저장
+- 승인 후 안전한 요청 자동 재개
+- blocked / reapproval scope 자동 재개 금지
+- delegation recursion guard 추가
+- 결제 / 로그인 / 삭제 / 외부 전송 자동 실행 금지
+- 실제 approval UI는 아직 미구현
 
 ### Next
 
@@ -94,9 +92,16 @@ MyTeam은 사용자가 명령어를 외워서 쓰는 앱이 아니다.
 - recent artifact card 강화
 - 기존 ArtifactStore 구조 대수정 금지
 
-### Later
+#### Round 21 — Router Burn-in + Tool Contract Validation
 
-#### Round 21 — App Launch Pack Expansion
+목표:
+
+- 자연어 라우팅 burn-in
+- tool contract validation
+- delegation / tool / artifact 경계 점검
+- 라우트 이유와 경계 조건 고정
+
+#### Round 22 — App Launch Pack Expansion
 
 목표:
 
@@ -106,7 +111,9 @@ MyTeam은 사용자가 명령어를 외워서 쓰는 앱이 아니다.
 - 랜딩페이지 히어로 문구
 - 릴리즈 노트 생성
 
-#### Round 22 — Blog / Content Pack
+### Later
+
+#### Round 23 — Blog / Content Pack
 
 목표:
 
