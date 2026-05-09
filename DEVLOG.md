@@ -6,6 +6,17 @@
 
 ---
 
+## 2026-05-09 (Round 25A — Calendar Read-only Integration Preparation)
+
+- GoogleOAuthConfigStore / GoogleOAuthConfigValidator 추가
+- GoogleCalendarEvent / GoogleCalendarClient skeleton 추가
+- DailyBriefingCalendarProvider 추가
+- AssistantConnectorCatalog가 Google OAuth config readiness를 반영하도록 개선
+- Settings에 Google OAuth 설정 준비 UI 추가
+- 실제 OAuth / API 호출 / token exchange / Calendar fetch 미구현
+- LLM 호출 추가 없음
+- StoreKit / entitlement 미수정
+
 ## 2026-05-09 (Round 24 — Daily Briefing Skeleton)
 
 - DailyBriefingModels / DailyBriefingService / DailyBriefingCardView 추가
