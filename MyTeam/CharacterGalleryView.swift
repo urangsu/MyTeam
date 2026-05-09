@@ -19,18 +19,13 @@ struct CharacterGalleryView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("캐릭터 갤러리")
                         .font(.system(size: 20, weight: .bold))
-                    Text("내 API 키로 움직이는 AI 팀원입니다. 기본 캐릭터는 포함되어 있고, 프리미엄 캐릭터는 향후 추가 구매로 사용할 수 있습니다.")
+                    Text("캐릭터를 확인합니다.")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text("프리미엄 캐릭터는 향후 StoreKit 구매로 해제됩니다. AI 사용량은 기본 제공량을 초과하면 개인 API 키 연결을 권장합니다.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary.opacity(0.9))
-                        .fixedSize(horizontal: false, vertical: true)
                 }
 
-                section(title: "기본 캐릭터", characters: CharacterCatalog.builtIn)
-                section(title: "프리미엄 캐릭터", characters: CharacterCatalog.premium)
+                section(title: "캐릭터", characters: CharacterCatalog.builtIn)
+                section(title: "추가 캐릭터", characters: CharacterCatalog.premium)
             }
             .padding(16)
         }
@@ -50,8 +45,8 @@ struct CharacterGalleryView: View {
             Text(title)
                 .font(.system(size: 14, weight: .semibold))
 
-            if title == "프리미엄 캐릭터" {
-                Text("프리미엄 캐릭터는 향후 StoreKit 구매로 해제됩니다. 이번 버전에서는 구매 버튼이 비활성화되어 있습니다.")
+            if title == "추가 캐릭터" {
+                Text("추가 캐릭터는 준비 중입니다.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -67,7 +62,7 @@ struct CharacterGalleryView: View {
             }
 
 #if DEBUG
-            if title == "프리미엄 캐릭터" {
+            if title == "추가 캐릭터" {
                 HStack {
                     Spacer()
                     Button("구매 상태 새로고침") {
@@ -116,9 +111,12 @@ private struct CharacterGalleryCard: View {
 
 #if DEBUG
             if let agentID = character.agentID {
-                Text("연결 예정 agentID: \(agentID)")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.secondary)
+                DisclosureGroup("개발 정보") {
+                    Text("agentID: \(agentID)")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+                .font(.system(size: 10, weight: .medium))
             }
 #endif
 

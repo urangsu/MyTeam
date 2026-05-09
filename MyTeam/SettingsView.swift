@@ -136,6 +136,7 @@ struct SettingsView: View {
     @AppStorage("teamName")               private var teamName: String = "MyTeam"
     @AppStorage(TeamNameplateAppearanceSettings.enabledKey) private var teamNameplateEnabled: Bool = TeamNameplateAppearanceSettings.defaultEnabled
     @AppStorage(TeamNameplateAppearanceSettings.colorHexKey) private var teamNameplateColorHex: String = TeamNameplateAppearanceSettings.defaultColorHex
+    @AppStorage(TeamNameplateAppearanceSettings.borderColorHexKey) private var teamNameplateBorderColorHex: String = TeamNameplateAppearanceSettings.defaultBorderColorHex
     @AppStorage("agentWindowOpacity")     private var agentWindowOpacity: Double = 0.0
     @AppStorage("useAnimalCrossingTTS")   private var useAnimalCrossingTTS: Bool = false
 
@@ -250,46 +251,21 @@ struct SettingsView: View {
 
                 Toggle("팀 이름 명패 표시", isOn: $teamNameplateEnabled)
 
-                LabeledContent {
-                    HStack(spacing: 8) {
-                        ForEach(TeamNameplateAppearanceSettings.colorPresets) { preset in
-                            Button {
-                                teamNameplateColorHex = preset.hex
-                            } label: {
-                                ZStack {
-                                    Circle()
-                                        .fill(TeamNameplateAppearanceSettings.color(from: preset.hex))
-                                        .frame(width: 24, height: 24)
-                                        .overlay(
-                                            Circle()
-                                                .stroke(
-                                                    teamNameplateColorHex.uppercased() == preset.hex.uppercased()
-                                                    ? Color.primary.opacity(0.75)
-                                                    : Color.secondary.opacity(0.18),
-                                                    lineWidth: teamNameplateColorHex.uppercased() == preset.hex.uppercased() ? 2 : 1
-                                                )
-                                        )
+                DisclosureGroup("팀 이름 명패") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        nameplatePaletteRow(
+                            title: "배경",
+                            selection: $teamNameplateColorHex,
+                            presets: TeamNameplateAppearanceSettings.colorPresets
+                        )
 
-                                    if teamNameplateColorHex.uppercased() == preset.hex.uppercased() {
-                                        Image(systemName: "checkmark")
-                                            .font(.system(size: 9, weight: .bold))
-                                            .foregroundStyle(.white)
-                                    }
-                                }
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(!teamNameplateEnabled)
-                            .help(preset.name)
-                        }
-
-                        Button("기본") {
-                            teamNameplateColorHex = TeamNameplateAppearanceSettings.defaultColorHex
-                        }
-                        .controlSize(.small)
-                        .disabled(!teamNameplateEnabled)
+                        nameplatePaletteRow(
+                            title: "테두리",
+                            selection: $teamNameplateBorderColorHex,
+                            presets: TeamNameplateAppearanceSettings.borderColorPresets
+                        )
                     }
-                } label: {
-                    Label("명패 색상", systemImage: "paintpalette.fill")
+                    .padding(.top, 4)
                 }
             }
 
@@ -695,6 +671,53 @@ struct SettingsView: View {
         let provider = GoogleDailyBriefingCalendarProvider.shared
         let briefing = await DailyBriefingService.makePreviewBriefing(now: Date(), calendarProvider: provider)
         dailyBriefingPreview = briefing
+    }
+
+    private func nameplatePaletteRow(
+        title: String,
+        selection: Binding<String>,
+        presets: [TeamNameplateColorPreset]
+    ) -> some View {
+        HStack(alignment: .center, spacing: 8) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 34, alignment: .leading)
+
+            HStack(spacing: 6) {
+                ForEach(presets) { preset in
+                    Button {
+                        selection.wrappedValue = preset.hex
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(TeamNameplateAppearanceSettings.color(from: preset.hex))
+                                .frame(width: 22, height: 22)
+                                .overlay(
+                                    Circle()
+                                        .stroke(
+                                            selection.wrappedValue.uppercased() == preset.hex.uppercased()
+                                            ? Color.primary.opacity(0.75)
+                                            : Color.secondary.opacity(0.18),
+                                            lineWidth: selection.wrappedValue.uppercased() == preset.hex.uppercased() ? 2 : 1
+                                        )
+                                )
+
+                            if selection.wrappedValue.uppercased() == preset.hex.uppercased() {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundColor(TeamNameplateAppearanceSettings.isTransparent(preset.hex) ? .primary : .white)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!teamNameplateEnabled)
+                    .help(preset.name)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
     }
 }
 

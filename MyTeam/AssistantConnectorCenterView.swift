@@ -64,7 +64,7 @@ struct AssistantConnectorCenterView: View {
             HStack(spacing: 8) {
                 Image(systemName: "shield.lefthalf.filled")
                     .foregroundStyle(.blue)
-                Text("Google OAuth 설정")
+                Text("Google Calendar")
                     .font(.system(size: 12, weight: .semibold))
                 Spacer()
                 Text(validation.status == .ready ? "준비 완료" : "준비 필요")
@@ -74,28 +74,34 @@ struct AssistantConnectorCenterView: View {
                     .background(Capsule().fill(validation.status == .ready ? Color.green.opacity(0.12) : Color.orange.opacity(0.12)))
             }
 
-            Text("Client ID와 Desktop redirect mode만 저장합니다. client secret은 저장하지 않습니다.")
+            Text("Google Calendar 연결은 준비 중입니다.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
-            Text("Calendar read-only부터 지원합니다. Gmail은 다음 단계에서 metadata부터 검토합니다. Google 로그인은 아직 실행하지 않습니다.")
+            Text("Calendar read-only부터 지원합니다. Gmail은 다음 단계에서 metadata부터 검토합니다.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
-            HStack(spacing: 8) {
-                TextField("Client ID", text: $googleClientID)
-                    .textFieldStyle(.roundedBorder)
-                Picker("Redirect", selection: $googleRedirectMode) {
-                    Text("Custom URL").tag(GoogleOAuthConfig.RedirectMode.customURLScheme)
-                    Text("Loopback").tag(GoogleOAuthConfig.RedirectMode.loopback)
+            #if DEBUG
+            DisclosureGroup("개발자 OAuth 설정") {
+                VStack(alignment: .leading, spacing: 8) {
+                    TextField("Client ID", text: $googleClientID)
+                        .textFieldStyle(.roundedBorder)
+
+                    Picker("Redirect", selection: $googleRedirectMode) {
+                        Text("Custom URL").tag(GoogleOAuthConfig.RedirectMode.customURLScheme)
+                        Text("Loopback").tag(GoogleOAuthConfig.RedirectMode.loopback)
+                    }
+                    .pickerStyle(.menu)
+                    .frame(width: 150)
+
+                    Toggle("Calendar read-only scope", isOn: $googleCalendarScopeEnabled)
+                        .toggleStyle(.checkbox)
+                        .disabled(true)
                 }
-                .pickerStyle(.menu)
-                .frame(width: 150)
+                .padding(.top, 4)
             }
-
-            Toggle("Calendar read-only scope", isOn: $googleCalendarScopeEnabled)
-                .toggleStyle(.checkbox)
-                .disabled(true)
+            #endif
 
             HStack(spacing: 8) {
                 Text(sessionManager.lastErrorMessage ?? validation.message)
