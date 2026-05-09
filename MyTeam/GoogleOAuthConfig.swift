@@ -40,4 +40,14 @@ struct GoogleOAuthConfig: Equatable {
         bundleID: Bundle.main.bundleIdentifier,
         appName: "MyTeam"
     )
+
+    static func fromStoredConfig(_ stored: GoogleOAuthStoredConfig) -> GoogleOAuthConfig {
+        GoogleOAuthConfig(
+            clientID: stored.clientID,
+            clientType: .desktop,
+            redirectMode: stored.redirectMode,
+            bundleID: Bundle.main.bundleIdentifier,
+            appName: "MyTeam"
+        )
+    }
 }
