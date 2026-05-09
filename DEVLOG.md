@@ -6,6 +6,17 @@
 
 ---
 
+## 2026-05-09 (Round 23 — Google OAuth Connector Foundation)
+
+- Google Calendar / Gmail connector foundation 추가
+- macOS Desktop OAuth 전제 명시
+- Web Server OAuth / CLI / gcloud 의존성 배제
+- Calendar read-only 1순위, Gmail metadata 2순위, Gmail body read-only는 추후 승인 필요로 분리
+- Settings에 비서 연결 준비 UI 추가
+- 실제 OAuth / API 호출 / 메일 발송 / 일정 생성·수정·삭제는 미구현
+- LLM 호출 추가 없음
+- StoreKit / entitlement 미수정
+
 ## 2026-05-09 (Round 22R — Product Scope Reset)
 
 - App Launch Pack 확장 보류
