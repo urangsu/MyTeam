@@ -6,6 +6,18 @@
 
 ---
 
+## 2026-05-10 (Round 25B-QA — Calendar OAuth Runtime Verification)
+
+- TASK roadmap aligned to runtime verification state
+- OAuth runtime QA checklist added
+- Settings Google Calendar connection UX clarified
+- OAuth error handling tightened for callback / token / keychain failures
+- Calendar fetch error and empty states made more explicit
+- Gmail remains unimplemented
+- Calendar write remains unimplemented
+- token / code logs remain forbidden
+- StoreKit / entitlement unchanged
+
 ## 2026-05-10 (Round 25B — Google Calendar Desktop OAuth Connection)
 
 - Google Calendar Desktop OAuth 연결
