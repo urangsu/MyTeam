@@ -43,21 +43,23 @@ enum AssistantConnectorCatalog {
     static func connectionState(for provider: AssistantConnector.Provider) -> GoogleOAuthConnectionState {
         switch provider {
         case .googleCalendar:
-            let config = GoogleOAuthConfig.placeholder
-            if config.clientID.isEmpty || config.redirectMode == .notConfigured {
+            let stored = GoogleOAuthConfigStore.shared.load()
+            let validation = GoogleOAuthConfigValidator.validate(stored)
+            let scopes = stored.enabledScopes.isEmpty ? [.calendarEventsReadonly] : stored.enabledScopes
+            if !validation.isReady {
                 return GoogleOAuthConnectionState(
                     provider: provider,
                     status: .notConfigured,
-                    grantedScopes: [.calendarEventsReadonly],
+                    grantedScopes: scopes,
                     lastCheckedAt: nil,
-                    message: "macOS Desktop OAuth 준비 중"
+                    message: validation.message
                 )
             }
             let connected = GoogleOAuthTokenStore.shared.hasToken(for: provider)
             return GoogleOAuthConnectionState(
                 provider: provider,
                 status: connected ? .connected : .notConnected,
-                grantedScopes: [.calendarEventsReadonly],
+                grantedScopes: scopes,
                 lastCheckedAt: nil,
                 message: connected ? "연결됨" : "연결 준비 중"
             )

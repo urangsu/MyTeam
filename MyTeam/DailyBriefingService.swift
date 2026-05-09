@@ -69,4 +69,52 @@ enum DailyBriefingService {
             generatedAt: now
         )
     }
+
+    @MainActor
+    static func makePreviewBriefing(
+        now: Date = Date(),
+        calendarProvider: DailyBriefingCalendarProviding
+    ) async -> DailyBriefing {
+        let calendarItems = await calendarProvider.calendarItemsForToday(now: now)
+        let connectorMessages = AssistantConnectorCatalog.connectors.map { connector in
+            let state = AssistantConnectorCatalog.connectionState(for: connector.id)
+            return "\(connector.displayName): \(state.message)"
+        }
+
+        let status: DailyBriefing.Status = calendarItems.isEmpty ? .unavailable : .partial
+        let summary: String
+        if calendarItems.isEmpty {
+            summary = calendarProvider.statusMessage
+        } else {
+            summary = "오늘 일정이 연결된 계정에서 일부 준비되었습니다."
+        }
+
+        return DailyBriefing(
+            id: UUID(),
+            date: now,
+            status: status,
+            title: "오늘 브리핑",
+            summary: summary,
+            calendarItems: calendarItems,
+            mailItems: [],
+            taskItems: calendarItems.isEmpty ? [] : [
+                DailyTaskBriefingItem(
+                    id: UUID(),
+                    title: "연결된 캘린더 일정 기반으로 오늘 우선순위를 정리하세요.",
+                    dueText: nil,
+                    priority: 1
+                )
+            ],
+            attentionItems: calendarItems.isEmpty ? [
+                DailyAttentionBriefingItem(
+                    id: UUID(),
+                    title: "브리핑 준비 중",
+                    detail: calendarProvider.statusMessage,
+                    severity: .info
+                )
+            ] : [],
+            connectorMessages: connectorMessages,
+            generatedAt: now
+        )
+    }
 }

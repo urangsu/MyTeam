@@ -57,6 +57,11 @@ struct RuntimeDiagnosticsSnapshot {
     let assistantConnectorImplementedCount: Int
     let assistantConnectorConnectedCount: Int
 
+    // Google OAuth
+    let googleOAuthConfigStatus: String
+    let googleOAuthEnabledScopes: [String]
+    let googleOAuthHasCalendarToken: Bool
+
     // Daily briefing
     let dailyBriefingStatus: String
     let dailyBriefingCalendarItemCount: Int
@@ -109,6 +114,7 @@ struct RuntimeDiagnosticsSnapshot {
             lines.append("delegationPending: \(pendingDelegatedRouteHint) status=\(pendingDelegatedExecutionStatus ?? "nil")")
         }
         lines.append("assistantConnectors: total=\(assistantConnectorCount) implemented=\(assistantConnectorImplementedCount) connected=\(assistantConnectorConnectedCount)")
+        lines.append("googleOAuth: status=\(googleOAuthConfigStatus) scopes=\(googleOAuthEnabledScopes.joined(separator: ",")) token=\(googleOAuthHasCalendarToken)")
         lines.append("dailyBriefing: status=\(dailyBriefingStatus) calendar=\(dailyBriefingCalendarItemCount) mail=\(dailyBriefingMailItemCount)")
         lines.append("workspace: \(workspacePath)")
         lines.append("recentEvents: \(recentEventCount) | latest: \(latestEventSummary ?? "none")")
@@ -151,7 +157,13 @@ final class RuntimeDiagnosticsService {
         let assistantConnectorConnectedCount = AssistantConnectorCatalog.connectors.filter {
             GoogleOAuthTokenStore.shared.hasToken(for: $0.id)
         }.count
-        let dailyBriefing = DailyBriefingService.makePreviewBriefing(now: Date())
+        let googleStoredConfig = GoogleOAuthConfigStore.shared.load()
+        let googleConfigValidation = GoogleOAuthConfigValidator.validate(googleStoredConfig)
+        let googleOAuthHasCalendarToken = GoogleOAuthTokenStore.shared.hasToken(for: .googleCalendar)
+        let dailyBriefing = await DailyBriefingService.makePreviewBriefing(
+            now: Date(),
+            calendarProvider: EmptyDailyBriefingCalendarProvider()
+        )
 
         return RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
@@ -185,6 +197,9 @@ final class RuntimeDiagnosticsService {
             assistantConnectorCount: assistantConnectorCount,
             assistantConnectorImplementedCount: assistantConnectorImplementedCount,
             assistantConnectorConnectedCount: assistantConnectorConnectedCount,
+            googleOAuthConfigStatus: googleConfigValidation.status.rawValue,
+            googleOAuthEnabledScopes: googleStoredConfig.enabledScopes.map(\.rawValue),
+            googleOAuthHasCalendarToken: googleOAuthHasCalendarToken,
             dailyBriefingStatus: dailyBriefing.status.rawValue,
             dailyBriefingCalendarItemCount: dailyBriefing.calendarItems.count,
             dailyBriefingMailItemCount: dailyBriefing.mailItems.count,
