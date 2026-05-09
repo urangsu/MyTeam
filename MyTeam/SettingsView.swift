@@ -156,13 +156,6 @@ struct SettingsView: View {
     @State private var skillRefreshToken: UUID = UUID()
     @StateObject private var gps = LocationHelper()
 
-    private var teamNameplateColorBinding: Binding<Color> {
-        Binding(
-            get: { TeamNameplateAppearanceSettings.color(from: teamNameplateColorHex) },
-            set: { teamNameplateColorHex = $0.hexString }
-        )
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             // ── 탭 세그먼트 + X 버튼 (같은 라인)
@@ -256,36 +249,45 @@ struct SettingsView: View {
                 Toggle("팀 이름 명패 표시", isOn: $teamNameplateEnabled)
 
                 LabeledContent {
-                    ColorPicker("", selection: teamNameplateColorBinding, supportsOpacity: false)
-                        .labelsHidden()
-                        .frame(width: 36)
+                    HStack(spacing: 8) {
+                        ForEach(TeamNameplateAppearanceSettings.colorPresets) { preset in
+                            Button {
+                                teamNameplateColorHex = preset.hex
+                            } label: {
+                                ZStack {
+                                    Circle()
+                                        .fill(TeamNameplateAppearanceSettings.color(from: preset.hex))
+                                        .frame(width: 24, height: 24)
+                                        .overlay(
+                                            Circle()
+                                                .stroke(
+                                                    teamNameplateColorHex.uppercased() == preset.hex.uppercased()
+                                                    ? Color.primary.opacity(0.75)
+                                                    : Color.secondary.opacity(0.18),
+                                                    lineWidth: teamNameplateColorHex.uppercased() == preset.hex.uppercased() ? 2 : 1
+                                                )
+                                        )
+
+                                    if teamNameplateColorHex.uppercased() == preset.hex.uppercased() {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 9, weight: .bold))
+                                            .foregroundStyle(.white)
+                                    }
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(!teamNameplateEnabled)
+                            .help(preset.name)
+                        }
+
+                        Button("기본") {
+                            teamNameplateColorHex = TeamNameplateAppearanceSettings.defaultColorHex
+                        }
+                        .controlSize(.small)
                         .disabled(!teamNameplateEnabled)
+                    }
                 } label: {
                     Label("명패 색상", systemImage: "paintpalette.fill")
-                }
-
-                HStack(spacing: 8) {
-                    Text("미리보기")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    if teamNameplateEnabled {
-                        Text(teamName.isEmpty ? "MyTeam" : teamName)
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .foregroundColor(TeamNameplateAppearanceSettings.color(from: teamNameplateColorHex).isDark ? .white : .black.opacity(0.85))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 5)
-                            .background(
-                                Capsule()
-                                    .fill(TeamNameplateAppearanceSettings.color(from: teamNameplateColorHex).opacity(0.12))
-                                    .overlay(
-                                        Capsule().stroke(TeamNameplateAppearanceSettings.color(from: teamNameplateColorHex).opacity(0.18), lineWidth: 1)
-                                    )
-                            )
-                    } else {
-                        Text("숨김")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
                 }
             }
 
