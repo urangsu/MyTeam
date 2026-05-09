@@ -129,13 +129,17 @@ enum DelegatedWorkflowDetector {
         if containsAny(lower, keywords: ["툴", "도구", "브라우저", "웹", "검색", "외부"]) {
             scopes.append(.toolExecution)
         }
-        if containsAny(lower, keywords: ["메일", "이메일", "슬랙", "slack", "보내", "전송", "공유"]) {
+        if isReadOnlyMailRequest(lower) {
+            if containsAny(lower, keywords: ["메일", "메일 요약", "메일 본문", "내용 읽어", "새 메일", "메일 몇 통", "메일 목록", "메일 제목", "메일 발신자", "중요한 메일"]) {
+                scopes.append(.answerOnly)
+            }
+        } else if containsAny(lower, keywords: ["메일", "이메일", "슬랙", "slack", "보내", "전송", "공유"]) {
             scopes.append(.externalWrite)
         }
         if containsAny(lower, keywords: ["결제", "구매", "청구", "가격", "돈"]) {
             scopes.append(.payment)
         }
-        if containsAny(lower, keywords: ["로그인", "인증", "계정", "sign in", "signin"]) {
+        if containsAny(lower, keywords: ["로그인", "인증", "계정", "sign in", "signin"]) && !isUserInitiatedConnectorSetup(lower) {
             scopes.append(.login)
         }
         if containsAny(lower, keywords: ["삭제", "지워", "제거", "덮어쓰기", "destroy", "remove"]) {
@@ -186,6 +190,34 @@ enum DelegatedWorkflowDetector {
             return "artifactWorkflow"
         }
         return "teamDiscussion"
+    }
+
+    static func isReadOnlyMailRequest(_ message: String) -> Bool {
+        let lower = message.lowercased()
+        return containsAny(lower, keywords: [
+            "새 메일",
+            "메일 몇 통",
+            "메일 목록",
+            "메일 제목",
+            "메일 발신자",
+            "메일 요약",
+            "메일 본문",
+            "내용 읽어",
+            "중요한 메일",
+            "메일이랑 일정"
+        ])
+    }
+
+    static func isUserInitiatedConnectorSetup(_ message: String) -> Bool {
+        let lower = message.lowercased()
+        return containsAny(lower, keywords: [
+            "구글 연결",
+            "캘린더 연결",
+            "oauth",
+            "연결할게",
+            "설정 저장",
+            "사용자가 연결"
+        ])
     }
 
     static func buildExecutionRequest(

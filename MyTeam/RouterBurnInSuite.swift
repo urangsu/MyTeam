@@ -247,6 +247,78 @@ enum RouterBurnInSuite {
             notes: "향후 calendar read-only connection route 후보"
         ),
         .init(
+            id: "autonomy-daily-briefing",
+            message: "오늘 뭐 해야 해?",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            shouldRequireApproval: false,
+            notes: "GoalInterpreter should classify dailyBriefing"
+        ),
+        .init(
+            id: "autonomy-mail-calendar",
+            message: "메일이랑 일정 보고 오늘 할 일 정리해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            shouldRequireApproval: false,
+            notes: "dailyBriefing + calendarRead + mailMetadataRead 준비 케이스"
+        ),
+        .init(
+            id: "autonomy-document-work",
+            message: "이거 업무용으로 정리해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            shouldRequireApproval: false,
+            notes: "문서화 목표 추론 준비 케이스"
+        ),
+        .init(
+            id: "autonomy-delegation",
+            message: "내가 손 안 대도 되게 끝까지 정리해줘",
+            expectedRoute: .delegationAwaitingApproval,
+            expectedSkillID: nil,
+            expectedRouteHint: "teamDiscussion",
+            shouldRequireApproval: true,
+            notes: "위임 의도 우선"
+        ),
+        .init(
+            id: "autonomy-mail-metadata",
+            message: "새 메일 몇 통 왔어?",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            shouldRequireApproval: false,
+            notes: "메일 메타데이터 읽기 준비 케이스"
+        ),
+        .init(
+            id: "autonomy-mail-send",
+            message: "메일 보내줘",
+            expectedRoute: .blockedHighRiskSkill,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            shouldRequireApproval: true,
+            notes: "mailSend blocked"
+        ),
+        .init(
+            id: "autonomy-user-initiated-oauth",
+            message: "구글 캘린더 연결할게",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            shouldRequireApproval: false,
+            notes: "userInitiatedOAuth 준비 케이스"
+        ),
+        .init(
+            id: "autonomy-auto-login",
+            message: "자동으로 로그인해서 일정 가져와",
+            expectedRoute: .blockedHighRiskSkill,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            shouldRequireApproval: true,
+            notes: "automaticLogin blocked"
+        ),
+        .init(
             id: "future-daily-briefing",
             message: "오늘 브리핑 해줘",
             expectedRoute: .directChat,
@@ -417,6 +489,7 @@ enum RouterBurnInSuite {
         let lower = message.lowercased()
         let keywords = [
             "결제", "청구", "환불", "카드", "계좌", "송금", "이체", "비밀번호",
+            "메일 보내", "이메일 보내", "메일 발송",
             "로그인", "인증", "삭제", "지워", "제거", "해킹", "은행"
         ]
         return keywords.contains { lower.contains($0) }
