@@ -6,6 +6,16 @@
 
 ---
 
+## 2026-05-10 (Round 25B-ManualQA — Calendar OAuth Live Test)
+
+- live OAuth QA attempted
+- Google Cloud Console Desktop OAuth client ID was not available in the workspace
+- Google approval screen / callback / token exchange / Keychain / Calendar fetch runtime QA not completed
+- Gmail remains unimplemented
+- Calendar write remains unimplemented
+- token / code logs remain forbidden
+- StoreKit / entitlement unchanged
+
 ## 2026-05-10 (Round 25B-QA — Calendar OAuth Runtime Verification)
 
 - TASK roadmap aligned to runtime verification state
