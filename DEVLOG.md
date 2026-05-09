@@ -6,6 +6,20 @@
 
 ---
 
+## 2026-05-10 (Round 25B — Google Calendar Desktop OAuth Connection)
+
+- Google Calendar Desktop OAuth 연결
+- Calendar read-only scope만 요청
+- PKCE 추가
+- token exchange 추가
+- Keychain token storage 추가
+- Calendar read-only events fetch 추가
+- DailyBriefing calendar provider 연결
+- Gmail 미구현
+- 일정 생성 / 수정 / 삭제 미구현
+- token / client secret 로그 없음
+- StoreKit / entitlement 미수정
+
 ## 2026-05-10 (Round 25A.3 — Autonomy Observation Layer)
 
 - GoalInterpreter를 dispatch 초반 관측층으로 연결
