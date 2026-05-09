@@ -6,6 +6,17 @@
 
 ---
 
+## 2026-05-10 (Round 26A — Universal Document Workflows Foundation)
+
+- 6개 문서 유형 요약 / 보고서 초안 / 체크리스트 / 표 정리 / 회의록 정리 / 액션아이템 추출 추가
+- 자연어 기반 문서 라우팅과 Markdown artifact 저장 경로 연결
+- GoalInterpreter 관측 결과와 충돌하지 않도록 route trace / turn profile 정리
+- Router burn-in에 universal document 경계 케이스 추가
+- ResultVerifier는 artifact 생성 후 warning 수준으로만 반영
+- Gmail remains unimplemented
+- Calendar write remains unimplemented
+- OAuth / StoreKit / entitlement unchanged
+
 ## 2026-05-10 (Round 25C — Compact Team Window UX + Settings Cleanup)
 
 - 팀 협업창 스케줄 팝업을 compact / scrollable 형태로 정리
