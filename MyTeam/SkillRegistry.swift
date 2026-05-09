@@ -66,6 +66,16 @@ final class SkillRegistry {
     /// 사용자 설치 스킬 — Round 7에서 UserSkillStore 연동
     func userSkills() -> [SkillManifest] { [] }
 
+    /// built-in + user 스킬을 읽기 전용으로 합쳐서 반환한다.
+    var allSkillManifests: [SkillManifest] {
+        (builtInSkills() + userSkills()).sorted { $0.id < $1.id }
+    }
+
+    /// 특정 스킬 ID를 read-only로 조회한다.
+    func skill(named id: String) -> SkillManifest? {
+        skills[id]
+    }
+
     func allEnabledSkills() -> [SkillManifest] {
         skills.values.filter { isSkillEnabled(id: $0.id) }.sorted { $0.id < $1.id }
     }
