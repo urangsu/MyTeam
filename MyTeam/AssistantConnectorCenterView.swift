@@ -2,6 +2,9 @@ import SwiftUI
 
 struct AssistantConnectorCenterView: View {
     @State private var refreshToken = UUID()
+    @State private var googleClientID: String = ""
+    @State private var googleRedirectMode: GoogleOAuthConfig.RedirectMode = .notConfigured
+    @State private var googleGoogleScopeEnabled: Bool = true
 
     private var connectors: [AssistantConnector] {
         AssistantConnectorCatalog.connectors
@@ -10,6 +13,7 @@ struct AssistantConnectorCenterView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             header
+            googleOAuthSetupCard
 
             ForEach(connectors) { connector in
                 connectorCard(for: connector)
@@ -18,6 +22,7 @@ struct AssistantConnectorCenterView: View {
             scopePolicySection
         }
         .onAppear { refreshToken = UUID() }
+        .onAppear { loadGoogleOAuthDraft() }
     }
 
     private var header: some View {
@@ -40,6 +45,75 @@ struct AssistantConnectorCenterView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private var googleOAuthSetupCard: some View {
+        let validation = GoogleOAuthConfigValidator.validate(
+            GoogleOAuthStoredConfig(
+                clientID: googleClientID,
+                redirectMode: googleRedirectMode,
+                enabledScopes: googleGoogleScopeEnabled ? [.calendarEventsReadonly] : [],
+                updatedAt: Date()
+            )
+        )
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "shield.lefthalf.filled")
+                    .foregroundStyle(.blue)
+                Text("Google OAuth 설정")
+                    .font(.system(size: 12, weight: .semibold))
+                Spacer()
+                Text(validation.status == .ready ? "준비 완료" : "준비 필요")
+                    .font(.system(size: 10, weight: .bold))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(validation.status == .ready ? Color.green.opacity(0.12) : Color.orange.opacity(0.12)))
+            }
+
+            Text("Client ID와 Desktop redirect mode만 저장합니다. client secret은 저장하지 않습니다.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 8) {
+                TextField("Client ID", text: $googleClientID)
+                    .textFieldStyle(.roundedBorder)
+                Picker("Redirect", selection: $googleRedirectMode) {
+                    Text("Not configured").tag(GoogleOAuthConfig.RedirectMode.notConfigured)
+                    Text("Loopback").tag(GoogleOAuthConfig.RedirectMode.loopback)
+                    Text("Custom URL").tag(GoogleOAuthConfig.RedirectMode.customURLScheme)
+                }
+                .pickerStyle(.menu)
+                .frame(width: 150)
+            }
+
+            Toggle("Calendar read-only scope", isOn: $googleGoogleScopeEnabled)
+                .toggleStyle(.checkbox)
+                .disabled(true)
+
+            HStack(spacing: 8) {
+                Text(validation.message)
+                    .font(.caption2)
+                    .foregroundStyle(validation.isReady ? .green : .secondary)
+                Spacer()
+                Button("초기화") {
+                    GoogleOAuthConfigStore.shared.clear()
+                    loadGoogleOAuthDraft()
+                    refreshToken = UUID()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                Button("설정 저장") {
+                    saveGoogleOAuthDraft()
+                    refreshToken = UUID()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+        }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color(nsColor: .controlBackgroundColor).opacity(0.30)))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.secondary.opacity(0.12)))
     }
 
     private func connectorCard(for connector: AssistantConnector) -> some View {
@@ -203,5 +277,22 @@ struct AssistantConnectorCenterView: View {
         case .needsReauth: return Color.yellow.opacity(0.12)
         case .error: return Color.red.opacity(0.12)
         }
+    }
+
+    private func loadGoogleOAuthDraft() {
+        let stored = GoogleOAuthConfigStore.shared.load()
+        googleClientID = stored.clientID
+        googleRedirectMode = stored.redirectMode
+        googleGoogleScopeEnabled = stored.enabledScopes.contains(.calendarEventsReadonly) || stored.enabledScopes.isEmpty
+    }
+
+    private func saveGoogleOAuthDraft() {
+        let stored = GoogleOAuthStoredConfig(
+            clientID: googleClientID,
+            redirectMode: googleRedirectMode,
+            enabledScopes: googleGoogleScopeEnabled ? [.calendarEventsReadonly] : [],
+            updatedAt: Date()
+        )
+        GoogleOAuthConfigStore.shared.save(stored)
     }
 }

@@ -6955,6 +6955,71 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>D25000000000000000000001</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>GoogleOAuthConfigStore.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>D25000000000000000000002</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>GoogleOAuthConfigValidator.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>D25000000000000000000003</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>GoogleCalendarEvent.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>D25000000000000000000004</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>GoogleCalendarClient.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>D25000000000000000000005</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>DailyBriefingCalendarProvider.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
 		<key>6B3D5429B9736BAD2CD6F5ED</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -10745,6 +10810,11 @@
 				<string>D24000000000000000000011</string>
 				<string>D24000000000000000000012</string>
 				<string>D24000000000000000000013</string>
+				<string>D25000000000000000000011</string>
+				<string>D25000000000000000000012</string>
+				<string>D25000000000000000000013</string>
+				<string>D25000000000000000000014</string>
+				<string>D25000000000000000000015</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -18701,6 +18771,41 @@
 		<dict>
 			<key>fileRef</key>
 			<string>D24000000000000000000003</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>D25000000000000000000011</key>
+		<dict>
+			<key>fileRef</key>
+			<string>D25000000000000000000001</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>D25000000000000000000012</key>
+		<dict>
+			<key>fileRef</key>
+			<string>D25000000000000000000002</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>D25000000000000000000013</key>
+		<dict>
+			<key>fileRef</key>
+			<string>D25000000000000000000003</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>D25000000000000000000014</key>
+		<dict>
+			<key>fileRef</key>
+			<string>D25000000000000000000004</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>D25000000000000000000015</key>
+		<dict>
+			<key>fileRef</key>
+			<string>D25000000000000000000005</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>

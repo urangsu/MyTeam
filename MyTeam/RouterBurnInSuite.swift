@@ -220,6 +220,33 @@ enum RouterBurnInSuite {
             notes: "향후 Gmail summary route 후보"
         ),
         .init(
+            id: "future-google-calendar-connect",
+            message: "구글 캘린더 연결해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            shouldRequireApproval: false,
+            notes: "향후 OAuth connector setup route 후보"
+        ),
+        .init(
+            id: "future-daily-briefing-route",
+            message: "오늘 일정 브리핑해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            shouldRequireApproval: false,
+            notes: "향후 daily briefing route 후보"
+        ),
+        .init(
+            id: "future-google-calendar-read",
+            message: "구글 일정 읽기 권한 연결할게",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            shouldRequireApproval: false,
+            notes: "향후 calendar read-only connection route 후보"
+        ),
+        .init(
             id: "future-daily-briefing",
             message: "오늘 브리핑 해줘",
             expectedRoute: .directChat,
