@@ -138,7 +138,6 @@ struct TeamStatusView: View {
                 }
 
                 Divider().background(textColor.opacity(0.05))
-                footerView
             }
         }
         .frame(width: panelWidth, height: panelHeight, alignment: .top)
@@ -164,11 +163,22 @@ struct TeamStatusView: View {
         )
         .overlay(alignment: .topTrailing) {
             if isSchedulePanelPresented {
-                schedulePopupCard
-                    .frame(width: 330)
-                    .padding(.trailing, 18)
-                    .padding(.top, 56)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                GeometryReader { proxy in
+                    let popupWidth = min(260, max(220, proxy.size.width - 22))
+                    let popupHeight = min(220, max(160, proxy.size.height - 70))
+
+                    schedulePopupCard
+                        .frame(width: popupWidth, height: popupHeight, alignment: .topLeading)
+                        .padding(.trailing, 10)
+                        .padding(.top, 48)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if !isCollapsed {
+                footerView
+                    .padding(.top, 2)
             }
         }
         .shadow(color: Color.black.opacity(manager.isDarkMode ? 0.3 : 0.08), radius: 15, x: 0, y: 8)
@@ -679,7 +689,7 @@ struct TeamStatusView: View {
     }
 
     private var schedulePopupCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
                 Image(systemName: "clock.badge.checkmark")
                     .font(.system(size: 12, weight: .semibold))
@@ -700,30 +710,51 @@ struct TeamStatusView: View {
                 .buttonStyle(.plain)
             }
 
-            Text("아직 예약된 근무가 없습니다.")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(textColor.opacity(0.78))
-                .fixedSize(horizontal: false, vertical: true)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    if manager.automationTasks.isEmpty {
+                        Text("등록된 근무가 없습니다.")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(textColor.opacity(0.78))
+                        Text("정해진 시간에 자동으로 작업하는 기능이 준비 중입니다.")
+                            .font(.system(size: 10))
+                            .foregroundColor(textColor.opacity(0.55))
+                    } else {
+                        Text("\(manager.automationTasks.count)개의 스케줄이 있습니다.")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(textColor.opacity(0.78))
 
-            Text("곧 팀원이 정해진 시간에 자동으로 작업하는 기능이 추가됩니다.")
-                .font(.system(size: 10))
-                .foregroundColor(textColor.opacity(0.55))
-                .fixedSize(horizontal: false, vertical: true)
-
-            Text("현재 버전에서는 수동 실행만 지원합니다.\n자동 작업 예약은 준비 중입니다.")
-                .font(.system(size: 9))
-                .foregroundColor(textColor.opacity(0.42))
-                .fixedSize(horizontal: false, vertical: true)
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(Array(manager.automationTasks.prefix(3))) { task in
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(Color.orange)
+                                        .frame(width: 6, height: 6)
+                                    Text(task.prompt)
+                                        .font(.system(size: 10))
+                                        .foregroundColor(textColor.opacity(0.7))
+                                        .lineLimit(1)
+                                    Spacer()
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(.top, 2)
+                .padding(.trailing, 2)
+            }
+            .frame(maxHeight: 126)
 
             Button("스케줄 관리 준비 중") { }
                 .buttonStyle(.bordered)
+                .controlSize(.small)
                 .disabled(true)
         }
-        .padding(14)
+        .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(manager.isDarkMode ? Color.black.opacity(0.92) : Color.white.opacity(0.98))
-                .shadow(color: .black.opacity(manager.isDarkMode ? 0.22 : 0.12), radius: 16, x: 0, y: 6)
+                .shadow(color: .black.opacity(manager.isDarkMode ? 0.22 : 0.12), radius: 12, x: 0, y: 5)
         )
     }
 

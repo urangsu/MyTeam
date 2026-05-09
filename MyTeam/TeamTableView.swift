@@ -14,6 +14,7 @@ struct TeamTableView: View {
     @AppStorage("teamName") private var teamName: String = "MyTeam"
     @AppStorage(TeamNameplateAppearanceSettings.enabledKey) private var teamNameplateEnabled: Bool = TeamNameplateAppearanceSettings.defaultEnabled
     @AppStorage(TeamNameplateAppearanceSettings.colorHexKey) private var teamNameplateColorHex: String = TeamNameplateAppearanceSettings.defaultColorHex
+    @AppStorage(TeamNameplateAppearanceSettings.borderColorHexKey) private var teamNameplateBorderColorHex: String = TeamNameplateAppearanceSettings.defaultBorderColorHex
     @AppStorage("agentWindowOpacity") private var agentWindowOpacity: Double = 0.0
 
     // 드래그 스팸 방지: 한 번의 드래그 제스처 당 알림 1회만 발생
@@ -26,6 +27,25 @@ struct TeamTableView: View {
         TeamNameplateAppearanceSettings.color(from: teamNameplateColorHex)
     }
 
+    private var plaqueBorderColor: Color {
+        TeamNameplateAppearanceSettings.color(from: teamNameplateBorderColorHex)
+    }
+
+    private var plaqueHasBackground: Bool {
+        !TeamNameplateAppearanceSettings.isTransparent(teamNameplateColorHex)
+    }
+
+    private var plaqueHasBorder: Bool {
+        !TeamNameplateAppearanceSettings.isTransparent(teamNameplateBorderColorHex)
+    }
+
+    private var plaqueTextColor: Color {
+        if plaqueHasBackground {
+            return plaqueBaseColor.isDark ? .white : .black.opacity(0.85)
+        }
+        return manager.isDarkMode ? .white.opacity(0.88) : .black.opacity(0.78)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
 
@@ -33,13 +53,17 @@ struct TeamTableView: View {
             if teamNameplateEnabled && !teamName.isEmpty {
                 Text(teamName)
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundColor(plaqueBaseColor.isDark ? .white : .black.opacity(0.85))
+                    .foregroundColor(plaqueTextColor)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 5)
                     .background(
                         Capsule()
-                            .fill(plaqueBaseColor.opacity(0.12))
-                            .overlay(Capsule().stroke(plaqueBaseColor.opacity(0.18), lineWidth: 1))
+                            .fill(plaqueHasBackground ? plaqueBaseColor.opacity(0.12) : Color.clear)
+                            .overlay {
+                                if plaqueHasBorder {
+                                    Capsule().stroke(plaqueBorderColor.opacity(0.22), lineWidth: 1)
+                                }
+                            }
                     )
                     .padding(.bottom, 6)
                     .gesture(DragGesture(minimumDistance: 0)

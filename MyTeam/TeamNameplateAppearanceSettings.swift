@@ -9,24 +9,36 @@ struct TeamNameplateColorPreset: Identifiable, Equatable {
 enum TeamNameplateAppearanceSettings {
     static let enabledKey = "teamNameplateEnabled"
     static let colorHexKey = "teamNameplateColorHex"
+    static let borderColorHexKey = "teamNameplateBorderColorHex"
     static let legacyEnabledKey = "showTeamName"
     static let legacyColorHexKey = "teamNameColor"
 
     static let defaultEnabled = true
-    static let defaultColorHex = "#7C3AED"
+    static let defaultColorHex = "transparent"
+    static let defaultBorderColorHex = "transparent"
     static let colorPresets: [TeamNameplateColorPreset] = [
+        .init(id: "transparent", name: "투명", hex: "transparent"),
         .init(id: "purple", name: "보라", hex: "#7C3AED"),
         .init(id: "blue", name: "블루", hex: "#2563EB"),
-        .init(id: "cyan", name: "시안", hex: "#0891B2"),
-        .init(id: "green", name: "그린", hex: "#16A34A"),
-        .init(id: "amber", name: "앰버", hex: "#F59E0B"),
-        .init(id: "rose", name: "로즈", hex: "#E11D48"),
-        .init(id: "slate", name: "슬레이트", hex: "#334155"),
-        .init(id: "black", name: "블랙", hex: "#111827")
+        .init(id: "slate", name: "슬레이트", hex: "#334155")
+    ]
+    static let borderColorPresets: [TeamNameplateColorPreset] = [
+        .init(id: "transparent", name: "투명", hex: "transparent"),
+        .init(id: "subtle", name: "기본선", hex: "#FFFFFF33"),
+        .init(id: "accent", name: "포인트", hex: "#7C3AED")
     ]
 
     static func color(from hex: String) -> Color {
-        Color(hex: hex) ?? .purple
+        let normalized = hex.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if normalized.isEmpty || normalized == "transparent" || normalized == "clear" {
+            return .clear
+        }
+        return Color(hex: hex) ?? .clear
+    }
+
+    static func isTransparent(_ hex: String) -> Bool {
+        let normalized = hex.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return normalized.isEmpty || normalized == "transparent" || normalized == "clear"
     }
 
     static func migrateLegacyValuesIfNeeded() {
@@ -46,6 +58,10 @@ enum TeamNameplateAppearanceSettings {
             } else {
                 defaults.set(defaultColorHex, forKey: colorHexKey)
             }
+        }
+
+        if defaults.string(forKey: borderColorHexKey) == nil {
+            defaults.set(defaultBorderColorHex, forKey: borderColorHexKey)
         }
     }
 }
