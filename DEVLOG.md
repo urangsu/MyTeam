@@ -6,6 +6,17 @@
 
 ---
 
+## 2026-05-10 (Round 25A.3 — Autonomy Observation Layer)
+
+- GoalInterpreter를 dispatch 초반 관측층으로 연결
+- room별 last goal 저장
+- RouteTrace에 goalInterpreted 추가
+- RuntimeDiagnostics에 goal / capability summary 추가
+- RouterBurnInSuite에 goal evaluation 추가
+- 기존 routing / skill execution 변경 없음
+- 실제 OAuth / API 호출 없음
+- StoreKit / entitlement 미수정
+
 ## 2026-05-09 (Round 25A.1-A.2 — OAuth Prep Polish + Autonomy Core Skeleton)
 
 - TASK roadmap를 Round 25A.1-A.2 기준으로 정리
