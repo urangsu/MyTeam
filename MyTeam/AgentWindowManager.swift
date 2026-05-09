@@ -82,6 +82,10 @@ class AgentWindowManager: ObservableObject {
     @Published var teamRuntimeState: TeamRuntimeState? = nil
     /// room별 마지막 turn profile — /why, /last, diagnostics용 읽기 전용 상태.
     @Published var lastTurnProfileByRoom: [UUID: TurnProfile] = [:]
+    /// room별 마지막 goal interpretation — 관측용 상태.
+    @Published var lastGoalInterpretationsByRoom: [UUID: GoalInterpretation] = [:]
+    /// room별 마지막 capability route decision — 관측용 상태.
+    @Published var lastCapabilityRouteDecisionsByRoom: [UUID: CapabilityRouteDecision] = [:]
     /// room별 route trace — 최근 route 판단 흐름 기록.
     @Published var routeTracesByRoom: [UUID: [RouteTrace]] = [:]
     /// room별 delegation mode 상태.
@@ -146,6 +150,22 @@ class AgentWindowManager: ObservableObject {
     @MainActor
     func lastTurnProfile(for roomID: UUID) -> TurnProfile? {
         lastTurnProfileByRoom[roomID]
+    }
+
+    @MainActor
+    func recordGoalInterpretation(_ goal: GoalInterpretation, decision: CapabilityRouteDecision, roomID: UUID) {
+        lastGoalInterpretationsByRoom[roomID] = goal
+        lastCapabilityRouteDecisionsByRoom[roomID] = decision
+    }
+
+    @MainActor
+    func lastGoalInterpretation(for roomID: UUID) -> GoalInterpretation? {
+        lastGoalInterpretationsByRoom[roomID]
+    }
+
+    @MainActor
+    func lastCapabilityRouteDecision(for roomID: UUID) -> CapabilityRouteDecision? {
+        lastCapabilityRouteDecisionsByRoom[roomID]
     }
 
     @MainActor

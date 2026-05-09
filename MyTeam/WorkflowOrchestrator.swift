@@ -46,6 +46,18 @@ final class WorkflowOrchestrator {
         let eventMsg = userMessage
         Task { await AgentEventBus.shared.publish(.userMessageSubmitted(roomID: eventRoomID, message: eventMsg)) }
 
+        let interpretedGoal = GoalInterpreter.interpret(userMessage)
+        let capabilityDecision = CapabilityAwareRouter.evaluate(goal: interpretedGoal)
+        await MainActor.run {
+            manager.recordGoalInterpretation(interpretedGoal, decision: capabilityDecision, roomID: roomID)
+            self.recordRouteTrace(
+                manager: manager,
+                roomID: roomID,
+                step: .goalInterpreted,
+                message: "goal=\(interpretedGoal.goalType.rawValue) confidence=\(interpretedGoal.confidence.rawValue) capability=\(capabilityDecision.status.rawValue)"
+            )
+        }
+
         var effectiveScopes: Set<ToolScope> = [.chatBasic]  // 항상 chatBasic 포함
 
         if !skipDelegationMode {

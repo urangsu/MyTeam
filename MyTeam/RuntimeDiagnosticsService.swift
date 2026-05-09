@@ -37,6 +37,10 @@ struct RuntimeDiagnosticsSnapshot {
     let lastMatchedSkills: [String]
     let lastEffectiveScopes: [String]
     let recentRouteTraceCount: Int
+    let lastGoalType: String?
+    let lastGoalConfidence: String?
+    let lastCapabilityRouteStatus: String?
+    let lastGoalRequiredCapabilities: [String]
 
     // Router burn-in / tool contract validation
     let routerBurnInTotal: Int
@@ -103,6 +107,9 @@ struct RuntimeDiagnosticsSnapshot {
         if !lastEffectiveScopes.isEmpty {
             lines.append("effectiveScopes: \(lastEffectiveScopes.joined(separator: ", "))")
         }
+        if let lastGoalType {
+            lines.append("goal: \(lastGoalType) confidence=\(lastGoalConfidence ?? "nil") capability=\(lastCapabilityRouteStatus ?? "nil") caps=\(lastGoalRequiredCapabilities.joined(separator: ","))")
+        }
         lines.append("recentRouteTraceCount: \(recentRouteTraceCount)")
         lines.append("validation: router \(routerBurnInPassed)/\(routerBurnInTotal) passed | tool contracts errors=\(toolContractErrors) warnings=\(toolContractWarnings)")
         if let delegationModeStatus {
@@ -146,6 +153,8 @@ final class RuntimeDiagnosticsService {
         let latestSummary = latestEvent.map { "\($0.type.rawValue) wf=\($0.workflowID?.uuidString.prefix(8) ?? "-")" }
         let currentRoomID = manager.currentRoomID
         let lastProfile = currentRoomID.flatMap { manager.lastTurnProfile(for: $0) }
+        let lastGoal = currentRoomID.flatMap { manager.lastGoalInterpretation(for: $0) }
+        let lastCapabilityRouteDecision = currentRoomID.flatMap { manager.lastCapabilityRouteDecision(for: $0) }
         let recentRouteTraceCount = currentRoomID.map { manager.recentRouteTraces(for: $0).count } ?? 0
         let delegationState = currentRoomID.flatMap { manager.delegationModeState(for: $0) }
         let delegationContract = currentRoomID.flatMap { manager.activeDelegationContract(for: $0) }
@@ -185,6 +194,10 @@ final class RuntimeDiagnosticsService {
             lastMatchedSkills: lastProfile?.matchedSkillIDs ?? [],
             lastEffectiveScopes: lastProfile?.effectiveScopes ?? [],
             recentRouteTraceCount: recentRouteTraceCount,
+            lastGoalType: lastGoal.map { $0.goalType.rawValue },
+            lastGoalConfidence: lastGoal.map { $0.confidence.rawValue },
+            lastCapabilityRouteStatus: lastCapabilityRouteDecision.map { $0.status.rawValue },
+            lastGoalRequiredCapabilities: lastGoal?.requiredCapabilities.map { $0.rawValue } ?? [],
             routerBurnInTotal: routerBurnInSummary.total,
             routerBurnInPassed: routerBurnInSummary.passed,
             routerBurnInFailed: routerBurnInSummary.failed,

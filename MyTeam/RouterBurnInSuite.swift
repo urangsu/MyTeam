@@ -9,6 +9,7 @@ enum RouterBurnInSuite {
             expectedRoute: .appLaunchPack,
             expectedSkillID: "korean.app-store-copy",
             expectedRouteHint: "appLaunchPack",
+            expectedGoalType: "appLaunch",
             shouldRequireApproval: false,
             notes: "명시적 앱스토어 문서 타입이 광고 키워드보다 우선"
         ),
@@ -18,6 +19,7 @@ enum RouterBurnInSuite {
             expectedRoute: .appLaunchPack,
             expectedSkillID: "korean.onboarding-copy",
             expectedRouteHint: "appLaunchPack",
+            expectedGoalType: "appLaunch",
             shouldRequireApproval: false,
             notes: "온보딩 문서 타입 우선"
         ),
@@ -27,6 +29,7 @@ enum RouterBurnInSuite {
             expectedRoute: .appLaunchPack,
             expectedSkillID: "korean.launch-checklist",
             expectedRouteHint: "appLaunchPack",
+            expectedGoalType: "appLaunch",
             shouldRequireApproval: false,
             notes: "출시 체크리스트 우선"
         ),
@@ -36,6 +39,7 @@ enum RouterBurnInSuite {
             expectedRoute: .appLaunchPack,
             expectedSkillID: "korean.monetization-review",
             expectedRouteHint: "appLaunchPack",
+            expectedGoalType: "appLaunch",
             shouldRequireApproval: false,
             notes: "명시적 수익화 문서만 monetizationReview로 라우팅"
         ),
@@ -45,6 +49,7 @@ enum RouterBurnInSuite {
             expectedRoute: .appLaunchPack,
             expectedSkillID: "korean.app-store-copy",
             expectedRouteHint: "appLaunchPack",
+            expectedGoalType: "appLaunch",
             shouldRequireApproval: false,
             notes: "앱 이름 누락이면 질문/가정 경로"
         ),
@@ -54,6 +59,7 @@ enum RouterBurnInSuite {
             expectedRoute: .delegationAwaitingApproval,
             expectedSkillID: nil,
             expectedRouteHint: "appLaunchPack",
+            expectedGoalType: "appLaunch",
             shouldRequireApproval: true,
             notes: "위임 요청은 승인 대기 상태로 전환"
         ),
@@ -63,6 +69,7 @@ enum RouterBurnInSuite {
             expectedRoute: .delegationApproval,
             expectedSkillID: nil,
             expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
             shouldRequireApproval: false,
             notes: "승인 표현"
         ),
@@ -72,6 +79,7 @@ enum RouterBurnInSuite {
             expectedRoute: .delegationCancel,
             expectedSkillID: nil,
             expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
             shouldRequireApproval: false,
             notes: "종료 표현"
         ),
@@ -81,6 +89,7 @@ enum RouterBurnInSuite {
             expectedRoute: .delegationAwaitingApproval,
             expectedSkillID: nil,
             expectedRouteHint: "teamDiscussion",
+            expectedGoalType: "mailAction",
             shouldRequireApproval: true,
             notes: "외부 전송은 재승인 필요"
         ),
@@ -90,6 +99,7 @@ enum RouterBurnInSuite {
             expectedRoute: .delegationAwaitingApproval,
             expectedSkillID: nil,
             expectedRouteHint: "teamDiscussion",
+            expectedGoalType: "unknown",
             shouldRequireApproval: true,
             notes: "결제는 차단 또는 재승인 경계"
         ),
@@ -99,6 +109,7 @@ enum RouterBurnInSuite {
             expectedRoute: .privacyTerms,
             expectedSkillID: "korean.privacy-terms",
             expectedRouteHint: "privacyTerms",
+            expectedGoalType: "privacyTerms",
             shouldRequireApproval: false,
             notes: "개인정보처리방침 / 이용약관 라우팅"
         ),
@@ -108,6 +119,7 @@ enum RouterBurnInSuite {
             expectedRoute: .privacyTerms,
             expectedSkillID: "korean.privacy-terms",
             expectedRouteHint: "privacyTerms",
+            expectedGoalType: "privacyTerms",
             shouldRequireApproval: false,
             notes: "소유권 확인 문구가 필요할 수 있음"
         ),
@@ -117,6 +129,7 @@ enum RouterBurnInSuite {
             expectedRoute: .localSkill,
             expectedSkillID: "korean.character-count",
             expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
             shouldRequireApproval: false,
             notes: "완전 로컬 처리"
         ),
@@ -126,6 +139,7 @@ enum RouterBurnInSuite {
             expectedRoute: .localSkill,
             expectedSkillID: "korean.spell-check",
             expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
             shouldRequireApproval: false,
             notes: "활성 스킬 매칭"
         ),
@@ -135,6 +149,7 @@ enum RouterBurnInSuite {
             expectedRoute: .artifactWorkflow,
             expectedSkillID: nil,
             expectedRouteHint: "artifactWorkflow",
+            expectedGoalType: "documentWork",
             shouldRequireApproval: false,
             notes: "artifact workflow"
         ),
@@ -144,6 +159,7 @@ enum RouterBurnInSuite {
             expectedRoute: .artifactWorkflow,
             expectedSkillID: nil,
             expectedRouteHint: "artifactWorkflow",
+            expectedGoalType: "documentWork",
             shouldRequireApproval: false,
             notes: "표 기반 파일 생성"
         ),
@@ -153,6 +169,7 @@ enum RouterBurnInSuite {
             expectedRoute: .directChat,
             expectedSkillID: nil,
             expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
             shouldRequireApproval: false,
             notes: "일반 대화"
         ),
@@ -162,6 +179,7 @@ enum RouterBurnInSuite {
             expectedRoute: .teamDiscussion,
             expectedSkillID: nil,
             expectedRouteHint: nil,
+            expectedGoalType: "teamDiscussion",
             shouldRequireApproval: false,
             notes: "팀 토론"
         ),
@@ -288,6 +306,7 @@ enum RouterBurnInSuite {
             expectedRoute: .directChat,
             expectedSkillID: nil,
             expectedRouteHint: nil,
+            expectedGoalType: "mailBriefing",
             shouldRequireApproval: false,
             notes: "메일 메타데이터 읽기 준비 케이스"
         ),
@@ -297,6 +316,7 @@ enum RouterBurnInSuite {
             expectedRoute: .blockedHighRiskSkill,
             expectedSkillID: nil,
             expectedRouteHint: nil,
+            expectedGoalType: "mailAction",
             shouldRequireApproval: true,
             notes: "mailSend blocked"
         ),
@@ -306,6 +326,7 @@ enum RouterBurnInSuite {
             expectedRoute: .directChat,
             expectedSkillID: nil,
             expectedRouteHint: nil,
+            expectedGoalType: "connectorSetup",
             shouldRequireApproval: false,
             notes: "userInitiatedOAuth 준비 케이스"
         ),
@@ -315,6 +336,7 @@ enum RouterBurnInSuite {
             expectedRoute: .blockedHighRiskSkill,
             expectedSkillID: nil,
             expectedRouteHint: nil,
+            expectedGoalType: "connectorSetup",
             shouldRequireApproval: true,
             notes: "automaticLogin blocked"
         ),
@@ -324,6 +346,7 @@ enum RouterBurnInSuite {
             expectedRoute: .directChat,
             expectedSkillID: nil,
             expectedRouteHint: nil,
+            expectedGoalType: "dailyBriefing",
             shouldRequireApproval: false,
             notes: "향후 daily briefing route 후보"
         ),
@@ -333,6 +356,7 @@ enum RouterBurnInSuite {
             expectedRoute: .directChat,
             expectedSkillID: nil,
             expectedRouteHint: nil,
+            expectedGoalType: "dailyBriefing",
             shouldRequireApproval: false,
             notes: "향후 calendar briefing route 후보"
         ),
@@ -342,6 +366,7 @@ enum RouterBurnInSuite {
             expectedRoute: .directChat,
             expectedSkillID: nil,
             expectedRouteHint: nil,
+            expectedGoalType: "mailBriefing",
             shouldRequireApproval: false,
             notes: "향후 mail metadata briefing route 후보"
         ),
@@ -351,6 +376,7 @@ enum RouterBurnInSuite {
             expectedRoute: .directChat,
             expectedSkillID: nil,
             expectedRouteHint: nil,
+            expectedGoalType: "mailBriefing",
             shouldRequireApproval: false,
             notes: "향후 mail attention briefing route 후보"
         ),
@@ -360,6 +386,7 @@ enum RouterBurnInSuite {
             expectedRoute: .blockedHighRiskSkill,
             expectedSkillID: nil,
             expectedRouteHint: nil,
+            expectedGoalType: "unknown",
             shouldRequireApproval: true,
             notes: "삭제 차단"
         ),
@@ -369,6 +396,7 @@ enum RouterBurnInSuite {
             expectedRoute: .delegationAwaitingApproval,
             expectedSkillID: nil,
             expectedRouteHint: "artifactWorkflow",
+            expectedGoalType: "documentWork",
             shouldRequireApproval: true,
             notes: "artifact 경계 + 위임"
         ),
@@ -378,6 +406,7 @@ enum RouterBurnInSuite {
             expectedRoute: .delegationAwaitingApproval,
             expectedSkillID: nil,
             expectedRouteHint: "teamDiscussion",
+            expectedGoalType: "teamDiscussion",
             shouldRequireApproval: true,
             notes: "팀 토론 위임"
         )
@@ -385,16 +414,22 @@ enum RouterBurnInSuite {
 
     static func evaluateCase(_ testCase: RouterBurnInCase) -> RouterBurnInResult {
         let actual = classify(message: testCase.message)
+        let goal = GoalInterpreter.interpret(testCase.message)
+        let goalPassed = testCase.expectedGoalType.map { $0 == goal.goalType.rawValue }
         let passed = actual.route == testCase.expectedRoute
             && (testCase.expectedSkillID == nil || testCase.expectedSkillID == actual.skillID)
             && (testCase.expectedRouteHint == nil || testCase.expectedRouteHint == actual.routeHint)
             && actual.requiresApproval == testCase.shouldRequireApproval
+            && (goalPassed ?? true)
 
         return RouterBurnInResult(
             id: testCase.id,
             passed: passed,
             expected: expectedDescription(for: testCase),
             actual: actualDescription(for: actual),
+            expectedGoalType: testCase.expectedGoalType,
+            actualGoalType: goal.goalType.rawValue,
+            goalPassed: goalPassed,
             notes: testCase.notes
         )
     }
@@ -403,7 +438,18 @@ enum RouterBurnInSuite {
         let results = cases.map(evaluateCase)
         let passed = results.filter(\.passed).count
         let failed = results.count - passed
-        return RouterBurnInSummary(total: results.count, passed: passed, failed: failed, failures: results.filter { !$0.passed })
+        let goalChecked = results.compactMap(\.goalPassed).count
+        let goalPassed = results.compactMap(\.goalPassed).filter { $0 }.count
+        let goalFailed = goalChecked - goalPassed
+        return RouterBurnInSummary(
+            total: results.count,
+            passed: passed,
+            failed: failed,
+            failures: results.filter { !$0.passed },
+            goalChecked: goalChecked,
+            goalPassed: goalPassed,
+            goalFailed: goalFailed
+        )
     }
 
     private struct DetectedRoute {

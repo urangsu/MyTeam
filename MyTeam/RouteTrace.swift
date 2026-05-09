@@ -2,6 +2,7 @@ import Foundation
 
 struct RouteTrace: Identifiable, Equatable {
     enum Step: String, Codable {
+        case goalInterpreted
         case skillMatched
         case disabledSkillMatched
         case localSkillHandled
