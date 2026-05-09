@@ -38,6 +38,13 @@ struct RuntimeDiagnosticsSnapshot {
     let lastEffectiveScopes: [String]
     let recentRouteTraceCount: Int
 
+    // Router burn-in / tool contract validation
+    let routerBurnInTotal: Int
+    let routerBurnInPassed: Int
+    let routerBurnInFailed: Int
+    let toolContractErrors: Int
+    let toolContractWarnings: Int
+
     // Delegation
     let delegationModeStatus: String?
     let activeDelegationGoal: String?
@@ -82,6 +89,7 @@ struct RuntimeDiagnosticsSnapshot {
             lines.append("effectiveScopes: \(lastEffectiveScopes.joined(separator: ", "))")
         }
         lines.append("recentRouteTraceCount: \(recentRouteTraceCount)")
+        lines.append("validation: router \(routerBurnInPassed)/\(routerBurnInTotal) passed | tool contracts errors=\(toolContractErrors) warnings=\(toolContractWarnings)")
         if let delegationModeStatus {
             lines.append("delegation: \(delegationModeStatus) goal=\(activeDelegationGoal ?? "nil") steps=\(delegatedPlanStepCount)")
         } else {
@@ -124,6 +132,8 @@ final class RuntimeDiagnosticsService {
         let delegationContract = currentRoomID.flatMap { manager.activeDelegationContract(for: $0) }
         let delegationPlan = currentRoomID.flatMap { manager.delegatedWorkflowPlan(for: $0) }
         let pendingDelegatedRequest = currentRoomID.flatMap { manager.pendingDelegatedExecutionRequest(for: $0) }
+        let routerBurnInSummary = RouterBurnInSuite.runAll()
+        let toolContractSummary = ToolContractValidator.validate()
 
         return RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
@@ -144,6 +154,11 @@ final class RuntimeDiagnosticsService {
             lastMatchedSkills: lastProfile?.matchedSkillIDs ?? [],
             lastEffectiveScopes: lastProfile?.effectiveScopes ?? [],
             recentRouteTraceCount: recentRouteTraceCount,
+            routerBurnInTotal: routerBurnInSummary.total,
+            routerBurnInPassed: routerBurnInSummary.passed,
+            routerBurnInFailed: routerBurnInSummary.failed,
+            toolContractErrors: toolContractSummary.errorCount,
+            toolContractWarnings: toolContractSummary.warningCount,
             delegationModeStatus: delegationState.map { $0.status.rawValue },
             activeDelegationGoal: delegationContract?.goal ?? delegationState?.detail,
             delegatedPlanStepCount: delegationPlan?.steps.count ?? 0,
