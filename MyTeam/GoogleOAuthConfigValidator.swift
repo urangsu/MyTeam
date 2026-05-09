@@ -18,17 +18,17 @@ struct GoogleOAuthConfigValidationResult: Equatable {
 enum GoogleOAuthConfigValidator {
     static func validate(_ config: GoogleOAuthStoredConfig) -> GoogleOAuthConfigValidationResult {
         if config.clientID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return .init(status: .missingClientID, message: "Google OAuth client ID가 필요합니다.")
+            return .init(status: .missingClientID, message: "Google OAuth Desktop client ID가 필요합니다.")
         }
 
         if config.redirectMode == .notConfigured {
-            return .init(status: .missingRedirectMode, message: "Desktop OAuth redirect mode가 필요합니다.")
+            return .init(status: .missingRedirectMode, message: "Desktop OAuth redirect mode를 선택해 주세요.")
         }
 
         if config.enabledScopes.isEmpty {
-            return .init(status: .noScopes, message: "최소 하나의 read-only scope가 필요합니다.")
+            return .init(status: .noScopes, message: "Calendar read-only scope가 필요합니다.")
         }
 
-        return .init(status: .ready, message: "Calendar read-only OAuth 준비가 완료됐습니다.")
+        return .init(status: .ready, message: "Calendar read-only OAuth 연결 준비가 완료됐습니다.")
     }
 }

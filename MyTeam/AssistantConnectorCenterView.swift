@@ -4,7 +4,7 @@ struct AssistantConnectorCenterView: View {
     @State private var refreshToken = UUID()
     @State private var googleClientID: String = ""
     @State private var googleRedirectMode: GoogleOAuthConfig.RedirectMode = .notConfigured
-    @State private var googleGoogleScopeEnabled: Bool = true
+    @State private var googleCalendarScopeEnabled: Bool = true
 
     private var connectors: [AssistantConnector] {
         AssistantConnectorCatalog.connectors
@@ -52,7 +52,7 @@ struct AssistantConnectorCenterView: View {
             GoogleOAuthStoredConfig(
                 clientID: googleClientID,
                 redirectMode: googleRedirectMode,
-                enabledScopes: googleGoogleScopeEnabled ? [.calendarEventsReadonly] : [],
+                enabledScopes: googleCalendarScopeEnabled ? [.calendarEventsReadonly] : [],
                 updatedAt: Date()
             )
         )
@@ -75,6 +75,10 @@ struct AssistantConnectorCenterView: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
+            Text("Calendar read-only부터 지원합니다. Gmail은 다음 단계에서 metadata부터 검토합니다. Google 로그인은 아직 실행하지 않습니다.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+
             HStack(spacing: 8) {
                 TextField("Client ID", text: $googleClientID)
                     .textFieldStyle(.roundedBorder)
@@ -87,7 +91,7 @@ struct AssistantConnectorCenterView: View {
                 .frame(width: 150)
             }
 
-            Toggle("Calendar read-only scope", isOn: $googleGoogleScopeEnabled)
+            Toggle("Calendar read-only scope", isOn: $googleCalendarScopeEnabled)
                 .toggleStyle(.checkbox)
                 .disabled(true)
 
@@ -283,14 +287,14 @@ struct AssistantConnectorCenterView: View {
         let stored = GoogleOAuthConfigStore.shared.load()
         googleClientID = stored.clientID
         googleRedirectMode = stored.redirectMode
-        googleGoogleScopeEnabled = stored.enabledScopes.contains(.calendarEventsReadonly) || stored.enabledScopes.isEmpty
+        googleCalendarScopeEnabled = stored.enabledScopes.contains(.calendarEventsReadonly) || stored.enabledScopes.isEmpty
     }
 
     private func saveGoogleOAuthDraft() {
         let stored = GoogleOAuthStoredConfig(
             clientID: googleClientID,
             redirectMode: googleRedirectMode,
-            enabledScopes: googleGoogleScopeEnabled ? [.calendarEventsReadonly] : [],
+            enabledScopes: googleCalendarScopeEnabled ? [.calendarEventsReadonly] : [],
             updatedAt: Date()
         )
         GoogleOAuthConfigStore.shared.save(stored)
