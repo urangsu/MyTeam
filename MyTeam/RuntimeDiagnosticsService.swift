@@ -52,6 +52,11 @@ struct RuntimeDiagnosticsSnapshot {
     let pendingDelegatedRouteHint: String?
     let pendingDelegatedExecutionStatus: String?
 
+    // Assistant connectors
+    let assistantConnectorCount: Int
+    let assistantConnectorImplementedCount: Int
+    let assistantConnectorConnectedCount: Int
+
     // Workspace
     let workspacePath: String
 
@@ -98,6 +103,7 @@ struct RuntimeDiagnosticsSnapshot {
         if let pendingDelegatedRouteHint {
             lines.append("delegationPending: \(pendingDelegatedRouteHint) status=\(pendingDelegatedExecutionStatus ?? "nil")")
         }
+        lines.append("assistantConnectors: total=\(assistantConnectorCount) implemented=\(assistantConnectorImplementedCount) connected=\(assistantConnectorConnectedCount)")
         lines.append("workspace: \(workspacePath)")
         lines.append("recentEvents: \(recentEventCount) | latest: \(latestEventSummary ?? "none")")
 
@@ -134,6 +140,11 @@ final class RuntimeDiagnosticsService {
         let pendingDelegatedRequest = currentRoomID.flatMap { manager.pendingDelegatedExecutionRequest(for: $0) }
         let routerBurnInSummary = RouterBurnInSuite.runAll()
         let toolContractSummary = ToolContractValidator.validate()
+        let assistantConnectorCount = AssistantConnectorCatalog.connectors.count
+        let assistantConnectorImplementedCount = AssistantConnectorCatalog.connectors.filter { $0.isImplemented }.count
+        let assistantConnectorConnectedCount = AssistantConnectorCatalog.connectors.filter {
+            GoogleOAuthTokenStore.shared.hasToken(for: $0.id)
+        }.count
 
         return RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
@@ -164,6 +175,9 @@ final class RuntimeDiagnosticsService {
             delegatedPlanStepCount: delegationPlan?.steps.count ?? 0,
             pendingDelegatedRouteHint: pendingDelegatedRequest?.routeHint,
             pendingDelegatedExecutionStatus: pendingDelegatedRequest?.status.rawValue,
+            assistantConnectorCount: assistantConnectorCount,
+            assistantConnectorImplementedCount: assistantConnectorImplementedCount,
+            assistantConnectorConnectedCount: assistantConnectorConnectedCount,
             workspacePath: workspacePath,
             recentEventCount: recentEvents.count,
             latestEventSummary: latestSummary

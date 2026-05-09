@@ -192,6 +192,33 @@ enum RouterBurnInSuite {
             notes: "결제 차단"
         ),
         .init(
+            id: "future-google-calendar",
+            message: "오늘 일정 뭐 있어?",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            shouldRequireApproval: false,
+            notes: "향후 Google Calendar briefing route 후보"
+        ),
+        .init(
+            id: "future-gmail-metadata",
+            message: "새 메일 몇 통 왔어?",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            shouldRequireApproval: false,
+            notes: "향후 Gmail metadata briefing route 후보"
+        ),
+        .init(
+            id: "future-gmail-summary",
+            message: "중요한 메일만 요약해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            shouldRequireApproval: false,
+            notes: "향후 Gmail summary route 후보"
+        ),
+        .init(
             id: "blocked-delete",
             message: "workspace 파일 삭제해줘",
             expectedRoute: .blockedHighRiskSkill,

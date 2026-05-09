@@ -327,6 +327,10 @@ struct SettingsView: View {
                 UsagePolicyCardView()
             }
 
+            Section("비서 연결") {
+                AssistantConnectorCenterView()
+            }
+
             Section("기본 제공자") {
                 Picker("제공자", selection: $selectedProvider) {
                     Text("Gemini").tag(LLMProvider.gemini)
