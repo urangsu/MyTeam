@@ -6,6 +6,35 @@
 
 ---
 
+## 2026-05-09 (Round 21 — Router Burn-in + Tool Contract Validation)
+
+### 빌드 목표
+- 자연어 라우팅 회귀 케이스를 로컬에서 고정
+- ToolRegistry / SkillRegistry / workflowTemplate 정합성 검증
+- LLM 호출 없이 burn-in summary와 contract summary를 diagnostics에 노출
+
+### 구현 완료
+
+| 항목 | 파일 | 내용 |
+|------|------|------|
+| router burn-in | RouterBurnInCase.swift / RouterBurnInSuite.swift | App Launch / Delegation / PrivacyTerms / LocalSkill / Artifact / Direct Chat / Team Discussion 경계 케이스 추가 |
+| tool contract validation | ToolContractValidator.swift | tool name / skill id / allowedScopes / workflowTemplate 정합성 검증 추가 |
+| registry helpers | ToolRegistry.swift / SkillRegistry.swift | read-only helper 추가 |
+| diagnostics | RuntimeDiagnosticsService.swift | router burn-in / tool contract summary 반영 |
+
+### 주요 결정사항
+
+- **LLM 호출 미추가**: burn-in과 validation은 로컬 문자열 / registry 데이터만 사용한다.
+- **StoreKit / entitlement 미수정**: 결제·해금 경로는 건드리지 않는다.
+- **실제 XCTest target 미추가**: burn-in은 로컬 validator로 운영한다.
+
+### 빌드 상태
+- BUILD SUCCEEDED ✅
+- new warning 0 ✅
+
+### 다음 단계
+- Round 22: App Launch Pack Expansion
+
 ## 2026-05-09 (Round 20 — App Launch Result UX + Artifact UX)
 
 ### 빌드 목표

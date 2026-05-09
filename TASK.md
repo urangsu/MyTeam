@@ -62,25 +62,11 @@ MyTeam은 사용자가 명령어를 외워서 쓰는 앱이 아니다.
 
 #### Recently Completed
 
+- Round 20 — App Launch Result UX + Artifact UX
 - Round 19.7 — Delegation Resume + Safe Auto-Continue
 - Round 19.6 — Delegation Mode Activation
 - Round 19.5 — TurnProfile + RouteTrace + DryRun Skeleton
 - Round 19 — Team Runtime Cohesion + Collaboration Status
-
-#### Round 20 — App Launch Result UX + Artifact UX
-
-목표:
-
-- App Launch Pack prompt 품질 개선
-- App Launch Pack 완료 메시지 개선
-- 생성된 artifact 카드 UX 강화
-- Finder에서 열기
-- 경로 복사
-- 실패 이유 표시
-- recent artifact card 강화
-- 위임모드 auto-resume과 충돌하지 않게 유지
-
-### Next
 
 #### Round 21 — Router Burn-in + Tool Contract Validation
 
@@ -90,6 +76,8 @@ MyTeam은 사용자가 명령어를 외워서 쓰는 앱이 아니다.
 - tool contract validation
 - delegation / tool / artifact 경계 점검
 - 라우트 이유와 경계 조건 고정
+
+### Next
 
 #### Round 22 — App Launch Pack Expansion
 
