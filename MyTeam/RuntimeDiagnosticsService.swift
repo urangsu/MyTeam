@@ -57,6 +57,11 @@ struct RuntimeDiagnosticsSnapshot {
     let assistantConnectorImplementedCount: Int
     let assistantConnectorConnectedCount: Int
 
+    // Daily briefing
+    let dailyBriefingStatus: String
+    let dailyBriefingCalendarItemCount: Int
+    let dailyBriefingMailItemCount: Int
+
     // Workspace
     let workspacePath: String
 
@@ -104,6 +109,7 @@ struct RuntimeDiagnosticsSnapshot {
             lines.append("delegationPending: \(pendingDelegatedRouteHint) status=\(pendingDelegatedExecutionStatus ?? "nil")")
         }
         lines.append("assistantConnectors: total=\(assistantConnectorCount) implemented=\(assistantConnectorImplementedCount) connected=\(assistantConnectorConnectedCount)")
+        lines.append("dailyBriefing: status=\(dailyBriefingStatus) calendar=\(dailyBriefingCalendarItemCount) mail=\(dailyBriefingMailItemCount)")
         lines.append("workspace: \(workspacePath)")
         lines.append("recentEvents: \(recentEventCount) | latest: \(latestEventSummary ?? "none")")
 
@@ -138,13 +144,14 @@ final class RuntimeDiagnosticsService {
         let delegationContract = currentRoomID.flatMap { manager.activeDelegationContract(for: $0) }
         let delegationPlan = currentRoomID.flatMap { manager.delegatedWorkflowPlan(for: $0) }
         let pendingDelegatedRequest = currentRoomID.flatMap { manager.pendingDelegatedExecutionRequest(for: $0) }
-        let routerBurnInSummary = RouterBurnInSuite.runAll()
+        let routerBurnInSummary = await MainActor.run { RouterBurnInSuite.runAll() }
         let toolContractSummary = ToolContractValidator.validate()
         let assistantConnectorCount = AssistantConnectorCatalog.connectors.count
         let assistantConnectorImplementedCount = AssistantConnectorCatalog.connectors.filter { $0.isImplemented }.count
         let assistantConnectorConnectedCount = AssistantConnectorCatalog.connectors.filter {
             GoogleOAuthTokenStore.shared.hasToken(for: $0.id)
         }.count
+        let dailyBriefing = DailyBriefingService.makePreviewBriefing(now: Date())
 
         return RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
@@ -178,6 +185,9 @@ final class RuntimeDiagnosticsService {
             assistantConnectorCount: assistantConnectorCount,
             assistantConnectorImplementedCount: assistantConnectorImplementedCount,
             assistantConnectorConnectedCount: assistantConnectorConnectedCount,
+            dailyBriefingStatus: dailyBriefing.status.rawValue,
+            dailyBriefingCalendarItemCount: dailyBriefing.calendarItems.count,
+            dailyBriefingMailItemCount: dailyBriefing.mailItems.count,
             workspacePath: workspacePath,
             recentEventCount: recentEvents.count,
             latestEventSummary: latestSummary

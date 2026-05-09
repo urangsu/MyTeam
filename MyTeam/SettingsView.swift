@@ -331,6 +331,10 @@ struct SettingsView: View {
                 AssistantConnectorCenterView()
             }
 
+            Section("오늘 브리핑") {
+                DailyBriefingCardView(briefing: DailyBriefingService.makePreviewBriefing())
+            }
+
             Section("기본 제공자") {
                 Picker("제공자", selection: $selectedProvider) {
                     Text("Gemini").tag(LLMProvider.gemini)

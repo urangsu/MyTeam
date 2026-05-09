@@ -6,6 +6,15 @@
 
 ---
 
+## 2026-05-09 (Round 24 — Daily Briefing Skeleton)
+
+- DailyBriefingModels / DailyBriefingService / DailyBriefingCardView 추가
+- Settings에 briefing preview 추가
+- connector 미연결 empty state 및 placeholder sections 구성
+- 실제 OAuth / API 호출 / 메일 발송 / 일정 생성·삭제는 미구현
+- LLM 호출 추가 없음
+- StoreKit / entitlement 미수정
+
 ## 2026-05-09 (Round 23 — Google OAuth Connector Foundation)
 
 - Google Calendar / Gmail connector foundation 추가

@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 enum RouterBurnInSuite {
     static let cases: [RouterBurnInCase] = [
         .init(
@@ -219,6 +220,42 @@ enum RouterBurnInSuite {
             notes: "향후 Gmail summary route 후보"
         ),
         .init(
+            id: "future-daily-briefing",
+            message: "오늘 브리핑 해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            shouldRequireApproval: false,
+            notes: "향후 daily briefing route 후보"
+        ),
+        .init(
+            id: "future-calendar-briefing",
+            message: "오늘 일정 뭐 있어?",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            shouldRequireApproval: false,
+            notes: "향후 calendar briefing route 후보"
+        ),
+        .init(
+            id: "future-mail-count-briefing",
+            message: "새 메일 몇 통 왔어?",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            shouldRequireApproval: false,
+            notes: "향후 mail metadata briefing route 후보"
+        ),
+        .init(
+            id: "future-mail-important-briefing",
+            message: "중요한 메일만 알려줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            shouldRequireApproval: false,
+            notes: "향후 mail attention briefing route 후보"
+        ),
+        .init(
             id: "blocked-delete",
             message: "workspace 파일 삭제해줘",
             expectedRoute: .blockedHighRiskSkill,
@@ -294,7 +331,6 @@ enum RouterBurnInSuite {
         }
 
         if let appLaunchType = AppLaunchSkillService.detectSkillType(from: message) {
-            let request = AppLaunchSkillService.extractRequest(from: message, skillType: appLaunchType)
             return DetectedRoute(
                 route: .appLaunchPack,
                 skillID: appLaunchType.skillID,
