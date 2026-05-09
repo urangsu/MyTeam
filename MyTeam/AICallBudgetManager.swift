@@ -11,6 +11,7 @@ enum AICallType: String {
     case tts             = "tts"
     case privacyTermsGen = "privacy_terms_gen"
     case appLaunchPack   = "app_launch_pack"
+    case universalDocumentGen = "universal_document_gen"
 }
 
 // MARK: - AICallBudgetManager
@@ -35,7 +36,8 @@ final class AICallBudgetManager {
         .selector:        3,
         .tts:             .max,  // TTS는 횟수 제한 없음
         .privacyTermsGen: 1,     // 개인정보처리방침·약관 생성은 요청당 1회
-        .appLaunchPack:   1
+        .appLaunchPack:   1,
+        .universalDocumentGen: 1
     ]
 
     // MARK: - Rolling window (전체 LLM 호출량 분당 제한)
@@ -123,6 +125,8 @@ final class AICallBudgetManager {
             return "⚠️ 개인정보처리방침·약관 생성 요청이 너무 자주 발생했습니다. 잠시 후 다시 시도해 주세요."
         case .appLaunchPack:
             return "⚠️ 앱 출시 문서 생성 요청이 너무 자주 발생했습니다. 잠시 후 다시 시도해 주세요."
+        case .universalDocumentGen:
+            return "⚠️ 문서 생성 요청이 너무 자주 발생했습니다. 잠시 후 다시 시도해 주세요."
         }
     }
 

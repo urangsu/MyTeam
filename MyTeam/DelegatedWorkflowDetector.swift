@@ -58,10 +58,20 @@ enum DelegatedWorkflowDetector {
         "피피티",
         "엑셀",
         "스프레드시트",
-        "보고서",
         "파일",
         "문서",
         "초안"
+    ]
+
+    private static let universalDocumentKeywords = [
+        "요약",
+        "보고서",
+        "체크리스트",
+        "표로",
+        "회의록",
+        "액션아이템",
+        "할 일",
+        "todo"
     ]
 
     static func isDelegationRequest(_ message: String) -> Bool {
@@ -123,7 +133,7 @@ enum DelegatedWorkflowDetector {
         if containsAny(lower, keywords: ["llm", "모델", "추론", "분석", "생성"]) {
             scopes.append(.llmSkill)
         }
-        if containsAny(lower, keywords: ["markdown", "md", "문서", "파일", "보고서", "체크리스트", "초안", "artifact", "산출물"] + artifactWorkflowKeywords) {
+        if containsAny(lower, keywords: ["markdown", "md", "문서", "파일", "초안", "artifact", "산출물"] + artifactWorkflowKeywords + universalDocumentKeywords) {
             scopes.append(.artifactCreation)
         }
         if containsAny(lower, keywords: ["툴", "도구", "브라우저", "웹", "검색", "외부"]) {
@@ -185,6 +195,9 @@ enum DelegatedWorkflowDetector {
         }
         if containsAny(lower, keywords: privacyTermsKeywords) {
             return "privacyTerms"
+        }
+        if containsAny(lower, keywords: universalDocumentKeywords) {
+            return "universalDocument"
         }
         if containsAny(lower, keywords: artifactWorkflowKeywords) {
             return "artifactWorkflow"

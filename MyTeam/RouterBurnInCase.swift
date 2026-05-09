@@ -5,6 +5,7 @@ struct RouterBurnInCase: Identifiable, Equatable {
         case localSkill
         case appLaunchPack
         case privacyTerms
+        case universalDocument
         case artifactWorkflow
         case teamDiscussion
         case directChat

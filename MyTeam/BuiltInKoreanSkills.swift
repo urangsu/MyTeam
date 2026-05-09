@@ -20,7 +20,13 @@ enum BuiltInKoreanSkills {
         appStoreCopySkill,
         onboardingCopySkill,
         launchChecklistSkill,
-        monetizationReviewSkill
+        monetizationReviewSkill,
+        documentSummarySkill,
+        reportDraftSkill,
+        checklistSkill,
+        tableSummarySkill,
+        meetingMinutesSkill,
+        actionItemsSkill
     ]
 
     // MARK: - 1. 한국 날씨
@@ -337,6 +343,132 @@ enum BuiltInKoreanSkills {
         requiredLogin: false,
         riskLevel: .safeReadOnly,
         promptTemplate: "사용자가 수익화 점검표 초안을 요청했습니다. 현재 BM 가정, 광고, 구독, 인앱결제, 가격 실험, 무료/Pro 경계, BYOK 정책, 리스크, 다음 액션을 포함한 마크다운 초안을 작성하세요.",
+        outputType: .artifact,
+        isBuiltIn: true,
+        defaultEnabled: true,
+        requiresApprovalEveryRun: false
+    )
+
+    // MARK: - 15. 문서 요약
+
+    private static let documentSummarySkill = SkillManifest(
+        id: "korean.document-summary",
+        name: "문서 요약",
+        version: "1.0",
+        description: "긴 문서를 핵심 요약, 주요 내용, 조건, 리스크, 다음 액션으로 정리한다",
+        locale: "ko-KR",
+        category: .document,
+        triggers: ["요약", "문서 요약", "핵심 요약", "정리해줘"],
+        allowedScopes: [.artifactGeneration, .documentEditing],
+        requiredPermissions: [.createArtifact],
+        requiredLogin: false,
+        riskLevel: .safeReadOnly,
+        promptTemplate: "사용자가 문서 요약 초안을 요청했습니다. 작성 가정, 핵심 요약, 주요 내용, 중요한 조건, 리스크, 다음 액션, 다음 수정 포인트를 포함한 마크다운 초안을 작성하세요.",
+        outputType: .artifact,
+        isBuiltIn: true,
+        defaultEnabled: true,
+        requiresApprovalEveryRun: false
+    )
+
+    // MARK: - 16. 보고서 초안
+
+    private static let reportDraftSkill = SkillManifest(
+        id: "korean.report-draft",
+        name: "보고서 초안",
+        version: "1.0",
+        description: "업무 보고서 초안을 목적, 배경, 현황, 이슈, 검토 의견, 제안, 다음 액션으로 정리한다",
+        locale: "ko-KR",
+        category: .document,
+        triggers: ["보고서", "보고서 초안", "검토 보고서", "리포트"],
+        allowedScopes: [.artifactGeneration, .documentEditing],
+        requiredPermissions: [.createArtifact],
+        requiredLogin: false,
+        riskLevel: .safeReadOnly,
+        promptTemplate: "사용자가 보고서 초안을 요청했습니다. 작성 가정, 목적, 배경, 현황, 주요 이슈, 검토 의견, 제안, 다음 액션, 다음 수정 포인트를 포함한 마크다운 초안을 작성하세요.",
+        outputType: .artifact,
+        isBuiltIn: true,
+        defaultEnabled: true,
+        requiresApprovalEveryRun: false
+    )
+
+    // MARK: - 17. 체크리스트
+
+    private static let checklistSkill = SkillManifest(
+        id: "korean.checklist",
+        name: "체크리스트",
+        version: "1.0",
+        description: "준비/진행/완료 전/리스크/TODO 중심 체크리스트를 작성한다",
+        locale: "ko-KR",
+        category: .document,
+        triggers: ["체크리스트", "점검표", "할 일 목록"],
+        allowedScopes: [.artifactGeneration, .documentEditing],
+        requiredPermissions: [.createArtifact],
+        requiredLogin: false,
+        riskLevel: .safeReadOnly,
+        promptTemplate: "사용자가 체크리스트 초안을 요청했습니다. 작성 가정, 사전 준비, 진행 중 확인사항, 완료 전 점검, 리스크 체크, 우선순위 높은 TODO, 다음 수정 포인트를 포함한 마크다운 초안을 작성하세요.",
+        outputType: .artifact,
+        isBuiltIn: true,
+        defaultEnabled: true,
+        requiresApprovalEveryRun: false
+    )
+
+    // MARK: - 18. 표 정리
+
+    private static let tableSummarySkill = SkillManifest(
+        id: "korean.table-summary",
+        name: "표 정리",
+        version: "1.0",
+        description: "정보를 표로 정리하고 항목별 설명, 빠진 정보, 다음 액션을 함께 작성한다",
+        locale: "ko-KR",
+        category: .document,
+        triggers: ["표로 정리", "표 정리", "표", "비교표"],
+        allowedScopes: [.artifactGeneration, .documentEditing],
+        requiredPermissions: [.createArtifact],
+        requiredLogin: false,
+        riskLevel: .safeReadOnly,
+        promptTemplate: "사용자가 표 정리를 요청했습니다. 작성 가정, 요약 표, 항목별 설명, 빠진 정보, 다음 액션, 다음 수정 포인트를 포함한 마크다운 초안을 작성하세요.",
+        outputType: .artifact,
+        isBuiltIn: true,
+        defaultEnabled: true,
+        requiresApprovalEveryRun: false
+    )
+
+    // MARK: - 19. 회의록 정리
+
+    private static let meetingMinutesSkill = SkillManifest(
+        id: "korean.meeting-minutes",
+        name: "회의록 정리",
+        version: "1.0",
+        description: "회의 목적, 논의사항, 결정사항, 액션아이템, 후속 확인사항을 정리한다",
+        locale: "ko-KR",
+        category: .document,
+        triggers: ["회의록", "회의록처럼", "회의 내용", "미팅 정리"],
+        allowedScopes: [.artifactGeneration, .documentEditing],
+        requiredPermissions: [.createArtifact],
+        requiredLogin: false,
+        riskLevel: .safeReadOnly,
+        promptTemplate: "사용자가 회의록 정리를 요청했습니다. 작성 가정, 회의 목적, 논의사항, 결정사항, 액션아이템, 후속 확인사항, 다음 수정 포인트를 포함한 마크다운 초안을 작성하세요.",
+        outputType: .artifact,
+        isBuiltIn: true,
+        defaultEnabled: true,
+        requiresApprovalEveryRun: false
+    )
+
+    // MARK: - 20. 액션아이템 추출
+
+    private static let actionItemsSkill = SkillManifest(
+        id: "korean.action-items",
+        name: "액션아이템 추출",
+        version: "1.0",
+        description: "회의나 문서에서 바로 할 일, 이번 주 할 일, 확인이 필요한 일, 담당자/기한을 추출한다",
+        locale: "ko-KR",
+        category: .document,
+        triggers: ["액션아이템", "액션 아이템", "해야 할 일", "다음 액션", "todo"],
+        allowedScopes: [.artifactGeneration, .documentEditing],
+        requiredPermissions: [.createArtifact],
+        requiredLogin: false,
+        riskLevel: .safeReadOnly,
+        promptTemplate: "사용자가 액션아이템 추출을 요청했습니다. 작성 가정, 바로 할 일, 이번 주 할 일, 확인이 필요한 일, 담당자/기한 정리, 다음 확인 질문, 다음 수정 포인트를 포함한 마크다운 초안을 작성하세요.",
         outputType: .artifact,
         isBuiltIn: true,
         defaultEnabled: true,

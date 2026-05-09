@@ -378,6 +378,54 @@ final class WorkflowOrchestrator {
             }
         }
 
+        // ── 범용 문서 워크플로우: 요약/보고서/체크리스트/표/회의록/액션아이템 ──
+        if let documentType = UniversalDocumentSkillService.detectSkillType(from: userMessage),
+           enabledSkills.contains(where: { $0.id == documentType.skillID }) {
+            let request = UniversalDocumentSkillService.extractRequest(from: userMessage, type: documentType)
+            await MainActor.run {
+                manager.recordUniversalDocumentType(documentType, roomID: roomID)
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .universalDocumentDetected,
+                    message: "universal document detected: \(documentType.skillID)"
+                )
+                self.recordTurnProfile(
+                    manager: manager,
+                    roomID: roomID,
+                    userMessage: userMessage,
+                    route: .universalDocument,
+                    reason: "universal document skill detected: \(documentType.skillID)",
+                    matchedSkills: enabledSkills.filter { $0.id == documentType.skillID },
+                    effectiveScopes: effectiveScopes,
+                    expectedOutput: "markdown artifact",
+                    requiresApproval: false
+                )
+            }
+
+            if UniversalDocumentSkillService.needsMoreInput(request) {
+                AppLog.info("[Skill] universal-document assumption mode: \(request.title)")
+            }
+
+            effectiveScopes.formUnion(enabledSkills.flatMap { $0.allowedScopes })
+            effectiveScopes.insert(.artifactGeneration)
+            await MainActor.run { manager.isWorkflowRunning = true }
+            defer { Task { @MainActor in manager.isWorkflowRunning = false } }
+            let task = Task {
+                await self.runUniversalDocumentWorkflow(
+                    request: request,
+                    userMessage: userMessage,
+                    roomID: roomID,
+                    manager: manager,
+                    allowedScopes: effectiveScopes
+                )
+            }
+            currentWorkflowTask = task
+            await task.value
+            currentWorkflowTask = nil
+            return
+        }
+
         // ── 파일/문서 생성 요청이면 IntentRouter 없이 즉시 Workflow로 ──
         if requiresFileCreation(userMessage) {
             // skill match 없으면 기본 artifact scopes 추가
@@ -521,8 +569,8 @@ final class WorkflowOrchestrator {
         let lower = message.lowercased()
 
         // 산출물 명사 (파일/문서 결과물)
-        let artifactNouns = ["보고서", "ppt", "프레젠테이션", "발표자료", "엑셀",
-                             "스프레드시트", "파일", "문서", "초안"]
+        let artifactNouns = ["ppt", "피피티", "프레젠테이션", "발표자료", "엑셀",
+                             "스프레드시트", "xlsx", "pptx", "파일", "markdown", "md", "artifact", "산출물"]
         // 생성 동사 — "정리" 포함 (artifact noun과 조합할 때만 true)
         let creationVerbs = ["만들어", "작성해", "생성해", "저장해", "정리"]
 
@@ -531,13 +579,6 @@ final class WorkflowOrchestrator {
 
         // 산출물 명사 + 생성 동사 조합
         if hasNoun && hasVerb { return true }
-
-        // "표로/표를" + 정리/만들/작성/생성 → 스프레드시트 생성 의도
-        if (lower.contains("표로") || lower.contains("표를")) &&
-            (lower.contains("정리") || lower.contains("만들") ||
-             lower.contains("작성") || lower.contains("생성")) {
-            return true
-        }
 
         return false
     }
@@ -1288,6 +1329,151 @@ final class WorkflowOrchestrator {
                 )
             }
             AppLog.error("[PrivacyTermsWorkflow] LLM 호출 실패: \(error)")
+        }
+    }
+
+    // MARK: - Universal Document Workflow
+
+    private func runUniversalDocumentWorkflow(
+        request: UniversalDocumentSkillRequest,
+        userMessage: String,
+        roomID: UUID,
+        manager: AgentWindowManager,
+        allowedScopes: Set<ToolScope>
+    ) async {
+        guard !Task.isCancelled else { return }
+
+        let workflowID = UUID()
+        await MainActor.run {
+            manager.currentWorkflowID = workflowID
+            WorkflowRunStore.shared.begin(workflowID: workflowID, roomID: roomID, userMessage: userMessage)
+        }
+
+        var finalStatus: WorkflowStatus = .cancelled
+        var finalEvent: AgentEvent = .workflowCancelled(workflowID: workflowID, roomID: roomID)
+        defer {
+            let capturedStatus = finalStatus
+            let capturedEvent = finalEvent
+            Task { [weak self] in
+                await self?.finishWorkflowRun(
+                    workflowID: workflowID, manager: manager,
+                    status: capturedStatus, event: capturedEvent
+                )
+            }
+        }
+
+        Task { await AgentEventBus.shared.publish(.workflowStarted(workflowID: workflowID, roomID: roomID)) }
+
+        let progressMsgID = postEphemeralProgress(
+            manager: manager,
+            roomID: roomID,
+            text: "⏳ \(request.type.displayName)을 생성하는 중입니다..."
+        )
+
+        let timeoutTask = Task {
+            try? await Task.sleep(nanoseconds: 15_000_000_000)
+            if !Task.isCancelled {
+                await MainActor.run { manager.typingAgentIDs.removeAll() }
+            }
+        }
+        defer { timeoutTask.cancel() }
+
+        guard !Task.isCancelled else { return }
+
+        let budgetType: AICallType = .universalDocumentGen
+        guard AICallBudgetManager.shared.requestCall(budgetType) else {
+            finalStatus = .failed
+            finalEvent = .modelCallFailed(workflowID: workflowID, provider: "budget", error: "예산 초과")
+            await MainActor.run {
+                removeProgressAndPost(
+                    manager: manager, roomID: roomID, progressID: progressMsgID,
+                    text: "⚠️ 작업 예산이 초과되었습니다.", isSystem: true
+                )
+            }
+            return
+        }
+        AppLog.info("[AICall] callType=\(budgetType.rawValue)")
+
+        let prompt = UniversalDocumentSkillService.buildPrompt(for: request)
+
+        do {
+            let generatedMarkdown = try await AIService.shared.getResponse(
+                text: prompt,
+                agentID: "planner",
+                chatHistory: []
+            )
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .universalDocumentGenerated,
+                    message: "universal document generated: \(request.type.skillID)"
+                )
+            }
+
+            let verification = ResultVerifier.verifyMarkdownArtifact(
+                content: generatedMarkdown.text,
+                requiredSections: UniversalDocumentSkillService.requiredSections(for: request.type)
+            )
+            if !verification.issues.isEmpty {
+                let warningMessages = verification.issues.map { "\($0.severity.rawValue): \($0.message)" }.joined(separator: " | ")
+                AppLog.warning("[UniversalDocumentWorkflow] verification: \(warningMessages)")
+            }
+
+            do {
+                let artifact = try await UniversalDocumentArtifactWriter.writeMarkdown(
+                    content: generatedMarkdown.text,
+                    request: request,
+                    roomID: roomID,
+                    manager: manager
+                )
+                await MainActor.run {
+                    self.recordRouteTrace(
+                        manager: manager,
+                        roomID: roomID,
+                        step: .universalDocumentSaved,
+                        message: "universal document saved: \(artifact.filename)"
+                    )
+                }
+                finalStatus = .completed
+                finalEvent = .workflowCompleted(workflowID: workflowID, roomID: roomID, artifactCount: 1)
+                await MainActor.run {
+                    removeProgressAndPost(
+                        manager: manager, roomID: roomID, progressID: progressMsgID,
+                        text: UniversalDocumentArtifactWriter.completionMessage(
+                            artifact: artifact,
+                            request: request,
+                            verification: verification
+                        ),
+                        isSystem: false
+                    )
+                }
+                AppLog.info("[UniversalDocumentWorkflow] 완료 artifact=\(artifact.filename)")
+            } catch {
+                finalStatus = .failed
+                finalEvent = .modelCallFailed(workflowID: workflowID, provider: "artifact", error: error.localizedDescription)
+                await MainActor.run {
+                    removeProgressAndPost(
+                        manager: manager, roomID: roomID, progressID: progressMsgID,
+                        text: UniversalDocumentArtifactWriter.failureMessage(error: error, request: request),
+                        isSystem: true
+                    )
+                }
+                AppLog.error("[UniversalDocumentWorkflow] 파일 저장 실패: \(error)")
+            }
+        } catch {
+            finalStatus = .failed
+            finalEvent = .modelCallFailed(workflowID: workflowID, provider: "llm", error: error.localizedDescription)
+            await MainActor.run {
+                removeProgressAndPost(
+                    manager: manager, roomID: roomID, progressID: progressMsgID,
+                    text: UniversalDocumentArtifactWriter.failureMessage(error: error, request: request),
+                    isSystem: true
+                )
+            }
+            AppLog.error("[UniversalDocumentWorkflow] LLM 호출 실패: \(error)")
         }
     }
 

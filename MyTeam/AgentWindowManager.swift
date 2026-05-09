@@ -86,6 +86,8 @@ class AgentWindowManager: ObservableObject {
     @Published var lastGoalInterpretationsByRoom: [UUID: GoalInterpretation] = [:]
     /// room별 마지막 capability route decision — 관측용 상태.
     @Published var lastCapabilityRouteDecisionsByRoom: [UUID: CapabilityRouteDecision] = [:]
+    /// room별 마지막 universal document type — 관측용 상태.
+    @Published var lastUniversalDocumentTypesByRoom: [UUID: UniversalDocumentSkillType] = [:]
     /// room별 route trace — 최근 route 판단 흐름 기록.
     @Published var routeTracesByRoom: [UUID: [RouteTrace]] = [:]
     /// room별 delegation mode 상태.
@@ -159,6 +161,11 @@ class AgentWindowManager: ObservableObject {
     }
 
     @MainActor
+    func recordUniversalDocumentType(_ type: UniversalDocumentSkillType, roomID: UUID) {
+        lastUniversalDocumentTypesByRoom[roomID] = type
+    }
+
+    @MainActor
     func lastGoalInterpretation(for roomID: UUID) -> GoalInterpretation? {
         lastGoalInterpretationsByRoom[roomID]
     }
@@ -166,6 +173,11 @@ class AgentWindowManager: ObservableObject {
     @MainActor
     func lastCapabilityRouteDecision(for roomID: UUID) -> CapabilityRouteDecision? {
         lastCapabilityRouteDecisionsByRoom[roomID]
+    }
+
+    @MainActor
+    func lastUniversalDocumentType(for roomID: UUID) -> UniversalDocumentSkillType? {
+        lastUniversalDocumentTypesByRoom[roomID]
     }
 
     @MainActor

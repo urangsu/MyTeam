@@ -6,6 +6,7 @@ struct TurnProfile: Identifiable, Equatable {
         case delegationMode
         case appLaunchPack
         case privacyTerms
+        case universalDocument
         case artifactWorkflow
         case teamDiscussion
         case directChat

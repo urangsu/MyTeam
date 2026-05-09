@@ -146,22 +146,92 @@ enum RouterBurnInSuite {
         .init(
             id: "artifact-report",
             message: "MyTeam 소개 보고서 만들어줘",
-            expectedRoute: .artifactWorkflow,
-            expectedSkillID: nil,
-            expectedRouteHint: "artifactWorkflow",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.report-draft",
+            expectedRouteHint: "universalDocument",
             expectedGoalType: "documentWork",
             shouldRequireApproval: false,
-            notes: "artifact workflow"
+            notes: "보고서 초안은 universal document workflow"
         ),
         .init(
             id: "artifact-table",
             message: "기능 목록을 표로 정리해줘",
-            expectedRoute: .artifactWorkflow,
-            expectedSkillID: nil,
-            expectedRouteHint: "artifactWorkflow",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.table-summary",
+            expectedRouteHint: "universalDocument",
             expectedGoalType: "documentWork",
             shouldRequireApproval: false,
-            notes: "표 기반 파일 생성"
+            notes: "표 정리는 universal document workflow"
+        ),
+        .init(
+            id: "doc-summary",
+            message: "이 내용 요약해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.document-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "문서 요약"
+        ),
+        .init(
+            id: "doc-report-draft",
+            message: "검토보고서 초안 만들어줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.report-draft",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "보고서 초안"
+        ),
+        .init(
+            id: "doc-checklist",
+            message: "출근 전에 볼 체크리스트 만들어줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.checklist",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "체크리스트"
+        ),
+        .init(
+            id: "doc-meeting-minutes",
+            message: "회의 내용을 회의록처럼 정리해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.meeting-minutes",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "회의록"
+        ),
+        .init(
+            id: "doc-action-items",
+            message: "해야 할 일 액션아이템으로 뽑아줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.action-items",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "액션아이템"
+        ),
+        .init(
+            id: "doc-table-summary",
+            message: "표로 정리해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.table-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "표 정리"
+        ),
+        .init(
+            id: "doc-generic-summary",
+            message: "이거 업무용으로 정리해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.document-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "일반 정리 요청"
         ),
         .init(
             id: "direct-chat",
@@ -496,6 +566,12 @@ enum RouterBurnInSuite {
             return DetectedRoute(route: .localSkill, skillID: enabled.id, routeHint: nil, requiresApproval: false)
         }
 
+        if let docType = UniversalDocumentSkillService.detectSkillType(from: message),
+           let skill = SkillRegistry.shared.skill(named: docType.skillID),
+           SkillRegistry.shared.isSkillEnabled(id: skill.id) {
+            return DetectedRoute(route: .universalDocument, skillID: skill.id, routeHint: "universalDocument", requiresApproval: false)
+        }
+
         if looksLikeArtifactWorkflow(message) {
             return DetectedRoute(route: .artifactWorkflow, skillID: nil, routeHint: "artifactWorkflow", requiresApproval: false)
         }
@@ -513,7 +589,7 @@ enum RouterBurnInSuite {
 
     private static func looksLikeArtifactWorkflow(_ message: String) -> Bool {
         let lower = message.lowercased()
-        let nouns = ["보고서", "ppt", "프레젠테이션", "발표자료", "엑셀", "스프레드시트", "파일", "문서", "초안", "체크리스트", "리포트", "표"]
+        let nouns = ["ppt", "피피티", "프레젠테이션", "발표자료", "엑셀", "스프레드시트", "파일", "markdown", "md", "artifact", "산출물"]
         let verbs = ["만들어", "작성해", "생성해", "저장해", "정리"]
         if nouns.contains(where: { lower.contains($0) }) && verbs.contains(where: { lower.contains($0) }) {
             return true

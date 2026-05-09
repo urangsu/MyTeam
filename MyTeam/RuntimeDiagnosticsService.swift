@@ -41,6 +41,7 @@ struct RuntimeDiagnosticsSnapshot {
     let lastGoalConfidence: String?
     let lastCapabilityRouteStatus: String?
     let lastGoalRequiredCapabilities: [String]
+    let lastUniversalDocumentType: String?
 
     // Router burn-in / tool contract validation
     let routerBurnInTotal: Int
@@ -72,6 +73,8 @@ struct RuntimeDiagnosticsSnapshot {
     let dailyBriefingStatus: String
     let dailyBriefingCalendarItemCount: Int
     let dailyBriefingMailItemCount: Int
+    let universalDocumentSkillCount: Int
+    let universalDocumentRouteAvailable: Bool
 
     // Workspace
     let workspacePath: String
@@ -112,6 +115,9 @@ struct RuntimeDiagnosticsSnapshot {
         if let lastGoalType {
             lines.append("goal: \(lastGoalType) confidence=\(lastGoalConfidence ?? "nil") capability=\(lastCapabilityRouteStatus ?? "nil") caps=\(lastGoalRequiredCapabilities.joined(separator: ","))")
         }
+        if let lastUniversalDocumentType {
+            lines.append("universalDocument: \(lastUniversalDocumentType)")
+        }
         lines.append("recentRouteTraceCount: \(recentRouteTraceCount)")
         lines.append("validation: router \(routerBurnInPassed)/\(routerBurnInTotal) passed | tool contracts errors=\(toolContractErrors) warnings=\(toolContractWarnings)")
         if let delegationModeStatus {
@@ -126,6 +132,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("googleOAuth: status=\(googleOAuthConfigStatus) scopes=\(googleOAuthEnabledScopes.joined(separator: ",")) token=\(googleOAuthHasCalendarToken)")
         lines.append("googleCalendar: connection=\(googleCalendarConnectionStatus) fetch=\(googleCalendarLastFetchStatus)")
         lines.append("dailyBriefing: status=\(dailyBriefingStatus) calendar=\(dailyBriefingCalendarItemCount) mail=\(dailyBriefingMailItemCount)")
+        lines.append("universalDocument: skills=\(universalDocumentSkillCount) available=\(universalDocumentRouteAvailable)")
         lines.append("autonomy: goalInterpreter=true clarificationPolicy=true capabilityRouter=true resultVerifier=true")
         lines.append("workspace: \(workspacePath)")
         lines.append("recentEvents: \(recentEventCount) | latest: \(latestEventSummary ?? "none")")
@@ -158,6 +165,7 @@ final class RuntimeDiagnosticsService {
         let lastProfile = currentRoomID.flatMap { manager.lastTurnProfile(for: $0) }
         let lastGoal = currentRoomID.flatMap { manager.lastGoalInterpretation(for: $0) }
         let lastCapabilityRouteDecision = currentRoomID.flatMap { manager.lastCapabilityRouteDecision(for: $0) }
+        let lastUniversalDocumentType = currentRoomID.flatMap { manager.lastUniversalDocumentType(for: $0) }
         let recentRouteTraceCount = currentRoomID.map { manager.recentRouteTraces(for: $0).count } ?? 0
         let delegationState = currentRoomID.flatMap { manager.delegationModeState(for: $0) }
         let delegationContract = currentRoomID.flatMap { manager.activeDelegationContract(for: $0) }
@@ -179,6 +187,10 @@ final class RuntimeDiagnosticsService {
             now: Date(),
             calendarProvider: EmptyDailyBriefingCalendarProvider()
         )
+        let universalDocumentSkillCount = SkillRegistry.shared.allSkillManifests.filter { $0.id.hasPrefix("korean.document-") || $0.id == "korean.report-draft" || $0.id == "korean.checklist" || $0.id == "korean.table-summary" || $0.id == "korean.meeting-minutes" || $0.id == "korean.action-items" }.count
+        let universalDocumentRouteAvailable = SkillRegistry.shared.allEnabledSkills().contains {
+            $0.id.hasPrefix("korean.document-") || $0.id == "korean.report-draft" || $0.id == "korean.checklist" || $0.id == "korean.table-summary" || $0.id == "korean.meeting-minutes" || $0.id == "korean.action-items"
+        }
 
         return RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
@@ -203,6 +215,7 @@ final class RuntimeDiagnosticsService {
             lastGoalConfidence: lastGoal.map { $0.confidence.rawValue },
             lastCapabilityRouteStatus: lastCapabilityRouteDecision.map { $0.status.rawValue },
             lastGoalRequiredCapabilities: lastGoal?.requiredCapabilities.map { $0.rawValue } ?? [],
+            lastUniversalDocumentType: lastUniversalDocumentType?.rawValue,
             routerBurnInTotal: routerBurnInSummary.total,
             routerBurnInPassed: routerBurnInSummary.passed,
             routerBurnInFailed: routerBurnInSummary.failed,
@@ -224,6 +237,8 @@ final class RuntimeDiagnosticsService {
             dailyBriefingStatus: dailyBriefing.status.rawValue,
             dailyBriefingCalendarItemCount: dailyBriefing.calendarItems.count,
             dailyBriefingMailItemCount: dailyBriefing.mailItems.count,
+            universalDocumentSkillCount: universalDocumentSkillCount,
+            universalDocumentRouteAvailable: universalDocumentRouteAvailable,
             workspacePath: workspacePath,
             recentEventCount: recentEvents.count,
             latestEventSummary: latestSummary
