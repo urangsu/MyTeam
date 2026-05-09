@@ -207,6 +207,12 @@ struct AssistantConnectorCenterView: View {
         )
         let validation = GoogleOAuthConfigValidator.validate(draft)
         let canConnect = validation.isReady && (state.status == .notConnected || state.status == .needsReauth)
+        let buttonTitle: String = {
+            if !validation.isReady { return "설정 필요" }
+            if state.status == .connected { return "연결됨" }
+            if state.status == .needsReauth { return "재연결" }
+            return "Google Calendar 연결"
+        }()
 
         if sessionManager.isConnecting {
             return AnyView(
@@ -227,7 +233,7 @@ struct AssistantConnectorCenterView: View {
         }
 
         return AnyView(
-            Button("Google Calendar 연결") {
+            Button(buttonTitle) {
                 Task {
                     do {
                         GoogleOAuthConfigStore.shared.save(draft)

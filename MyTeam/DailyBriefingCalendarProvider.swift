@@ -56,9 +56,18 @@ final class GoogleDailyBriefingCalendarProvider: DailyBriefingCalendarProviding 
             case GoogleCalendarClientError.missingToken:
                 statusMessage = "Google Calendar 연결 후 오늘 일정이 표시됩니다."
                 lastFetchStatus = "missing_token"
-            case GoogleCalendarClientError.needsReauth:
+            case GoogleCalendarClientError.needsReauth, GoogleCalendarClientError.unauthorized:
                 statusMessage = "Google Calendar 재인증이 필요합니다."
                 lastFetchStatus = "needs_reauth"
+            case GoogleCalendarClientError.forbidden:
+                statusMessage = "Google Calendar 읽기 권한이 필요합니다."
+                lastFetchStatus = "forbidden"
+            case GoogleCalendarClientError.decodeFailed:
+                statusMessage = "일정을 해석하지 못했습니다. 다시 시도해 주세요."
+                lastFetchStatus = "decode_failed"
+            case GoogleCalendarClientError.network:
+                statusMessage = "네트워크 상태를 확인해 주세요."
+                lastFetchStatus = "network"
             default:
                 statusMessage = "Google Calendar 연결 실패"
                 lastFetchStatus = "error"

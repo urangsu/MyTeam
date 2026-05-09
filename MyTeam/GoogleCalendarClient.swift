@@ -5,6 +5,10 @@ enum GoogleCalendarClientError: Error {
     case missingToken
     case unsupportedScope
     case needsReauth
+    case unauthorized
+    case forbidden
+    case network
+    case decodeFailed
     case requestFailed
     case invalidResponse
 }
@@ -67,12 +71,20 @@ final class GoogleCalendarClient: GoogleCalendarClienting {
         if http.statusCode == 401 {
             return try await retryAfterRefresh(from: start, to: end, limit: limit, originalToken: token)
         }
+        if http.statusCode == 403 {
+            throw GoogleCalendarClientError.forbidden
+        }
 
         guard 200..<300 ~= http.statusCode else {
             throw GoogleCalendarClientError.requestFailed
         }
 
-        let decoded = try JSONDecoder().decode(GoogleCalendarEventsResponse.self, from: data)
+        let decoded: GoogleCalendarEventsResponse
+        do {
+            decoded = try JSONDecoder().decode(GoogleCalendarEventsResponse.self, from: data)
+        } catch {
+            throw GoogleCalendarClientError.decodeFailed
+        }
         return decoded.items.compactMap { event in
             guard let startDate = Self.resolveDate(for: event.start) else { return nil }
             let endDate = event.end.flatMap { Self.resolveDate(for: $0) }
@@ -131,13 +143,21 @@ final class GoogleCalendarClient: GoogleCalendarClienting {
             throw GoogleCalendarClientError.invalidResponse
         }
         if http.statusCode == 401 {
-            throw GoogleCalendarClientError.needsReauth
+            throw GoogleCalendarClientError.unauthorized
+        }
+        if http.statusCode == 403 {
+            throw GoogleCalendarClientError.forbidden
         }
         guard 200..<300 ~= http.statusCode else {
             throw GoogleCalendarClientError.requestFailed
         }
 
-        let decoded = try JSONDecoder().decode(GoogleCalendarEventsResponse.self, from: data)
+        let decoded: GoogleCalendarEventsResponse
+        do {
+            decoded = try JSONDecoder().decode(GoogleCalendarEventsResponse.self, from: data)
+        } catch {
+            throw GoogleCalendarClientError.decodeFailed
+        }
         return decoded.items.compactMap { event in
             guard let startDate = Self.resolveDate(for: event.start) else { return nil }
             let endDate = event.end.flatMap { Self.resolveDate(for: $0) }

@@ -77,8 +77,13 @@ final class GoogleOAuthSessionManager: NSObject, ObservableObject, ASWebAuthenti
                 let returnedState = items.first(where: { $0.name == "state" })?.value,
                 returnedState == state
             else {
-                lastErrorMessage = "OAuth callback을 확인할 수 없습니다."
-                throw GoogleOAuthSessionError.invalidCallback
+                if let returnedState = items.first(where: { $0.name == "state" })?.value, returnedState != state {
+                    lastErrorMessage = "인증 상태 확인에 실패했습니다. 다시 시도해 주세요."
+                    throw GoogleOAuthSessionError.stateMismatch
+                } else {
+                    lastErrorMessage = "인증 코드를 받지 못했습니다."
+                    throw GoogleOAuthSessionError.invalidCallback
+                }
             }
 
             let token = try await GoogleOAuthTokenExchangeService.exchangeCode(
@@ -119,13 +124,22 @@ final class GoogleOAuthSessionManager: NSObject, ObservableObject, ASWebAuthenti
         case GoogleOAuthSessionError.cancelled:
             return "Google 로그인 취소됨"
         case GoogleOAuthSessionError.invalidCallback:
-            return "OAuth callback을 확인할 수 없습니다."
+            return "인증 코드를 받지 못했습니다."
+        case GoogleOAuthSessionError.stateMismatch:
+            return "인증 상태 확인에 실패했습니다. 다시 시도해 주세요."
         case GoogleOAuthSessionError.authenticationFailed:
             return "Google 로그인에 실패했습니다."
         case GoogleOAuthTokenExchangeError.missingAccessToken:
             return "토큰 응답을 확인할 수 없습니다."
         case GoogleOAuthTokenExchangeError.serverRejected(let reason):
-            return reason
+            _ = reason
+            return "Google 토큰 교환에 실패했습니다."
+        case GoogleOAuthTokenStoreError.keychainError:
+            return "Google 연결 정보를 안전하게 저장하지 못했습니다."
+        case GoogleOAuthTokenStoreError.notFound:
+            return "Google 연결 정보를 찾지 못했습니다."
+        case GoogleOAuthTokenStoreError.encodingFailed, GoogleOAuthTokenStoreError.decodingFailed:
+            return "Google 연결 정보를 처리하지 못했습니다."
         default:
             return "Google Calendar 연결 실패"
         }
@@ -138,5 +152,6 @@ enum GoogleOAuthSessionError: Error {
     case sessionFailedToStart
     case cancelled
     case invalidCallback
+    case stateMismatch
     case authenticationFailed
 }
