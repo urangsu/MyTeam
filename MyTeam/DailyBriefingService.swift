@@ -81,7 +81,19 @@ enum DailyBriefingService {
             return "\(connector.displayName): \(state.message)"
         }
 
-        let status: DailyBriefing.Status = calendarItems.isEmpty ? .unavailable : .partial
+        let status: DailyBriefing.Status
+        if calendarItems.isEmpty {
+            let message = calendarProvider.statusMessage.lowercased()
+            if message.contains("실패") {
+                status = .error
+            } else if message.contains("없습니다") {
+                status = .empty
+            } else {
+                status = .unavailable
+            }
+        } else {
+            status = .partial
+        }
         let summary: String
         if calendarItems.isEmpty {
             summary = calendarProvider.statusMessage

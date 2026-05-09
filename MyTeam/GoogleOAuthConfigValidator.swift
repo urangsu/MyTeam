@@ -21,8 +21,8 @@ enum GoogleOAuthConfigValidator {
             return .init(status: .missingClientID, message: "Google OAuth Desktop client ID가 필요합니다.")
         }
 
-        if config.redirectMode == .notConfigured {
-            return .init(status: .missingRedirectMode, message: "Desktop OAuth redirect mode를 선택해 주세요.")
+        if config.redirectMode != .customURLScheme {
+            return .init(status: .missingRedirectMode, message: "Custom URL Scheme redirect mode를 선택해 주세요.")
         }
 
         if config.enabledScopes.isEmpty {

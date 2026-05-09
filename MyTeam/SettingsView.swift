@@ -150,6 +150,8 @@ struct SettingsView: View {
     @State private var selectedProvider: LLMProvider = .gemini
     @State private var validationStatus: ValidationStatus = .idle
     @State private var showAdvancedModelSettings: Bool = false
+    @State private var dailyBriefingPreview: DailyBriefing = DailyBriefingService.makeUnavailableBriefing()
+    @State private var dailyBriefingRefreshToken = UUID()
 
     @State private var currentTab: Int = 0
     @State private var skillSearchText: String = ""
@@ -330,11 +332,13 @@ struct SettingsView: View {
             }
 
             Section("비서 연결") {
-                AssistantConnectorCenterView()
+                AssistantConnectorCenterView(onGoogleCalendarConnectionChanged: {
+                    dailyBriefingRefreshToken = UUID()
+                })
             }
 
             Section("오늘 브리핑") {
-                DailyBriefingCardView(briefing: DailyBriefingService.makePreviewBriefing())
+                DailyBriefingCardView(briefing: dailyBriefingPreview)
             }
 
             Section("기본 제공자") {
@@ -472,6 +476,9 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+        .task(id: dailyBriefingRefreshToken) {
+            await refreshDailyBriefingPreview()
+        }
     }
 
     // MARK: - Tab 3: 데스크 라우팅 (4개 데스크)
@@ -662,6 +669,7 @@ struct SettingsView: View {
         openRouterModelId = UserDefaults.standard.string(forKey: "openRouterModelId")
             ?? ""
         if let raw = LLMProvider(rawValue: defaultProviderRaw) { selectedProvider = raw }
+        dailyBriefingRefreshToken = UUID()
     }
 
     private func saveSettings() {
@@ -680,6 +688,13 @@ struct SettingsView: View {
             UserDefaults.standard.set(openRouterModelId, forKey: "openRouterModelId")
         }
         defaultProviderRaw = selectedProvider.rawValue
+    }
+
+    @MainActor
+    private func refreshDailyBriefingPreview() async {
+        let provider = GoogleDailyBriefingCalendarProvider.shared
+        let briefing = await DailyBriefingService.makePreviewBriefing(now: Date(), calendarProvider: provider)
+        dailyBriefingPreview = briefing
     }
 }
 

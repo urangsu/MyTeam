@@ -1,9 +1,12 @@
 import SwiftUI
 
 struct AssistantConnectorCenterView: View {
+    var onGoogleCalendarConnectionChanged: (() -> Void)? = nil
+
+    @StateObject private var sessionManager = GoogleOAuthSessionManager.shared
     @State private var refreshToken = UUID()
     @State private var googleClientID: String = ""
-    @State private var googleRedirectMode: GoogleOAuthConfig.RedirectMode = .notConfigured
+    @State private var googleRedirectMode: GoogleOAuthConfig.RedirectMode = .customURLScheme
     @State private var googleCalendarScopeEnabled: Bool = true
 
     private var connectors: [AssistantConnector] {
@@ -83,9 +86,8 @@ struct AssistantConnectorCenterView: View {
                 TextField("Client ID", text: $googleClientID)
                     .textFieldStyle(.roundedBorder)
                 Picker("Redirect", selection: $googleRedirectMode) {
-                    Text("Not configured").tag(GoogleOAuthConfig.RedirectMode.notConfigured)
-                    Text("Loopback").tag(GoogleOAuthConfig.RedirectMode.loopback)
                     Text("Custom URL").tag(GoogleOAuthConfig.RedirectMode.customURLScheme)
+                    Text("Loopback").tag(GoogleOAuthConfig.RedirectMode.loopback)
                 }
                 .pickerStyle(.menu)
                 .frame(width: 150)
@@ -96,9 +98,9 @@ struct AssistantConnectorCenterView: View {
                 .disabled(true)
 
             HStack(spacing: 8) {
-                Text(validation.message)
+                Text(sessionManager.lastErrorMessage ?? validation.message)
                     .font(.caption2)
-                    .foregroundStyle(validation.isReady ? .green : .secondary)
+                    .foregroundStyle(sessionManager.lastErrorMessage == nil && validation.isReady ? .green : .secondary)
                 Spacer()
                 Button("초기화") {
                     GoogleOAuthConfigStore.shared.clear()
@@ -151,6 +153,11 @@ struct AssistantConnectorCenterView: View {
                     Text(connector.notes)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                    if connector.id == .googleCalendar {
+                        Text("Google Calendar 연결은 사용자 클릭으로만 시작됩니다.")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Spacer(minLength: 12)
@@ -159,10 +166,14 @@ struct AssistantConnectorCenterView: View {
                     Text(connectorDecision.badgeLabel)
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(.secondary)
-                    Button("연결 준비 중") { }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        .disabled(true)
+                    if connector.id == .googleCalendar {
+                        googleCalendarActionButton(state: state)
+                    } else {
+                        Button("연결 준비 중") { }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            .disabled(true)
+                    }
                 }
             }
 
@@ -172,9 +183,7 @@ struct AssistantConnectorCenterView: View {
                         .font(.system(size: 10, weight: .semibold))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
-                        .background(
-                            Capsule().fill(badgeBackgroundColor(for: label))
-                        )
+                        .background(Capsule().fill(badgeBackgroundColor(for: label)))
                 }
                 Spacer()
             }
@@ -187,6 +196,53 @@ struct AssistantConnectorCenterView: View {
         .background(RoundedRectangle(cornerRadius: 12).fill(Color(nsColor: .controlBackgroundColor).opacity(0.42)))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.secondary.opacity(0.14)))
         .id(refreshToken)
+    }
+
+    private func googleCalendarActionButton(state: GoogleOAuthConnectionState) -> some View {
+        let draft = GoogleOAuthStoredConfig(
+            clientID: googleClientID,
+            redirectMode: googleRedirectMode,
+            enabledScopes: googleCalendarScopeEnabled ? [.calendarEventsReadonly] : [],
+            updatedAt: Date()
+        )
+        let validation = GoogleOAuthConfigValidator.validate(draft)
+        let canConnect = validation.isReady && (state.status == .notConnected || state.status == .needsReauth)
+
+        if sessionManager.isConnecting {
+            return AnyView(
+                Button("연결 중...") { }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .disabled(true)
+            )
+        }
+
+        if state.status == .connected {
+            return AnyView(
+                Button("연결됨") { }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .disabled(true)
+            )
+        }
+
+        return AnyView(
+            Button("Google Calendar 연결") {
+                Task {
+                    do {
+                        GoogleOAuthConfigStore.shared.save(draft)
+                        _ = try await sessionManager.startCalendarReadOnlyConnection(config: draft)
+                        refreshToken = UUID()
+                        onGoogleCalendarConnectionChanged?()
+                    } catch {
+                        refreshToken = UUID()
+                    }
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            .disabled(!canConnect)
+        )
     }
 
     private func googleScopeRow(for provider: AssistantConnector.Provider) -> some View {
@@ -286,7 +342,7 @@ struct AssistantConnectorCenterView: View {
     private func loadGoogleOAuthDraft() {
         let stored = GoogleOAuthConfigStore.shared.load()
         googleClientID = stored.clientID
-        googleRedirectMode = stored.redirectMode
+        googleRedirectMode = stored.redirectMode == .notConfigured ? .customURLScheme : stored.redirectMode
         googleCalendarScopeEnabled = stored.enabledScopes.contains(.calendarEventsReadonly) || stored.enabledScopes.isEmpty
     }
 

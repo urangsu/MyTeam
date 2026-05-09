@@ -55,13 +55,22 @@ enum AssistantConnectorCatalog {
                     message: validation.message
                 )
             }
-            let connected = GoogleOAuthTokenStore.shared.hasToken(for: provider)
+            let token = try? GoogleOAuthTokenStore.shared.loadToken(for: provider)
+            let connected = token != nil && (token?.isExpired == false || token?.refreshToken != nil)
+            let status: GoogleOAuthConnectionState.Status
+            if connected {
+                status = .connected
+            } else if token?.isExpired == true && token?.refreshToken == nil {
+                status = .needsReauth
+            } else {
+                status = .notConnected
+            }
             return GoogleOAuthConnectionState(
                 provider: provider,
-                status: connected ? .connected : .notConnected,
+                status: status,
                 grantedScopes: scopes,
-                lastCheckedAt: nil,
-                message: connected ? "연결됨" : "연결 준비 중"
+                lastCheckedAt: Date(),
+                message: status == .connected ? "연결됨" : (status == .needsReauth ? "재인증 필요" : "연결 준비 중")
             )
         case .gmail:
             return GoogleOAuthConnectionState(

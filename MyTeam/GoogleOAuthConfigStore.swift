@@ -25,7 +25,7 @@ final class GoogleOAuthConfigStore {
         else {
             return GoogleOAuthStoredConfig(
                 clientID: "",
-                redirectMode: .notConfigured,
+                redirectMode: .customURLScheme,
                 enabledScopes: [.calendarEventsReadonly],
                 updatedAt: Date()
             )

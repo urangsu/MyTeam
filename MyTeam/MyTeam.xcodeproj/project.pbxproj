@@ -7020,6 +7020,71 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>D25000000000000000000006</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>GoogleOAuthAuthorizationRequest.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>D25000000000000000000007</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>GoogleOAuthPKCE.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>D25000000000000000000008</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>GoogleOAuthSessionManager.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>D25000000000000000000009</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>GoogleOAuthTokenExchangeService.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>D2500000000000000000000A</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>GoogleCalendarAPIModels.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
 		<key>E11000000000000000000001</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -10893,6 +10958,11 @@
 				<string>D25000000000000000000013</string>
 				<string>D25000000000000000000014</string>
 				<string>D25000000000000000000015</string>
+				<string>D25000000000000000000016</string>
+				<string>D25000000000000000000017</string>
+				<string>D25000000000000000000018</string>
+				<string>D25000000000000000000019</string>
+				<string>D2500000000000000000001A</string>
 				<string>E11000000000000000000011</string>
 				<string>E11000000000000000000012</string>
 				<string>E11000000000000000000013</string>
@@ -11497,6 +11567,17 @@
 				<string>STT 음성 입력을 위해 마이크가 필요합니다.</string>
 				<key>INFOPLIST_KEY_NSSpeechRecognitionUsageDescription</key>
 				<string>에이전트에게 전달할 음성을 텍스트로 변환합니다.</string>
+				<key>INFOPLIST_KEY_CFBundleURLTypes</key>
+				<array>
+					<dict>
+						<key>CFBundleURLName</key>
+						<string>com.urang.MyTeam.oauth</string>
+						<key>CFBundleURLSchemes</key>
+						<array>
+							<string>myteam</string>
+						</array>
+					</dict>
+				</array>
 				<key>LD_RUNPATH_SEARCH_PATHS</key>
 				<array>
 					<string>$(inherited)</string>
@@ -11588,6 +11669,17 @@
 				<string>STT 음성 입력을 위해 마이크가 필요합니다.</string>
 				<key>INFOPLIST_KEY_NSSpeechRecognitionUsageDescription</key>
 				<string>에이전트에게 전달할 음성을 텍스트로 변환합니다.</string>
+				<key>INFOPLIST_KEY_CFBundleURLTypes</key>
+				<array>
+					<dict>
+						<key>CFBundleURLName</key>
+						<string>com.urang.MyTeam.oauth</string>
+						<key>CFBundleURLSchemes</key>
+						<array>
+							<string>myteam</string>
+						</array>
+					</dict>
+				</array>
 				<key>LD_RUNPATH_SEARCH_PATHS</key>
 				<array>
 					<string>$(inherited)</string>
@@ -18890,6 +18982,41 @@
 		<dict>
 			<key>fileRef</key>
 			<string>D25000000000000000000005</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>D25000000000000000000016</key>
+		<dict>
+			<key>fileRef</key>
+			<string>D25000000000000000000006</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>D25000000000000000000017</key>
+		<dict>
+			<key>fileRef</key>
+			<string>D25000000000000000000007</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>D25000000000000000000018</key>
+		<dict>
+			<key>fileRef</key>
+			<string>D25000000000000000000008</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>D25000000000000000000019</key>
+		<dict>
+			<key>fileRef</key>
+			<string>D25000000000000000000009</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>D2500000000000000000001A</key>
+		<dict>
+			<key>fileRef</key>
+			<string>D2500000000000000000000A</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>

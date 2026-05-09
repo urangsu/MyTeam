@@ -65,6 +65,8 @@ struct RuntimeDiagnosticsSnapshot {
     let googleOAuthConfigStatus: String
     let googleOAuthEnabledScopes: [String]
     let googleOAuthHasCalendarToken: Bool
+    let googleCalendarConnectionStatus: String
+    let googleCalendarLastFetchStatus: String
 
     // Daily briefing
     let dailyBriefingStatus: String
@@ -122,6 +124,7 @@ struct RuntimeDiagnosticsSnapshot {
         }
         lines.append("assistantConnectors: total=\(assistantConnectorCount) implemented=\(assistantConnectorImplementedCount) connected=\(assistantConnectorConnectedCount)")
         lines.append("googleOAuth: status=\(googleOAuthConfigStatus) scopes=\(googleOAuthEnabledScopes.joined(separator: ",")) token=\(googleOAuthHasCalendarToken)")
+        lines.append("googleCalendar: connection=\(googleCalendarConnectionStatus) fetch=\(googleCalendarLastFetchStatus)")
         lines.append("dailyBriefing: status=\(dailyBriefingStatus) calendar=\(dailyBriefingCalendarItemCount) mail=\(dailyBriefingMailItemCount)")
         lines.append("autonomy: goalInterpreter=true clarificationPolicy=true capabilityRouter=true resultVerifier=true")
         lines.append("workspace: \(workspacePath)")
@@ -170,6 +173,8 @@ final class RuntimeDiagnosticsService {
         let googleStoredConfig = GoogleOAuthConfigStore.shared.load()
         let googleConfigValidation = GoogleOAuthConfigValidator.validate(googleStoredConfig)
         let googleOAuthHasCalendarToken = GoogleOAuthTokenStore.shared.hasToken(for: .googleCalendar)
+        let googleCalendarConnectionState = AssistantConnectorCatalog.connectionState(for: .googleCalendar)
+        let googleCalendarLastFetchStatus = GoogleDailyBriefingCalendarProvider.shared.lastFetchStatus
         let dailyBriefing = await DailyBriefingService.makePreviewBriefing(
             now: Date(),
             calendarProvider: EmptyDailyBriefingCalendarProvider()
@@ -214,6 +219,8 @@ final class RuntimeDiagnosticsService {
             googleOAuthConfigStatus: googleConfigValidation.status.rawValue,
             googleOAuthEnabledScopes: googleStoredConfig.enabledScopes.map(\.rawValue),
             googleOAuthHasCalendarToken: googleOAuthHasCalendarToken,
+            googleCalendarConnectionStatus: googleCalendarConnectionState.status.rawValue,
+            googleCalendarLastFetchStatus: googleCalendarLastFetchStatus,
             dailyBriefingStatus: dailyBriefing.status.rawValue,
             dailyBriefingCalendarItemCount: dailyBriefing.calendarItems.count,
             dailyBriefingMailItemCount: dailyBriefing.mailItems.count,
