@@ -6,6 +6,18 @@
 
 ---
 
+## 2026-05-10 (Round 25C — Compact Team Window UX + Settings Cleanup)
+
+- 팀 협업창 스케줄 팝업을 compact / scrollable 형태로 정리
+- 하단 아이콘 바가 창 밖으로 밀리지 않도록 정리
+- 팀 이름 명패 기본 배경 / 테두리를 transparent로 전환
+- 명패 팔레트를 축소하고 Settings 미리보기를 제거
+- CharacterGallery 설명을 단순화하고 개발 정보 agentID를 기본 화면에서 숨김
+- Google OAuth client ID 입력을 DEBUG / 개발자 설정으로 분리
+- OAuth 발급 안내는 QA 문서로 이동
+- Gmail remains unimplemented
+- Calendar write remains unimplemented
+
 ## 2026-05-10 (Round 25B-ManualQA — Calendar OAuth Live Test)
 
 - live OAuth QA attempted

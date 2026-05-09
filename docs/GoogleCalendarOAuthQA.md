@@ -30,6 +30,23 @@
 - 실패 시에는 짧은 오류만 표시
 - Daily Briefing은 실패해도 깨지지 않음
 
+## OAuth Client ID 발급 위치
+
+개발자용 절차:
+
+1. Google Cloud Console 접속
+2. Google Auth Platform > Clients
+3. Create Client
+4. Application type: Desktop app
+5. 이름 입력
+6. Create
+7. OAuth 2.0 Client ID 복사
+8. MyTeam DEBUG 설정의 개발자 OAuth 설정에 입력
+
+- 일반 사용자가 직접 발급받는 값이 아닙니다.
+- Release 앱에서는 앱 배포자가 준비한 client ID를 사용해야 합니다.
+- client secret은 앱에 저장하지 않습니다.
+
 ## 실제 QA 결과 — 2026-05-10
 
 ### 환경
