@@ -14,27 +14,25 @@
 
 ## Current Execution Plan — 2026-05
 
-### Product Principle — Natural Language First Execution
+### Product Positioning — Core Work Pack First
 
-MyTeam은 사용자가 명령어를 외워서 쓰는 앱이 아니다.
+MyTeam은 앱 출시 전용 도구가 아니다.
 
-사용자는 자연어로 요청한다.
-앱은 요청을 해석해서 알맞은 경로를 자동 선택한다.
+MyTeam은 Mac 안에서 사용자의 자연어 요청을 받아, 문서/파일/표/메일/일정/웹자료를 팀원처럼 처리하는 AI 업무 팀이다.
 
-가능한 실행 경로:
+핵심 사용자는 다음과 같다.
 
-- Local Skill
-- Korean Skill
-- App Launch Pack
-- Privacy Terms
-- Artifact Workflow
-- Team Discussion
-- Direct Chat
-- Tool Execution
-- Command Shortcut
+- 사무직 사용자
+- 1인 창업자
+- 콘텐츠 제작자
+- 기획자
+- 세무/회계/관리 업무 사용자
+- 개발자/디자이너가 아니어도 반복 문서 업무가 많은 사람
 
 원칙:
 
+- 사용자는 자연어로 요청한다.
+- 앱은 요청을 해석해서 알맞은 경로를 자동 선택한다.
 - 명령어는 power user용 shortcut이다.
 - 일반 사용자는 자연어만 써도 된다.
 - 자연어 요청은 먼저 skill/router/policy를 거쳐 적합한 실행 경로로 간다.
@@ -62,36 +60,61 @@ MyTeam은 사용자가 명령어를 외워서 쓰는 앱이 아니다.
 
 #### Recently Completed
 
+- Round 21 — Router Burn-in + Tool Contract Validation
 - Round 20 — App Launch Result UX + Artifact UX
 - Round 19.7 — Delegation Resume + Safe Auto-Continue
 - Round 19.6 — Delegation Mode Activation
 - Round 19.5 — TurnProfile + RouteTrace + DryRun Skeleton
 - Round 19 — Team Runtime Cohesion + Collaboration Status
 
-#### Round 21 — Router Burn-in + Tool Contract Validation
+#### Round 22 — Core Work Pack Reprioritization
 
 목표:
 
-- 자연어 라우팅 burn-in
-- tool contract validation
-- delegation / tool / artifact 경계 점검
-- 라우트 이유와 경계 조건 고정
+- App Launch Pack을 core가 아닌 optional/founder pack으로 분류
+- 일반 사용자가 매일 쓸 업무 스킬을 우선순위로 재정렬
+- 문서/표/보고서/메일/일정/웹자료 중심으로 로드맵 수정
+- 기존 App Launch Pack 4개는 유지
+- 신규 App Launch 5개 확장은 보류
+- 다음 구현 대상은 Universal Document Workflows로 설정
 
 ### Next
 
-#### Round 22 — App Launch Pack Expansion
+#### Round 23 — Universal Document Workflows
 
 목표:
 
-- 스크린샷 캡션 생성
-- 앱 권한 요청 문구 생성
-- 앱 심사 대응 답변 초안
-- 랜딩페이지 히어로 문구
-- 릴리즈 노트 생성
+- 요약
+- 보고서 초안
+- 체크리스트
+- 표 정리
+- 회의록 스타일 정리
+- 액션아이템 추출
+- Markdown artifact 저장
+- 위임모드 auto-resume과 연결
 
 ### Later
 
-#### Round 23 — Blog / Content Pack
+#### Round 24 — File Intake UX
+
+목표:
+
+- 파일 입력 후 요약/보고서/표/체크리스트 생성
+- Workspace/Finder UX 유지
+- 실패 이유 표시
+
+#### Round 25 — Email / Reply Draft Pack
+
+목표:
+
+- 메일 초안
+- 답장 초안
+- 정중한 거절
+- 업무 요청
+- 회의 일정 제안
+- 실제 발송은 금지
+
+#### Round 26 — Blog / Content Pack
 
 목표:
 
@@ -102,7 +125,7 @@ MyTeam은 사용자가 명령어를 외워서 쓰는 앱이 아니다.
 - 맛집/체험단 후기 구조
 - 인스타/스레드 요약 문구
 
-#### Round 24 — Accounting / Tax Pack
+#### Round 27 — Accounting / Tax Helper
 
 목표:
 
@@ -115,8 +138,13 @@ MyTeam은 사용자가 명령어를 외워서 쓰는 앱이 아니다.
 
 ### Deferred
 
+- App Launch Pack은 optional/founder pack으로 분류한다.
+- App Launch Pack Expansion
+- Developer Repo Review Pack
+- Finance Pack
+- Public Data / Law Pack
+- Premium Character Team Add Flow
 - StoreKit entitlement propagation
-- Premium character team add flow
 - SwiftData migration
 - TTS retuning
 - Full QA regression

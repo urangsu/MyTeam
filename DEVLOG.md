@@ -6,6 +6,14 @@
 
 ---
 
+## 2026-05-09 (Round 22R — Product Scope Reset)
+
+- App Launch Pack 확장 보류
+- MyTeam을 앱 출시 전용 도구가 아니라 범용 업무 팀으로 재정렬
+- Core Work Pack 우선순위로 전환
+- App Launch Pack 기존 4개는 유지
+- 신규 App Launch 5개는 deferred
+
 ## 2026-05-09 (Round 21 — Router Burn-in + Tool Contract Validation)
 
 ### 빌드 목표
