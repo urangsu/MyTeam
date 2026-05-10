@@ -1,22 +1,31 @@
 import Foundation
 
 struct PipelineContext: Equatable {
-    private(set) var values: [String: String] = [:]
+    private var bag = ExecutionContextBag()
 
     mutating func set(_ value: String, for key: String) {
-        values[key] = value
+        bag.set(value, for: key)
     }
 
     func get(_ key: String) -> String? {
-        values[key]
+        bag.get(key)
     }
 
     func mergedInput(for order: AgentWorkOrder) -> String {
-        order.pipelineInputKeys
-            .compactMap { key in
-                guard let value = values[key], !value.isEmpty else { return nil }
-                return "## \(key)\n\(value)"
-            }
-            .joined(separator: "\n\n")
+        bag.mergedInput(for: order.pipelineInputKeys)
+    }
+
+    func asExecutionContextBag() -> ExecutionContextBag {
+        bag
+    }
+
+    init() {}
+
+    init(_ bag: ExecutionContextBag) {
+        self.bag = bag
+    }
+
+    var values: [String: String] {
+        bag.values
     }
 }

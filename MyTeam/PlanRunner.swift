@@ -36,12 +36,11 @@ final class PlanRunner {
             manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "planRunner.started")
         }
 
-        var context: [String: String] = [
-            "user_message": request.userMessage,
-            "document_title": request.title,
-            "topic": request.topic,
-            "allowed_scopes": allowedScopes.map(\.rawValue).sorted().joined(separator: ",")
-        ]
+        var context = ExecutionContextBag()
+        context.set(request.userMessage, for: "user_message")
+        context.set(request.title, for: "document_title")
+        context.set(request.topic, for: "topic")
+        context.set(allowedScopes.map(\.rawValue).sorted().joined(separator: ","), for: "allowed_scopes")
 
         let prompt = UniversalDocumentSkillService.buildPrompt(for: request)
         var draftMarkdown = ""
@@ -49,6 +48,8 @@ final class PlanRunner {
         var verification: ResultVerificationSummary?
 
         for step in plan.steps {
+            let contract = step.executionContract
+
             guard !Task.isCancelled else {
                 return PlanExecutionResult(
                     status: .cancelled,
@@ -80,7 +81,7 @@ final class PlanRunner {
                         chatHistory: []
                     )
                     draftMarkdown = generated.text
-                    context["draft_markdown"] = draftMarkdown
+                    context.set(draftMarkdown, for: "draft_markdown")
                 } catch {
                     return makeFailure(
                         UniversalDocumentArtifactWriter.failureMessage(error: error, request: request),
@@ -93,10 +94,12 @@ final class PlanRunner {
                     manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "planRunner.verifying")
                 }
 
-                verification = ResultVerifier.verifyMarkdownArtifact(
-                    content: draftMarkdown,
+                verification = ExecutionVerifier.verify(
+                    draftMarkdown,
+                    level: contract.verificationLevel,
                     requiredSections: UniversalDocumentSkillService.requiredSections(for: request.type)
                 )
+
                 if let currentVerification = verification, currentVerification.hasError {
                     if ResultRecoveryPolicy.shouldRetryUniversalDocument(verification: currentVerification, attempt: 1) {
                         guard AICallBudgetManager.shared.requestCall(.universalDocumentRepair) else {
@@ -114,9 +117,10 @@ final class PlanRunner {
                                 chatHistory: []
                             )
                             draftMarkdown = repaired.text
-                            context["draft_markdown"] = draftMarkdown
-                            verification = ResultVerifier.verifyMarkdownArtifact(
-                                content: draftMarkdown,
+                            context.set(draftMarkdown, for: "draft_markdown")
+                            verification = ExecutionVerifier.verify(
+                                draftMarkdown,
+                                level: contract.verificationLevel,
                                 requiredSections: UniversalDocumentSkillService.requiredSections(for: request.type)
                             )
                         } catch {
@@ -142,7 +146,7 @@ final class PlanRunner {
                     AppLog.warning("[PlanRunner] verification warnings=\(warningCount)")
                 }
                 verifiedMarkdown = draftMarkdown
-                context["verified_markdown"] = verifiedMarkdown
+                context.set(verifiedMarkdown, for: "verified_markdown")
 
             case .persistArtifact:
                 await MainActor.run {
@@ -161,22 +165,23 @@ final class PlanRunner {
                             manager.updateRoomGoalContext(roomID: roomID, recentArtifactID: artifactUUID)
                         }
                     }
-                    context["artifact_id"] = artifact.id
-                    context["artifact_filename"] = artifact.filename
-                    context["artifact_title"] = artifact.title
-                    context["artifact_path"] = artifact.path
+                    context.set(artifact.id, for: "artifact_id")
+                    context.set(artifact.filename, for: "artifact_filename")
+                    context.set(artifact.title, for: "artifact_title")
+                    context.set(artifact.path, for: "artifact_path")
                 } catch {
                     return makeFailure(
                         UniversalDocumentArtifactWriter.failureMessage(error: error, request: request),
                         reason: .recoverableRuntimeError
                     )
                 }
+
             case .report:
                 guard
-                    let artifactIDString = context["artifact_id"],
-                    let artifactFilename = context["artifact_filename"],
-                    let artifactTitle = context["artifact_title"],
-                    let artifactPath = context["artifact_path"]
+                    let artifactIDString = context.get("artifact_id"),
+                    let artifactFilename = context.get("artifact_filename"),
+                    let artifactTitle = context.get("artifact_title"),
+                    let artifactPath = context.get("artifact_path")
                 else {
                     return PlanExecutionResult(
                         status: .failed,
@@ -185,6 +190,7 @@ final class PlanRunner {
                         failureReason: .recoverableRuntimeError
                     )
                 }
+
                 let artifact = IndexedArtifact(
                     id: artifactIDString,
                     workflowID: workflowID.uuidString,
@@ -195,6 +201,7 @@ final class PlanRunner {
                     preview: String(verifiedMarkdown.prefix(200)),
                     createdAt: ISO8601DateFormatter().string(from: Date())
                 )
+
                 let message = UniversalDocumentArtifactWriter.completionMessage(
                     artifact: artifact,
                     request: request,
@@ -223,3 +230,4 @@ final class PlanRunner {
         )
     }
 }
+

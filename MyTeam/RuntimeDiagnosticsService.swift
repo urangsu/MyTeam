@@ -106,6 +106,11 @@ struct RuntimeDiagnosticsSnapshot {
     let agentPipelineAvailable: Bool
     let defaultPipelineOrderCount: Int
     let pipelineContextAvailable: Bool
+    let executionContractAvailable: Bool
+    let executionContextBagAvailable: Bool
+    let executionVerifierAvailable: Bool
+    let planPipelineContractAligned: Bool
+    let legacyFallbackOutcomeAware: Bool
     let fileIntakeAvailable: Bool
     let fileIntakeReadableExtensions: [String]
     let fileIntakePlannedExtensions: [String]
@@ -196,6 +201,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("planRunner: available=\(planRunnerAvailable) enabled=\(planRunnerUniversalDocumentEnabled)")
         lines.append("planRunnerFailureReasonAware: \(planRunnerFailureReasonAware)")
         lines.append("agentPipeline: available=\(agentPipelineAvailable) defaultSteps=\(defaultPipelineOrderCount) context=\(pipelineContextAvailable)")
+        lines.append("executionContract: available=\(executionContractAvailable) contextBag=\(executionContextBagAvailable) verifier=\(executionVerifierAvailable) aligned=\(planPipelineContractAligned) fallbackAware=\(legacyFallbackOutcomeAware)")
         lines.append("fileIntake: available=\(fileIntakeAvailable) readable=\(fileIntakeReadableExtensions.joined(separator: ",")) planned=\(fileIntakePlannedExtensions.joined(separator: ",")) max=\(fileIntakeMaxFileSizeMB)MB")
         if let lastFileIntakeStatus {
             lines.append("fileIntakeLast: status=\(lastFileIntakeStatus) file=\(lastFileIntakeFilename ?? "nil") text=\(lastFileIntakeHasExtractedText) chars=\(lastFileIntakeExtractedCharacterCount)")
@@ -287,6 +293,11 @@ final class RuntimeDiagnosticsService {
         let agentPipelineAvailable = true
         let defaultPipelineOrderCount = AgentPipelineFactory.basicDocumentReviewPipeline().count
         let pipelineContextAvailable = true
+        let executionContractAvailable = true
+        let executionContextBagAvailable = true
+        let executionVerifierAvailable = true
+        let planPipelineContractAligned = true
+        let legacyFallbackOutcomeAware = true
         let fileIntakeAvailable = true
         let fileIntakeReadableExtensions = FileIntakePolicy.readableExtensions.sorted()
         let fileIntakePlannedExtensions = FileIntakePolicy.plannedExtensions.sorted()
@@ -391,6 +402,11 @@ final class RuntimeDiagnosticsService {
             agentPipelineAvailable: agentPipelineAvailable,
             defaultPipelineOrderCount: defaultPipelineOrderCount,
             pipelineContextAvailable: pipelineContextAvailable,
+            executionContractAvailable: executionContractAvailable,
+            executionContextBagAvailable: executionContextBagAvailable,
+            executionVerifierAvailable: executionVerifierAvailable,
+            planPipelineContractAligned: planPipelineContractAligned,
+            legacyFallbackOutcomeAware: legacyFallbackOutcomeAware,
             fileIntakeAvailable: fileIntakeAvailable,
             fileIntakeReadableExtensions: fileIntakeReadableExtensions,
             fileIntakePlannedExtensions: fileIntakePlannedExtensions,

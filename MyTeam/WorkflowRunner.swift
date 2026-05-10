@@ -41,17 +41,17 @@ enum WorkflowRunner {
         workflowID: UUID,
         manager: AgentWindowManager,
         allowedScopes: Set<ToolScope>,
-        legacyRunner: @escaping @Sendable () async -> Void
+        legacyRunner: @escaping @Sendable () async -> PlanExecutionResult
     ) async -> PlanExecutionResult {
         _ = userMessage
 
         guard FeatureFlags.planRunnerUniversalDocumentEnabled else {
-            await legacyRunner()
+            let legacyResult = await legacyRunner()
             return PlanExecutionResult(
                 status: .fellBackToLegacy,
-                message: "legacy workflow used",
-                artifactID: nil,
-                failureReason: .none
+                message: legacyResult.message,
+                artifactID: legacyResult.artifactID,
+                failureReason: legacyResult.failureReason
             )
         }
 
@@ -65,12 +65,12 @@ enum WorkflowRunner {
         )
 
         if result.failureReason == .recoverableRuntimeError {
-            await legacyRunner()
+            let legacyResult = await legacyRunner()
             return PlanExecutionResult(
                 status: .fellBackToLegacy,
-                message: result.message,
-                artifactID: nil,
-                failureReason: .recoverableRuntimeError
+                message: legacyResult.message,
+                artifactID: legacyResult.artifactID,
+                failureReason: legacyResult.failureReason
             )
         }
 

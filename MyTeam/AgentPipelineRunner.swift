@@ -23,7 +23,8 @@ final class AgentPipelineRunner {
         roomID: UUID,
         manager: AgentWindowManager
     ) async -> AgentPipelineResult {
-        var context = initialContext
+        var contextBag = initialContext.asExecutionContextBag()
+        var context = PipelineContext(contextBag)
         var finalOutput: String?
 
         guard !orders.isEmpty else {
@@ -36,6 +37,7 @@ final class AgentPipelineRunner {
         }
 
         for order in orders {
+            let contract = order.executionContract
             guard !Task.isCancelled else {
                 return AgentPipelineResult(
                     status: .cancelled,
@@ -45,14 +47,14 @@ final class AgentPipelineRunner {
                 )
             }
 
-            let input = context.mergedInput(for: order)
+            let input = contextBag.mergedInput(for: contract.inputKeys)
             let output = synthesizeOutput(for: order, input: input, context: context)
-            let verification = verify(output: output, order: order)
+            let verification = verify(output: output, contract: contract)
 
             if verification.hasError {
-                if order.pipelineMaxRetries > 0 {
+                if contract.maxRetries > 0 {
                     let retryOutput = synthesizeRecoveryOutput(for: order, input: input, context: context)
-                    let retryVerification = verify(output: retryOutput, order: order)
+                    let retryVerification = verify(output: retryOutput, contract: contract)
                     if retryVerification.hasError {
                         return AgentPipelineResult(
                             status: .failed,
@@ -61,7 +63,8 @@ final class AgentPipelineRunner {
                             message: "파이프라인 단계 검증에 실패했습니다."
                         )
                     }
-                    context.set(retryOutput, for: order.pipelineOutputKey)
+                    contextBag.set(retryOutput, for: contract.outputKey)
+                    context = PipelineContext(contextBag)
                     finalOutput = retryOutput
                 } else {
                     return AgentPipelineResult(
@@ -72,12 +75,13 @@ final class AgentPipelineRunner {
                     )
                 }
             } else {
-                context.set(output, for: order.pipelineOutputKey)
+                contextBag.set(output, for: contract.outputKey)
+                context = PipelineContext(contextBag)
                 finalOutput = output
             }
 
             await MainActor.run {
-                manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "agentPipeline.\(order.pipelineRole?.rawValue ?? "unknown")")
+                manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "agentPipeline.\(contract.title)")
             }
         }
 
@@ -143,14 +147,10 @@ final class AgentPipelineRunner {
         }
     }
 
-    private func verify(output: String, order: AgentWorkOrder) -> ResultVerificationSummary {
-        switch order.pipelineVerificationLevel {
-        case .none:
-            return ResultVerificationSummary(passed: true, issues: [])
-        case .chatAnswer:
-            return ResultVerifier.verifyChatAnswer(output)
-        case .markdownArtifact:
-            return ResultVerifier.verifyMarkdownArtifact(content: output)
-        }
+    private func verify(output: String, contract: ExecutionStepContract) -> ResultVerificationSummary {
+        ExecutionVerifier.verify(
+            output,
+            level: contract.verificationLevel
+        )
     }
 }

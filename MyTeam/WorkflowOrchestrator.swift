@@ -566,7 +566,7 @@ final class WorkflowOrchestrator {
             await MainActor.run { manager.isWorkflowRunning = true }
             defer { Task { @MainActor in manager.isWorkflowRunning = false } }
             let task = Task {
-                await self.runUniversalDocumentWorkflow(
+                _ = await self.runUniversalDocumentWorkflow(
                     request: request,
                     userMessage: userMessage,
                     roomID: roomID,
@@ -689,7 +689,7 @@ final class WorkflowOrchestrator {
             await MainActor.run { manager.isWorkflowRunning = true }
             defer { Task { @MainActor in manager.isWorkflowRunning = false } }
             let task = Task {
-                await self.runUniversalDocumentWorkflow(
+                _ = await self.runUniversalDocumentWorkflow(
                     request: request,
                     userMessage: userMessage,
                     roomID: roomID,
@@ -1659,8 +1659,15 @@ final class WorkflowOrchestrator {
         roomID: UUID,
         manager: AgentWindowManager,
         allowedScopes: Set<ToolScope>
-    ) async {
-        guard !Task.isCancelled else { return }
+    ) async -> PlanExecutionResult {
+        guard !Task.isCancelled else {
+            return PlanExecutionResult(
+                status: .cancelled,
+                message: "작업이 취소되었습니다.",
+                artifactID: nil,
+                failureReason: .cancelled
+            )
+        }
 
         let workflowID = UUID()
         await MainActor.run {
@@ -1697,7 +1704,14 @@ final class WorkflowOrchestrator {
         }
         defer { timeoutTask.cancel() }
 
-        guard !Task.isCancelled else { return }
+        guard !Task.isCancelled else {
+            return PlanExecutionResult(
+                status: .cancelled,
+                message: "작업이 취소되었습니다.",
+                artifactID: nil,
+                failureReason: .cancelled
+            )
+        }
 
         let prompt = UniversalDocumentSkillService.buildPrompt(for: request)
         var finalMarkdownText: String?
@@ -1716,7 +1730,12 @@ final class WorkflowOrchestrator {
                         isSystem: true
                     )
                 }
-                return
+                return PlanExecutionResult(
+                    status: .failed,
+                    message: "⚠️ 작업 예산이 초과되었습니다.",
+                    artifactID: nil,
+                    failureReason: .budgetBlocked
+                )
             }
             AppLog.info("[AICall] callType=\(callType.rawValue)")
 
@@ -1730,7 +1749,14 @@ final class WorkflowOrchestrator {
                     agentID: "planner",
                     chatHistory: []
                 )
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled else {
+                    return PlanExecutionResult(
+                        status: .cancelled,
+                        message: "작업이 취소되었습니다.",
+                        artifactID: nil,
+                        failureReason: .cancelled
+                    )
+                }
 
                 await MainActor.run {
                     self.recordRouteTrace(
@@ -1770,7 +1796,12 @@ final class WorkflowOrchestrator {
                         )
                     }
                     AppLog.error("[UniversalDocumentWorkflow] verification error → save blocked")
-                    return
+                    return PlanExecutionResult(
+                        status: .failed,
+                        message: ResultRecoveryPolicy.failureMessage(),
+                        artifactID: nil,
+                        failureReason: .verificationFailed
+                    )
                 }
 
                 finalMarkdownText = generatedMarkdown.text
@@ -1787,7 +1818,12 @@ final class WorkflowOrchestrator {
                     )
                 }
                 AppLog.error("[UniversalDocumentWorkflow] LLM 호출 실패: \(error)")
-                return
+                return PlanExecutionResult(
+                    status: .failed,
+                    message: UniversalDocumentArtifactWriter.failureMessage(error: error, request: request),
+                    artifactID: nil,
+                    failureReason: .recoverableRuntimeError
+                )
             }
         }
 
@@ -1804,7 +1840,12 @@ final class WorkflowOrchestrator {
                     isSystem: true
                 )
             }
-            return
+            return PlanExecutionResult(
+                status: .failed,
+                message: ResultRecoveryPolicy.failureMessage(),
+                artifactID: nil,
+                failureReason: .recoverableRuntimeError
+            )
         }
 
         do {
@@ -1843,6 +1884,16 @@ final class WorkflowOrchestrator {
                 )
             }
             AppLog.info("[UniversalDocumentWorkflow] 완료 artifact=\(artifact.filename)")
+            return PlanExecutionResult(
+                status: .completed,
+                message: UniversalDocumentArtifactWriter.completionMessage(
+                    artifact: artifact,
+                    request: request,
+                    verification: verification
+                ),
+                artifactID: UUID(uuidString: artifact.id),
+                failureReason: .none
+            )
         } catch {
             finalStatus = .failed
             finalEvent = .modelCallFailed(workflowID: workflowID, provider: "artifact", error: error.localizedDescription)
@@ -1855,6 +1906,12 @@ final class WorkflowOrchestrator {
                 )
             }
             AppLog.error("[UniversalDocumentWorkflow] 파일 저장 실패: \(error)")
+            return PlanExecutionResult(
+                status: .failed,
+                message: UniversalDocumentArtifactWriter.failureMessage(error: error, request: request),
+                artifactID: nil,
+                failureReason: .recoverableRuntimeError
+            )
         }
     }
 
@@ -1910,8 +1967,15 @@ final class WorkflowOrchestrator {
             manager: manager,
             allowedScopes: allowedScopes,
             legacyRunner: { [weak self] in
-                guard let self else { return }
-                await self.runUniversalDocumentWorkflow(
+                guard let self else {
+                    return PlanExecutionResult(
+                        status: .cancelled,
+                        message: "작업이 취소되었습니다.",
+                        artifactID: nil,
+                        failureReason: .cancelled
+                    )
+                }
+                return await self.runUniversalDocumentWorkflow(
                     request: request,
                     userMessage: userMessage,
                     roomID: roomID,
@@ -1944,17 +2008,24 @@ final class WorkflowOrchestrator {
             AppLog.info("[PlanRunner] universal document completed: \(request.type.skillID)")
 
         case .fellBackToLegacy:
-            finalStatus = .completed
-            finalEvent = .workflowCompleted(workflowID: workflowID, roomID: roomID, artifactCount: 1)
+            let artifactCount = result.artifactID == nil ? 0 : 1
+            finalStatus = result.failureReason == .none ? .completed : .failed
+            if result.failureReason == .none {
+                finalEvent = .workflowCompleted(workflowID: workflowID, roomID: roomID, artifactCount: artifactCount)
+            } else {
+                finalEvent = .modelCallFailed(workflowID: workflowID, provider: "legacy", error: result.message)
+            }
             await MainActor.run {
                 self.recordRouteTrace(
                     manager: manager,
                     roomID: roomID,
                     step: .planRunnerFallback,
-                    message: "legacy workflow used (\(result.failureReason.rawValue))"
+                    message: result.failureReason == .none
+                        ? "legacy workflow completed"
+                        : "legacy workflow failed (\(result.failureReason.rawValue))"
                 )
             }
-            AppLog.info("[PlanRunner] universal document legacy fallback completed: \(request.type.skillID)")
+            AppLog.info("[PlanRunner] universal document legacy fallback \(result.failureReason == .none ? "completed" : "failed"): \(request.type.skillID)")
 
         case .failed:
             finalStatus = .failed
@@ -1968,7 +2039,7 @@ final class WorkflowOrchestrator {
                         message: "plan runner fallback -> legacy workflow (\(result.failureReason.rawValue))"
                     )
                 }
-                await self.runUniversalDocumentWorkflow(
+                _ = await self.runUniversalDocumentWorkflow(
                     request: request,
                     userMessage: userMessage,
                     roomID: roomID,

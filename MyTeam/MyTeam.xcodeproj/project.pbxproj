@@ -148,6 +148,9 @@
 		B19D61E3A0014AAAB100001C /* ConnectorGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19D61E3A0014AAAB000001C /* ConnectorGuard.swift */; };
 		C11A00000000000000000011 /* ConnectorCapabilityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C11A00000000000000000001 /* ConnectorCapabilityPolicy.swift */; };
 		D28100000000000000000011 /* RoomRuntimeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28100000000000000000001 /* RoomRuntimeStore.swift */; };
+		E12000000000000000000011 /* ExecutionStepContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = E12000000000000000000001 /* ExecutionStepContract.swift */; };
+		E12000000000000000000012 /* ExecutionContextBag.swift in Sources */ = {isa = PBXBuildFile; fileRef = E12000000000000000000002 /* ExecutionContextBag.swift */; };
+		E12000000000000000000013 /* ExecutionVerifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = E12000000000000000000003 /* ExecutionVerifier.swift */; };
 		D28000000000000000000021 /* AgentRole.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28000000000000000000001 /* AgentRole.swift */; };
 		D28000000000000000000022 /* AgentWorkOrder.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28000000000000000000002 /* AgentWorkOrder.swift */; };
 		D28000000000000000000023 /* PipelineContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28000000000000000000003 /* PipelineContext.swift */; };
@@ -531,6 +534,9 @@
 		B19D61E3A0014AAAB000001C /* ConnectorGuard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConnectorGuard.swift; sourceTree = "<group>"; };
 		C11A00000000000000000001 /* ConnectorCapabilityPolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConnectorCapabilityPolicy.swift; sourceTree = "<group>"; };
 		D28100000000000000000001 /* RoomRuntimeStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RoomRuntimeStore.swift; sourceTree = "<group>"; };
+		E12000000000000000000001 /* ExecutionStepContract.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExecutionStepContract.swift; sourceTree = "<group>"; };
+		E12000000000000000000002 /* ExecutionContextBag.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExecutionContextBag.swift; sourceTree = "<group>"; };
+		E12000000000000000000003 /* ExecutionVerifier.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExecutionVerifier.swift; sourceTree = "<group>"; };
 		D28000000000000000000001 /* AgentRole.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentRole.swift; sourceTree = "<group>"; };
 		D28000000000000000000002 /* AgentWorkOrder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentWorkOrder.swift; sourceTree = "<group>"; };
 		D28000000000000000000003 /* PipelineContext.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PipelineContext.swift; sourceTree = "<group>"; };
@@ -1560,6 +1566,9 @@
 				D28000000000000000000001 /* AgentRole.swift */,
 				D28000000000000000000002 /* AgentWorkOrder.swift */,
 				D28000000000000000000003 /* PipelineContext.swift */,
+				E12000000000000000000001 /* ExecutionStepContract.swift */,
+				E12000000000000000000002 /* ExecutionContextBag.swift */,
+				E12000000000000000000003 /* ExecutionVerifier.swift */,
 				D28000000000000000000004 /* AgentPipelineFactory.swift */,
 				D28000000000000000000005 /* AgentPipelineRunner.swift */,
 				D2500000000000000000002B /* FileIntakeRequest.swift */,
@@ -3147,6 +3156,9 @@
 				D28000000000000000000021 /* AgentRole.swift in Sources */,
 				D28000000000000000000022 /* AgentWorkOrder.swift in Sources */,
 				D28000000000000000000023 /* PipelineContext.swift in Sources */,
+				E12000000000000000000011 /* ExecutionStepContract.swift in Sources */,
+				E12000000000000000000012 /* ExecutionContextBag.swift in Sources */,
+				E12000000000000000000013 /* ExecutionVerifier.swift in Sources */,
 				D28000000000000000000024 /* AgentPipelineFactory.swift in Sources */,
 				D28000000000000000000025 /* AgentPipelineRunner.swift in Sources */,
 				D2500000000000000000001B /* FileIntakeRequest.swift in Sources */,
