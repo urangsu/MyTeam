@@ -6,6 +6,18 @@
 
 ---
 
+## 2026-05-10 (Round 27D — AgentPipeline Foundation)
+
+- AgentRole / AgentWorkOrder / PipelineContext added
+- AgentPipelineRunner skeleton added with researcher -> drafter -> reviewer flow
+- AgentPipelineFactory added for default document review pipeline
+- step output now feeds next step input through pipelineContext
+- VerificationLevel reused
+- artifact content keeps persona dialogue out
+- TeamOrchestrator entrypoint stays minimal and non-default
+- File Intake remains unimplemented
+- ToolExecution remains skeleton-only
+
 ## 2026-05-10 (Round 27C — RouteResolver + WorkflowRunner Split + ToolExecution Skeleton)
 
 - RouteDecision / RouteResolver / GoalGate added
