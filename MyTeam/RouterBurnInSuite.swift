@@ -660,6 +660,86 @@ enum RouterBurnInSuite {
             expectedGoalType: "teamDiscussion",
             shouldRequireApproval: true,
             notes: "팀 토론 위임"
+        ),
+        .init(
+            id: "briefing-now-what",
+            message: "지금 뭐 해야 해?",
+            expectedRoute: .dailyBriefing,
+            expectedSkillID: nil,
+            expectedRouteHint: "dailyBriefing",
+            expectedGoalType: "dailyBriefing",
+            shouldRequireApproval: false,
+            notes: "extended briefing keywords"
+        ),
+        .init(
+            id: "briefing-next-action",
+            message: "다음 작업 알려줘",
+            expectedRoute: .dailyBriefing,
+            expectedSkillID: nil,
+            expectedRouteHint: "dailyBriefing",
+            expectedGoalType: "dailyBriefing",
+            shouldRequireApproval: false,
+            notes: "extended briefing keywords"
+        ),
+        .init(
+            id: "briefing-continue-work",
+            message: "이어서 할 일 뭐야?",
+            expectedRoute: .dailyBriefing,
+            expectedSkillID: nil,
+            expectedRouteHint: "dailyBriefing",
+            expectedGoalType: "dailyBriefing",
+            shouldRequireApproval: false,
+            notes: "extended briefing keywords"
+        ),
+        .init(
+            id: "briefing-do-today",
+            message: "오늘 할 일 뭐야",
+            expectedRoute: .dailyBriefing,
+            expectedSkillID: nil,
+            expectedRouteHint: "dailyBriefing",
+            expectedGoalType: "dailyBriefing",
+            shouldRequireApproval: false,
+            notes: "local task briefing keywords"
+        ),
+        .init(
+            id: "briefing-should-do",
+            message: "오늘 해야 할 일 알려줘",
+            expectedRoute: .dailyBriefing,
+            expectedSkillID: nil,
+            expectedRouteHint: "dailyBriefing",
+            expectedGoalType: "dailyBriefing",
+            shouldRequireApproval: false,
+            notes: "local task briefing keywords"
+        ),
+        .init(
+            id: "briefing-work-now",
+            message: "지금 이어서 할 일 뭐야",
+            expectedRoute: .dailyBriefing,
+            expectedSkillID: nil,
+            expectedRouteHint: "dailyBriefing",
+            expectedGoalType: "dailyBriefing",
+            shouldRequireApproval: false,
+            notes: "local task briefing keywords"
+        ),
+        .init(
+            id: "briefing-continue-later",
+            message: "아까 하던 거 이어서 뭐 하면 돼",
+            expectedRoute: .dailyBriefing,
+            expectedSkillID: nil,
+            expectedRouteHint: "dailyBriefing",
+            expectedGoalType: "dailyBriefing",
+            shouldRequireApproval: false,
+            notes: "local task briefing keywords"
+        ),
+        .init(
+            id: "briefing-task-summary",
+            message: "오늘 작업 정리해줘",
+            expectedRoute: .dailyBriefing,
+            expectedSkillID: nil,
+            expectedRouteHint: "dailyBriefing",
+            expectedGoalType: "dailyBriefing",
+            shouldRequireApproval: false,
+            notes: "local task briefing keywords"
         )
     ]
 

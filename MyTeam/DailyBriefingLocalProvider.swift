@@ -5,94 +5,48 @@ struct DailyBriefingLocalSnapshot: Equatable {
     let taskItems: [DailyTaskBriefingItem]
     let attentionItems: [DailyAttentionBriefingItem]
     let connectorMessages: [String]
+    let localBriefingItems: [LocalTaskBriefingItem]
 }
 
 enum DailyBriefingLocalProvider {
     static let isAvailable = true
 
-    static func makeSnapshot(roomID: UUID?, manager: AgentWindowManager = .shared) -> DailyBriefingLocalSnapshot {
+    @MainActor
+    static func makeSnapshot(roomID: UUID?, manager: AgentWindowManager? = nil) -> DailyBriefingLocalSnapshot {
+        let manager = manager ?? .shared
         let resolvedRoomID = roomID ?? manager.currentRoomID
+        let localItems = resolvedRoomID.map { LocalTaskBriefingProvider.makeItems(roomID: $0, manager: manager) } ?? []
+        let connectorMessages = AssistantConnectorCatalog.connectors.map { connector in
+            let state = AssistantConnectorCatalog.connectionState(for: connector.id)
+            return "\(state.provider.displayName): \(state.message)"
+        }
+
         var taskItems: [DailyTaskBriefingItem] = []
         var attentionItems: [DailyAttentionBriefingItem] = []
-        var connectorMessages: [String] = []
 
-        if let roomID = resolvedRoomID,
-           let file = manager.lastFileIntakeResult(for: roomID) {
-            if file.status == .ready {
+        for item in localItems {
+            switch item.kind {
+            case .scheduledTask, .recentFile, .recentArtifact, .pendingDelegation:
                 taskItems.append(
                     DailyTaskBriefingItem(
-                        id: UUID(),
-                        title: "최근 파일 \(file.request.originalFilename)를 이어서 정리할 수 있습니다.",
-                        dueText: nil,
-                        priority: 1
+                        id: item.id,
+                        title: item.title,
+                        dueText: item.detail,
+                        priority: priorityRank(item.priority)
                     )
                 )
-            } else {
+            case .pendingApproval, .failedWorkflow, .connectorAction:
                 attentionItems.append(
                     DailyAttentionBriefingItem(
-                        id: UUID(),
-                        title: "최근 파일 상태 확인",
-                        detail: "\(file.request.originalFilename) 상태: \(file.status.rawValue)",
-                        severity: .info
+                        id: item.id,
+                        title: item.title,
+                        detail: item.detail,
+                        severity: severity(for: item.priority)
                     )
                 )
+            case .suggestedNextAction:
+                break
             }
-        }
-
-        if let recentArtifact = manager.recentArtifacts.first {
-            taskItems.append(
-                DailyTaskBriefingItem(
-                    id: UUID(),
-                    title: "최근 문서 \(recentArtifact.filename)를 이어서 활용할 수 있습니다.",
-                    dueText: nil,
-                    priority: 2
-                )
-            )
-        }
-
-        if let roomID = resolvedRoomID,
-           let goal = manager.roomGoalContext(for: roomID)?.currentGoal {
-            attentionItems.append(
-                DailyAttentionBriefingItem(
-                    id: UUID(),
-                    title: "최근 요청",
-                    detail: goal.title,
-                    severity: .info
-                )
-            )
-        }
-
-        let connectorStates = AssistantConnectorCatalog.connectors.map { connector in
-            AssistantConnectorCatalog.connectionState(for: connector.id)
-        }
-
-        let googleCalendarState = connectorStates.first { $0.provider == .googleCalendar }
-        let gmailState = connectorStates.first { $0.provider == .gmail }
-
-        if let googleCalendarState {
-            let message = "Google Calendar: \(googleCalendarState.message)"
-            connectorMessages.append(message)
-            attentionItems.append(
-                DailyAttentionBriefingItem(
-                    id: UUID(),
-                    title: "Google Calendar",
-                    detail: googleCalendarState.message,
-                    severity: googleCalendarState.status == .connected ? .info : .warning
-                )
-            )
-        }
-
-        if let gmailState {
-            let message = "Gmail: \(gmailState.message)"
-            connectorMessages.append(message)
-            attentionItems.append(
-                DailyAttentionBriefingItem(
-                    id: UUID(),
-                    title: "Gmail",
-                    detail: gmailState.message,
-                    severity: .info
-                )
-            )
         }
 
         if taskItems.isEmpty && attentionItems.isEmpty {
@@ -100,32 +54,42 @@ enum DailyBriefingLocalProvider {
                 DailyAttentionBriefingItem(
                     id: UUID(),
                     title: "로컬 브리핑 준비 중",
-                    detail: "Google Calendar와 Gmail 연결이 아직 없어서 내부 상태만 표시합니다.",
+                    detail: "최근 작업 내역이나 연결된 계정이 없어 기본 상태만 표시합니다.",
                     severity: .info
                 )
             )
         }
 
-        let summary: String
-        if taskItems.isEmpty && attentionItems.count <= 1 {
-            summary = "로컬 데이터로 오늘 브리핑을 준비했습니다."
-        } else {
-            let countText = "최근 파일 \(taskItems.count > 0 ? "있음" : "없음"), 확인 필요 \(attentionItems.count)개"
-            summary = "로컬 데이터와 연결 상태를 바탕으로 오늘 브리핑을 준비했습니다. \(countText)."
-        }
-
-        if connectorMessages.isEmpty {
-            connectorMessages = AssistantConnectorCatalog.connectors.map { connector in
-                let state = AssistantConnectorCatalog.connectionState(for: connector.id)
-                return "\(connector.displayName): \(state.message)"
+        let summary: String = {
+            if taskItems.isEmpty && attentionItems.count <= 1 {
+                return "로컬 데이터로 오늘 브리핑을 준비했습니다."
             }
-        }
+            let countText = "할 일 \(taskItems.count)개, 확인 필요 \(attentionItems.count)개"
+            return "로컬 작업 내역과 연결 상태를 바탕으로 오늘 브리핑을 준비했습니다. \(countText)."
+        }()
 
         return DailyBriefingLocalSnapshot(
             summary: summary,
             taskItems: taskItems,
             attentionItems: attentionItems,
-            connectorMessages: connectorMessages
+            connectorMessages: connectorMessages,
+            localBriefingItems: localItems
         )
+    }
+
+    private static func priorityRank(_ priority: LocalTaskBriefingItem.Priority) -> Int {
+        switch priority {
+        case .high: return 1
+        case .normal: return 2
+        case .low: return 3
+        }
+    }
+
+    private static func severity(for priority: LocalTaskBriefingItem.Priority) -> DailyAttentionBriefingItem.Severity {
+        switch priority {
+        case .high: return .urgent
+        case .normal: return .warning
+        case .low: return .info
+        }
     }
 }

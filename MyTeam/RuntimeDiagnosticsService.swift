@@ -50,10 +50,14 @@ struct RuntimeDiagnosticsSnapshot {
     let resultVerifierErrorGateEnabled: Bool
     let dailyBriefingAvailable: Bool
     let localBriefingAvailable: Bool
+    let localTaskBriefingAvailable: Bool
     let calendarProviderAvailable: Bool
     let gmailMetadataAvailable: Bool
     let connectorBlockedActions: [String]
     let lastBriefingSectionCount: Int
+    let localTaskBriefingItemCount: Int
+    let localTaskBriefingHighPriorityCount: Int
+    let lastLocalTaskBriefingKinds: [String]
     let connectorPolicyCentralized: Bool
     let workflowRunnerDailyBriefingEnabled: Bool
     let workflowRunnerUniversalDocumentPlanEnabled: Bool
@@ -94,6 +98,7 @@ struct RuntimeDiagnosticsSnapshot {
     let dailyBriefingStatus: String
     let dailyBriefingCalendarItemCount: Int
     let dailyBriefingMailItemCount: Int
+    let localBriefingItemCount: Int
     let universalDocumentSkillCount: Int
     let universalDocumentRouteAvailable: Bool
     let routeResolverAvailable: Bool
@@ -180,8 +185,9 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("assistantConnectors: total=\(assistantConnectorCount) implemented=\(assistantConnectorImplementedCount) connected=\(assistantConnectorConnectedCount)")
         lines.append("googleOAuth: status=\(googleOAuthConfigStatus) scopes=\(googleOAuthEnabledScopes.joined(separator: ",")) token=\(googleOAuthHasCalendarToken)")
         lines.append("googleCalendar: connection=\(googleCalendarConnectionStatus) fetch=\(googleCalendarLastFetchStatus)")
-        lines.append("dailyBriefing: status=\(dailyBriefingStatus) calendar=\(dailyBriefingCalendarItemCount) mail=\(dailyBriefingMailItemCount)")
-        lines.append("briefingAvailability: daily=\(dailyBriefingAvailable) local=\(localBriefingAvailable) calendarProvider=\(calendarProviderAvailable) gmailMetadata=\(gmailMetadataAvailable) sections=\(lastBriefingSectionCount)")
+        lines.append("dailyBriefing: status=\(dailyBriefingStatus) calendar=\(dailyBriefingCalendarItemCount) mail=\(dailyBriefingMailItemCount) localItems=\(localBriefingItemCount)")
+        lines.append("briefingAvailability: daily=\(dailyBriefingAvailable) local=\(localBriefingAvailable) localTask=\(localTaskBriefingAvailable) calendarProvider=\(calendarProviderAvailable) gmailMetadata=\(gmailMetadataAvailable) sections=\(lastBriefingSectionCount)")
+        lines.append("localTaskBriefing: items=\(localTaskBriefingItemCount) high=\(localTaskBriefingHighPriorityCount) kinds=\(lastLocalTaskBriefingKinds.joined(separator: ","))")
         if !connectorBlockedActions.isEmpty {
             let preview = Array(connectorBlockedActions.prefix(5))
             let remaining = connectorBlockedActions.count - preview.count
@@ -265,6 +271,7 @@ final class RuntimeDiagnosticsService {
             manager: manager
         )
         let localBriefing = DailyBriefingLocalProvider.makeSnapshot(roomID: currentRoomID, manager: manager)
+        let localTaskBriefingItems = localBriefing.localBriefingItems
         let connectorBlockedActions = AssistantConnectorCatalog.connectors.flatMap { connector -> [String] in
             connector.capabilities.compactMap { capability in
                 if case .blocked = AssistantConnectorPolicy.decision(for: capability) {
@@ -356,10 +363,14 @@ final class RuntimeDiagnosticsService {
             resultVerifierErrorGateEnabled: resultVerifierErrorGateEnabled,
             dailyBriefingAvailable: true,
             localBriefingAvailable: DailyBriefingLocalProvider.isAvailable,
+            localTaskBriefingAvailable: DailyBriefingLocalProvider.isAvailable,
             calendarProviderAvailable: AssistantConnectorCatalog.connectionState(for: .googleCalendar).status != .comingSoon,
             gmailMetadataAvailable: AssistantConnectorCatalog.connectionState(for: .gmail).status != .comingSoon,
             connectorBlockedActions: connectorBlockedActions,
             lastBriefingSectionCount: briefingSectionCount,
+            localTaskBriefingItemCount: localTaskBriefingItems.count,
+            localTaskBriefingHighPriorityCount: localTaskBriefingItems.filter { $0.priority == .high }.count,
+            lastLocalTaskBriefingKinds: Array(localTaskBriefingItems.prefix(5).map(\.kind.rawValue)),
             connectorPolicyCentralized: connectorPolicyCentralized,
             workflowRunnerDailyBriefingEnabled: workflowRunnerDailyBriefingEnabled,
             workflowRunnerUniversalDocumentPlanEnabled: workflowRunnerUniversalDocumentPlanEnabled,
@@ -390,6 +401,7 @@ final class RuntimeDiagnosticsService {
             dailyBriefingStatus: dailyBriefing.status.rawValue,
             dailyBriefingCalendarItemCount: dailyBriefing.calendarItems.count,
             dailyBriefingMailItemCount: dailyBriefing.mailItems.count,
+            localBriefingItemCount: localBriefing.localBriefingItems.count,
             universalDocumentSkillCount: universalDocumentSkillCount,
             universalDocumentRouteAvailable: universalDocumentRouteAvailable,
             routeResolverAvailable: routeResolverAvailable,

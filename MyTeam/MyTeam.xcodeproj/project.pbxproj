@@ -330,6 +330,8 @@
 		D24000000000000000000013 /* DailyBriefingCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D24000000000000000000003 /* DailyBriefingCardView.swift */; };
 		D24000000000000000000014 /* DailyBriefingRouteDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = D24000000000000000000004 /* DailyBriefingRouteDetector.swift */; };
 		D24000000000000000000015 /* DailyBriefingLocalProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D24000000000000000000005 /* DailyBriefingLocalProvider.swift */; };
+		D24000000000000000000016 /* LocalTaskBriefingModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D24000000000000000000006 /* LocalTaskBriefingModels.swift */; };
+		D24000000000000000000017 /* LocalTaskBriefingProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D24000000000000000000007 /* LocalTaskBriefingProvider.swift */; };
 		D25000000000000000000011 /* GoogleOAuthConfigStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D25000000000000000000001 /* GoogleOAuthConfigStore.swift */; };
 		D25000000000000000000012 /* GoogleOAuthConfigValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D25000000000000000000002 /* GoogleOAuthConfigValidator.swift */; };
 		D25000000000000000000013 /* GoogleCalendarEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D25000000000000000000003 /* GoogleCalendarEvent.swift */; };
@@ -1308,6 +1310,8 @@
 		D24000000000000000000003 /* DailyBriefingCardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DailyBriefingCardView.swift; sourceTree = "<group>"; };
 		D24000000000000000000004 /* DailyBriefingRouteDetector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DailyBriefingRouteDetector.swift; sourceTree = "<group>"; };
 		D24000000000000000000005 /* DailyBriefingLocalProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DailyBriefingLocalProvider.swift; sourceTree = "<group>"; };
+		D24000000000000000000006 /* LocalTaskBriefingModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalTaskBriefingModels.swift; sourceTree = "<group>"; };
+		D24000000000000000000007 /* LocalTaskBriefingProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalTaskBriefingProvider.swift; sourceTree = "<group>"; };
 		D25000000000000000000001 /* GoogleOAuthConfigStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoogleOAuthConfigStore.swift; sourceTree = "<group>"; };
 		D25000000000000000000002 /* GoogleOAuthConfigValidator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoogleOAuthConfigValidator.swift; sourceTree = "<group>"; };
 		D25000000000000000000003 /* GoogleCalendarEvent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoogleCalendarEvent.swift; sourceTree = "<group>"; };
@@ -3128,6 +3132,8 @@
 				D24000000000000000000013 /* DailyBriefingCardView.swift in Sources */,
 				D24000000000000000000014 /* DailyBriefingRouteDetector.swift in Sources */,
 				D24000000000000000000015 /* DailyBriefingLocalProvider.swift in Sources */,
+				D24000000000000000000016 /* LocalTaskBriefingModels.swift in Sources */,
+				D24000000000000000000017 /* LocalTaskBriefingProvider.swift in Sources */,
 				D25000000000000000000011 /* GoogleOAuthConfigStore.swift in Sources */,
 				D25000000000000000000012 /* GoogleOAuthConfigValidator.swift in Sources */,
 				D25000000000000000000013 /* GoogleCalendarEvent.swift in Sources */,

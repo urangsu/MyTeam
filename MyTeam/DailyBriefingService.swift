@@ -54,6 +54,7 @@ enum DailyBriefingService {
             taskItems: mergedTaskItems,
             attentionItems: mergedAttentionItems,
             connectorMessages: connectorMessages,
+            localBriefingItems: localSnapshot.localBriefingItems,
             generatedAt: now
         )
     }
@@ -77,6 +78,7 @@ enum DailyBriefingService {
             taskItems: localSnapshot.taskItems,
             attentionItems: localSnapshot.attentionItems,
             connectorMessages: connectorMessages,
+            localBriefingItems: localSnapshot.localBriefingItems,
             generatedAt: now
         )
     }
@@ -108,7 +110,7 @@ enum DailyBriefingService {
         lines.append("## 2. 새 메일")
         if briefing.mailItems.isEmpty {
             lines.append("- 메일 브리핑은 아직 준비 중입니다.")
-            lines.append("- 메일 발송/삭제는 현재 차단되어 있습니다.")
+            lines.append("- Gmail 메타데이터 연결 시 주요 메일을 요약해 드립니다.")
         } else {
             for item in briefing.mailItems.prefix(3) {
                 lines.append("- \(item.sender) · \(item.subject)")
@@ -117,41 +119,123 @@ enum DailyBriefingService {
 
         lines.append("")
         lines.append("## 3. 오늘 할 일")
-        if briefing.taskItems.isEmpty {
-            lines.append("- 최근 파일이나 문서에서 이어서 할 작업이 없습니다.")
+        let todayTasks = todayTaskItems(for: briefing)
+        if todayTasks.isEmpty {
+            let fallbackTasks = briefing.taskItems.prefix(3)
+            if fallbackTasks.isEmpty {
+                lines.append("- 최근 작업 내역이나 예정된 스케줄이 없습니다.")
+            } else {
+                for item in fallbackTasks {
+                    lines.append("- \(taskLine(for: item))")
+                }
+            }
         } else {
-            for item in briefing.taskItems.prefix(3) {
-                lines.append("- \(item.title)")
+            for item in todayTasks {
+                lines.append("- \(localTaskLine(for: item))")
             }
         }
 
         lines.append("")
         lines.append("## 4. 확인 필요")
-        if briefing.attentionItems.isEmpty {
-            lines.append("- 확인 필요 항목이 없습니다.")
+        let attentionItems = localAttentionItems(for: briefing)
+        if attentionItems.isEmpty {
+            let fallbackAttention = briefing.attentionItems.prefix(3)
+            if fallbackAttention.isEmpty {
+                lines.append("- 현재 확인이 필요한 긴급 항목이 없습니다.")
+            } else {
+                for item in fallbackAttention {
+                    lines.append("- \(item.title): \(item.detail)")
+                }
+            }
         } else {
-            for item in briefing.attentionItems.prefix(3) {
-                lines.append("- \(item.title)")
+            for item in attentionItems {
+                lines.append("- \(item.title): \(item.detail)")
             }
         }
 
         lines.append("")
         lines.append("## 5. 다음 액션")
-        var nextActions: [String] = []
-        if let firstTask = briefing.taskItems.first {
-            nextActions.append("- \(firstTask.title)")
-        }
-        if briefing.calendarItems.isEmpty {
-            nextActions.append("- Google Calendar 연결 후 오늘 일정을 더 정확히 불러올 수 있습니다.")
-        }
-        if briefing.mailItems.isEmpty {
-            nextActions.append("- 메일 브리핑은 아직 준비 중입니다.")
-        }
+        let nextActions = nextActionLines(for: briefing)
         if nextActions.isEmpty {
-            nextActions.append("- \"이 파일 요약해줘\"처럼 이어서 요청할 수 있습니다.")
+            lines.append("- 오늘 하던 작업을 이어서 진행하시겠습니까?")
+        } else {
+            lines.append(contentsOf: Array(nextActions.prefix(3)))
         }
-        lines.append(contentsOf: Array(nextActions.prefix(2)))
 
         return lines.joined(separator: "\n")
+    }
+
+    private static func todayTaskItems(for briefing: DailyBriefing) -> [LocalTaskBriefingItem] {
+        briefing.localBriefingItems.filter {
+            switch $0.kind {
+            case .scheduledTask, .recentFile, .recentArtifact, .pendingDelegation:
+                return true
+            case .pendingApproval, .failedWorkflow, .connectorAction, .suggestedNextAction:
+                return false
+            }
+        }
+    }
+
+    private static func localAttentionItems(for briefing: DailyBriefing) -> [LocalTaskBriefingItem] {
+        briefing.localBriefingItems.filter {
+            switch $0.kind {
+            case .pendingApproval, .failedWorkflow, .connectorAction:
+                return true
+            case .scheduledTask, .recentFile, .recentArtifact, .pendingDelegation, .suggestedNextAction:
+                return false
+            }
+        }
+    }
+
+    private static func nextActionLines(for briefing: DailyBriefing) -> [String] {
+        let suggested = briefing.localBriefingItems.filter { $0.kind == .suggestedNextAction }
+        if !suggested.isEmpty {
+            return suggested.prefix(3).map { "- \($0.detail)" }
+        }
+
+        var actions: [String] = []
+        if briefing.localBriefingItems.contains(where: { $0.kind == .recentFile }) {
+            actions.append("- “이 파일 요약해줘”라고 입력하면 최근 파일을 문서로 만들 수 있습니다.")
+        }
+        if briefing.localBriefingItems.contains(where: { $0.kind == .recentArtifact }) {
+            actions.append("- “방금 만든 문서 표로 바꿔줘”라고 입력하면 최근 artifact를 다시 정리할 수 있습니다.")
+        }
+        if briefing.localBriefingItems.contains(where: { $0.kind == .scheduledTask || $0.kind == .pendingDelegation }) {
+            actions.append("- “오늘 할 일 정리해줘”라고 입력하면 스케줄과 진행 중인 작업을 묶어 볼 수 있습니다.")
+        }
+        if actions.isEmpty {
+            actions.append("- “아까 하던 거 이어서 뭐 하면 돼”라고 입력해 이어서 할 수 있습니다.")
+        }
+        return actions
+    }
+
+    private static func localTaskLine(for item: LocalTaskBriefingItem) -> String {
+        switch item.kind {
+        case .scheduledTask:
+            if let due = item.detail.split(separator: "·", maxSplits: 1, omittingEmptySubsequences: true).first {
+                let trimmed = due.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty {
+                    return "\(trimmed) \(item.title)"
+                }
+            }
+            return item.title
+        case .recentFile:
+            return item.detail
+        case .recentArtifact:
+            return item.detail
+        case .pendingDelegation:
+            return item.detail.isEmpty ? item.title : "위임 대기: \(item.detail)"
+        case .suggestedNextAction:
+            return item.detail
+        case .pendingApproval, .failedWorkflow, .connectorAction:
+            return item.detail
+        }
+    }
+
+    private static func taskLine(for item: DailyTaskBriefingItem) -> String {
+        if let dueText = item.dueText, !dueText.isEmpty {
+            return "\(dueText) \(item.title)"
+        }
+        return item.title
     }
 }
