@@ -27,6 +27,16 @@
 - no Gmail API / Calendar write / OAuth structure changes
 - StoreKit / entitlement unchanged
 
+## 2026-05-11 (Round 33A — Recent Artifact Reuse Pack)
+
+- RecentArtifactReuseService를 추가해 최근 artifact의 markdown/txt 내용을 Universal Document sourceText로 재사용하게 했다
+- “방금 만든 문서 표로 바꿔줘”, “방금 만든 문서 요약해줘”, “방금 만든 보고서 체크리스트로 바꿔줘”, “직전에 만든 문서 액션아이템 뽑아줘” 계열을 recent artifact route로 보냈다
+- completion message가 원본 artifact filename을 표시하도록 유지했다
+- Daily Briefing의 next action과 실제 route가 어긋나지 않도록 supported action만 남겼다
+- diagnostics와 burn-in 문서에 recent artifact reuse 상태를 더 드러내도록 정리했다
+- no Gmail API / Calendar write / OAuth structure changes
+- StoreKit / entitlement unchanged
+
 ## 2026-05-10 (Round 31D — PlanRunner / AgentPipeline Contract Alignment)
 
 - ExecutionStepContract / ExecutionContextBag / ExecutionVerifier를 추가해 PlanRunner와 AgentPipeline가 같은 execution contract를 보게 했다

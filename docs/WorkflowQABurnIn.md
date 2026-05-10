@@ -167,6 +167,22 @@
 - file deletion false positive를 fileCreation goal에서 제거
 - `GoalInterpreter` destructive action 키워드로 blocked capability 분기 추가
 
+## Round 33A Recent Artifact Reuse QA
+
+### Route QA
+| 입력 | 기대 route | 결과 | 비고 |
+|---|---|---|---|
+| 방금 만든 문서 표로 바꿔줘 | universalDocument.tableSummary | code-reviewed pass | recent artifact reuse |
+| 방금 만든 문서 요약해줘 | universalDocument.summary | code-reviewed pass | recent artifact reuse |
+| 방금 만든 보고서 체크리스트로 바꿔줘 | universalDocument.checklist | code-reviewed pass | recent artifact reuse |
+| 직전에 만든 문서 액션아이템 뽑아줘 | universalDocument.actionItems | code-reviewed pass | recent artifact reuse |
+| 그 문서 회의록 형식으로 정리해줘 | universalDocument.meetingMinutes | code-reviewed pass | recent artifact reuse |
+
+### Notes
+- markdown/txt artifact만 재사용
+- full path / 원문 diagnostics 미노출
+- recent artifact가 없으면 안내 문구로 종료
+
 ## 10. Round 30C Runtime Recheck
 
 ### Runtime Pass
