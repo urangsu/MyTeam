@@ -48,6 +48,12 @@ struct RuntimeDiagnosticsSnapshot {
     let recentArtifactReferenceAvailable: Bool
     let blockedCapabilityGateEnabled: Bool
     let resultVerifierErrorGateEnabled: Bool
+    let dailyBriefingAvailable: Bool
+    let localBriefingAvailable: Bool
+    let calendarProviderAvailable: Bool
+    let gmailMetadataAvailable: Bool
+    let connectorBlockedActions: [String]
+    let lastBriefingSectionCount: Int
 
     // Router burn-in / tool contract validation
     let routerBurnInTotal: Int
@@ -161,6 +167,10 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("googleOAuth: status=\(googleOAuthConfigStatus) scopes=\(googleOAuthEnabledScopes.joined(separator: ",")) token=\(googleOAuthHasCalendarToken)")
         lines.append("googleCalendar: connection=\(googleCalendarConnectionStatus) fetch=\(googleCalendarLastFetchStatus)")
         lines.append("dailyBriefing: status=\(dailyBriefingStatus) calendar=\(dailyBriefingCalendarItemCount) mail=\(dailyBriefingMailItemCount)")
+        lines.append("briefingAvailability: daily=\(dailyBriefingAvailable) local=\(localBriefingAvailable) calendarProvider=\(calendarProviderAvailable) gmailMetadata=\(gmailMetadataAvailable) sections=\(lastBriefingSectionCount)")
+        if !connectorBlockedActions.isEmpty {
+            lines.append("connectorBlockedActions: \(connectorBlockedActions.joined(separator: ", "))")
+        }
         lines.append("universalDocument: skills=\(universalDocumentSkillCount) available=\(universalDocumentRouteAvailable)")
         lines.append("routeResolver: available=\(routeResolverAvailable)")
         lines.append("workflowRunner: available=\(workflowRunnerAvailable)")
@@ -228,8 +238,24 @@ final class RuntimeDiagnosticsService {
         let googleCalendarLastFetchStatus = GoogleDailyBriefingCalendarProvider.shared.lastFetchStatus
         let dailyBriefing = await DailyBriefingService.makePreviewBriefing(
             now: Date(),
-            calendarProvider: EmptyDailyBriefingCalendarProvider()
+            calendarProvider: EmptyDailyBriefingCalendarProvider(),
+            manager: manager
         )
+        let localBriefing = DailyBriefingLocalProvider.makeSnapshot(roomID: currentRoomID, manager: manager)
+        let connectorBlockedActions = AssistantConnectorCatalog.connectors.flatMap { connector -> [String] in
+            connector.capabilities.compactMap { capability in
+                if case .blocked = AssistantConnectorPolicy.decision(for: capability) {
+                    return "\(connector.displayName): \(capability.displayName)"
+                }
+                return nil
+            }
+        }
+        let briefingSectionCount = [
+            !dailyBriefing.calendarItems.isEmpty,
+            !dailyBriefing.mailItems.isEmpty,
+            !dailyBriefing.taskItems.isEmpty || !localBriefing.taskItems.isEmpty,
+            !dailyBriefing.attentionItems.isEmpty || !localBriefing.attentionItems.isEmpty
+        ].filter { $0 }.count
         let universalDocumentSkillCount = SkillRegistry.shared.allSkillManifests.filter { $0.id.hasPrefix("korean.document-") || $0.id == "korean.report-draft" || $0.id == "korean.checklist" || $0.id == "korean.table-summary" || $0.id == "korean.meeting-minutes" || $0.id == "korean.action-items" }.count
         let universalDocumentRouteAvailable = SkillRegistry.shared.allEnabledSkills().contains {
             $0.id.hasPrefix("korean.document-") || $0.id == "korean.report-draft" || $0.id == "korean.checklist" || $0.id == "korean.table-summary" || $0.id == "korean.meeting-minutes" || $0.id == "korean.action-items"
@@ -291,6 +317,12 @@ final class RuntimeDiagnosticsService {
             recentArtifactReferenceAvailable: recentArtifactReferenceAvailable,
             blockedCapabilityGateEnabled: blockedCapabilityGateEnabled,
             resultVerifierErrorGateEnabled: resultVerifierErrorGateEnabled,
+            dailyBriefingAvailable: true,
+            localBriefingAvailable: DailyBriefingLocalProvider.isAvailable,
+            calendarProviderAvailable: AssistantConnectorCatalog.connectionState(for: .googleCalendar).status != .comingSoon,
+            gmailMetadataAvailable: AssistantConnectorCatalog.connectionState(for: .gmail).status != .comingSoon,
+            connectorBlockedActions: connectorBlockedActions,
+            lastBriefingSectionCount: briefingSectionCount,
             routerBurnInTotal: routerBurnInSummary.total,
             routerBurnInPassed: routerBurnInSummary.passed,
             routerBurnInFailed: routerBurnInSummary.failed,

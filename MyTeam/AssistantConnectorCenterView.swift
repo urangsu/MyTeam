@@ -43,7 +43,7 @@ struct AssistantConnectorCenterView: View {
                 .controlSize(.small)
             }
 
-            Text("일정과 메일을 읽어 오늘 브리핑을 만드는 기능을 준비 중입니다. macOS Desktop OAuth만 전제로 두고, Web Server OAuth / CLI / gcloud 의존성은 두지 않습니다.")
+            Text("일정과 메일 브리핑을 준비 중입니다.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -214,7 +214,7 @@ struct AssistantConnectorCenterView: View {
         let validation = GoogleOAuthConfigValidator.validate(draft)
         let canConnect = validation.isReady && (state.status == .notConnected || state.status == .needsReauth)
         let buttonTitle: String = {
-            if !validation.isReady { return "설정 필요" }
+            if !validation.isReady { return "연결 필요" }
             if state.status == .connected { return "연결됨" }
             if state.status == .needsReauth { return "재연결" }
             return "Google Calendar 연결"

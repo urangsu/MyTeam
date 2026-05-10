@@ -14,6 +14,14 @@ struct ToolExecutionDecision: Equatable {
 
 enum ConnectorGuard {
     static func evaluate(_ request: ToolExecutionRequest) -> ToolExecutionDecision {
+        if request.requiredCapabilities.contains(.calendarRead)
+            || request.requiredCapabilities.contains(.mailMetadataRead) {
+            return ToolExecutionDecision(
+                status: .unavailable,
+                message: "연결 준비 중입니다."
+            )
+        }
+
         if request.requiredCapabilities.contains(.mailSend)
             || request.requiredCapabilities.contains(.calendarCreate)
             || request.requiredCapabilities.contains(.calendarModify)

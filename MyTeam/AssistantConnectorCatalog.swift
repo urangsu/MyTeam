@@ -52,7 +52,7 @@ enum AssistantConnectorCatalog {
                     status: .notConfigured,
                     grantedScopes: scopes,
                     lastCheckedAt: nil,
-                    message: validation.message
+                    message: "연결 준비 중"
                 )
             }
             let token = try? GoogleOAuthTokenStore.shared.loadToken(for: provider)
@@ -78,7 +78,7 @@ enum AssistantConnectorCatalog {
                 status: .comingSoon,
                 grantedScopes: [.gmailMetadata],
                 lastCheckedAt: nil,
-                message: "metadata-first 준비 중"
+                message: "메타데이터 준비 중"
             )
         case .naverMail:
             return GoogleOAuthConnectionState(

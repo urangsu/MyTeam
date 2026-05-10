@@ -7,7 +7,7 @@ enum AssistantConnectorDecision: Equatable {
 
     var badgeLabel: String {
         switch self {
-        case .autoAllowed: return "읽기 가능 예정"
+        case .autoAllowed: return "읽기 준비 중"
         case .requiresApproval: return "승인 필요"
         case .blocked: return "자동 실행 차단"
         }
