@@ -9,56 +9,23 @@ final class WorkflowOrchestrator {
     private init() {}
 
     // MARK: - 취소 지원
-    private var activeTasksByRoom: [UUID: Task<Void, Never>] = [:]
-    private let activeTasksLock = NSLock()
-
-    private func activeWorkflowTask(for roomID: UUID) -> Task<Void, Never>? {
-        activeTasksLock.lock()
-        defer { activeTasksLock.unlock() }
-        return activeTasksByRoom[roomID]
-    }
-
-    private func setActiveWorkflowTask(_ task: Task<Void, Never>?, for roomID: UUID) {
-        activeTasksLock.lock()
-        defer { activeTasksLock.unlock() }
-        activeTasksByRoom[roomID] = task
-    }
-
-    private func cancelActiveWorkflowTask(for roomID: UUID) -> Task<Void, Never>? {
-        activeTasksLock.lock()
-        defer { activeTasksLock.unlock() }
-        let task = activeTasksByRoom.removeValue(forKey: roomID)
-        task?.cancel()
-        return task
-    }
-
-    private func cancelAllActiveWorkflowTasks() {
-        activeTasksLock.lock()
-        let tasks = Array(activeTasksByRoom.values)
-        activeTasksByRoom.removeAll()
-        activeTasksLock.unlock()
-        tasks.forEach { $0.cancel() }
-    }
-
-    private func activeWorkflowTaskCount() -> Int {
-        activeTasksLock.lock()
-        defer { activeTasksLock.unlock() }
-        return activeTasksByRoom.count
+    private func activeWorkflowTaskCount(manager: AgentWindowManager) -> Int {
+        manager.activeWorkflowTaskCount()
     }
 
     /// 현재 실행 중인 workflow를 즉시 취소한다.
     func cancelCurrentWorkflow(roomID: UUID, manager: AgentWindowManager) {
-        guard activeWorkflowTask(for: roomID) != nil else { return }
-        _ = cancelActiveWorkflowTask(for: roomID)
         Task { @MainActor in
+            guard manager.activeWorkflowTask(for: roomID) != nil else { return }
+            manager.cancelActiveWorkflowTask(roomID: roomID)
             manager.typingAgentIDs.removeAll()
-            manager.isWorkflowRunning = self.activeWorkflowTaskCount() > 0
+            manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0
             manager.addChatLog(
                 roomID: roomID, agentID: "system", agentName: "작업봇",
                 text: "🛑 작업을 중지했습니다.", isUser: false, isSystem: true
             )
+            AppLog.info("[WorkflowOrchestrator] 워크플로우 취소됨")
         }
-        AppLog.info("[WorkflowOrchestrator] 워크플로우 취소됨")
     }
 
     // isWorkflowRunning은 AgentWindowManager.isWorkflowRunning(@Published)으로 관리
@@ -72,7 +39,7 @@ final class WorkflowOrchestrator {
         skipDelegationMode: Bool = false
     ) async {
         // ── 같은 room의 이전 workflow만 조용히 취소 ──
-        _ = cancelActiveWorkflowTask(for: roomID)
+        await MainActor.run { manager.cancelActiveWorkflowTask(roomID: roomID) }
 
         // ── 이벤트: userMessageSubmitted ──
         let eventRoomID = roomID
@@ -383,10 +350,10 @@ final class WorkflowOrchestrator {
                     allowedScopes: effectiveScopes
                 )
             }
-            setActiveWorkflowTask(task, for: roomID)
+            await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
             await task.value
-            setActiveWorkflowTask(nil, for: roomID)
-            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount() > 0 }
+            await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
+            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
             return
         }
 
@@ -458,10 +425,10 @@ final class WorkflowOrchestrator {
                 await MainActor.run { manager.isWorkflowRunning = true }
                 defer { Task { @MainActor in manager.isWorkflowRunning = false } }
                 let task = Task { await self.runPrivacyTermsWorkflow(request: request, userMessage: userMessage, roomID: roomID, manager: manager, allowedScopes: effectiveScopes) }
-                setActiveWorkflowTask(task, for: roomID)
+                await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
                 await task.value
-                setActiveWorkflowTask(nil, for: roomID)
-                await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount() > 0 }
+                await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
+                await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
                 return
             }
         }
@@ -498,10 +465,10 @@ final class WorkflowOrchestrator {
                     allowedScopes: effectiveScopes
                 )
             }
-            setActiveWorkflowTask(task, for: roomID)
+            await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
             await task.value
-            setActiveWorkflowTask(nil, for: roomID)
-            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount() > 0 }
+            await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
+            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
             return
         }
 
@@ -607,10 +574,10 @@ final class WorkflowOrchestrator {
                     allowedScopes: effectiveScopes
                 )
             }
-            setActiveWorkflowTask(task, for: roomID)
+            await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
             await task.value
-            setActiveWorkflowTask(nil, for: roomID)
-            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount() > 0 }
+            await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
+            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
             return
         }
 
@@ -712,10 +679,10 @@ final class WorkflowOrchestrator {
                         allowedScopes: effectiveScopes
                     )
                 }
-                setActiveWorkflowTask(task, for: roomID)
+                await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
                 await task.value
-                setActiveWorkflowTask(nil, for: roomID)
-                await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount() > 0 }
+                await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
+                await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
                 return
             }
 
@@ -730,10 +697,10 @@ final class WorkflowOrchestrator {
                     allowedScopes: effectiveScopes
                 )
             }
-            setActiveWorkflowTask(task, for: roomID)
+            await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
             await task.value
-            setActiveWorkflowTask(nil, for: roomID)
-            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount() > 0 }
+            await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
+            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
             return
         }
 
@@ -769,10 +736,10 @@ final class WorkflowOrchestrator {
             // defer: cancel/failure/success/early return 모든 경로에서 false 보장
             defer { Task { @MainActor in manager.isWorkflowRunning = false } }
             let task = Task { await self.runWorkflow(userMessage: userMessage, roomID: roomID, manager: manager, allowedScopes: effectiveScopes) }
-            setActiveWorkflowTask(task, for: roomID)
+            await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
             await task.value
-            setActiveWorkflowTask(nil, for: roomID)
-            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount() > 0 }
+            await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
+            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
             return
         }
 

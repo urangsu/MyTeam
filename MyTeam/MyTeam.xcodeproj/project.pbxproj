@@ -147,6 +147,7 @@
 		B19D61E3A0014AAAB100001B /* ToolExecutionLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19D61E3A0014AAAB000001B /* ToolExecutionLayer.swift */; };
 		B19D61E3A0014AAAB100001C /* ConnectorGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19D61E3A0014AAAB000001C /* ConnectorGuard.swift */; };
 		C11A00000000000000000011 /* ConnectorCapabilityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C11A00000000000000000001 /* ConnectorCapabilityPolicy.swift */; };
+		D28100000000000000000011 /* RoomRuntimeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28100000000000000000001 /* RoomRuntimeStore.swift */; };
 		D28000000000000000000021 /* AgentRole.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28000000000000000000001 /* AgentRole.swift */; };
 		D28000000000000000000022 /* AgentWorkOrder.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28000000000000000000002 /* AgentWorkOrder.swift */; };
 		D28000000000000000000023 /* PipelineContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28000000000000000000003 /* PipelineContext.swift */; };
@@ -529,6 +530,7 @@
 		B19D61E3A0014AAAB000001B /* ToolExecutionLayer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ToolExecutionLayer.swift; sourceTree = "<group>"; };
 		B19D61E3A0014AAAB000001C /* ConnectorGuard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConnectorGuard.swift; sourceTree = "<group>"; };
 		C11A00000000000000000001 /* ConnectorCapabilityPolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConnectorCapabilityPolicy.swift; sourceTree = "<group>"; };
+		D28100000000000000000001 /* RoomRuntimeStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RoomRuntimeStore.swift; sourceTree = "<group>"; };
 		D28000000000000000000001 /* AgentRole.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentRole.swift; sourceTree = "<group>"; };
 		D28000000000000000000002 /* AgentWorkOrder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentWorkOrder.swift; sourceTree = "<group>"; };
 		D28000000000000000000003 /* PipelineContext.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PipelineContext.swift; sourceTree = "<group>"; };
@@ -1568,6 +1570,7 @@
 				B1E7F1E2AA00112233445566 /* RoomGoalContext.swift */,
 				B1E7F1E2AA00112233445567 /* GoalContextEngine.swift */,
 				B1E7F1E2AA00112233445568 /* ResultRecoveryPolicy.swift */,
+				D28100000000000000000001 /* RoomRuntimeStore.swift */,
 			);
 			name = MyTeam;
 			sourceTree = "<group>";
@@ -3154,6 +3157,7 @@
 				B1E7F1E2AA00112233445561 /* RoomGoalContext.swift in Sources */,
 				B1E7F1E2AA00112233445562 /* GoalContextEngine.swift in Sources */,
 				B1E7F1E2AA00112233445563 /* ResultRecoveryPolicy.swift in Sources */,
+				D28100000000000000000011 /* RoomRuntimeStore.swift in Sources */,
 				E11000000000000000000011 /* AssistantCapability.swift in Sources */,
 				E11000000000000000000012 /* GoalInterpretation.swift in Sources */,
 				E11000000000000000000013 /* GoalInterpreter.swift in Sources */,

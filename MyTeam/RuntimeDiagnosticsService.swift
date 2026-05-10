@@ -58,6 +58,11 @@ struct RuntimeDiagnosticsSnapshot {
     let workflowRunnerDailyBriefingEnabled: Bool
     let workflowRunnerUniversalDocumentPlanEnabled: Bool
     let orchestratorBoundaryReduced: Bool
+    let roomRuntimeStoreAvailable: Bool
+    let roomRuntimeStoreOwnsGoalContext: Bool
+    let roomRuntimeStoreOwnsFileIntake: Bool
+    let roomRuntimeStoreOwnsActiveTasks: Bool
+    let agentWindowManagerFacadeMode: Bool
 
     // Router burn-in / tool contract validation
     let routerBurnInTotal: Int
@@ -182,6 +187,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("workflowRunnerDailyBriefingEnabled: \(workflowRunnerDailyBriefingEnabled)")
         lines.append("workflowRunnerUniversalDocumentPlanEnabled: \(workflowRunnerUniversalDocumentPlanEnabled)")
         lines.append("orchestratorBoundaryReduced: \(orchestratorBoundaryReduced)")
+        lines.append("roomRuntimeStore: available=\(roomRuntimeStoreAvailable) goal=\(roomRuntimeStoreOwnsGoalContext) fileIntake=\(roomRuntimeStoreOwnsFileIntake) tasks=\(roomRuntimeStoreOwnsActiveTasks) facade=\(agentWindowManagerFacadeMode)")
         lines.append("universalDocument: skills=\(universalDocumentSkillCount) available=\(universalDocumentRouteAvailable)")
         lines.append("routeResolver: available=\(routeResolverAvailable)")
         lines.append("workflowRunner: available=\(workflowRunnerAvailable)")
@@ -301,6 +307,11 @@ final class RuntimeDiagnosticsService {
         let workflowRunnerDailyBriefingEnabled = true
         let workflowRunnerUniversalDocumentPlanEnabled = true
         let orchestratorBoundaryReduced = true
+        let roomRuntimeStoreAvailable = manager.roomRuntimeStore.isAvailable
+        let roomRuntimeStoreOwnsGoalContext = manager.roomRuntimeStore.ownsGoalContext
+        let roomRuntimeStoreOwnsFileIntake = manager.roomRuntimeStore.ownsFileIntake
+        let roomRuntimeStoreOwnsActiveTasks = manager.roomRuntimeStore.ownsActiveTasks
+        let agentWindowManagerFacadeMode = true
 
         return RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
@@ -342,6 +353,11 @@ final class RuntimeDiagnosticsService {
             workflowRunnerDailyBriefingEnabled: workflowRunnerDailyBriefingEnabled,
             workflowRunnerUniversalDocumentPlanEnabled: workflowRunnerUniversalDocumentPlanEnabled,
             orchestratorBoundaryReduced: orchestratorBoundaryReduced,
+            roomRuntimeStoreAvailable: roomRuntimeStoreAvailable,
+            roomRuntimeStoreOwnsGoalContext: roomRuntimeStoreOwnsGoalContext,
+            roomRuntimeStoreOwnsFileIntake: roomRuntimeStoreOwnsFileIntake,
+            roomRuntimeStoreOwnsActiveTasks: roomRuntimeStoreOwnsActiveTasks,
+            agentWindowManagerFacadeMode: agentWindowManagerFacadeMode,
             routerBurnInTotal: routerBurnInSummary.total,
             routerBurnInPassed: routerBurnInSummary.passed,
             routerBurnInFailed: routerBurnInSummary.failed,
