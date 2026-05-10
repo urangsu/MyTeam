@@ -4,6 +4,18 @@ import Foundation
 final class PlanRunner {
     static let shared = PlanRunner()
 
+    private func makeFailure(
+        _ message: String,
+        reason: PlanExecutionResult.FailureReason
+    ) -> PlanExecutionResult {
+        PlanExecutionResult(
+            status: .failed,
+            message: message,
+            artifactID: nil,
+            failureReason: reason
+        )
+    }
+
     func runUniversalDocumentPlan(
         _ plan: WorkPlan,
         request: UniversalDocumentSkillRequest,
@@ -13,10 +25,9 @@ final class PlanRunner {
         allowedScopes: Set<ToolScope>
     ) async -> PlanExecutionResult {
         guard plan.workflowKind == .universalDocument else {
-            return PlanExecutionResult(
-                status: .failed,
-                message: "지원하지 않는 실행 계획입니다.",
-                artifactID: nil
+            return makeFailure(
+                "지원하지 않는 실행 계획입니다.",
+                reason: .safetyBlocked
             )
         }
 
@@ -39,7 +50,12 @@ final class PlanRunner {
 
         for step in plan.steps {
             guard !Task.isCancelled else {
-                return PlanExecutionResult(status: .cancelled, message: "작업이 취소되었습니다.", artifactID: nil)
+                return PlanExecutionResult(
+                    status: .cancelled,
+                    message: "작업이 취소되었습니다.",
+                    artifactID: nil,
+                    failureReason: .cancelled
+                )
             }
 
             switch step.kind {
@@ -52,7 +68,8 @@ final class PlanRunner {
                     return PlanExecutionResult(
                         status: .failed,
                         message: AICallBudgetManager.shared.blockedMessage(for: .universalDocumentGen),
-                        artifactID: nil
+                        artifactID: nil,
+                        failureReason: .budgetBlocked
                     )
                 }
 
@@ -65,10 +82,9 @@ final class PlanRunner {
                     draftMarkdown = generated.text
                     context["draft_markdown"] = draftMarkdown
                 } catch {
-                    return PlanExecutionResult(
-                        status: .failed,
-                        message: UniversalDocumentArtifactWriter.failureMessage(error: error, request: request),
-                        artifactID: nil
+                    return makeFailure(
+                        UniversalDocumentArtifactWriter.failureMessage(error: error, request: request),
+                        reason: .recoverableRuntimeError
                     )
                 }
 
@@ -87,7 +103,8 @@ final class PlanRunner {
                             return PlanExecutionResult(
                                 status: .failed,
                                 message: AICallBudgetManager.shared.blockedMessage(for: .universalDocumentRepair),
-                                artifactID: nil
+                                artifactID: nil,
+                                failureReason: .budgetBlocked
                             )
                         }
                         do {
@@ -103,10 +120,9 @@ final class PlanRunner {
                                 requiredSections: UniversalDocumentSkillService.requiredSections(for: request.type)
                             )
                         } catch {
-                            return PlanExecutionResult(
-                                status: .failed,
-                                message: UniversalDocumentArtifactWriter.failureMessage(error: error, request: request),
-                                artifactID: nil
+                            return makeFailure(
+                                UniversalDocumentArtifactWriter.failureMessage(error: error, request: request),
+                                reason: .recoverableRuntimeError
                             )
                         }
                     }
@@ -116,7 +132,8 @@ final class PlanRunner {
                     return PlanExecutionResult(
                         status: .failed,
                         message: ResultRecoveryPolicy.failureMessage(),
-                        artifactID: nil
+                        artifactID: nil,
+                        failureReason: .verificationFailed
                     )
                 }
 
@@ -149,10 +166,9 @@ final class PlanRunner {
                     context["artifact_title"] = artifact.title
                     context["artifact_path"] = artifact.path
                 } catch {
-                    return PlanExecutionResult(
-                        status: .failed,
-                        message: UniversalDocumentArtifactWriter.failureMessage(error: error, request: request),
-                        artifactID: nil
+                    return makeFailure(
+                        UniversalDocumentArtifactWriter.failureMessage(error: error, request: request),
+                        reason: .recoverableRuntimeError
                     )
                 }
             case .report:
@@ -165,7 +181,8 @@ final class PlanRunner {
                     return PlanExecutionResult(
                         status: .failed,
                         message: "결과물을 저장하지 못했습니다.",
-                        artifactID: nil
+                        artifactID: nil,
+                        failureReason: .recoverableRuntimeError
                     )
                 }
                 let artifact = IndexedArtifact(
@@ -189,7 +206,8 @@ final class PlanRunner {
                 return PlanExecutionResult(
                     status: .completed,
                     message: message,
-                    artifactID: UUID(uuidString: artifact.id)
+                    artifactID: UUID(uuidString: artifact.id),
+                    failureReason: .none
                 )
 
             default:
@@ -200,7 +218,8 @@ final class PlanRunner {
         return PlanExecutionResult(
             status: .failed,
             message: "결과물을 만들지 못했습니다.",
-            artifactID: nil
+            artifactID: nil,
+            failureReason: .recoverableRuntimeError
         )
     }
 }
