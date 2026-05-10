@@ -183,6 +183,13 @@
 - full path / 원문 diagnostics 미노출
 - recent artifact가 없으면 안내 문구로 종료
 
+## Round 33B-33D Actionable Briefing Notes
+
+- action chips now route through prompt actions or local system actions
+- scheduler bridge opens the schedule panel instead of inventing unsupported actions
+- recent artifact reuse keeps using markdown/txt only
+- deferred runtime QA backlog is unchanged
+
 ## Round 33B Actionable Briefing QA
 
 ### Suggested Action Integrity

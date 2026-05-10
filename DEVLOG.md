@@ -6,6 +6,16 @@
 
 ---
 
+## 2026-05-11 (Round 33B-33D — Actionable Briefing + Scheduler Commands + Artifact Reuse Polish)
+
+- BriefingActionSuggestion / BriefingActionSuggestionProvider / BriefingActionDispatcher를 정리해 Daily Briefing을 실행 가능한 액션 허브로 확장했다
+- prompt action은 기존 자연어 route로 보내고, system action은 스케줄 패널 같은 로컬 UI 동작으로 연결했다
+- 최근 파일, 최근 artifact, 오늘 스케줄, 승인 대기, 위임 대기를 기반으로 action chips를 만든다
+- recent artifact reuse route와 briefing action prompt를 같은 문서 재사용 흐름으로 이어 붙였다
+- unsupported action은 노출하지 않고, 자동 승인과 외부 write는 추가하지 않았다
+- no Gmail API / Calendar write / OAuth structure changes
+- StoreKit / entitlement unchanged
+
 ## 2026-05-10 (Round 32A — Local Task Briefing Pack)
 
 - LocalTaskBriefingModels / LocalTaskBriefingProvider를 추가해 앱 내부 상태를 표준화된 브리핑 신호로 변환했다

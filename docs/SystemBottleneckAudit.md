@@ -197,3 +197,8 @@ Recent Artifact Reuse는 최근 artifact의 markdown/txt 내용을 다시 문서
 
 Daily Briefing은 상태 표시에서 실행 가능한 액션 허브로 확장된다.
 이번 라운드는 prompt action과 로컬 system action을 분리해, 실행 가능한 다음 단계만 노출하는 쪽에 집중한다.
+
+## Round 33B-33D Note
+
+Daily Briefing이 상태 표시를 넘어 실행 가능한 액션 허브로 정리된다.
+최근 파일, recent artifact reuse, 스케줄 브리지, 승인 대기, 위임 대기를 같은 액션 경계로 묶어 사용자 흐름을 이어 준다.
