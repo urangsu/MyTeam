@@ -6,6 +6,17 @@
 
 ---
 
+## 2026-05-10 (Round 32A — Local Task Briefing Pack)
+
+- LocalTaskBriefingModels / LocalTaskBriefingProvider를 추가해 앱 내부 상태를 표준화된 브리핑 신호로 변환했다
+- Daily Briefing 섹션 구성을 "오늘 일정 / 새 메일 / 오늘 할 일 / 확인 필요 / 다음 액션"의 5단계로 정교화했다
+- 최근 파일, 최근 생성 Artifact, 오늘 스케줄 업무, 승인 대기, 위임 상태를 브리핑에 연결했다
+- "오늘 할 일 뭐야", "지금 이어서 할 일 뭐야" 등 자연어 요청을 Daily Briefing으로 라우팅하도록 확장했다
+- 다음 액션 섹션에서 실제 이어서 수행 가능한 자연어 문장 가이드를 제공하도록 UX를 개선했다
+- RuntimeDiagnostics에 로컬 브리핑 가용성 및 항목 수 계측 정보를 보강했다
+- Gmail API / Calendar write / OAuth 구조 / StoreKit / entitlement는 건드리지 않았다
+- Deferred Runtime QA Backlog는 유지했다
+
 ## 2026-05-10 (Round 31D — PlanRunner / AgentPipeline Contract Alignment)
 
 - ExecutionStepContract / ExecutionContextBag / ExecutionVerifier를 추가해 PlanRunner와 AgentPipeline가 같은 execution contract를 보게 했다

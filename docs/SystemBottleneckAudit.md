@@ -177,3 +177,8 @@
 - App Launch / PrivacyTerms execution boundary
 - ToolExecutionLayer full adoption
 - Deferred runtime QA
+
+## Round 32A Note
+
+Local Task Briefing은 OAuth 없이 앱 내부 상태를 먼저 브리핑 품질로 연결하는 단계다.
+최근 파일, 최근 artifact, 스케줄, pending approval, pending delegation, 최근 실패 workflow를 한 묶음으로 보여주는 쪽에 집중한다.
