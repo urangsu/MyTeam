@@ -1132,9 +1132,7 @@ struct TeamStatusView: View {
     private func handleFileIntakeResult(_ result: FileIntakeResult) {
         guard let roomID = manager.currentRoomID ?? manager.rooms.first?.id else { return }
 
-        if result.status == .ready {
-            manager.recordFileIntakeResult(result, roomID: roomID)
-        }
+        manager.recordFileIntakeResult(result, roomID: roomID)
 
         let message: String
         switch result.status {

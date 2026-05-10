@@ -486,7 +486,7 @@ final class WorkflowOrchestrator {
 
             guard recentFileIntakeResult.status == .ready,
                   let sourceText = recentFileIntakeResult.extractedText,
-                  let documentType = UniversalDocumentSkillService.detectSkillType(from: userMessage) else {
+                  let documentType = GoalContextEngine.documentTypeFromFileRequest(userMessage) else {
                 await MainActor.run {
                     manager.addChatLog(
                         roomID: roomID,

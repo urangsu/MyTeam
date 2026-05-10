@@ -69,4 +69,28 @@ enum GoalContextEngine {
         else { return nil }
         return latest
     }
+
+    static func documentTypeFromFileRequest(_ message: String) -> UniversalDocumentSkillType? {
+        let lower = message.lowercased()
+
+        if lower.contains("회의록") || lower.contains("회의 내용") {
+            return .meetingMinutes
+        }
+        if lower.contains("액션아이템") || lower.contains("할 일") {
+            return .actionItems
+        }
+        if lower.contains("체크리스트") {
+            return .checklist
+        }
+        if lower.contains("표로") || lower.contains("표 정리") || lower.contains("표로 정리") {
+            return .tableSummary
+        }
+        if lower.contains("보고서") || lower.contains("보고서로") || lower.contains("보고서 만들어") {
+            return .reportDraft
+        }
+        if lower.contains("요약") || lower.contains("정리") {
+            return .summary
+        }
+        return UniversalDocumentSkillService.detectSkillType(from: message)
+    }
 }
