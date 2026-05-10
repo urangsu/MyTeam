@@ -6,6 +6,18 @@
 
 ---
 
+## 2026-05-10 (Round 27A — Runtime Safety + Context Gate)
+
+- room별 `activeTasksByRoom`로 workflow task 관리 전환
+- blocked capability는 dispatch 초반에서 early return
+- RoomGoalContext / recent artifact reference skeleton 추가
+- ClarificationPolicy를 sourceText / context 기반으로 보강
+- Universal Document vague organize guard 강화
+- ResultVerifier error는 저장 금지 + 1회 재생성 후 실패 안내
+- Router burn-in에 blocked / context gate 회귀 케이스 보강
+- File Intake는 이번 라운드에서 시작하지 않음
+- OAuth / Gmail / Calendar write / StoreKit / entitlement unchanged
+
 ## 2026-05-10 (Round 26B — Universal Document Workflow Polish)
 
 - Universal Document 과잉 감지를 줄이기 위해 generic 정리 요청 guard를 추가
