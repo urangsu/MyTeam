@@ -37,6 +37,16 @@
 - no Gmail API / Calendar write / OAuth structure changes
 - StoreKit / entitlement unchanged
 
+## 2026-05-11 (Round 33B — Actionable Briefing + Local Scheduler Bridge)
+
+- BriefingActionSuggestion / BriefingActionSuggestionProvider를 추가해 Daily Briefing을 실행 가능한 액션 허브로 확장했다
+- Daily Briefing의 다음 액션을 prompt action / system action 기반 칩으로 노출했다
+- prompt action은 기존 자연어 route로 보내고, system action은 스케줄 패널을 여는 로컬 브리지로 연결했다
+- 최근 파일 / 최근 artifact / 오늘 스케줄 / pending approval / pending delegation를 액션 생성 근거로 사용했다
+- unsupported action은 노출하지 않고, 자동 승인과 외부 write는 추가하지 않았다
+- no Gmail API / Calendar write / OAuth structure changes
+- StoreKit / entitlement unchanged
+
 ## 2026-05-10 (Round 31D — PlanRunner / AgentPipeline Contract Alignment)
 
 - ExecutionStepContract / ExecutionContextBag / ExecutionVerifier를 추가해 PlanRunner와 AgentPipeline가 같은 execution contract를 보게 했다

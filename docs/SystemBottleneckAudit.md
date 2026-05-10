@@ -192,3 +192,8 @@ Local briefing은 실제 지원되는 다음 액션만 제안해야 한다.
 
 Recent Artifact Reuse는 최근 artifact의 markdown/txt 내용을 다시 문서화하는 연결점이다.
 외부 API 없이 Daily Briefing의 다음 액션을 실제 실행 가능한 문서 재활용 경로로 이어 준다.
+
+## Round 33B Note
+
+Daily Briefing은 상태 표시에서 실행 가능한 액션 허브로 확장된다.
+이번 라운드는 prompt action과 로컬 system action을 분리해, 실행 가능한 다음 단계만 노출하는 쪽에 집중한다.

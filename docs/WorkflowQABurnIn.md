@@ -183,6 +183,29 @@
 - full path / 원문 diagnostics 미노출
 - recent artifact가 없으면 안내 문구로 종료
 
+## Round 33B Actionable Briefing QA
+
+### Suggested Action Integrity
+| 제안 문구 | 실제 지원 여부 | 처리 | 비고 |
+|---|---|---|---|
+| 이 파일 요약하기 | 지원 | 유지 | recent ready file route |
+| 방금 문서 표로 바꾸기 | 지원 | 유지 | recent artifact reuse route |
+| 오늘 할 일 다시 정리 | 지원 | 유지 | local task briefing route |
+| 위임 작업 진행 | 지원 | 유지 | delegation route |
+| 스케줄 열기 | 지원 | 유지 | local schedule bridge |
+| 승인 대기 확인 | 지원 | 유지 | schedule panel bridge |
+
+### Forbidden Route QA
+| 입력 | 기대 route | 결과 | 비고 |
+|---|---|---|---|
+| PPT 만들어줘 | artifactWorkflow | code-reviewed pass | file intake should not intercept |
+| 파일 요약해줘 | fileIntake/universalDocument | code-reviewed pass | recent file route |
+| IMMM 앱스토어 설명문 만들어줘 | appLaunch | code-reviewed pass | app launch priority |
+| 개인정보처리방침 초안 만들어줘 | privacyTerms | code-reviewed pass | privacy terms priority |
+| 메일 보내줘 | blocked | code-reviewed pass | blocked capability |
+| 일정 만들어줘 | blocked | code-reviewed pass | blocked capability |
+| 파일 삭제해줘 | blocked | code-reviewed pass | destructive action blocked |
+
 ## 10. Round 30C Runtime Recheck
 
 ### Runtime Pass
