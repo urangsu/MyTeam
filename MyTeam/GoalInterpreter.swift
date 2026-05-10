@@ -35,6 +35,17 @@ enum GoalInterpreter {
             )
         }
 
+        if containsAny(lower, keywords: destructiveActionKeywords) {
+            return makeGoal(
+                preview: message,
+                type: .unknown,
+                title: "차단된 작업",
+                outputs: ["자동 실행 차단"],
+                capabilities: [.destructiveFileAction],
+                confidence: .high
+            )
+        }
+
         if containsAny(lower, keywords: appLaunchKeywords) {
             let appName = extractedAppName(from: message)
             return makeGoal(
@@ -292,12 +303,32 @@ enum GoalInterpreter {
     ]
 
     private static let fileCreationKeywords = [
-        "파일",
-        "문서",
+        "파일 만들어",
+        "파일 생성",
+        "파일 작성",
+        "문서 만들어",
+        "문서 생성",
+        "문서 작성",
+        "파일로 만들어",
         "markdown",
         "md",
         "artifact",
         "산출물"
+    ]
+
+    private static let destructiveActionKeywords = [
+        "파일 삭제",
+        "파일 지워",
+        "파일 제거",
+        "일정 삭제",
+        "삭제해줘",
+        "지워줘",
+        "제거해줘",
+        "삭제",
+        "지워",
+        "제거",
+        "destroy",
+        "remove"
     ]
 
     private static let teamDiscussionKeywords = [

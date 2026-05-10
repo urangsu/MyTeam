@@ -6,6 +6,16 @@
 
 ---
 
+## 2026-05-10 (Round 29C — Runtime QA, Fix Pack, and Release Stability Sweep)
+
+- runtime QA sweep confirmed file intake states, file-to-document artifact generation, blocked capability early return, and DEBUG PlanRunner flag toggling
+- file deletion now resolves to blocked capability instead of a file-creation false positive
+- workflow QA playbook added for repeatable sample generation and runtime checks
+- multi-room task isolation, Finder open / path copy, and planRunner route trace in UI remain unverified
+- no new feature expansion
+- Gmail / OAuth / Calendar write unchanged
+- StoreKit / entitlement unchanged
+
 ## 2026-05-10 (Round 29B — Runtime QA Verification + Small Fix Pack)
 
 - runtime QA pass on file intake states, recent file helper, artifact writer, and DEBUG feature flag toggle

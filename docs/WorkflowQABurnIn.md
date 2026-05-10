@@ -25,10 +25,10 @@
 | 엑셀 파일 만들어줘 | artifactWorkflow | fileIntakeDocument | code-reviewed pass | file intake should not intercept |
 | IMMM 앱스토어 설명문 만들어줘 | appLaunch | universalDocument | code-reviewed pass | app launch priority |
 | 개인정보처리방침 초안 만들어줘 | privacyTerms | universalDocument | code-reviewed pass | privacy terms priority |
-| 자동으로 로그인해서 일정 가져와 | blocked | any execution | code-reviewed pass | blocked capability |
-| 메일 보내줘 | blocked | any execution | code-reviewed pass | blocked capability |
-| 일정 만들어줘 | blocked | any execution | code-reviewed pass | blocked capability |
-| 파일 삭제해줘 | blocked | any execution | code-reviewed pass | destructive action blocked |
+| 자동으로 로그인해서 일정 가져와 | blocked | any execution | runtime pass | blocked capability |
+| 메일 보내줘 | blocked | any execution | runtime pass | blocked capability |
+| 일정 만들어줘 | blocked | any execution | runtime pass | blocked capability |
+| 파일 삭제해줘 | blocked | any execution | runtime pass | destructive action blocked |
 
 ## 3. File Intake Stateful QA
 | 단계 | 기대 | 결과 | 비고 |
@@ -86,19 +86,24 @@
 | verification/safety failure | legacy fallback 금지 | code-reviewed pass | failure reason aware |
 | recoverable runtime failure | fallback 가능 | code-reviewed pass | safety gate 분리 |
 
-## 9. Round 29B Runtime Findings
+## 9. Round 29C Runtime Recheck
 
 ### Runtime Pass
 - sample.md 선택 시 `ready` 확인
+- sample.csv 선택 시 `ready` 확인
 - sample.pdf 선택 시 `planned` 안내 확인
+- sample.docx 선택 시 `planned` 안내 확인
+- sample.xlsx 선택 시 `planned` 안내 확인
+- sample.pptx 선택 시 `planned` 안내 확인
 - run.sh 선택 시 `blocked` 안내 확인
 - large.txt 선택 시 `tooLarge` 안내 확인
 - empty.txt 선택 시 `empty` 안내 확인
 - 최근 파일 참조 helper가 `방금 파일 요약해줘`를 감지
-- 파일 생성 guard가 `엑셀 파일 만들어줘` / `PPT 파일 만들어줘`를 file intake에서 제외
+- 파일 생성 guard가 `엑셀 파일 만들어줘` / `PPT 파일 만들어줘` / `파일 삭제해줘`를 file intake에서 제외
 - 파일 기반 문서 유형 helper가 `요약 / 보고서 / 표`를 반환
 - artifact writer가 실제 markdown 파일과 index를 생성
 - PlanRunner DEBUG flag 토글이 `false -> true -> false`로 동작
+- blocked capability helper가 `로그인 / 메일 발송 / 일정 생성 / 파일 삭제`를 blocked로 반환
 
 ### Runtime Failed
 - 없음
@@ -109,3 +114,7 @@
 - fileImporter의 실제 sandbox 경로 UX
 - PlanRunner flag true의 실제 app route trace
 - blocked capability의 실제 app route early return UI
+
+### Fixes Applied
+- file deletion false positive를 fileCreation goal에서 제거
+- `GoalInterpreter` destructive action 키워드로 blocked capability 분기 추가
