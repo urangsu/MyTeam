@@ -144,3 +144,24 @@
 - Full AgentWindowManager rewrite
 - SwiftData persistence
 - route / execution full migration
+
+## Round 31C Fix Plan / Result
+
+### Scope
+- WorkflowRunner Universal Document boundary
+- RoomRuntimeStore actor boundary
+- Diagnostics flag cleanup
+
+### Findings
+- Universal Document plan wrapper is now routed through WorkflowRunner, so orchestrator execution branching is shorter.
+- RoomRuntimeStore now serves as the room-state facade boundary while remaining main-actor owned for UI-facing access.
+- diagnostics flags were renamed / grouped to better separate capability flags from actual state.
+
+### Risks
+- WorkflowOrchestrator still owns the broader route dispatch surface.
+- App Launch / PrivacyTerms / File Intake / AgentPipeline boundaries remain intentionally out of scope.
+
+### Recommended Fixes
+- Keep the Universal Document wrapper logic in WorkflowRunner and avoid re-inlining fallback logic into orchestrator.
+- Treat the room runtime store as the single source of truth for room-level runtime state.
+- Defer remaining route/execution contract alignment to Round 31D.

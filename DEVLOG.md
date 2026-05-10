@@ -6,6 +6,14 @@
 
 ---
 
+## 2026-05-10 (Round 31C — Workflow Runner Boundary Expansion + Runtime Store Hardening)
+
+- WorkflowRunner now owns the Universal Document wrapper / fallback boundary for the plan path
+- RoomRuntimeStore stays the room runtime state facade boundary and is clarified as the room-state owner
+- WorkflowOrchestrator now leans more on runner calls instead of inlining execution decisions
+- diagnostics flags were cleaned up to better separate capability flags from actual state
+- Gmail API / Calendar write / OAuth 구조 / StoreKit / entitlement는 건드리지 않았다
+
 ## 2026-05-10 (Round 31B — Room Runtime Store Boundary)
 
 - RoomRuntimeStore를 추가해서 roomGoalContext, lastFileIntakeResult, activeTask 소유권을 manager facade 뒤로 옮겼다
