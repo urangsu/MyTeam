@@ -120,3 +120,15 @@
 - Settings / Connector copy 정리
 - diagnostics 수치형 요약 더 압축
 - deferred UI QA 재검증
+
+## Round 31A Fix Plan
+
+### Scope
+- WorkflowRunner daily briefing entrypoint
+- ConnectorCapabilityPolicy centralization
+
+### Out of Scope
+- Full orchestrator rewrite
+- ToolExecutionLayer full adoption
+- Gmail API
+- Calendar write

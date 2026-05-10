@@ -6,6 +6,14 @@
 
 ---
 
+## 2026-05-10 (Round 31A — Bottleneck Fix Pack)
+
+- WorkflowOrchestrator의 Daily Briefing entrypoint를 WorkflowRunner로 넘겨 route / execution 경계를 조금 줄였다
+- ConnectorCapabilityPolicy를 추가해 ConnectorGuard와 AssistantConnectorPolicy가 같은 capability 어휘를 쓰도록 정리했다
+- Universal Document PlanRunner wrapper는 WorkflowRunner 쪽으로 더 모았다
+- Deferred Runtime QA Backlog는 유지했다
+- Gmail API / Calendar write / OAuth 구조 / StoreKit / entitlement는 건드리지 않았다
+
 ## 2026-05-10 (Round 30C — Daily Briefing Runtime QA + System Bottleneck Audit)
 
 - Daily Briefing route / forbidden route / ConnectorGuard behavior were rechecked against code and build outputs
