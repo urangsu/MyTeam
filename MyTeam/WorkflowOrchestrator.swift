@@ -532,6 +532,26 @@ final class WorkflowOrchestrator {
 
             effectiveScopes.formUnion(enabledSkills.flatMap { $0.allowedScopes })
             effectiveScopes.insert(.artifactGeneration)
+
+            if FeatureFlags.planRunnerUniversalDocumentEnabled {
+                await MainActor.run { manager.isWorkflowRunning = true }
+                defer { Task { @MainActor in manager.isWorkflowRunning = false } }
+                let task = Task {
+                    await self.runUniversalDocumentPlanWorkflow(
+                        request: request,
+                        userMessage: userMessage,
+                        roomID: roomID,
+                        manager: manager,
+                        allowedScopes: effectiveScopes
+                    )
+                }
+                setActiveWorkflowTask(task, for: roomID)
+                await task.value
+                setActiveWorkflowTask(nil, for: roomID)
+                await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount() > 0 }
+                return
+            }
+
             await MainActor.run { manager.isWorkflowRunning = true }
             defer { Task { @MainActor in manager.isWorkflowRunning = false } }
             let task = Task {
@@ -1661,6 +1681,127 @@ final class WorkflowOrchestrator {
                 )
             }
             AppLog.error("[UniversalDocumentWorkflow] 파일 저장 실패: \(error)")
+        }
+    }
+
+    private func runUniversalDocumentPlanWorkflow(
+        request: UniversalDocumentSkillRequest,
+        userMessage: String,
+        roomID: UUID,
+        manager: AgentWindowManager,
+        allowedScopes: Set<ToolScope>
+    ) async {
+        guard !Task.isCancelled else { return }
+
+        let workflowID = UUID()
+        await MainActor.run {
+            manager.currentWorkflowID = workflowID
+            WorkflowRunStore.shared.begin(workflowID: workflowID, roomID: roomID, userMessage: userMessage)
+        }
+
+        var finalStatus: WorkflowStatus = .cancelled
+        var finalEvent: AgentEvent = .workflowCancelled(workflowID: workflowID, roomID: roomID)
+        defer {
+            let capturedStatus = finalStatus
+            let capturedEvent = finalEvent
+            Task { [weak self] in
+                await self?.finishWorkflowRun(
+                    workflowID: workflowID,
+                    manager: manager,
+                    status: capturedStatus,
+                    event: capturedEvent
+                )
+            }
+        }
+
+        Task { await AgentEventBus.shared.publish(.workflowStarted(workflowID: workflowID, roomID: roomID)) }
+
+        await MainActor.run {
+            manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "planRunner.started")
+            self.recordRouteTrace(
+                manager: manager,
+                roomID: roomID,
+                step: .planRunnerStarted,
+                message: "plan runner started: \(request.type.skillID)"
+            )
+        }
+
+        let plan = UniversalDocumentPlanFactory.makePlan(request: request, roomID: roomID)
+        let result = await PlanRunner.shared.runUniversalDocumentPlan(
+            plan,
+            request: request,
+            roomID: roomID,
+            workflowID: workflowID,
+            manager: manager,
+            allowedScopes: allowedScopes
+        )
+
+        switch result.status {
+        case .completed:
+            finalStatus = .completed
+            finalEvent = .workflowCompleted(workflowID: workflowID, roomID: roomID, artifactCount: result.artifactID == nil ? 0 : 1)
+            await MainActor.run {
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .planRunnerCompleted,
+                    message: "plan runner completed: \(result.artifactID?.uuidString.prefix(8) ?? "nil")"
+                )
+                manager.addChatLog(
+                    roomID: roomID,
+                    agentID: "system",
+                    agentName: "스킬",
+                    text: result.message,
+                    isUser: false,
+                    isSystem: false
+                )
+            }
+            AppLog.info("[PlanRunner] universal document completed: \(request.type.skillID)")
+
+        case .fellBackToLegacy:
+            finalStatus = .failed
+            finalEvent = .modelCallFailed(workflowID: workflowID, provider: "planrunner", error: "fallback to legacy")
+            await MainActor.run {
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .planRunnerFallback,
+                    message: "plan runner fallback -> legacy workflow"
+                )
+            }
+            await self.runUniversalDocumentWorkflow(
+                request: request,
+                userMessage: userMessage,
+                roomID: roomID,
+                manager: manager,
+                allowedScopes: allowedScopes
+            )
+
+        case .failed:
+            finalStatus = .failed
+            finalEvent = .modelCallFailed(workflowID: workflowID, provider: "planrunner", error: result.message)
+            await MainActor.run {
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .planRunnerFailed,
+                    message: result.message
+                )
+            }
+            await self.runUniversalDocumentWorkflow(
+                request: request,
+                userMessage: userMessage,
+                roomID: roomID,
+                manager: manager,
+                allowedScopes: allowedScopes
+            )
+
+        case .cancelled:
+            finalStatus = .cancelled
+            finalEvent = .workflowCancelled(workflowID: workflowID, roomID: roomID)
+            await MainActor.run {
+                manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "universalDocument.cancelled")
+            }
         }
     }
 

@@ -21,6 +21,10 @@ struct RouteTrace: Identifiable, Equatable {
         case recentArtifactReferenced
         case universalDocumentGenerated
         case universalDocumentSaved
+        case planRunnerStarted
+        case planRunnerCompleted
+        case planRunnerFallback
+        case planRunnerFailed
         case fileCreationDetected
         case intentClassified
         case teamDiscussionSelected

@@ -171,7 +171,7 @@ enum RouterBurnInSuite {
             expectedRouteHint: "universalDocument",
             expectedGoalType: "documentWork",
             shouldRequireApproval: false,
-            notes: "문서 요약"
+            notes: "문서 요약, planRunner flag false keeps legacy route"
         ),
         .init(
             id: "doc-report-draft",

@@ -81,6 +81,8 @@ struct RuntimeDiagnosticsSnapshot {
     let dailyBriefingMailItemCount: Int
     let universalDocumentSkillCount: Int
     let universalDocumentRouteAvailable: Bool
+    let planRunnerAvailable: Bool
+    let planRunnerUniversalDocumentEnabled: Bool
 
     // Workspace
     let workspacePath: String
@@ -143,6 +145,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("googleCalendar: connection=\(googleCalendarConnectionStatus) fetch=\(googleCalendarLastFetchStatus)")
         lines.append("dailyBriefing: status=\(dailyBriefingStatus) calendar=\(dailyBriefingCalendarItemCount) mail=\(dailyBriefingMailItemCount)")
         lines.append("universalDocument: skills=\(universalDocumentSkillCount) available=\(universalDocumentRouteAvailable)")
+        lines.append("planRunner: available=\(planRunnerAvailable) enabled=\(planRunnerUniversalDocumentEnabled)")
         lines.append("safety: blockedCapabilityGate=\(blockedCapabilityGateEnabled) resultVerifierErrorGate=\(resultVerifierErrorGateEnabled)")
         lines.append("autonomy: goalInterpreter=true clarificationPolicy=true capabilityRouter=true resultVerifier=true")
         lines.append("workspace: \(workspacePath)")
@@ -203,6 +206,8 @@ final class RuntimeDiagnosticsService {
         let universalDocumentRouteAvailable = SkillRegistry.shared.allEnabledSkills().contains {
             $0.id.hasPrefix("korean.document-") || $0.id == "korean.report-draft" || $0.id == "korean.checklist" || $0.id == "korean.table-summary" || $0.id == "korean.meeting-minutes" || $0.id == "korean.action-items"
         }
+        let planRunnerAvailable = true
+        let planRunnerUniversalDocumentEnabled = FeatureFlags.planRunnerUniversalDocumentEnabled
         let activeTaskRoomCount = manager.activeWorkflowTaskCount()
         let lastRoomGoalType = roomGoalContext?.currentGoal?.goalType.rawValue
         let lastActiveWorkflowStep = roomGoalContext?.activeWorkflowStep
@@ -263,6 +268,8 @@ final class RuntimeDiagnosticsService {
             dailyBriefingMailItemCount: dailyBriefing.mailItems.count,
             universalDocumentSkillCount: universalDocumentSkillCount,
             universalDocumentRouteAvailable: universalDocumentRouteAvailable,
+            planRunnerAvailable: planRunnerAvailable,
+            planRunnerUniversalDocumentEnabled: planRunnerUniversalDocumentEnabled,
             workspacePath: workspacePath,
             recentEventCount: recentEvents.count,
             latestEventSummary: latestSummary

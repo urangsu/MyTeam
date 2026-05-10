@@ -140,6 +140,14 @@
 		792F822E9052246E01A48FCF /* 치코_03_i.wav in Resources */ = {isa = PBXBuildFile; fileRef = B72B928FBD3D84309879DE21 /* 치코_03_i.wav */; };
 		7B9A3946C5D91C7CFAC40494 /* AgentSwapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF2028A9749418F9EEE1AD57 /* AgentSwapView.swift */; };
 		7C2D4D5480E3304C54D83B3B /* UniversalDocumentArtifactWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9350ACA146835D5E84C37CD /* UniversalDocumentArtifactWriter.swift */; };
+		F27100000000000000000011 /* FeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27000000000000000000011 /* FeatureFlags.swift */; };
+		F27100000000000000000012 /* VerificationLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27000000000000000000012 /* VerificationLevel.swift */; };
+		F27100000000000000000013 /* WorkPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27000000000000000000013 /* WorkPlan.swift */; };
+		F27100000000000000000014 /* WorkStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27000000000000000000014 /* WorkStep.swift */; };
+		F27100000000000000000015 /* RecoveryAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27000000000000000000015 /* RecoveryAction.swift */; };
+		F27100000000000000000016 /* PlanExecutionResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27000000000000000000016 /* PlanExecutionResult.swift */; };
+		F27100000000000000000017 /* PlanRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27000000000000000000017 /* PlanRunner.swift */; };
+		F27100000000000000000018 /* UniversalDocumentPlanFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27000000000000000000018 /* UniversalDocumentPlanFactory.swift */; };
 		B1E7F1E2AA00112233445561 /* RoomGoalContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E7F1E2AA00112233445566 /* RoomGoalContext.swift */; };
 		B1E7F1E2AA00112233445562 /* GoalContextEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E7F1E2AA00112233445567 /* GoalContextEngine.swift */; };
 		B1E7F1E2AA00112233445563 /* ResultRecoveryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E7F1E2AA00112233445568 /* ResultRecoveryPolicy.swift */; };
@@ -495,6 +503,14 @@
 		B1E7F1E2AA00112233445566 /* RoomGoalContext.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RoomGoalContext.swift; sourceTree = "<group>"; };
 		B1E7F1E2AA00112233445567 /* GoalContextEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoalContextEngine.swift; sourceTree = "<group>"; };
 		B1E7F1E2AA00112233445568 /* ResultRecoveryPolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResultRecoveryPolicy.swift; sourceTree = "<group>"; };
+		F27000000000000000000011 /* FeatureFlags.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FeatureFlags.swift; sourceTree = "<group>"; };
+		F27000000000000000000012 /* VerificationLevel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VerificationLevel.swift; sourceTree = "<group>"; };
+		F27000000000000000000013 /* WorkPlan.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkPlan.swift; sourceTree = "<group>"; };
+		F27000000000000000000014 /* WorkStep.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkStep.swift; sourceTree = "<group>"; };
+		F27000000000000000000015 /* RecoveryAction.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecoveryAction.swift; sourceTree = "<group>"; };
+		F27000000000000000000016 /* PlanExecutionResult.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PlanExecutionResult.swift; sourceTree = "<group>"; };
+		F27000000000000000000017 /* PlanRunner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PlanRunner.swift; sourceTree = "<group>"; };
+		F27000000000000000000018 /* UniversalDocumentPlanFactory.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UniversalDocumentPlanFactory.swift; sourceTree = "<group>"; };
 		1FE670CC2689AD2BD6DA062D /* 핀.json */ = {isa = PBXFileReference; includeInIndex = 1; name = "핀.json"; path = "Resources/PrecomputedVoice/핀.json"; sourceTree = "<group>"; };
 		200FF8D18D4C7BABAD09C4EB /* 루나_test.json */ = {isa = PBXFileReference; includeInIndex = 1; name = "루나_test.json"; path = "Resources/SpeechCache/루나_test.json"; sourceTree = "<group>"; };
 		208440286CA482FC04AF0225 /* 치코_landing_042.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_landing_042.png"; path = "Resources/Sprites/치코/치코_landing_042.png"; sourceTree = "<group>"; };
@@ -1486,6 +1502,14 @@
 				3AD13B54285806D935EDB986 /* UniversalDocumentSkillRequest.swift */,
 				1FE32B322A651895319EAC69 /* UniversalDocumentSkillService.swift */,
 				A9350ACA146835D5E84C37CD /* UniversalDocumentArtifactWriter.swift */,
+				F27000000000000000000011 /* FeatureFlags.swift */,
+				F27000000000000000000012 /* VerificationLevel.swift */,
+				F27000000000000000000013 /* WorkPlan.swift */,
+				F27000000000000000000014 /* WorkStep.swift */,
+				F27000000000000000000015 /* RecoveryAction.swift */,
+				F27000000000000000000016 /* PlanExecutionResult.swift */,
+				F27000000000000000000017 /* PlanRunner.swift */,
+				F27000000000000000000018 /* UniversalDocumentPlanFactory.swift */,
 				B1E7F1E2AA00112233445566 /* RoomGoalContext.swift */,
 				B1E7F1E2AA00112233445567 /* GoalContextEngine.swift */,
 				B1E7F1E2AA00112233445568 /* ResultRecoveryPolicy.swift */,
@@ -3045,6 +3069,14 @@
 				D25000000000000000000018 /* GoogleOAuthSessionManager.swift in Sources */,
 				D25000000000000000000019 /* GoogleOAuthTokenExchangeService.swift in Sources */,
 				D2500000000000000000001A /* GoogleCalendarAPIModels.swift in Sources */,
+				F27100000000000000000011 /* FeatureFlags.swift in Sources */,
+				F27100000000000000000012 /* VerificationLevel.swift in Sources */,
+				F27100000000000000000013 /* WorkPlan.swift in Sources */,
+				F27100000000000000000014 /* WorkStep.swift in Sources */,
+				F27100000000000000000015 /* RecoveryAction.swift in Sources */,
+				F27100000000000000000016 /* PlanExecutionResult.swift in Sources */,
+				F27100000000000000000017 /* PlanRunner.swift in Sources */,
+				F27100000000000000000018 /* UniversalDocumentPlanFactory.swift in Sources */,
 				B1E7F1E2AA00112233445561 /* RoomGoalContext.swift in Sources */,
 				B1E7F1E2AA00112233445562 /* GoalContextEngine.swift in Sources */,
 				B1E7F1E2AA00112233445563 /* ResultRecoveryPolicy.swift in Sources */,
