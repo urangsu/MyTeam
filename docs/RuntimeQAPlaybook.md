@@ -69,3 +69,10 @@ defaults write com.urang.MyTeam MyTeam.FeatureFlags.planRunnerUniversalDocumentE
 - `runtime failed`
 - `still unverified`
 - 원문, 토큰, 전체 경로는 적지 않는다
+
+## 7. Round 30C Checklist
+
+- Daily Briefing: 오늘 브리핑 해줘 / 오늘 일정 뭐 있어? / 오늘 뭐 해야 해? / 메일이랑 일정 보고 오늘 할 일 정리해줘 / 새 메일 몇 통 왔어? / 중요한 메일만 알려줘 / 이번 주 일정 요약해줘
+- Forbidden routes: 앱스토어 설명문, 개인정보처리방침, 파일 요약, 보고서, PPT, 엑셀
+- ConnectorGuard: calendarRead, mailMetadataRead, mailBodyRead, mailSummarize, mailDraft, mailSend, calendarCreate, calendarModify, automaticLogin, destructiveFileAction
+- diagnostics: connector blocked actions are truncated, no tokens or paths

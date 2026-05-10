@@ -6,6 +6,15 @@
 
 ---
 
+## 2026-05-10 (Round 30C — Daily Briefing Runtime QA + System Bottleneck Audit)
+
+- Daily Briefing route / forbidden route / ConnectorGuard behavior were rechecked against code and build outputs
+- section-based briefing text, route narrowing, and blocked-action summary truncation remain in place
+- actual UI replay for Finder/path copy, fileImporter sandbox, and multi-room task isolation remains unverified
+- SystemBottleneckAudit added to capture the largest route / state / policy / QA bottlenecks
+- no Gmail API, no Calendar write, no OAuth structure changes
+- StoreKit / entitlement unchanged
+
 ## 2026-05-10 (Round 30B — Daily Briefing Runtime UX + Connector Guard Polish)
 
 - Daily Briefing chat output now renders as a five-section briefing instead of a count-only line

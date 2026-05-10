@@ -127,3 +127,26 @@
 ### Fixes Applied
 - file deletion false positive를 fileCreation goal에서 제거
 - `GoalInterpreter` destructive action 키워드로 blocked capability 분기 추가
+
+## 10. Round 30C Runtime Recheck
+
+### Runtime Pass
+- Daily Briefing route detector and route resolver keep `오늘 브리핑 해줘`, `오늘 일정 뭐 있어?`, `오늘 뭐 해야 해?`, `메일이랑 일정 보고 오늘 할 일 정리해줘`, `새 메일 몇 통 왔어?`, `중요한 메일만 알려줘`, `이번 주 일정 요약해줘` on the briefing path in code
+- App Launch / PrivacyTerms / File Intake / Artifact Workflow negative guards remain in place in code
+- ConnectorGuard state helper returns `allowed / unavailable / requiresApproval / blocked` as configured in code
+- runtime diagnostics keep connector blocked actions summarized and do not expose tokens or file paths in code
+
+### Runtime Failed
+- Actual UI route recheck not performed in this session
+
+### Still Unverified
+- Daily Briefing actual app window response
+- blocked capability actual app route early return UI
+- multi-room active task isolation actual UI replay
+- Finder open / path copy actual UI replay
+- fileImporter sandbox UI replay
+
+### Fixes Applied
+- connector blocked-action summary shortened
+- daily briefing text rendered as section-based summary
+- Daily Briefing detector narrowed for app launch, privacy, file creation, and recent file references
