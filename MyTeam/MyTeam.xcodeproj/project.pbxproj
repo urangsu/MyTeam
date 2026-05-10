@@ -140,6 +140,12 @@
 		792F822E9052246E01A48FCF /* 치코_03_i.wav in Resources */ = {isa = PBXBuildFile; fileRef = B72B928FBD3D84309879DE21 /* 치코_03_i.wav */; };
 		7B9A3946C5D91C7CFAC40494 /* AgentSwapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF2028A9749418F9EEE1AD57 /* AgentSwapView.swift */; };
 		7C2D4D5480E3304C54D83B3B /* UniversalDocumentArtifactWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9350ACA146835D5E84C37CD /* UniversalDocumentArtifactWriter.swift */; };
+		B19D61E3A0014AAAB1000017 /* RouteDecision.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19D61E3A0014AAAB0000017 /* RouteDecision.swift */; };
+		B19D61E3A0014AAAB1000018 /* GoalGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19D61E3A0014AAAB0000018 /* GoalGate.swift */; };
+		B19D61E3A0014AAAB1000019 /* RouteResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19D61E3A0014AAAB0000019 /* RouteResolver.swift */; };
+		B19D61E3A0014AAAB100001A /* WorkflowRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19D61E3A0014AAAB000001A /* WorkflowRunner.swift */; };
+		B19D61E3A0014AAAB100001B /* ToolExecutionLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19D61E3A0014AAAB000001B /* ToolExecutionLayer.swift */; };
+		B19D61E3A0014AAAB100001C /* ConnectorGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19D61E3A0014AAAB000001C /* ConnectorGuard.swift */; };
 		F27100000000000000000011 /* FeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27000000000000000000011 /* FeatureFlags.swift */; };
 		F27100000000000000000012 /* VerificationLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27000000000000000000012 /* VerificationLevel.swift */; };
 		F27100000000000000000013 /* WorkPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27000000000000000000013 /* WorkPlan.swift */; };
@@ -503,6 +509,12 @@
 		B1E7F1E2AA00112233445566 /* RoomGoalContext.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RoomGoalContext.swift; sourceTree = "<group>"; };
 		B1E7F1E2AA00112233445567 /* GoalContextEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoalContextEngine.swift; sourceTree = "<group>"; };
 		B1E7F1E2AA00112233445568 /* ResultRecoveryPolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResultRecoveryPolicy.swift; sourceTree = "<group>"; };
+		B19D61E3A0014AAAB0000017 /* RouteDecision.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RouteDecision.swift; sourceTree = "<group>"; };
+		B19D61E3A0014AAAB0000018 /* GoalGate.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoalGate.swift; sourceTree = "<group>"; };
+		B19D61E3A0014AAAB0000019 /* RouteResolver.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RouteResolver.swift; sourceTree = "<group>"; };
+		B19D61E3A0014AAAB000001A /* WorkflowRunner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowRunner.swift; sourceTree = "<group>"; };
+		B19D61E3A0014AAAB000001B /* ToolExecutionLayer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ToolExecutionLayer.swift; sourceTree = "<group>"; };
+		B19D61E3A0014AAAB000001C /* ConnectorGuard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConnectorGuard.swift; sourceTree = "<group>"; };
 		F27000000000000000000011 /* FeatureFlags.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FeatureFlags.swift; sourceTree = "<group>"; };
 		F27000000000000000000012 /* VerificationLevel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VerificationLevel.swift; sourceTree = "<group>"; };
 		F27000000000000000000013 /* WorkPlan.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkPlan.swift; sourceTree = "<group>"; };
@@ -1510,6 +1522,12 @@
 				F27000000000000000000016 /* PlanExecutionResult.swift */,
 				F27000000000000000000017 /* PlanRunner.swift */,
 				F27000000000000000000018 /* UniversalDocumentPlanFactory.swift */,
+				B19D61E3A0014AAAB0000017 /* RouteDecision.swift */,
+				B19D61E3A0014AAAB0000018 /* GoalGate.swift */,
+				B19D61E3A0014AAAB0000019 /* RouteResolver.swift */,
+				B19D61E3A0014AAAB000001A /* WorkflowRunner.swift */,
+				B19D61E3A0014AAAB000001B /* ToolExecutionLayer.swift */,
+				B19D61E3A0014AAAB000001C /* ConnectorGuard.swift */,
 				B1E7F1E2AA00112233445566 /* RoomGoalContext.swift */,
 				B1E7F1E2AA00112233445567 /* GoalContextEngine.swift */,
 				B1E7F1E2AA00112233445568 /* ResultRecoveryPolicy.swift */,
@@ -3077,6 +3095,12 @@
 				F27100000000000000000016 /* PlanExecutionResult.swift in Sources */,
 				F27100000000000000000017 /* PlanRunner.swift in Sources */,
 				F27100000000000000000018 /* UniversalDocumentPlanFactory.swift in Sources */,
+				B19D61E3A0014AAAB1000017 /* RouteDecision.swift in Sources */,
+				B19D61E3A0014AAAB1000018 /* GoalGate.swift in Sources */,
+				B19D61E3A0014AAAB1000019 /* RouteResolver.swift in Sources */,
+				B19D61E3A0014AAAB100001A /* WorkflowRunner.swift in Sources */,
+				B19D61E3A0014AAAB100001B /* ToolExecutionLayer.swift in Sources */,
+				B19D61E3A0014AAAB100001C /* ConnectorGuard.swift in Sources */,
 				B1E7F1E2AA00112233445561 /* RoomGoalContext.swift in Sources */,
 				B1E7F1E2AA00112233445562 /* GoalContextEngine.swift in Sources */,
 				B1E7F1E2AA00112233445563 /* ResultRecoveryPolicy.swift in Sources */,
