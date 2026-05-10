@@ -6,6 +6,14 @@
 
 ---
 
+## 2026-05-10 (Round 31B — Room Runtime Store Boundary)
+
+- RoomRuntimeStore를 추가해서 roomGoalContext, lastFileIntakeResult, activeTask 소유권을 manager facade 뒤로 옮겼다
+- AgentWindowManager는 public API만 유지하고 내부는 roomRuntimeStore를 바라보게 했다
+- WorkflowOrchestrator의 active task 소유권도 roomRuntimeStore 경유로 정리했다
+- in-memory / persistence 기준을 roomRuntimeStore 주석과 audit 문서에 남겼다
+- Gmail API / Calendar write / OAuth 구조 / StoreKit / entitlement는 건드리지 않았다
+
 ## 2026-05-10 (Round 31A — Bottleneck Fix Pack)
 
 - WorkflowOrchestrator의 Daily Briefing entrypoint를 WorkflowRunner로 넘겨 route / execution 경계를 조금 줄였다

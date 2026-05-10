@@ -132,3 +132,15 @@
 - ToolExecutionLayer full adoption
 - Gmail API
 - Calendar write
+
+## Round 31B Fix Plan
+
+### Scope
+- RoomRuntimeStore 추가
+- roomGoalContext / lastFileIntakeResult / activeTask ownership 분리
+- AgentWindowManager facade 유지
+
+### Out of Scope
+- Full AgentWindowManager rewrite
+- SwiftData persistence
+- route / execution full migration
