@@ -6,6 +6,17 @@
 
 ---
 
+## 2026-05-10 (Round 28C — File Intake UX Polish + Planned Types)
+
+- fileImporter now leans toward broader selection, with policy deciding planned / blocked cases
+- recent file markers now cover file-based document requests while excluding file creation requests
+- file creation requests stay on artifact workflow, not file intake
+- file intake result cards are shorter and show filename, status, size, and extracted character count
+- sandbox / read failures use a clearer non-path message
+- router burn-in now covers file intake candidates and file creation regressions
+- PDF / DOCX / XLSX / PPTX parsing remains unimplemented
+- no automatic document generation
+
 ## 2026-05-10 (Round 28B — File Intake to Universal Document Workflow)
 
 - lastFileIntakeResultByRoom added for per-room file state
