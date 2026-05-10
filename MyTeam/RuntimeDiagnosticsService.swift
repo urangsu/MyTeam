@@ -88,6 +88,9 @@ struct RuntimeDiagnosticsSnapshot {
     let planRunnerAvailable: Bool
     let planRunnerUniversalDocumentEnabled: Bool
     let planRunnerFailureReasonAware: Bool
+    let agentPipelineAvailable: Bool
+    let defaultPipelineOrderCount: Int
+    let pipelineContextAvailable: Bool
 
     // Workspace
     let workspacePath: String
@@ -156,6 +159,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("connectorGuard: available=\(connectorGuardAvailable)")
         lines.append("planRunner: available=\(planRunnerAvailable) enabled=\(planRunnerUniversalDocumentEnabled)")
         lines.append("planRunnerFailureReasonAware: \(planRunnerFailureReasonAware)")
+        lines.append("agentPipeline: available=\(agentPipelineAvailable) defaultSteps=\(defaultPipelineOrderCount) context=\(pipelineContextAvailable)")
         lines.append("safety: blockedCapabilityGate=\(blockedCapabilityGateEnabled) resultVerifierErrorGate=\(resultVerifierErrorGateEnabled)")
         lines.append("autonomy: goalInterpreter=true clarificationPolicy=true capabilityRouter=true resultVerifier=true")
         lines.append("workspace: \(workspacePath)")
@@ -223,6 +227,9 @@ final class RuntimeDiagnosticsService {
         let planRunnerAvailable = true
         let planRunnerUniversalDocumentEnabled = FeatureFlags.planRunnerUniversalDocumentEnabled
         let planRunnerFailureReasonAware = true
+        let agentPipelineAvailable = true
+        let defaultPipelineOrderCount = AgentPipelineFactory.basicDocumentReviewPipeline().count
+        let pipelineContextAvailable = true
         let activeTaskRoomCount = manager.activeWorkflowTaskCount()
         let lastRoomGoalType = roomGoalContext?.currentGoal?.goalType.rawValue
         let lastActiveWorkflowStep = roomGoalContext?.activeWorkflowStep
@@ -290,6 +297,9 @@ final class RuntimeDiagnosticsService {
             planRunnerAvailable: planRunnerAvailable,
             planRunnerUniversalDocumentEnabled: planRunnerUniversalDocumentEnabled,
             planRunnerFailureReasonAware: planRunnerFailureReasonAware,
+            agentPipelineAvailable: agentPipelineAvailable,
+            defaultPipelineOrderCount: defaultPipelineOrderCount,
+            pipelineContextAvailable: pipelineContextAvailable,
             workspacePath: workspacePath,
             recentEventCount: recentEvents.count,
             latestEventSummary: latestSummary

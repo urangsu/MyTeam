@@ -26,6 +26,15 @@ enum RiskLevel: String, Codable {
 struct AgentWorkOrder: Codable {
     let agentID: String
     let subTask: String           // 에이전트가 수행할 구체적인 하위 작업
+
+    // AgentPipeline 용 확장 필드 — IntentRouter JSON은 기존 필드만 있어도 된다.
+    let role: AgentRole?
+    let title: String?
+    let instruction: String?
+    let inputKeys: [String]?
+    let outputKey: String?
+    let verificationLevel: VerificationLevel?
+    let maxRetries: Int?
 }
 
 struct IntentResult: Codable {

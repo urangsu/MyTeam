@@ -309,6 +309,36 @@ enum RouterBurnInSuite {
             notes: "팀 토론"
         ),
         .init(
+            id: "pipeline-review-draft",
+            message: "검토자가 초안 봐줘",
+            expectedRoute: .teamDiscussion,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "teamDiscussion",
+            shouldRequireApproval: false,
+            notes: "future agentPipeline route candidate"
+        ),
+        .init(
+            id: "pipeline-split-review",
+            message: "팀원들이 나눠서 검토해줘",
+            expectedRoute: .teamDiscussion,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "teamDiscussion",
+            shouldRequireApproval: false,
+            notes: "future agentPipeline route candidate"
+        ),
+        .init(
+            id: "pipeline-create-and-review",
+            message: "초안 만들고 검토까지 해줘",
+            expectedRoute: .teamDiscussion,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "teamDiscussion",
+            shouldRequireApproval: false,
+            notes: "future agentPipeline / delegation candidate"
+        ),
+        .init(
             id: "disabled-law-search",
             message: "법령 검색해줘",
             expectedRoute: .disabledSkill,

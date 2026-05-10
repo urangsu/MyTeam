@@ -54,6 +54,10 @@ enum ResultVerifier {
             issues.append(issue(.error, "민감한 토큰 또는 키워드가 포함되어 있습니다."))
         }
 
+        if containsPersonaTone(trimmed) {
+            issues.append(issue(.warning, "검토 메모: 캐릭터 말투나 1인칭 표현을 줄이면 더 업무용으로 보입니다."))
+        }
+
         return ResultVerificationSummary(
             passed: !issues.contains(where: { $0.severity == .error }),
             issues: issues
@@ -75,6 +79,10 @@ enum ResultVerifier {
 
         if containsSensitiveKeywords(trimmed) {
             issues.append(issue(.error, "민감한 토큰 또는 키워드가 포함되어 있습니다."))
+        }
+
+        if containsPersonaTone(trimmed) {
+            issues.append(issue(.warning, "검토 메모: 캐릭터 말투나 1인칭 표현을 줄이면 더 깔끔합니다."))
         }
 
         return ResultVerificationSummary(
@@ -99,5 +107,19 @@ enum ResultVerifier {
             "private key"
         ]
         return keywords.contains { lower.contains($0) }
+    }
+
+    private static func containsPersonaTone(_ text: String) -> Bool {
+        let keywords = [
+            "캐릭터",
+            "제가 해볼게요",
+            "제가 도와",
+            "해볼게요",
+            "팀원",
+            "레오가",
+            "루나가",
+            "모코가"
+        ]
+        return keywords.contains { text.contains($0) }
     }
 }

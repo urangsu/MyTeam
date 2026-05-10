@@ -197,6 +197,23 @@ class TeamOrchestrator {
         )
     }
 
+    #if DEBUG
+    func runPipelinePreview(
+        userMessage: String,
+        roomID: UUID,
+        manager: AgentWindowManager
+    ) async -> AgentPipelineResult {
+        var context = PipelineContext()
+        context.set(userMessage, for: "user_message")
+        return await AgentPipelineRunner.shared.run(
+            orders: AgentPipelineFactory.basicDocumentReviewPipeline(),
+            initialContext: context,
+            roomID: roomID,
+            manager: manager
+        )
+    }
+    #endif
+
     // MARK: - [TRACK A] 업무 모드 (Task Mode)
     
     private func runTaskMode(
