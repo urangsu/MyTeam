@@ -98,6 +98,7 @@ struct RuntimeDiagnosticsSnapshot {
     let lastFileIntakeStatus: String?
     let lastFileIntakeFilename: String?
     let lastFileIntakeHasExtractedText: Bool
+    let lastFileIntakeExtractedCharacterCount: Int
     let fileIntakeToDocumentAvailable: Bool
 
     // Workspace
@@ -170,7 +171,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("agentPipeline: available=\(agentPipelineAvailable) defaultSteps=\(defaultPipelineOrderCount) context=\(pipelineContextAvailable)")
         lines.append("fileIntake: available=\(fileIntakeAvailable) readable=\(fileIntakeReadableExtensions.joined(separator: ",")) planned=\(fileIntakePlannedExtensions.joined(separator: ",")) max=\(fileIntakeMaxFileSizeMB)MB")
         if let lastFileIntakeStatus {
-            lines.append("fileIntakeLast: status=\(lastFileIntakeStatus) file=\(lastFileIntakeFilename ?? "nil") text=\(lastFileIntakeHasExtractedText)")
+            lines.append("fileIntakeLast: status=\(lastFileIntakeStatus) file=\(lastFileIntakeFilename ?? "nil") text=\(lastFileIntakeHasExtractedText) chars=\(lastFileIntakeExtractedCharacterCount)")
         }
         lines.append("fileIntakeToDocument: available=\(fileIntakeToDocumentAvailable)")
         lines.append("safety: blockedCapabilityGate=\(blockedCapabilityGateEnabled) resultVerifierErrorGate=\(resultVerifierErrorGateEnabled)")
@@ -251,6 +252,7 @@ final class RuntimeDiagnosticsService {
         let lastFileIntakeStatus = currentFileIntakeResult?.status.rawValue
         let lastFileIntakeFilename = currentFileIntakeResult?.request.originalFilename
         let lastFileIntakeHasExtractedText = currentFileIntakeResult?.extractedText?.isEmpty == false
+        let lastFileIntakeExtractedCharacterCount = currentFileIntakeResult?.extractedText?.count ?? 0
         let fileIntakeToDocumentAvailable = currentFileIntakeResult?.status == .ready && lastFileIntakeHasExtractedText
         let activeTaskRoomCount = manager.activeWorkflowTaskCount()
         let lastRoomGoalType = roomGoalContext?.currentGoal?.goalType.rawValue
@@ -329,6 +331,7 @@ final class RuntimeDiagnosticsService {
             lastFileIntakeStatus: lastFileIntakeStatus,
             lastFileIntakeFilename: lastFileIntakeFilename,
             lastFileIntakeHasExtractedText: lastFileIntakeHasExtractedText,
+            lastFileIntakeExtractedCharacterCount: lastFileIntakeExtractedCharacterCount,
             fileIntakeToDocumentAvailable: fileIntakeToDocumentAvailable,
             workspacePath: workspacePath,
             recentEventCount: recentEvents.count,

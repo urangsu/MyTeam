@@ -420,6 +420,61 @@ enum RouterBurnInSuite {
             notes: "향후 calendar read-only connection route 후보"
         ),
         .init(
+            id: "file-summary-ready-file",
+            message: "파일 요약해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: false,
+            shouldRequireApproval: false,
+            notes: "recent ready file가 있으면 file intake document candidate"
+        ),
+        .init(
+            id: "file-report-ready-file",
+            message: "파일 보고서 만들어줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: false,
+            shouldRequireApproval: false,
+            notes: "recent ready file가 있으면 file intake document candidate"
+        ),
+        .init(
+            id: "file-checklist-ready-file",
+            message: "파일 체크리스트 만들어줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: false,
+            shouldRequireApproval: false,
+            notes: "recent ready file가 있으면 file intake document candidate"
+        ),
+        .init(
+            id: "file-table-ready-file",
+            message: "이 파일 표로 정리해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: true,
+            shouldRequireApproval: false,
+            notes: "recent file reference candidate"
+        ),
+        .init(
+            id: "file-create-generic",
+            message: "파일 만들어줘",
+            expectedRoute: .artifactWorkflow,
+            expectedSkillID: nil,
+            expectedRouteHint: "artifactWorkflow",
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: false,
+            shouldRequireApproval: false,
+            notes: "file intake document must not intercept file creation"
+        ),
+        .init(
             id: "autonomy-daily-briefing",
             message: "오늘 뭐 해야 해?",
             expectedRoute: .directChat,

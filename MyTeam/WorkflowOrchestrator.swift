@@ -468,7 +468,8 @@ final class WorkflowOrchestrator {
 
         let recentFileIntakeResult = await MainActor.run { manager.lastFileIntakeResult(for: roomID) }
         let referencesRecentFile = GoalContextEngine.referencesRecentFile(userMessage)
-        if referencesRecentFile {
+        let isFileCreationRequest = GoalContextEngine.isFileCreationRequest(userMessage)
+        if referencesRecentFile && !isFileCreationRequest {
             guard let recentFileIntakeResult else {
                 await MainActor.run {
                     manager.addChatLog(
