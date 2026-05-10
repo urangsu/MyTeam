@@ -6,6 +6,17 @@
 
 ---
 
+## 2026-05-10 (Round 28B — File Intake to Universal Document Workflow)
+
+- lastFileIntakeResultByRoom added for per-room file state
+- file reference detection now connects recent file contents into Universal Document sourceText
+- file-based summary / report / table / checklist / meeting minutes / action item generation is wired
+- completion messages now surface the source filename
+- file-read immediate auto-generation is still avoided
+- PDF / DOCX / XLSX / PPTX parsing is still unimplemented
+- OCR and external upload remain unimplemented
+- Gmail / OAuth / Calendar write unchanged
+
 ## 2026-05-10 (Round 28A — File Intake UX Foundation)
 
 - FileIntakeRequest / FileIntakeResult / FileIntakePolicy / FileIntakeService / FileIntakeView added
