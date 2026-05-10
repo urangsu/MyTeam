@@ -30,7 +30,7 @@ struct DailyBriefingCardView: View {
             briefingSection(
                 title: "새 메일",
                 icon: "envelope",
-                emptyText: "메일 브리핑은 아직 준비 중입니다. 현재는 메일 발송/삭제를 지원하지 않습니다."
+                emptyText: "Gmail 메타데이터 브리핑은 준비 중입니다. 메일 본문 요약/발송/삭제는 아직 지원하지 않습니다."
             ) {
                 ForEach(briefing.mailItems) { item in
                     briefingRow(
@@ -89,7 +89,11 @@ struct DailyBriefingCardView: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.secondary)
 
-                    HStack(spacing: 6) {
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: 108), spacing: 6)],
+                        alignment: .leading,
+                        spacing: 6
+                    ) {
                         ForEach(Array(briefing.actionSuggestions.prefix(3))) { suggestion in
                             Button {
                                 onActionTap?(suggestion)
@@ -97,6 +101,7 @@ struct DailyBriefingCardView: View {
                                 Text(suggestion.title)
                                     .font(.system(size: 10, weight: .semibold))
                                     .lineLimit(1)
+                                    .truncationMode(.tail)
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 6)
                                     .foregroundStyle(.primary)
@@ -110,6 +115,7 @@ struct DailyBriefingCardView: View {
                                     )
                             }
                             .buttonStyle(.plain)
+                            .help(suggestion.subtitle ?? suggestion.title)
                         }
                     }
                 }

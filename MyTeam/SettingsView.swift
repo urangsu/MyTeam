@@ -467,34 +467,12 @@ struct SettingsView: View {
     private func handleBriefingAction(_ suggestion: BriefingActionSuggestion) {
         guard let roomID = manager.currentRoomID else { return }
 
-        if let systemActionID = suggestion.systemActionID {
-            switch systemActionID {
-            case "openSchedulePanel":
-                manager.isSchedulePanelPresented = true
-                return
-            default:
-                break
-            }
-        }
-
-        guard let prompt = suggestion.prompt?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !prompt.isEmpty else {
-            return
-        }
-
-        manager.addChatLog(
-            roomID: roomID,
-            agentID: "user",
-            agentName: "나",
-            text: prompt,
-            isUser: true
-        )
-
         Task {
-            await WorkflowOrchestrator.shared.dispatch(
-                userMessage: prompt,
+            await BriefingActionDispatcher.dispatch(
+                suggestion,
                 roomID: roomID,
-                manager: manager
+                manager: manager,
+                orchestrator: .shared
             )
         }
     }
