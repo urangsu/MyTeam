@@ -6,6 +6,18 @@
 
 ---
 
+## 2026-05-10 (Round 26B — Universal Document Workflow Polish)
+
+- Universal Document 과잉 감지를 줄이기 위해 generic 정리 요청 guard를 추가
+- source text extraction을 fenced block / marker 기반으로 보강
+- title / filename fallback을 type-specific + time suffix 방식으로 개선
+- completion message를 유형 / 파일명 / 다음 액션 중심으로 다듬음
+- ResultVerifier warning은 검토 메모 톤으로 정리
+- Router burn-in에 App Launch / PrivacyTerms / PPT / XLSX / 잡담 회귀 케이스를 보강
+- Gmail remains unimplemented
+- Calendar write remains unimplemented
+- OAuth / StoreKit / entitlement unchanged
+
 ## 2026-05-10 (Round 26A — Universal Document Workflows Foundation)
 
 - 6개 문서 유형 요약 / 보고서 초안 / 체크리스트 / 표 정리 / 회의록 정리 / 액션아이템 추출 추가
