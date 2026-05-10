@@ -182,3 +182,8 @@
 
 Local Task Briefing은 OAuth 없이 앱 내부 상태를 먼저 브리핑 품질로 연결하는 단계다.
 최근 파일, 최근 artifact, 스케줄, pending approval, pending delegation, 최근 실패 workflow를 한 묶음으로 보여주는 쪽에 집중한다.
+
+## Round 32B Note
+
+Local briefing은 실제 지원되는 다음 액션만 제안해야 한다.
+방금 만든 문서 표로 바꿔줘는 recent artifact content resolver가 있을 때만 노출한다.

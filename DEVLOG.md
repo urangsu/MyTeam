@@ -17,6 +17,16 @@
 - Gmail API / Calendar write / OAuth 구조 / StoreKit / entitlement는 건드리지 않았다
 - Deferred Runtime QA Backlog는 유지했다
 
+## 2026-05-11 (Round 32B — Local Task Briefing Runtime QA + Action Integrity Polish)
+
+- Local Task Briefing runtime QA and copy review completed at code level
+- next-action wording now stays inside supported actions only
+- recent artifact reuse stays gated behind content resolver availability
+- Gmail / Calendar ready-state copy is not overstated
+- forbidden route guard coverage remains in place
+- no Gmail API / Calendar write / OAuth structure changes
+- StoreKit / entitlement unchanged
+
 ## 2026-05-10 (Round 31D — PlanRunner / AgentPipeline Contract Alignment)
 
 - ExecutionStepContract / ExecutionContextBag / ExecutionVerifier를 추가해 PlanRunner와 AgentPipeline가 같은 execution contract를 보게 했다

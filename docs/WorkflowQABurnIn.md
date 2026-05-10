@@ -118,6 +118,45 @@
 - 없음
 
 ### Still Unverified
+
+## Round 32B Local Task Briefing QA
+
+### Local Signal QA
+| 상태 | 기대 | 결과 | 비고 |
+|---|---|---|---|
+| 최근 파일 있음 | 오늘 할 일 / 다음 액션에 반영 | runtime pass | recent file signal |
+| 최근 artifact 있음 | 오늘 할 일 / 다음 액션에 반영 | runtime pass | resolver available only |
+| 오늘 스케줄 있음 | 오늘 할 일 반영 | runtime pass | schedule signal |
+| pending approval 있음 | 확인 필요 반영 | runtime pass | approval signal |
+| pending delegation 있음 | 확인 필요 반영 | runtime pass | delegation signal |
+| recent blocked / failed route 있음 | 확인 필요 반영 | runtime pass | failure signal |
+| connector 미연결 | 확인 필요 반영 | runtime pass | connector status |
+
+### Suggested Action Integrity
+| 제안 문구 | 실제 지원 여부 | 처리 | 비고 |
+|---|---|---|---|
+| 이 파일 요약해줘 | 지원 | 유지 | recent ready file 필요 |
+| 방금 만든 문서 표로 바꿔줘 | 지원 | 유지 | recent artifact resolver available |
+| 오늘 할 일 정리해줘 | 지원 | 유지 | local task route |
+| 진행해 | 지원 | 유지 | delegation resume |
+| 아까 하던 거 이어서 뭐 하면 돼 | 지원 | 유지 | generic continuation |
+
+### Forbidden Route QA
+| 입력 | 기대 route | 결과 | 비고 |
+|---|---|---|---|
+| PPT 만들어줘 | artifactWorkflow | runtime pass | file intake should not intercept |
+| 파일 요약해줘 | fileIntake/universalDocument | runtime pass | recent file path |
+| 이 파일 보고서로 만들어줘 | fileIntake/universalDocument | runtime pass | recent file path |
+| IMMM 앱스토어 설명문 만들어줘 | appLaunch | runtime pass | app launch priority |
+| 개인정보처리방침 초안 만들어줘 | privacyTerms | runtime pass | privacy terms priority |
+| 메일 보내줘 | blocked | runtime pass | blocked capability |
+| 일정 만들어줘 | blocked | runtime pass | blocked capability |
+| 파일 삭제해줘 | blocked | runtime pass | destructive action blocked |
+
+### Fixes Applied
+- next action fallback no longer invents unsupported artifact reuse wording
+- runtime diagnostics now surface local task action integrity counters
+- recent artifact reuse remains gated behind resolver availability
 - Room A 장시간 task가 Room B 입력으로 취소되지 않는지의 앱 UI 런타임 재현
 - Finder open / path copy 실제 UI 동작
 - fileImporter의 실제 sandbox 경로 UX
