@@ -59,8 +59,9 @@ enum UniversalDocumentArtifactWriter {
         verification: ResultVerificationSummary?
     ) -> String {
         var lines = [
-            "✅ \(artifact.title)을 생성했습니다.",
+            "✅ 문서 초안을 만들었습니다.",
             "",
+            "유형: \(request.type.displayName)",
             "파일: \(artifact.filename)",
             "📂 Workspace/Finder에서 열 수 있습니다."
         ]
@@ -74,7 +75,7 @@ enum UniversalDocumentArtifactWriter {
         }
 
         lines.append("")
-        lines.append("문서는 초안이므로 실제 업무 맥락에 맞게 수정해 주세요.")
+        lines.append("다음에는 \"표로 다시 정리해줘\"처럼 이어서 요청할 수 있습니다.")
         return lines.joined(separator: "\n")
     }
 

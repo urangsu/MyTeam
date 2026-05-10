@@ -234,6 +234,16 @@ enum RouterBurnInSuite {
             notes: "일반 정리 요청"
         ),
         .init(
+            id: "doc-generic-summary-no-context",
+            message: "그냥 정리해봐",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            notes: "문맥 없는 정리 요청은 universal document로 보내지 않음"
+        ),
+        .init(
             id: "direct-chat",
             message: "오늘 기분 어때?",
             expectedRoute: .directChat,
@@ -242,6 +252,36 @@ enum RouterBurnInSuite {
             expectedGoalType: "directAnswer",
             shouldRequireApproval: false,
             notes: "일반 대화"
+        ),
+        .init(
+            id: "direct-chat-what-do-you-think",
+            message: "이 상황 어떻게 봐?",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            notes: "잡담/의견 질문은 direct chat"
+        ),
+        .init(
+            id: "artifact-ppt",
+            message: "PPT 만들어줘",
+            expectedRoute: .artifactWorkflow,
+            expectedSkillID: nil,
+            expectedRouteHint: "artifactWorkflow",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "PPT는 universal document보다 기존 artifact workflow"
+        ),
+        .init(
+            id: "artifact-xlsx",
+            message: "엑셀 파일 만들어줘",
+            expectedRoute: .artifactWorkflow,
+            expectedSkillID: nil,
+            expectedRouteHint: "artifactWorkflow",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "엑셀은 기존 artifact workflow"
         ),
         .init(
             id: "team-discussion",

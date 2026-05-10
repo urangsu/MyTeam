@@ -9,12 +9,13 @@ enum UniversalDocumentSkillService {
         if containsAny(lower, keywords: universalDocumentKeywords(for: .checklist)) { return .checklist }
         if containsAny(lower, keywords: universalDocumentKeywords(for: .tableSummary)) { return .tableSummary }
         if containsAny(lower, keywords: universalDocumentKeywords(for: .reportDraft)) { return .reportDraft }
-        if containsAny(lower, keywords: universalDocumentKeywords(for: .summary)) { return .summary }
+        if containsAny(lower, keywords: ["핵심 요약", "문서 요약", "핵심만"]) { return .summary }
+        if looksLikeGenericDocumentRequest(lower, original: message) { return .summary }
         return nil
     }
 
     static func extractRequest(from message: String, type: UniversalDocumentSkillType) -> UniversalDocumentSkillRequest {
-        let title = extractTitle(from: message, type: type)
+        let title = resolvedTitle(from: extractTitle(from: message, type: type), type: type)
         let sourceText = extractSourceText(from: message)
         return UniversalDocumentSkillRequest(
             type: type,
@@ -29,7 +30,7 @@ enum UniversalDocumentSkillService {
         let title = request.title.trimmingCharacters(in: .whitespacesAndNewlines)
         let source = request.sourceText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !source.isEmpty { return false }
-        return title.isEmpty || title == "문서" || title == request.type.promptTitleSuffix
+        return title.isEmpty || isGenericTitle(title, type: request.type)
     }
 
     static func missingInputMessage(for request: UniversalDocumentSkillRequest) -> String {
@@ -42,7 +43,7 @@ enum UniversalDocumentSkillService {
     static func buildPrompt(for request: UniversalDocumentSkillRequest) -> String {
         let sections = requiredSections(for: request.type).map { "## \($0)" }.joined(separator: "\n")
         let sourceText = sourceText(from: request)
-        let title = request.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? request.type.promptTitleSuffix : request.title
+        let title = displayTitle(from: request.title, type: request.type)
 
         return """
         당신은 MyTeam의 범용 문서 워크플로우입니다.
@@ -64,7 +65,7 @@ enum UniversalDocumentSkillService {
         \(sourceText)
 
         출력 형식:
-        # \(title) \(request.type.promptTitleSuffix)
+        # \(title)
         \(sections)
 
         각 섹션은 바로 편집 가능한 문장으로 채우세요.
@@ -90,20 +91,19 @@ enum UniversalDocumentSkillService {
 
     static func outputFilename(for request: UniversalDocumentSkillRequest) -> String {
         let datePrefix = fileDateFormatter.string(from: Date())
-        let rawBase = request.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? request.topic : request.title
-        let base = sanitized(rawBase)
-        return "\(datePrefix)_\(base.isEmpty ? request.type.filenameSuffix : base)_\(request.type.filenameSuffix).md"
+        let baseTitle = resolvedTitle(from: request.title, type: request.type)
+        let base = sanitized(baseTitle)
+        return "\(datePrefix)_\(base.isEmpty ? fallbackFileStem(for: request.type) : base)_\(request.type.filenameSuffix).md"
     }
 
     static func documentTitle(for request: UniversalDocumentSkillRequest) -> String {
-        let subject = request.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? request.type.promptTitleSuffix : request.title
-        return "\(subject) \(request.type.promptTitleSuffix)"
+        displayTitle(from: request.title, type: request.type)
     }
 
     static func documentBody(for request: UniversalDocumentSkillRequest) -> String {
-        let title = request.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? request.type.promptTitleSuffix : request.title
+        let title = displayTitle(from: request.title, type: request.type)
         var lines: [String] = []
-        lines.append("# \(title) \(request.type.promptTitleSuffix)")
+        lines.append("# \(title)")
         lines.append("")
         lines.append("## 0. 작성 가정")
         lines.append("")
@@ -123,6 +123,22 @@ enum UniversalDocumentSkillService {
             lines.append(sourceText)
         }
         return lines.joined(separator: "\n")
+    }
+
+    static func shouldSkipForFileWorkflow(_ message: String) -> Bool {
+        let lower = message.lowercased()
+        let fileWorkflowKeywords = [
+            "ppt", "피피티", "프레젠테이션", "발표자료",
+            "엑셀", "스프레드시트", "xlsx", "pptx",
+            "파일", "markdown", "md", "artifact", "산출물"
+        ]
+        return fileWorkflowKeywords.contains { lower.contains($0) } && (
+            lower.contains("만들") ||
+            lower.contains("작성") ||
+            lower.contains("생성") ||
+            lower.contains("저장") ||
+            lower.contains("정리")
+        )
     }
 
     private static func typeSpecificBody(for request: UniversalDocumentSkillRequest) -> String {
@@ -260,6 +276,75 @@ enum UniversalDocumentSkillService {
         return (source?.isEmpty == false ? source! : "원문이 없으면 요청 문맥과 작성 가정을 기준으로 작성하세요.")
     }
 
+    private static func resolvedTitle(from rawTitle: String, type: UniversalDocumentSkillType) -> String {
+        let title = rawTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        if title.isEmpty || isGenericTitle(title, type: type) {
+            return fallbackTitle(for: type)
+        }
+        return title
+    }
+
+    private static func displayTitle(from rawTitle: String, type: UniversalDocumentSkillType) -> String {
+        let title = resolvedTitle(from: rawTitle, type: type)
+        if title.contains(type.promptTitleSuffix) {
+            return title
+        }
+        return "\(title) \(type.promptTitleSuffix)"
+    }
+
+    private static func fallbackTitle(for type: UniversalDocumentSkillType) -> String {
+        "\(type.promptTitleSuffix)_\(timeFormatter.string(from: Date()))"
+    }
+
+    private static func fallbackFileStem(for type: UniversalDocumentSkillType) -> String {
+        sanitized(fallbackTitle(for: type))
+    }
+
+    private static func isGenericTitle(_ title: String, type: UniversalDocumentSkillType) -> Bool {
+        let normalized = title
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        let genericTitles = [
+            "문서",
+            "내용",
+            "이거",
+            "아래 내용",
+            "정리",
+            "업무용",
+            "자료",
+            "보고",
+            "보고서",
+            "요약",
+            "체크리스트",
+            "회의록",
+            "액션아이템",
+            type.promptTitleSuffix.lowercased()
+        ]
+        return genericTitles.contains { normalized == $0 || normalized.contains($0) }
+    }
+
+    private static func looksLikeGenericDocumentRequest(_ lower: String, original: String) -> Bool {
+        guard lower.contains("정리") || lower.contains("요약") else { return false }
+
+        let contextCues = [
+            "문서", "업무용", "자료", "내용", "회의", "보고", "표",
+            "체크리스트", "파일로", "붙여넣", "아래 내용", "원문", "초안"
+        ]
+        if contextCues.contains(where: { lower.contains($0) }) {
+            return true
+        }
+        if original.contains("\n") || original.contains("```") {
+            return true
+        }
+        if lower.contains("정리") && original.contains("\n") && original.count >= 20 {
+            return true
+        }
+        return false
+    }
+
     private static func extractTitle(from message: String, type: UniversalDocumentSkillType) -> String {
         var cleaned = message
         for keyword in universalDocumentKeywords(for: type) + fillerKeywords {
@@ -279,11 +364,32 @@ enum UniversalDocumentSkillService {
     }
 
     private static func extractSourceText(from message: String) -> String? {
+        let trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let fenced = extractFencedBlock(from: trimmed), fenced.count >= 20 {
+            return fenced
+        }
+
         let lines = message.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
         guard lines.count > 1 else { return nil }
+
+        if let index = lines.firstIndex(where: { isSourceMarkerLine($0) }) {
+            let markerLine = lines[index]
+            let inlineBody = inlineSourceBody(from: markerLine)
+            if let inlineBody, inlineBody.count >= 20 { return inlineBody }
+
+            guard index + 1 < lines.count else { return nil }
+            let remainder = lines[(index + 1)...].joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+            if remainder.count >= 20 { return remainder }
+        }
+
         let body = lines.dropFirst().joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
-        guard body.count >= 20 else { return nil }
-        return body
+        if body.count >= 20 { return body }
+
+        if let longLine = lines.dropFirst().first(where: { $0.count >= 80 }) {
+            return longLine
+        }
+
+        return nil
     }
 
     private static func containsAny(_ text: String, keywords: [String]) -> Bool {
@@ -293,7 +399,7 @@ enum UniversalDocumentSkillService {
     private static func universalDocumentKeywords(for type: UniversalDocumentSkillType) -> [String] {
         switch type {
         case .summary:
-            return ["요약", "핵심 요약", "문서 요약", "정리"]
+            return ["요약", "핵심 요약", "문서 요약", "핵심만"]
         case .reportDraft:
             return ["보고서", "검토 보고서", "보고서 초안", "리포트"]
         case .checklist:
@@ -308,6 +414,9 @@ enum UniversalDocumentSkillService {
     }
 
     private static let fillerKeywords = [
+        "요약",
+        "요약해줘",
+        "요약해",
         "만들어줘",
         "작성해줘",
         "정리해줘",
@@ -329,10 +438,37 @@ enum UniversalDocumentSkillService {
         return formatter
     }()
 
+    private static let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.dateFormat = "HHmm"
+        return formatter
+    }()
+
     private static func sanitized(_ value: String) -> String {
         let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "._-"))
         let converted = value.unicodeScalars.map { allowed.contains($0) ? Character($0) : "_" }
         let collapsed = String(converted).replacingOccurrences(of: "__", with: "_")
         return String(collapsed.prefix(60)).trimmingCharacters(in: CharacterSet(charactersIn: "_"))
+    }
+
+    private static func extractFencedBlock(from message: String) -> String? {
+        guard let start = message.range(of: "```") else { return nil }
+        let remaining = message[start.upperBound...]
+        guard let end = remaining.range(of: "```") else { return nil }
+        let body = remaining[..<end.lowerBound].trimmingCharacters(in: .whitespacesAndNewlines)
+        return body.isEmpty ? nil : body
+    }
+
+    private static func isSourceMarkerLine(_ line: String) -> Bool {
+        let lower = line.lowercased()
+        return lower == "---" || lower.hasPrefix("내용:") || lower.hasPrefix("원문:") || lower.hasPrefix("아래 내용") || lower.hasPrefix("붙여넣은 내용")
+    }
+
+    private static func inlineSourceBody(from line: String) -> String? {
+        guard let colon = line.firstIndex(of: ":") else { return nil }
+        let body = line[line.index(after: colon)...].trimmingCharacters(in: .whitespacesAndNewlines)
+        return body.isEmpty ? nil : body
     }
 }

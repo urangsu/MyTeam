@@ -133,7 +133,7 @@ enum DelegatedWorkflowDetector {
         if containsAny(lower, keywords: ["llm", "모델", "추론", "분석", "생성"]) {
             scopes.append(.llmSkill)
         }
-        if containsAny(lower, keywords: ["markdown", "md", "문서", "파일", "초안", "artifact", "산출물"] + artifactWorkflowKeywords + universalDocumentKeywords) {
+        if containsAny(lower, keywords: ["markdown", "md", "문서", "파일", "초안", "artifact", "산출물"] + artifactWorkflowKeywords) || looksLikeGenericDocumentRequest(lower, original: message) {
             scopes.append(.artifactCreation)
         }
         if containsAny(lower, keywords: ["툴", "도구", "브라우저", "웹", "검색", "외부"]) {
@@ -196,7 +196,7 @@ enum DelegatedWorkflowDetector {
         if containsAny(lower, keywords: privacyTermsKeywords) {
             return "privacyTerms"
         }
-        if containsAny(lower, keywords: universalDocumentKeywords) {
+        if containsAny(lower, keywords: universalDocumentKeywords) || looksLikeGenericDocumentRequest(lower, original: message) {
             return "universalDocument"
         }
         if containsAny(lower, keywords: artifactWorkflowKeywords) {
@@ -231,6 +231,25 @@ enum DelegatedWorkflowDetector {
             "설정 저장",
             "사용자가 연결"
         ])
+    }
+
+    static func looksLikeGenericDocumentRequest(_ lower: String, original: String) -> Bool {
+        guard lower.contains("정리") || lower.contains("요약") else { return false }
+
+        let contextKeywords = [
+            "문서", "업무용", "자료", "내용", "회의", "보고", "표",
+            "체크리스트", "파일로", "붙여넣", "아래 내용", "원문", "초안"
+        ]
+        if contextKeywords.contains(where: { lower.contains($0) }) {
+            return true
+        }
+        if original.contains("\n") || original.contains("```") {
+            return true
+        }
+        if lower.contains("정리") && original.count >= 20 {
+            return true
+        }
+        return false
     }
 
     static func buildExecutionRequest(

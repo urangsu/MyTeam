@@ -27,15 +27,15 @@ enum ResultVerifier {
         }
 
         if trimmed.count < 30 {
-            issues.append(issue(.warning, "Markdown artifact가 너무 짧습니다."))
+            issues.append(issue(.warning, "검토 메모: Markdown 초안이 짧아서 확인이 필요합니다."))
         }
 
         if !trimmed.hasPrefix("#") {
-            issues.append(issue(.warning, "Markdown artifact는 제목으로 시작하는 편이 좋습니다."))
+            issues.append(issue(.warning, "검토 메모: 제목이 없거나 너무 일반적일 수 있습니다."))
         }
 
         for section in requiredSections where !content.contains(section) {
-            issues.append(issue(.warning, "필수 섹션 누락: \(section)"))
+            issues.append(issue(.warning, "검토 메모: \(section) 섹션을 보강하면 더 좋습니다."))
         }
 
         if containsSensitiveKeywords(trimmed) {
@@ -58,7 +58,7 @@ enum ResultVerifier {
         }
 
         if trimmed.count < 30 {
-            issues.append(issue(.warning, "응답이 너무 짧습니다."))
+            issues.append(issue(.warning, "검토 메모: 응답이 짧아서 한 번 더 다듬을 수 있습니다."))
         }
 
         if containsSensitiveKeywords(trimmed) {

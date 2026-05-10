@@ -379,7 +379,8 @@ final class WorkflowOrchestrator {
         }
 
         // ── 범용 문서 워크플로우: 요약/보고서/체크리스트/표/회의록/액션아이템 ──
-        if let documentType = UniversalDocumentSkillService.detectSkillType(from: userMessage),
+        if !UniversalDocumentSkillService.shouldSkipForFileWorkflow(userMessage),
+           let documentType = UniversalDocumentSkillService.detectSkillType(from: userMessage),
            enabledSkills.contains(where: { $0.id == documentType.skillID }) {
             let request = UniversalDocumentSkillService.extractRequest(from: userMessage, type: documentType)
             await MainActor.run {
