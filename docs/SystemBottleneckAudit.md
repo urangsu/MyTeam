@@ -165,3 +165,15 @@
 - Keep the Universal Document wrapper logic in WorkflowRunner and avoid re-inlining fallback logic into orchestrator.
 - Treat the room runtime store as the single source of truth for room-level runtime state.
 - Defer remaining route/execution contract alignment to Round 31D.
+
+## Round 31D Result
+
+### Fixed / Reduced
+- PlanRunner / AgentPipeline contract drift reduced
+- legacy fallback outcome ambiguity reduced
+- artifactCount misreporting risk reduced
+
+### Remaining
+- App Launch / PrivacyTerms execution boundary
+- ToolExecutionLayer full adoption
+- Deferred runtime QA

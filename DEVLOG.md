@@ -6,6 +6,15 @@
 
 ---
 
+## 2026-05-10 (Round 31D — PlanRunner / AgentPipeline Contract Alignment)
+
+- ExecutionStepContract / ExecutionContextBag / ExecutionVerifier를 추가해 PlanRunner와 AgentPipeline가 같은 execution contract를 보게 했다
+- PlanRunner와 AgentPipeline 모두 공통 context / verification helper를 사용하도록 정리했다
+- Universal Document legacy fallback outcome을 명시적 PlanExecutionResult로 반환하도록 바꿨다
+- artifactCount 오기록을 막고, verification / safety failure는 fallback 금지를 유지했다
+- AgentPipeline 기본 route 연결은 하지 않았다
+- Gmail API / Calendar write / OAuth 구조 / StoreKit / entitlement는 건드리지 않았다
+
 ## 2026-05-10 (Round 31C — Workflow Runner Boundary Expansion + Runtime Store Hardening)
 
 - WorkflowRunner now owns the Universal Document wrapper / fallback boundary for the plan path
