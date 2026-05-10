@@ -58,13 +58,19 @@ enum UniversalDocumentArtifactWriter {
         request: UniversalDocumentSkillRequest,
         verification: ResultVerificationSummary?
     ) -> String {
+        let isFileBased = request.sourceName?.isEmpty == false
         var lines = [
-            "✅ 문서 초안을 만들었습니다.",
+            isFileBased ? "✅ 파일 기반 문서 초안을 만들었습니다." : "✅ 문서 초안을 만들었습니다.",
             "",
             "유형: \(request.type.displayName)",
-            "파일: \(artifact.filename)",
-            "📂 Workspace/Finder에서 열 수 있습니다."
+            "파일: \(artifact.filename)"
         ]
+
+        if let sourceName = request.sourceName, !sourceName.isEmpty {
+            lines.append("원본: \(sourceName)")
+        }
+
+        lines.append("📂 Workspace/Finder에서 열 수 있습니다.")
 
         if let verification, !verification.issues.isEmpty {
             let warningCount = verification.issues.filter { $0.severity == .warning }.count

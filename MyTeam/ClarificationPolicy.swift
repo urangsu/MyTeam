@@ -61,6 +61,10 @@ enum ClarificationPolicy {
             ])
         }
 
+        if GoalContextEngine.referencesRecentFile(request.userMessage) {
+            return .askRequired(["먼저 txt, md, csv 파일을 읽어주세요."])
+        }
+
         if let context,
            !context.recentArtifactIDs.isEmpty,
            GoalContextEngine.referencesRecentArtifact(request.userMessage) {

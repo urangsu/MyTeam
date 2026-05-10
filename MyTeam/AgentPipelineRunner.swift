@@ -13,7 +13,8 @@ struct AgentPipelineResult: Equatable {
     let message: String
 }
 
-actor AgentPipelineRunner {
+@MainActor
+final class AgentPipelineRunner {
     static let shared = AgentPipelineRunner()
 
     func run(

@@ -22,6 +22,7 @@ enum UniversalDocumentSkillService {
             title: title,
             topic: title,
             sourceText: sourceText,
+            sourceName: nil,
             userMessage: message
         )
     }
@@ -44,6 +45,7 @@ enum UniversalDocumentSkillService {
         let sections = requiredSections(for: request.type).map { "## \($0)" }.joined(separator: "\n")
         let sourceText = sourceText(from: request)
         let title = displayTitle(from: request.title, type: request.type)
+        let sourceNameLine = request.sourceName.map { "\n원본 파일명: \($0)" } ?? ""
 
         return """
         당신은 MyTeam의 범용 문서 워크플로우입니다.
@@ -57,6 +59,7 @@ enum UniversalDocumentSkillService {
         작성할 문서 유형: \(request.type.displayName)
         문서 제목: \(title)
         주제: \(request.topic)
+        \(sourceNameLine)
 
         사용자 요청:
         \(request.userMessage)

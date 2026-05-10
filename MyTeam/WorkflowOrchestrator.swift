@@ -466,6 +466,114 @@ final class WorkflowOrchestrator {
             }
         }
 
+        let recentFileIntakeResult = await MainActor.run { manager.lastFileIntakeResult(for: roomID) }
+        let referencesRecentFile = GoalContextEngine.referencesRecentFile(userMessage)
+        if referencesRecentFile {
+            guard let recentFileIntakeResult else {
+                await MainActor.run {
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "스킬",
+                        text: "먼저 txt, md, csv 파일을 읽어주세요.",
+                        isUser: false,
+                        isSystem: true
+                    )
+                }
+                return
+            }
+
+            guard recentFileIntakeResult.status == .ready,
+                  let sourceText = recentFileIntakeResult.extractedText,
+                  let documentType = UniversalDocumentSkillService.detectSkillType(from: userMessage) else {
+                await MainActor.run {
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "스킬",
+                        text: recentFileIntakeResult.status == .planned || recentFileIntakeResult.status == .unsupported
+                            || recentFileIntakeResult.status == .blocked
+                            || recentFileIntakeResult.status == .tooLarge
+                            || recentFileIntakeResult.status == .readFailed
+                            ? "이 파일은 아직 문서 생성에 사용할 수 없습니다. txt, md, csv 파일을 먼저 지원합니다."
+                            : "파일에서 문서 유형을 더 구체적으로 알려주세요. 예: 요약, 보고서, 표, 체크리스트",
+                        isUser: false,
+                        isSystem: true
+                    )
+                }
+                return
+            }
+
+            guard enabledSkills.contains(where: { $0.id == documentType.skillID }) else {
+                await MainActor.run {
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "스킬",
+                        text: "해당 문서 유형은 아직 사용할 수 없습니다.",
+                        isUser: false,
+                        isSystem: true
+                    )
+                }
+                return
+            }
+
+            let fileBaseName = recentFileIntakeResult.request.fileURL.deletingPathExtension().lastPathComponent
+            let request = UniversalDocumentSkillRequest(
+                type: documentType,
+                title: fileBaseName.isEmpty ? recentFileIntakeResult.request.originalFilename : fileBaseName,
+                topic: fileBaseName.isEmpty ? recentFileIntakeResult.request.originalFilename : fileBaseName,
+                sourceText: sourceText,
+                sourceName: recentFileIntakeResult.request.originalFilename,
+                userMessage: userMessage
+            )
+            await MainActor.run {
+                manager.recordUniversalDocumentType(documentType, roomID: roomID)
+                manager.updateRoomGoalContext(roomID: roomID, goal: interpretedGoal, activeWorkflowStep: "fileIntake.documentRequested")
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .universalDocumentDetected,
+                    message: "file intake document request: \(documentType.skillID)"
+                )
+            }
+            if UniversalDocumentSkillService.needsMoreInput(request) {
+                let clarification = ClarificationPolicy.decideForUniversalDocument(request, context: await MainActor.run { manager.roomGoalContext(for: roomID) })
+                if case .askRequired(let questions) = clarification {
+                    await MainActor.run {
+                        manager.addChatLog(
+                            roomID: roomID,
+                            agentID: "system",
+                            agentName: "스킬",
+                            text: questions.first ?? "파일을 더 구체적으로 정리해 주세요.",
+                            isUser: false,
+                            isSystem: true
+                        )
+                    }
+                    return
+                }
+            }
+
+            effectiveScopes.formUnion(enabledSkills.flatMap { $0.allowedScopes })
+            effectiveScopes.insert(.artifactGeneration)
+            await MainActor.run { manager.isWorkflowRunning = true }
+            defer { Task { @MainActor in manager.isWorkflowRunning = false } }
+            let task = Task {
+                await self.runUniversalDocumentWorkflow(
+                    request: request,
+                    userMessage: userMessage,
+                    roomID: roomID,
+                    manager: manager,
+                    allowedScopes: effectiveScopes
+                )
+            }
+            setActiveWorkflowTask(task, for: roomID)
+            await task.value
+            setActiveWorkflowTask(nil, for: roomID)
+            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount() > 0 }
+            return
+        }
+
         // ── 범용 문서 워크플로우: 요약/보고서/체크리스트/표/회의록/액션아이템 ──
         if !UniversalDocumentSkillService.shouldSkipForFileWorkflow(userMessage),
            let documentType = UniversalDocumentSkillService.detectSkillType(from: userMessage),

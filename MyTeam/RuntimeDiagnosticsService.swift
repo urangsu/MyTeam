@@ -95,6 +95,10 @@ struct RuntimeDiagnosticsSnapshot {
     let fileIntakeReadableExtensions: [String]
     let fileIntakePlannedExtensions: [String]
     let fileIntakeMaxFileSizeMB: Int
+    let lastFileIntakeStatus: String?
+    let lastFileIntakeFilename: String?
+    let lastFileIntakeHasExtractedText: Bool
+    let fileIntakeToDocumentAvailable: Bool
 
     // Workspace
     let workspacePath: String
@@ -165,6 +169,10 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("planRunnerFailureReasonAware: \(planRunnerFailureReasonAware)")
         lines.append("agentPipeline: available=\(agentPipelineAvailable) defaultSteps=\(defaultPipelineOrderCount) context=\(pipelineContextAvailable)")
         lines.append("fileIntake: available=\(fileIntakeAvailable) readable=\(fileIntakeReadableExtensions.joined(separator: ",")) planned=\(fileIntakePlannedExtensions.joined(separator: ",")) max=\(fileIntakeMaxFileSizeMB)MB")
+        if let lastFileIntakeStatus {
+            lines.append("fileIntakeLast: status=\(lastFileIntakeStatus) file=\(lastFileIntakeFilename ?? "nil") text=\(lastFileIntakeHasExtractedText)")
+        }
+        lines.append("fileIntakeToDocument: available=\(fileIntakeToDocumentAvailable)")
         lines.append("safety: blockedCapabilityGate=\(blockedCapabilityGateEnabled) resultVerifierErrorGate=\(resultVerifierErrorGateEnabled)")
         lines.append("autonomy: goalInterpreter=true clarificationPolicy=true capabilityRouter=true resultVerifier=true")
         lines.append("workspace: \(workspacePath)")
@@ -239,6 +247,11 @@ final class RuntimeDiagnosticsService {
         let fileIntakeReadableExtensions = FileIntakePolicy.readableExtensions.sorted()
         let fileIntakePlannedExtensions = FileIntakePolicy.plannedExtensions.sorted()
         let fileIntakeMaxFileSizeMB = Int(FileIntakePolicy.maxFileSizeBytes / (1024 * 1024))
+        let currentFileIntakeResult = await MainActor.run { currentRoomID.flatMap { manager.lastFileIntakeResult(for: $0) } }
+        let lastFileIntakeStatus = currentFileIntakeResult?.status.rawValue
+        let lastFileIntakeFilename = currentFileIntakeResult?.request.originalFilename
+        let lastFileIntakeHasExtractedText = currentFileIntakeResult?.extractedText?.isEmpty == false
+        let fileIntakeToDocumentAvailable = currentFileIntakeResult?.status == .ready && lastFileIntakeHasExtractedText
         let activeTaskRoomCount = manager.activeWorkflowTaskCount()
         let lastRoomGoalType = roomGoalContext?.currentGoal?.goalType.rawValue
         let lastActiveWorkflowStep = roomGoalContext?.activeWorkflowStep
@@ -313,6 +326,10 @@ final class RuntimeDiagnosticsService {
             fileIntakeReadableExtensions: fileIntakeReadableExtensions,
             fileIntakePlannedExtensions: fileIntakePlannedExtensions,
             fileIntakeMaxFileSizeMB: fileIntakeMaxFileSizeMB,
+            lastFileIntakeStatus: lastFileIntakeStatus,
+            lastFileIntakeFilename: lastFileIntakeFilename,
+            lastFileIntakeHasExtractedText: lastFileIntakeHasExtractedText,
+            fileIntakeToDocumentAvailable: fileIntakeToDocumentAvailable,
             workspacePath: workspacePath,
             recentEventCount: recentEvents.count,
             latestEventSummary: latestSummary

@@ -5,5 +5,6 @@ struct UniversalDocumentSkillRequest: Equatable {
     let title: String
     let topic: String
     let sourceText: String?
+    let sourceName: String?
     let userMessage: String
 }

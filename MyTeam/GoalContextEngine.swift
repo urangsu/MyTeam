@@ -18,6 +18,24 @@ enum GoalContextEngine {
         return markers.contains { lower.contains($0) }
     }
 
+    static func referencesRecentFile(_ message: String) -> Bool {
+        let lower = message.lowercased()
+        let markers = [
+            "이 파일",
+            "이 파일을",
+            "방금 파일",
+            "방금 읽은 파일",
+            "읽은 파일",
+            "최근 파일",
+            "파일 내용",
+            "첨부한 파일",
+            "올린 파일",
+            "파일을 바탕으로",
+            "파일 바탕으로"
+        ]
+        return markers.contains { lower.contains($0) }
+    }
+
     static func latestReferencedArtifactID(
         message: String,
         context: RoomGoalContext?

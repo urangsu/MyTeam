@@ -98,6 +98,8 @@ class AgentWindowManager: ObservableObject {
     @Published var delegatedWorkflowPlansByRoom: [UUID: DelegatedWorkflowPlan] = [:]
     /// room별 pending delegated execution request.
     @Published var pendingDelegatedExecutionRequestsByRoom: [UUID: DelegatedExecutionRequest] = [:]
+    /// room별 최근 파일 입력 결과 — 파일 기반 문서 워크플로우 연결용.
+    @Published var lastFileIntakeResultsByRoom: [UUID: FileIntakeResult] = [:]
     /// room별 goal context — 문맥 기반 clarification / recent artifact 참조용.
     @Published var roomGoalContexts: [UUID: RoomGoalContext] = [:]
     /// 최근 완료된 workflow artifact 목록 — 채팅 하단 ArtifactCardView에 표시.
@@ -226,8 +228,18 @@ class AgentWindowManager: ObservableObject {
     }
 
     @MainActor
+    func recordFileIntakeResult(_ result: FileIntakeResult, roomID: UUID) {
+        lastFileIntakeResultsByRoom[roomID] = result
+    }
+
+    @MainActor
     func pendingDelegatedExecutionRequest(for roomID: UUID) -> DelegatedExecutionRequest? {
         pendingDelegatedExecutionRequestsByRoom[roomID]
+    }
+
+    @MainActor
+    func lastFileIntakeResult(for roomID: UUID) -> FileIntakeResult? {
+        lastFileIntakeResultsByRoom[roomID]
     }
 
     @MainActor
