@@ -73,10 +73,11 @@ struct DailyBriefingCardView: View {
                     Text("연결 상태")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.secondary)
-                    ForEach(briefing.connectorMessages, id: \.self) { message in
+                    ForEach(Array(briefing.connectorMessages.prefix(3)), id: \.self) { message in
                         Text("• \(message)")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
                 }
             }

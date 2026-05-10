@@ -82,10 +82,76 @@ enum DailyBriefingService {
     }
 
     static func summaryText(for briefing: DailyBriefing) -> String {
-        let calendarCount = briefing.calendarItems.count
-        let mailCount = briefing.mailItems.count
-        let taskCount = briefing.taskItems.count
-        let attentionCount = briefing.attentionItems.count
-        return "오늘 일정 \(calendarCount)개, 새 메일 \(mailCount)개, 오늘 할 일 \(taskCount)개, 확인 필요 \(attentionCount)개"
+        detailedSummaryText(for: briefing)
+    }
+
+    static func detailedSummaryText(for briefing: DailyBriefing) -> String {
+        var lines: [String] = [
+            "# 오늘 브리핑",
+            "",
+            "## 1. 오늘 일정"
+        ]
+
+        if briefing.calendarItems.isEmpty {
+            lines.append(contentsOf: [
+                "- 연결된 일정이 없습니다.",
+                "- Google Calendar 연결 후 오늘 일정을 불러올 수 있습니다."
+            ])
+        } else {
+            for item in briefing.calendarItems.prefix(3) {
+                let detail = [item.timeText, item.location].compactMap { $0 }.joined(separator: " · ")
+                lines.append(detail.isEmpty ? "- \(item.title)" : "- \(item.title) · \(detail)")
+            }
+        }
+
+        lines.append("")
+        lines.append("## 2. 새 메일")
+        if briefing.mailItems.isEmpty {
+            lines.append("- 메일 브리핑은 아직 준비 중입니다.")
+            lines.append("- 메일 발송/삭제는 현재 차단되어 있습니다.")
+        } else {
+            for item in briefing.mailItems.prefix(3) {
+                lines.append("- \(item.sender) · \(item.subject)")
+            }
+        }
+
+        lines.append("")
+        lines.append("## 3. 오늘 할 일")
+        if briefing.taskItems.isEmpty {
+            lines.append("- 최근 파일이나 문서에서 이어서 할 작업이 없습니다.")
+        } else {
+            for item in briefing.taskItems.prefix(3) {
+                lines.append("- \(item.title)")
+            }
+        }
+
+        lines.append("")
+        lines.append("## 4. 확인 필요")
+        if briefing.attentionItems.isEmpty {
+            lines.append("- 확인 필요 항목이 없습니다.")
+        } else {
+            for item in briefing.attentionItems.prefix(3) {
+                lines.append("- \(item.title)")
+            }
+        }
+
+        lines.append("")
+        lines.append("## 5. 다음 액션")
+        var nextActions: [String] = []
+        if let firstTask = briefing.taskItems.first {
+            nextActions.append("- \(firstTask.title)")
+        }
+        if briefing.calendarItems.isEmpty {
+            nextActions.append("- Google Calendar 연결 후 오늘 일정을 더 정확히 불러올 수 있습니다.")
+        }
+        if briefing.mailItems.isEmpty {
+            nextActions.append("- 메일 브리핑은 아직 준비 중입니다.")
+        }
+        if nextActions.isEmpty {
+            nextActions.append("- \"이 파일 요약해줘\"처럼 이어서 요청할 수 있습니다.")
+        }
+        lines.append(contentsOf: Array(nextActions.prefix(2)))
+
+        return lines.joined(separator: "\n")
     }
 }

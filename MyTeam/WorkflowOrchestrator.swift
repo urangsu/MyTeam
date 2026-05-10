@@ -1564,7 +1564,7 @@ final class WorkflowOrchestrator {
                 roomID: roomID,
                 agentID: "system",
                 agentName: "스킬",
-                text: DailyBriefingService.summaryText(for: briefing),
+                text: DailyBriefingService.detailedSummaryText(for: briefing),
                 isUser: false,
                 isSystem: true
             )

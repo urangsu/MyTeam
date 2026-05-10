@@ -404,11 +404,11 @@ enum RouterBurnInSuite {
         .init(
             id: "future-daily-briefing-route",
             message: "오늘 일정 브리핑해줘",
-            expectedRoute: .directChat,
+            expectedRoute: .dailyBriefing,
             expectedSkillID: nil,
-            expectedRouteHint: nil,
+            expectedRouteHint: "dailyBriefing",
             shouldRequireApproval: false,
-            notes: "향후 daily briefing route 후보"
+            notes: "dailyBriefing route"
         ),
         .init(
             id: "future-google-calendar-read",
@@ -514,12 +514,12 @@ enum RouterBurnInSuite {
         .init(
             id: "autonomy-mail-metadata",
             message: "새 메일 몇 통 왔어?",
-            expectedRoute: .directChat,
+            expectedRoute: .dailyBriefing,
             expectedSkillID: nil,
-            expectedRouteHint: nil,
+            expectedRouteHint: "dailyBriefing",
             expectedGoalType: "mailBriefing",
             shouldRequireApproval: false,
-            notes: "메일 메타데이터 읽기 준비 케이스"
+            notes: "메일 메타데이터 브리핑은 dailyBriefing route"
         ),
         .init(
             id: "autonomy-mail-send",

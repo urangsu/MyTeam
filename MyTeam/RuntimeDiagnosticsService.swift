@@ -169,7 +169,10 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("dailyBriefing: status=\(dailyBriefingStatus) calendar=\(dailyBriefingCalendarItemCount) mail=\(dailyBriefingMailItemCount)")
         lines.append("briefingAvailability: daily=\(dailyBriefingAvailable) local=\(localBriefingAvailable) calendarProvider=\(calendarProviderAvailable) gmailMetadata=\(gmailMetadataAvailable) sections=\(lastBriefingSectionCount)")
         if !connectorBlockedActions.isEmpty {
-            lines.append("connectorBlockedActions: \(connectorBlockedActions.joined(separator: ", "))")
+            let preview = Array(connectorBlockedActions.prefix(5))
+            let remaining = connectorBlockedActions.count - preview.count
+            let suffix = remaining > 0 ? " ... +\(remaining)" : ""
+            lines.append("connectorBlockedActions(\(connectorBlockedActions.count)): \(preview.joined(separator: ", "))\(suffix)")
         }
         lines.append("universalDocument: skills=\(universalDocumentSkillCount) available=\(universalDocumentRouteAvailable)")
         lines.append("routeResolver: available=\(routeResolverAvailable)")
