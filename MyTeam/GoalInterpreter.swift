@@ -4,7 +4,7 @@ enum GoalInterpreter {
     static func interpret(_ message: String) -> GoalInterpretation {
         let lower = message.lowercased()
 
-        if containsAny(lower, keywords: dailyBriefingKeywords) {
+        if DailyBriefingRouteDetector.isDailyBriefingRequest(message) {
             return makeGoal(
                 preview: message,
                 type: .dailyBriefing,
@@ -206,15 +206,6 @@ enum GoalInterpreter {
             createdAt: Date()
         )
     }
-
-    private static let dailyBriefingKeywords = [
-        "오늘 브리핑",
-        "오늘 뭐 있어",
-        "오늘 일정",
-        "오늘 할 일",
-        "업무 브리핑",
-        "내 하루 정리"
-    ]
 
     private static let connectorSetupKeywords = [
         "구글 연결",

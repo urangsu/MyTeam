@@ -64,7 +64,17 @@ enum RouteResolver {
             )
         }
 
-        if input.goal.goalType == .dailyBriefing || input.goal.goalType == .calendarBriefing || input.goal.goalType == .mailBriefing || input.goal.goalType == .connectorSetup {
+        if input.goal.goalType == .dailyBriefing || input.goal.goalType == .calendarBriefing || input.goal.goalType == .mailBriefing {
+            return RouteDecision(
+                kind: .dailyBriefing,
+                reason: "daily briefing goal detected",
+                skillID: nil,
+                requiresApproval: false,
+                expectedOutput: "briefing summary"
+            )
+        }
+
+        if input.goal.goalType == .connectorSetup {
             return RouteDecision(
                 kind: .directChat,
                 reason: "briefing / connector route deferred",

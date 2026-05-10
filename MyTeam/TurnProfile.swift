@@ -4,6 +4,7 @@ struct TurnProfile: Identifiable, Equatable {
     enum Route: String, Codable {
         case localSkill
         case delegationMode
+        case dailyBriefing
         case appLaunchPack
         case privacyTerms
         case universalDocument

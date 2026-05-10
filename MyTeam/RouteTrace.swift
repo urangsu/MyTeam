@@ -6,6 +6,8 @@ struct RouteTrace: Identifiable, Equatable {
         case skillMatched
         case disabledSkillMatched
         case localSkillHandled
+        case dailyBriefingDetected
+        case dailyBriefingCompleted
         case delegationDetected
         case delegationApproved
         case delegationCancelled

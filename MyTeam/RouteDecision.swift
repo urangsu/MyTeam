@@ -5,6 +5,7 @@ struct RouteDecision: Equatable {
         case blocked
         case disabledSkill
         case localSkill
+        case dailyBriefing
         case appLaunch
         case privacyTerms
         case universalDocument

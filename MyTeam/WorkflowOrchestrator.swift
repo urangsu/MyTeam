@@ -466,6 +466,45 @@ final class WorkflowOrchestrator {
             }
         }
 
+        if routeDecision.kind == .dailyBriefing {
+            await MainActor.run {
+                manager.updateRoomGoalContext(roomID: roomID, goal: interpretedGoal, activeWorkflowStep: "dailyBriefing.preparing")
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .dailyBriefingDetected,
+                    message: "daily briefing detected: \(routeDecision.reason)"
+                )
+                self.recordTurnProfile(
+                    manager: manager,
+                    roomID: roomID,
+                    userMessage: userMessage,
+                    route: .dailyBriefing,
+                    reason: routeDecision.reason,
+                    matchedSkills: [],
+                    effectiveScopes: effectiveScopes,
+                    expectedOutput: "briefing summary",
+                    requiresApproval: false
+                )
+            }
+
+            await MainActor.run { manager.isWorkflowRunning = true }
+            defer { Task { @MainActor in manager.isWorkflowRunning = false } }
+            let task = Task {
+                await self.runDailyBriefingWorkflow(
+                    userMessage: userMessage,
+                    roomID: roomID,
+                    manager: manager,
+                    allowedScopes: effectiveScopes
+                )
+            }
+            setActiveWorkflowTask(task, for: roomID)
+            await task.value
+            setActiveWorkflowTask(nil, for: roomID)
+            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount() > 0 }
+            return
+        }
+
         let recentFileIntakeResult = await MainActor.run { manager.lastFileIntakeResult(for: roomID) }
         let referencesRecentFile = GoalContextEngine.referencesRecentFile(userMessage)
         let isFileCreationRequest = GoalContextEngine.isFileCreationRequest(userMessage)
@@ -1486,6 +1525,50 @@ final class WorkflowOrchestrator {
             isUser: false,
             isSystem: isSystem
         )
+    }
+
+    // MARK: - Daily Briefing Workflow
+
+    private func runDailyBriefingWorkflow(
+        userMessage: String,
+        roomID: UUID,
+        manager: AgentWindowManager,
+        allowedScopes: Set<ToolScope>
+    ) async {
+        let briefing = await DailyBriefingService.makePreviewBriefing(
+            now: Date(),
+            calendarProvider: GoogleDailyBriefingCalendarProvider.shared,
+            manager: manager
+        )
+
+        await MainActor.run {
+            manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "dailyBriefing.completed")
+            self.recordRouteTrace(
+                manager: manager,
+                roomID: roomID,
+                step: .dailyBriefingCompleted,
+                message: "daily briefing summary ready"
+            )
+            self.recordTurnProfile(
+                manager: manager,
+                roomID: roomID,
+                userMessage: userMessage,
+                route: .dailyBriefing,
+                reason: "daily briefing summary ready",
+                matchedSkills: [],
+                effectiveScopes: allowedScopes,
+                expectedOutput: "daily briefing summary",
+                requiresApproval: false
+            )
+            manager.addChatLog(
+                roomID: roomID,
+                agentID: "system",
+                agentName: "스킬",
+                text: DailyBriefingService.summaryText(for: briefing),
+                isUser: false,
+                isSystem: true
+            )
+        }
     }
 
     // MARK: - Privacy Terms Workflow (Skill-specific)

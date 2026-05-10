@@ -368,29 +368,29 @@ enum RouterBurnInSuite {
         .init(
             id: "future-google-calendar",
             message: "오늘 일정 뭐 있어?",
-            expectedRoute: .directChat,
+            expectedRoute: .dailyBriefing,
             expectedSkillID: nil,
-            expectedRouteHint: nil,
+            expectedRouteHint: "dailyBriefing",
             shouldRequireApproval: false,
-            notes: "향후 Google Calendar briefing route 후보"
+            notes: "dailyBriefing route"
         ),
         .init(
             id: "future-gmail-metadata",
             message: "새 메일 몇 통 왔어?",
-            expectedRoute: .directChat,
+            expectedRoute: .dailyBriefing,
             expectedSkillID: nil,
-            expectedRouteHint: nil,
+            expectedRouteHint: "dailyBriefing",
             shouldRequireApproval: false,
-            notes: "향후 Gmail metadata briefing route 후보"
+            notes: "dailyBriefing route"
         ),
         .init(
             id: "future-gmail-summary",
             message: "중요한 메일만 요약해줘",
-            expectedRoute: .directChat,
+            expectedRoute: .dailyBriefing,
             expectedSkillID: nil,
-            expectedRouteHint: nil,
+            expectedRouteHint: "dailyBriefing",
             shouldRequireApproval: false,
-            notes: "향후 Gmail summary route 후보"
+            notes: "dailyBriefing route"
         ),
         .init(
             id: "future-google-calendar-connect",
@@ -477,18 +477,18 @@ enum RouterBurnInSuite {
         .init(
             id: "autonomy-daily-briefing",
             message: "오늘 뭐 해야 해?",
-            expectedRoute: .directChat,
+            expectedRoute: .dailyBriefing,
             expectedSkillID: nil,
-            expectedRouteHint: nil,
+            expectedRouteHint: "dailyBriefing",
             shouldRequireApproval: false,
             notes: "GoalInterpreter should classify dailyBriefing"
         ),
         .init(
             id: "autonomy-mail-calendar",
             message: "메일이랑 일정 보고 오늘 할 일 정리해줘",
-            expectedRoute: .directChat,
+            expectedRoute: .dailyBriefing,
             expectedSkillID: nil,
-            expectedRouteHint: nil,
+            expectedRouteHint: "dailyBriefing",
             shouldRequireApproval: false,
             notes: "dailyBriefing + calendarRead + mailMetadataRead 준비 케이스"
         ),
@@ -554,42 +554,42 @@ enum RouterBurnInSuite {
         .init(
             id: "future-daily-briefing",
             message: "오늘 브리핑 해줘",
-            expectedRoute: .directChat,
+            expectedRoute: .dailyBriefing,
             expectedSkillID: nil,
-            expectedRouteHint: nil,
+            expectedRouteHint: "dailyBriefing",
             expectedGoalType: "dailyBriefing",
             shouldRequireApproval: false,
-            notes: "향후 daily briefing route 후보"
+            notes: "dailyBriefing route"
         ),
         .init(
             id: "future-calendar-briefing",
             message: "오늘 일정 뭐 있어?",
-            expectedRoute: .directChat,
+            expectedRoute: .dailyBriefing,
             expectedSkillID: nil,
-            expectedRouteHint: nil,
+            expectedRouteHint: "dailyBriefing",
             expectedGoalType: "dailyBriefing",
             shouldRequireApproval: false,
-            notes: "향후 calendar briefing route 후보"
+            notes: "dailyBriefing route"
         ),
         .init(
             id: "future-mail-count-briefing",
             message: "새 메일 몇 통 왔어?",
-            expectedRoute: .directChat,
+            expectedRoute: .dailyBriefing,
             expectedSkillID: nil,
-            expectedRouteHint: nil,
+            expectedRouteHint: "dailyBriefing",
             expectedGoalType: "mailBriefing",
             shouldRequireApproval: false,
-            notes: "향후 mail metadata briefing route 후보"
+            notes: "dailyBriefing route"
         ),
         .init(
             id: "future-mail-important-briefing",
             message: "중요한 메일만 알려줘",
-            expectedRoute: .directChat,
+            expectedRoute: .dailyBriefing,
             expectedSkillID: nil,
-            expectedRouteHint: nil,
+            expectedRouteHint: "dailyBriefing",
             expectedGoalType: "mailBriefing",
             shouldRequireApproval: false,
-            notes: "향후 mail attention briefing route 후보"
+            notes: "dailyBriefing route"
         ),
         .init(
             id: "future-file-summary",
@@ -742,6 +742,10 @@ enum RouterBurnInSuite {
 
         if message.lowercased().contains("개인정보처리방침") || message.lowercased().contains("이용약관") || message.lowercased().contains("정책 초안") {
             return DetectedRoute(route: .privacyTerms, skillID: "korean.privacy-terms", routeHint: "privacyTerms", requiresApproval: false)
+        }
+
+        if DailyBriefingRouteDetector.isDailyBriefingRequest(message) {
+            return DetectedRoute(route: .dailyBriefing, skillID: nil, routeHint: "dailyBriefing", requiresApproval: false)
         }
 
         let allMatches = SkillRegistry.shared.matchAllSkills(for: message)
