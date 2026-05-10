@@ -337,6 +337,8 @@
 		D2400000000000000000001A /* RecentArtifactReuseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2400000000000000000000A /* RecentArtifactReuseService.swift */; };
 		D2400000000000000000001B /* BriefingActionSuggestion.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2400000000000000000000B /* BriefingActionSuggestion.swift */; };
 		D2400000000000000000001C /* BriefingActionSuggestionProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2400000000000000000000C /* BriefingActionSuggestionProvider.swift */; };
+		D28000000000000000000026 /* BriefingActionDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28000000000000000000006 /* BriefingActionDispatcher.swift */; };
+		D28000000000000000000027 /* BriefingActionIntegrityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28000000000000000000007 /* BriefingActionIntegrityPolicy.swift */; };
 		D25000000000000000000011 /* GoogleOAuthConfigStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D25000000000000000000001 /* GoogleOAuthConfigStore.swift */; };
 		D25000000000000000000012 /* GoogleOAuthConfigValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D25000000000000000000002 /* GoogleOAuthConfigValidator.swift */; };
 		D25000000000000000000013 /* GoogleCalendarEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D25000000000000000000003 /* GoogleCalendarEvent.swift */; };
@@ -1322,6 +1324,8 @@
 		D2400000000000000000000A /* RecentArtifactReuseService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecentArtifactReuseService.swift; sourceTree = "<group>"; };
 		D2400000000000000000000B /* BriefingActionSuggestion.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BriefingActionSuggestion.swift; sourceTree = "<group>"; };
 		D2400000000000000000000C /* BriefingActionSuggestionProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BriefingActionSuggestionProvider.swift; sourceTree = "<group>"; };
+		D28000000000000000000006 /* BriefingActionDispatcher.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BriefingActionDispatcher.swift; sourceTree = "<group>"; };
+		D28000000000000000000007 /* BriefingActionIntegrityPolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BriefingActionIntegrityPolicy.swift; sourceTree = "<group>"; };
 		D25000000000000000000001 /* GoogleOAuthConfigStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoogleOAuthConfigStore.swift; sourceTree = "<group>"; };
 		D25000000000000000000002 /* GoogleOAuthConfigValidator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoogleOAuthConfigValidator.swift; sourceTree = "<group>"; };
 		D25000000000000000000003 /* GoogleCalendarEvent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoogleCalendarEvent.swift; sourceTree = "<group>"; };
@@ -1592,6 +1596,8 @@
 				D2500000000000000000002F /* FileIntakeView.swift */,
 				D2400000000000000000000B /* BriefingActionSuggestion.swift */,
 				D2400000000000000000000C /* BriefingActionSuggestionProvider.swift */,
+				D28000000000000000000006 /* BriefingActionDispatcher.swift */,
+				D28000000000000000000007 /* BriefingActionIntegrityPolicy.swift */,
 				B1E7F1E2AA00112233445566 /* RoomGoalContext.swift */,
 				B1E7F1E2AA00112233445567 /* GoalContextEngine.swift */,
 				B1E7F1E2AA00112233445568 /* ResultRecoveryPolicy.swift */,
@@ -3151,6 +3157,8 @@
 				D2400000000000000000001A /* RecentArtifactReuseService.swift in Sources */,
 				D2400000000000000000001B /* BriefingActionSuggestion.swift in Sources */,
 				D2400000000000000000001C /* BriefingActionSuggestionProvider.swift in Sources */,
+				D28000000000000000000026 /* BriefingActionDispatcher.swift in Sources */,
+				D28000000000000000000027 /* BriefingActionIntegrityPolicy.swift in Sources */,
 				D25000000000000000000011 /* GoogleOAuthConfigStore.swift in Sources */,
 				D25000000000000000000012 /* GoogleOAuthConfigValidator.swift in Sources */,
 				D25000000000000000000013 /* GoogleCalendarEvent.swift in Sources */,
