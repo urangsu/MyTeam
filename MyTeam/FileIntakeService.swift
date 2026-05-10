@@ -98,7 +98,7 @@ enum FileIntakeService {
                 status: .readFailed,
                 request: request,
                 extractedText: nil,
-                userMessage: "파일을 읽지 못했습니다. txt, md, csv 파일로 다시 시도해 주세요."
+                userMessage: "파일을 읽지 못했습니다. 권한이 없거나 지원하지 않는 인코딩일 수 있습니다."
             )
         }
     }

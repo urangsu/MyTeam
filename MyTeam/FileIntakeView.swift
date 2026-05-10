@@ -12,13 +12,7 @@ struct FileIntakeView: View {
     @State private var statusMessage = "txt, md, csv 파일을 먼저 지원합니다."
 
     private var allowedTypes: [UTType] {
-        var types: [UTType] = [.plainText, .commaSeparatedText]
-        for ext in ["md", "markdown", "csv"] {
-            if let type = UTType(filenameExtension: ext) {
-                types.append(type)
-            }
-        }
-        return Array(Set(types))
+        [.item]
     }
 
     var body: some View {
@@ -84,14 +78,39 @@ struct FileIntakeView: View {
 
             if let result = lastResult {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(result.request.originalFilename)
-                        .font(.system(size: 12, weight: .semibold))
+                    HStack(spacing: 8) {
+                        Text(result.request.originalFilename)
+                            .font(.system(size: 12, weight: .semibold))
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                        Text(statusLabel(for: result.status))
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.secondary.opacity(0.12)))
+                    }
+
+                    HStack(spacing: 8) {
+                        Text("상태: \(result.status.rawValue)")
+                        Text("크기: \(ByteCountFormatter.string(fromByteCount: result.request.fileSizeBytes, countStyle: .file))")
+                        if let extractedText = result.extractedText {
+                            Text("문자 수: \(extractedText.count)")
+                        }
+                    }
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+
                     Text(result.userMessage)
                         .font(.system(size: 12))
-                        .foregroundStyle(result.status == .ready ? .secondary : .secondary)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+
                     if result.status == .ready, let extractedText = result.extractedText, !extractedText.isEmpty {
+                        let previewText = String(extractedText.prefix(500))
                         ScrollView {
-                            Text(extractedText)
+                            Text(previewText)
                                 .font(.system(size: 11, design: .monospaced))
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .textSelection(.enabled)
@@ -99,6 +118,10 @@ struct FileIntakeView: View {
                         .frame(height: 110)
                         .padding(10)
                         .background(RoundedRectangle(cornerRadius: 10).fill(Color.secondary.opacity(0.06)))
+                        Text("이제 “이 파일 요약해줘”처럼 요청할 수 있습니다.")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -142,6 +165,7 @@ struct FileIntakeView: View {
             statusMessage = result.userMessage
             onResult(result)
         } catch {
+            let fallbackMessage = "파일을 읽지 못했습니다. 권한이 없거나 지원하지 않는 인코딩일 수 있습니다."
             let request = FileIntakeRequest(
                 id: UUID(),
                 source: source,
@@ -156,11 +180,23 @@ struct FileIntakeView: View {
                 status: .readFailed,
                 request: request,
                 extractedText: nil,
-                userMessage: "파일을 읽지 못했습니다."
+                userMessage: fallbackMessage
             )
             lastResult = result
             statusMessage = result.userMessage
             onResult(result)
+        }
+    }
+
+    private func statusLabel(for status: FileIntakeResult.Status) -> String {
+        switch status {
+        case .ready: return "준비됨"
+        case .planned: return "준비 중"
+        case .blocked: return "차단됨"
+        case .tooLarge: return "용량 초과"
+        case .readFailed: return "읽기 실패"
+        case .empty: return "빈 파일"
+        case .unsupported: return "미지원"
         }
     }
 }
