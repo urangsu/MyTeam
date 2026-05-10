@@ -786,6 +786,16 @@ enum RouterBurnInSuite {
             notes: "local task briefing keywords"
         ),
         .init(
+            id: "briefing-todo-summary",
+            message: "오늘 할 일 정리해줘",
+            expectedRoute: .dailyBriefing,
+            expectedSkillID: nil,
+            expectedRouteHint: "dailyBriefing",
+            expectedGoalType: "dailyBriefing",
+            shouldRequireApproval: false,
+            notes: "local task briefing keywords"
+        ),
+        .init(
             id: "briefing-work-broadcast",
             message: "오늘 내 업무 브리핑",
             expectedRoute: .dailyBriefing,
@@ -796,6 +806,26 @@ enum RouterBurnInSuite {
             notes: "local task briefing keywords"
         ),
         .init(
+            id: "briefing-open-schedule",
+            message: "스케줄 열어줘",
+            expectedRoute: .dailyBriefing,
+            expectedSkillID: nil,
+            expectedRouteHint: "dailyBriefing",
+            expectedGoalType: "dailyBriefing",
+            shouldRequireApproval: false,
+            notes: "schedule bridge keywords"
+        ),
+        .init(
+            id: "briefing-today-schedule",
+            message: "오늘 스케줄 보여줘",
+            expectedRoute: .dailyBriefing,
+            expectedSkillID: nil,
+            expectedRouteHint: "dailyBriefing",
+            expectedGoalType: "dailyBriefing",
+            shouldRequireApproval: false,
+            notes: "schedule bridge keywords"
+        ),
+        .init(
             id: "briefing-pending-approval",
             message: "승인 대기 보여줘",
             expectedRoute: .dailyBriefing,
@@ -804,6 +834,16 @@ enum RouterBurnInSuite {
             expectedGoalType: "dailyBriefing",
             shouldRequireApproval: false,
             notes: "briefing action phrase"
+        ),
+        .init(
+            id: "briefing-pending-action",
+            message: "승인 필요한 작업 보여줘",
+            expectedRoute: .dailyBriefing,
+            expectedSkillID: nil,
+            expectedRouteHint: "dailyBriefing",
+            expectedGoalType: "dailyBriefing",
+            shouldRequireApproval: false,
+            notes: "schedule / approval bridge keywords"
         )
     ]
 

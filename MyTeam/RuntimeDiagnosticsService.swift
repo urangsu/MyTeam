@@ -68,8 +68,12 @@ struct RuntimeDiagnosticsSnapshot {
     let recentArtifactReuseSupportedTypes: [String]
     let briefingActionSuggestionCount: Int
     let briefingActionSuggestionKinds: [String]
+    let briefingActionKinds: [String]
     let briefingSystemActionCount: Int
     let briefingPromptActionCount: Int
+    let briefingUnsupportedActionCount: Int
+    let schedulerBridgeAvailable: Bool
+    let recentArtifactActionAvailable: Bool
     let connectorPolicyCentralized: Bool
     let workflowRunnerDailyBriefingEnabled: Bool
     let workflowRunnerUniversalDocumentPlanEnabled: Bool
@@ -202,7 +206,8 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("localTaskBriefing: items=\(localTaskBriefingItemCount) high=\(localTaskBriefingHighPriorityCount) kinds=\(lastLocalTaskBriefingKinds.joined(separator: ","))")
         lines.append("localTaskBriefingActions: supported=\(localTaskBriefingActionCount) suggested=\(localTaskBriefingSuggestedActionCount) unsupported=\(localTaskBriefingUnsupportedActionCount) recentArtifactResolver=\(recentArtifactContentResolverAvailable)")
         lines.append("recentArtifactReuse: available=\(recentArtifactReuseAvailable) count=\(recentArtifactReusableCount) source=\(lastRecentArtifactReuseSourceName ?? "nil") types=\(recentArtifactReuseSupportedTypes.joined(separator: ","))")
-        lines.append("briefingActions: count=\(briefingActionSuggestionCount) system=\(briefingSystemActionCount) prompt=\(briefingPromptActionCount) kinds=\(briefingActionSuggestionKinds.joined(separator: ","))")
+        lines.append("briefingActions: count=\(briefingActionSuggestionCount) unsupported=\(briefingUnsupportedActionCount) system=\(briefingSystemActionCount) prompt=\(briefingPromptActionCount) kinds=\(briefingActionKinds.joined(separator: ","))")
+        lines.append("schedulerBridge: available=\(schedulerBridgeAvailable) recentArtifactAction=\(recentArtifactActionAvailable)")
         if !connectorBlockedActions.isEmpty {
             let preview = Array(connectorBlockedActions.prefix(5))
             let remaining = connectorBlockedActions.count - preview.count
@@ -287,8 +292,10 @@ final class RuntimeDiagnosticsService {
         )
         let briefingActionSuggestionCount = dailyBriefing.actionSuggestions.count
         let briefingActionSuggestionKinds = Array(dailyBriefing.actionSuggestions.prefix(5).map(\.kind.rawValue))
+        let briefingActionKinds = briefingActionSuggestionKinds
         let briefingSystemActionCount = dailyBriefing.actionSuggestions.filter { $0.systemActionID != nil }.count
         let briefingPromptActionCount = dailyBriefing.actionSuggestions.filter { $0.prompt != nil }.count
+        let briefingUnsupportedActionCount = max(0, 7 - briefingActionSuggestionCount)
         let localBriefing = DailyBriefingLocalProvider.makeSnapshot(roomID: currentRoomID, manager: manager)
         let localTaskBriefingItems = localBriefing.localBriefingItems
         let localTaskBriefingActionCount = localBriefing.localTaskActionCount
@@ -356,11 +363,13 @@ final class RuntimeDiagnosticsService {
         let workflowRunnerDailyBriefingEnabled = true
         let workflowRunnerUniversalDocumentPlanEnabled = true
         let orchestratorBoundaryReduced = true
+        let schedulerBridgeAvailable = true
         let roomRuntimeStoreAvailable = manager.roomRuntimeStore.isAvailable
         let roomRuntimeStoreOwnsGoalContext = manager.roomRuntimeStore.ownsGoalContext
         let roomRuntimeStoreOwnsFileIntake = manager.roomRuntimeStore.ownsFileIntake
         let roomRuntimeStoreOwnsActiveTasks = manager.roomRuntimeStore.ownsActiveTasks
         let agentWindowManagerFacadeMode = true
+        let recentArtifactActionAvailable = recentArtifactReusableCount > 0
 
         return RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
@@ -412,8 +421,12 @@ final class RuntimeDiagnosticsService {
             recentArtifactReuseSupportedTypes: recentArtifactReuseSupportedTypes,
             briefingActionSuggestionCount: briefingActionSuggestionCount,
             briefingActionSuggestionKinds: briefingActionSuggestionKinds,
+            briefingActionKinds: briefingActionKinds,
             briefingSystemActionCount: briefingSystemActionCount,
             briefingPromptActionCount: briefingPromptActionCount,
+            briefingUnsupportedActionCount: briefingUnsupportedActionCount,
+            schedulerBridgeAvailable: schedulerBridgeAvailable,
+            recentArtifactActionAvailable: recentArtifactActionAvailable,
             connectorPolicyCentralized: connectorPolicyCentralized,
             workflowRunnerDailyBriefingEnabled: workflowRunnerDailyBriefingEnabled,
             workflowRunnerUniversalDocumentPlanEnabled: workflowRunnerUniversalDocumentPlanEnabled,
