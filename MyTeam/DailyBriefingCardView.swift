@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DailyBriefingCardView: View {
     let briefing: DailyBriefing
+    var onActionTap: ((BriefingActionSuggestion) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -82,10 +83,41 @@ struct DailyBriefingCardView: View {
                 }
             }
 
-            Button("연결 후 브리핑 사용") { }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .disabled(true)
+            if !briefing.actionSuggestions.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("다음 액션")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.secondary)
+
+                    HStack(spacing: 6) {
+                        ForEach(Array(briefing.actionSuggestions.prefix(3))) { suggestion in
+                            Button {
+                                onActionTap?(suggestion)
+                            } label: {
+                                Text(suggestion.title)
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .lineLimit(1)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .foregroundStyle(.primary)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color.secondary.opacity(0.10))
+                                    )
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(Color.secondary.opacity(0.16), lineWidth: 1)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            } else {
+                Text("실행 가능한 액션이 아직 없습니다.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(12)
         .background(

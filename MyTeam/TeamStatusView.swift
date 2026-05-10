@@ -17,7 +17,6 @@ struct TeamStatusView: View {
     @State private var inputText: String = ""
     @State private var pendingAttachments: [ChatAttachment] = []
     @State private var isTargetedForDrop: Bool = false
-    @State private var isSchedulePanelPresented: Bool = false
     @State private var scheduleDraftTime: String = "09:00"
     @State private var scheduleDraftPrompt: String = ""
     @State private var scheduleDraftAgentID: String = "auto"
@@ -79,7 +78,7 @@ struct TeamStatusView: View {
                     // ⏰ 스케줄 버튼 (헤더 상단 접근)
                     Button(action: {
                         withAnimation(.spring(response: 0.26, dampingFraction: 0.82)) {
-                            isSchedulePanelPresented.toggle()
+                            manager.isSchedulePanelPresented.toggle()
                         }
                     }) {
                         HStack(spacing: 3) {
@@ -90,7 +89,7 @@ struct TeamStatusView: View {
                                     .font(.system(size: 9, weight: .bold))
                             }
                         }
-                        .foregroundColor(isSchedulePanelPresented ? .orange : (manager.isDarkMode ? .white.opacity(0.5) : .gray.opacity(0.6)))
+                        .foregroundColor(manager.isSchedulePanelPresented ? .orange : (manager.isDarkMode ? .white.opacity(0.5) : .gray.opacity(0.6)))
                     }
                     .buttonStyle(PlainButtonStyle())
                     .help("스케줄 업무")
@@ -164,7 +163,7 @@ struct TeamStatusView: View {
             }
         )
         .overlay(alignment: .topTrailing) {
-            if isSchedulePanelPresented {
+            if manager.isSchedulePanelPresented {
                 GeometryReader { proxy in
                     let popupWidth = min(260, max(220, proxy.size.width - 22))
                     let popupHeight = min(220, max(160, proxy.size.height - 70))
@@ -415,14 +414,14 @@ struct TeamStatusView: View {
     private var scheduleSidebarButton: some View {
         Button {
             withAnimation(.spring(response: 0.26, dampingFraction: 0.82)) {
-                isSchedulePanelPresented.toggle()
+                manager.isSchedulePanelPresented.toggle()
             }
         } label: {
             HStack(spacing: 8) {
                 ZStack(alignment: .topTrailing) {
                     Image(systemName: "clock.badge.checkmark")
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(isSchedulePanelPresented ? .orange : textColor.opacity(0.5))
+                        .foregroundColor(manager.isSchedulePanelPresented ? .orange : textColor.opacity(0.5))
                     if !manager.automationTasks.isEmpty {
                         Circle()
                             .fill(Color.orange)
@@ -432,7 +431,7 @@ struct TeamStatusView: View {
                 }
                 Text("스케줄")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(textColor.opacity(isSchedulePanelPresented ? 0.78 : 0.48))
+                    .foregroundColor(textColor.opacity(manager.isSchedulePanelPresented ? 0.78 : 0.48))
                 Spacer()
                 if !manager.automationTasks.isEmpty {
                     Text("\(manager.automationTasks.count)")
@@ -444,7 +443,7 @@ struct TeamStatusView: View {
             .frame(height: 38)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isSchedulePanelPresented ? Color.orange.opacity(0.10) : Color.clear)
+                    .fill(manager.isSchedulePanelPresented ? Color.orange.opacity(0.10) : Color.clear)
             )
             .contentShape(Rectangle())
         }
@@ -652,7 +651,7 @@ struct TeamStatusView: View {
                 }
                 Button {
                     withAnimation(.spring(response: 0.24, dampingFraction: 0.85)) {
-                        isSchedulePanelPresented = false
+                        manager.isSchedulePanelPresented = false
                     }
                 } label: {
                     Image(systemName: "xmark")
@@ -707,7 +706,7 @@ struct TeamStatusView: View {
                 Spacer()
                 Button {
                     withAnimation(.spring(response: 0.24, dampingFraction: 0.85)) {
-                        isSchedulePanelPresented = false
+                        manager.isSchedulePanelPresented = false
                     }
                 } label: {
                     Image(systemName: "xmark")

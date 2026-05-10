@@ -46,6 +46,7 @@ class AgentWindowManager: ObservableObject {
         didSet { saveRooms() }
     }
     @Published var currentRoomID: UUID?
+    @Published var isSchedulePanelPresented: Bool = false
 
     // 호환성: 현재 방의 메시지 접근
     var teamChatLogs: [ChatLog] {

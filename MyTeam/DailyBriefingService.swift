@@ -11,6 +11,11 @@ enum DailyBriefingService {
             AssistantConnectorCatalog.connectionState(for: $0.id)
         }
         let localSnapshot = DailyBriefingLocalProvider.makeSnapshot(roomID: manager.currentRoomID, manager: manager)
+        let actionSuggestions = BriefingActionSuggestionProvider.makeSuggestions(
+            roomID: manager.currentRoomID,
+            manager: manager,
+            localItems: localSnapshot.localBriefingItems
+        )
         let calendarItems = await calendarProvider.calendarItemsForToday(now: now)
 
         let connectorMessages = connectorStates.map { "\($0.provider.displayName): \($0.message)" }
@@ -55,6 +60,7 @@ enum DailyBriefingService {
             attentionItems: mergedAttentionItems,
             connectorMessages: connectorMessages,
             localBriefingItems: localSnapshot.localBriefingItems,
+            actionSuggestions: actionSuggestions,
             generatedAt: now
         )
     }
@@ -62,6 +68,11 @@ enum DailyBriefingService {
     @MainActor
     static func makeUnavailableBriefing(now: Date, manager: AgentWindowManager) -> DailyBriefing {
         let localSnapshot = DailyBriefingLocalProvider.makeSnapshot(roomID: manager.currentRoomID, manager: manager)
+        let actionSuggestions = BriefingActionSuggestionProvider.makeSuggestions(
+            roomID: manager.currentRoomID,
+            manager: manager,
+            localItems: localSnapshot.localBriefingItems
+        )
         let connectorMessages = AssistantConnectorCatalog.connectors.map { connector in
             let state = AssistantConnectorCatalog.connectionState(for: connector.id)
             return "\(connector.displayName): \(state.message)"
@@ -79,6 +90,7 @@ enum DailyBriefingService {
             attentionItems: localSnapshot.attentionItems,
             connectorMessages: connectorMessages,
             localBriefingItems: localSnapshot.localBriefingItems,
+            actionSuggestions: actionSuggestions,
             generatedAt: now
         )
     }
@@ -158,7 +170,7 @@ enum DailyBriefingService {
         lines.append("## 5. 다음 액션")
         let nextActions = nextActionLines(for: briefing)
         if nextActions.isEmpty {
-            lines.append("- 오늘 하던 작업을 이어서 진행하시겠습니까?")
+            lines.append("- 현재 바로 실행할 수 있는 액션이 없습니다.")
         } else {
             lines.append(contentsOf: Array(nextActions.prefix(3)))
         }
@@ -189,22 +201,8 @@ enum DailyBriefingService {
     }
 
     private static func nextActionLines(for briefing: DailyBriefing) -> [String] {
-        let suggested = briefing.localBriefingItems.filter { $0.kind == .suggestedNextAction }
-        if !suggested.isEmpty {
-            return suggested.prefix(3).map { "- \($0.detail)" }
-        }
-
-        if briefing.localBriefingItems.contains(where: {
-            $0.kind == .recentFile || $0.kind == .recentArtifact || $0.kind == .scheduledTask || $0.kind == .pendingDelegation
-        }) {
-            return [
-                "- “아까 하던 거 이어서 뭐 하면 돼”라고 입력해 이어서 할 수 있습니다."
-            ]
-        }
-
-        return [
-            "- “오늘 할 일 정리해줘”라고 입력해 현재 상태를 다시 볼 수 있습니다."
-        ]
+        let suggestions = briefing.actionSuggestions.prefix(3)
+        return suggestions.map { "- \($0.title)" }
     }
 
     private static func localTaskLine(for item: LocalTaskBriefingItem) -> String {

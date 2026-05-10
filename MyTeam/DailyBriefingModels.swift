@@ -30,6 +30,7 @@ struct DailyBriefing: Identifiable, Equatable {
     let attentionItems: [DailyAttentionBriefingItem]
     let connectorMessages: [String]
     let localBriefingItems: [LocalTaskBriefingItem]
+    let actionSuggestions: [BriefingActionSuggestion]
     let generatedAt: Date
 }
 

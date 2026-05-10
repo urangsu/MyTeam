@@ -279,6 +279,17 @@ enum RouterBurnInSuite {
             notes: "최근 artifact 액션아이템 추출"
         ),
         .init(
+            id: "doc-recent-artifact-table",
+            message: "방금 만든 문서 표로 바꿔줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.table-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: true,
+            shouldRequireApproval: false,
+            notes: "최근 artifact 표 변환"
+        ),
+        .init(
             id: "doc-generic-summary-no-context",
             message: "그냥 정리해봐",
             expectedRoute: .directChat,
@@ -773,6 +784,26 @@ enum RouterBurnInSuite {
             expectedGoalType: "dailyBriefing",
             shouldRequireApproval: false,
             notes: "local task briefing keywords"
+        ),
+        .init(
+            id: "briefing-work-broadcast",
+            message: "오늘 내 업무 브리핑",
+            expectedRoute: .dailyBriefing,
+            expectedSkillID: nil,
+            expectedRouteHint: "dailyBriefing",
+            expectedGoalType: "dailyBriefing",
+            shouldRequireApproval: false,
+            notes: "local task briefing keywords"
+        ),
+        .init(
+            id: "briefing-pending-approval",
+            message: "승인 대기 보여줘",
+            expectedRoute: .dailyBriefing,
+            expectedSkillID: nil,
+            expectedRouteHint: "dailyBriefing",
+            expectedGoalType: "dailyBriefing",
+            shouldRequireApproval: false,
+            notes: "briefing action phrase"
         )
     ]
 
