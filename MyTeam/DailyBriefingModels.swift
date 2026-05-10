@@ -32,6 +32,36 @@ struct DailyBriefing: Identifiable, Equatable {
     let localBriefingItems: [LocalTaskBriefingItem]
     let actionSuggestions: [BriefingActionSuggestion]
     let generatedAt: Date
+
+    init(
+        id: UUID,
+        date: Date,
+        status: Status,
+        title: String,
+        summary: String,
+        calendarItems: [DailyCalendarBriefingItem],
+        mailItems: [DailyMailBriefingItem],
+        taskItems: [DailyTaskBriefingItem],
+        attentionItems: [DailyAttentionBriefingItem],
+        connectorMessages: [String],
+        localBriefingItems: [LocalTaskBriefingItem],
+        actionSuggestions: [BriefingActionSuggestion] = [],
+        generatedAt: Date
+    ) {
+        self.id = id
+        self.date = date
+        self.status = status
+        self.title = title
+        self.summary = summary
+        self.calendarItems = calendarItems
+        self.mailItems = mailItems
+        self.taskItems = taskItems
+        self.attentionItems = attentionItems
+        self.connectorMessages = connectorMessages
+        self.localBriefingItems = localBriefingItems
+        self.actionSuggestions = actionSuggestions
+        self.generatedAt = generatedAt
+    }
 }
 
 struct DailyCalendarBriefingItem: Identifiable, Equatable {

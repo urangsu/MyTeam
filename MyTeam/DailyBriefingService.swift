@@ -11,11 +11,9 @@ enum DailyBriefingService {
             AssistantConnectorCatalog.connectionState(for: $0.id)
         }
         let localSnapshot = DailyBriefingLocalProvider.makeSnapshot(roomID: manager.currentRoomID, manager: manager)
-        let actionSuggestions = BriefingActionSuggestionProvider.makeSuggestions(
-            roomID: manager.currentRoomID,
-            manager: manager,
-            localItems: localSnapshot.localBriefingItems
-        )
+        let actionSuggestions = manager.currentRoomID.map {
+            BriefingActionSuggestionProvider.makeSuggestions(roomID: $0, manager: manager)
+        } ?? []
         let calendarItems = await calendarProvider.calendarItemsForToday(now: now)
 
         let connectorMessages = connectorStates.map { "\($0.provider.displayName): \($0.message)" }
@@ -68,11 +66,9 @@ enum DailyBriefingService {
     @MainActor
     static func makeUnavailableBriefing(now: Date, manager: AgentWindowManager) -> DailyBriefing {
         let localSnapshot = DailyBriefingLocalProvider.makeSnapshot(roomID: manager.currentRoomID, manager: manager)
-        let actionSuggestions = BriefingActionSuggestionProvider.makeSuggestions(
-            roomID: manager.currentRoomID,
-            manager: manager,
-            localItems: localSnapshot.localBriefingItems
-        )
+        let actionSuggestions = manager.currentRoomID.map {
+            BriefingActionSuggestionProvider.makeSuggestions(roomID: $0, manager: manager)
+        } ?? []
         let connectorMessages = AssistantConnectorCatalog.connectors.map { connector in
             let state = AssistantConnectorCatalog.connectionState(for: connector.id)
             return "\(connector.displayName): \(state.message)"
@@ -121,7 +117,6 @@ enum DailyBriefingService {
         lines.append("")
         lines.append("## 2. 새 메일")
         if briefing.mailItems.isEmpty {
-            lines.append("- 메일 브리핑은 아직 준비 중입니다.")
             lines.append("- Gmail 메타데이터 브리핑은 준비 중입니다.")
             lines.append("- 메일 본문 요약/발송/삭제는 아직 지원하지 않습니다.")
         } else {
