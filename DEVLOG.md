@@ -6,6 +6,15 @@
 
 ---
 
+## 2026-05-10 (Round 30B — Daily Briefing Runtime UX + Connector Guard Polish)
+
+- Daily Briefing chat output now renders as a five-section briefing instead of a count-only line
+- connector guard now has a read-capability helper with state-aware calendar availability and mail metadata still unavailable
+- Daily Briefing routing is narrowed so app launch, privacy terms, file creation, and recent file prompts stay on their own routes
+- briefing card connector messages are capped and runtime diagnostics keep only short blocked-action summaries
+- no Gmail API, no Calendar write, no OAuth structure changes
+- StoreKit / entitlement unchanged
+
 ## 2026-05-10 (Round 30A — Daily Briefing / Connector Runtime Prep)
 
 - DailyBriefing route now handles natural language briefing requests instead of falling back to direct chat
