@@ -94,24 +94,25 @@ final class WorkflowOrchestrator {
 
         var effectiveScopes: Set<ToolScope> = [.chatBasic]  // 항상 chatBasic 포함
 
-        if capabilityDecision.status == .blocked && !DelegatedWorkflowDetector.isDelegationRequest(userMessage) {
+        if let blockedDecision = GoalGate.blockedDecision(goal: interpretedGoal, capability: capabilityDecision),
+           !DelegatedWorkflowDetector.isDelegationRequest(userMessage) {
             await MainActor.run {
                 manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "blocked")
                 self.recordRouteTrace(
                     manager: manager,
                     roomID: roomID,
                     step: .blocked,
-                    message: capabilityDecision.message
+                    message: blockedDecision.reason
                 )
                 self.recordTurnProfile(
                     manager: manager,
                     roomID: roomID,
                     userMessage: userMessage,
                     route: .blockedHighRiskSkill,
-                    reason: capabilityDecision.message,
+                    reason: blockedDecision.reason,
                     matchedSkills: [],
                     effectiveScopes: effectiveScopes,
-                    expectedOutput: "blocked notice",
+                    expectedOutput: blockedDecision.expectedOutput,
                     requiresApproval: true,
                     blockedTools: capabilityDecision.blockedCapabilities.map(\.rawValue)
                 )
@@ -119,7 +120,7 @@ final class WorkflowOrchestrator {
                     roomID: roomID,
                     agentID: "system",
                     agentName: "시스템",
-                    text: capabilityDecision.message,
+                    text: blockedDecision.reason,
                     isUser: false,
                     isSystem: true
                 )
@@ -140,6 +141,9 @@ final class WorkflowOrchestrator {
 
         // ── Skill match (Korean Skills 등) + allowedScopes 계산 ──
         let enabledSkills = SkillRegistry.shared.matchEnabledSkills(for: userMessage)
+
+        let disabledSkills = SkillRegistry.shared.matchAllSkills(for: userMessage)
+            .filter { !SkillRegistry.shared.isSkillEnabled(id: $0.id) }
 
         if !enabledSkills.isEmpty {
             let names = enabledSkills.map { $0.id }.joined(separator: ", ")
@@ -190,10 +194,7 @@ final class WorkflowOrchestrator {
             }
         } else {
             // Enabled 스킬 없음 → Disabled 스킬 확인
-            let disabledMatch = SkillRegistry.shared.matchAllSkills(for: userMessage)
-                .filter { !SkillRegistry.shared.isSkillEnabled(id: $0.id) }
-
-            if let disabledSkill = disabledMatch.first {
+            if let disabledSkill = disabledSkills.first {
                 AppLog.info("[Skill] matched disabled '\(disabledSkill.id)'")
                 let isHighRisk = SkillRegistry.isHighRiskSkill(disabledSkill)
                 let message = isHighRisk
@@ -228,6 +229,24 @@ final class WorkflowOrchestrator {
                 }
                 return
             }
+        }
+
+        let routeDecision = RouteResolver.resolveInitialRoute(
+            RouteResolutionInput(
+                userMessage: userMessage,
+                enabledSkills: enabledSkills,
+                disabledSkills: disabledSkills,
+                goal: interpretedGoal,
+                capabilityDecision: capabilityDecision
+            )
+        )
+        await MainActor.run {
+            self.recordRouteTrace(
+                manager: manager,
+                roomID: roomID,
+                step: .routeResolved,
+                message: "route=\(routeDecision.kind.rawValue) reason=\(routeDecision.reason)"
+            )
         }
 
         // ── local skill은 예산/IntentRouter/WorkflowEngine 전에 처리 ──
@@ -1727,7 +1746,7 @@ final class WorkflowOrchestrator {
         }
 
         let plan = UniversalDocumentPlanFactory.makePlan(request: request, roomID: roomID)
-        let result = await PlanRunner.shared.runUniversalDocumentPlan(
+        let result = await WorkflowRunner.runUniversalDocumentPlan(
             plan,
             request: request,
             roomID: roomID,
@@ -1758,43 +1777,43 @@ final class WorkflowOrchestrator {
             }
             AppLog.info("[PlanRunner] universal document completed: \(request.type.skillID)")
 
-        case .fellBackToLegacy:
-            finalStatus = .failed
-            finalEvent = .modelCallFailed(workflowID: workflowID, provider: "planrunner", error: "fallback to legacy")
-            await MainActor.run {
-                self.recordRouteTrace(
-                    manager: manager,
-                    roomID: roomID,
-                    step: .planRunnerFallback,
-                    message: "plan runner fallback -> legacy workflow"
-                )
-            }
-            await self.runUniversalDocumentWorkflow(
-                request: request,
-                userMessage: userMessage,
-                roomID: roomID,
-                manager: manager,
-                allowedScopes: allowedScopes
-            )
-
-        case .failed:
+        case .fellBackToLegacy, .failed:
             finalStatus = .failed
             finalEvent = .modelCallFailed(workflowID: workflowID, provider: "planrunner", error: result.message)
-            await MainActor.run {
-                self.recordRouteTrace(
-                    manager: manager,
+            if result.failureReason == .recoverableRuntimeError {
+                await MainActor.run {
+                    self.recordRouteTrace(
+                        manager: manager,
+                        roomID: roomID,
+                        step: .planRunnerFallback,
+                        message: "plan runner fallback -> legacy workflow (\(result.failureReason.rawValue))"
+                    )
+                }
+                await self.runUniversalDocumentWorkflow(
+                    request: request,
+                    userMessage: userMessage,
                     roomID: roomID,
-                    step: .planRunnerFailed,
-                    message: result.message
+                    manager: manager,
+                    allowedScopes: allowedScopes
                 )
+            } else {
+                await MainActor.run {
+                    self.recordRouteTrace(
+                        manager: manager,
+                        roomID: roomID,
+                        step: .planRunnerFailed,
+                        message: "\(result.failureReason.rawValue): \(result.message)"
+                    )
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "스킬",
+                        text: result.message,
+                        isUser: false,
+                        isSystem: true
+                    )
+                }
             }
-            await self.runUniversalDocumentWorkflow(
-                request: request,
-                userMessage: userMessage,
-                roomID: roomID,
-                manager: manager,
-                allowedScopes: allowedScopes
-            )
 
         case .cancelled:
             finalStatus = .cancelled
