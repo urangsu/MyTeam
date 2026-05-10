@@ -10,6 +10,7 @@ struct DailyBriefingLocalSnapshot: Equatable {
     let localTaskSuggestedActionCount: Int
     let localTaskUnsupportedActionCount: Int
     let recentArtifactContentResolverAvailable: Bool
+    let recentArtifactReusableCount: Int
 }
 
 enum DailyBriefingLocalProvider {
@@ -36,6 +37,9 @@ enum DailyBriefingLocalProvider {
         }.count
         let localTaskSuggestedActionCount = localItems.filter { $0.kind == .suggestedNextAction }.count
         let localTaskUnsupportedActionCount = localTaskActionCandidates.count - localTaskActionCount
+        let recentArtifactReusableCount = resolvedRoomID.map {
+            RecentArtifactContentResolver.countReusableArtifacts(roomID: $0, manager: manager)
+        } ?? 0
         let recentArtifactContentResolverAvailable = resolvedRoomID.map {
             LocalTaskBriefingActionPolicy.isSupported(.reuseRecentArtifact, roomID: $0, manager: manager)
         } ?? false
@@ -96,7 +100,8 @@ enum DailyBriefingLocalProvider {
             localTaskActionCount: localTaskActionCount,
             localTaskSuggestedActionCount: localTaskSuggestedActionCount,
             localTaskUnsupportedActionCount: localTaskUnsupportedActionCount,
-            recentArtifactContentResolverAvailable: recentArtifactContentResolverAvailable
+            recentArtifactContentResolverAvailable: recentArtifactContentResolverAvailable,
+            recentArtifactReusableCount: recentArtifactReusableCount
         )
     }
 

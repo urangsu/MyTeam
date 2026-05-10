@@ -246,6 +246,39 @@ enum RouterBurnInSuite {
             notes: "최근 artifact 참조 케이스"
         ),
         .init(
+            id: "doc-recent-artifact-summary",
+            message: "방금 만든 문서 요약해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.document-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: true,
+            shouldRequireApproval: false,
+            notes: "최근 artifact 요약"
+        ),
+        .init(
+            id: "doc-recent-artifact-checklist",
+            message: "방금 만든 보고서 체크리스트로 바꿔줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.checklist",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: true,
+            shouldRequireApproval: false,
+            notes: "최근 artifact 체크리스트 변환"
+        ),
+        .init(
+            id: "doc-recent-artifact-actions",
+            message: "직전에 만든 문서 액션아이템 뽑아줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.action-items",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: true,
+            shouldRequireApproval: false,
+            notes: "최근 artifact 액션아이템 추출"
+        ),
+        .init(
             id: "doc-generic-summary-no-context",
             message: "그냥 정리해봐",
             expectedRoute: .directChat,

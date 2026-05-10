@@ -62,6 +62,10 @@ struct RuntimeDiagnosticsSnapshot {
     let localTaskBriefingSuggestedActionCount: Int
     let localTaskBriefingUnsupportedActionCount: Int
     let recentArtifactContentResolverAvailable: Bool
+    let recentArtifactReuseAvailable: Bool
+    let recentArtifactReusableCount: Int
+    let lastRecentArtifactReuseSourceName: String?
+    let recentArtifactReuseSupportedTypes: [String]
     let connectorPolicyCentralized: Bool
     let workflowRunnerDailyBriefingEnabled: Bool
     let workflowRunnerUniversalDocumentPlanEnabled: Bool
@@ -193,6 +197,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("briefingAvailability: daily=\(dailyBriefingAvailable) local=\(localBriefingAvailable) localTask=\(localTaskBriefingAvailable) calendarProvider=\(calendarProviderAvailable) gmailMetadata=\(gmailMetadataAvailable) sections=\(lastBriefingSectionCount)")
         lines.append("localTaskBriefing: items=\(localTaskBriefingItemCount) high=\(localTaskBriefingHighPriorityCount) kinds=\(lastLocalTaskBriefingKinds.joined(separator: ","))")
         lines.append("localTaskBriefingActions: supported=\(localTaskBriefingActionCount) suggested=\(localTaskBriefingSuggestedActionCount) unsupported=\(localTaskBriefingUnsupportedActionCount) recentArtifactResolver=\(recentArtifactContentResolverAvailable)")
+        lines.append("recentArtifactReuse: available=\(recentArtifactReuseAvailable) count=\(recentArtifactReusableCount) source=\(lastRecentArtifactReuseSourceName ?? "nil") types=\(recentArtifactReuseSupportedTypes.joined(separator: ","))")
         if !connectorBlockedActions.isEmpty {
             let preview = Array(connectorBlockedActions.prefix(5))
             let remaining = connectorBlockedActions.count - preview.count
@@ -281,6 +286,14 @@ final class RuntimeDiagnosticsService {
         let localTaskBriefingSuggestedActionCount = localBriefing.localTaskSuggestedActionCount
         let localTaskBriefingUnsupportedActionCount = localBriefing.localTaskUnsupportedActionCount
         let recentArtifactContentResolverAvailable = localBriefing.recentArtifactContentResolverAvailable
+        let recentArtifactReusableCount = localBriefing.recentArtifactReusableCount
+        let recentArtifactReuseAvailable = recentArtifactContentResolverAvailable && recentArtifactReusableCount > 0
+        let lastRecentArtifactReuseSourceName = await MainActor.run {
+            currentRoomID.flatMap {
+                RecentArtifactContentResolver.resolveLatestMarkdownArtifact(roomID: $0, manager: manager)?.sourceName
+            }
+        }
+        let recentArtifactReuseSupportedTypes = ["summary", "reportDraft", "checklist", "tableSummary", "meetingMinutes", "actionItems"]
         let connectorBlockedActions = AssistantConnectorCatalog.connectors.flatMap { connector -> [String] in
             connector.capabilities.compactMap { capability in
                 if case .blocked = AssistantConnectorPolicy.decision(for: capability) {
@@ -384,6 +397,10 @@ final class RuntimeDiagnosticsService {
             localTaskBriefingSuggestedActionCount: localTaskBriefingSuggestedActionCount,
             localTaskBriefingUnsupportedActionCount: localTaskBriefingUnsupportedActionCount,
             recentArtifactContentResolverAvailable: recentArtifactContentResolverAvailable,
+            recentArtifactReuseAvailable: recentArtifactReuseAvailable,
+            recentArtifactReusableCount: recentArtifactReusableCount,
+            lastRecentArtifactReuseSourceName: lastRecentArtifactReuseSourceName,
+            recentArtifactReuseSupportedTypes: recentArtifactReuseSupportedTypes,
             connectorPolicyCentralized: connectorPolicyCentralized,
             workflowRunnerDailyBriefingEnabled: workflowRunnerDailyBriefingEnabled,
             workflowRunnerUniversalDocumentPlanEnabled: workflowRunnerUniversalDocumentPlanEnabled,

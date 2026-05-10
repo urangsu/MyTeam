@@ -9,12 +9,38 @@ struct RecentArtifactContentResolution: Equatable {
 enum RecentArtifactContentResolver {
     static var isAvailable: Bool { true }
 
+    static let supportedExtensions: [String] = ["md", "markdown", "txt"]
+
     @MainActor
     static func canResolveLatestMarkdownArtifact(
         roomID: UUID,
         manager: AgentWindowManager
     ) -> Bool {
         resolveLatestMarkdownArtifact(roomID: roomID, manager: manager) != nil
+    }
+
+    @MainActor
+    static func countReusableArtifacts(
+        roomID: UUID,
+        manager: AgentWindowManager
+    ) -> Int {
+        let recent = manager.recentArtifacts
+        guard !recent.isEmpty else { return 0 }
+        let workspaceURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
+            .first?
+            .appendingPathComponent("MyTeam/Workspace")
+            .standardizedFileURL
+        guard let workspaceURL else { return 0 }
+
+        return recent.filter { artifact in
+            let url = URL(fileURLWithPath: artifact.path)
+            let standardized = url.standardizedFileURL.path
+            let workspacePath = workspaceURL.path.hasSuffix("/") ? workspaceURL.path : workspaceURL.path + "/"
+            guard standardized == workspaceURL.path || standardized.hasPrefix(workspacePath) else {
+                return false
+            }
+            return supportedExtensions.contains(url.pathExtension.lowercased())
+        }.count
     }
 
     @MainActor

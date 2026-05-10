@@ -334,6 +334,7 @@
 		D24000000000000000000017 /* LocalTaskBriefingProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D24000000000000000000007 /* LocalTaskBriefingProvider.swift */; };
 		D24000000000000000000018 /* LocalTaskBriefingActionPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = D24000000000000000000008 /* LocalTaskBriefingActionPolicy.swift */; };
 		D24000000000000000000019 /* RecentArtifactContentResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = D24000000000000000000009 /* RecentArtifactContentResolver.swift */; };
+		D2400000000000000000001A /* RecentArtifactReuseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2400000000000000000000A /* RecentArtifactReuseService.swift */; };
 		D25000000000000000000011 /* GoogleOAuthConfigStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D25000000000000000000001 /* GoogleOAuthConfigStore.swift */; };
 		D25000000000000000000012 /* GoogleOAuthConfigValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D25000000000000000000002 /* GoogleOAuthConfigValidator.swift */; };
 		D25000000000000000000013 /* GoogleCalendarEvent.swift in Sources */ = {isa = PBXBuildFile; fileRef = D25000000000000000000003 /* GoogleCalendarEvent.swift */; };
@@ -1316,6 +1317,7 @@
 		D24000000000000000000007 /* LocalTaskBriefingProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalTaskBriefingProvider.swift; sourceTree = "<group>"; };
 		D24000000000000000000008 /* LocalTaskBriefingActionPolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalTaskBriefingActionPolicy.swift; sourceTree = "<group>"; };
 		D24000000000000000000009 /* RecentArtifactContentResolver.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecentArtifactContentResolver.swift; sourceTree = "<group>"; };
+		D2400000000000000000000A /* RecentArtifactReuseService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecentArtifactReuseService.swift; sourceTree = "<group>"; };
 		D25000000000000000000001 /* GoogleOAuthConfigStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoogleOAuthConfigStore.swift; sourceTree = "<group>"; };
 		D25000000000000000000002 /* GoogleOAuthConfigValidator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoogleOAuthConfigValidator.swift; sourceTree = "<group>"; };
 		D25000000000000000000003 /* GoogleCalendarEvent.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoogleCalendarEvent.swift; sourceTree = "<group>"; };
@@ -3140,6 +3142,7 @@
 				D24000000000000000000017 /* LocalTaskBriefingProvider.swift in Sources */,
 				D24000000000000000000018 /* LocalTaskBriefingActionPolicy.swift in Sources */,
 				D24000000000000000000019 /* RecentArtifactContentResolver.swift in Sources */,
+				D2400000000000000000001A /* RecentArtifactReuseService.swift in Sources */,
 				D25000000000000000000011 /* GoogleOAuthConfigStore.swift in Sources */,
 				D25000000000000000000012 /* GoogleOAuthConfigValidator.swift in Sources */,
 				D25000000000000000000013 /* GoogleCalendarEvent.swift in Sources */,

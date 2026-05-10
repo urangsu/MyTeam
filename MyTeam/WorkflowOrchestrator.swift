@@ -581,38 +581,129 @@ final class WorkflowOrchestrator {
             return
         }
 
+        let roomContext = await MainActor.run { manager.roomGoalContext(for: roomID) }
+        if RecentArtifactReuseService.canHandle(userMessage, context: roomContext) {
+            let artifactResolution = await MainActor.run {
+                RecentArtifactContentResolver.resolveLatestMarkdownArtifact(roomID: roomID, manager: manager)
+            }
+            let request = await MainActor.run {
+                RecentArtifactReuseService.makeRequest(
+                    message: userMessage,
+                    roomID: roomID,
+                    manager: manager
+                )
+            }
+            guard let request, let artifactResolution else {
+                await MainActor.run {
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "스킬",
+                        text: "최근 다시 사용할 수 있는 문서를 찾을 수 없습니다. 먼저 문서를 하나 만든 뒤 \"방금 만든 문서 요약해줘\"처럼 요청해 주세요.",
+                        isUser: false,
+                        isSystem: true
+                    )
+                }
+                return
+            }
+
+            await MainActor.run {
+                manager.recordUniversalDocumentType(request.type, roomID: roomID)
+                manager.updateRoomGoalContext(roomID: roomID, goal: interpretedGoal, activeWorkflowStep: "recentArtifactReuse.detected")
+                if let artifactUUID = UUID(uuidString: artifactResolution.artifactID) {
+                    manager.updateRoomGoalContext(roomID: roomID, recentArtifactID: artifactUUID)
+                }
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .recentArtifactReferenced,
+                    message: "recent artifact reuse detected: \(artifactResolution.sourceName)"
+                )
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .universalDocumentDetected,
+                    message: "recent artifact reuse document: \(request.type.skillID)"
+                )
+                self.recordTurnProfile(
+                    manager: manager,
+                    roomID: roomID,
+                    userMessage: userMessage,
+                    route: .universalDocument,
+                    reason: "recent artifact reuse detected: \(request.type.skillID)",
+                    matchedSkills: enabledSkills.filter { $0.id == request.type.skillID },
+                    effectiveScopes: effectiveScopes,
+                    expectedOutput: "markdown artifact",
+                    requiresApproval: false
+                )
+            }
+
+            effectiveScopes.formUnion(enabledSkills.flatMap { $0.allowedScopes })
+            effectiveScopes.insert(.artifactGeneration)
+
+            if FeatureFlags.planRunnerUniversalDocumentEnabled {
+                await MainActor.run { manager.isWorkflowRunning = true }
+                defer { Task { @MainActor in manager.isWorkflowRunning = false } }
+                let task = Task {
+                    await self.runUniversalDocumentPlanWorkflow(
+                        request: request,
+                        userMessage: userMessage,
+                        roomID: roomID,
+                        manager: manager,
+                        allowedScopes: effectiveScopes
+                    )
+                }
+                await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
+                _ = await task.value
+                await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
+                await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
+                return
+            }
+
+            await MainActor.run { manager.isWorkflowRunning = true }
+            defer { Task { @MainActor in manager.isWorkflowRunning = false } }
+            let task = Task {
+                _ = await self.runUniversalDocumentWorkflow(
+                    request: request,
+                    userMessage: userMessage,
+                    roomID: roomID,
+                    manager: manager,
+                    allowedScopes: effectiveScopes
+                )
+            }
+            await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
+            await task.value
+            await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
+            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
+            return
+        } else if GoalContextEngine.referencesRecentArtifact(userMessage) {
+            await MainActor.run {
+                manager.addChatLog(
+                    roomID: roomID,
+                    agentID: "system",
+                    agentName: "스킬",
+                    text: "최근 다시 사용할 수 있는 문서를 찾을 수 없습니다. 먼저 문서를 하나 만든 뒤 \"방금 만든 문서 요약해줘\"처럼 요청해 주세요.",
+                    isUser: false,
+                    isSystem: true
+                )
+            }
+            return
+        }
+
         // ── 범용 문서 워크플로우: 요약/보고서/체크리스트/표/회의록/액션아이템 ──
         if !UniversalDocumentSkillService.shouldSkipForFileWorkflow(userMessage),
            let documentType = UniversalDocumentSkillService.detectSkillType(from: userMessage),
            enabledSkills.contains(where: { $0.id == documentType.skillID }) {
-            let roomContext = await MainActor.run { manager.roomGoalContext(for: roomID) }
-            let recentArtifactID = GoalContextEngine.latestReferencedArtifactID(
-                message: userMessage,
-                context: roomContext
-            )
-            let recentArtifactContent: RecentArtifactContentResolution? = await MainActor.run {
-                guard recentArtifactID != nil else { return nil }
-                return RecentArtifactContentResolver.resolveLatestMarkdownArtifact(roomID: roomID, manager: manager)
-            }
             let request = UniversalDocumentSkillService.extractRequest(
                 from: userMessage,
                 type: documentType,
-                sourceText: recentArtifactContent?.sourceText,
-                sourceName: recentArtifactContent?.sourceName
+                sourceText: nil,
+                sourceName: nil
             )
             let clarificationDecision = ClarificationPolicy.decideForUniversalDocument(request, context: roomContext)
             await MainActor.run {
                 manager.recordUniversalDocumentType(documentType, roomID: roomID)
                 manager.updateRoomGoalContext(roomID: roomID, goal: interpretedGoal, activeWorkflowStep: "universalDocument.detected")
-                if let recentArtifactID, recentArtifactContent != nil {
-                    manager.updateRoomGoalContext(roomID: roomID, recentArtifactID: recentArtifactID)
-                    self.recordRouteTrace(
-                        manager: manager,
-                        roomID: roomID,
-                        step: .recentArtifactReferenced,
-                        message: "recent artifact referenced: \(recentArtifactID.uuidString.prefix(8))"
-                    )
-                }
                 self.recordRouteTrace(
                     manager: manager,
                     roomID: roomID,
@@ -707,7 +798,7 @@ final class WorkflowOrchestrator {
                 )
             }
             await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
-            await task.value
+            _ = await task.value
             await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
             await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
             return

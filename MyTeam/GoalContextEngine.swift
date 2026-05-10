@@ -10,10 +10,14 @@ enum GoalContextEngine {
             "아까",
             "위 내용",
             "방금 만든",
+            "아까 만든 거",
             "그 파일",
             "만든 거",
             "바로 전",
-            "직전에 만든"
+            "직전에 만든",
+            "최근 문서",
+            "그 문서",
+            "이 문서"
         ]
         return markers.contains { lower.contains($0) }
     }
@@ -89,6 +93,30 @@ enum GoalContextEngine {
             return .reportDraft
         }
         if lower.contains("요약") || lower.contains("정리") {
+            return .summary
+        }
+        return UniversalDocumentSkillService.detectSkillType(from: message)
+    }
+
+    static func documentTypeFromArtifactReuseRequest(_ message: String) -> UniversalDocumentSkillType? {
+        let lower = message.lowercased()
+
+        if lower.contains("표로 바꿔") || lower.contains("표로 정리") || lower.contains("표로 변환") {
+            return .tableSummary
+        }
+        if lower.contains("체크리스트") || lower.contains("체크리스트로") {
+            return .checklist
+        }
+        if lower.contains("회의록") || lower.contains("회의록으로") || lower.contains("회의록 형식") {
+            return .meetingMinutes
+        }
+        if lower.contains("액션아이템") || lower.contains("액션 아이템") || lower.contains("뽑아줘") {
+            return .actionItems
+        }
+        if lower.contains("보고서") || lower.contains("보고서로") || lower.contains("보고서로 바꿔") {
+            return .reportDraft
+        }
+        if lower.contains("요약") || lower.contains("다듬어") || lower.contains("정리해줘") {
             return .summary
         }
         return UniversalDocumentSkillService.detectSkillType(from: message)

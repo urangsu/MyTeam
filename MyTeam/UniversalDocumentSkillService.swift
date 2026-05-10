@@ -4,6 +4,12 @@ enum UniversalDocumentSkillService {
     static func detectSkillType(from message: String) -> UniversalDocumentSkillType? {
         let lower = message.lowercased()
 
+        if containsAny(lower, keywords: artifactReuseKeywords(for: .tableSummary)) { return .tableSummary }
+        if containsAny(lower, keywords: artifactReuseKeywords(for: .checklist)) { return .checklist }
+        if containsAny(lower, keywords: artifactReuseKeywords(for: .meetingMinutes)) { return .meetingMinutes }
+        if containsAny(lower, keywords: artifactReuseKeywords(for: .actionItems)) { return .actionItems }
+        if containsAny(lower, keywords: artifactReuseKeywords(for: .reportDraft)) { return .reportDraft }
+        if containsAny(lower, keywords: artifactReuseKeywords(for: .summary)) { return .summary }
         if containsAny(lower, keywords: universalDocumentKeywords(for: .meetingMinutes)) { return .meetingMinutes }
         if containsAny(lower, keywords: universalDocumentKeywords(for: .actionItems)) { return .actionItems }
         if containsAny(lower, keywords: universalDocumentKeywords(for: .checklist)) { return .checklist }
@@ -169,6 +175,23 @@ enum UniversalDocumentSkillService {
         let hasContext = contextCues.contains { lower.contains($0) }
         let hasStructuredText = message.contains("\n") || message.contains("```") || message.count >= 20
         return !(hasContext || hasStructuredText)
+    }
+
+    static func artifactReuseKeywords(for type: UniversalDocumentSkillType) -> [String] {
+        switch type {
+        case .summary:
+            return ["방금 만든 문서 요약", "아까 만든 거 요약", "직전에 만든 문서 요약", "최근 문서 요약", "이 문서 요약"]
+        case .reportDraft:
+            return ["방금 만든 문서 보고서", "아까 만든 거 보고서", "방금 만든 보고서", "보고서로 다시", "다시 보고서"]
+        case .checklist:
+            return ["방금 만든 문서 체크리스트", "아까 만든 거 체크리스트", "체크리스트로 바꿔", "체크리스트로 정리"]
+        case .tableSummary:
+            return ["방금 만든 문서 표로", "아까 만든 거 표로", "표로 바꿔", "표로 정리", "표로 변환"]
+        case .meetingMinutes:
+            return ["방금 만든 문서 회의록", "아까 만든 거 회의록", "회의록으로 정리", "회의록 형식"]
+        case .actionItems:
+            return ["방금 만든 문서 액션아이템", "아까 만든 거 액션아이템", "액션아이템 뽑", "액션 아이템 뽑"]
+        }
     }
 
     private static func typeSpecificBody(for request: UniversalDocumentSkillRequest) -> String {

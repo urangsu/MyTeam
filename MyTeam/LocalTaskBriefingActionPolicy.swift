@@ -13,8 +13,9 @@ enum LocalTaskBriefingActionPolicy {
     static func isSupported(
         _ action: LocalTaskBriefingAction,
         roomID: UUID? = nil,
-        manager: AgentWindowManager = .shared
+        manager: AgentWindowManager? = nil
     ) -> Bool {
+        let manager = manager ?? .shared
         let resolvedRoomID = roomID ?? manager.currentRoomID
         switch action {
         case .summarizeRecentFile:
