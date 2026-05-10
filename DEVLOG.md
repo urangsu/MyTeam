@@ -6,6 +6,17 @@
 
 ---
 
+## 2026-05-10 (Round 27C — RouteResolver + WorkflowRunner Split + ToolExecution Skeleton)
+
+- RouteDecision / RouteResolver / GoalGate added
+- WorkflowRunner / ToolExecutionLayer / ConnectorGuard skeleton added
+- PlanExecutionResult gained failureReason for safe fallback control
+- Universal Document plan path can now use WorkflowRunner wrapper
+- PlanRunner safety / verification / budget failures stay out of legacy fallback
+- existing route order remains intact
+- File Intake, AgentPipeline remain unimplemented
+- OAuth / Gmail / Calendar write / StoreKit / entitlement unchanged
+
 ## 2026-05-10 (Round 27B — PlanRunner Foundation with Feature Flag)
 
 - FeatureFlags / VerificationLevel / WorkPlan / WorkStep / RecoveryAction / PlanExecutionResult added
