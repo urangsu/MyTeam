@@ -6,6 +6,16 @@
 
 ---
 
+## 2026-05-10 (Round 27B — PlanRunner Foundation with Feature Flag)
+
+- FeatureFlags / VerificationLevel / WorkPlan / WorkStep / RecoveryAction / PlanExecutionResult added
+- PlanRunner skeleton added for Universal Document
+- UniversalDocumentPlanFactory added and feature-flag path prepared
+- default path remains legacy Universal Document workflow
+- planRunner fallback path prepared for future use
+- File Intake, AgentPipeline, ToolExecutionLayer remain unimplemented
+- OAuth / Gmail / Calendar write / StoreKit / entitlement unchanged
+
 ## 2026-05-10 (Round 27A — Runtime Safety + Context Gate)
 
 - room별 `activeTasksByRoom`로 workflow task 관리 전환
