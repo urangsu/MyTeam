@@ -1901,13 +1901,24 @@ final class WorkflowOrchestrator {
         }
 
         let plan = UniversalDocumentPlanFactory.makePlan(request: request, roomID: roomID)
-        let result = await WorkflowRunner.runUniversalDocumentPlan(
-            plan,
+        let result = await WorkflowRunner.runUniversalDocument(
+            plan: plan,
             request: request,
+            userMessage: userMessage,
             roomID: roomID,
             workflowID: workflowID,
             manager: manager,
-            allowedScopes: allowedScopes
+            allowedScopes: allowedScopes,
+            legacyRunner: { [weak self] in
+                guard let self else { return }
+                await self.runUniversalDocumentWorkflow(
+                    request: request,
+                    userMessage: userMessage,
+                    roomID: roomID,
+                    manager: manager,
+                    allowedScopes: allowedScopes
+                )
+            }
         )
 
         switch result.status {
@@ -1932,7 +1943,20 @@ final class WorkflowOrchestrator {
             }
             AppLog.info("[PlanRunner] universal document completed: \(request.type.skillID)")
 
-        case .fellBackToLegacy, .failed:
+        case .fellBackToLegacy:
+            finalStatus = .completed
+            finalEvent = .workflowCompleted(workflowID: workflowID, roomID: roomID, artifactCount: 1)
+            await MainActor.run {
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .planRunnerFallback,
+                    message: "legacy workflow used (\(result.failureReason.rawValue))"
+                )
+            }
+            AppLog.info("[PlanRunner] universal document legacy fallback completed: \(request.type.skillID)")
+
+        case .failed:
             finalStatus = .failed
             finalEvent = .modelCallFailed(workflowID: workflowID, provider: "planrunner", error: result.message)
             if result.failureReason == .recoverableRuntimeError {

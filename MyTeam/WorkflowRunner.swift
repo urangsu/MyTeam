@@ -32,4 +32,48 @@ enum WorkflowRunner {
             allowedScopes: allowedScopes
         )
     }
+
+    static func runUniversalDocument(
+        plan: WorkPlan,
+        request: UniversalDocumentSkillRequest,
+        userMessage: String,
+        roomID: UUID,
+        workflowID: UUID,
+        manager: AgentWindowManager,
+        allowedScopes: Set<ToolScope>,
+        legacyRunner: @escaping @Sendable () async -> Void
+    ) async -> PlanExecutionResult {
+        _ = userMessage
+
+        guard FeatureFlags.planRunnerUniversalDocumentEnabled else {
+            await legacyRunner()
+            return PlanExecutionResult(
+                status: .fellBackToLegacy,
+                message: "legacy workflow used",
+                artifactID: nil,
+                failureReason: .none
+            )
+        }
+
+        let result = await runUniversalDocumentPlan(
+            plan,
+            request: request,
+            roomID: roomID,
+            workflowID: workflowID,
+            manager: manager,
+            allowedScopes: allowedScopes
+        )
+
+        if result.failureReason == .recoverableRuntimeError {
+            await legacyRunner()
+            return PlanExecutionResult(
+                status: .fellBackToLegacy,
+                message: result.message,
+                artifactID: nil,
+                failureReason: .recoverableRuntimeError
+            )
+        }
+
+        return result
+    }
 }

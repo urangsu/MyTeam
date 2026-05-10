@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 
+@MainActor
 final class RoomRuntimeStore: ObservableObject {
     // In-memory only:
     // - active tasks
