@@ -54,6 +54,10 @@ struct RuntimeDiagnosticsSnapshot {
     let gmailMetadataAvailable: Bool
     let connectorBlockedActions: [String]
     let lastBriefingSectionCount: Int
+    let connectorPolicyCentralized: Bool
+    let workflowRunnerDailyBriefingEnabled: Bool
+    let workflowRunnerUniversalDocumentPlanEnabled: Bool
+    let orchestratorBoundaryReduced: Bool
 
     // Router burn-in / tool contract validation
     let routerBurnInTotal: Int
@@ -174,6 +178,10 @@ struct RuntimeDiagnosticsSnapshot {
             let suffix = remaining > 0 ? " ... +\(remaining)" : ""
             lines.append("connectorBlockedActions(\(connectorBlockedActions.count)): \(preview.joined(separator: ", "))\(suffix)")
         }
+        lines.append("connectorPolicyCentralized: \(connectorPolicyCentralized)")
+        lines.append("workflowRunnerDailyBriefingEnabled: \(workflowRunnerDailyBriefingEnabled)")
+        lines.append("workflowRunnerUniversalDocumentPlanEnabled: \(workflowRunnerUniversalDocumentPlanEnabled)")
+        lines.append("orchestratorBoundaryReduced: \(orchestratorBoundaryReduced)")
         lines.append("universalDocument: skills=\(universalDocumentSkillCount) available=\(universalDocumentRouteAvailable)")
         lines.append("routeResolver: available=\(routeResolverAvailable)")
         lines.append("workflowRunner: available=\(workflowRunnerAvailable)")
@@ -289,6 +297,10 @@ final class RuntimeDiagnosticsService {
         let recentArtifactReferenceAvailable = roomGoalContext.map { !$0.recentArtifactIDs.isEmpty } ?? false
         let blockedCapabilityGateEnabled = true
         let resultVerifierErrorGateEnabled = true
+        let connectorPolicyCentralized = true
+        let workflowRunnerDailyBriefingEnabled = true
+        let workflowRunnerUniversalDocumentPlanEnabled = true
+        let orchestratorBoundaryReduced = true
 
         return RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
@@ -326,6 +338,10 @@ final class RuntimeDiagnosticsService {
             gmailMetadataAvailable: AssistantConnectorCatalog.connectionState(for: .gmail).status != .comingSoon,
             connectorBlockedActions: connectorBlockedActions,
             lastBriefingSectionCount: briefingSectionCount,
+            connectorPolicyCentralized: connectorPolicyCentralized,
+            workflowRunnerDailyBriefingEnabled: workflowRunnerDailyBriefingEnabled,
+            workflowRunnerUniversalDocumentPlanEnabled: workflowRunnerUniversalDocumentPlanEnabled,
+            orchestratorBoundaryReduced: orchestratorBoundaryReduced,
             routerBurnInTotal: routerBurnInSummary.total,
             routerBurnInPassed: routerBurnInSummary.passed,
             routerBurnInFailed: routerBurnInSummary.failed,

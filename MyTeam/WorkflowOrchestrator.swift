@@ -1535,11 +1535,7 @@ final class WorkflowOrchestrator {
         manager: AgentWindowManager,
         allowedScopes: Set<ToolScope>
     ) async {
-        let briefing = await DailyBriefingService.makePreviewBriefing(
-            now: Date(),
-            calendarProvider: GoogleDailyBriefingCalendarProvider.shared,
-            manager: manager
-        )
+        let briefing = await WorkflowRunner.runDailyBriefing(roomID: roomID, manager: manager)
 
         await MainActor.run {
             manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "dailyBriefing.completed")
