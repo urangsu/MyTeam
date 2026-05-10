@@ -6,6 +6,16 @@
 
 ---
 
+## 2026-05-10 (Round 29B — Runtime QA Verification + Small Fix Pack)
+
+- runtime QA pass on file intake states, recent file helper, artifact writer, and DEBUG feature flag toggle
+- file intake now records all results per room instead of ready-only
+- file-based document type helper now covers recent-file prompts like summary, report, table, and checklist
+- actual Finder open / path copy / multi-room isolation / PlanRunner route trace remain unverified in app UI
+- no new feature expansion
+- Gmail / OAuth / Calendar write unchanged
+- StoreKit / entitlement unchanged
+
 ## 2026-05-10 (Round 29A — Workflow QA Burn-in Pack)
 
 - workflow QA burn-in pack added

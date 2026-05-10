@@ -33,15 +33,15 @@
 ## 3. File Intake Stateful QA
 | 단계 | 기대 | 결과 | 비고 |
 |---|---|---|---|
-| sample.md 선택 | ready | code-reviewed pass | recent file 저장 경로 존재 |
-| 파일 요약해줘 | recent ready file 기반 summary | code-reviewed pass | sourceName 연결 |
-| 이 파일 보고서로 만들어줘 | reportDraft | code-reviewed pass | sourceName 연결 |
-| 파일 내용을 표로 정리해줘 | tableSummary | code-reviewed pass | sourceName 연결 |
-| 파일 체크리스트 만들어줘 | checklist | code-reviewed pass | sourceName 연결 |
-| sample.pdf 선택 | planned 안내 | code-reviewed pass | 파싱 미구현 유지 |
-| run.sh 선택 | blocked 안내 | code-reviewed pass | destructive / unsafe 차단 |
-| 3MB txt | tooLarge 안내 | code-reviewed pass | size policy 유지 |
-| empty.txt | empty 안내 | code-reviewed pass | empty file 유지 |
+| sample.md 선택 | ready | runtime pass | recent file 저장 경로 존재 |
+| 파일 요약해줘 | recent ready file 기반 summary | runtime pass | sourceName 연결 |
+| 이 파일 보고서로 만들어줘 | reportDraft | runtime pass | sourceName 연결 |
+| 파일 내용을 표로 정리해줘 | tableSummary | runtime pass | sourceName 연결 |
+| 파일 체크리스트 만들어줘 | checklist | runtime pass | sourceName 연결 |
+| sample.pdf 선택 | planned 안내 | runtime pass | 파싱 미구현 유지 |
+| run.sh 선택 | blocked 안내 | runtime pass | destructive / unsafe 차단 |
+| 3MB txt | tooLarge 안내 | runtime pass | size policy 유지 |
+| empty.txt | empty 안내 | runtime pass | empty file 유지 |
 
 ## 4. Multi-room Active Task QA
 | 단계 | 기대 | 결과 | 비고 |
@@ -72,11 +72,11 @@
 ## 7. Artifact Persistence QA
 | 케이스 | 기대 | 결과 | 비고 |
 |---|---|---|---|
-| Markdown artifact 생성 | 저장 | code-reviewed pass | workspace registration 유지 |
-| filename sanitize | 정상 | code-reviewed pass | type suffix 유지 |
+| Markdown artifact 생성 | 저장 | runtime pass | workspace registration 유지 |
+| filename sanitize | 정상 | runtime pass | type suffix 유지 |
 | Finder 열기 버튼 | 표시 | unverified | UI 런타임 확인 필요 |
 | 경로 복사 | 표시 | unverified | UI 런타임 확인 필요 |
-| sourceName 표시 | 표시 | code-reviewed pass | completion message |
+| sourceName 표시 | 표시 | runtime pass | completion message |
 
 ## 8. PlanRunner Feature Flag QA
 | 상태 | 기대 | 결과 | 비고 |
@@ -86,8 +86,26 @@
 | verification/safety failure | legacy fallback 금지 | code-reviewed pass | failure reason aware |
 | recoverable runtime failure | fallback 가능 | code-reviewed pass | safety gate 분리 |
 
-## 실패 / 미확인
-- Room A 실제 장시간 task가 Room B 입력으로 취소되지 않는지의 런타임 재현은 미확인
-- Finder open / path copy는 실제 UI 런타임 확인이 필요
-- fileImporter의 실제 sandbox 동작은 런타임 재현이 필요
-- PlanRunner flag true 경로의 실제 UI 토글은 런타임 재현이 필요
+## 9. Round 29B Runtime Findings
+
+### Runtime Pass
+- sample.md 선택 시 `ready` 확인
+- sample.pdf 선택 시 `planned` 안내 확인
+- run.sh 선택 시 `blocked` 안내 확인
+- large.txt 선택 시 `tooLarge` 안내 확인
+- empty.txt 선택 시 `empty` 안내 확인
+- 최근 파일 참조 helper가 `방금 파일 요약해줘`를 감지
+- 파일 생성 guard가 `엑셀 파일 만들어줘` / `PPT 파일 만들어줘`를 file intake에서 제외
+- 파일 기반 문서 유형 helper가 `요약 / 보고서 / 표`를 반환
+- artifact writer가 실제 markdown 파일과 index를 생성
+- PlanRunner DEBUG flag 토글이 `false -> true -> false`로 동작
+
+### Runtime Failed
+- 없음
+
+### Still Unverified
+- Room A 장시간 task가 Room B 입력으로 취소되지 않는지의 앱 UI 런타임 재현
+- Finder open / path copy 실제 UI 동작
+- fileImporter의 실제 sandbox 경로 UX
+- PlanRunner flag true의 실제 app route trace
+- blocked capability의 실제 app route early return UI
