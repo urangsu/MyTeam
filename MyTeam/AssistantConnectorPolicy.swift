@@ -1,38 +1,55 @@
 import Foundation
 
 enum AssistantConnectorDecision: Equatable {
-    case autoAllowed
+    case allowed
+    case unavailable
     case requiresApproval(reason: String)
     case blocked(reason: String)
 
     var badgeLabel: String {
         switch self {
-        case .autoAllowed: return "읽기 준비 중"
-        case .requiresApproval: return "승인 필요"
-        case .blocked: return "자동 실행 차단"
+        case .allowed: return "사용 가능"
+        case .unavailable: return "준비 중"
+        case .requiresApproval: return "추가 승인"
+        case .blocked: return "현재 차단"
         }
     }
 }
 
 enum AssistantConnectorPolicy {
     static func decision(for capability: AssistantConnector.Capability) -> AssistantConnectorDecision {
-        switch capability {
-        case .readCalendarEvents, .readEmailMetadata:
-            return .autoAllowed
-        case .readEmailBody, .summarizeEmail, .createDraft:
-            return .requiresApproval(reason: "개인 정보가 포함될 수 있어 확인 후 처리합니다.")
-        case .sendEmail, .createCalendarEvent, .modifyCalendarEvent, .deleteItem:
-            return .blocked(reason: "현재 버전에서는 자동 실행할 수 없습니다.")
-        }
+        let decision = ConnectorCapabilityPolicy.evaluate(capability)
+        return decision.toAssistantConnectorDecision
     }
 
     static func decision(for connector: AssistantConnector) -> AssistantConnectorDecision {
-        if connector.capabilities.contains(where: { if case .autoAllowed = decision(for: $0) { return true } else { return false } }) {
-            return .autoAllowed
+        let decisions = connector.capabilities.map { capability in
+            Self.decision(for: capability)
         }
-        if connector.capabilities.contains(where: { if case .requiresApproval = decision(for: $0) { return true } else { return false } }) {
-            return .requiresApproval(reason: "본문 읽기/초안은 승인 후 사용합니다.")
+        if decisions.contains(where: { if case .blocked = $0 { return true } else { return false } }) {
+            return .blocked(reason: "현재 버전에서는 자동 실행할 수 없습니다.")
         }
-        return .blocked(reason: "발송/수정/삭제는 현재 차단됩니다.")
+        if decisions.contains(where: { if case .requiresApproval = $0 { return true } else { return false } }) {
+            return .requiresApproval(reason: "추가 확인이 필요합니다.")
+        }
+        if decisions.contains(where: { if case .unavailable = $0 { return true } else { return false } }) {
+            return .unavailable
+        }
+        return .allowed
+    }
+}
+
+private extension ConnectorCapabilityDecision {
+    var toAssistantConnectorDecision: AssistantConnectorDecision {
+        switch status {
+        case .allowed:
+            return .allowed
+        case .unavailable:
+            return .unavailable
+        case .requiresApproval:
+            return .requiresApproval(reason: message)
+        case .blocked:
+            return .blocked(reason: message)
+        }
     }
 }

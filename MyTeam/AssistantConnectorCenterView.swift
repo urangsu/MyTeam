@@ -43,7 +43,7 @@ struct AssistantConnectorCenterView: View {
                 .controlSize(.small)
             }
 
-            Text("일정과 메일 브리핑을 준비 중입니다.")
+            Text("일정과 메일 연결 상태를 확인합니다.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -74,11 +74,11 @@ struct AssistantConnectorCenterView: View {
                     .background(Capsule().fill(validation.status == .ready ? Color.green.opacity(0.12) : Color.orange.opacity(0.12)))
             }
 
-            Text("Google Calendar 연결은 준비 중입니다.")
+            Text("Google Calendar: 연결 준비 중")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
-            Text("Calendar read-only부터 지원합니다. Gmail은 다음 단계에서 metadata부터 검토합니다.")
+            Text("Calendar read-only부터 지원합니다. Gmail metadata는 다음 단계입니다.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
@@ -160,7 +160,7 @@ struct AssistantConnectorCenterView: View {
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     if connector.id == .googleCalendar {
-                        Text("Google Calendar 연결은 사용자 클릭으로만 시작됩니다.")
+                        Text("연결은 사용자 클릭으로만 시작됩니다.")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
@@ -335,8 +335,9 @@ struct AssistantConnectorCenterView: View {
     }
 
     private func badgeBackgroundColor(for label: String) -> Color {
-        if label.contains("자동 실행 차단") { return Color.red.opacity(0.10) }
-        if label.contains("승인 필요") { return Color.orange.opacity(0.12) }
+        if label.contains("차단") { return Color.red.opacity(0.10) }
+        if label.contains("승인") { return Color.orange.opacity(0.12) }
+        if label.contains("준비") { return Color.blue.opacity(0.10) }
         return Color.green.opacity(0.10)
     }
 
