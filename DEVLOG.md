@@ -6,6 +6,19 @@
 
 ---
 
+## 2026-05-10 (Round 28A — File Intake UX Foundation)
+
+- FileIntakeRequest / FileIntakeResult / FileIntakePolicy / FileIntakeService / FileIntakeView added
+- txt / md / markdown / csv first
+- pdf / docx / xlsx / pptx are prepared but not parsed
+- dangerous extensions blocked
+- large files blocked
+- Universal Document helper prepared for next round
+- no automatic document generation
+- Gmail / OAuth / Calendar write unchanged
+
+## 2026-05-10 (Round 27D — AgentPipeline Foundation)
+
 ## 2026-05-10 (Round 27D — AgentPipeline Foundation)
 
 - AgentRole / AgentWorkOrder / PipelineContext added
