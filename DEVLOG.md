@@ -6,6 +6,20 @@
 
 ---
 
+## 2026-05-10 (Round 29A — Workflow QA Burn-in Pack)
+
+- workflow QA burn-in pack added
+- router regression reviewed for file intake, artifact workflow, app launch, privacy terms, blocked capability, and direct chat cases
+- file intake stateful flow reviewed for ready / planned / blocked / tooLarge / empty states
+- multi-room task isolation remains tracked in code; runtime recheck is still unverified
+- blocked capability early return remains in place
+- artifact persistence path remains in place
+- PlanRunner flag false/true path remains tracked for QA
+- confirmed build path unchanged
+- no new feature expansion
+- Gmail / OAuth / Calendar write unchanged
+- StoreKit / entitlement unchanged
+
 ## 2026-05-10 (Round 28C — File Intake UX Polish + Planned Types)
 
 - fileImporter now leans toward broader selection, with policy deciding planned / blocked cases
