@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import UniformTypeIdentifiers
 
 // MARK: - TeamStatusView
@@ -21,6 +22,7 @@ struct TeamStatusView: View {
     @State private var scheduleDraftPrompt: String = ""
     @State private var scheduleDraftAgentID: String = "auto"
     @State private var scheduleDraftError: String? = nil
+    @State private var isFileIntakeSheetPresented: Bool = false
     @State private var collaborationStatusTick: Int = 0
     @State private var collaborationStatusRefreshTask: Task<Void, Never>? = nil
     @State private var latestEventType: AgentEventType? = nil
@@ -179,6 +181,11 @@ struct TeamStatusView: View {
             if !isCollapsed {
                 footerView
                     .padding(.top, 2)
+            }
+        }
+        .sheet(isPresented: $isFileIntakeSheetPresented) {
+            FileIntakeView { result in
+                handleFileIntakeResult(result)
             }
         }
         .shadow(color: Color.black.opacity(manager.isDarkMode ? 0.3 : 0.08), radius: 15, x: 0, y: 8)
@@ -1093,6 +1100,14 @@ struct TeamStatusView: View {
                     .foregroundColor(manager.isDarkMode ? .yellow : .orange.opacity(0.8))
             }
             .buttonStyle(PlainButtonStyle())
+
+            Button(action: { isFileIntakeSheetPresented = true }) {
+                Image(systemName: "doc.badge.plus")
+                    .font(.system(size: 12))
+                    .foregroundColor(.blue.opacity(0.7))
+            }
+            .buttonStyle(PlainButtonStyle())
+            .help("파일 읽기")
             
             // 위치 초기화 버튼 (추가)
             Button(action: { manager.resetWindowPositions() }) {
@@ -1112,6 +1127,44 @@ struct TeamStatusView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
+    }
+
+    private func handleFileIntakeResult(_ result: FileIntakeResult) {
+        guard let roomID = manager.currentRoomID ?? manager.rooms.first?.id else { return }
+
+        let message: String
+        switch result.status {
+        case .ready:
+            message = """
+            파일을 읽었습니다.
+            파일: \(result.request.originalFilename)
+            다음 단계에서 요약/보고서/체크리스트로 만들 수 있습니다.
+            """
+        case .planned:
+            message = """
+            이 파일 형식은 아직 준비 중입니다.
+            먼저 txt, md, csv 파일을 지원합니다.
+            """
+        case .blocked:
+            message = result.userMessage
+        case .tooLarge:
+            message = result.userMessage
+        case .readFailed:
+            message = result.userMessage
+        case .empty:
+            message = result.userMessage
+        case .unsupported:
+            message = result.userMessage
+        }
+
+        manager.addChatLog(
+            roomID: roomID,
+            agentID: "system",
+            agentName: "파일",
+            text: message,
+            isUser: false,
+            isSystem: true
+        )
     }
 }
 

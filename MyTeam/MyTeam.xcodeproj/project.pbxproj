@@ -151,6 +151,11 @@
 		D28000000000000000000023 /* PipelineContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28000000000000000000003 /* PipelineContext.swift */; };
 		D28000000000000000000024 /* AgentPipelineFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28000000000000000000004 /* AgentPipelineFactory.swift */; };
 		D28000000000000000000025 /* AgentPipelineRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28000000000000000000005 /* AgentPipelineRunner.swift */; };
+		D2500000000000000000001B /* FileIntakeRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2500000000000000000002B /* FileIntakeRequest.swift */; };
+		D2500000000000000000001C /* FileIntakeResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2500000000000000000002C /* FileIntakeResult.swift */; };
+		D2500000000000000000001D /* FileIntakePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2500000000000000000002D /* FileIntakePolicy.swift */; };
+		D2500000000000000000001E /* FileIntakeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2500000000000000000002E /* FileIntakeService.swift */; };
+		D2500000000000000000001F /* FileIntakeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2500000000000000000002F /* FileIntakeView.swift */; };
 		F27100000000000000000011 /* FeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27000000000000000000011 /* FeatureFlags.swift */; };
 		F27100000000000000000012 /* VerificationLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27000000000000000000012 /* VerificationLevel.swift */; };
 		F27100000000000000000013 /* WorkPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27000000000000000000013 /* WorkPlan.swift */; };
@@ -525,6 +530,11 @@
 		D28000000000000000000003 /* PipelineContext.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PipelineContext.swift; sourceTree = "<group>"; };
 		D28000000000000000000004 /* AgentPipelineFactory.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentPipelineFactory.swift; sourceTree = "<group>"; };
 		D28000000000000000000005 /* AgentPipelineRunner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentPipelineRunner.swift; sourceTree = "<group>"; };
+		D2500000000000000000002B /* FileIntakeRequest.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileIntakeRequest.swift; sourceTree = "<group>"; };
+		D2500000000000000000002C /* FileIntakeResult.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileIntakeResult.swift; sourceTree = "<group>"; };
+		D2500000000000000000002D /* FileIntakePolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileIntakePolicy.swift; sourceTree = "<group>"; };
+		D2500000000000000000002E /* FileIntakeService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileIntakeService.swift; sourceTree = "<group>"; };
+		D2500000000000000000002F /* FileIntakeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileIntakeView.swift; sourceTree = "<group>"; };
 		F27000000000000000000011 /* FeatureFlags.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FeatureFlags.swift; sourceTree = "<group>"; };
 		F27000000000000000000012 /* VerificationLevel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VerificationLevel.swift; sourceTree = "<group>"; };
 		F27000000000000000000013 /* WorkPlan.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkPlan.swift; sourceTree = "<group>"; };
@@ -1543,6 +1553,11 @@
 				D28000000000000000000003 /* PipelineContext.swift */,
 				D28000000000000000000004 /* AgentPipelineFactory.swift */,
 				D28000000000000000000005 /* AgentPipelineRunner.swift */,
+				D2500000000000000000002B /* FileIntakeRequest.swift */,
+				D2500000000000000000002C /* FileIntakeResult.swift */,
+				D2500000000000000000002D /* FileIntakePolicy.swift */,
+				D2500000000000000000002E /* FileIntakeService.swift */,
+				D2500000000000000000002F /* FileIntakeView.swift */,
 				B1E7F1E2AA00112233445566 /* RoomGoalContext.swift */,
 				B1E7F1E2AA00112233445567 /* GoalContextEngine.swift */,
 				B1E7F1E2AA00112233445568 /* ResultRecoveryPolicy.swift */,
@@ -3121,6 +3136,11 @@
 				D28000000000000000000023 /* PipelineContext.swift in Sources */,
 				D28000000000000000000024 /* AgentPipelineFactory.swift in Sources */,
 				D28000000000000000000025 /* AgentPipelineRunner.swift in Sources */,
+				D2500000000000000000001B /* FileIntakeRequest.swift in Sources */,
+				D2500000000000000000001C /* FileIntakeResult.swift in Sources */,
+				D2500000000000000000001D /* FileIntakePolicy.swift in Sources */,
+				D2500000000000000000001E /* FileIntakeService.swift in Sources */,
+				D2500000000000000000001F /* FileIntakeView.swift in Sources */,
 				B1E7F1E2AA00112233445561 /* RoomGoalContext.swift in Sources */,
 				B1E7F1E2AA00112233445562 /* GoalContextEngine.swift in Sources */,
 				B1E7F1E2AA00112233445563 /* ResultRecoveryPolicy.swift in Sources */,

@@ -537,6 +537,46 @@ enum RouterBurnInSuite {
             notes: "향후 mail attention briefing route 후보"
         ),
         .init(
+            id: "future-file-summary",
+            message: "파일 요약해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.document-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "향후 file intake route 후보"
+        ),
+        .init(
+            id: "future-csv-table",
+            message: "csv 표로 정리해줘",
+            expectedRoute: .artifactWorkflow,
+            expectedSkillID: nil,
+            expectedRouteHint: "artifactWorkflow",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "향후 file intake route 후보"
+        ),
+        .init(
+            id: "future-pdf-summary",
+            message: "pdf 요약해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "준비 중 확장자에 대한 future file intake 후보"
+        ),
+        .init(
+            id: "future-sh-blocked",
+            message: "sh 파일 실행해줘",
+            expectedRoute: .blockedHighRiskSkill,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "unknown",
+            shouldRequireApproval: true,
+            notes: "실행 스크립트는 blocked"
+        ),
+        .init(
             id: "blocked-delete",
             message: "workspace 파일 삭제해줘",
             expectedRoute: .blockedHighRiskSkill,
@@ -703,7 +743,8 @@ enum RouterBurnInSuite {
         let keywords = [
             "결제", "청구", "환불", "카드", "계좌", "송금", "이체", "비밀번호",
             "메일 보내", "이메일 보내", "메일 발송",
-            "로그인", "인증", "삭제", "지워", "제거", "해킹", "은행"
+            "로그인", "인증", "삭제", "지워", "제거", "해킹", "은행",
+            "실행", "구동", "bash", "zsh", "sh ", "command", "스크립트"
         ]
         return keywords.contains { lower.contains($0) }
     }

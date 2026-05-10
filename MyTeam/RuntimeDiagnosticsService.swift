@@ -91,6 +91,10 @@ struct RuntimeDiagnosticsSnapshot {
     let agentPipelineAvailable: Bool
     let defaultPipelineOrderCount: Int
     let pipelineContextAvailable: Bool
+    let fileIntakeAvailable: Bool
+    let fileIntakeReadableExtensions: [String]
+    let fileIntakePlannedExtensions: [String]
+    let fileIntakeMaxFileSizeMB: Int
 
     // Workspace
     let workspacePath: String
@@ -160,6 +164,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("planRunner: available=\(planRunnerAvailable) enabled=\(planRunnerUniversalDocumentEnabled)")
         lines.append("planRunnerFailureReasonAware: \(planRunnerFailureReasonAware)")
         lines.append("agentPipeline: available=\(agentPipelineAvailable) defaultSteps=\(defaultPipelineOrderCount) context=\(pipelineContextAvailable)")
+        lines.append("fileIntake: available=\(fileIntakeAvailable) readable=\(fileIntakeReadableExtensions.joined(separator: ",")) planned=\(fileIntakePlannedExtensions.joined(separator: ",")) max=\(fileIntakeMaxFileSizeMB)MB")
         lines.append("safety: blockedCapabilityGate=\(blockedCapabilityGateEnabled) resultVerifierErrorGate=\(resultVerifierErrorGateEnabled)")
         lines.append("autonomy: goalInterpreter=true clarificationPolicy=true capabilityRouter=true resultVerifier=true")
         lines.append("workspace: \(workspacePath)")
@@ -230,6 +235,10 @@ final class RuntimeDiagnosticsService {
         let agentPipelineAvailable = true
         let defaultPipelineOrderCount = AgentPipelineFactory.basicDocumentReviewPipeline().count
         let pipelineContextAvailable = true
+        let fileIntakeAvailable = true
+        let fileIntakeReadableExtensions = FileIntakePolicy.readableExtensions.sorted()
+        let fileIntakePlannedExtensions = FileIntakePolicy.plannedExtensions.sorted()
+        let fileIntakeMaxFileSizeMB = Int(FileIntakePolicy.maxFileSizeBytes / (1024 * 1024))
         let activeTaskRoomCount = manager.activeWorkflowTaskCount()
         let lastRoomGoalType = roomGoalContext?.currentGoal?.goalType.rawValue
         let lastActiveWorkflowStep = roomGoalContext?.activeWorkflowStep
@@ -300,6 +309,10 @@ final class RuntimeDiagnosticsService {
             agentPipelineAvailable: agentPipelineAvailable,
             defaultPipelineOrderCount: defaultPipelineOrderCount,
             pipelineContextAvailable: pipelineContextAvailable,
+            fileIntakeAvailable: fileIntakeAvailable,
+            fileIntakeReadableExtensions: fileIntakeReadableExtensions,
+            fileIntakePlannedExtensions: fileIntakePlannedExtensions,
+            fileIntakeMaxFileSizeMB: fileIntakeMaxFileSizeMB,
             workspacePath: workspacePath,
             recentEventCount: recentEvents.count,
             latestEventSummary: latestSummary

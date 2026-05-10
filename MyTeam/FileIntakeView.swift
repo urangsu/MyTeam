@@ -1,0 +1,166 @@
+import SwiftUI
+import AppKit
+import UniformTypeIdentifiers
+
+struct FileIntakeView: View {
+    @Environment(\.dismiss) private var dismiss
+    let onResult: (FileIntakeResult) -> Void
+
+    @State private var isImporting = false
+    @State private var isDropTargeted = false
+    @State private var lastResult: FileIntakeResult?
+    @State private var statusMessage = "txt, md, csv 파일을 먼저 지원합니다."
+
+    private var allowedTypes: [UTType] {
+        var types: [UTType] = [.plainText, .commaSeparatedText]
+        for ext in ["md", "markdown", "csv"] {
+            if let type = UTType(filenameExtension: ext) {
+                types.append(type)
+            }
+        }
+        return Array(Set(types))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("파일로 작업하기")
+                        .font(.system(size: 17, weight: .semibold))
+                    Text("txt, md, csv 파일을 먼저 지원합니다.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .bold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+            }
+
+            VStack(spacing: 10) {
+                RoundedRectangle(cornerRadius: 14)
+                    .strokeBorder(isDropTargeted ? Color.accentColor : Color.secondary.opacity(0.25), style: StrokeStyle(lineWidth: 1, dash: [5, 4]))
+                    .background(
+                        RoundedRectangle(cornerRadius: 14)
+                            .fill(Color.secondary.opacity(0.05))
+                    )
+                    .overlay {
+                        VStack(spacing: 8) {
+                            Image(systemName: "tray.and.arrow.down")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundStyle(.secondary)
+                            Text("파일을 여기에 놓기")
+                                .font(.system(size: 12, weight: .medium))
+                            Text("PDF, Word, Excel, PPT는 준비 중입니다.")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(18)
+                    }
+                    .frame(height: 140)
+                    .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
+                        loadFirstURL(from: providers)
+                        return true
+                    }
+
+                Button("파일 선택") {
+                    isImporting = true
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+
+            Text(statusMessage)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+
+            if let result = lastResult {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(result.request.originalFilename)
+                        .font(.system(size: 12, weight: .semibold))
+                    Text(result.userMessage)
+                        .font(.system(size: 12))
+                        .foregroundStyle(result.status == .ready ? .secondary : .secondary)
+                    if result.status == .ready, let extractedText = result.extractedText, !extractedText.isEmpty {
+                        ScrollView {
+                            Text(extractedText)
+                                .font(.system(size: 11, design: .monospaced))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .textSelection(.enabled)
+                        }
+                        .frame(height: 110)
+                        .padding(10)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(Color.secondary.opacity(0.06)))
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .frame(width: 460, height: 380)
+        .fileImporter(
+            isPresented: $isImporting,
+            allowedContentTypes: allowedTypes,
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                if let url = urls.first {
+                    handle(url: url, source: .filePicker)
+                }
+            case .failure:
+                statusMessage = "파일 선택을 취소했습니다."
+            }
+        }
+    }
+
+    private func loadFirstURL(from providers: [NSItemProvider]) {
+        guard let provider = providers.first else { return }
+        _ = provider.loadObject(ofClass: URL.self) { url, _ in
+            guard let url else { return }
+            DispatchQueue.main.async {
+                self.handle(url: url, source: .dragAndDrop)
+            }
+        }
+    }
+
+    private func handle(url: URL, source: FileIntakeRequest.Source) {
+        do {
+            let request = try FileIntakeService.makeRequest(fileURL: url, source: source)
+            let result = FileIntakeService.readText(from: request)
+            lastResult = result
+            statusMessage = result.userMessage
+            onResult(result)
+        } catch {
+            let request = FileIntakeRequest(
+                id: UUID(),
+                source: source,
+                fileURL: url,
+                originalFilename: url.lastPathComponent,
+                fileExtension: url.pathExtension.lowercased(),
+                fileSizeBytes: 0,
+                requestedDocumentType: nil,
+                createdAt: Date()
+            )
+            let result = FileIntakeResult(
+                status: .readFailed,
+                request: request,
+                extractedText: nil,
+                userMessage: "파일을 읽지 못했습니다."
+            )
+            lastResult = result
+            statusMessage = result.userMessage
+            onResult(result)
+        }
+    }
+}
