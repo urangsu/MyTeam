@@ -110,7 +110,8 @@ enum DailyBriefingService {
         lines.append("## 2. 새 메일")
         if briefing.mailItems.isEmpty {
             lines.append("- 메일 브리핑은 아직 준비 중입니다.")
-            lines.append("- Gmail 메타데이터 연결 시 주요 메일을 요약해 드립니다.")
+            lines.append("- Gmail 메타데이터 브리핑은 준비 중입니다.")
+            lines.append("- 메일 본문 요약/발송/삭제는 아직 지원하지 않습니다.")
         } else {
             for item in briefing.mailItems.prefix(3) {
                 lines.append("- \(item.sender) · \(item.subject)")
@@ -125,12 +126,12 @@ enum DailyBriefingService {
             if fallbackTasks.isEmpty {
                 lines.append("- 최근 작업 내역이나 예정된 스케줄이 없습니다.")
             } else {
-                for item in fallbackTasks {
+                for item in fallbackTasks.prefix(3) {
                     lines.append("- \(taskLine(for: item))")
                 }
             }
         } else {
-            for item in todayTasks {
+            for item in todayTasks.prefix(3) {
                 lines.append("- \(localTaskLine(for: item))")
             }
         }
@@ -143,12 +144,12 @@ enum DailyBriefingService {
             if fallbackAttention.isEmpty {
                 lines.append("- 현재 확인이 필요한 긴급 항목이 없습니다.")
             } else {
-                for item in fallbackAttention {
+                for item in fallbackAttention.prefix(3) {
                     lines.append("- \(item.title): \(item.detail)")
                 }
             }
         } else {
-            for item in attentionItems {
+            for item in attentionItems.prefix(3) {
                 lines.append("- \(item.title): \(item.detail)")
             }
         }
@@ -193,20 +194,17 @@ enum DailyBriefingService {
             return suggested.prefix(3).map { "- \($0.detail)" }
         }
 
-        var actions: [String] = []
-        if briefing.localBriefingItems.contains(where: { $0.kind == .recentFile }) {
-            actions.append("- “이 파일 요약해줘”라고 입력하면 최근 파일을 문서로 만들 수 있습니다.")
+        if briefing.localBriefingItems.contains(where: {
+            $0.kind == .recentFile || $0.kind == .recentArtifact || $0.kind == .scheduledTask || $0.kind == .pendingDelegation
+        }) {
+            return [
+                "- “아까 하던 거 이어서 뭐 하면 돼”라고 입력해 이어서 할 수 있습니다."
+            ]
         }
-        if briefing.localBriefingItems.contains(where: { $0.kind == .recentArtifact }) {
-            actions.append("- “방금 만든 문서 표로 바꿔줘”라고 입력하면 최근 artifact를 다시 정리할 수 있습니다.")
-        }
-        if briefing.localBriefingItems.contains(where: { $0.kind == .scheduledTask || $0.kind == .pendingDelegation }) {
-            actions.append("- “오늘 할 일 정리해줘”라고 입력하면 스케줄과 진행 중인 작업을 묶어 볼 수 있습니다.")
-        }
-        if actions.isEmpty {
-            actions.append("- “아까 하던 거 이어서 뭐 하면 돼”라고 입력해 이어서 할 수 있습니다.")
-        }
-        return actions
+
+        return [
+            "- “오늘 할 일 정리해줘”라고 입력해 현재 상태를 다시 볼 수 있습니다."
+        ]
     }
 
     private static func localTaskLine(for item: LocalTaskBriefingItem) -> String {

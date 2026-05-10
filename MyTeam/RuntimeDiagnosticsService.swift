@@ -58,6 +58,10 @@ struct RuntimeDiagnosticsSnapshot {
     let localTaskBriefingItemCount: Int
     let localTaskBriefingHighPriorityCount: Int
     let lastLocalTaskBriefingKinds: [String]
+    let localTaskBriefingActionCount: Int
+    let localTaskBriefingSuggestedActionCount: Int
+    let localTaskBriefingUnsupportedActionCount: Int
+    let recentArtifactContentResolverAvailable: Bool
     let connectorPolicyCentralized: Bool
     let workflowRunnerDailyBriefingEnabled: Bool
     let workflowRunnerUniversalDocumentPlanEnabled: Bool
@@ -188,6 +192,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("dailyBriefing: status=\(dailyBriefingStatus) calendar=\(dailyBriefingCalendarItemCount) mail=\(dailyBriefingMailItemCount) localItems=\(localBriefingItemCount)")
         lines.append("briefingAvailability: daily=\(dailyBriefingAvailable) local=\(localBriefingAvailable) localTask=\(localTaskBriefingAvailable) calendarProvider=\(calendarProviderAvailable) gmailMetadata=\(gmailMetadataAvailable) sections=\(lastBriefingSectionCount)")
         lines.append("localTaskBriefing: items=\(localTaskBriefingItemCount) high=\(localTaskBriefingHighPriorityCount) kinds=\(lastLocalTaskBriefingKinds.joined(separator: ","))")
+        lines.append("localTaskBriefingActions: supported=\(localTaskBriefingActionCount) suggested=\(localTaskBriefingSuggestedActionCount) unsupported=\(localTaskBriefingUnsupportedActionCount) recentArtifactResolver=\(recentArtifactContentResolverAvailable)")
         if !connectorBlockedActions.isEmpty {
             let preview = Array(connectorBlockedActions.prefix(5))
             let remaining = connectorBlockedActions.count - preview.count
@@ -272,6 +277,10 @@ final class RuntimeDiagnosticsService {
         )
         let localBriefing = DailyBriefingLocalProvider.makeSnapshot(roomID: currentRoomID, manager: manager)
         let localTaskBriefingItems = localBriefing.localBriefingItems
+        let localTaskBriefingActionCount = localBriefing.localTaskActionCount
+        let localTaskBriefingSuggestedActionCount = localBriefing.localTaskSuggestedActionCount
+        let localTaskBriefingUnsupportedActionCount = localBriefing.localTaskUnsupportedActionCount
+        let recentArtifactContentResolverAvailable = localBriefing.recentArtifactContentResolverAvailable
         let connectorBlockedActions = AssistantConnectorCatalog.connectors.flatMap { connector -> [String] in
             connector.capabilities.compactMap { capability in
                 if case .blocked = AssistantConnectorPolicy.decision(for: capability) {
@@ -371,6 +380,10 @@ final class RuntimeDiagnosticsService {
             localTaskBriefingItemCount: localTaskBriefingItems.count,
             localTaskBriefingHighPriorityCount: localTaskBriefingItems.filter { $0.priority == .high }.count,
             lastLocalTaskBriefingKinds: Array(localTaskBriefingItems.prefix(5).map(\.kind.rawValue)),
+            localTaskBriefingActionCount: localTaskBriefingActionCount,
+            localTaskBriefingSuggestedActionCount: localTaskBriefingSuggestedActionCount,
+            localTaskBriefingUnsupportedActionCount: localTaskBriefingUnsupportedActionCount,
+            recentArtifactContentResolverAvailable: recentArtifactContentResolverAvailable,
             connectorPolicyCentralized: connectorPolicyCentralized,
             workflowRunnerDailyBriefingEnabled: workflowRunnerDailyBriefingEnabled,
             workflowRunnerUniversalDocumentPlanEnabled: workflowRunnerUniversalDocumentPlanEnabled,

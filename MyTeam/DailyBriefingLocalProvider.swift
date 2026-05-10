@@ -6,6 +6,10 @@ struct DailyBriefingLocalSnapshot: Equatable {
     let attentionItems: [DailyAttentionBriefingItem]
     let connectorMessages: [String]
     let localBriefingItems: [LocalTaskBriefingItem]
+    let localTaskActionCount: Int
+    let localTaskSuggestedActionCount: Int
+    let localTaskUnsupportedActionCount: Int
+    let recentArtifactContentResolverAvailable: Bool
 }
 
 enum DailyBriefingLocalProvider {
@@ -20,6 +24,21 @@ enum DailyBriefingLocalProvider {
             let state = AssistantConnectorCatalog.connectionState(for: connector.id)
             return "\(state.provider.displayName): \(state.message)"
         }
+        let localTaskActionCandidates = [
+            LocalTaskBriefingAction.summarizeRecentFile,
+            .reuseRecentArtifact,
+            .summarizeTodayTasks,
+            .resumeDelegation,
+            .askContinuation
+        ]
+        let localTaskActionCount = localTaskActionCandidates.filter {
+            LocalTaskBriefingActionPolicy.isSupported($0, roomID: resolvedRoomID, manager: manager)
+        }.count
+        let localTaskSuggestedActionCount = localItems.filter { $0.kind == .suggestedNextAction }.count
+        let localTaskUnsupportedActionCount = localTaskActionCandidates.count - localTaskActionCount
+        let recentArtifactContentResolverAvailable = resolvedRoomID.map {
+            LocalTaskBriefingActionPolicy.isSupported(.reuseRecentArtifact, roomID: $0, manager: manager)
+        } ?? false
 
         var taskItems: [DailyTaskBriefingItem] = []
         var attentionItems: [DailyAttentionBriefingItem] = []
@@ -73,7 +92,11 @@ enum DailyBriefingLocalProvider {
             taskItems: taskItems,
             attentionItems: attentionItems,
             connectorMessages: connectorMessages,
-            localBriefingItems: localItems
+            localBriefingItems: localItems,
+            localTaskActionCount: localTaskActionCount,
+            localTaskSuggestedActionCount: localTaskSuggestedActionCount,
+            localTaskUnsupportedActionCount: localTaskUnsupportedActionCount,
+            recentArtifactContentResolverAvailable: recentArtifactContentResolverAvailable
         )
     }
 

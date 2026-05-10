@@ -30,16 +30,18 @@ enum LocalTaskBriefingProvider {
                         createdAt: now
                     )
                 )
-                items.append(
-                    LocalTaskBriefingItem(
-                        id: UUID(),
-                        kind: .suggestedNextAction,
-                        title: "다음 액션",
-                        detail: "“이 파일 요약해줘”라고 입력하면 최근 파일을 문서로 만들 수 있습니다.",
-                        priority: .normal,
-                        createdAt: now
+                if LocalTaskBriefingActionPolicy.isSupported(.summarizeRecentFile, roomID: roomID, manager: manager) {
+                    items.append(
+                        LocalTaskBriefingItem(
+                            id: UUID(),
+                            kind: .suggestedNextAction,
+                            title: "다음 액션",
+                            detail: "“이 파일 요약해줘”라고 입력하면 최근 파일을 문서로 만들 수 있습니다.",
+                            priority: .normal,
+                            createdAt: now
+                        )
                     )
-                )
+                }
             case .unsupported, .planned, .blocked, .tooLarge, .readFailed, .empty:
                 items.append(
                     LocalTaskBriefingItem(
@@ -66,16 +68,18 @@ enum LocalTaskBriefingProvider {
                     createdAt: now
                 )
             )
-            items.append(
-                LocalTaskBriefingItem(
-                    id: UUID(),
-                    kind: .suggestedNextAction,
-                    title: "다음 액션",
-                    detail: "“방금 만든 문서 표로 바꿔줘”라고 입력하면 최근 문서를 다시 정리할 수 있습니다.",
-                    priority: .low,
-                    createdAt: now
+            if LocalTaskBriefingActionPolicy.isSupported(.reuseRecentArtifact, roomID: roomID, manager: manager) {
+                items.append(
+                    LocalTaskBriefingItem(
+                        id: UUID(),
+                        kind: .suggestedNextAction,
+                        title: "다음 액션",
+                        detail: "“방금 만든 문서 표로 바꿔줘”라고 입력하면 최근 문서를 다시 정리할 수 있습니다.",
+                        priority: .low,
+                        createdAt: now
+                    )
                 )
-            )
+            }
         }
 
         let todaysAutomationTasks = manager.automationTasks
@@ -125,16 +129,18 @@ enum LocalTaskBriefingProvider {
                     createdAt: delegationState.updatedAt
                 )
             )
-            items.append(
-                LocalTaskBriefingItem(
-                    id: UUID(),
-                    kind: .suggestedNextAction,
-                    title: "다음 액션",
-                    detail: "“진행해”라고 입력하면 위임된 작업을 다시 이어갈 수 있습니다.",
-                    priority: .normal,
-                    createdAt: now
+            if LocalTaskBriefingActionPolicy.isSupported(.resumeDelegation, roomID: roomID, manager: manager) {
+                items.append(
+                    LocalTaskBriefingItem(
+                        id: UUID(),
+                        kind: .suggestedNextAction,
+                        title: "다음 액션",
+                        detail: "“진행해”라고 입력하면 위임된 작업을 다시 이어갈 수 있습니다.",
+                        priority: .normal,
+                        createdAt: now
+                    )
                 )
-            )
+            }
         } else if let pendingDelegatedRequest {
             items.append(
                 LocalTaskBriefingItem(
@@ -165,16 +171,18 @@ enum LocalTaskBriefingProvider {
 
         if let currentGoal {
             let currentGoalDetail = "“\(currentGoal.title)” 관련 작업을 이어서 확인할 수 있습니다."
-            items.append(
-                LocalTaskBriefingItem(
-                    id: currentGoal.id,
-                    kind: .suggestedNextAction,
-                    title: "최근 요청",
-                    detail: currentGoalDetail,
-                    priority: currentGoal.requiresClarification ? .high : .normal,
-                    createdAt: currentGoal.createdAt
+            if LocalTaskBriefingActionPolicy.isSupported(.askContinuation, roomID: roomID, manager: manager) {
+                items.append(
+                    LocalTaskBriefingItem(
+                        id: currentGoal.id,
+                        kind: .suggestedNextAction,
+                        title: "최근 요청",
+                        detail: currentGoalDetail,
+                        priority: currentGoal.requiresClarification ? .high : .normal,
+                        createdAt: currentGoal.createdAt
+                    )
                 )
-            )
+            }
         }
 
         if let calendarState = connectorItem(for: .googleCalendar) {

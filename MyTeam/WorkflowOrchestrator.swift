@@ -585,17 +585,26 @@ final class WorkflowOrchestrator {
         if !UniversalDocumentSkillService.shouldSkipForFileWorkflow(userMessage),
            let documentType = UniversalDocumentSkillService.detectSkillType(from: userMessage),
            enabledSkills.contains(where: { $0.id == documentType.skillID }) {
-            let request = UniversalDocumentSkillService.extractRequest(from: userMessage, type: documentType)
             let roomContext = await MainActor.run { manager.roomGoalContext(for: roomID) }
             let recentArtifactID = GoalContextEngine.latestReferencedArtifactID(
                 message: userMessage,
                 context: roomContext
             )
+            let recentArtifactContent: RecentArtifactContentResolution? = await MainActor.run {
+                guard recentArtifactID != nil else { return nil }
+                return RecentArtifactContentResolver.resolveLatestMarkdownArtifact(roomID: roomID, manager: manager)
+            }
+            let request = UniversalDocumentSkillService.extractRequest(
+                from: userMessage,
+                type: documentType,
+                sourceText: recentArtifactContent?.sourceText,
+                sourceName: recentArtifactContent?.sourceName
+            )
             let clarificationDecision = ClarificationPolicy.decideForUniversalDocument(request, context: roomContext)
             await MainActor.run {
                 manager.recordUniversalDocumentType(documentType, roomID: roomID)
                 manager.updateRoomGoalContext(roomID: roomID, goal: interpretedGoal, activeWorkflowStep: "universalDocument.detected")
-                if let recentArtifactID {
+                if let recentArtifactID, recentArtifactContent != nil {
                     manager.updateRoomGoalContext(roomID: roomID, recentArtifactID: recentArtifactID)
                     self.recordRouteTrace(
                         manager: manager,

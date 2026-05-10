@@ -14,15 +14,19 @@ enum UniversalDocumentSkillService {
         return nil
     }
 
-    static func extractRequest(from message: String, type: UniversalDocumentSkillType) -> UniversalDocumentSkillRequest {
+    static func extractRequest(
+        from message: String,
+        type: UniversalDocumentSkillType,
+        sourceText: String? = nil,
+        sourceName: String? = nil
+    ) -> UniversalDocumentSkillRequest {
         let title = resolvedTitle(from: extractTitle(from: message, type: type), type: type)
-        let sourceText = extractSourceText(from: message)
         return UniversalDocumentSkillRequest(
             type: type,
             title: title,
             topic: title,
-            sourceText: sourceText,
-            sourceName: nil,
+            sourceText: sourceText ?? extractSourceText(from: message),
+            sourceName: sourceName,
             userMessage: message
         )
     }
