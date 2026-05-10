@@ -25,6 +25,7 @@ struct RouteTrace: Identifiable, Equatable {
         case planRunnerCompleted
         case planRunnerFallback
         case planRunnerFailed
+        case routeResolved
         case fileCreationDetected
         case intentClassified
         case teamDiscussionSelected

@@ -81,8 +81,13 @@ struct RuntimeDiagnosticsSnapshot {
     let dailyBriefingMailItemCount: Int
     let universalDocumentSkillCount: Int
     let universalDocumentRouteAvailable: Bool
+    let routeResolverAvailable: Bool
+    let workflowRunnerAvailable: Bool
+    let toolExecutionLayerAvailable: Bool
+    let connectorGuardAvailable: Bool
     let planRunnerAvailable: Bool
     let planRunnerUniversalDocumentEnabled: Bool
+    let planRunnerFailureReasonAware: Bool
 
     // Workspace
     let workspacePath: String
@@ -145,7 +150,12 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("googleCalendar: connection=\(googleCalendarConnectionStatus) fetch=\(googleCalendarLastFetchStatus)")
         lines.append("dailyBriefing: status=\(dailyBriefingStatus) calendar=\(dailyBriefingCalendarItemCount) mail=\(dailyBriefingMailItemCount)")
         lines.append("universalDocument: skills=\(universalDocumentSkillCount) available=\(universalDocumentRouteAvailable)")
+        lines.append("routeResolver: available=\(routeResolverAvailable)")
+        lines.append("workflowRunner: available=\(workflowRunnerAvailable)")
+        lines.append("toolExecutionLayer: available=\(toolExecutionLayerAvailable)")
+        lines.append("connectorGuard: available=\(connectorGuardAvailable)")
         lines.append("planRunner: available=\(planRunnerAvailable) enabled=\(planRunnerUniversalDocumentEnabled)")
+        lines.append("planRunnerFailureReasonAware: \(planRunnerFailureReasonAware)")
         lines.append("safety: blockedCapabilityGate=\(blockedCapabilityGateEnabled) resultVerifierErrorGate=\(resultVerifierErrorGateEnabled)")
         lines.append("autonomy: goalInterpreter=true clarificationPolicy=true capabilityRouter=true resultVerifier=true")
         lines.append("workspace: \(workspacePath)")
@@ -206,8 +216,13 @@ final class RuntimeDiagnosticsService {
         let universalDocumentRouteAvailable = SkillRegistry.shared.allEnabledSkills().contains {
             $0.id.hasPrefix("korean.document-") || $0.id == "korean.report-draft" || $0.id == "korean.checklist" || $0.id == "korean.table-summary" || $0.id == "korean.meeting-minutes" || $0.id == "korean.action-items"
         }
+        let routeResolverAvailable = true
+        let workflowRunnerAvailable = WorkflowRunner.isAvailable()
+        let toolExecutionLayerAvailable = true
+        let connectorGuardAvailable = true
         let planRunnerAvailable = true
         let planRunnerUniversalDocumentEnabled = FeatureFlags.planRunnerUniversalDocumentEnabled
+        let planRunnerFailureReasonAware = true
         let activeTaskRoomCount = manager.activeWorkflowTaskCount()
         let lastRoomGoalType = roomGoalContext?.currentGoal?.goalType.rawValue
         let lastActiveWorkflowStep = roomGoalContext?.activeWorkflowStep
@@ -268,8 +283,13 @@ final class RuntimeDiagnosticsService {
             dailyBriefingMailItemCount: dailyBriefing.mailItems.count,
             universalDocumentSkillCount: universalDocumentSkillCount,
             universalDocumentRouteAvailable: universalDocumentRouteAvailable,
+            routeResolverAvailable: routeResolverAvailable,
+            workflowRunnerAvailable: workflowRunnerAvailable,
+            toolExecutionLayerAvailable: toolExecutionLayerAvailable,
+            connectorGuardAvailable: connectorGuardAvailable,
             planRunnerAvailable: planRunnerAvailable,
             planRunnerUniversalDocumentEnabled: planRunnerUniversalDocumentEnabled,
+            planRunnerFailureReasonAware: planRunnerFailureReasonAware,
             workspacePath: workspacePath,
             recentEventCount: recentEvents.count,
             latestEventSummary: latestSummary
