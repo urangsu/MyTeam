@@ -151,7 +151,10 @@ struct SettingsView: View {
     @State private var selectedProvider: LLMProvider = .gemini
     @State private var validationStatus: ValidationStatus = .idle
     @State private var showAdvancedModelSettings: Bool = false
-    @State private var dailyBriefingPreview: DailyBriefing = DailyBriefingService.makeUnavailableBriefing()
+    @State private var dailyBriefingPreview: DailyBriefing = DailyBriefingService.makeUnavailableBriefing(
+        now: Date(),
+        manager: AgentWindowManager.shared
+    )
     @State private var dailyBriefingRefreshToken = UUID()
 
     @State private var currentTab: Int = 0
@@ -669,7 +672,11 @@ struct SettingsView: View {
     @MainActor
     private func refreshDailyBriefingPreview() async {
         let provider = GoogleDailyBriefingCalendarProvider.shared
-        let briefing = await DailyBriefingService.makePreviewBriefing(now: Date(), calendarProvider: provider)
+        let briefing = await DailyBriefingService.makePreviewBriefing(
+            now: Date(),
+            calendarProvider: provider,
+            manager: AgentWindowManager.shared
+        )
         dailyBriefingPreview = briefing
     }
 

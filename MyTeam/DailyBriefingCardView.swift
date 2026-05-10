@@ -15,7 +15,7 @@ struct DailyBriefingCardView: View {
             briefingSection(
                 title: "오늘 일정",
                 icon: "calendar",
-                emptyText: "Google Calendar 연결 후 표시됩니다."
+                emptyText: "연결된 일정이 없습니다. Google Calendar 연결 후 오늘 일정을 불러올 수 있습니다."
             ) {
                 ForEach(briefing.calendarItems) { item in
                     briefingRow(
@@ -29,7 +29,7 @@ struct DailyBriefingCardView: View {
             briefingSection(
                 title: "새 메일",
                 icon: "envelope",
-                emptyText: "Gmail/Naver Mail 연결 후 표시됩니다."
+                emptyText: "메일 브리핑은 아직 준비 중입니다. 현재는 메일 발송/삭제를 지원하지 않습니다."
             ) {
                 ForEach(briefing.mailItems) { item in
                     briefingRow(
@@ -43,7 +43,7 @@ struct DailyBriefingCardView: View {
             briefingSection(
                 title: "오늘 할 일",
                 icon: "checklist",
-                emptyText: "로컬 할 일 연동은 준비 중입니다."
+                emptyText: "오늘 할 일이 아직 없습니다."
             ) {
                 ForEach(briefing.taskItems) { item in
                     briefingRow(
@@ -57,7 +57,7 @@ struct DailyBriefingCardView: View {
             briefingSection(
                 title: "확인 필요",
                 icon: "exclamationmark.triangle",
-                emptyText: "연결 후 확인 필요 항목이 표시됩니다."
+                emptyText: "확인 필요 항목이 없습니다."
             ) {
                 ForEach(briefing.attentionItems) { item in
                     briefingRow(
