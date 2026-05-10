@@ -17,6 +17,8 @@ struct RouteTrace: Identifiable, Equatable {
         case appLaunchDetected
         case privacyTermsDetected
         case universalDocumentDetected
+        case contextGateEvaluated
+        case recentArtifactReferenced
         case universalDocumentGenerated
         case universalDocumentSaved
         case fileCreationDetected

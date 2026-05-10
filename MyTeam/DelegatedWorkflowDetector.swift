@@ -139,12 +139,10 @@ enum DelegatedWorkflowDetector {
         if containsAny(lower, keywords: ["툴", "도구", "브라우저", "웹", "검색", "외부"]) {
             scopes.append(.toolExecution)
         }
-        if isReadOnlyMailRequest(lower) {
-            if containsAny(lower, keywords: ["메일", "메일 요약", "메일 본문", "내용 읽어", "새 메일", "메일 몇 통", "메일 목록", "메일 제목", "메일 발신자", "중요한 메일"]) {
-                scopes.append(.answerOnly)
-            }
-        } else if containsAny(lower, keywords: ["메일", "이메일", "슬랙", "slack", "보내", "전송", "공유"]) {
+        if isMailSendRequest(lower) {
             scopes.append(.externalWrite)
+        } else if isReadOnlyMailRequest(lower) {
+            scopes.append(.answerOnly)
         }
         if containsAny(lower, keywords: ["결제", "구매", "청구", "가격", "돈"]) {
             scopes.append(.payment)
@@ -207,7 +205,7 @@ enum DelegatedWorkflowDetector {
 
     static func isReadOnlyMailRequest(_ message: String) -> Bool {
         let lower = message.lowercased()
-        return containsAny(lower, keywords: [
+        let readKeywords = [
             "새 메일",
             "메일 몇 통",
             "메일 목록",
@@ -218,7 +216,9 @@ enum DelegatedWorkflowDetector {
             "내용 읽어",
             "중요한 메일",
             "메일이랑 일정"
-        ])
+        ]
+        guard containsAny(lower, keywords: readKeywords) else { return false }
+        return !isMailSendRequest(lower)
     }
 
     static func isUserInitiatedConnectorSetup(_ message: String) -> Bool {
@@ -231,6 +231,22 @@ enum DelegatedWorkflowDetector {
             "설정 저장",
             "사용자가 연결"
         ])
+    }
+
+    static func isMailSendRequest(_ message: String) -> Bool {
+        let lower = message.lowercased()
+        let keywords = [
+            "메일 보내",
+            "이메일 보내",
+            "메일 발송",
+            "답장 보내",
+            "전송해",
+            "공유해"
+        ]
+        return containsAny(lower, keywords: keywords) || (
+            containsAny(lower, keywords: ["메일", "이메일"]) &&
+            containsAny(lower, keywords: ["보내", "발송", "전송", "공유"])
+        )
     }
 
     static func looksLikeGenericDocumentRequest(_ lower: String, original: String) -> Bool {

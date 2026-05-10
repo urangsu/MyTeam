@@ -11,6 +11,7 @@ struct RuntimeDiagnosticsSnapshot {
     let currentRoomID: UUID?
     let activeWorkflowID: UUID?
     let isWorkflowRunning: Bool
+    let activeTaskRoomCount: Int
 
     // Gemini
     let geminiCooldownRemainingSeconds: Double?   // nil이면 쿨다운 없음
@@ -42,6 +43,11 @@ struct RuntimeDiagnosticsSnapshot {
     let lastCapabilityRouteStatus: String?
     let lastGoalRequiredCapabilities: [String]
     let lastUniversalDocumentType: String?
+    let lastRoomGoalType: String?
+    let lastActiveWorkflowStep: String?
+    let recentArtifactReferenceAvailable: Bool
+    let blockedCapabilityGateEnabled: Bool
+    let resultVerifierErrorGateEnabled: Bool
 
     // Router burn-in / tool contract validation
     let routerBurnInTotal: Int
@@ -91,6 +97,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("roomID: \(currentRoomID?.uuidString.prefix(8) ?? "nil")")
         lines.append("workflowID: \(activeWorkflowID?.uuidString.prefix(8) ?? "nil")")
         lines.append("isWorkflowRunning: \(isWorkflowRunning)")
+        lines.append("activeTaskRooms: \(activeTaskRoomCount)")
 
         if let sec = geminiCooldownRemainingSeconds {
             lines.append("geminiCooldown: \(Int(sec))s remaining (429×\(geminiConsecutive429Count))")
@@ -118,6 +125,9 @@ struct RuntimeDiagnosticsSnapshot {
         if let lastUniversalDocumentType {
             lines.append("universalDocument: \(lastUniversalDocumentType)")
         }
+        if lastRoomGoalType != nil || lastActiveWorkflowStep != nil {
+            lines.append("roomGoal: \(lastRoomGoalType ?? "nil") step=\(lastActiveWorkflowStep ?? "nil") recentArtifactRef=\(recentArtifactReferenceAvailable)")
+        }
         lines.append("recentRouteTraceCount: \(recentRouteTraceCount)")
         lines.append("validation: router \(routerBurnInPassed)/\(routerBurnInTotal) passed | tool contracts errors=\(toolContractErrors) warnings=\(toolContractWarnings)")
         if let delegationModeStatus {
@@ -133,6 +143,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("googleCalendar: connection=\(googleCalendarConnectionStatus) fetch=\(googleCalendarLastFetchStatus)")
         lines.append("dailyBriefing: status=\(dailyBriefingStatus) calendar=\(dailyBriefingCalendarItemCount) mail=\(dailyBriefingMailItemCount)")
         lines.append("universalDocument: skills=\(universalDocumentSkillCount) available=\(universalDocumentRouteAvailable)")
+        lines.append("safety: blockedCapabilityGate=\(blockedCapabilityGateEnabled) resultVerifierErrorGate=\(resultVerifierErrorGateEnabled)")
         lines.append("autonomy: goalInterpreter=true clarificationPolicy=true capabilityRouter=true resultVerifier=true")
         lines.append("workspace: \(workspacePath)")
         lines.append("recentEvents: \(recentEventCount) | latest: \(latestEventSummary ?? "none")")
@@ -166,6 +177,7 @@ final class RuntimeDiagnosticsService {
         let lastGoal = currentRoomID.flatMap { manager.lastGoalInterpretation(for: $0) }
         let lastCapabilityRouteDecision = currentRoomID.flatMap { manager.lastCapabilityRouteDecision(for: $0) }
         let lastUniversalDocumentType = currentRoomID.flatMap { manager.lastUniversalDocumentType(for: $0) }
+        let roomGoalContext = await MainActor.run { currentRoomID.flatMap { manager.roomGoalContext(for: $0) } }
         let recentRouteTraceCount = currentRoomID.map { manager.recentRouteTraces(for: $0).count } ?? 0
         let delegationState = currentRoomID.flatMap { manager.delegationModeState(for: $0) }
         let delegationContract = currentRoomID.flatMap { manager.activeDelegationContract(for: $0) }
@@ -191,12 +203,19 @@ final class RuntimeDiagnosticsService {
         let universalDocumentRouteAvailable = SkillRegistry.shared.allEnabledSkills().contains {
             $0.id.hasPrefix("korean.document-") || $0.id == "korean.report-draft" || $0.id == "korean.checklist" || $0.id == "korean.table-summary" || $0.id == "korean.meeting-minutes" || $0.id == "korean.action-items"
         }
+        let activeTaskRoomCount = manager.activeWorkflowTaskCount()
+        let lastRoomGoalType = roomGoalContext?.currentGoal?.goalType.rawValue
+        let lastActiveWorkflowStep = roomGoalContext?.activeWorkflowStep
+        let recentArtifactReferenceAvailable = roomGoalContext.map { !$0.recentArtifactIDs.isEmpty } ?? false
+        let blockedCapabilityGateEnabled = true
+        let resultVerifierErrorGateEnabled = true
 
         return RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
             currentRoomID: currentRoomID,
             activeWorkflowID: manager.currentWorkflowID,
             isWorkflowRunning: manager.isWorkflowRunning,
+            activeTaskRoomCount: activeTaskRoomCount,
             geminiCooldownRemainingSeconds: ai.geminiCooldownRemainingSeconds,
             geminiConsecutive429Count: ai.consecutive429Count,
             budgetUsageDescription: budget.usageDescription(),
@@ -216,6 +235,11 @@ final class RuntimeDiagnosticsService {
             lastCapabilityRouteStatus: lastCapabilityRouteDecision.map { $0.status.rawValue },
             lastGoalRequiredCapabilities: lastGoal?.requiredCapabilities.map { $0.rawValue } ?? [],
             lastUniversalDocumentType: lastUniversalDocumentType?.rawValue,
+            lastRoomGoalType: lastRoomGoalType,
+            lastActiveWorkflowStep: lastActiveWorkflowStep,
+            recentArtifactReferenceAvailable: recentArtifactReferenceAvailable,
+            blockedCapabilityGateEnabled: blockedCapabilityGateEnabled,
+            resultVerifierErrorGateEnabled: resultVerifierErrorGateEnabled,
             routerBurnInTotal: routerBurnInSummary.total,
             routerBurnInPassed: routerBurnInSummary.passed,
             routerBurnInFailed: routerBurnInSummary.failed,

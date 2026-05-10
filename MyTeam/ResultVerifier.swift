@@ -14,6 +14,18 @@ struct ResultVerificationIssue: Identifiable, Equatable {
 struct ResultVerificationSummary: Equatable {
     let passed: Bool
     let issues: [ResultVerificationIssue]
+
+    var warningCount: Int {
+        issues.filter { $0.severity == .warning }.count
+    }
+
+    var errorCount: Int {
+        issues.filter { $0.severity == .error }.count
+    }
+
+    var hasError: Bool {
+        errorCount > 0
+    }
 }
 
 enum ResultVerifier {

@@ -23,6 +23,7 @@ struct RouterBurnInCase: Identifiable, Equatable {
     let expectedSkillID: String?
     let expectedRouteHint: String?
     let expectedGoalType: String?
+    let expectedRecentArtifactReference: Bool?
     let shouldRequireApproval: Bool
     let notes: String
 
@@ -33,6 +34,7 @@ struct RouterBurnInCase: Identifiable, Equatable {
         expectedSkillID: String?,
         expectedRouteHint: String?,
         expectedGoalType: String? = nil,
+        expectedRecentArtifactReference: Bool? = nil,
         shouldRequireApproval: Bool,
         notes: String
     ) {
@@ -42,6 +44,7 @@ struct RouterBurnInCase: Identifiable, Equatable {
         self.expectedSkillID = expectedSkillID
         self.expectedRouteHint = expectedRouteHint
         self.expectedGoalType = expectedGoalType
+        self.expectedRecentArtifactReference = expectedRecentArtifactReference
         self.shouldRequireApproval = shouldRequireApproval
         self.notes = notes
     }
@@ -55,6 +58,8 @@ struct RouterBurnInResult: Identifiable, Equatable {
     let expectedGoalType: String?
     let actualGoalType: String?
     let goalPassed: Bool?
+    let expectedRecentArtifactReference: Bool?
+    let actualRecentArtifactReference: Bool?
     let notes: String
 }
 

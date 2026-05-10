@@ -98,6 +98,8 @@ class AgentWindowManager: ObservableObject {
     @Published var delegatedWorkflowPlansByRoom: [UUID: DelegatedWorkflowPlan] = [:]
     /// room별 pending delegated execution request.
     @Published var pendingDelegatedExecutionRequestsByRoom: [UUID: DelegatedExecutionRequest] = [:]
+    /// room별 goal context — 문맥 기반 clarification / recent artifact 참조용.
+    @Published var roomGoalContexts: [UUID: RoomGoalContext] = [:]
     /// 최근 완료된 workflow artifact 목록 — 채팅 하단 ArtifactCardView에 표시.
     /// TODO: room scope 분리 — 현재는 앱 전역이라 여러 채팅방에서 artifact가 섞일 수 있음.
     ///       제품 구조에서는 recentArtifactsByRoom: [UUID: [IndexedArtifact]] 또는
@@ -133,6 +135,9 @@ class AgentWindowManager: ObservableObject {
             }
         }
     }
+
+    private var activeTasksByRoom: [UUID: Task<Void, Never>] = [:]
+    private let activeTasksLock = NSLock()
 
     @MainActor
     func recordTurnProfile(_ profile: TurnProfile) {
@@ -228,6 +233,83 @@ class AgentWindowManager: ObservableObject {
     @MainActor
     func clearPendingDelegatedExecutionRequest(for roomID: UUID) {
         pendingDelegatedExecutionRequestsByRoom.removeValue(forKey: roomID)
+    }
+
+    @MainActor
+    func updateRoomGoalContext(
+        roomID: UUID,
+        goal: GoalInterpretation? = nil,
+        activeWorkflowStep: String? = nil,
+        recentArtifactID: UUID? = nil
+    ) {
+        var context = roomGoalContexts[roomID] ?? RoomGoalContext(
+            roomID: roomID,
+            currentGoal: nil,
+            activeWorkflowStep: nil,
+            recentArtifactIDs: [],
+            updatedAt: Date()
+        )
+        if let goal {
+            context.currentGoal = goal
+        }
+        if let activeWorkflowStep {
+            context.activeWorkflowStep = activeWorkflowStep
+        }
+        if let recentArtifactID {
+            context.recentArtifactIDs.insert(recentArtifactID, at: 0)
+            var deduped: [UUID] = []
+            for artifactID in context.recentArtifactIDs {
+                if !deduped.contains(artifactID) {
+                    deduped.append(artifactID)
+                }
+                if deduped.count == 3 { break }
+            }
+            context.recentArtifactIDs = deduped
+        }
+        context.updatedAt = Date()
+        roomGoalContexts[roomID] = context
+    }
+
+    @MainActor
+    func roomGoalContext(for roomID: UUID) -> RoomGoalContext? {
+        roomGoalContexts[roomID]
+    }
+
+    func activeWorkflowTaskCount() -> Int {
+        activeTasksLock.lock()
+        defer { activeTasksLock.unlock() }
+        return activeTasksByRoom.count
+    }
+
+    @MainActor
+    func activeWorkflowTask(for roomID: UUID) -> Task<Void, Never>? {
+        activeTasksLock.lock()
+        defer { activeTasksLock.unlock() }
+        return activeTasksByRoom[roomID]
+    }
+
+    @MainActor
+    func setActiveWorkflowTask(_ task: Task<Void, Never>?, roomID: UUID) {
+        activeTasksLock.lock()
+        defer { activeTasksLock.unlock() }
+        activeTasksByRoom[roomID] = task
+    }
+
+    @MainActor
+    func cancelActiveWorkflowTask(roomID: UUID) {
+        activeTasksLock.lock()
+        let task = activeTasksByRoom.removeValue(forKey: roomID)
+        activeTasksLock.unlock()
+        task?.cancel()
+    }
+
+    @MainActor
+    func cancelAllActiveWorkflowTasks() {
+        activeTasksLock.lock()
+        let tasks = Array(activeTasksByRoom.values)
+        activeTasksByRoom.removeAll()
+        activeTasksLock.unlock()
+        tasks.forEach { $0.cancel() }
     }
     
     var persistentContext: String {

@@ -141,6 +141,29 @@ enum UniversalDocumentSkillService {
         )
     }
 
+    static func isVagueOrganizeRequest(_ message: String) -> Bool {
+        let lower = message.lowercased()
+        let vaguePhrases = [
+            "그냥 정리해봐",
+            "정리 좀 해봐",
+            "뭔가 정리해줘",
+            "한번 정리하자",
+            "정리해봐",
+            "정리해줘"
+        ]
+        if vaguePhrases.contains(where: { lower.contains($0) }) {
+            return true
+        }
+        guard lower.contains("정리") || lower.contains("요약") else { return false }
+        let contextCues = [
+            "문서", "업무용", "자료", "내용", "회의", "보고", "표",
+            "체크리스트", "파일로", "붙여넣", "아래 내용", "원문", "초안"
+        ]
+        let hasContext = contextCues.contains { lower.contains($0) }
+        let hasStructuredText = message.contains("\n") || message.contains("```") || message.count >= 20
+        return !(hasContext || hasStructuredText)
+    }
+
     private static func typeSpecificBody(for request: UniversalDocumentSkillRequest) -> String {
         switch request.type {
         case .summary:
@@ -327,7 +350,7 @@ enum UniversalDocumentSkillService {
     }
 
     private static func looksLikeGenericDocumentRequest(_ lower: String, original: String) -> Bool {
-        guard lower.contains("정리") || lower.contains("요약") else { return false }
+        guard (lower.contains("정리") || lower.contains("요약")) && !isVagueOrganizeRequest(original) else { return false }
 
         let contextCues = [
             "문서", "업무용", "자료", "내용", "회의", "보고", "표",

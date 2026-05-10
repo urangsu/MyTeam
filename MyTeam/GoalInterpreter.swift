@@ -107,6 +107,17 @@ enum GoalInterpreter {
             )
         }
 
+        if looksLikeGenericDocumentGoal(lower, original: message) {
+            return makeGoal(
+                preview: message,
+                type: .documentWork,
+                title: "문서 작업",
+                outputs: ["요약", "보고서", "체크리스트", "표", "회의록"],
+                capabilities: [.llmGeneration, .artifactCreation],
+                confidence: .high
+            )
+        }
+
         if containsAny(lower, keywords: documentKeywords) {
             return makeGoal(
                 preview: message,
@@ -272,7 +283,6 @@ enum GoalInterpreter {
     ]
 
     private static let documentKeywords = [
-        "정리",
         "요약",
         "보고서",
         "체크리스트",
@@ -313,6 +323,18 @@ enum GoalInterpreter {
 
     private static func containsAny(_ text: String, keywords: [String]) -> Bool {
         keywords.contains { text.contains($0.lowercased()) }
+    }
+
+    private static func looksLikeGenericDocumentGoal(_ lower: String, original: String) -> Bool {
+        guard lower.contains("정리") || lower.contains("요약") else { return false }
+        let contextCues = [
+            "문서", "업무용", "자료", "내용", "회의", "보고", "표",
+            "체크리스트", "파일로", "붙여넣", "아래 내용", "원문", "초안"
+        ]
+        if contextCues.contains(where: { lower.contains($0) }) { return true }
+        if original.contains("\n") || original.contains("```") { return true }
+        if lower.contains("정리") && original.count >= 20 && original.contains(" ") { return true }
+        return false
     }
 
     private static func extractedAppName(from message: String) -> String? {

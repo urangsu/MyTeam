@@ -230,8 +230,20 @@ enum RouterBurnInSuite {
             expectedSkillID: "korean.document-summary",
             expectedRouteHint: "universalDocument",
             expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: false,
             shouldRequireApproval: false,
             notes: "일반 정리 요청"
+        ),
+        .init(
+            id: "doc-recent-artifact-reference",
+            message: "방금 만든 거 표로 다시 정리해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.table-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: true,
+            shouldRequireApproval: false,
+            notes: "최근 artifact 참조 케이스"
         ),
         .init(
             id: "doc-generic-summary-no-context",
@@ -239,7 +251,8 @@ enum RouterBurnInSuite {
             expectedRoute: .directChat,
             expectedSkillID: nil,
             expectedRouteHint: nil,
-            expectedGoalType: "directAnswer",
+            expectedGoalType: "unknown",
+            expectedRecentArtifactReference: false,
             shouldRequireApproval: false,
             notes: "문맥 없는 정리 요청은 universal document로 보내지 않음"
         ),
@@ -270,6 +283,7 @@ enum RouterBurnInSuite {
             expectedSkillID: nil,
             expectedRouteHint: "artifactWorkflow",
             expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: false,
             shouldRequireApproval: false,
             notes: "PPT는 universal document보다 기존 artifact workflow"
         ),
@@ -280,6 +294,7 @@ enum RouterBurnInSuite {
             expectedSkillID: nil,
             expectedRouteHint: "artifactWorkflow",
             expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: false,
             shouldRequireApproval: false,
             notes: "엑셀은 기존 artifact workflow"
         ),
@@ -395,9 +410,10 @@ enum RouterBurnInSuite {
         .init(
             id: "autonomy-document-work",
             message: "이거 업무용으로 정리해줘",
-            expectedRoute: .directChat,
-            expectedSkillID: nil,
-            expectedRouteHint: nil,
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.document-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
             shouldRequireApproval: false,
             notes: "문서화 목표 추론 준비 케이스"
         ),
@@ -526,11 +542,14 @@ enum RouterBurnInSuite {
         let actual = classify(message: testCase.message)
         let goal = GoalInterpreter.interpret(testCase.message)
         let goalPassed = testCase.expectedGoalType.map { $0 == goal.goalType.rawValue }
+        let actualRecentArtifactReference = GoalContextEngine.referencesRecentArtifact(testCase.message)
+        let recentArtifactPassed = testCase.expectedRecentArtifactReference.map { $0 == actualRecentArtifactReference }
         let passed = actual.route == testCase.expectedRoute
             && (testCase.expectedSkillID == nil || testCase.expectedSkillID == actual.skillID)
             && (testCase.expectedRouteHint == nil || testCase.expectedRouteHint == actual.routeHint)
             && actual.requiresApproval == testCase.shouldRequireApproval
             && (goalPassed ?? true)
+            && (recentArtifactPassed ?? true)
 
         return RouterBurnInResult(
             id: testCase.id,
@@ -540,6 +559,8 @@ enum RouterBurnInSuite {
             expectedGoalType: testCase.expectedGoalType,
             actualGoalType: goal.goalType.rawValue,
             goalPassed: goalPassed,
+            expectedRecentArtifactReference: testCase.expectedRecentArtifactReference,
+            actualRecentArtifactReference: actualRecentArtifactReference,
             notes: testCase.notes
         )
     }
@@ -661,6 +682,7 @@ enum RouterBurnInSuite {
         var parts = ["route=\(testCase.expectedRoute.rawValue)"]
         if let skillID = testCase.expectedSkillID { parts.append("skill=\(skillID)") }
         if let routeHint = testCase.expectedRouteHint { parts.append("hint=\(routeHint)") }
+        if let recentArtifact = testCase.expectedRecentArtifactReference { parts.append("recentArtifact=\(recentArtifact)") }
         parts.append("approval=\(testCase.shouldRequireApproval)")
         return parts.joined(separator: " | ")
     }

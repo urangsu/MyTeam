@@ -9,16 +9,50 @@ final class WorkflowOrchestrator {
     private init() {}
 
     // MARK: - 취소 지원
-    private var currentWorkflowTask: Task<Void, Never>?
+    private var activeTasksByRoom: [UUID: Task<Void, Never>] = [:]
+    private let activeTasksLock = NSLock()
+
+    private func activeWorkflowTask(for roomID: UUID) -> Task<Void, Never>? {
+        activeTasksLock.lock()
+        defer { activeTasksLock.unlock() }
+        return activeTasksByRoom[roomID]
+    }
+
+    private func setActiveWorkflowTask(_ task: Task<Void, Never>?, for roomID: UUID) {
+        activeTasksLock.lock()
+        defer { activeTasksLock.unlock() }
+        activeTasksByRoom[roomID] = task
+    }
+
+    private func cancelActiveWorkflowTask(for roomID: UUID) -> Task<Void, Never>? {
+        activeTasksLock.lock()
+        defer { activeTasksLock.unlock() }
+        let task = activeTasksByRoom.removeValue(forKey: roomID)
+        task?.cancel()
+        return task
+    }
+
+    private func cancelAllActiveWorkflowTasks() {
+        activeTasksLock.lock()
+        let tasks = Array(activeTasksByRoom.values)
+        activeTasksByRoom.removeAll()
+        activeTasksLock.unlock()
+        tasks.forEach { $0.cancel() }
+    }
+
+    private func activeWorkflowTaskCount() -> Int {
+        activeTasksLock.lock()
+        defer { activeTasksLock.unlock() }
+        return activeTasksByRoom.count
+    }
 
     /// 현재 실행 중인 workflow를 즉시 취소한다.
     func cancelCurrentWorkflow(roomID: UUID, manager: AgentWindowManager) {
-        guard let task = currentWorkflowTask, !task.isCancelled else { return }
-        task.cancel()
-        currentWorkflowTask = nil
+        guard activeWorkflowTask(for: roomID) != nil else { return }
+        _ = cancelActiveWorkflowTask(for: roomID)
         Task { @MainActor in
             manager.typingAgentIDs.removeAll()
-            manager.isWorkflowRunning = false
+            manager.isWorkflowRunning = self.activeWorkflowTaskCount() > 0
             manager.addChatLog(
                 roomID: roomID, agentID: "system", agentName: "작업봇",
                 text: "🛑 작업을 중지했습니다.", isUser: false, isSystem: true
@@ -37,9 +71,8 @@ final class WorkflowOrchestrator {
         manager: AgentWindowManager,
         skipDelegationMode: Bool = false
     ) async {
-        // ── 이전 workflow가 남아 있으면 조용히 취소 ──
-        currentWorkflowTask?.cancel()
-        currentWorkflowTask = nil
+        // ── 같은 room의 이전 workflow만 조용히 취소 ──
+        _ = cancelActiveWorkflowTask(for: roomID)
 
         // ── 이벤트: userMessageSubmitted ──
         let eventRoomID = roomID
@@ -50,6 +83,7 @@ final class WorkflowOrchestrator {
         let capabilityDecision = CapabilityAwareRouter.evaluate(goal: interpretedGoal)
         await MainActor.run {
             manager.recordGoalInterpretation(interpretedGoal, decision: capabilityDecision, roomID: roomID)
+            manager.updateRoomGoalContext(roomID: roomID, goal: interpretedGoal, activeWorkflowStep: "routing")
             self.recordRouteTrace(
                 manager: manager,
                 roomID: roomID,
@@ -59,6 +93,39 @@ final class WorkflowOrchestrator {
         }
 
         var effectiveScopes: Set<ToolScope> = [.chatBasic]  // 항상 chatBasic 포함
+
+        if capabilityDecision.status == .blocked && !DelegatedWorkflowDetector.isDelegationRequest(userMessage) {
+            await MainActor.run {
+                manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "blocked")
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .blocked,
+                    message: capabilityDecision.message
+                )
+                self.recordTurnProfile(
+                    manager: manager,
+                    roomID: roomID,
+                    userMessage: userMessage,
+                    route: .blockedHighRiskSkill,
+                    reason: capabilityDecision.message,
+                    matchedSkills: [],
+                    effectiveScopes: effectiveScopes,
+                    expectedOutput: "blocked notice",
+                    requiresApproval: true,
+                    blockedTools: capabilityDecision.blockedCapabilities.map(\.rawValue)
+                )
+                manager.addChatLog(
+                    roomID: roomID,
+                    agentID: "system",
+                    agentName: "시스템",
+                    text: capabilityDecision.message,
+                    isUser: false,
+                    isSystem: true
+                )
+            }
+            return
+        }
 
         if !skipDelegationMode {
             if await handleDelegationMode(
@@ -297,9 +364,10 @@ final class WorkflowOrchestrator {
                     allowedScopes: effectiveScopes
                 )
             }
-            currentWorkflowTask = task
+            setActiveWorkflowTask(task, for: roomID)
             await task.value
-            currentWorkflowTask = nil
+            setActiveWorkflowTask(nil, for: roomID)
+            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount() > 0 }
             return
         }
 
@@ -371,9 +439,10 @@ final class WorkflowOrchestrator {
                 await MainActor.run { manager.isWorkflowRunning = true }
                 defer { Task { @MainActor in manager.isWorkflowRunning = false } }
                 let task = Task { await self.runPrivacyTermsWorkflow(request: request, userMessage: userMessage, roomID: roomID, manager: manager, allowedScopes: effectiveScopes) }
-                currentWorkflowTask = task
+                setActiveWorkflowTask(task, for: roomID)
                 await task.value
-                currentWorkflowTask = nil
+                setActiveWorkflowTask(nil, for: roomID)
+                await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount() > 0 }
                 return
             }
         }
@@ -383,13 +452,35 @@ final class WorkflowOrchestrator {
            let documentType = UniversalDocumentSkillService.detectSkillType(from: userMessage),
            enabledSkills.contains(where: { $0.id == documentType.skillID }) {
             let request = UniversalDocumentSkillService.extractRequest(from: userMessage, type: documentType)
+            let roomContext = await MainActor.run { manager.roomGoalContext(for: roomID) }
+            let recentArtifactID = GoalContextEngine.latestReferencedArtifactID(
+                message: userMessage,
+                context: roomContext
+            )
+            let clarificationDecision = ClarificationPolicy.decideForUniversalDocument(request, context: roomContext)
             await MainActor.run {
                 manager.recordUniversalDocumentType(documentType, roomID: roomID)
+                manager.updateRoomGoalContext(roomID: roomID, goal: interpretedGoal, activeWorkflowStep: "universalDocument.detected")
+                if let recentArtifactID {
+                    manager.updateRoomGoalContext(roomID: roomID, recentArtifactID: recentArtifactID)
+                    self.recordRouteTrace(
+                        manager: manager,
+                        roomID: roomID,
+                        step: .recentArtifactReferenced,
+                        message: "recent artifact referenced: \(recentArtifactID.uuidString.prefix(8))"
+                    )
+                }
                 self.recordRouteTrace(
                     manager: manager,
                     roomID: roomID,
                     step: .universalDocumentDetected,
                     message: "universal document detected: \(documentType.skillID)"
+                )
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .contextGateEvaluated,
+                    message: "context gate: \(String(describing: clarificationDecision))"
                 )
                 self.recordTurnProfile(
                     manager: manager,
@@ -402,6 +493,37 @@ final class WorkflowOrchestrator {
                     expectedOutput: "markdown artifact",
                     requiresApproval: false
                 )
+            }
+
+            switch clarificationDecision {
+            case .askRequired(let questions):
+                await MainActor.run {
+                    manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "universalDocument.clarify")
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "스킬",
+                        text: questions.first ?? UniversalDocumentSkillService.missingInputMessage(for: request),
+                        isUser: false,
+                        isSystem: true
+                    )
+                }
+                return
+            case .blocked(let message):
+                await MainActor.run {
+                    manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "universalDocument.blocked")
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "스킬",
+                        text: message,
+                        isUser: false,
+                        isSystem: true
+                    )
+                }
+                return
+            case .proceedWithAssumptions:
+                break
             }
 
             if UniversalDocumentSkillService.needsMoreInput(request) {
@@ -421,9 +543,10 @@ final class WorkflowOrchestrator {
                     allowedScopes: effectiveScopes
                 )
             }
-            currentWorkflowTask = task
+            setActiveWorkflowTask(task, for: roomID)
             await task.value
-            currentWorkflowTask = nil
+            setActiveWorkflowTask(nil, for: roomID)
+            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount() > 0 }
             return
         }
 
@@ -459,9 +582,10 @@ final class WorkflowOrchestrator {
             // defer: cancel/failure/success/early return 모든 경로에서 false 보장
             defer { Task { @MainActor in manager.isWorkflowRunning = false } }
             let task = Task { await self.runWorkflow(userMessage: userMessage, roomID: roomID, manager: manager, allowedScopes: effectiveScopes) }
-            currentWorkflowTask = task
+            setActiveWorkflowTask(task, for: roomID)
             await task.value
-            currentWorkflowTask = nil
+            setActiveWorkflowTask(nil, for: roomID)
+            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount() > 0 }
             return
         }
 
@@ -1381,100 +1505,162 @@ final class WorkflowOrchestrator {
 
         guard !Task.isCancelled else { return }
 
-        let budgetType: AICallType = .universalDocumentGen
-        guard AICallBudgetManager.shared.requestCall(budgetType) else {
-            finalStatus = .failed
-            finalEvent = .modelCallFailed(workflowID: workflowID, provider: "budget", error: "예산 초과")
-            await MainActor.run {
-                removeProgressAndPost(
-                    manager: manager, roomID: roomID, progressID: progressMsgID,
-                    text: "⚠️ 작업 예산이 초과되었습니다.", isSystem: true
-                )
-            }
-            return
-        }
-        AppLog.info("[AICall] callType=\(budgetType.rawValue)")
-
         let prompt = UniversalDocumentSkillService.buildPrompt(for: request)
+        var finalMarkdownText: String?
+        var finalVerification: ResultVerificationSummary?
 
-        do {
-            let generatedMarkdown = try await AIService.shared.getResponse(
-                text: prompt,
-                agentID: "planner",
-                chatHistory: []
-            )
-            guard !Task.isCancelled else { return }
+        for attempt in 1...2 {
+            let callType: AICallType = attempt == 1 ? .universalDocumentGen : .universalDocumentRepair
+            guard AICallBudgetManager.shared.requestCall(callType) else {
+                finalStatus = .failed
+                finalEvent = .modelCallFailed(workflowID: workflowID, provider: "budget", error: "예산 초과")
+                await MainActor.run {
+                    manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "universalDocument.failed")
+                    removeProgressAndPost(
+                        manager: manager, roomID: roomID, progressID: progressMsgID,
+                        text: "⚠️ 작업 예산이 초과되었습니다.",
+                        isSystem: true
+                    )
+                }
+                return
+            }
+            AppLog.info("[AICall] callType=\(callType.rawValue)")
 
             await MainActor.run {
-                self.recordRouteTrace(
-                    manager: manager,
-                    roomID: roomID,
-                    step: .universalDocumentGenerated,
-                    message: "universal document generated: \(request.type.skillID)"
-                )
-            }
-
-            let verification = ResultVerifier.verifyMarkdownArtifact(
-                content: generatedMarkdown.text,
-                requiredSections: UniversalDocumentSkillService.requiredSections(for: request.type)
-            )
-            if !verification.issues.isEmpty {
-                let warningMessages = verification.issues.map { "\($0.severity.rawValue): \($0.message)" }.joined(separator: " | ")
-                AppLog.warning("[UniversalDocumentWorkflow] verification: \(warningMessages)")
+                manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "universalDocument.generating")
             }
 
             do {
-                let artifact = try await UniversalDocumentArtifactWriter.writeMarkdown(
-                    content: generatedMarkdown.text,
-                    request: request,
-                    roomID: roomID,
-                    manager: manager
+                let generatedMarkdown = try await AIService.shared.getResponse(
+                    text: prompt,
+                    agentID: "planner",
+                    chatHistory: []
                 )
+                guard !Task.isCancelled else { return }
+
                 await MainActor.run {
                     self.recordRouteTrace(
                         manager: manager,
                         roomID: roomID,
-                        step: .universalDocumentSaved,
-                        message: "universal document saved: \(artifact.filename)"
+                        step: .universalDocumentGenerated,
+                        message: "universal document generated: \(request.type.skillID) attempt=\(attempt)"
                     )
+                    manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "universalDocument.verifying")
                 }
-                finalStatus = .completed
-                finalEvent = .workflowCompleted(workflowID: workflowID, roomID: roomID, artifactCount: 1)
-                await MainActor.run {
-                    removeProgressAndPost(
-                        manager: manager, roomID: roomID, progressID: progressMsgID,
-                        text: UniversalDocumentArtifactWriter.completionMessage(
-                            artifact: artifact,
-                            request: request,
-                            verification: verification
-                        ),
-                        isSystem: false
-                    )
+
+                let verification = ResultVerifier.verifyMarkdownArtifact(
+                    content: generatedMarkdown.text,
+                    requiredSections: UniversalDocumentSkillService.requiredSections(for: request.type)
+                )
+                finalVerification = verification
+                if !verification.issues.isEmpty {
+                    let warningMessages = verification.issues.map { "\($0.severity.rawValue): \($0.message)" }.joined(separator: " | ")
+                    AppLog.warning("[UniversalDocumentWorkflow] verification: \(warningMessages)")
                 }
-                AppLog.info("[UniversalDocumentWorkflow] 완료 artifact=\(artifact.filename)")
+
+                if verification.hasError {
+                    if ResultRecoveryPolicy.shouldRetryUniversalDocument(verification: verification, attempt: attempt) {
+                        AppLog.warning("[UniversalDocumentWorkflow] verification error — regenerate once")
+                        continue
+                    }
+                    finalStatus = .failed
+                    finalEvent = .modelCallFailed(workflowID: workflowID, provider: "verifier", error: "verification failed")
+                    await MainActor.run {
+                        manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "universalDocument.failed")
+                        removeProgressAndPost(
+                            manager: manager,
+                            roomID: roomID,
+                            progressID: progressMsgID,
+                            text: ResultRecoveryPolicy.failureMessage(),
+                            isSystem: true
+                        )
+                    }
+                    AppLog.error("[UniversalDocumentWorkflow] verification error → save blocked")
+                    return
+                }
+
+                finalMarkdownText = generatedMarkdown.text
+                break
             } catch {
                 finalStatus = .failed
-                finalEvent = .modelCallFailed(workflowID: workflowID, provider: "artifact", error: error.localizedDescription)
+                finalEvent = .modelCallFailed(workflowID: workflowID, provider: "llm", error: error.localizedDescription)
                 await MainActor.run {
+                    manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "universalDocument.failed")
                     removeProgressAndPost(
                         manager: manager, roomID: roomID, progressID: progressMsgID,
                         text: UniversalDocumentArtifactWriter.failureMessage(error: error, request: request),
                         isSystem: true
                     )
                 }
-                AppLog.error("[UniversalDocumentWorkflow] 파일 저장 실패: \(error)")
+                AppLog.error("[UniversalDocumentWorkflow] LLM 호출 실패: \(error)")
+                return
             }
+        }
+
+        guard let generatedMarkdownText = finalMarkdownText, let verification = finalVerification else {
+            finalStatus = .failed
+            finalEvent = .modelCallFailed(workflowID: workflowID, provider: "verifier", error: "verification unavailable")
+            await MainActor.run {
+                manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "universalDocument.failed")
+                removeProgressAndPost(
+                    manager: manager,
+                    roomID: roomID,
+                    progressID: progressMsgID,
+                    text: ResultRecoveryPolicy.failureMessage(),
+                    isSystem: true
+                )
+            }
+            return
+        }
+
+        do {
+            await MainActor.run {
+                manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "universalDocument.saving")
+            }
+            let artifact = try await UniversalDocumentArtifactWriter.writeMarkdown(
+                content: generatedMarkdownText,
+                request: request,
+                roomID: roomID,
+                manager: manager
+            )
+            await MainActor.run {
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .universalDocumentSaved,
+                    message: "universal document saved: \(artifact.filename)"
+                )
+                if let artifactUUID = UUID(uuidString: artifact.id) {
+                    manager.updateRoomGoalContext(roomID: roomID, recentArtifactID: artifactUUID)
+                }
+                manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: nil)
+            }
+            finalStatus = .completed
+            finalEvent = .workflowCompleted(workflowID: workflowID, roomID: roomID, artifactCount: 1)
+            await MainActor.run {
+                removeProgressAndPost(
+                    manager: manager, roomID: roomID, progressID: progressMsgID,
+                    text: UniversalDocumentArtifactWriter.completionMessage(
+                        artifact: artifact,
+                        request: request,
+                        verification: verification
+                    ),
+                    isSystem: false
+                )
+            }
+            AppLog.info("[UniversalDocumentWorkflow] 완료 artifact=\(artifact.filename)")
         } catch {
             finalStatus = .failed
-            finalEvent = .modelCallFailed(workflowID: workflowID, provider: "llm", error: error.localizedDescription)
+            finalEvent = .modelCallFailed(workflowID: workflowID, provider: "artifact", error: error.localizedDescription)
             await MainActor.run {
+                manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "universalDocument.failed")
                 removeProgressAndPost(
                     manager: manager, roomID: roomID, progressID: progressMsgID,
                     text: UniversalDocumentArtifactWriter.failureMessage(error: error, request: request),
                     isSystem: true
                 )
             }
-            AppLog.error("[UniversalDocumentWorkflow] LLM 호출 실패: \(error)")
+            AppLog.error("[UniversalDocumentWorkflow] 파일 저장 실패: \(error)")
         }
     }
 

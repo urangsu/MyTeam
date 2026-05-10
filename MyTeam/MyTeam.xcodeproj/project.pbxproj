@@ -140,6 +140,9 @@
 		792F822E9052246E01A48FCF /* 치코_03_i.wav in Resources */ = {isa = PBXBuildFile; fileRef = B72B928FBD3D84309879DE21 /* 치코_03_i.wav */; };
 		7B9A3946C5D91C7CFAC40494 /* AgentSwapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF2028A9749418F9EEE1AD57 /* AgentSwapView.swift */; };
 		7C2D4D5480E3304C54D83B3B /* UniversalDocumentArtifactWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9350ACA146835D5E84C37CD /* UniversalDocumentArtifactWriter.swift */; };
+		B1E7F1E2AA00112233445561 /* RoomGoalContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E7F1E2AA00112233445566 /* RoomGoalContext.swift */; };
+		B1E7F1E2AA00112233445562 /* GoalContextEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E7F1E2AA00112233445567 /* GoalContextEngine.swift */; };
+		B1E7F1E2AA00112233445563 /* ResultRecoveryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1E7F1E2AA00112233445568 /* ResultRecoveryPolicy.swift */; };
 		7C3E825CCC42079AC007AE7D /* cha.wav in Resources */ = {isa = PBXBuildFile; fileRef = FA28096AB6B8058FA5A62035 /* cha.wav */; };
 		7D6F311AA1C6DF47B6D59421 /* TrafficLightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CD70C5ADE01F161133B9E08 /* TrafficLightsView.swift */; };
 		7DC721FD5F852090242501CE /* 루나_01_아.wav in Resources */ = {isa = PBXBuildFile; fileRef = 0177C43F2FC59D53672AB173 /* 루나_01_아.wav */; };
@@ -489,6 +492,9 @@
 		1FBB92BB8BEAB8C96FA07067 /* d77891f84ca1db0d6f7058a4ee081d4bb0bfe88e */ = {isa = PBXFileReference; includeInIndex = 1; name = d77891f84ca1db0d6f7058a4ee081d4bb0bfe88e; path = "Resources/ChatterboxModels/models--ResembleAI--chatterbox/blobs/d77891f84ca1db0d6f7058a4ee081d4bb0bfe88e"; sourceTree = "<group>"; };
 		1FCD3CD0D938F5EC40F8BAF6 /* 치코_clockout_046.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_clockout_046.png"; path = "Resources/Sprites/치코/치코_clockout_046.png"; sourceTree = "<group>"; };
 		1FE32B322A651895319EAC69 /* UniversalDocumentSkillService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UniversalDocumentSkillService.swift; sourceTree = "<group>"; };
+		B1E7F1E2AA00112233445566 /* RoomGoalContext.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RoomGoalContext.swift; sourceTree = "<group>"; };
+		B1E7F1E2AA00112233445567 /* GoalContextEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoalContextEngine.swift; sourceTree = "<group>"; };
+		B1E7F1E2AA00112233445568 /* ResultRecoveryPolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResultRecoveryPolicy.swift; sourceTree = "<group>"; };
 		1FE670CC2689AD2BD6DA062D /* 핀.json */ = {isa = PBXFileReference; includeInIndex = 1; name = "핀.json"; path = "Resources/PrecomputedVoice/핀.json"; sourceTree = "<group>"; };
 		200FF8D18D4C7BABAD09C4EB /* 루나_test.json */ = {isa = PBXFileReference; includeInIndex = 1; name = "루나_test.json"; path = "Resources/SpeechCache/루나_test.json"; sourceTree = "<group>"; };
 		208440286CA482FC04AF0225 /* 치코_landing_042.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_landing_042.png"; path = "Resources/Sprites/치코/치코_landing_042.png"; sourceTree = "<group>"; };
@@ -1480,6 +1486,9 @@
 				3AD13B54285806D935EDB986 /* UniversalDocumentSkillRequest.swift */,
 				1FE32B322A651895319EAC69 /* UniversalDocumentSkillService.swift */,
 				A9350ACA146835D5E84C37CD /* UniversalDocumentArtifactWriter.swift */,
+				B1E7F1E2AA00112233445566 /* RoomGoalContext.swift */,
+				B1E7F1E2AA00112233445567 /* GoalContextEngine.swift */,
+				B1E7F1E2AA00112233445568 /* ResultRecoveryPolicy.swift */,
 			);
 			name = MyTeam;
 			sourceTree = "<group>";
@@ -3036,6 +3045,9 @@
 				D25000000000000000000018 /* GoogleOAuthSessionManager.swift in Sources */,
 				D25000000000000000000019 /* GoogleOAuthTokenExchangeService.swift in Sources */,
 				D2500000000000000000001A /* GoogleCalendarAPIModels.swift in Sources */,
+				B1E7F1E2AA00112233445561 /* RoomGoalContext.swift in Sources */,
+				B1E7F1E2AA00112233445562 /* GoalContextEngine.swift in Sources */,
+				B1E7F1E2AA00112233445563 /* ResultRecoveryPolicy.swift in Sources */,
 				E11000000000000000000011 /* AssistantCapability.swift in Sources */,
 				E11000000000000000000012 /* GoalInterpretation.swift in Sources */,
 				E11000000000000000000013 /* GoalInterpreter.swift in Sources */,
