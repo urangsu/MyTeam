@@ -6,6 +6,16 @@
 
 ---
 
+## 2026-05-10 (Round 30A — Daily Briefing / Connector Runtime Prep)
+
+- DailyBriefing route now handles natural language briefing requests instead of falling back to direct chat
+- Local/offline briefing provider now contributes recent files, recent artifacts, recent goals, and connector status to the briefing
+- Google Calendar / Gmail connector status copy is shorter and less developer-facing
+- blocked connector actions and briefing availability now show in runtime diagnostics
+- deferred runtime QA backlog is preserved instead of being marked pass
+- no OAuth structure changes, no Gmail API, no Calendar write
+- StoreKit / entitlement unchanged
+
 ## 2026-05-10 (Round 29C — Runtime QA, Fix Pack, and Release Stability Sweep)
 
 - runtime QA sweep confirmed file intake states, file-to-document artifact generation, blocked capability early return, and DEBUG PlanRunner flag toggling
