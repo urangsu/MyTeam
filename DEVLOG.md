@@ -6,6 +6,21 @@
 
 ---
 
+## 2026-05-11 (Round 34B — Local Scheduler Command + Approval Surface Pack)
+
+- LocalSchedulerCommand 모델 추가 (openSchedulePanel, showTodaySchedule, showPendingApprovals, summarizeRemainingWork, summarizeScheduleBasedTasks, showDelegatedWork, showSchedulePolicy)
+- LocalSchedulerCommandDetector 추가 (자연어 명령 감지)
+- LocalSchedulerCommandService 추가 (응답 생성 - 현재는 placeholder 응답)
+- RouteResolver에 localSchedulerCommand 감지 추가 (privacyTerms 이후, dailyBriefing 이전 순서)
+- WorkflowOrchestrator에 localSchedulerCommand 라우팅 추가
+- RouteDecision, TurnProfile, RouteTrace, RouterBurnInSuite 업데이트
+- pbxproj에 신규 파일 3개 등록
+- RouterBurnInSuite에 스케줄 명령 테스트 케이스 추가 8개 + 금지 명령 테스트 케이스 3개
+- 외부 calendar write 금지
+- 자동 승인 금지
+- Gmail API 금지
+- Deferred Runtime QA Backlog 유지
+
 ## 2026-05-11 (Round 34A — Runtime Safety Contract Hotfix Pack)
 
 - Tool risk enforcement now uses registry risk as the authoritative execution gate
