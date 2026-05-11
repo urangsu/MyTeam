@@ -142,6 +142,13 @@ struct RuntimeDiagnosticsSnapshot {
     let lastFileIntakeExtractedCharacterCount: Int
     let fileIntakeToDocumentAvailable: Bool
 
+    // Local Scheduler Command
+    let localSchedulerCommandAvailable: Bool
+    let automationTaskCount: Int
+    let pendingApprovalTaskCount: Int
+    let nextScheduledTaskTime: String?
+    let nextScheduledTaskTitle: String?
+
     // Workspace
     let workspacePath: String
 
@@ -233,6 +240,7 @@ struct RuntimeDiagnosticsSnapshot {
             lines.append("fileIntakeLast: status=\(lastFileIntakeStatus) file=\(lastFileIntakeFilename ?? "nil") text=\(lastFileIntakeHasExtractedText) chars=\(lastFileIntakeExtractedCharacterCount)")
         }
         lines.append("fileIntakeToDocument: available=\(fileIntakeToDocumentAvailable)")
+        lines.append("localSchedulerCommand: available=\(localSchedulerCommandAvailable) tasks=\(automationTaskCount) pending=\(pendingApprovalTaskCount) next=\(nextScheduledTaskTime ?? "none")")
         lines.append("safety: blockedCapabilityGate=\(blockedCapabilityGateEnabled) resultVerifierErrorGate=\(resultVerifierErrorGateEnabled)")
         lines.append("autonomy: goalInterpreter=true clarificationPolicy=true capabilityRouter=true resultVerifier=true")
         lines.append("workspace: \(workspacePath)")
@@ -367,6 +375,38 @@ final class RuntimeDiagnosticsService {
         let lastFileIntakeExtractedCharacterCount = currentFileIntakeResult?.extractedText?.count ?? 0
         let fileIntakeToDocumentAvailable = currentFileIntakeResult?.status == .ready && lastFileIntakeHasExtractedText
         let activeTaskRoomCount = manager.activeWorkflowTaskCount()
+
+        // Local Scheduler Command diagnostics
+        let localSchedulerCommandAvailable = true
+        let automationTaskCount = manager.automationTasks.count
+        let pendingApprovalTaskCount = manager.pendingApprovalTaskIDs.count
+        let nextScheduledTask: AgentWindowManager.AutomationTask?
+        if let roomID = currentRoomID {
+            let today = Calendar.current.startOfDay(for: Date())
+            let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
+            nextScheduledTask = manager.automationTasks
+                .filter { task in
+                    if let taskRoomID = task.roomID, taskRoomID != roomID {
+                        return false
+                    }
+                    return task.isEnabled && task.nextRunAt >= today && task.nextRunAt < tomorrow
+                }
+                .sorted { $0.nextRunAt < $1.nextRunAt }
+                .first
+        } else {
+            nextScheduledTask = nil
+        }
+        let nextScheduledTaskTime: String?
+        let nextScheduledTaskTitle: String?
+        if let task = nextScheduledTask {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "HH:mm"
+            nextScheduledTaskTime = formatter.string(from: task.nextRunAt)
+            nextScheduledTaskTitle = task.title
+        } else {
+            nextScheduledTaskTime = nil
+            nextScheduledTaskTitle = nil
+        }
         let lastRoomGoalType = roomGoalContext?.currentGoal?.goalType.rawValue
         let lastActiveWorkflowStep = roomGoalContext?.activeWorkflowStep
         let recentArtifactReferenceAvailable = roomGoalContext.map { !$0.recentArtifactIDs.isEmpty } ?? false
@@ -497,6 +537,11 @@ final class RuntimeDiagnosticsService {
             lastFileIntakeHasExtractedText: lastFileIntakeHasExtractedText,
             lastFileIntakeExtractedCharacterCount: lastFileIntakeExtractedCharacterCount,
             fileIntakeToDocumentAvailable: fileIntakeToDocumentAvailable,
+            localSchedulerCommandAvailable: localSchedulerCommandAvailable,
+            automationTaskCount: automationTaskCount,
+            pendingApprovalTaskCount: pendingApprovalTaskCount,
+            nextScheduledTaskTime: nextScheduledTaskTime,
+            nextScheduledTaskTitle: nextScheduledTaskTitle,
             workspacePath: workspacePath,
             recentEventCount: recentEvents.count,
             latestEventSummary: latestSummary

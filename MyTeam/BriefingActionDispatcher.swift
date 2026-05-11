@@ -54,16 +54,13 @@ enum BriefingActionDispatcher {
     ) async {
         switch action.systemActionID {
         case "openSchedulePanel":
-            manager.isSchedulePanelPresented = true
+            // Dispatch LocalSchedulerCommand to open schedule panel
+            await handlePromptFallback("스케줄 열어줘", roomID: roomID, manager: manager, orchestrator: orchestrator)
             return
 
         case "showPendingApprovals":
-            manager.isSchedulePanelPresented = true
-            if !hasPendingApprovalTask(roomID: roomID, manager: manager) {
-                let fallback = action.prompt?.trimmingCharacters(in: .whitespacesAndNewlines)
-                    ?? "승인 대기 보여줘"
-                await handlePromptFallback(fallback, roomID: roomID, manager: manager, orchestrator: orchestrator)
-            }
+            // Dispatch LocalSchedulerCommand to show pending approvals
+            await handlePromptFallback("승인 대기 보여줘", roomID: roomID, manager: manager, orchestrator: orchestrator)
             return
 
         default:

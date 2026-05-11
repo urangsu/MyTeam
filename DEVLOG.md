@@ -6,6 +6,20 @@
 
 ---
 
+## 2026-05-11 (Round 34B-2 — Local Scheduler Command Completion Pack)
+
+- LocalSchedulerCommandService를 placeholder에서 실제 데이터 기반 응답으로 전환
+- buildTodayScheduleResponse / buildPendingApprovalsResponse / buildRemainingWorkSummary / buildScheduleBasedTasksSummary 함수로 automationTasks 필터링 및 포맷팅
+- getTodayTasks()를 통해 room-scoped / date-range filtered 스케줄 업무 조회
+- pendingApprovalTaskIDs 기반 승인 대기 업무 표시
+- formatTime() / getAgentName() 유틸 함수 추가로 시간/에이전트명 변환
+- BriefingActionDispatcher system action (openSchedulePanel, showPendingApprovals)을 LocalSchedulerCommand 자연어 dispatch로 연결
+- RuntimeDiagnosticsService에 localSchedulerCommandAvailable / automationTaskCount / pendingApprovalTaskCount / nextScheduledTaskTime / nextScheduledTaskTitle 필드 추가
+- RuntimeDiagnostics summary에 local scheduler command 상태 한 줄 출력 추가
+- 외부 calendar write / 자동 승인 / 자동 실행 금지 정책 유지
+- Deferred Runtime QA Backlog 유지
+- BUILD SUCCEEDED (no new warnings)
+
 ## 2026-05-11 (Round 34B — Local Scheduler Command + Approval Surface Pack)
 
 - LocalSchedulerCommand 모델 추가 (openSchedulePanel, showTodaySchedule, showPendingApprovals, summarizeRemainingWork, summarizeScheduleBasedTasks, showDelegatedWork, showSchedulePolicy)

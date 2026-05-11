@@ -12,82 +12,130 @@ enum LocalSchedulerCommandService {
             return "스케줄 패널을 열겠습니다."
 
         case .showTodaySchedule:
-            return buildTodayScheduleResponse()
+            return buildTodayScheduleResponse(roomID: roomID, manager: manager)
 
         case .showPendingApprovals:
-            return buildPendingApprovalsResponse(manager: manager)
+            return buildPendingApprovalsResponse(roomID: roomID, manager: manager)
 
         case .summarizeRemainingWork:
-            return buildRemainingWorkSummary()
+            return buildRemainingWorkSummary(roomID: roomID, manager: manager)
 
         case .summarizeScheduleBasedTasks:
-            return buildScheduleBasedTasksSummary()
+            return buildScheduleBasedTasksSummary(roomID: roomID, manager: manager)
 
         case .showDelegatedWork:
-            return buildDelegatedWorkResponse()
+            return buildDelegatedWorkResponse(roomID: roomID, manager: manager)
 
         case .showSchedulePolicy:
             return buildSchedulePolicyResponse()
         }
     }
 
-    private static func buildTodayScheduleResponse() -> String {
-        return """
-        # 오늘 로컬 스케줄
+    private static func buildTodayScheduleResponse(roomID: UUID, manager: AgentWindowManager) -> String {
+        let tasks = getTodayTasks(roomID: roomID, manager: manager)
+            .filter { $0.isEnabled }
+            .sorted { ($0.nextRunAt) < ($1.nextRunAt) }
 
-        ## 예정된 작업
-        (등록된 스케줄 업무가 없습니다.)
+        guard !tasks.isEmpty else {
+            return "오늘 등록된 로컬 스케줄 업무가 없습니다."
+        }
 
-        ## 다음 액션
-        - 스케줄 앱이나 자동화 패널에서 업무를 추가할 수 있습니다.
-        """
+        var output = "# 오늘 로컬 스케줄\n\n"
+        output += "## 예정된 작업\n"
+
+        for task in tasks {
+            let agentName = getAgentName(task.assignedAgentID, manager: manager)
+            let time = formatTime(task.nextRunAt)
+            output += "- \(time) \(agentName) — \(task.title)\n"
+        }
+
+        let pendingCount = tasks.filter { manager.pendingApprovalTaskIDs.contains($0.id) }.count
+
+        if pendingCount > 0 {
+            output += "\n## 승인 대기\n"
+            output += "- 승인 대기 작업 \(pendingCount)건\n"
+        }
+
+        output += "\n## 다음 액션\n"
+        if pendingCount > 0 {
+            output += "- \"승인 대기 보여줘\"로 대기 중인 작업을 확인할 수 있습니다.\n"
+        }
+
+        return output
     }
 
-    private static func buildPendingApprovalsResponse(manager: AgentWindowManager) -> String {
-        let pendingCount = manager.pendingApprovalTaskIDs.count
+    private static func buildPendingApprovalsResponse(roomID: UUID, manager: AgentWindowManager) -> String {
+        let tasks = getTodayTasks(roomID: roomID, manager: manager)
+            .filter { $0.isEnabled && manager.pendingApprovalTaskIDs.contains($0.id) }
+            .sorted { $0.nextRunAt < $1.nextRunAt }
 
-        guard pendingCount > 0 else {
+        guard !tasks.isEmpty else {
             return "현재 승인 대기 작업이 없습니다."
         }
 
-        return """
-        # 승인 대기
+        var output = "# 승인 대기 작업\n\n"
 
-        총 \(pendingCount)건의 작업이 승인을 기다리고 있습니다.
+        for task in tasks {
+            let agentName = getAgentName(task.assignedAgentID, manager: manager)
+            let time = formatTime(task.nextRunAt)
+            output += "- [\(time)] \(agentName): \(task.title)\n"
+        }
 
-        ## 다음 액션
-        - 각 작업을 확인 후 승인하거나 거절할 수 있습니다.
-        """
+        output += "\n자동 승인이나 자동 실행은 하지 않습니다.\n"
+
+        return output
     }
 
-    private static func buildRemainingWorkSummary() -> String {
-        return """
-        # 오늘 남은 업무
+    private static func buildRemainingWorkSummary(roomID: UUID, manager: AgentWindowManager) -> String {
+        let tasks = getTodayTasks(roomID: roomID, manager: manager)
+            .filter { $0.isEnabled }
 
-        로컬 스케줄 정보를 불러올 수 없습니다.
+        guard !tasks.isEmpty else {
+            return "오늘 남은 업무가 없습니다."
+        }
 
-        ## 다음 액션
-        - 스케줄 패널을 열어 직접 확인할 수 있습니다.
-        """
+        var output = "# 오늘 남은 업무\n\n"
+        output += "- 남은 스케줄 작업 \(tasks.count)건\n"
+
+        let pending = tasks.filter { manager.pendingApprovalTaskIDs.contains($0.id) }
+        if !pending.isEmpty {
+            output += "- 승인 대기 \(pending.count)건\n"
+        }
+
+        return output
     }
 
-    private static func buildScheduleBasedTasksSummary() -> String {
-        return """
-        # 오늘 스케줄 기준 할 일
+    private static func buildScheduleBasedTasksSummary(roomID: UUID, manager: AgentWindowManager) -> String {
+        let tasks = getTodayTasks(roomID: roomID, manager: manager)
+            .filter { $0.isEnabled }
+            .sorted { $0.nextRunAt < $1.nextRunAt }
 
-        로컬 스케줄 정보를 불러올 수 없습니다.
+        guard !tasks.isEmpty else {
+            return "오늘 등록된 스케줄 업무가 없습니다."
+        }
 
-        ## 다음 액션
-        - 스케줄 패널을 열어 시간순 업무를 확인할 수 있습니다.
-        """
+        var output = "# 오늘 스케줄 기준 할 일\n\n"
+
+        let grouped = Dictionary(grouping: tasks) { task in
+            formatTime(task.nextRunAt)
+        }
+
+        for (time, taskList) in grouped.sorted(by: { $0.key < $1.key }) {
+            output += "## \(time)\n"
+            for task in taskList.sorted(by: { $0.nextRunAt < $1.nextRunAt }) {
+                let agentName = getAgentName(task.assignedAgentID, manager: manager)
+                output += "- [\(agentName)] \(task.title)\n"
+            }
+            output += "\n"
+        }
+
+        return output
     }
 
-    private static func buildDelegatedWorkResponse() -> String {
-        return """
-        # 진행 중인 위임 작업
-
-        현재 진행 중인 위임 작업이 없습니다.
-        """
+    private static func buildDelegatedWorkResponse(roomID: UUID, manager: AgentWindowManager) -> String {
+        // Delegation state is not yet fully implemented in the current version
+        // Return a placeholder response
+        return "현재 진행 중인 위임 작업이 없습니다."
     }
 
     private static func buildSchedulePolicyResponse() -> String {
@@ -108,5 +156,38 @@ enum LocalSchedulerCommandService {
         output += "- 자동 실행 (사용자 승인 필요)\n"
 
         return output
+    }
+
+    private static func getTodayTasks(roomID: UUID, manager: AgentWindowManager) -> [AgentWindowManager.AutomationTask] {
+        let today = Calendar.current.startOfDay(for: Date())
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
+
+        return manager.automationTasks.filter { task in
+            // Room-specific task has priority
+            if let taskRoomID = task.roomID, taskRoomID != roomID {
+                return false
+            }
+
+            // Task must be scheduled for today
+            return task.nextRunAt >= today && task.nextRunAt < tomorrow
+        }
+    }
+
+    private static func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: date)
+    }
+
+    private static func getAgentName(_ agentID: String?, manager: AgentWindowManager) -> String {
+        guard let agentID = agentID else { return "시스템" }
+        // Agent name lookup: for now, return the agentID or known names
+        let knownNames: [String: String] = [
+            "raki": "래키",
+            "luna": "루나",
+            "mika": "미카",
+            "system": "시스템"
+        ]
+        return knownNames[agentID.lowercased()] ?? agentID
     }
 }
