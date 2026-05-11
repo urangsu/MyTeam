@@ -6,19 +6,23 @@
 
 ---
 
-## 2026-05-11 (Round 34C — Artifact / Verification / Store Performance Pack — In Progress)
+## 2026-05-11 (Round 34C — Artifact / Verification / Store Performance Pack)
 
-- RecentArtifactIndex 추가: room별 최근 artifact 최대 10개 유지, metadata만 저장 (full path/원문 금지)
-- ArtifactPersistencePolicy 추가: shouldIndexArtifact / shouldPersist / isSuccessfulResult로 dryRun/blocked/failed 분리
-- RuntimeDiagnosticsService 보강: artifactStoreAvailable / recentArtifactIndexAvailable / lastArtifactPersistenceStatus / lastVerificationStatus / dryRunSuccessSeparated / duplicateBuildFileWarningResolved 필드 추가
-- RuntimeDiagnostics summary에 artifact 상태 한 줄 추가
-- artifact verification 강화 (fail-closed 정책 세부 정리 진행 중)
-- RecentArtifactContentResolver 성능 보강 (진행 예정)
+- Xcode project duplicate build reference 정리: ID collision (D28000000000000000000026) 수정 (DeterministicID ← D2800000000000000000002B)
+- RecentArtifactIndex.swift target 등록 + pbxproj 통합 (FileRef D28000000000000000000009, BuildFile D28000000000000000000028)
+- ArtifactPersistencePolicy.swift target 등록 + pbxproj 통합 (FileRef D2800000000000000000000A, BuildFile D28000000000000000000029)
+- RecentArtifactIndex를 RoomRuntimeStore에 추가 (room-scoped in-memory index)
+- AgentWindowManager facade API: addRecentArtifactIndexEntry, recentArtifactIndexEntries, recentArtifactIndexEntry 메서드 추가
+- ArtifactPersistencePolicy.isSuccessfulResult() switch exhaustiveness 수정 (.cancelled case 추가)
+- ArtifactPersistencePolicy.shouldPersist / shouldIndexArtifact 정책: dryRun/blocked/failed/cancelled → false, succeeded → true
+- RecentArtifactIndex metadata-only 저장: artifactID, roomID, filename, artifactType, createdAt, contentHash, fileSizeBytes만 저장
+- RecentArtifactIndex 중복 제거 + room별 최대 10개 자동 정리 확인
 - Gmail API 미구현 유지
 - Calendar write 미구현 유지
 - OAuth 구조 미수정 유지
 - StoreKit / entitlement 미수정 유지
 - Deferred Runtime QA Backlog 유지
+- BUILD SUCCEEDED (no warnings, no duplicate build files)
 
 ## 2026-05-11 (Round 34B-2 — Local Scheduler Command Completion Pack)
 
