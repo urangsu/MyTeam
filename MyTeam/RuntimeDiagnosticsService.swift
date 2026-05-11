@@ -440,14 +440,28 @@ final class RuntimeDiagnosticsService {
         // Artifact / Verification diagnostics
         let artifactStoreAvailable = true
         let recentArtifactIndexAvailable = true
-        let recentArtifactIndexCount = 0  // Will be populated from RecentArtifactIndex when integrated
-        let lastArtifactPersistenceStatus: String? = nil
-        let lastVerificationStatus: String? = nil
-        let lastVerificationFailureReason: String? = nil
-        let lastPlanExecutionStatus: String? = nil
+        // Populate recentArtifactIndexCount from actual RecentArtifactIndex
+        let recentArtifactIndexCount: Int = currentRoomID.map { roomID in
+            manager.recentArtifactIndexEntries(for: roomID).count
+        } ?? 0
+        // Populate lastArtifactPersistenceStatus from actual runtime state
+        let lastArtifactPersistenceStatus: String? = currentRoomID.flatMap { roomID in
+            manager.roomGoalContext(for: roomID)?.lastArtifactPersistenceStatus?.rawValue
+        }
+        // Populate lastVerificationStatus from actual runtime state
+        let lastVerificationStatus: String? = currentRoomID.flatMap { roomID in
+            manager.roomGoalContext(for: roomID)?.lastVerificationStatus?.rawValue
+        }
+        // Populate lastVerificationFailureReason from actual runtime state
+        let lastVerificationFailureReason: String? = currentRoomID.flatMap { roomID in
+            manager.roomGoalContext(for: roomID)?.lastVerificationFailureReason
+        }
+        let lastPlanExecutionStatus: String? = currentRoomID.flatMap { roomID in
+            manager.roomGoalContext(for: roomID)?.lastPlanExecutionStatus?.rawValue
+        }
         let toolResultStatusModelAvailable = true
         let dryRunSuccessSeparated = true
-        let duplicateBuildFileWarningResolved = true
+        let duplicateBuildFileWarningResolved = false  // Fixed in Round 34C-Integration
 
         return RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),

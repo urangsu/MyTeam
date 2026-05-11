@@ -81,9 +81,23 @@ enum RecentArtifactContentResolver {
         manager: AgentWindowManager,
         allowGlobalFallback: Bool
     ) -> [IndexedArtifact] {
+        // 1. RecentArtifactIndex 우선 조회 (room-scoped)
+        let indexEntries = manager.recentArtifactIndexEntries(for: roomID)
+        let indexArtifactIDs = Set(indexEntries.map(\.artifactID))
+
         let recent = manager.recentArtifacts
         guard !recent.isEmpty else { return [] }
 
+        // Index에서 찾은 artifact들을 우선 반환
+        let indexedArtifacts = recent.filter { indexArtifactIDs.contains($0.id) }
+        if !indexedArtifacts.isEmpty {
+            return indexedArtifacts.filter { artifact in
+                let url = URL(fileURLWithPath: artifact.path)
+                return isInsideWorkspace(url) && isMarkdownLike(url)
+            }
+        }
+
+        // 2. Index에 없으면 RoomGoalContext.recentArtifactIDs 사용
         let roomContext = manager.roomGoalContext(for: roomID)
         let scopedArtifacts: [IndexedArtifact]
 

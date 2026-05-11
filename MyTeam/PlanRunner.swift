@@ -94,13 +94,16 @@ final class PlanRunner {
                     manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "planRunner.verifying")
                 }
 
+                // Use document-type-specific verification
                 verification = ExecutionVerifier.verify(
                     draftMarkdown,
                     level: contract.verificationLevel,
+                    documentType: request.type,
                     requiredSections: UniversalDocumentSkillService.requiredSections(for: request.type)
                 )
 
                 if let currentVerification = verification, currentVerification.hasError {
+                    // 실패 정책: error → 저장 금지 + recovery 1회
                     if ResultRecoveryPolicy.shouldRetryUniversalDocument(verification: currentVerification, attempt: 1) {
                         guard AICallBudgetManager.shared.requestCall(.universalDocumentRepair) else {
                             return PlanExecutionResult(
@@ -121,6 +124,7 @@ final class PlanRunner {
                             verification = ExecutionVerifier.verify(
                                 draftMarkdown,
                                 level: contract.verificationLevel,
+                                documentType: request.type,
                                 requiredSections: UniversalDocumentSkillService.requiredSections(for: request.type)
                             )
                         } catch {
@@ -132,7 +136,9 @@ final class PlanRunner {
                     }
                 }
 
+                // 실패 정책: recovery 실패 → 사용자 안내 + index 금지
                 guard let verification, !verification.hasError else {
+                    AppLog.error("[PlanRunner] verification failed: \(verification?.issues.map { $0.message }.joined(separator: ", ") ?? "unknown error")")
                     return PlanExecutionResult(
                         status: .failed,
                         message: ResultRecoveryPolicy.failureMessage(),
@@ -141,9 +147,10 @@ final class PlanRunner {
                     )
                 }
 
+                // 실패 정책: warning → 저장 가능 + 검토 메모
                 if !verification.issues.isEmpty {
                     let warningCount = verification.issues.filter { $0.severity == .warning }.count
-                    AppLog.warning("[PlanRunner] verification warnings=\(warningCount)")
+                    AppLog.warning("[PlanRunner] verification warnings=\(warningCount): \(verification.issues.filter { $0.severity == .warning }.map { $0.message }.joined(separator: ", "))")
                 }
                 verifiedMarkdown = draftMarkdown
                 context.set(verifiedMarkdown, for: "verified_markdown")

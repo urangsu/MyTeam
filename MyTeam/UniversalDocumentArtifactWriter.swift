@@ -49,6 +49,22 @@ enum UniversalDocumentArtifactWriter {
         )
 
         await ArtifactStore.shared.registerArtifact(artifact)
+
+        // RecentArtifactIndex에 추가 (metadata only)
+        let contentHash = markdown.data(using: .utf8).map { data in
+            String(data.hashValue, radix: 16)
+        } ?? ""
+        let entry = RecentArtifactIndexEntry(
+            artifactID: artifact.id,
+            roomID: roomID,
+            filename: filename,
+            artifactType: "text",
+            createdAt: Date(),
+            contentHash: contentHash,
+            fileSizeBytes: Int64(markdown.utf8.count)
+        )
+        manager.addRecentArtifactIndexEntry(entry)
+
         AppLog.info("[UniversalDocumentArtifactWriter] artifact 저장: \(filename) workflowID=\(workflowID.uuidString.prefix(8)) roomID=\(roomID.uuidString.prefix(8))")
         return artifact
     }
