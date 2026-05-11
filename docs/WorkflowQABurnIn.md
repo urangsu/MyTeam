@@ -213,6 +213,12 @@
 | 일정 만들어줘 | blocked | code-reviewed pass | blocked capability |
 | 파일 삭제해줘 | blocked | code-reviewed pass | destructive action blocked |
 
+## Round 34A Safety Contract Notes
+
+- This round is implementation-focused, not a QA sweep.
+- code-reviewed pass / runtime pass / still unverified language remains separated.
+- Deferred Runtime QA Backlog stays unchanged.
+
 ## 10. Round 30C Runtime Recheck
 
 ### Runtime Pass

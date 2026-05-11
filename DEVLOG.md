@@ -6,6 +6,16 @@
 
 ---
 
+## 2026-05-11 (Round 34A — Runtime Safety Contract Hotfix Pack)
+
+- Tool risk enforcement now uses registry risk as the authoritative execution gate
+- Recent artifact action dispatch now revalidates room/source binding before reuse
+- AgentWorkOrder execution contract IDs are deterministic instead of UUID-generated per call
+- requiresApproval config is separated from pending approval runtime state
+- Tool scope missing / mismatched risk cases now fail closed
+- no Gmail API / Calendar write / OAuth structure changes
+- StoreKit / entitlement unchanged
+
 ## 2026-05-11 (Round 33B-33D — Actionable Briefing + Scheduler Commands + Artifact Reuse Polish)
 
 - BriefingActionSuggestion / BriefingActionSuggestionProvider / BriefingActionDispatcher를 정리해 Daily Briefing을 실행 가능한 액션 허브로 확장했다
