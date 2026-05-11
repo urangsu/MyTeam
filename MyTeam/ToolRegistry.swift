@@ -22,12 +22,9 @@ final class ToolRegistry {
     }
 
     func register(_ tool: WorkflowTool) {
-        // scope 명시 누락 경고: file/artifact/url/google 계열 도구가 기본 chatBasic이면 위험
         if tool.scope == .chatBasic {
-            let suspectPatterns = ["file", "report", "plan", "pptx", "xlsx", "slides", "sheets", "url", "export", "write"]
-            if suspectPatterns.contains(where: { tool.name.contains($0) }) {
-                AppLog.warning("[ToolRegistry] scope 누락 의심: '\(tool.name)' 가 .chatBasic — 명시적 scope 선언 필요")
-            }
+            AppLog.error("[ToolRegistry] scope 미선언/기본값 사용 금지: '\(tool.name)'")
+            return
         }
         tools[tool.name] = tool
     }

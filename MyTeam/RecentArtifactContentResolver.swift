@@ -1,22 +1,25 @@
+import CryptoKit
 import Foundation
 
 struct RecentArtifactContentResolution: Equatable {
     let artifactID: String
     let sourceName: String
     let sourceText: String
+    let binding: RecentArtifactSourceBinding
 }
 
 enum RecentArtifactContentResolver {
-    static var isAvailable: Bool { true }
-
+    static let isAvailable: Bool = true
     static let supportedExtensions: [String] = ["md", "markdown", "txt"]
+    static let maxReusableArtifactBytes: Int64 = 2 * 1024 * 1024
+    private static let maxReusableCharacterCount = 20_000
 
     @MainActor
     static func canResolveLatestMarkdownArtifact(
         roomID: UUID,
         manager: AgentWindowManager
     ) -> Bool {
-        resolveLatestMarkdownArtifact(roomID: roomID, manager: manager) != nil
+        latestReusableArtifact(roomID: roomID, manager: manager, allowGlobalFallback: false) != nil
     }
 
     @MainActor
@@ -24,76 +27,83 @@ enum RecentArtifactContentResolver {
         roomID: UUID,
         manager: AgentWindowManager
     ) -> Int {
-        let recent = manager.recentArtifacts
-        guard !recent.isEmpty else { return 0 }
-        let workspaceURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
-            .first?
-            .appendingPathComponent("MyTeam/Workspace")
-            .standardizedFileURL
-        guard let workspaceURL else { return 0 }
-
-        return recent.filter { artifact in
-            let url = URL(fileURLWithPath: artifact.path)
-            let standardized = url.standardizedFileURL.path
-            let workspacePath = workspaceURL.path.hasSuffix("/") ? workspaceURL.path : workspaceURL.path + "/"
-            guard standardized == workspaceURL.path || standardized.hasPrefix(workspacePath) else {
-                return false
-            }
-            return supportedExtensions.contains(url.pathExtension.lowercased())
-        }.count
+        reusableArtifactCandidates(roomID: roomID, manager: manager, allowGlobalFallback: false).count
     }
 
     @MainActor
     static func resolveLatestMarkdownArtifact(
         roomID: UUID,
+        manager: AgentWindowManager,
+        allowGlobalFallback: Bool = false
+    ) async -> RecentArtifactContentResolution? {
+        guard let artifact = latestReusableArtifact(
+            roomID: roomID,
+            manager: manager,
+            allowGlobalFallback: allowGlobalFallback
+        ) else {
+            return nil
+        }
+
+        guard let resolution = await resolveArtifact(
+            artifact,
+            roomID: roomID
+        ) else {
+            return nil
+        }
+
+        return resolution
+    }
+
+    @MainActor
+    static func currentBinding(
+        roomID: UUID,
         manager: AgentWindowManager
-    ) -> RecentArtifactContentResolution? {
-        guard let artifact = latestReusableArtifact(roomID: roomID, manager: manager) else {
+    ) async -> RecentArtifactSourceBinding? {
+        guard let artifact = latestReusableArtifact(roomID: roomID, manager: manager, allowGlobalFallback: false) else {
             return nil
         }
-
-        let url = URL(fileURLWithPath: artifact.path)
-        guard isInsideWorkspace(url), isMarkdownLike(url) else {
-            return nil
-        }
-
-        guard let text = readText(from: url) else { return nil }
-        let limited = String(text.prefix(20_000)).trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !limited.isEmpty else { return nil }
-
-        let sourceName = artifact.filename.isEmpty ? artifact.title : artifact.filename
-        return RecentArtifactContentResolution(
-            artifactID: artifact.id,
-            sourceName: sourceName.isEmpty ? "recent artifact" : sourceName,
-            sourceText: limited
-        )
+        return await resolveArtifact(artifact, roomID: roomID)?.binding
     }
 
     @MainActor
     private static func latestReusableArtifact(
         roomID: UUID,
-        manager: AgentWindowManager
+        manager: AgentWindowManager,
+        allowGlobalFallback: Bool
     ) -> IndexedArtifact? {
+        let candidates = reusableArtifactCandidates(roomID: roomID, manager: manager, allowGlobalFallback: allowGlobalFallback)
+        return candidates.first
+    }
+
+    @MainActor
+    private static func reusableArtifactCandidates(
+        roomID: UUID,
+        manager: AgentWindowManager,
+        allowGlobalFallback: Bool
+    ) -> [IndexedArtifact] {
         let recent = manager.recentArtifacts
-        guard !recent.isEmpty else { return nil }
+        guard !recent.isEmpty else { return [] }
 
         let roomContext = manager.roomGoalContext(for: roomID)
+        let scopedArtifacts: [IndexedArtifact]
+
         if let contextIDs = roomContext?.recentArtifactIDs, !contextIDs.isEmpty {
             let idSet = Set(contextIDs.map(\.uuidString))
-            let matched = recent.filter { idSet.contains($0.id) }
-            if let match = matched.first(where: { isMarkdownLike(URL(fileURLWithPath: $0.path)) && isInsideWorkspace(URL(fileURLWithPath: $0.path)) }) {
-                return match
-            }
+            scopedArtifacts = recent.filter { idSet.contains($0.id) }
+        } else if allowGlobalFallback {
+            scopedArtifacts = recent
+        } else {
+            return []
         }
 
-        return recent.first(where: {
-            isMarkdownLike(URL(fileURLWithPath: $0.path)) && isInsideWorkspace(URL(fileURLWithPath: $0.path))
-        })
+        return scopedArtifacts.filter { artifact in
+            let url = URL(fileURLWithPath: artifact.path)
+            return isInsideWorkspace(url) && isMarkdownLike(url)
+        }
     }
 
     private static func isMarkdownLike(_ url: URL) -> Bool {
-        let ext = url.pathExtension.lowercased()
-        return ["md", "markdown", "txt"].contains(ext)
+        supportedExtensions.contains(url.pathExtension.lowercased())
     }
 
     private static func isInsideWorkspace(_ url: URL) -> Bool {
@@ -108,14 +118,79 @@ enum RecentArtifactContentResolver {
         return standardized == workspaceURL.path || standardized.hasPrefix(workspacePath)
     }
 
-    private static func readText(from url: URL) -> String? {
-        if let data = try? Data(contentsOf: url),
-           let text = String(data: data, encoding: .utf8) {
-            return text
+    private static func resolveArtifact(
+        _ artifact: IndexedArtifact,
+        roomID: UUID
+    ) async -> RecentArtifactContentResolution? {
+        let url = URL(fileURLWithPath: artifact.path)
+        guard isInsideWorkspace(url), isMarkdownLike(url) else { return nil }
+
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+              let sizeNumber = attributes[.size] as? NSNumber else {
+            return nil
         }
-        if let text = try? String(contentsOf: url, encoding: .utf16) {
-            return text
+
+        let fileSize = sizeNumber.int64Value
+        guard fileSize <= maxReusableArtifactBytes else {
+            return nil
         }
-        return nil
+
+        guard let readResult = readPrefix(from: url) else { return nil }
+        let sourceText = String(readResult.text.prefix(maxReusableCharacterCount)).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !sourceText.isEmpty else { return nil }
+
+        let binding = RecentArtifactSourceBinding(
+            roomID: roomID,
+            artifactID: artifact.id,
+            filename: artifact.filename,
+            contentHash: readResult.contentHash,
+            fileSizeBytes: fileSize,
+            modifiedAt: readResult.modifiedAt,
+            createdAt: parsedDate(artifact.createdAt) ?? readResult.modifiedAt
+        )
+
+        let sourceName = artifact.filename.isEmpty ? artifact.title : artifact.filename
+        return RecentArtifactContentResolution(
+            artifactID: artifact.id,
+            sourceName: sourceName.isEmpty ? "recent artifact" : sourceName,
+            sourceText: sourceText,
+            binding: binding
+        )
+    }
+
+    private static func readPrefix(from url: URL) -> (text: String, contentHash: String, modifiedAt: Date)? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+
+        let data: Data
+        do {
+            data = try handle.read(upToCount: Int(maxReusableArtifactBytes)) ?? Data()
+        } catch {
+            return nil
+        }
+
+        guard !data.isEmpty else { return nil }
+
+        let text: String?
+        if let utf8 = String(data: data, encoding: .utf8) {
+            text = utf8
+        } else if let utf16 = String(data: data, encoding: .utf16) {
+            text = utf16
+        } else {
+            text = nil
+        }
+
+        guard let text else { return nil }
+
+        let hash = SHA256.hash(data: data)
+        let contentHash = hash.compactMap { String(format: "%02x", $0) }.joined()
+        let modifiedAtAttributes = try? FileManager.default.attributesOfItem(atPath: url.path)
+        let modifiedAt = modifiedAtAttributes?[.modificationDate] as? Date ?? Date()
+        return (text: text, contentHash: contentHash, modifiedAt: modifiedAt)
+    }
+
+    private static func parsedDate(_ value: String) -> Date? {
+        let formatter = ISO8601DateFormatter()
+        return formatter.date(from: value)
     }
 }

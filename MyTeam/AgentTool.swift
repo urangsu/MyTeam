@@ -31,14 +31,52 @@ struct ToolInput {
 }
 
 struct ToolResult {
-    let success: Bool
+    let status: ToolResultStatus
     let output: String
     let artifactPath: String?  // Workspace 내 상대 경로
     let error: String?
 
-    static func failure(_ message: String) -> ToolResult {
-        ToolResult(success: false, output: "", artifactPath: nil, error: message)
+    var success: Bool {
+        status == .succeeded
     }
+
+    init(
+        status: ToolResultStatus,
+        output: String,
+        artifactPath: String?,
+        error: String?
+    ) {
+        self.status = status
+        self.output = output
+        self.artifactPath = artifactPath
+        self.error = error
+    }
+
+    init(
+        success: Bool,
+        output: String,
+        artifactPath: String?,
+        error: String?
+    ) {
+        self.init(
+            status: success ? .succeeded : .failed,
+            output: output,
+            artifactPath: artifactPath,
+            error: error
+        )
+    }
+
+    static func failure(_ message: String) -> ToolResult {
+        ToolResult(status: .failed, output: "", artifactPath: nil, error: message)
+    }
+}
+
+enum ToolResultStatus: String, Codable, Equatable {
+    case succeeded
+    case failed
+    case blocked
+    case dryRun
+    case cancelled
 }
 
 // MARK: - Tool Errors
@@ -69,11 +107,6 @@ protocol WorkflowTool {
     /// paramName → 설명 (LLM 플래너에게 노출)
     var inputSchema: [String: String] { get }
     func execute(input: ToolInput, context: ToolExecutionContext) async throws -> ToolResult
-}
-
-extension WorkflowTool {
-    /// scope를 선언하지 않은 기존 도구는 chatBasic 기본값 사용
-    var scope: ToolScope { .chatBasic }
 }
 
 // MARK: - Shared path-safety helper

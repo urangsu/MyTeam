@@ -8,6 +8,36 @@ enum BriefingActionDispatcher {
         manager: AgentWindowManager,
         orchestrator: WorkflowOrchestrator
     ) async {
+        if let sourceBinding = action.sourceBinding {
+            if let failureCode = await bindingFailureCode(
+                sourceBinding: sourceBinding,
+                roomID: roomID,
+                manager: manager
+            ) {
+                AppLog.warning("[BriefingActionDispatcher] \(failureCode)")
+                manager.addChatLog(
+                    roomID: roomID,
+                    agentID: "system",
+                    agentName: "스킬",
+                    text: "최근 문서 상태가 바뀌어 이 액션을 실행하지 않았습니다. 오늘 브리핑을 다시 열어 최신 액션으로 진행해 주세요.",
+                    isUser: false,
+                    isSystem: true
+                )
+                return
+            }
+        } else if action.kind == .reuseRecentArtifactAsTable {
+            AppLog.warning("[BriefingActionDispatcher] missing_action_source_binding")
+            manager.addChatLog(
+                roomID: roomID,
+                agentID: "system",
+                agentName: "스킬",
+                text: "최근 문서 상태가 바뀌어 이 액션을 실행하지 않았습니다. 오늘 브리핑을 다시 열어 최신 액션으로 진행해 주세요.",
+                isUser: false,
+                isSystem: true
+            )
+            return
+        }
+
         switch action.executionMode {
         case .systemAction:
             await handleSystemAction(action, roomID: roomID, manager: manager, orchestrator: orchestrator)
@@ -79,9 +109,38 @@ enum BriefingActionDispatcher {
     }
 
     private static func hasPendingApprovalTask(roomID: UUID, manager: AgentWindowManager) -> Bool {
-        manager.automationTasks.contains { task in
-            guard task.roomID == nil || task.roomID == roomID else { return false }
-            return task.requiresApproval || manager.pendingApprovalTaskIDs.contains(task.id)
+        ScheduledTaskApprovalResolver.hasAwaitingApproval(roomID: roomID, manager: manager)
+    }
+
+    private static func bindingFailureCode(
+        sourceBinding: RecentArtifactSourceBinding,
+        roomID: UUID,
+        manager: AgentWindowManager
+    ) async -> String? {
+        guard sourceBinding.roomID == roomID else {
+            return "wrong_room_action_binding"
         }
+        guard let currentBinding = await RecentArtifactContentResolver.currentBinding(roomID: roomID, manager: manager) else {
+            return "stale_action_binding"
+        }
+        guard sourceBinding.artifactID == currentBinding.artifactID else {
+            return "stale_action_binding"
+        }
+        guard sourceBinding.filename == currentBinding.filename else {
+            return "stale_action_binding"
+        }
+        guard sourceBinding.contentHash == currentBinding.contentHash else {
+            return "stale_action_binding"
+        }
+        guard sourceBinding.fileSizeBytes == currentBinding.fileSizeBytes else {
+            return "stale_action_binding"
+        }
+        guard sourceBinding.modifiedAt == currentBinding.modifiedAt else {
+            return "stale_action_binding"
+        }
+        guard sourceBinding.createdAt == currentBinding.createdAt else {
+            return "stale_action_binding"
+        }
+        return nil
     }
 }

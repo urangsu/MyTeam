@@ -92,8 +92,8 @@ enum LocalTaskBriefingProvider {
 
         for task in todaysAutomationTasks.prefix(5) {
             let timeText = timeFormatter.string(from: task.nextRunAt)
-            let isPendingApproval = manager.pendingApprovalTaskIDs.contains(task.id) || task.requiresApproval
-            if isPendingApproval {
+            switch ScheduledTaskApprovalResolver.status(for: task, roomID: roomID, manager: manager) {
+            case .awaitingApproval:
                 items.append(
                     LocalTaskBriefingItem(
                         id: task.id,
@@ -104,7 +104,18 @@ enum LocalTaskBriefingProvider {
                         createdAt: task.createdAt
                     )
                 )
-            } else {
+            case .scheduledRequiresApproval:
+                items.append(
+                    LocalTaskBriefingItem(
+                        id: task.id,
+                        kind: .connectorAction,
+                        title: "승인 필요",
+                        detail: "\(timeText) \(task.title)",
+                        priority: .normal,
+                        createdAt: task.createdAt
+                    )
+                )
+            case .none, .approved, .skipped, .expired:
                 items.append(
                     LocalTaskBriefingItem(
                         id: task.id,

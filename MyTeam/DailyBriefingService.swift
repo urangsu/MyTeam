@@ -11,9 +11,12 @@ enum DailyBriefingService {
             AssistantConnectorCatalog.connectionState(for: $0.id)
         }
         let localSnapshot = DailyBriefingLocalProvider.makeSnapshot(roomID: manager.currentRoomID, manager: manager)
-        let actionSuggestions = manager.currentRoomID.map {
-            BriefingActionSuggestionProvider.makeSuggestions(roomID: $0, manager: manager)
-        } ?? []
+        let actionSuggestions: [BriefingActionSuggestion]
+        if let roomID = manager.currentRoomID {
+            actionSuggestions = await BriefingActionSuggestionProvider.makeSuggestions(roomID: roomID, manager: manager)
+        } else {
+            actionSuggestions = []
+        }
         let calendarItems = await calendarProvider.calendarItemsForToday(now: now)
 
         let connectorMessages = connectorStates.map { "\($0.provider.displayName): \($0.message)" }
@@ -66,9 +69,6 @@ enum DailyBriefingService {
     @MainActor
     static func makeUnavailableBriefing(now: Date, manager: AgentWindowManager) -> DailyBriefing {
         let localSnapshot = DailyBriefingLocalProvider.makeSnapshot(roomID: manager.currentRoomID, manager: manager)
-        let actionSuggestions = manager.currentRoomID.map {
-            BriefingActionSuggestionProvider.makeSuggestions(roomID: $0, manager: manager)
-        } ?? []
         let connectorMessages = AssistantConnectorCatalog.connectors.map { connector in
             let state = AssistantConnectorCatalog.connectionState(for: connector.id)
             return "\(connector.displayName): \(state.message)"
@@ -86,7 +86,7 @@ enum DailyBriefingService {
             attentionItems: localSnapshot.attentionItems,
             connectorMessages: connectorMessages,
             localBriefingItems: localSnapshot.localBriefingItems,
-            actionSuggestions: actionSuggestions,
+            actionSuggestions: [],
             generatedAt: now
         )
     }

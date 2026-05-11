@@ -13,10 +13,7 @@ enum BriefingActionIntegrityPolicy {
             return result.status == .ready
 
         case .reuseRecentArtifactAsTable:
-            return RecentArtifactContentResolver.canResolveLatestMarkdownArtifact(
-                roomID: roomID,
-                manager: manager
-            )
+            return RecentArtifactContentResolver.canResolveLatestMarkdownArtifact(roomID: roomID, manager: manager)
 
         case .summarizeTodayTasks, .openSchedulePanel:
             return hasScheduleTasks(roomID: roomID, manager: manager)
@@ -43,10 +40,7 @@ enum BriefingActionIntegrityPolicy {
     }
 
     private static func hasPendingApprovals(roomID: UUID, manager: AgentWindowManager) -> Bool {
-        manager.automationTasks.contains { task in
-            guard task.roomID == nil || task.roomID == roomID else { return false }
-            return task.requiresApproval || manager.pendingApprovalTaskIDs.contains(task.id)
-        }
+        ScheduledTaskApprovalResolver.hasAwaitingApproval(roomID: roomID, manager: manager)
     }
 
     private static func hasPendingDelegation(roomID: UUID, manager: AgentWindowManager) -> Bool {

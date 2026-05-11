@@ -5,17 +5,19 @@ enum BriefingActionSuggestionProvider {
     static func makeSuggestions(
         roomID: UUID,
         manager: AgentWindowManager
-    ) -> [BriefingActionSuggestion] {
+    ) async -> [BriefingActionSuggestion] {
         let localItems = LocalTaskBriefingProvider.makeItems(roomID: roomID, manager: manager)
         let roomContext = manager.roomGoalContext(for: roomID)
         let scheduleItems = actionableScheduleItems(for: roomID, manager: manager)
         let hasPendingApproval = hasPendingApprovalTask(roomID: roomID, manager: manager, localItems: localItems)
         let hasPendingDelegation = hasPendingDelegation(roomID: roomID, manager: manager, localItems: localItems)
         let hasRecentReadyFile = hasRecentReadyFile(roomID: roomID, manager: manager)
-        let hasReusableArtifact = RecentArtifactContentResolver.canResolveLatestMarkdownArtifact(
+        let reusableArtifactResolution = await RecentArtifactContentResolver.resolveLatestMarkdownArtifact(
             roomID: roomID,
-            manager: manager
+            manager: manager,
+            allowGlobalFallback: false
         )
+        let hasReusableArtifact = reusableArtifactResolution != nil
         let hasRecentGoal = roomContext?.currentGoal != nil
 
         var suggestions: [BriefingActionSuggestion] = []
@@ -56,11 +58,7 @@ enum BriefingActionSuggestionProvider {
             )
         }
 
-        if let scheduleSuggestion = makeScheduleSuggestion(
-            roomID: roomID,
-            manager: manager,
-            scheduleItems: scheduleItems
-        ) {
+        if let scheduleSuggestion = makeScheduleSuggestion(scheduleItems: scheduleItems) {
             append(
                 &suggestions,
                 scheduleSuggestion,
@@ -106,6 +104,7 @@ enum BriefingActionSuggestionProvider {
         }
 
         if hasReusableArtifact {
+            let resolution = reusableArtifactResolution
             append(
                 &suggestions,
                 BriefingActionSuggestion(
@@ -116,7 +115,8 @@ enum BriefingActionSuggestionProvider {
                     prompt: "방금 만든 문서 표로 바꿔줘",
                     systemActionID: nil,
                     executionMode: .promptRoute,
-                    priority: 340
+                    priority: 340,
+                    sourceBinding: resolution?.binding
                 ),
                 roomID: roomID,
                 manager: manager
@@ -145,8 +145,6 @@ enum BriefingActionSuggestionProvider {
     }
 
     private static func makeScheduleSuggestion(
-        roomID: UUID,
-        manager: AgentWindowManager,
         scheduleItems: [AgentWindowManager.AutomationTask]
     ) -> BriefingActionSuggestion? {
         guard !scheduleItems.isEmpty else { return nil }
@@ -161,7 +159,8 @@ enum BriefingActionSuggestionProvider {
             prompt: nil,
             systemActionID: "openSchedulePanel",
             executionMode: .systemAction,
-            priority: hasUpcomingWithinTwoHours ? 460 : 420
+            priority: hasUpcomingWithinTwoHours ? 460 : 420,
+            sourceBinding: nil
         )
     }
 
@@ -189,10 +188,7 @@ enum BriefingActionSuggestionProvider {
         if localItems.contains(where: { $0.kind == .pendingApproval }) {
             return true
         }
-        return manager.automationTasks.contains { task in
-            guard task.roomID == nil || task.roomID == roomID else { return false }
-            return task.requiresApproval && manager.pendingApprovalTaskIDs.contains(task.id)
-        }
+        return ScheduledTaskApprovalResolver.hasAwaitingApproval(roomID: roomID, manager: manager)
     }
 
     private static func hasPendingDelegation(
@@ -249,5 +245,114 @@ enum BriefingActionSuggestionProvider {
         }
         .prefix(3)
         .map { $0 }
+    }
+
+    static func candidateSummary(roomID: UUID, manager: AgentWindowManager) async -> (supported: Int, unsupported: Int) {
+        let localItems = LocalTaskBriefingProvider.makeItems(roomID: roomID, manager: manager)
+        let roomContext = manager.roomGoalContext(for: roomID)
+        let scheduleItems = actionableScheduleItems(for: roomID, manager: manager)
+        let reusableArtifactExists = await RecentArtifactContentResolver.resolveLatestMarkdownArtifact(
+            roomID: roomID,
+            manager: manager,
+            allowGlobalFallback: false
+        ) != nil
+
+        let candidateSlots: [BriefingActionSuggestion?] = [
+            hasPendingApprovalTask(roomID: roomID, manager: manager, localItems: localItems) ? makePendingApprovalSuggestion() : nil,
+            hasPendingDelegation(roomID: roomID, manager: manager, localItems: localItems) ? makeDelegationSuggestion() : nil,
+            makeScheduleSuggestion(scheduleItems: scheduleItems),
+            !scheduleItems.isEmpty ? makeTodayTasksSuggestion() : nil,
+            hasRecentReadyFile(roomID: roomID, manager: manager) ? makeRecentFileSuggestion() : nil,
+            reusableArtifactExists ? makeReusableArtifactSuggestion(sourceBinding: nil) : nil,
+            roomContext?.currentGoal != nil ? makeContinueGoalSuggestion(goalTitle: roomContext?.currentGoal?.title) : nil
+        ]
+
+        let supported = candidateSlots.compactMap { $0 }.count
+        let unsupported = candidateSlots.count - supported
+        return (supported, unsupported)
+    }
+
+    private static func makePendingApprovalSuggestion() -> BriefingActionSuggestion {
+        BriefingActionSuggestion(
+            id: UUID(),
+            kind: .showPendingApprovals,
+            title: "승인 대기 보기",
+            subtitle: "승인 대기 항목을 확인합니다.",
+            prompt: nil,
+            systemActionID: "showPendingApprovals",
+            executionMode: .systemAction,
+            priority: 500,
+            sourceBinding: nil
+        )
+    }
+
+    private static func makeDelegationSuggestion() -> BriefingActionSuggestion {
+        BriefingActionSuggestion(
+            id: UUID(),
+            kind: .resumeDelegation,
+            title: "위임 작업 진행",
+            subtitle: "위임된 작업을 다시 이어갑니다.",
+            prompt: "진행해",
+            systemActionID: nil,
+            executionMode: .promptRoute,
+            priority: 480,
+            sourceBinding: nil
+        )
+    }
+
+    private static func makeTodayTasksSuggestion() -> BriefingActionSuggestion {
+        BriefingActionSuggestion(
+            id: UUID(),
+            kind: .summarizeTodayTasks,
+            title: "오늘 할 일 다시 정리",
+            subtitle: "오늘 스케줄을 다시 정리합니다.",
+            prompt: "오늘 할 일 정리해줘",
+            systemActionID: nil,
+            executionMode: .promptRoute,
+            priority: 350,
+            sourceBinding: nil
+        )
+    }
+
+    private static func makeRecentFileSuggestion() -> BriefingActionSuggestion {
+        BriefingActionSuggestion(
+            id: UUID(),
+            kind: .summarizeRecentFile,
+            title: "이 파일 요약하기",
+            subtitle: "최근 파일을 다시 정리합니다.",
+            prompt: "이 파일 요약해줘",
+            systemActionID: nil,
+            executionMode: .promptRoute,
+            priority: 360,
+            sourceBinding: nil
+        )
+    }
+
+    private static func makeReusableArtifactSuggestion(sourceBinding: RecentArtifactSourceBinding?) -> BriefingActionSuggestion {
+        BriefingActionSuggestion(
+            id: UUID(),
+            kind: .reuseRecentArtifactAsTable,
+            title: "방금 문서 표로 바꾸기",
+            subtitle: "최근 문서를 표로 다시 정리합니다.",
+            prompt: "방금 만든 문서 표로 바꿔줘",
+            systemActionID: nil,
+            executionMode: .promptRoute,
+            priority: 340,
+            sourceBinding: sourceBinding
+        )
+    }
+
+    private static func makeContinueGoalSuggestion(goalTitle: String?) -> BriefingActionSuggestion {
+        BriefingActionSuggestion(
+            id: UUID(),
+            kind: .continueRecentGoal,
+            title: "이어서 하기",
+            subtitle: goalTitle,
+            prompt: "아까 하던 거 이어서 뭐 하면 돼",
+            systemActionID: nil,
+            executionMode: .promptRoute,
+            priority: 280,
+            sourceBinding: nil
+        )
     }
 }

@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - ActionLogEntry
 
-struct ActionLogEntry: Codable {
+struct ActionLogEntry: Codable, Sendable {
     let ts: String           // ISO 8601
     let session: String
     let tool: String
@@ -10,14 +10,24 @@ struct ActionLogEntry: Codable {
     let result: String       // "success" | "failure" | "dry_run" | "blocked"
     let artifact: String?    // Workspace 상대 경로
     let error: String?
+    let declaredRisk: String?
+    let registryRisk: String?
+    let effectiveRisk: String?
+    let failureCode: String?
 
     func with(
         result: String,
         artifact: String? = nil,
-        error: String? = nil
+        error: String? = nil,
+        declaredRisk: String? = nil,
+        registryRisk: String? = nil,
+        effectiveRisk: String? = nil,
+        failureCode: String? = nil
     ) -> ActionLogEntry {
         ActionLogEntry(ts: ts, session: session, tool: tool, input: input,
-                       result: result, artifact: artifact, error: error)
+                       result: result, artifact: artifact, error: error,
+                       declaredRisk: declaredRisk, registryRisk: registryRisk,
+                       effectiveRisk: effectiveRisk, failureCode: failureCode)
     }
 }
 
@@ -34,7 +44,7 @@ enum ArtifactType: String, Codable {
 
 // MARK: - IndexedArtifact
 
-struct IndexedArtifact: Codable {
+struct IndexedArtifact: Codable, Sendable {
     let id: String          // UUID
     let workflowID: String  // session ID
     let title: String
@@ -66,8 +76,9 @@ actor ArtifactStore {
 
     // MARK: - Action Log (append-only JSONL)
 
-    func appendActionLog(_ entry: ActionLogEntry) {
-        guard let data = try? JSONEncoder().encode(entry),
+    func appendActionLog(_ entry: ActionLogEntry) async {
+        let data = await MainActor.run { try? JSONEncoder().encode(entry) }
+        guard let data,
               let line = String(data: data, encoding: .utf8) else { return }
         let logLine = line + "\n"
         let logURL = actionLogURL

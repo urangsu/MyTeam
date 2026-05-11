@@ -15,9 +15,13 @@ enum RecentArtifactReuseService {
         message: String,
         roomID: UUID,
         manager: AgentWindowManager
-    ) -> UniversalDocumentSkillRequest? {
+    ) async -> UniversalDocumentSkillRequest? {
         guard let type = documentType(from: message) else { return nil }
-        guard let resolved = RecentArtifactContentResolver.resolveLatestMarkdownArtifact(roomID: roomID, manager: manager) else {
+        guard let resolved = await RecentArtifactContentResolver.resolveLatestMarkdownArtifact(
+            roomID: roomID,
+            manager: manager,
+            allowGlobalFallback: false
+        ) else {
             return nil
         }
 

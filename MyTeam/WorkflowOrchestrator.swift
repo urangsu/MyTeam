@@ -583,17 +583,12 @@ final class WorkflowOrchestrator {
 
         let roomContext = await MainActor.run { manager.roomGoalContext(for: roomID) }
         if RecentArtifactReuseService.canHandle(userMessage, context: roomContext) {
-            let artifactResolution = await MainActor.run {
-                RecentArtifactContentResolver.resolveLatestMarkdownArtifact(roomID: roomID, manager: manager)
-            }
-            let request = await MainActor.run {
-                RecentArtifactReuseService.makeRequest(
-                    message: userMessage,
-                    roomID: roomID,
-                    manager: manager
-                )
-            }
-            guard let request, let artifactResolution else {
+            let request = await RecentArtifactReuseService.makeRequest(
+                message: userMessage,
+                roomID: roomID,
+                manager: manager
+            )
+            guard let request else {
                 await MainActor.run {
                     manager.addChatLog(
                         roomID: roomID,
@@ -607,17 +602,28 @@ final class WorkflowOrchestrator {
                 return
             }
 
+            guard enabledSkills.contains(where: { $0.id == request.type.skillID }) else {
+                await MainActor.run {
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "스킬",
+                        text: "해당 문서 유형은 아직 사용할 수 없습니다.",
+                        isUser: false,
+                        isSystem: true
+                    )
+                }
+                return
+            }
+
             await MainActor.run {
                 manager.recordUniversalDocumentType(request.type, roomID: roomID)
                 manager.updateRoomGoalContext(roomID: roomID, goal: interpretedGoal, activeWorkflowStep: "recentArtifactReuse.detected")
-                if let artifactUUID = UUID(uuidString: artifactResolution.artifactID) {
-                    manager.updateRoomGoalContext(roomID: roomID, recentArtifactID: artifactUUID)
-                }
                 self.recordRouteTrace(
                     manager: manager,
                     roomID: roomID,
                     step: .recentArtifactReferenced,
-                    message: "recent artifact reuse detected: \(artifactResolution.sourceName)"
+                    message: "recent artifact reuse detected: \(request.sourceName ?? "recent artifact")"
                 )
                 self.recordRouteTrace(
                     manager: manager,

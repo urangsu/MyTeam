@@ -42,6 +42,8 @@ enum ToolContractValidator {
         for tool in tools {
             if !ToolScope.allCases.contains(tool.scope) {
                 issues.append(issue(.error, "도구 '\(tool.name)' 의 scope '\(tool.scope.rawValue)' 가 유효하지 않습니다."))
+            } else if tool.scope == .chatBasic {
+                issues.append(issue(.error, "도구 '\(tool.name)' 의 scope가 기본값 chatBasic 입니다. 명시적 scope 선언이 필요합니다."))
             }
         }
     }
@@ -83,7 +85,7 @@ enum ToolContractValidator {
                 continue
             }
 
-            let basicScopes: Set<ToolScope> = [.chatBasic, .artifactGeneration]
+            let basicScopes: Set<ToolScope> = [.artifactGeneration]
             if !skill.allowedScopes.contains(tool.scope) && !basicScopes.contains(tool.scope) {
                 issues.append(issue(.warning, "skill '\(skill.id)' 의 workflowTemplate tool '\(tool.name)' scope '\(tool.scope.rawValue)' 가 allowedScopes에 없습니다."))
             }

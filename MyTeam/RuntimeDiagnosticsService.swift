@@ -295,20 +295,33 @@ final class RuntimeDiagnosticsService {
         let briefingActionKinds = briefingActionSuggestionKinds
         let briefingSystemActionCount = dailyBriefing.actionSuggestions.filter { $0.systemActionID != nil }.count
         let briefingPromptActionCount = dailyBriefing.actionSuggestions.filter { $0.prompt != nil }.count
-        let briefingUnsupportedActionCount = max(0, 7 - briefingActionSuggestionCount)
+        let briefingCandidateSummary: (supported: Int, unsupported: Int)?
+        if let roomID = currentRoomID {
+            briefingCandidateSummary = await BriefingActionSuggestionProvider.candidateSummary(roomID: roomID, manager: manager)
+        } else {
+            briefingCandidateSummary = nil
+        }
+        let briefingUnsupportedActionCount = briefingCandidateSummary?.unsupported ?? 0
         let localBriefing = DailyBriefingLocalProvider.makeSnapshot(roomID: currentRoomID, manager: manager)
         let localTaskBriefingItems = localBriefing.localBriefingItems
         let localTaskBriefingActionCount = localBriefing.localTaskActionCount
         let localTaskBriefingSuggestedActionCount = localBriefing.localTaskSuggestedActionCount
         let localTaskBriefingUnsupportedActionCount = localBriefing.localTaskUnsupportedActionCount
-        let recentArtifactContentResolverAvailable = localBriefing.recentArtifactContentResolverAvailable
         let recentArtifactReusableCount = localBriefing.recentArtifactReusableCount
-        let recentArtifactReuseAvailable = recentArtifactContentResolverAvailable && recentArtifactReusableCount > 0
-        let lastRecentArtifactReuseSourceName = await MainActor.run {
-            currentRoomID.flatMap {
-                RecentArtifactContentResolver.resolveLatestMarkdownArtifact(roomID: $0, manager: manager)?.sourceName
-            }
+        let recentArtifactReuseResolution: RecentArtifactContentResolution?
+        if let roomID = currentRoomID {
+            recentArtifactReuseResolution = await RecentArtifactContentResolver.resolveLatestMarkdownArtifact(
+                roomID: roomID,
+                manager: manager,
+                allowGlobalFallback: false
+            )
+        } else {
+            recentArtifactReuseResolution = nil
         }
+        let recentArtifactContentResolverAvailable = recentArtifactReuseResolution != nil
+        let recentArtifactReuseAvailable = recentArtifactReuseResolution != nil && recentArtifactReusableCount > 0
+        let lastRecentArtifactReuseSourceName: String?
+        lastRecentArtifactReuseSourceName = recentArtifactReuseResolution?.sourceName
         let recentArtifactReuseSupportedTypes = ["summary", "reportDraft", "checklist", "tableSummary", "meetingMinutes", "actionItems"]
         let connectorBlockedActions = AssistantConnectorCatalog.connectors.flatMap { connector -> [String] in
             connector.capabilities.compactMap { capability in
