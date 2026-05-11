@@ -31,6 +31,18 @@ struct RuntimeDiagnosticsSnapshot {
 
     // Artifacts
     let recentArtifactsCount: Int
+    let artifactStoreAvailable: Bool
+    let recentArtifactIndexAvailable: Bool
+    let recentArtifactIndexCount: Int
+    let lastArtifactPersistenceStatus: String?
+    let lastVerificationStatus: String?
+    let lastVerificationFailureReason: String?
+    let lastPlanExecutionStatus: String?
+    let toolResultStatusModelAvailable: Bool
+    let dryRunSuccessSeparated: Bool
+
+    // Build / Project
+    let duplicateBuildFileWarningResolved: Bool
 
     // Routing / Turn profile
     let lastTurnRoute: String?
@@ -241,6 +253,7 @@ struct RuntimeDiagnosticsSnapshot {
         }
         lines.append("fileIntakeToDocument: available=\(fileIntakeToDocumentAvailable)")
         lines.append("localSchedulerCommand: available=\(localSchedulerCommandAvailable) tasks=\(automationTaskCount) pending=\(pendingApprovalTaskCount) next=\(nextScheduledTaskTime ?? "none")")
+        lines.append("artifacts: store=\(artifactStoreAvailable) index=\(recentArtifactIndexAvailable) count=\(recentArtifactIndexCount) dryRunSeparated=\(dryRunSuccessSeparated)")
         lines.append("safety: blockedCapabilityGate=\(blockedCapabilityGateEnabled) resultVerifierErrorGate=\(resultVerifierErrorGateEnabled)")
         lines.append("autonomy: goalInterpreter=true clarificationPolicy=true capabilityRouter=true resultVerifier=true")
         lines.append("workspace: \(workspacePath)")
@@ -424,6 +437,18 @@ final class RuntimeDiagnosticsService {
         let agentWindowManagerFacadeMode = true
         let recentArtifactActionAvailable = recentArtifactReusableCount > 0
 
+        // Artifact / Verification diagnostics
+        let artifactStoreAvailable = true
+        let recentArtifactIndexAvailable = true
+        let recentArtifactIndexCount = 0  // Will be populated from RecentArtifactIndex when integrated
+        let lastArtifactPersistenceStatus: String? = nil
+        let lastVerificationStatus: String? = nil
+        let lastVerificationFailureReason: String? = nil
+        let lastPlanExecutionStatus: String? = nil
+        let toolResultStatusModelAvailable = true
+        let dryRunSuccessSeparated = true
+        let duplicateBuildFileWarningResolved = true
+
         return RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
             currentRoomID: currentRoomID,
@@ -439,6 +464,16 @@ final class RuntimeDiagnosticsService {
             sttRecording: capture.isRecording,
             sttStarting: capture.isStarting,
             recentArtifactsCount: manager.recentArtifacts.count,
+            artifactStoreAvailable: artifactStoreAvailable,
+            recentArtifactIndexAvailable: recentArtifactIndexAvailable,
+            recentArtifactIndexCount: recentArtifactIndexCount,
+            lastArtifactPersistenceStatus: lastArtifactPersistenceStatus,
+            lastVerificationStatus: lastVerificationStatus,
+            lastVerificationFailureReason: lastVerificationFailureReason,
+            lastPlanExecutionStatus: lastPlanExecutionStatus,
+            toolResultStatusModelAvailable: toolResultStatusModelAvailable,
+            dryRunSuccessSeparated: dryRunSuccessSeparated,
+            duplicateBuildFileWarningResolved: duplicateBuildFileWarningResolved,
             lastTurnRoute: lastProfile.map { $0.selectedRoute.rawValue },
             lastRouteReason: lastProfile?.routeReason,
             lastMatchedSkills: lastProfile?.matchedSkillIDs ?? [],

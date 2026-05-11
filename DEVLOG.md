@@ -6,6 +6,20 @@
 
 ---
 
+## 2026-05-11 (Round 34C — Artifact / Verification / Store Performance Pack — In Progress)
+
+- RecentArtifactIndex 추가: room별 최근 artifact 최대 10개 유지, metadata만 저장 (full path/원문 금지)
+- ArtifactPersistencePolicy 추가: shouldIndexArtifact / shouldPersist / isSuccessfulResult로 dryRun/blocked/failed 분리
+- RuntimeDiagnosticsService 보강: artifactStoreAvailable / recentArtifactIndexAvailable / lastArtifactPersistenceStatus / lastVerificationStatus / dryRunSuccessSeparated / duplicateBuildFileWarningResolved 필드 추가
+- RuntimeDiagnostics summary에 artifact 상태 한 줄 추가
+- artifact verification 강화 (fail-closed 정책 세부 정리 진행 중)
+- RecentArtifactContentResolver 성능 보강 (진행 예정)
+- Gmail API 미구현 유지
+- Calendar write 미구현 유지
+- OAuth 구조 미수정 유지
+- StoreKit / entitlement 미수정 유지
+- Deferred Runtime QA Backlog 유지
+
 ## 2026-05-11 (Round 34B-2 — Local Scheduler Command Completion Pack)
 
 - LocalSchedulerCommandService를 placeholder에서 실제 데이터 기반 응답으로 전환
