@@ -413,6 +413,9 @@
 		FBF184E612490DAC0E68E03B /* mo.wav in Resources */ = {isa = PBXBuildFile; fileRef = 5EBDAB442DAE8209E86E4878 /* mo.wav */; };
 		FCF86130C1400EF99B2D892A /* AgentPersona.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5236D928FAFCC0DCC7946D62 /* AgentPersona.swift */; };
 		YCIMZBF4YNNMDCSQA61Z9UF9 /* CodeBlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = GHM3FIWYA993WVU9SYCOOGFR /* CodeBlockView.swift */; };
+		E912B8C850DD1701BAE96EB8 /* LocalSchedulerCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEE7DF5048CD954A73A5DD96 /* LocalSchedulerCommand.swift */; };
+		71748B454B5D1E22718DF023 /* LocalSchedulerCommandDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = E82BB3824B9AF5FCE079D1BD /* LocalSchedulerCommandDetector.swift */; };
+		E53C44F0DAFCBFB7BC86E10D /* LocalSchedulerCommandService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C8DB6869DC6D8FAAC0E7EDF /* LocalSchedulerCommandService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -1543,6 +1546,9 @@
 		FFAF08D6091A076B26E958F1 /* 올리버_ko_manifest.json */ = {isa = PBXFileReference; includeInIndex = 1; name = "올리버_ko_manifest.json"; path = "Resources/CharacterPhonemes/올리버_reference/ko/올리버_ko_manifest.json"; sourceTree = "<group>"; };
 		FFF30E4DF0306AF2E765F5E9 /* 치코_drag_013.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_drag_013.png"; path = "Resources/Sprites/치코/치코_drag_013.png"; sourceTree = "<group>"; };
 		GHM3FIWYA993WVU9SYCOOGFR /* CodeBlockView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CodeBlockView.swift; sourceTree = "<group>"; };
+		DEE7DF5048CD954A73A5DD96 /* LocalSchedulerCommand.swift */ = {isa = PBXFileReference; fileRef = DEE7DF5048CD954A73A5DD96; name = LocalSchedulerCommand.swift; path = LocalSchedulerCommand.swift; sourceTree = "<group>"; };
+		E82BB3824B9AF5FCE079D1BD /* LocalSchedulerCommandDetector.swift */ = {isa = PBXFileReference; fileRef = E82BB3824B9AF5FCE079D1BD; name = LocalSchedulerCommandDetector.swift; path = LocalSchedulerCommandDetector.swift; sourceTree = "<group>"; };
+		9C8DB6869DC6D8FAAC0E7EDF /* LocalSchedulerCommandService.swift */ = {isa = PBXFileReference; fileRef = 9C8DB6869DC6D8FAAC0E7EDF; name = LocalSchedulerCommandService.swift; path = LocalSchedulerCommandService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -3223,7 +3229,10 @@
 				361203E7E6DF878A2A1BB398 /* UniversalDocumentSkillRequest.swift in Sources */,
 				8687D9BE564A2FB8309F5C4D /* UniversalDocumentSkillService.swift in Sources */,
 				7C2D4D5480E3304C54D83B3B /* UniversalDocumentArtifactWriter.swift in Sources */,
-			);
+			
+				E53C44F0DAFCBFB7BC86E10D /* LocalSchedulerCommandService.swift in Sources */,
+				71748B454B5D1E22718DF023 /* LocalSchedulerCommandDetector.swift in Sources */,
+				E912B8C850DD1701BAE96EB8 /* LocalSchedulerCommand.swift in Sources */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */

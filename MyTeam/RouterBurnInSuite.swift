@@ -838,12 +838,112 @@ enum RouterBurnInSuite {
         .init(
             id: "briefing-pending-action",
             message: "승인 필요한 작업 보여줘",
-            expectedRoute: .dailyBriefing,
+            expectedRoute: .localSchedulerCommand,
             expectedSkillID: nil,
-            expectedRouteHint: "dailyBriefing",
+            expectedRouteHint: "localSchedulerCommand",
             expectedGoalType: "dailyBriefing",
             shouldRequireApproval: false,
-            notes: "schedule / approval bridge keywords"
+            notes: "local scheduler command route"
+        ),
+        .init(
+            id: "scheduler-open-schedule",
+            message: "스케줄 열어줘",
+            expectedRoute: .localSchedulerCommand,
+            expectedSkillID: nil,
+            expectedRouteHint: "localSchedulerCommand",
+            expectedGoalType: "unknown",
+            shouldRequireApproval: false,
+            notes: "local scheduler command: openSchedulePanel"
+        ),
+        .init(
+            id: "scheduler-today-schedule",
+            message: "오늘 스케줄 보여줘",
+            expectedRoute: .localSchedulerCommand,
+            expectedSkillID: nil,
+            expectedRouteHint: "localSchedulerCommand",
+            expectedGoalType: "unknown",
+            shouldRequireApproval: false,
+            notes: "local scheduler command: showTodaySchedule"
+        ),
+        .init(
+            id: "scheduler-pending-approvals",
+            message: "승인 대기 보여줘",
+            expectedRoute: .localSchedulerCommand,
+            expectedSkillID: nil,
+            expectedRouteHint: "localSchedulerCommand",
+            expectedGoalType: "unknown",
+            shouldRequireApproval: false,
+            notes: "local scheduler command: showPendingApprovals"
+        ),
+        .init(
+            id: "scheduler-remaining-work",
+            message: "오늘 업무 뭐 남았어?",
+            expectedRoute: .localSchedulerCommand,
+            expectedSkillID: nil,
+            expectedRouteHint: "localSchedulerCommand",
+            expectedGoalType: "unknown",
+            shouldRequireApproval: false,
+            notes: "local scheduler command: summarizeRemainingWork"
+        ),
+        .init(
+            id: "scheduler-schedule-based-tasks",
+            message: "오늘 스케줄 기준으로 할 일 정리해줘",
+            expectedRoute: .localSchedulerCommand,
+            expectedSkillID: nil,
+            expectedRouteHint: "localSchedulerCommand",
+            expectedGoalType: "unknown",
+            shouldRequireApproval: false,
+            notes: "local scheduler command: summarizeScheduleBasedTasks"
+        ),
+        .init(
+            id: "scheduler-delegated-work",
+            message: "진행 중인 위임 작업 보여줘",
+            expectedRoute: .localSchedulerCommand,
+            expectedSkillID: nil,
+            expectedRouteHint: "localSchedulerCommand",
+            expectedGoalType: "unknown",
+            shouldRequireApproval: false,
+            notes: "local scheduler command: showDelegatedWork"
+        ),
+        .init(
+            id: "scheduler-policy",
+            message: "스케줄 정책 알려줘",
+            expectedRoute: .localSchedulerCommand,
+            expectedSkillID: nil,
+            expectedRouteHint: "localSchedulerCommand",
+            expectedGoalType: "unknown",
+            shouldRequireApproval: false,
+            notes: "local scheduler command: showSchedulePolicy"
+        ),
+        .init(
+            id: "blocked-calendar-create",
+            message: "일정 만들어줘",
+            expectedRoute: .blockedHighRiskSkill,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "unknown",
+            shouldRequireApproval: true,
+            notes: "calendar write is blocked"
+        ),
+        .init(
+            id: "blocked-calendar-add",
+            message: "캘린더에 추가해줘",
+            expectedRoute: .blockedHighRiskSkill,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "unknown",
+            shouldRequireApproval: true,
+            notes: "calendar write is blocked"
+        ),
+        .init(
+            id: "blocked-email-send",
+            message: "메일 보내줘",
+            expectedRoute: .blockedHighRiskSkill,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "unknown",
+            shouldRequireApproval: true,
+            notes: "email send is blocked"
         )
     ]
 

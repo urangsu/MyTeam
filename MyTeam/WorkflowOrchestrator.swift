@@ -433,6 +433,52 @@ final class WorkflowOrchestrator {
             }
         }
 
+        // ── Local Scheduler Command ──
+        if routeDecision.kind == .localSchedulerCommand {
+            if let command = LocalSchedulerCommandDetector.detect(userMessage) {
+                await MainActor.run {
+                    self.recordRouteTrace(
+                        manager: manager,
+                        roomID: roomID,
+                        step: .localSchedulerCommandDetected,
+                        message: "local scheduler command detected: \(command.kind.rawValue)"
+                    )
+                    self.recordTurnProfile(
+                        manager: manager,
+                        roomID: roomID,
+                        userMessage: userMessage,
+                        route: .localSchedulerCommand,
+                        reason: "local scheduler command: \(command.kind.rawValue)",
+                        matchedSkills: [],
+                        effectiveScopes: effectiveScopes,
+                        expectedOutput: "scheduler summary or action",
+                        requiresApproval: routeDecision.requiresApproval,
+                        blockedTools: []
+                    )
+                }
+
+                let response = await MainActor.run {
+                    LocalSchedulerCommandService.response(
+                        for: command,
+                        roomID: roomID,
+                        manager: manager
+                    )
+                }
+
+                await MainActor.run {
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "스케줄",
+                        text: response,
+                        isUser: false,
+                        isSystem: true
+                    )
+                }
+            }
+            return
+        }
+
         if routeDecision.kind == .dailyBriefing {
             await MainActor.run {
                 manager.updateRoomGoalContext(roomID: roomID, goal: interpretedGoal, activeWorkflowStep: "dailyBriefing.preparing")

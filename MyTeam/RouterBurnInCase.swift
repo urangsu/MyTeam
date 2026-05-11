@@ -3,9 +3,10 @@ import Foundation
 struct RouterBurnInCase: Identifiable, Equatable {
     enum ExpectedRoute: String, Codable {
         case localSkill
-        case dailyBriefing
         case appLaunchPack
         case privacyTerms
+        case localSchedulerCommand
+        case dailyBriefing
         case universalDocument
         case artifactWorkflow
         case teamDiscussion

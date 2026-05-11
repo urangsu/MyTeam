@@ -64,6 +64,16 @@ enum RouteResolver {
             )
         }
 
+        if let command = LocalSchedulerCommandDetector.detect(input.userMessage) {
+            return RouteDecision(
+                kind: .localSchedulerCommand,
+                reason: "local scheduler command detected: \(command.kind.rawValue)",
+                skillID: nil,
+                requiresApproval: command.requiresApproval,
+                expectedOutput: "scheduler summary or action"
+            )
+        }
+
         if input.goal.goalType == .dailyBriefing || input.goal.goalType == .calendarBriefing || input.goal.goalType == .mailBriefing {
             return RouteDecision(
                 kind: .dailyBriefing,
