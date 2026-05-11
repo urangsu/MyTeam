@@ -1365,4 +1365,24 @@ class AgentWindowManager: ObservableObject {
             rooms = decoded
         }
     }
+
+    // MARK: - RecentArtifactIndex Facade API
+
+    @MainActor
+    func addRecentArtifactIndexEntry(_ entry: RecentArtifactIndexEntry) {
+        roomRuntimeStore.recentArtifactIndex.add(entry)
+    }
+
+    @MainActor
+    func recentArtifactIndexEntries(for roomID: UUID) -> [RecentArtifactIndexEntry] {
+        roomRuntimeStore.recentArtifactIndex.recentArtifacts(for: roomID)
+    }
+
+    @MainActor
+    func recentArtifactIndexEntry(
+        artifactID: String,
+        roomID: UUID
+    ) -> RecentArtifactIndexEntry? {
+        roomRuntimeStore.recentArtifactIndex.entry(for: artifactID, roomID: roomID)
+    }
 }

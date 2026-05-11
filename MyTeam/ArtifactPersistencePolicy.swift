@@ -18,7 +18,7 @@ enum ArtifactPersistencePolicy {
         switch status {
         case .succeeded:
             return true
-        case .dryRun, .blocked, .failed:
+        case .dryRun, .blocked, .failed, .cancelled:
             return false
         }
     }

@@ -9,9 +9,9 @@ final class RoomRuntimeStore: ObservableObject {
     // - route traces
     // - last turn profile
     // - last file intake extracted text
+    // - recent artifact index (room-scoped, metadata only)
     //
     // Future persistence candidates:
-    // - recent artifact references
     // - room goal summary
     // - user-approved memory
     //
@@ -20,6 +20,8 @@ final class RoomRuntimeStore: ObservableObject {
     @Published private(set) var roomGoalContexts: [UUID: RoomGoalContext] = [:]
     @Published private(set) var lastFileIntakeResultsByRoom: [UUID: FileIntakeResult] = [:]
     @Published private(set) var activeTasksByRoom: [UUID: Task<Void, Never>] = [:]
+
+    let recentArtifactIndex = RecentArtifactIndex()
 
     var isAvailable: Bool { true }
     var ownsGoalContext: Bool { true }
