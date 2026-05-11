@@ -6,6 +6,50 @@
 
 ---
 
+## 2026-05-11 (Round 34C-Repair — Artifact Pipeline Real Integration Pack)
+
+**Step 4: Verification fail-closed actual application**
+- DocumentType-specific verification methods added to ResultVerifier
+  * verifySummary(content:) — enforces 200+ character minimum
+  * verifyReportDraft(content:) — requires 2+ of 4 sections (목적, 배경, 현황, 검토 의견)
+  * verifyChecklist(content:) — requires 3+ list items
+  * verifyTableSummary(content:) — requires markdown table or key-value structure
+  * verifyMeetingMinutes(content:) — requires 2+ of 4 sections (회의 목적, 논의사항, 결정사항, 액션아이템)
+  * verifyActionItems(content:) — requires 2+ items OR 담당/할일/기한 fields
+- ExecutionVerifier.verify() extended with optional documentType parameter
+  * Dispatches to type-specific verification when provided
+  * Gracefully falls back to generic verification for backward compatibility
+- PlanRunner modified to pass document type to ExecutionVerifier
+  * Applied document-type-specific verification in .verifyMarkdown step
+  * Enhanced logging: error detail, warning count & messages, recovery state
+  * Fail-closed policy: error → no store + 1 recovery attempt; warning → store + note
+
+**Step 6: RuntimeDiagnostics hardcoding removal**
+- Extended RoomGoalContext with artifact/verification tracking
+  * Added enums: ArtifactPersistenceStatusType, VerificationStatusType, PlanExecutionStatusType
+  * Added optional fields: lastArtifactPersistenceStatus, lastVerificationStatus, lastVerificationFailureReason, lastPlanExecutionStatus
+  * Maintains full backward compatibility via default initializer parameters
+- RuntimeDiagnosticsService snapshot() now populates from actual runtime state
+  * recentArtifactIndexCount: dynamically from manager.recentArtifactIndexEntries(for:roomID).count
+  * lastArtifactPersistenceStatus: from roomGoalContext state
+  * lastVerificationStatus: from roomGoalContext state
+  * lastPlanExecutionStatus: from roomGoalContext state
+  * duplicateBuildFileWarningResolved: set to false (bug fixed in Round 34C-Integration)
+- Removed hardcoded placeholder values (0, nil, true) from diagnostics snapshot
+
+**Integration Status:**
+- BUILD SUCCEEDED (zero errors, zero new warnings)
+- All 6 files compiled successfully: ResultVerifier.swift, ExecutionVerifier.swift, PlanRunner.swift, RoomGoalContext.swift, RuntimeDiagnosticsService.swift, RecentArtifactContentResolver.swift, UniversalDocumentArtifactWriter.swift
+- Backward compatibility maintained: DocumentType-specific verification is opt-in via ExecutionVerifier parameter
+- No external API changes required
+
+**Deferred to next round:**
+- Step 5: PlanExecutionResult / artifactCount cleanup (appears correct in existing code)
+- Step 7: RouterBurnIn / ToolContractValidator enhancement (test case additions)
+- Step 8: Additional documentation updates
+- Step 9: Final QA
+- Step 10: Feature gate integration
+
 ## 2026-05-11 (Round 34C — Artifact / Verification / Store Performance Pack)
 
 - Xcode project duplicate build reference 정리: ID collision (D28000000000000000000026) 수정 (DeterministicID ← D2800000000000000000002B)
