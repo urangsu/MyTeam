@@ -54,8 +54,7 @@ enum BriefingActionDispatcher {
     ) async {
         switch action.systemActionID {
         case "openSchedulePanel":
-            // Dispatch LocalSchedulerCommand to open schedule panel
-            await handlePromptFallback("스케줄 열어줘", roomID: roomID, manager: manager, orchestrator: orchestrator)
+            manager.isSchedulePanelPresented = true
             return
 
         case "showPendingApprovals":

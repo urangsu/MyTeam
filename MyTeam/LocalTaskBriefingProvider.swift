@@ -121,7 +121,7 @@ enum LocalTaskBriefingProvider {
                         id: task.id,
                         kind: .scheduledTask,
                         title: task.title,
-                        detail: "\(timeText) · \(task.prompt)",
+                        detail: "\(timeText) · \(task.title)",
                         priority: task.nextRunAt.timeIntervalSince(now) < 2 * 60 * 60 ? .high : .normal,
                         createdAt: task.createdAt
                     )
@@ -158,7 +158,7 @@ enum LocalTaskBriefingProvider {
                     id: pendingDelegatedRequest.id,
                     kind: .pendingDelegation,
                     title: "위임 대기",
-                    detail: pendingDelegatedRequest.originalMessagePreview,
+                    detail: pendingDelegatedRequest.status == .pendingApproval ? "승인 대기 상태입니다." : "위임된 작업을 다시 이어갈 수 있습니다.",
                     priority: .high,
                     createdAt: pendingDelegatedRequest.createdAt
                 )
@@ -254,7 +254,7 @@ enum LocalTaskBriefingProvider {
             }
         }
 
-        return Array(recent.prefix(3))
+        return []
     }
 
     private static func ranked(_ items: [LocalTaskBriefingItem]) -> [LocalTaskBriefingItem] {

@@ -122,3 +122,37 @@ func safeWorkspaceURL(filename: String, context: ToolExecutionContext) throws ->
     }
     return target
 }
+
+func safeWritableWorkspaceURL(filename: String, context: ToolExecutionContext) throws -> URL {
+    let clean = (filename as NSString).lastPathComponent
+    guard !clean.isEmpty, !clean.hasPrefix("."), clean == filename else {
+        throw ToolError.forbidden("경로 탐색 금지 (../): \(filename)")
+    }
+
+    let workspaceURL = context.workspaceURL
+    let baseURL = workspaceURL.appendingPathComponent(clean)
+    guard baseURL.path.hasPrefix(workspaceURL.path) else {
+        throw ToolError.forbidden("Workspace 외부 접근 금지: \(filename)")
+    }
+
+    if !FileManager.default.fileExists(atPath: baseURL.path) {
+        return baseURL
+    }
+
+    let directory = baseURL.deletingLastPathComponent()
+    let stem = baseURL.deletingPathExtension().lastPathComponent
+    let ext = baseURL.pathExtension
+    let formatter = DateFormatter()
+    formatter.calendar = Calendar(identifier: .gregorian)
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.dateFormat = "yyyyMMdd-HHmm"
+    let stamp = formatter.string(from: Date())
+
+    var candidate = directory.appendingPathComponent(ext.isEmpty ? "\(stem)-\(stamp)" : "\(stem)-\(stamp).\(ext)")
+    var suffix = 2
+    while FileManager.default.fileExists(atPath: candidate.path) {
+        candidate = directory.appendingPathComponent(ext.isEmpty ? "\(stem)-\(stamp)-\(suffix)" : "\(stem)-\(stamp)-\(suffix).\(ext)")
+        suffix += 1
+    }
+    return candidate
+}

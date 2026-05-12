@@ -3,11 +3,15 @@ import Foundation
 struct TurnProfile: Identifiable, Equatable {
     enum Route: String, Codable {
         case localSkill
+        case capabilityFuture
+        case capabilityRequiresApproval
+        case capabilityUnavailable
         case delegationMode
         case appLaunchPack
         case privacyTerms
         case localSchedulerCommand
         case dailyBriefing
+        case localSchedulerDocumentBridge
         case universalDocument
         case artifactWorkflow
         case teamDiscussion

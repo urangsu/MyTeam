@@ -846,6 +846,46 @@ enum RouterBurnInSuite {
             notes: "local scheduler command route"
         ),
         .init(
+            id: "scheduler-document-report",
+            message: "오늘 스케줄 기준 보고서 만들어줘",
+            expectedRoute: .localSchedulerDocumentBridge,
+            expectedSkillID: "korean.report-draft",
+            expectedRouteHint: "localSchedulerDocumentBridge",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "local scheduler document bridge: reportDraft"
+        ),
+        .init(
+            id: "scheduler-document-checklist",
+            message: "오늘 업무 체크리스트 만들어줘",
+            expectedRoute: .localSchedulerDocumentBridge,
+            expectedSkillID: "korean.checklist",
+            expectedRouteHint: "localSchedulerDocumentBridge",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "local scheduler document bridge: checklist"
+        ),
+        .init(
+            id: "scheduler-document-pending-approvals",
+            message: "승인 대기 목록 정리해줘",
+            expectedRoute: .localSchedulerDocumentBridge,
+            expectedSkillID: "korean.action-items",
+            expectedRouteHint: "localSchedulerDocumentBridge",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "local scheduler document bridge: actionItems"
+        ),
+        .init(
+            id: "scheduler-document-delegated-work",
+            message: "위임 작업 정리해줘",
+            expectedRoute: .localSchedulerDocumentBridge,
+            expectedSkillID: "korean.document-summary",
+            expectedRouteHint: "localSchedulerDocumentBridge",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "local scheduler document bridge: summary"
+        ),
+        .init(
             id: "scheduler-open-schedule",
             message: "스케줄 열어줘",
             expectedRoute: .localSchedulerCommand,

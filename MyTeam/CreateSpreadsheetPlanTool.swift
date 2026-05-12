@@ -40,7 +40,7 @@ struct CreateSpreadsheetPlanTool: WorkflowTool {
             "data": dataObj
         ]
         let outputJSON = try JSONSerialization.data(withJSONObject: wrapper, options: [.prettyPrinted, .sortedKeys])
-        let url = try safeWorkspaceURL(filename: filename, context: context)
+        let url = try safeWritableWorkspaceURL(filename: filename, context: context)
         try outputJSON.write(to: url)
 
         let preview = "스프레드시트 '\(title)' — \(headers.count)열 × \(rows.count)행 생성 완료"

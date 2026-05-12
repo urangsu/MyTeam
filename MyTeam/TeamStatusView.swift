@@ -183,9 +183,14 @@ struct TeamStatusView: View {
             }
         }
         .sheet(isPresented: $isFileIntakeSheetPresented) {
-            FileIntakeView { result in
-                handleFileIntakeResult(result)
-            }
+            FileIntakeView(
+                onResult: { result in
+                    handleFileIntakeResult(result)
+                },
+                onPromptAction: { prompt in
+                    handleFileIntakePrompt(prompt)
+                }
+            )
         }
         .shadow(color: Color.black.opacity(manager.isDarkMode ? 0.3 : 0.08), radius: 15, x: 0, y: 8)
         .padding(10)
@@ -1139,7 +1144,7 @@ struct TeamStatusView: View {
             message = """
             파일을 읽었습니다.
             파일: \(result.request.originalFilename)
-            다음 단계에서 요약/보고서/체크리스트로 만들 수 있습니다.
+            다음 단계에서 “이 파일 요약해줘”, “이 파일 보고서로 만들어줘”, “이 파일 체크리스트 만들어줘”, “이 파일 내용을 표로 정리해줘”라고 이어서 요청할 수 있습니다.
             """
         case .planned:
             message = """
@@ -1166,6 +1171,27 @@ struct TeamStatusView: View {
             isUser: false,
             isSystem: true
         )
+    }
+
+    @MainActor
+    private func handleFileIntakePrompt(_ prompt: String) {
+        guard let roomID = manager.currentRoomID ?? manager.rooms.first?.id else { return }
+
+        manager.addChatLog(
+            roomID: roomID,
+            agentID: "user",
+            agentName: "나",
+            text: prompt,
+            isUser: true
+        )
+
+        Task {
+            await WorkflowOrchestrator.shared.dispatch(
+                userMessage: prompt,
+                roomID: roomID,
+                manager: manager
+            )
+        }
     }
 }
 

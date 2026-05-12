@@ -20,6 +20,7 @@ enum AICallType: String {
 // 정책을 초과한 호출을 차단한다.
 // + Rolling window: 전체 LLM 호출 1분당 5회 초과 시 차단 (TTS 제외)
 
+@MainActor
 final class AICallBudgetManager {
     static let shared = AICallBudgetManager()
     private init() {}

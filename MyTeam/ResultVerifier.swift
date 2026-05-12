@@ -275,6 +275,59 @@ enum ResultVerifier {
         )
     }
 
+    static func verifySourceGrounding(
+        content: String,
+        sourceText: String
+    ) -> ResultVerificationSummary {
+        let sourceTokens = groundingTokens(in: sourceText)
+        guard !sourceTokens.isEmpty else {
+            return ResultVerificationSummary(passed: true, issues: [])
+        }
+
+        let outputTokens = groundingTokens(in: content)
+        let extraTokens = outputTokens.subtracting(sourceTokens)
+
+        guard !extraTokens.isEmpty else {
+            return ResultVerificationSummary(passed: true, issues: [])
+        }
+
+        let limited = Array(extraTokens.sorted().prefix(5)).joined(separator: ", ")
+        return ResultVerificationSummary(
+            passed: false,
+            issues: [
+                issue(.error, "원문에 없는 숫자 또는 날짜가 포함되어 있습니다: \(limited)")
+            ]
+        )
+    }
+
+    private static func groundingTokens(in text: String) -> Set<String> {
+        let normalized = text
+            .split(separator: "\n")
+            .filter { line in
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                guard !trimmed.hasPrefix("#"), !trimmed.hasPrefix("-"), !trimmed.hasPrefix("*"), !trimmed.hasPrefix(">") else {
+                    return false
+                }
+                return trimmed.range(of: #"^\d+[.)]\s"#, options: .regularExpression) == nil
+            }
+            .joined(separator: "\n")
+
+        let numberPattern = #"(?<![A-Za-z0-9])\d+(?:[.,]\d+)?(?![A-Za-z0-9])"#
+        let datePattern = #"\b\d{4}[./-]\d{1,2}[./-]\d{1,2}\b|\b\d{1,2}월\s*\d{1,2}일\b"#
+
+        return Set(matches(of: numberPattern, in: normalized))
+            .union(matches(of: datePattern, in: normalized))
+    }
+
+    private static func matches(of pattern: String, in text: String) -> [String] {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
+        let range = NSRange(text.startIndex..., in: text)
+        return regex.matches(in: text, range: range).compactMap { match in
+            guard let range = Range(match.range, in: text) else { return nil }
+            return String(text[range])
+        }
+    }
+
     private static func issue(_ severity: ResultVerificationIssue.Severity, _ message: String) -> ResultVerificationIssue {
         ResultVerificationIssue(id: UUID(), severity: severity, message: message)
     }

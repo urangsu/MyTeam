@@ -30,10 +30,15 @@ enum UniversalDocumentArtifactWriter {
 
         let filename = UniversalDocumentSkillService.outputFilename(for: request)
         let title = UniversalDocumentSkillService.documentTitle(for: request)
-        let filePath = await ArtifactStore.shared.workspaceURL.appendingPathComponent(filename).path
+        let workflowID = await MainActor.run { manager.currentWorkflowID } ?? UUID()
+        let fileURL = try safeWritableWorkspaceURL(
+            filename: filename,
+            context: ToolExecutionContext.current(workflowID: workflowID, roomID: roomID)
+        )
+        let filePath = fileURL.path
 
         do {
-            try markdown.write(toFile: filePath, atomically: true, encoding: .utf8)
+            try markdown.write(to: fileURL, atomically: true, encoding: .utf8)
         } catch {
             AppLog.error("[UniversalDocumentArtifactWriter] 파일 저장 실패: \(error.localizedDescription)")
             throw error
@@ -43,7 +48,6 @@ enum UniversalDocumentArtifactWriter {
             .replacingOccurrences(of: "\n", with: " ")
             .trimmingCharacters(in: .whitespaces)
 
-        let workflowID = await MainActor.run { manager.currentWorkflowID } ?? UUID()
         let artifact = IndexedArtifact(
             id: UUID().uuidString,
             workflowID: workflowID.uuidString,
@@ -71,11 +75,6 @@ enum UniversalDocumentArtifactWriter {
                 fileSizeBytes: Int64(markdown.utf8.count)
             )
             manager.addRecentArtifactIndexEntry(entry)
-
-            // RecentArtifactIndexPersistence에 저장
-            await MainActor.run {
-                manager.roomRuntimeStore.saveRecentArtifactIndex()
-            }
 
             AppLog.info("[UniversalDocumentArtifactWriter] artifact 저장 & indexed & persisted: \(filename) workflowID=\(workflowID.uuidString.prefix(8)) roomID=\(roomID.uuidString.prefix(8))")
         } else {

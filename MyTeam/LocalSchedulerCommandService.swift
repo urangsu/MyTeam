@@ -28,6 +28,18 @@ enum LocalSchedulerCommandService {
 
         case .showSchedulePolicy:
             return buildSchedulePolicyResponse()
+
+        case .buildTodayScheduleReport:
+            return "오늘 스케줄 기준 보고서 초안을 만들 수 있습니다."
+
+        case .buildTodayScheduleChecklist:
+            return "오늘 업무 체크리스트 초안을 만들 수 있습니다."
+
+        case .summarizePendingApprovalsDocument:
+            return "승인 대기 목록을 문서로 정리할 수 있습니다."
+
+        case .summarizeDelegatedWorkDocument:
+            return "위임 작업을 문서로 정리할 수 있습니다."
         }
     }
 

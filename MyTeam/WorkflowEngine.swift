@@ -40,7 +40,7 @@ final class WorkflowEngine {
             // invalidInput 실패 → step 단위 self-repair 1회 시도
             if !result.success, let rawErr = result.error, isInputError(rawErr) {
                 AppLog.info("[WorkflowEngine] 입력 오류 감지 → step 수정 시도: '\(step.title)'")
-                if let repairedStep = await repairStep(step, error: rawErr, plan: plan) {
+                if let repairedStep = await repairStep(step, error: rawErr, plan: plan, workflowID: workflowID) {
                     AppLog.info("[WorkflowEngine] step 수정 완료 → 재실행: '\(step.title)'")
                     executedStep = repairedStep
                     result = await ToolExecutor.shared.execute(
@@ -183,7 +183,12 @@ final class WorkflowEngine {
         error.contains("입력 오류") || error.contains("invalidInput") || error.contains("필수")
     }
 
-    private func repairStep(_ step: WorkflowStep, error: String, plan: WorkflowPlan) async -> WorkflowStep? {
+    private func repairStep(
+        _ step: WorkflowStep,
+        error: String,
+        plan: WorkflowPlan,
+        workflowID: UUID
+    ) async -> WorkflowStep? {
         let prompt = buildStepRepairPrompt(step: step, error: error, plan: plan)
         do {
             let (jsonText, _) = try await AIService.shared.getResponse(
@@ -193,7 +198,33 @@ final class WorkflowEngine {
             )
             let cleaned = extractJSON(from: jsonText)
             guard let data = cleaned.data(using: .utf8) else { return nil }
-            return try JSONDecoder().decode(WorkflowStep.self, from: data)
+            let repaired = try JSONDecoder().decode(WorkflowStep.self, from: data)
+            guard repaired.id == step.id,
+                  repaired.toolName == step.toolName,
+                  repaired.title == step.title,
+                  repaired.isRequired == step.isRequired,
+                  repaired.dependsOn == step.dependsOn,
+                  repaired.riskLevel == step.riskLevel else {
+                AppLog.warning("[WorkflowEngine] step repair contract mutation blocked: \(step.title)")
+                await MainActor.run {
+                    WorkflowRunStore.shared.recordError(
+                        workflowID: workflowID,
+                        stepID: step.id,
+                        message: "step repair contract mutation blocked",
+                        failureCode: "step_repair_contract_mutation_blocked"
+                    )
+                }
+                return nil
+            }
+            return WorkflowStep(
+                id: step.id,
+                toolName: step.toolName,
+                title: step.title,
+                input: repaired.input,
+                isRequired: step.isRequired,
+                dependsOn: step.dependsOn,
+                riskLevel: step.riskLevel
+            )
         } catch {
             AppLog.warning("[WorkflowEngine] step 수정 실패: \(error.localizedDescription)")
             return nil
@@ -237,6 +268,7 @@ final class WorkflowEngine {
         return """
         아래 워크플로우 단계가 입력 오류로 실패했습니다.
         JSON 블록(```json ... ```)으로 수정된 단계만 반환하세요. 다른 설명은 없어야 합니다.
+        수정 허용 범위는 input만입니다. id, toolName, title, isRequired, dependsOn, riskLevel은 변경하지 마세요.
 
         워크플로우 제목: \(plan.title)
         단계 제목: \(step.title)

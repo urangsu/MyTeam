@@ -131,13 +131,26 @@ final class ToolExecutor {
         do {
             let toolInput = ToolInput(parameters: step.input)
             let result = try await tool.execute(input: toolInput, context: context)
+            let failureCode: String?
+            switch result.status {
+            case .succeeded:
+                failureCode = nil
+            case .dryRun:
+                failureCode = nil
+            case .blocked:
+                failureCode = "tool_execution_blocked"
+            case .cancelled:
+                failureCode = "tool_execution_cancelled"
+            case .failed:
+                failureCode = "tool_execution_failed"
+            }
             await ArtifactStore.shared.appendActionLog(baseEntry.with(
                 result: logResultString(for: result.status),
                 artifact: result.artifactPath,
                 error: result.error,
                 registryRisk: registryRisk.rawValue,
                 effectiveRisk: effectiveRisk.rawValue,
-                failureCode: result.success ? nil : (result.status == .dryRun ? nil : "tool_execution_failed")
+                failureCode: failureCode
             ))
             return result
         } catch {

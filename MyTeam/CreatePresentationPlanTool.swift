@@ -36,7 +36,7 @@ struct CreatePresentationPlanTool: WorkflowTool {
             "slides": slidesArray
         ]
         let outputJSON = try JSONSerialization.data(withJSONObject: wrapper, options: [.prettyPrinted, .sortedKeys])
-        let url = try safeWorkspaceURL(filename: filename, context: context)
+        let url = try safeWritableWorkspaceURL(filename: filename, context: context)
         try outputJSON.write(to: url)
 
         let preview = "PPT 초안 '\(title)' — \(slidesArray.count)슬라이드 생성 완료"

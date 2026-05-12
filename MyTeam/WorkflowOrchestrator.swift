@@ -13,6 +13,60 @@ final class WorkflowOrchestrator {
         manager.activeWorkflowTaskCount()
     }
 
+    private func beginBudgetSession() async {
+        await MainActor.run {
+            AICallBudgetManager.shared.beginSession()
+        }
+    }
+
+    private func requestBudgetCall(_ type: AICallType) async -> Bool {
+        await MainActor.run {
+            AICallBudgetManager.shared.requestCall(type)
+        }
+    }
+
+    private func blockedBudgetMessage(for type: AICallType) async -> String {
+        await MainActor.run {
+            AICallBudgetManager.shared.blockedMessage(for: type)
+        }
+    }
+
+    @MainActor
+    private func route(for decision: RouteDecision) -> TurnProfile.Route {
+        switch decision.kind {
+        case .localSkill: return .localSkill
+        case .appLaunch: return .appLaunchPack
+        case .privacyTerms: return .privacyTerms
+        case .localSchedulerCommand: return .localSchedulerCommand
+        case .localSchedulerDocumentBridge: return .localSchedulerDocumentBridge
+        case .dailyBriefing: return .dailyBriefing
+        case .universalDocument: return .universalDocument
+        case .artifactWorkflow: return .artifactWorkflow
+        case .teamDiscussion: return .teamDiscussion
+        case .directChat: return .directChat
+        case .disabledSkill: return .disabledSkill
+        case .blocked: return .blockedHighRiskSkill
+        case .capabilityFuture: return .capabilityFuture
+        case .capabilityRequiresApproval: return .capabilityRequiresApproval
+        case .capabilityUnavailable: return .capabilityUnavailable
+        case .fallback: return .unknown
+        }
+    }
+
+    @MainActor
+    private func capabilityGateNotice(for routeDecision: RouteDecision) -> String? {
+        switch routeDecision.kind {
+        case .capabilityFuture:
+            return "아직 연결되지 않은 capability입니다. 준비가 끝나면 다시 시도해 주세요."
+        case .capabilityRequiresApproval:
+            return "이 작업은 추가 승인이 필요합니다. 승인 후 다시 시도해 주세요."
+        case .capabilityUnavailable:
+            return "현재 사용할 수 없는 capability입니다. 연결 또는 설정이 필요합니다."
+        default:
+            return nil
+        }
+    }
+
     /// 현재 실행 중인 workflow를 즉시 취소한다.
     func cancelCurrentWorkflow(roomID: UUID, manager: AgentWindowManager) {
         Task { @MainActor in
@@ -295,8 +349,34 @@ final class WorkflowOrchestrator {
             break
         }
 
+        if let notice = await MainActor.run(body: { self.capabilityGateNotice(for: routeDecision) }) {
+            await MainActor.run {
+                self.recordTurnProfile(
+                    manager: manager,
+                    roomID: roomID,
+                    userMessage: userMessage,
+                    route: self.route(for: routeDecision),
+                    reason: routeDecision.reason,
+                    matchedSkills: [],
+                    effectiveScopes: effectiveScopes,
+                    expectedOutput: routeDecision.expectedOutput,
+                    requiresApproval: routeDecision.requiresApproval,
+                    blockedTools: capabilityDecision.blockedCapabilities.map(\.rawValue)
+                )
+                manager.addChatLog(
+                    roomID: roomID,
+                    agentID: "system",
+                    agentName: "시스템",
+                    text: notice,
+                    isUser: false,
+                    isSystem: true
+                )
+            }
+            return
+        }
+
         // ── 새 요청 → 세션 예산 리셋 ──
-        AICallBudgetManager.shared.beginSession()
+        await beginBudgetSession()
 
         // ── App Launch Pack 스킬: 앱스토어 설명문/온보딩/체크리스트/수익화 점검표 ──
         if let launchType = AppLaunchSkillService.detectSkillType(from: userMessage),
@@ -431,6 +511,124 @@ final class WorkflowOrchestrator {
                 await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
                 return
             }
+        }
+
+        // ── Local Scheduler Document Bridge ──
+        if routeDecision.kind == .localSchedulerDocumentBridge {
+            guard let command = LocalSchedulerCommandDetector.detect(userMessage),
+                  let targetType = LocalSchedulerDocumentBridge.targetType(for: command) else {
+                await MainActor.run {
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "스킬",
+                        text: "최근 다시 사용할 수 있는 문서를 찾을 수 없습니다. 먼저 문서를 하나 만든 뒤 다시 요청해 주세요.",
+                        isUser: false,
+                        isSystem: true
+                    )
+                }
+                return
+            }
+
+            guard let request = LocalSchedulerDocumentBridge.makeRequest(
+                command: command,
+                roomID: roomID,
+                manager: manager,
+                targetType: targetType
+            ) else {
+                await MainActor.run {
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "스킬",
+                        text: "오늘 업무를 문서로 만들 수 없습니다. 먼저 스케줄 업무나 위임 상태를 확인해 주세요.",
+                        isUser: false,
+                        isSystem: true
+                    )
+                }
+                return
+            }
+
+            guard enabledSkills.contains(where: { $0.id == targetType.skillID }) else {
+                await MainActor.run {
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "스킬",
+                        text: "해당 문서 유형은 아직 사용할 수 없습니다.",
+                        isUser: false,
+                        isSystem: true
+                    )
+                }
+                return
+            }
+
+            await MainActor.run {
+                manager.recordUniversalDocumentType(targetType, roomID: roomID)
+                manager.updateRoomGoalContext(roomID: roomID, goal: interpretedGoal, activeWorkflowStep: "localSchedulerDocumentBridge.detected")
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .localSchedulerDocumentBridgeDetected,
+                    message: "local scheduler document bridge detected: \(command.kind.rawValue)"
+                )
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .universalDocumentDetected,
+                    message: "local scheduler bridge document: \(targetType.skillID)"
+                )
+                self.recordTurnProfile(
+                    manager: manager,
+                    roomID: roomID,
+                    userMessage: userMessage,
+                    route: .localSchedulerDocumentBridge,
+                    reason: "local scheduler document bridge: \(command.kind.rawValue)",
+                    matchedSkills: enabledSkills.filter { $0.id == targetType.skillID },
+                    effectiveScopes: effectiveScopes,
+                    expectedOutput: "markdown artifact",
+                    requiresApproval: false
+                )
+            }
+
+            effectiveScopes.formUnion(enabledSkills.flatMap { $0.allowedScopes })
+            effectiveScopes.insert(.artifactGeneration)
+
+            if FeatureFlags.planRunnerUniversalDocumentEnabled {
+                await MainActor.run { manager.isWorkflowRunning = true }
+                defer { Task { @MainActor in manager.isWorkflowRunning = false } }
+                let task = Task {
+                    await self.runUniversalDocumentPlanWorkflow(
+                        request: request,
+                        userMessage: userMessage,
+                        roomID: roomID,
+                        manager: manager,
+                        allowedScopes: effectiveScopes
+                    )
+                }
+                await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
+                await task.value
+                await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
+                await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
+                return
+            }
+
+            await MainActor.run { manager.isWorkflowRunning = true }
+            defer { Task { @MainActor in manager.isWorkflowRunning = false } }
+            let task = Task {
+                _ = await self.runUniversalDocumentWorkflow(
+                    request: request,
+                    userMessage: userMessage,
+                    roomID: roomID,
+                    manager: manager,
+                    allowedScopes: effectiveScopes
+                )
+            }
+            await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
+            _ = await task.value
+            await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
+            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
+            return
         }
 
         // ── Local Scheduler Command ──
@@ -628,7 +826,7 @@ final class WorkflowOrchestrator {
         }
 
         let roomContext = await MainActor.run { manager.roomGoalContext(for: roomID) }
-        if RecentArtifactReuseService.canHandle(userMessage, context: roomContext) {
+        if RecentArtifactReuseService.canHandle(userMessage, context: roomContext, roomID: roomID, manager: manager) {
             let request = await RecentArtifactReuseService.makeRequest(
                 message: userMessage,
                 roomID: roomID,
@@ -1017,7 +1215,7 @@ final class WorkflowOrchestrator {
     // MARK: - Intent classification (1회)
 
     private func classifyRouting(message: String, manager: AgentWindowManager) async -> IntentResult {
-        guard AICallBudgetManager.shared.requestCall(.intentClassify) else {
+        guard await requestBudgetCall(.intentClassify) else {
             AppLog.warning("[Budget] intent_classify 차단")
             return .fallback
         }
@@ -1523,8 +1721,8 @@ final class WorkflowOrchestrator {
     ) async -> PlannerResult {
         let callType = previousError == nil ? "workflow_plan" : "workflow_repair"
         let budgetType: AICallType = previousError == nil ? .workflowPlan : .workflowRepair
-        guard AICallBudgetManager.shared.requestCall(budgetType) else {
-            let msg = AICallBudgetManager.shared.blockedMessage(for: budgetType)
+        guard await requestBudgetCall(budgetType) else {
+            let msg = await blockedBudgetMessage(for: budgetType)
             AppLog.warning("[Budget] \(callType) 차단")
             return .failure(msg)
         }
@@ -1736,7 +1934,7 @@ final class WorkflowOrchestrator {
         guard !Task.isCancelled else { return }
 
         // Budget check
-        guard AICallBudgetManager.shared.requestCall(.privacyTermsGen) else {
+        guard await requestBudgetCall(.privacyTermsGen) else {
             finalStatus = .failed
             finalEvent = .modelCallFailed(workflowID: workflowID, provider: "budget", error: "예산 초과")
             await MainActor.run {
@@ -1871,7 +2069,7 @@ final class WorkflowOrchestrator {
 
         for attempt in 1...2 {
             let callType: AICallType = attempt == 1 ? .universalDocumentGen : .universalDocumentRepair
-            guard AICallBudgetManager.shared.requestCall(callType) else {
+            guard await requestBudgetCall(callType) else {
                 finalStatus = .failed
                 finalEvent = .modelCallFailed(workflowID: workflowID, provider: "budget", error: "예산 초과")
                 await MainActor.run {
@@ -1920,8 +2118,11 @@ final class WorkflowOrchestrator {
                     manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "universalDocument.verifying")
                 }
 
-                let verification = ResultVerifier.verifyMarkdownArtifact(
-                    content: generatedMarkdown.text,
+                let verification = ExecutionVerifier.verify(
+                    generatedMarkdown.text,
+                    level: .markdownArtifact,
+                    sourceText: request.sourceText,
+                    documentType: request.type,
                     requiredSections: UniversalDocumentSkillService.requiredSections(for: request.type)
                 )
                 finalVerification = verification
@@ -2275,7 +2476,7 @@ final class WorkflowOrchestrator {
         guard !Task.isCancelled else { return }
 
         let budgetType: AICallType = .appLaunchPack
-        guard AICallBudgetManager.shared.requestCall(budgetType) else {
+        guard await requestBudgetCall(budgetType) else {
             finalStatus = .failed
             finalEvent = .modelCallFailed(workflowID: workflowID, provider: "budget", error: "예산 초과")
             await MainActor.run {

@@ -16,7 +16,7 @@ struct WriteTextFileTool: WorkflowTool {
         guard let filename = input["filename"], let content = input["content"] else {
             throw ToolError.invalidInput("filename, content 필수")
         }
-        let url = try safeWorkspaceURL(filename: filename, context: context)
+        let url = try safeWritableWorkspaceURL(filename: filename, context: context)
         try content.write(to: url, atomically: true, encoding: .utf8)
         let summary = "\(filename) 저장 완료 (\(content.count)자)"
         return ToolResult(success: true, output: summary, artifactPath: filename, error: nil)

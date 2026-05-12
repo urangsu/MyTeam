@@ -6,6 +6,7 @@ struct RouterBurnInCase: Identifiable, Equatable {
         case appLaunchPack
         case privacyTerms
         case localSchedulerCommand
+        case localSchedulerDocumentBridge
         case dailyBriefing
         case universalDocument
         case artifactWorkflow

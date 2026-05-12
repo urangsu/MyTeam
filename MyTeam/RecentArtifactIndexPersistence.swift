@@ -37,7 +37,7 @@ enum RecentArtifactIndexPersistence {
     ) -> Result<Void, PersistenceError> {
         let trimmed = trimAndFilter(entries)
         let snapshot = RecentArtifactIndexSnapshot(
-            version: .currentVersion,
+            version: RecentArtifactIndexSnapshot.currentVersion,
             savedAt: Date(),
             entries: trimmed
         )
@@ -85,7 +85,9 @@ enum RecentArtifactIndexPersistence {
         }
 
         // Filter out entries with missing files
-        let validEntries = snapshot.entries.filter { entry in
+        let validEntries = snapshot.entries
+            .sorted { $0.createdAt > $1.createdAt }
+            .filter { entry in
             // Check if file exists — basic validation
             // Full validation happens in resolver
             true
@@ -114,23 +116,20 @@ enum RecentArtifactIndexPersistence {
     private static func trimAndFilter(
         _ entries: [RecentArtifactIndexPersistenceEntry]
     ) -> [RecentArtifactIndexPersistenceEntry] {
+        let sorted = entries.sorted { $0.createdAt > $1.createdAt }
+
         // Group by room, keep max 10 per room
         var byRoom: [UUID: [RecentArtifactIndexPersistenceEntry]] = [:]
-        for entry in entries {
-            if byRoom[entry.roomID] == nil {
-                byRoom[entry.roomID] = []
-            }
-            byRoom[entry.roomID]?.append(entry)
+        for entry in sorted {
+            byRoom[entry.roomID, default: []].append(entry)
         }
 
-        // Trim each room to maxEntriesPerRoom (most recent first)
         var trimmed: [RecentArtifactIndexPersistenceEntry] = []
-        for (_, roomEntries) in byRoom {
+        for roomEntries in byRoom.values {
             trimmed.append(contentsOf: roomEntries.prefix(maxEntriesPerRoom))
         }
 
-        // Trim overall to maxTotalEntries
-        return Array(trimmed.prefix(maxTotalEntries))
+        return Array(trimmed.sorted { $0.createdAt > $1.createdAt }.prefix(maxTotalEntries))
     }
 
     // MARK: - Error

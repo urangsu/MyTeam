@@ -449,6 +449,10 @@ class AgentWindowManager: ObservableObject {
                 self?.objectWillChange.send()
             }
 
+        Task { @MainActor [weak self] in
+            await self?.roomRuntimeStore.loadRecentArtifactIndex()
+        }
+
         // 잠금 해제 감지 (didWake만 — sessionDidBecomeActive는 앱 시작 시도 발화해서 중복 유발)
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(handleWake), name: NSWorkspace.didWakeNotification, object: nil)
 
@@ -1387,7 +1391,7 @@ class AgentWindowManager: ObservableObject {
 
     @MainActor
     func addRecentArtifactIndexEntry(_ entry: RecentArtifactIndexEntry) {
-        roomRuntimeStore.recentArtifactIndex.add(entry)
+        roomRuntimeStore.recordRecentArtifactIndexEntry(entry)
     }
 
     @MainActor

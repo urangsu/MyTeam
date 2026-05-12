@@ -9,9 +9,40 @@ struct RouteResolutionInput {
 }
 
 enum RouteResolver {
+    static var isAvailable: Bool { true }
+
     static func resolveInitialRoute(_ input: RouteResolutionInput) -> RouteDecision {
         if let blocked = GoalGate.blockedDecision(goal: input.goal, capability: input.capabilityDecision) {
             return blocked
+        }
+
+        switch input.capabilityDecision.status {
+        case .future:
+            return RouteDecision(
+                kind: .capabilityFuture,
+                reason: input.capabilityDecision.message,
+                skillID: nil,
+                requiresApproval: false,
+                expectedOutput: "future capability notice"
+            )
+        case .requiresApproval:
+            return RouteDecision(
+                kind: .capabilityRequiresApproval,
+                reason: input.capabilityDecision.message,
+                skillID: nil,
+                requiresApproval: true,
+                expectedOutput: "approval required notice"
+            )
+        case .unavailable:
+            return RouteDecision(
+                kind: .capabilityUnavailable,
+                reason: input.capabilityDecision.message,
+                skillID: nil,
+                requiresApproval: false,
+                expectedOutput: "unavailable notice"
+            )
+        case .available, .blocked:
+            break
         }
 
         if let disabledSkill = input.disabledSkills.first {
@@ -24,7 +55,7 @@ enum RouteResolver {
             )
         }
 
-        if case .handled(_, let skillID) = LocalSkillExecutor.executeIfPossible(skills: input.enabledSkills, userMessage: input.userMessage) {
+        if case .handled(_, let skillID) = LocalSkillExecutor.detectIfPossible(skills: input.enabledSkills, userMessage: input.userMessage) {
             return RouteDecision(
                 kind: .localSkill,
                 reason: "local skill handled: \(skillID)",
@@ -34,7 +65,7 @@ enum RouteResolver {
             )
         }
 
-        if case .needsInput(_, let skillID) = LocalSkillExecutor.executeIfPossible(skills: input.enabledSkills, userMessage: input.userMessage) {
+        if case .needsInput(_, let skillID) = LocalSkillExecutor.detectIfPossible(skills: input.enabledSkills, userMessage: input.userMessage) {
             return RouteDecision(
                 kind: .localSkill,
                 reason: "local skill needs input: \(skillID)",
@@ -61,6 +92,17 @@ enum RouteResolver {
                 skillID: "korean.privacy-terms",
                 requiresApproval: false,
                 expectedOutput: "privacy terms artifact"
+            )
+        }
+
+        if let command = LocalSchedulerCommandDetector.detect(input.userMessage),
+           LocalSchedulerDocumentBridge.targetType(for: command) != nil {
+            return RouteDecision(
+                kind: .localSchedulerDocumentBridge,
+                reason: "local scheduler document bridge detected: \(command.kind.rawValue)",
+                skillID: nil,
+                requiresApproval: false,
+                expectedOutput: "scheduler document artifact"
             )
         }
 

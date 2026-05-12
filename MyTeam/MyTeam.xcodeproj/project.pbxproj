@@ -163,7 +163,9 @@
 		D2500000000000000000001E /* FileIntakeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2500000000000000000002E /* FileIntakeService.swift */; };
 		D2500000000000000000001F /* FileIntakeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2500000000000000000002F /* FileIntakeView.swift */; };
 		D2400000000000000000001D /* RecentArtifactSourceBinding.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2400000000000000000000D /* RecentArtifactSourceBinding.swift */; };
+		D24000000000000000000020 /* RecentArtifactIndexPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = D24000000000000000000010 /* RecentArtifactIndexPersistence.swift */; };
 		D2400000000000000000001E /* ScheduledTaskApprovalStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2400000000000000000000E /* ScheduledTaskApprovalStatus.swift */; };
+		D2400000000000000000001F /* LocalSchedulerDocumentBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2400000000000000000000F /* LocalSchedulerDocumentBridge.swift */; };
 		F27100000000000000000011 /* FeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27000000000000000000011 /* FeatureFlags.swift */; };
 		F27100000000000000000012 /* VerificationLevel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27000000000000000000012 /* VerificationLevel.swift */; };
 		F27100000000000000000013 /* WorkPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27000000000000000000013 /* WorkPlan.swift */; };
@@ -568,7 +570,9 @@
 		D2500000000000000000002E /* FileIntakeService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileIntakeService.swift; sourceTree = "<group>"; };
 		D2500000000000000000002F /* FileIntakeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileIntakeView.swift; sourceTree = "<group>"; };
 		D2400000000000000000000D /* RecentArtifactSourceBinding.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecentArtifactSourceBinding.swift; sourceTree = "<group>"; };
+		D24000000000000000000010 /* RecentArtifactIndexPersistence.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RecentArtifactIndexPersistence.swift; sourceTree = "<group>"; };
 		D2400000000000000000000E /* ScheduledTaskApprovalStatus.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScheduledTaskApprovalStatus.swift; sourceTree = "<group>"; };
+		D2400000000000000000000F /* LocalSchedulerDocumentBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalSchedulerDocumentBridge.swift; sourceTree = "<group>"; };
 		F27000000000000000000011 /* FeatureFlags.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FeatureFlags.swift; sourceTree = "<group>"; };
 		F27000000000000000000012 /* VerificationLevel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VerificationLevel.swift; sourceTree = "<group>"; };
 		F27000000000000000000013 /* WorkPlan.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkPlan.swift; sourceTree = "<group>"; };
@@ -1614,7 +1618,9 @@
 				D2500000000000000000002E /* FileIntakeService.swift */,
 				D2500000000000000000002F /* FileIntakeView.swift */,
 				D2400000000000000000000D /* RecentArtifactSourceBinding.swift */,
+				D24000000000000000000010 /* RecentArtifactIndexPersistence.swift */,
 				D2400000000000000000000E /* ScheduledTaskApprovalStatus.swift */,
+				D2400000000000000000000F /* LocalSchedulerDocumentBridge.swift */,
 				D2400000000000000000000B /* BriefingActionSuggestion.swift */,
 				D2400000000000000000000C /* BriefingActionSuggestionProvider.swift */,
 				D28000000000000000000008 /* BriefingActionDispatcher.swift */,
@@ -3224,6 +3230,7 @@
 				D2500000000000000000001E /* FileIntakeService.swift in Sources */,
 				D2500000000000000000001F /* FileIntakeView.swift in Sources */,
 				D2400000000000000000001D /* RecentArtifactSourceBinding.swift in Sources */,
+				D24000000000000000000020 /* RecentArtifactIndexPersistence.swift in Sources */,
 				D2400000000000000000001E /* ScheduledTaskApprovalStatus.swift in Sources */,
 				B1E7F1E2AA00112233445561 /* RoomGoalContext.swift in Sources */,
 				B1E7F1E2AA00112233445562 /* GoalContextEngine.swift in Sources */,
@@ -3243,7 +3250,8 @@
 			
 				E53C44F0DAFCBFB7BC86E10D /* LocalSchedulerCommandService.swift in Sources */,
 				71748B454B5D1E22718DF023 /* LocalSchedulerCommandDetector.swift in Sources */,
-				E912B8C850DD1701BAE96EB8 /* LocalSchedulerCommand.swift in Sources */,);
+				E912B8C850DD1701BAE96EB8 /* LocalSchedulerCommand.swift in Sources */,
+				D2400000000000000000001F /* LocalSchedulerDocumentBridge.swift in Sources */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */

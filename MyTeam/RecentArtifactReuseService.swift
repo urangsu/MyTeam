@@ -3,11 +3,14 @@ import Foundation
 enum RecentArtifactReuseService {
     static func canHandle(
         _ message: String,
-        context: RoomGoalContext?
+        context: RoomGoalContext?,
+        roomID: UUID,
+        manager: AgentWindowManager
     ) -> Bool {
         GoalContextEngine.referencesRecentArtifact(message)
             && context?.recentArtifactIDs.isEmpty == false
             && documentType(from: message) != nil
+            && RecentArtifactContentResolver.canResolveLatestMarkdownArtifact(roomID: roomID, manager: manager)
     }
 
     @MainActor

@@ -51,6 +51,7 @@ struct WorkflowErrorRecord: Codable {
     let stepID: String?
     let message: String
     let provider: String?
+    let failureCode: String?
 }
 
 struct AICallRecord: Codable {
@@ -122,8 +123,20 @@ final class WorkflowRunStore {
         update(&records[workflowID]!.steps[idx])
     }
 
-    func recordError(workflowID: UUID, stepID: String? = nil, message: String, provider: String? = nil) {
-        let err = WorkflowErrorRecord(timestamp: Date(), stepID: stepID, message: message, provider: provider)
+    func recordError(
+        workflowID: UUID,
+        stepID: String? = nil,
+        message: String,
+        provider: String? = nil,
+        failureCode: String? = nil
+    ) {
+        let err = WorkflowErrorRecord(
+            timestamp: Date(),
+            stepID: stepID,
+            message: message,
+            provider: provider,
+            failureCode: failureCode
+        )
         records[workflowID]?.errors.append(err)
     }
 

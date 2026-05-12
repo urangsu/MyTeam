@@ -26,6 +26,7 @@ final class RoomRuntimeStore: ObservableObject {
     // RecentArtifactIndexPersistence lifecycle tracking
     var recentArtifactIndexLoadedAt: Date?
     var recentArtifactIndexLastSavedAt: Date?
+    var recentArtifactIndexPersistedCount: Int = 0
     var recentArtifactIndexPersistenceError: String?
 
     var isAvailable: Bool { true }
@@ -109,6 +110,11 @@ final class RoomRuntimeStore: ObservableObject {
         lastFileIntakeResultsByRoom[roomID] = result
     }
 
+    func recordRecentArtifactIndexEntry(_ entry: RecentArtifactIndexEntry) {
+        recentArtifactIndex.add(entry)
+        saveRecentArtifactIndex()
+    }
+
     func lastFileIntakeResult(for roomID: UUID) -> FileIntakeResult? {
         lastFileIntakeResultsByRoom[roomID]
     }
@@ -137,22 +143,70 @@ final class RoomRuntimeStore: ObservableObject {
         tasks.forEach { $0.cancel() }
     }
 
-    // MARK: - RecentArtifactIndexPersistence lifecycle
-    // TODO: Round 35B — Enable persistence after RecentArtifactIndexPersistence is added to project
-
     @MainActor
-    func loadRecentArtifactIndex() {
-        // Persistence to be enabled in Round 35B
-        recentArtifactIndexLoadedAt = Date()
-        recentArtifactIndexPersistenceError = nil
-        AppLog.info("[RoomRuntimeStore] RecentArtifactIndex load deferred")
+    func loadRecentArtifactIndex() async {
+        switch RecentArtifactIndexPersistence.load() {
+        case .success(let entries):
+            recentArtifactIndex.clear()
+            for entry in entries {
+                recentArtifactIndex.add(
+                    RecentArtifactIndexEntry(
+                        artifactID: entry.artifactID,
+                        roomID: entry.roomID,
+                        filename: entry.filename,
+                        artifactType: entry.artifactType,
+                        createdAt: entry.createdAt,
+                        contentHash: entry.contentHash.isEmpty ? nil : entry.contentHash,
+                        fileSizeBytes: entry.fileSizeBytes == 0 ? nil : entry.fileSizeBytes
+                    )
+                )
+            }
+            let persistedArtifacts = await ArtifactStore.shared.loadArtifacts()
+            let persistedIDs = Set(persistedArtifacts.map(\.id))
+            let mismatched = entries.filter { entry in
+                !persistedIDs.contains(entry.artifactID)
+            }
+            if !mismatched.isEmpty {
+                recentArtifactIndexPersistenceError = "artifact cross-check mismatch: \(mismatched.count)"
+            } else {
+                recentArtifactIndexPersistenceError = nil
+            }
+            recentArtifactIndexLoadedAt = Date()
+            recentArtifactIndexPersistedCount = entries.count
+            AppLog.info("[RoomRuntimeStore] RecentArtifactIndex loaded: \(entries.count)")
+        case .failure(let error):
+            recentArtifactIndexLoadedAt = Date()
+            recentArtifactIndexPersistedCount = recentArtifactIndex.allEntries.count
+            recentArtifactIndexPersistenceError = error.message
+            AppLog.warning("[RoomRuntimeStore] RecentArtifactIndex load failed: \(error.message)")
+        }
     }
 
     @MainActor
     func saveRecentArtifactIndex() {
-        // Persistence to be enabled in Round 35B
-        recentArtifactIndexLastSavedAt = Date()
-        recentArtifactIndexPersistenceError = nil
-        AppLog.debug("[RoomRuntimeStore] RecentArtifactIndex save deferred")
+        let entries = recentArtifactIndex.allEntries.map {
+            RecentArtifactIndexPersistenceEntry(
+                artifactID: $0.artifactID,
+                roomID: $0.roomID,
+                filename: $0.filename,
+                artifactType: $0.artifactType,
+                createdAt: $0.createdAt,
+                contentHash: $0.contentHash ?? "",
+                fileSizeBytes: $0.fileSizeBytes ?? 0
+            )
+        }
+
+        switch RecentArtifactIndexPersistence.save(entries: entries) {
+        case .success:
+            recentArtifactIndexLastSavedAt = Date()
+            recentArtifactIndexPersistedCount = entries.count
+            recentArtifactIndexPersistenceError = nil
+            AppLog.debug("[RoomRuntimeStore] RecentArtifactIndex saved: \(entries.count)")
+        case .failure(let error):
+            recentArtifactIndexLastSavedAt = Date()
+            recentArtifactIndexPersistedCount = entries.count
+            recentArtifactIndexPersistenceError = error.message
+            AppLog.warning("[RoomRuntimeStore] RecentArtifactIndex save failed: \(error.message)")
+        }
     }
 }

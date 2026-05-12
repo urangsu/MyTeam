@@ -22,6 +22,24 @@ struct WorkflowStep: Codable {
         case id, toolName, title, input, isRequired, dependsOn, riskLevel
     }
 
+    init(
+        id: String = UUID().uuidString,
+        toolName: String,
+        title: String,
+        input: [String: String],
+        isRequired: Bool,
+        dependsOn: [String],
+        riskLevel: ToolRiskLevel
+    ) {
+        self.id = id
+        self.toolName = toolName
+        self.title = title
+        self.input = input
+        self.isRequired = isRequired
+        self.dependsOn = dependsOn
+        self.riskLevel = riskLevel
+    }
+
     // LLM이 일부 필드를 생략해도 기본값 적용
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)

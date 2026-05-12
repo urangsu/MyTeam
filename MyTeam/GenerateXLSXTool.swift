@@ -18,8 +18,8 @@ struct GenerateXLSXTool: WorkflowTool {
             throw ToolError.invalidInput("plan_filename, output_filename 필수")
         }
 
-        let planURL   = try safeWorkspaceURL(filename: planFilename,   context: context)
-        let outputURL = try safeWorkspaceURL(filename: outputFilename, context: context)
+        let planURL   = try safeWorkspaceURL(filename: planFilename, context: context)
+        let outputURL = try safeWritableWorkspaceURL(filename: outputFilename, context: context)
 
         let result = try DocumentGenerationService.generateXLSX(planURL: planURL, outputURL: outputURL)
 

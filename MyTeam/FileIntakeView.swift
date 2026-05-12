@@ -5,11 +5,20 @@ import UniformTypeIdentifiers
 struct FileIntakeView: View {
     @Environment(\.dismiss) private var dismiss
     let onResult: (FileIntakeResult) -> Void
+    let onPromptAction: ((String) -> Void)?
 
     @State private var isImporting = false
     @State private var isDropTargeted = false
     @State private var lastResult: FileIntakeResult?
     @State private var statusMessage = "txt, md, csv 파일을 먼저 지원합니다."
+
+    init(
+        onResult: @escaping (FileIntakeResult) -> Void,
+        onPromptAction: ((String) -> Void)? = nil
+    ) {
+        self.onResult = onResult
+        self.onPromptAction = onPromptAction
+    }
 
     private var allowedTypes: [UTType] {
         [.item]
@@ -118,10 +127,23 @@ struct FileIntakeView: View {
                         .frame(height: 110)
                         .padding(10)
                         .background(RoundedRectangle(cornerRadius: 10).fill(Color.secondary.opacity(0.06)))
-                        Text("이제 “이 파일 요약해줘”처럼 요청할 수 있습니다.")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("다음 작업")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(.secondary)
+
+                            LazyVGrid(
+                                columns: [GridItem(.adaptive(minimum: 108), spacing: 6)],
+                                alignment: .leading,
+                                spacing: 6
+                            ) {
+                                followUpButton(title: "이 파일 요약하기", prompt: "이 파일 요약해줘")
+                                followUpButton(title: "보고서로 만들기", prompt: "이 파일 보고서로 만들어줘")
+                                followUpButton(title: "체크리스트 만들기", prompt: "이 파일 체크리스트 만들어줘")
+                                followUpButton(title: "표로 정리하기", prompt: "이 파일 내용을 표로 정리해줘")
+                            }
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -198,5 +220,30 @@ struct FileIntakeView: View {
         case .empty: return "빈 파일"
         case .unsupported: return "미지원"
         }
+    }
+
+    @ViewBuilder
+    private func followUpButton(title: String, prompt: String) -> some View {
+        Button {
+            onPromptAction?(prompt)
+        } label: {
+            Text(title)
+                .font(.system(size: 10, weight: .semibold))
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .foregroundStyle(.primary)
+                .background(
+                    Capsule()
+                        .fill(Color.secondary.opacity(0.10))
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(Color.secondary.opacity(0.16), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .help(prompt)
     }
 }

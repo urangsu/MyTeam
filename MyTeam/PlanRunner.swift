@@ -98,6 +98,7 @@ final class PlanRunner {
                 verification = ExecutionVerifier.verify(
                     draftMarkdown,
                     level: contract.verificationLevel,
+                    sourceText: request.sourceText,
                     documentType: request.type,
                     requiredSections: UniversalDocumentSkillService.requiredSections(for: request.type)
                 )
@@ -124,6 +125,7 @@ final class PlanRunner {
                             verification = ExecutionVerifier.verify(
                                 draftMarkdown,
                                 level: contract.verificationLevel,
+                                sourceText: request.sourceText,
                                 documentType: request.type,
                                 requiredSections: UniversalDocumentSkillService.requiredSections(for: request.type)
                             )
@@ -238,4 +240,3 @@ final class PlanRunner {
         )
     }
 }
-

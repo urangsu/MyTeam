@@ -41,20 +41,19 @@ struct RuntimeDiagnosticsSnapshot {
     let toolResultStatusModelAvailable: Bool
     let dryRunSuccessSeparated: Bool
 
-    // Build / Project
-    let duplicateBuildFileWarningResolved: Bool
-    let xcodeUserStateIgnored: Bool
-
     // Artifact UX & Persistence
     let artifactUXActionsAvailable: Bool
     let workspaceFileActionsAvailable: Bool
     let recentArtifactIndexPersistenceAvailable: Bool
     let recentArtifactIndexPersistedCount: Int
     let recentArtifactIndexLoadedAt: Date?
+    let recentArtifactIndexSavedAt: Date?
     let recentArtifactReuseFailureReason: String?
 
     // Feature Flags / Release Path
-    let planRunnerDefaultForBuild: Bool
+    let buildConfiguration: String
+    let planRunnerEnabled: Bool
+    let planRunnerToggleVisible: Bool
     let debugDiagnosticsVisible: Bool
 
     // Routing / Turn profile
@@ -87,6 +86,7 @@ struct RuntimeDiagnosticsSnapshot {
     let localTaskBriefingSuggestedActionCount: Int
     let localTaskBriefingUnsupportedActionCount: Int
     let recentArtifactContentResolverAvailable: Bool
+    let recentArtifactSourceBindingAvailable: Bool
     let recentArtifactReuseAvailable: Bool
     let recentArtifactReusableCount: Int
     let lastRecentArtifactReuseSourceName: String?
@@ -103,6 +103,12 @@ struct RuntimeDiagnosticsSnapshot {
     let workflowRunnerDailyBriefingEnabled: Bool
     let workflowRunnerUniversalDocumentPlanEnabled: Bool
     let orchestratorBoundaryReduced: Bool
+    let toolRiskRegistryEnforced: Bool
+    let toolRiskMismatchBlockedCount: Int
+    let toolScopeMissingBlockedCount: Int
+    let staleActionBindingBlockedCount: Int
+    let agentWorkOrderStableContractID: Bool
+    let approvalStateSeparated: Bool
     let roomRuntimeStoreAvailable: Bool
     let roomRuntimeStoreOwnsGoalContext: Bool
     let roomRuntimeStoreOwnsFileIntake: Bool
@@ -236,7 +242,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("dailyBriefing: status=\(dailyBriefingStatus) calendar=\(dailyBriefingCalendarItemCount) mail=\(dailyBriefingMailItemCount) localItems=\(localBriefingItemCount)")
         lines.append("briefingAvailability: daily=\(dailyBriefingAvailable) local=\(localBriefingAvailable) localTask=\(localTaskBriefingAvailable) calendarProvider=\(calendarProviderAvailable) gmailMetadata=\(gmailMetadataAvailable) sections=\(lastBriefingSectionCount)")
         lines.append("localTaskBriefing: items=\(localTaskBriefingItemCount) high=\(localTaskBriefingHighPriorityCount) kinds=\(lastLocalTaskBriefingKinds.joined(separator: ","))")
-        lines.append("localTaskBriefingActions: supported=\(localTaskBriefingActionCount) suggested=\(localTaskBriefingSuggestedActionCount) unsupported=\(localTaskBriefingUnsupportedActionCount) recentArtifactResolver=\(recentArtifactContentResolverAvailable)")
+        lines.append("localTaskBriefingActions: supported=\(localTaskBriefingActionCount) suggested=\(localTaskBriefingSuggestedActionCount) unsupported=\(localTaskBriefingUnsupportedActionCount) recentArtifactResolver=\(recentArtifactContentResolverAvailable) sourceBinding=\(recentArtifactSourceBindingAvailable)")
         lines.append("recentArtifactReuse: available=\(recentArtifactReuseAvailable) count=\(recentArtifactReusableCount) source=\(lastRecentArtifactReuseSourceName ?? "nil") types=\(recentArtifactReuseSupportedTypes.joined(separator: ","))")
         lines.append("briefingActions: count=\(briefingActionSuggestionCount) unsupported=\(briefingUnsupportedActionCount) system=\(briefingSystemActionCount) prompt=\(briefingPromptActionCount) kinds=\(briefingActionKinds.joined(separator: ","))")
         lines.append("schedulerBridge: available=\(schedulerBridgeAvailable) recentArtifactAction=\(recentArtifactActionAvailable)")
@@ -250,6 +256,9 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("workflowRunnerDailyBriefingEnabled: \(workflowRunnerDailyBriefingEnabled)")
         lines.append("workflowRunnerUniversalDocumentPlanEnabled: \(workflowRunnerUniversalDocumentPlanEnabled)")
         lines.append("orchestratorBoundaryReduced: \(orchestratorBoundaryReduced)")
+        lines.append("toolRisk: registryEnforced=\(toolRiskRegistryEnforced) mismatchBlocked=\(toolRiskMismatchBlockedCount) scopeMissingBlocked=\(toolScopeMissingBlockedCount)")
+        lines.append("artifactBinding: staleBlocked=\(staleActionBindingBlockedCount) workOrderStableID=\(agentWorkOrderStableContractID)")
+        lines.append("approvalStateSeparated: \(approvalStateSeparated)")
         lines.append("roomRuntimeStore: available=\(roomRuntimeStoreAvailable) goal=\(roomRuntimeStoreOwnsGoalContext) fileIntake=\(roomRuntimeStoreOwnsFileIntake) tasks=\(roomRuntimeStoreOwnsActiveTasks) facade=\(agentWindowManagerFacadeMode)")
         lines.append("universalDocument: skills=\(universalDocumentSkillCount) available=\(universalDocumentRouteAvailable)")
         lines.append("routeResolver: available=\(routeResolverAvailable)")
@@ -268,11 +277,11 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("localSchedulerCommand: available=\(localSchedulerCommandAvailable) tasks=\(automationTaskCount) pending=\(pendingApprovalTaskCount) next=\(nextScheduledTaskTime ?? "none")")
         lines.append("artifacts: store=\(artifactStoreAvailable) index=\(recentArtifactIndexAvailable) count=\(recentArtifactIndexCount) dryRunSeparated=\(dryRunSuccessSeparated)")
         lines.append("artifactUX: actions=\(artifactUXActionsAvailable) fileActions=\(workspaceFileActionsAvailable)")
-        lines.append("persistence: available=\(recentArtifactIndexPersistenceAvailable) persisted=\(recentArtifactIndexPersistedCount) loaded=\(recentArtifactIndexLoadedAt?.formatted(.iso8601) ?? "nil")")
+        lines.append("persistence: available=\(recentArtifactIndexPersistenceAvailable) persisted=\(recentArtifactIndexPersistedCount) loaded=\(recentArtifactIndexLoadedAt?.formatted(.iso8601) ?? "nil") saved=\(recentArtifactIndexSavedAt?.formatted(.iso8601) ?? "nil")")
         if let failureReason = recentArtifactReuseFailureReason {
             lines.append("recentArtifactReuseFailed: \(failureReason)")
         }
-        lines.append("releasePath: planRunnerDefault=\(planRunnerDefaultForBuild) debugVisible=\(debugDiagnosticsVisible) xcodeStateIgnored=\(xcodeUserStateIgnored)")
+        lines.append("releasePath: build=\(buildConfiguration) planRunner=\(planRunnerEnabled) toggleVisible=\(planRunnerToggleVisible) debugVisible=\(debugDiagnosticsVisible)")
         lines.append("safety: blockedCapabilityGate=\(blockedCapabilityGateEnabled) resultVerifierErrorGate=\(resultVerifierErrorGateEnabled)")
         lines.append("autonomy: goalInterpreter=true clarificationPolicy=true capabilityRouter=true resultVerifier=true")
         lines.append("workspace: \(workspacePath)")
@@ -293,7 +302,6 @@ final class RuntimeDiagnosticsService {
     func snapshot(manager: AgentWindowManager) async -> RuntimeDiagnosticsSnapshot {
         let speech = SpeechManager.shared
         let ai = AIService.shared
-        let budget = AICallBudgetManager.shared
         let capture = AudioCaptureService.shared
 
         let qwen = speech.qwenDiagnostics
@@ -359,6 +367,7 @@ final class RuntimeDiagnosticsService {
             recentArtifactReuseResolution = nil
         }
         let recentArtifactContentResolverAvailable = recentArtifactReuseResolution != nil
+        let recentArtifactSourceBindingAvailable = recentArtifactReuseResolution != nil
         let recentArtifactReuseAvailable = recentArtifactReuseResolution != nil && recentArtifactReusableCount > 0
         let lastRecentArtifactReuseSourceName: String?
         lastRecentArtifactReuseSourceName = recentArtifactReuseResolution?.sourceName
@@ -444,17 +453,36 @@ final class RuntimeDiagnosticsService {
         let recentArtifactReferenceAvailable = roomGoalContext.map { !$0.recentArtifactIDs.isEmpty } ?? false
         let blockedCapabilityGateEnabled = true
         let resultVerifierErrorGateEnabled = true
-        let connectorPolicyCentralized = true
-        let workflowRunnerDailyBriefingEnabled = true
-        let workflowRunnerUniversalDocumentPlanEnabled = true
-        let orchestratorBoundaryReduced = true
-        let schedulerBridgeAvailable = true
+        let connectorPolicyCentralized = ConnectorCapabilityPolicy.evaluate(.calendarRead).status == .unavailable
+        let workflowRunnerDailyBriefingEnabled = WorkflowRunner.isAvailable()
+        let workflowRunnerUniversalDocumentPlanEnabled = FeatureFlags.planRunnerUniversalDocumentEnabled
+        let orchestratorBoundaryReduced = WorkflowRunner.isAvailable() && RouteResolver.isAvailable
+        let schedulerBridgeAvailable = LocalSchedulerCommandDetector.detect("스케줄 열어줘") != nil
         let roomRuntimeStoreAvailable = manager.roomRuntimeStore.isAvailable
         let roomRuntimeStoreOwnsGoalContext = manager.roomRuntimeStore.ownsGoalContext
         let roomRuntimeStoreOwnsFileIntake = manager.roomRuntimeStore.ownsFileIntake
         let roomRuntimeStoreOwnsActiveTasks = manager.roomRuntimeStore.ownsActiveTasks
-        let agentWindowManagerFacadeMode = true
+        let agentWindowManagerFacadeMode = manager.roomRuntimeStore.isAvailable && manager.roomRuntimeStore.ownsGoalContext
         let recentArtifactActionAvailable = recentArtifactReusableCount > 0
+        let actionLogEntries = await ArtifactStore.shared.loadActionLogEntries()
+        let toolRiskRegistryEnforced = ToolContractValidator.validate().passed
+        let toolRiskMismatchBlockedCount = actionLogEntries.filter { $0.failureCode == "tool_risk_mismatch_blocked" }.count
+        let toolScopeMissingBlockedCount = actionLogEntries.filter { entry in
+            entry.failureCode == "tool_scope_missing_blocked" || entry.failureCode == "tool_registry_missing_blocked"
+        }.count
+        let staleActionBindingBlockedCount = actionLogEntries.filter { entry in
+            entry.failureCode == "stale_action_binding"
+                || entry.failureCode == "wrong_room_action_binding"
+                || entry.failureCode == "missing_action_source_binding"
+        }.count
+        let agentWorkOrderStableContractID = DeterministicID.uuid(
+            namespace: "AgentWorkOrder",
+            parts: ["sample-agent", "reviewer", "sample-output", "sample instruction"]
+        ) == DeterministicID.uuid(
+            namespace: "AgentWorkOrder",
+            parts: ["sample-agent", "reviewer", "sample-output", "sample instruction"]
+        )
+        let approvalStateSeparated = ScheduledTaskApprovalStatus.none != .awaitingApproval
 
         // Artifact / Verification diagnostics
         let artifactStoreAvailable = true
@@ -480,27 +508,23 @@ final class RuntimeDiagnosticsService {
         }
         let toolResultStatusModelAvailable = true
         let dryRunSuccessSeparated = true
-        let duplicateBuildFileWarningResolved = true  // Fixed in Round 34C-Integration
-        let xcodeUserStateIgnored = true  // Now excluded from git tracking
 
         // Artifact UX & Persistence
         let artifactUXActionsAvailable = true  // ArtifactCardView actions present
         let workspaceFileActionsAvailable = true  // NSWorkspace/NSPasteboard actions available
         let recentArtifactIndexPersistenceAvailable = true  // Deferred to Round 35B
-        let recentArtifactIndexPersistedCount = currentRoomID.map { roomID in
-            // Count in-memory entries for this room
-            return manager.roomRuntimeStore.recentArtifactIndex.recentArtifacts(for: roomID).count
-        } ?? 0
+        let recentArtifactIndexPersistedCount = manager.roomRuntimeStore.recentArtifactIndexPersistedCount
         let recentArtifactIndexLoadedAt = manager.roomRuntimeStore.recentArtifactIndexLoadedAt
+        let recentArtifactIndexSavedAt = manager.roomRuntimeStore.recentArtifactIndexLastSavedAt
         let recentArtifactReuseFailureReason = manager.roomRuntimeStore.recentArtifactIndexPersistenceError
 
         // Feature Flags / Release Path
-        let planRunnerDefaultForBuild = FeatureFlags.planRunnerUniversalDocumentEnabled
-        #if DEBUG
-        let debugDiagnosticsVisible = true
-        #else
-        let debugDiagnosticsVisible = false
-        #endif
+        let buildConfiguration = FeatureFlags.buildConfiguration
+        let planRunnerEnabled = FeatureFlags.planRunnerUniversalDocumentEnabled
+        let planRunnerToggleVisible = FeatureFlags.planRunnerToggleVisible
+        let debugDiagnosticsVisible = FeatureFlags.debugDiagnosticsVisible
+
+        let budgetUsageDescription = await MainActor.run { AICallBudgetManager.shared.usageDescription() }
 
         return RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
@@ -510,7 +534,7 @@ final class RuntimeDiagnosticsService {
             activeTaskRoomCount: activeTaskRoomCount,
             geminiCooldownRemainingSeconds: ai.geminiCooldownRemainingSeconds,
             geminiConsecutive429Count: ai.consecutive429Count,
-            budgetUsageDescription: budget.usageDescription(),
+            budgetUsageDescription: budgetUsageDescription,
             qwenEnabled: qwen.enabled,
             qwenUnavailable: qwen.unavailable,
             sttInitialized: capture.audioEngineInitialized,
@@ -526,15 +550,16 @@ final class RuntimeDiagnosticsService {
             lastPlanExecutionStatus: lastPlanExecutionStatus,
             toolResultStatusModelAvailable: toolResultStatusModelAvailable,
             dryRunSuccessSeparated: dryRunSuccessSeparated,
-            duplicateBuildFileWarningResolved: duplicateBuildFileWarningResolved,
-            xcodeUserStateIgnored: xcodeUserStateIgnored,
             artifactUXActionsAvailable: artifactUXActionsAvailable,
             workspaceFileActionsAvailable: workspaceFileActionsAvailable,
             recentArtifactIndexPersistenceAvailable: recentArtifactIndexPersistenceAvailable,
             recentArtifactIndexPersistedCount: recentArtifactIndexPersistedCount,
             recentArtifactIndexLoadedAt: recentArtifactIndexLoadedAt,
+            recentArtifactIndexSavedAt: recentArtifactIndexSavedAt,
             recentArtifactReuseFailureReason: recentArtifactReuseFailureReason,
-            planRunnerDefaultForBuild: planRunnerDefaultForBuild,
+            buildConfiguration: buildConfiguration,
+            planRunnerEnabled: planRunnerEnabled,
+            planRunnerToggleVisible: planRunnerToggleVisible,
             debugDiagnosticsVisible: debugDiagnosticsVisible,
             lastTurnRoute: lastProfile.map { $0.selectedRoute.rawValue },
             lastRouteReason: lastProfile?.routeReason,
@@ -565,6 +590,7 @@ final class RuntimeDiagnosticsService {
             localTaskBriefingSuggestedActionCount: localTaskBriefingSuggestedActionCount,
             localTaskBriefingUnsupportedActionCount: localTaskBriefingUnsupportedActionCount,
             recentArtifactContentResolverAvailable: recentArtifactContentResolverAvailable,
+            recentArtifactSourceBindingAvailable: recentArtifactSourceBindingAvailable,
             recentArtifactReuseAvailable: recentArtifactReuseAvailable,
             recentArtifactReusableCount: recentArtifactReusableCount,
             lastRecentArtifactReuseSourceName: lastRecentArtifactReuseSourceName,
@@ -581,6 +607,12 @@ final class RuntimeDiagnosticsService {
             workflowRunnerDailyBriefingEnabled: workflowRunnerDailyBriefingEnabled,
             workflowRunnerUniversalDocumentPlanEnabled: workflowRunnerUniversalDocumentPlanEnabled,
             orchestratorBoundaryReduced: orchestratorBoundaryReduced,
+            toolRiskRegistryEnforced: toolRiskRegistryEnforced,
+            toolRiskMismatchBlockedCount: toolRiskMismatchBlockedCount,
+            toolScopeMissingBlockedCount: toolScopeMissingBlockedCount,
+            staleActionBindingBlockedCount: staleActionBindingBlockedCount,
+            agentWorkOrderStableContractID: agentWorkOrderStableContractID,
+            approvalStateSeparated: approvalStateSeparated,
             roomRuntimeStoreAvailable: roomRuntimeStoreAvailable,
             roomRuntimeStoreOwnsGoalContext: roomRuntimeStoreOwnsGoalContext,
             roomRuntimeStoreOwnsFileIntake: roomRuntimeStoreOwnsFileIntake,

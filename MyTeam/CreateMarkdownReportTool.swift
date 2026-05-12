@@ -20,7 +20,7 @@ struct CreateMarkdownReportTool: WorkflowTool {
             throw ToolError.invalidInput("filename, title, content 필수")
         }
         let md = "# \(title)\n\n\(content)\n"
-        let url = try safeWorkspaceURL(filename: filename, context: context)
+        let url = try safeWritableWorkspaceURL(filename: filename, context: context)
         try md.write(to: url, atomically: true, encoding: .utf8)
         let preview = String(content.prefix(200))
         return ToolResult(success: true, output: preview, artifactPath: filename, error: nil)

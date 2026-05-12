@@ -12,6 +12,40 @@ enum LocalSchedulerCommandDetector {
             )
         }
 
+        if (normalized.contains("오늘 스케줄") || normalized.contains("오늘 일정")) &&
+            (normalized.contains("보고서") || normalized.contains("정리")) &&
+            (normalized.contains("만들") || normalized.contains("작성") || normalized.contains("생성")) {
+            return LocalSchedulerCommand(
+                kind: .buildTodayScheduleReport,
+                sourceMessage: message
+            )
+        }
+
+        if normalized.contains("오늘 업무") &&
+            (normalized.contains("체크리스트") || normalized.contains("할 일")) &&
+            (normalized.contains("만들") || normalized.contains("정리") || normalized.contains("작성")) {
+            return LocalSchedulerCommand(
+                kind: .buildTodayScheduleChecklist,
+                sourceMessage: message
+            )
+        }
+
+        if (normalized.contains("승인 대기") || normalized.contains("승인 필요")) &&
+            (normalized.contains("정리") || normalized.contains("목록") || normalized.contains("문서")) {
+            return LocalSchedulerCommand(
+                kind: .summarizePendingApprovalsDocument,
+                sourceMessage: message
+            )
+        }
+
+        if normalized.contains("위임 작업") &&
+            (normalized.contains("정리") || normalized.contains("문서") || normalized.contains("요약")) {
+            return LocalSchedulerCommand(
+                kind: .summarizeDelegatedWorkDocument,
+                sourceMessage: message
+            )
+        }
+
         // 오늘 스케줄 보기
         if (normalized.contains("오늘 스케줄") || normalized.contains("오늘 일정")) &&
             (normalized.contains("보여") || normalized.contains("알려") || normalized.contains("뭐")) &&

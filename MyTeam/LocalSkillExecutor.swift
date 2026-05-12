@@ -8,12 +8,10 @@ enum LocalSkillExecutionResult {
 
 enum LocalSkillExecutor {
 
-    static func executeIfPossible(skills: [SkillManifest], userMessage: String) -> LocalSkillExecutionResult {
+    static func detectIfPossible(skills: [SkillManifest], userMessage: String) -> LocalSkillExecutionResult {
         if skills.contains(where: { $0.id == "korean.character-count" }) {
-            if let targetText = KoreanTextMetricsService.extractTargetText(from: userMessage) {
-                let metrics = KoreanTextMetricsService.analyze(targetText)
-                let result = KoreanTextMetricsService.formatResult(metrics)
-                return .handled(message: result, skillID: "korean.character-count")
+            if KoreanTextMetricsService.extractTargetText(from: userMessage) != nil {
+                return .handled(message: "", skillID: "korean.character-count")
             }
 
             return .needsInput(
@@ -23,5 +21,20 @@ enum LocalSkillExecutor {
         }
 
         return .notHandled
+    }
+
+    static func executeIfPossible(skills: [SkillManifest], userMessage: String) -> LocalSkillExecutionResult {
+        let detection = detectIfPossible(skills: skills, userMessage: userMessage)
+        switch detection {
+        case .handled(_, let skillID):
+            guard let targetText = KoreanTextMetricsService.extractTargetText(from: userMessage) else {
+                return detection
+            }
+            let metrics = KoreanTextMetricsService.analyze(targetText)
+            let result = KoreanTextMetricsService.formatResult(metrics)
+            return .handled(message: result, skillID: skillID)
+        case .needsInput, .notHandled:
+            return detection
+        }
     }
 }

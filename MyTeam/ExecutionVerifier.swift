@@ -4,25 +4,40 @@ enum ExecutionVerifier {
     static func verify(
         _ output: String,
         level: VerificationLevel,
+        sourceText: String? = nil,
         documentType: UniversalDocumentSkillType? = nil,
         requiredSections: [String] = []
     ) -> ResultVerificationSummary {
+        let formatSummary: ResultVerificationSummary
         switch level {
         case .none:
-            return ResultVerificationSummary(passed: true, issues: [])
+            formatSummary = ResultVerificationSummary(passed: true, issues: [])
         case .chatAnswer:
-            return ResultVerifier.verifyChatAnswer(output)
+            formatSummary = ResultVerifier.verifyChatAnswer(output)
         case .markdownArtifact:
-            // Use document-type-specific verification if available
             if let documentType = documentType {
-                return verifyDocumentType(output, type: documentType)
+                formatSummary = verifyDocumentType(output, type: documentType)
+            } else {
+                formatSummary = ResultVerifier.verifyMarkdownArtifact(
+                    content: output,
+                    requiredSections: requiredSections
+                )
             }
-            // Fall back to generic verification
-            return ResultVerifier.verifyMarkdownArtifact(
-                content: output,
-                requiredSections: requiredSections
-            )
         }
+
+        guard let sourceText = sourceText?.trimmingCharacters(in: .whitespacesAndNewlines), !sourceText.isEmpty else {
+            return formatSummary
+        }
+
+        let groundingSummary = ResultVerifier.verifySourceGrounding(content: output, sourceText: sourceText)
+        guard !groundingSummary.issues.isEmpty else {
+            return formatSummary
+        }
+
+        return ResultVerificationSummary(
+            passed: formatSummary.passed && groundingSummary.passed,
+            issues: formatSummary.issues + groundingSummary.issues
+        )
     }
 
     private static func verifyDocumentType(_ output: String, type: UniversalDocumentSkillType) -> ResultVerificationSummary {
@@ -42,4 +57,3 @@ enum ExecutionVerifier {
         }
     }
 }
-

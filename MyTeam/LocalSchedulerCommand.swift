@@ -8,6 +8,10 @@ enum LocalSchedulerCommandKind: String, Codable, Equatable {
     case summarizeScheduleBasedTasks
     case showDelegatedWork
     case showSchedulePolicy
+    case buildTodayScheduleReport
+    case buildTodayScheduleChecklist
+    case summarizePendingApprovalsDocument
+    case summarizeDelegatedWorkDocument
 }
 
 struct LocalSchedulerCommand: Identifiable, Codable, Equatable {

@@ -46,13 +46,7 @@ enum WorkflowRunner {
         _ = userMessage
 
         guard FeatureFlags.planRunnerUniversalDocumentEnabled else {
-            let legacyResult = await legacyRunner()
-            return PlanExecutionResult(
-                status: .fellBackToLegacy,
-                message: legacyResult.message,
-                artifactID: legacyResult.artifactID,
-                failureReason: legacyResult.failureReason
-            )
+            return await legacyRunner()
         }
 
         let result = await runUniversalDocumentPlan(
@@ -66,12 +60,15 @@ enum WorkflowRunner {
 
         if result.failureReason == .recoverableRuntimeError {
             let legacyResult = await legacyRunner()
-            return PlanExecutionResult(
-                status: .fellBackToLegacy,
-                message: legacyResult.message,
-                artifactID: legacyResult.artifactID,
-                failureReason: legacyResult.failureReason
-            )
+            if legacyResult.status == .completed {
+                return PlanExecutionResult(
+                    status: .fellBackToLegacy,
+                    message: legacyResult.message,
+                    artifactID: legacyResult.artifactID,
+                    failureReason: legacyResult.failureReason
+                )
+            }
+            return legacyResult
         }
 
         return result
