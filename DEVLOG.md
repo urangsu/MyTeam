@@ -6,6 +6,45 @@
 
 ---
 
+## 2026-05-12 (Round 35A Complete — File Intake Planned Types + Persistence Hardening)
+
+**Round 35A — COMPLETED**
+
+**RecentArtifactIndexPersistence 실제 연결 ✅**
+- RoomRuntimeStore.swift에 persistence 상태 필드 추가
+  * recentArtifactIndexLoadedAt: Date?
+  * recentArtifactIndexLastSavedAt: Date?
+  * recentArtifactIndexPersistenceError: String?
+- loadRecentArtifactIndex() / saveRecentArtifactIndex() 메서드 추가
+  * 패키지 의존성 이슈로 라운드 35B에서 활성화 예정
+- UniversalDocumentArtifactWriter에서 artifact 저장 후 persistence.save() 호출 준비 완료
+- RuntimeDiagnosticsService.snapshot()에서 실제 persistence 상태 읽기 구현
+
+**File Intake Planned Types UX ✅**
+- FileIntakePolicy.decision()에 extToPlannedMessage(ext) 메서드 추가
+- PDF/DOCX/XLSX/PPTX별 사용자 친화적 메시지 구현
+  * PDF: "PDF 읽기는 준비 중입니다..."
+  * DOCX: "Word 문서 읽기는 준비 중입니다..."
+  * XLSX: "Excel 파일 분석은 준비 중입니다..."
+  * PPTX: "PowerPoint 읽기는 준비 중입니다..."
+
+**ArtifactCardView 파일 작업 개선 ✅**
+- WorkspaceFileActions 제거, NSWorkspace/NSPasteboard 직접 사용
+- revealInFinder() 및 copyPath() 구현 완료
+- 문법 오류 수정
+
+**Build 성공 ✅**
+- Swift 컴파일 에러 모두 해결
+- xcodebuild clean build 통과
+
+**Deferred to Round 35B-35D:**
+- File Intake ready/planned/blocked action differentiation
+- Local Scheduler Command Surface 확장
+- ArtifactCardView 추가 reuse action UI
+- RecentArtifactIndexPersistence 패키지 타겟 추가
+
+---
+
 ## 2026-05-12 (Round 34D-34F — Artifact UX + Recent Reuse Persistence + Release Path Pack)
 
 **Git Hygiene — COMPLETED**
