@@ -6,6 +6,29 @@
 
 ---
 
+## 2026-05-12 (Round 35B-35E — Runtime Safety Closure + File Workflow Completion Pack)
+
+**Round 35B-35E — IN PROGRESS / IMPLEMENTATION**
+
+**Safety Contract Closure**
+- Tool risk registry enforcement 재확인
+- Action log redaction 강화
+- RecentArtifactSourceBinding 기반 wrong-room / stale action 차단 보강
+- AgentWorkOrder execution contract ID deterministic화
+- approval config/runtime state 분리 정리
+
+**File Workflow Completion**
+- RecentArtifactIndexPersistence load/save lifecycle 정리
+- File Intake ready/planned/blocked follow-up action 분리
+- LocalSchedulerDocumentBridge 추가
+- Release / DEBUG path distinction 진단 정리
+
+**Deferred Runtime QA Backlog 유지**
+- 실제 UI QA는 별도 라운드로 유지
+- Gmail / Calendar write / OAuth 구조 / StoreKit / entitlement 미수정
+
+---
+
 ## 2026-05-12 (Round 35A Complete — File Intake Planned Types + Persistence Hardening)
 
 **Round 35A — COMPLETED**
@@ -37,7 +60,7 @@
 - Swift 컴파일 에러 모두 해결
 - xcodebuild clean build 통과
 
-**Deferred to Round 35B-35D:**
+**Deferred to Round 35B-35E:**
 - File Intake ready/planned/blocked action differentiation
 - Local Scheduler Command Surface 확장
 - ArtifactCardView 추가 reuse action UI

@@ -241,3 +241,12 @@
 - connector blocked-action summary shortened
 - daily briefing text rendered as section-based summary
 - Daily Briefing detector narrowed for app launch, privacy, file creation, and recent file references
+
+## Round 35B-35E Safety Contract Notes
+
+- This round is implementation-focused.
+- Deferred Runtime QA Backlog stays unchanged.
+- code-reviewed pass / runtime pass / still unverified language remains separated.
+- Safety contract work is centered on registry risk, source binding, deterministic contracts, and file workflow completion.
+- release/debug distinction stays explicit in diagnostics.
+- Local Scheduler Document Bridge stays read-only.

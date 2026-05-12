@@ -118,6 +118,20 @@
 
 ### P2
 - Settings / Connector copy 정리
+
+## Round 35B-35E Note
+
+### Accepted
+- Tool risk registry 기준 고정
+- action log redaction
+- recent artifact room/source binding
+- workspace overwrite guard
+- scheduler document bridge
+
+### Deferred
+- full ToolExecutionLayer real adoption
+- debug/runtime diagnostic refactor 전면화
+- local scheduler command pack의 최종 UX polish
 - diagnostics 수치형 요약 더 압축
 - deferred UI QA 재검증
 
@@ -216,3 +230,8 @@ Daily Briefing이 상태 표시를 넘어 실행 가능한 액션 허브로 정�
 - Verification fail-closed by document type
 - Release/Debug PlanRunner path distinction
 - Deferred Runtime QA
+
+## Round 35B-35E Note
+
+Safety contract closure와 file workflow completion을 함께 진행한다.
+Tool risk registry enforcement, artifact binding 재검증, deterministic execution contract, recent artifact persistence lifecycle, local scheduler document bridge를 같은 안정성 경계로 묶는다.
