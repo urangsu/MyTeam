@@ -71,7 +71,13 @@ enum UniversalDocumentArtifactWriter {
                 fileSizeBytes: Int64(markdown.utf8.count)
             )
             manager.addRecentArtifactIndexEntry(entry)
-            AppLog.info("[UniversalDocumentArtifactWriter] artifact 저장 & indexed: \(filename) workflowID=\(workflowID.uuidString.prefix(8)) roomID=\(roomID.uuidString.prefix(8))")
+
+            // RecentArtifactIndexPersistence에 저장
+            await MainActor.run {
+                manager.roomRuntimeStore.saveRecentArtifactIndex()
+            }
+
+            AppLog.info("[UniversalDocumentArtifactWriter] artifact 저장 & indexed & persisted: \(filename) workflowID=\(workflowID.uuidString.prefix(8)) roomID=\(roomID.uuidString.prefix(8))")
         } else {
             AppLog.info("[UniversalDocumentArtifactWriter] artifact 저장만 (no index): \(filename) status=\(resultStatus.rawValue)")
         }

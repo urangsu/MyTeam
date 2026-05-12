@@ -23,6 +23,11 @@ final class RoomRuntimeStore: ObservableObject {
 
     let recentArtifactIndex = RecentArtifactIndex()
 
+    // RecentArtifactIndexPersistence lifecycle tracking
+    var recentArtifactIndexLoadedAt: Date?
+    var recentArtifactIndexLastSavedAt: Date?
+    var recentArtifactIndexPersistenceError: String?
+
     var isAvailable: Bool { true }
     var ownsGoalContext: Bool { true }
     var ownsFileIntake: Bool { true }
@@ -130,5 +135,24 @@ final class RoomRuntimeStore: ObservableObject {
         let tasks = Array(activeTasksByRoom.values)
         activeTasksByRoom.removeAll()
         tasks.forEach { $0.cancel() }
+    }
+
+    // MARK: - RecentArtifactIndexPersistence lifecycle
+    // TODO: Round 35B — Enable persistence after RecentArtifactIndexPersistence is added to project
+
+    @MainActor
+    func loadRecentArtifactIndex() {
+        // Persistence to be enabled in Round 35B
+        recentArtifactIndexLoadedAt = Date()
+        recentArtifactIndexPersistenceError = nil
+        AppLog.info("[RoomRuntimeStore] RecentArtifactIndex load deferred")
+    }
+
+    @MainActor
+    func saveRecentArtifactIndex() {
+        // Persistence to be enabled in Round 35B
+        recentArtifactIndexLastSavedAt = Date()
+        recentArtifactIndexPersistenceError = nil
+        AppLog.debug("[RoomRuntimeStore] RecentArtifactIndex save deferred")
     }
 }

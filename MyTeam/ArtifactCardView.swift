@@ -174,24 +174,18 @@ struct ArtifactCardView: View {
     }
 
     private func revealInFinder() {
-        guard canInteract else { return }
-        let result = WorkspaceFileActions.revealInFinder(path: artifact.path)
-        switch result {
-        case .success:
-            AppLog.debug("Artifact revealed in Finder: \(artifact.filename)")
-        case .failure(let error):
-            AppLog.warning("Finder reveal failed: \(error.message)")
-        }
+        guard canInteract, let url = resolvedURL else { return }
+        NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: "")
+        AppLog.debug("Artifact revealed in Finder: \(artifact.filename)")
     }
 
     private func copyPath() {
         guard canInteract else { return }
-        let result = WorkspaceFileActions.copyPathToPasteboard(path: artifact.path)
-        switch result {
-        case .success:
-            copied = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
-        case .failure(let error):
-            AppLog.warning("Path copy failed: \(error.message)")
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(artifact.path, forType: .string)
+        copied = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
+        AppLog.debug("Path copied to pasteboard: \(artifact.path)")
     }
 }

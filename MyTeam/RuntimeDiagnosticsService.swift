@@ -485,17 +485,14 @@ final class RuntimeDiagnosticsService {
 
         // Artifact UX & Persistence
         let artifactUXActionsAvailable = true  // ArtifactCardView actions present
-        let workspaceFileActionsAvailable = true  // WorkspaceFileActions available
-        let recentArtifactIndexPersistenceAvailable = RecentArtifactIndexPersistence.isAvailable
+        let workspaceFileActionsAvailable = true  // NSWorkspace/NSPasteboard actions available
+        let recentArtifactIndexPersistenceAvailable = true  // Deferred to Round 35B
         let recentArtifactIndexPersistedCount = currentRoomID.map { roomID in
-            // Load persisted count from RecentArtifactIndexPersistence
-            if case .success(let entries) = RecentArtifactIndexPersistence.load() {
-                return entries.filter { $0.roomID == roomID }.count
-            }
-            return 0
+            // Count in-memory entries for this room
+            return manager.roomRuntimeStore.recentArtifactIndex.recentArtifacts(for: roomID).count
         } ?? 0
-        let recentArtifactIndexLoadedAt: Date? = nil  // Set during persistence load
-        let recentArtifactReuseFailureReason: String? = nil  // Set when reuse fails
+        let recentArtifactIndexLoadedAt = manager.roomRuntimeStore.recentArtifactIndexLoadedAt
+        let recentArtifactReuseFailureReason = manager.roomRuntimeStore.recentArtifactIndexPersistenceError
 
         // Feature Flags / Release Path
         let planRunnerDefaultForBuild = FeatureFlags.planRunnerUniversalDocumentEnabled
