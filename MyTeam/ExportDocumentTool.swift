@@ -21,13 +21,45 @@ struct ExportDocumentTool: WorkflowTool {
 
         switch target {
         case "localPPTX":
-            return try await GeneratePPTXTool().execute(input: input, context: context)
+            return await ToolExecutionLayer.execute(
+                toolName: GeneratePPTXTool().name,
+                input: input.parameters,
+                declaredRisk: .moderate,
+                context: context,
+                sessionID: context.sessionID,
+                stepTitle: "PPTX 생성",
+                allowedScopes: [.artifactGeneration]
+            )
         case "localXLSX":
-            return try await GenerateXLSXTool().execute(input: input, context: context)
+            return await ToolExecutionLayer.execute(
+                toolName: GenerateXLSXTool().name,
+                input: input.parameters,
+                declaredRisk: .moderate,
+                context: context,
+                sessionID: context.sessionID,
+                stepTitle: "XLSX 생성",
+                allowedScopes: [.artifactGeneration]
+            )
         case "googleSlides":
-            return try await CreateGoogleSlidesTool().execute(input: input, context: context)
+            return await ToolExecutionLayer.execute(
+                toolName: CreateGoogleSlidesTool().name,
+                input: input.parameters,
+                declaredRisk: .moderate,
+                context: context,
+                sessionID: context.sessionID,
+                stepTitle: "Google Slides 내보내기",
+                allowedScopes: [.officeLive]
+            )
         case "googleSheets":
-            return try await CreateGoogleSheetsTool().execute(input: input, context: context)
+            return await ToolExecutionLayer.execute(
+                toolName: CreateGoogleSheetsTool().name,
+                input: input.parameters,
+                declaredRisk: .moderate,
+                context: context,
+                sessionID: context.sessionID,
+                stepTitle: "Google Sheets 내보내기",
+                allowedScopes: [.officeLive]
+            )
         default:
             throw ToolError.invalidInput("알 수 없는 target: \(target)")
         }

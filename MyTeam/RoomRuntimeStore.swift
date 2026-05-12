@@ -20,6 +20,8 @@ final class RoomRuntimeStore: ObservableObject {
     @Published private(set) var roomGoalContexts: [UUID: RoomGoalContext] = [:]
     @Published private(set) var lastFileIntakeResultsByRoom: [UUID: FileIntakeResult] = [:]
     @Published private(set) var activeTasksByRoom: [UUID: Task<Void, Never>] = [:]
+    @Published private(set) var memoryWriteBlockedCount: Int = 0
+    @Published private(set) var automationTaskSensitiveBlockedCount: Int = 0
 
     let recentArtifactIndex = RecentArtifactIndex()
 
@@ -108,6 +110,14 @@ final class RoomRuntimeStore: ObservableObject {
 
     func recordFileIntakeResult(_ result: FileIntakeResult, roomID: UUID) {
         lastFileIntakeResultsByRoom[roomID] = result
+    }
+
+    func recordMemoryWriteBlocked() {
+        memoryWriteBlockedCount += 1
+    }
+
+    func recordAutomationTaskSensitiveBlocked() {
+        automationTaskSensitiveBlockedCount += 1
     }
 
     func recordRecentArtifactIndexEntry(_ entry: RecentArtifactIndexEntry) {

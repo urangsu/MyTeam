@@ -9,6 +9,8 @@ enum FeatureFlags {
 
     static var planRunnerToggleVisible: Bool { true }
     static var debugDiagnosticsVisible: Bool { true }
+    static var verboseDiagnosticsVisible: Bool { true }
+    static var debugToolVisible: Bool { true }
 
     static func setPlanRunnerUniversalDocumentEnabled(_ enabled: Bool) {
         UserDefaults.standard.set(enabled, forKey: "MyTeam.FeatureFlags.planRunnerUniversalDocumentEnabled")
@@ -18,6 +20,8 @@ enum FeatureFlags {
     static var planRunnerUniversalDocumentEnabled: Bool { false }
     static var planRunnerToggleVisible: Bool { false }
     static var debugDiagnosticsVisible: Bool { false }
+    static var verboseDiagnosticsVisible: Bool { false }
+    static var debugToolVisible: Bool { false }
 
     static func setPlanRunnerUniversalDocumentEnabled(_ enabled: Bool) {
         // Release에서는 무시

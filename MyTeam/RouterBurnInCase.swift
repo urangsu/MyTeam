@@ -28,6 +28,9 @@ struct RouterBurnInCase: Identifiable, Equatable {
     let expectedGoalType: String?
     let expectedRecentArtifactReference: Bool?
     let shouldRequireApproval: Bool
+    let expectedMemoryWriteBlocked: Bool?
+    let expectedVerboseDiagnosticsVisible: Bool?
+    let expectedModelOverrideAllowed: Bool?
     let notes: String
 
     init(
@@ -39,6 +42,9 @@ struct RouterBurnInCase: Identifiable, Equatable {
         expectedGoalType: String? = nil,
         expectedRecentArtifactReference: Bool? = nil,
         shouldRequireApproval: Bool,
+        expectedMemoryWriteBlocked: Bool? = nil,
+        expectedVerboseDiagnosticsVisible: Bool? = nil,
+        expectedModelOverrideAllowed: Bool? = nil,
         notes: String
     ) {
         self.id = id
@@ -49,6 +55,9 @@ struct RouterBurnInCase: Identifiable, Equatable {
         self.expectedGoalType = expectedGoalType
         self.expectedRecentArtifactReference = expectedRecentArtifactReference
         self.shouldRequireApproval = shouldRequireApproval
+        self.expectedMemoryWriteBlocked = expectedMemoryWriteBlocked
+        self.expectedVerboseDiagnosticsVisible = expectedVerboseDiagnosticsVisible
+        self.expectedModelOverrideAllowed = expectedModelOverrideAllowed
         self.notes = notes
     }
 }

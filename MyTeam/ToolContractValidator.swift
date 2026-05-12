@@ -15,6 +15,8 @@ struct ToolContractValidationSummary: Equatable {
     let errorCount: Int
     let warningCount: Int
     let issues: [ToolContractValidationIssue]
+    let plannerVisibleToolCount: Int
+    let hiddenStubToolCount: Int
 
     var passed: Bool { errorCount == 0 }
 }
@@ -30,7 +32,13 @@ enum ToolContractValidator {
 
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
-        return ToolContractValidationSummary(errorCount: errorCount, warningCount: warningCount, issues: issues)
+        return ToolContractValidationSummary(
+            errorCount: errorCount,
+            warningCount: warningCount,
+            issues: issues,
+            plannerVisibleToolCount: ToolRegistry.shared.plannerVisibleToolCount(),
+            hiddenStubToolCount: ToolRegistry.shared.hiddenStubToolCount
+        )
     }
 
     private static func validateTools(_ tools: [WorkflowTool], issues: inout [ToolContractValidationIssue]) {
@@ -44,6 +52,26 @@ enum ToolContractValidator {
                 issues.append(issue(.error, "도구 '\(tool.name)' 의 scope '\(tool.scope.rawValue)' 가 유효하지 않습니다."))
             } else if tool.scope == .chatBasic {
                 issues.append(issue(.error, "도구 '\(tool.name)' 의 scope가 기본값 chatBasic 입니다. 명시적 scope 선언이 필요합니다."))
+            }
+
+            if tool.riskLevel == .safe && tool.scope == .officeLive && !tool.requiresApprovalPolicy {
+                issues.append(issue(.error, "connector write tool '\(tool.name)' 에 approval policy가 없습니다."))
+            }
+
+            if tool.writesMemory && tool.memorySensitivityPolicy == nil {
+                issues.append(issue(.error, "memory-writing tool '\(tool.name)' 에 sensitivity policy가 없습니다."))
+            }
+
+            if tool.debugOnly && !FeatureFlags.debugToolVisible && tool.plannerVisible {
+                issues.append(issue(.error, "debug-only tool '\(tool.name)' 이 Release planner-visible surface에 노출되었습니다."))
+            }
+
+            if !tool.plannerVisible, tool.availability == .available, tool.scope != .localUI {
+                issues.append(issue(.warning, "도구 '\(tool.name)' 은 plannerVisible=false 이지만 availability=available 입니다."))
+            }
+
+            if (tool.name.contains("google") && (tool.name.contains("slides") || tool.name.contains("sheets"))) && tool.plannerVisible {
+                issues.append(issue(.error, "stub Google tool '\(tool.name)' 이 planner-visible surface에 노출되었습니다."))
             }
         }
     }
@@ -86,7 +114,7 @@ enum ToolContractValidator {
             }
 
             let basicScopes: Set<ToolScope> = [.artifactGeneration]
-            if !skill.allowedScopes.contains(tool.scope) && !basicScopes.contains(tool.scope) {
+            if !skill.allowedScopes.contains(tool.scope) && !basicScopes.contains(tool.scope) && tool.scope != .workspaceRead && tool.scope != .localUI {
                 issues.append(issue(.warning, "skill '\(skill.id)' 의 workflowTemplate tool '\(tool.name)' scope '\(tool.scope.rawValue)' 가 allowedScopes에 없습니다."))
             }
         }

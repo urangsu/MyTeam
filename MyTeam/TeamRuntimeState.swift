@@ -21,6 +21,8 @@ struct TeamRuntimeState: Equatable {
     let detail: String
     let timestamp: Date
     let fallbackUsed: Bool
+    let memoryWriteBlockedCount: Int
+    let automationTaskSensitiveBlockedCount: Int
 
     var isRecent: Bool {
         Date().timeIntervalSince(timestamp) <= 30
@@ -44,7 +46,9 @@ struct TeamRuntimeState: Equatable {
             title: "팀 협업 시작",
             detail: detail,
             timestamp: Date(),
-            fallbackUsed: false
+            fallbackUsed: false,
+            memoryWriteBlockedCount: 0,
+            automationTaskSensitiveBlockedCount: 0
         )
     }
 
@@ -57,7 +61,9 @@ struct TeamRuntimeState: Equatable {
             title: "다음 담당자 선택 중",
             detail: detail,
             timestamp: Date(),
-            fallbackUsed: false
+            fallbackUsed: false,
+            memoryWriteBlockedCount: 0,
+            automationTaskSensitiveBlockedCount: 0
         )
     }
 
@@ -76,7 +82,9 @@ struct TeamRuntimeState: Equatable {
             title: fallbackUsed ? "담당자 자동 선택" : "담당자 선택",
             detail: detail,
             timestamp: Date(),
-            fallbackUsed: fallbackUsed
+            fallbackUsed: fallbackUsed,
+            memoryWriteBlockedCount: 0,
+            automationTaskSensitiveBlockedCount: 0
         )
     }
 
@@ -95,7 +103,9 @@ struct TeamRuntimeState: Equatable {
             title: "\(agentName) 검토 중",
             detail: detail,
             timestamp: Date(),
-            fallbackUsed: fallbackUsed
+            fallbackUsed: fallbackUsed,
+            memoryWriteBlockedCount: 0,
+            automationTaskSensitiveBlockedCount: 0
         )
     }
 
@@ -113,7 +123,9 @@ struct TeamRuntimeState: Equatable {
             title: "\(agentName) 응답 완료",
             detail: detail,
             timestamp: Date(),
-            fallbackUsed: false
+            fallbackUsed: false,
+            memoryWriteBlockedCount: 0,
+            automationTaskSensitiveBlockedCount: 0
         )
     }
 
@@ -126,7 +138,9 @@ struct TeamRuntimeState: Equatable {
             title: "팀 협업 완료",
             detail: detail,
             timestamp: Date(),
-            fallbackUsed: false
+            fallbackUsed: false,
+            memoryWriteBlockedCount: 0,
+            automationTaskSensitiveBlockedCount: 0
         )
     }
 
@@ -139,7 +153,9 @@ struct TeamRuntimeState: Equatable {
             title: "확인 필요",
             detail: detail,
             timestamp: Date(),
-            fallbackUsed: false
+            fallbackUsed: false,
+            memoryWriteBlockedCount: 0,
+            automationTaskSensitiveBlockedCount: 0
         )
     }
 }

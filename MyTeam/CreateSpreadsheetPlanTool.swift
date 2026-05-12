@@ -44,6 +44,6 @@ struct CreateSpreadsheetPlanTool: WorkflowTool {
         try outputJSON.write(to: url)
 
         let preview = "스프레드시트 '\(title)' — \(headers.count)열 × \(rows.count)행 생성 완료"
-        return ToolResult(success: true, output: preview, artifactPath: filename, error: nil)
+        return ToolResult(status: .succeeded, output: preview, artifactPath: filename, error: nil)
     }
 }

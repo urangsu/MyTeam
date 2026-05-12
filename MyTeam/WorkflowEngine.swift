@@ -30,7 +30,7 @@ final class WorkflowEngine {
             await AgentEventBus.shared.publish(.toolCallStarted(workflowID: workflowID, stepID: step.id, toolName: step.toolName))
 
             let stepStart = Date()
-            var result = await ToolExecutor.shared.execute(
+            var result = await ToolExecutionLayer.execute(
                 step: step,
                 context: context,
                 sessionID: sessionID,
@@ -43,7 +43,7 @@ final class WorkflowEngine {
                 if let repairedStep = await repairStep(step, error: rawErr, plan: plan, workflowID: workflowID) {
                     AppLog.info("[WorkflowEngine] step 수정 완료 → 재실행: '\(step.title)'")
                     executedStep = repairedStep
-                    result = await ToolExecutor.shared.execute(
+                    result = await ToolExecutionLayer.execute(
                         step: repairedStep,
                         context: context,
                         sessionID: sessionID,
@@ -54,7 +54,7 @@ final class WorkflowEngine {
 
             let durationMs = Int(Date().timeIntervalSince(stepStart) * 1000)
 
-            if result.success {
+            if result.status == .succeeded {
                 // ── step 성공 기록 ──
                 await MainActor.run {
                     WorkflowRunStore.shared.updateStep(workflowID: workflowID, stepID: executedStep.id) { rec in
@@ -66,7 +66,8 @@ final class WorkflowEngine {
                 await AgentEventBus.shared.publish(.toolCallFinished(workflowID: workflowID, stepID: executedStep.id,
                                                                      toolName: executedStep.toolName, durationMs: durationMs, success: true))
 
-                if let relPath = result.artifactPath {
+                if let relPath = result.artifactPath,
+                   ArtifactPersistencePolicy.shouldPersist(resultStatus: result.status) {
                     let absPath = context.workspaceURL.appendingPathComponent(relPath).path
                     // artifact 기록은 실제 실행된 step(executedStep) 기준
                     let artifact = Artifact(

@@ -1196,6 +1196,83 @@ enum RouterBurnInSuite {
             expectedRecentArtifactReference: false,
             shouldRequireApproval: false,
             notes: "RecentArtifactIndex is room-scoped, cross-room fallback is prevented"
+        ),
+        .init(
+            id: "memory-sensitive-mail-body",
+            message: "민감한 메일 본문 기억해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            expectedMemoryWriteBlocked: true,
+            notes: "민감한 본문은 장기 기억에 저장하지 않음"
+        ),
+        .init(
+            id: "memory-sensitive-api-key",
+            message: "API key 기억해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            expectedMemoryWriteBlocked: true,
+            notes: "API key는 장기 기억 차단"
+        ),
+        .init(
+            id: "memory-sensitive-token-task",
+            message: "오늘 업무 저장해줘 token=abc123",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            expectedMemoryWriteBlocked: true,
+            notes: "token-like string은 redacted/blocked"
+        ),
+        .init(
+            id: "release-diagnostics-hidden",
+            message: "Release build diagnostics",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            expectedVerboseDiagnosticsVisible: false,
+            notes: "Release에서는 verbose diagnostics 비활성"
+        ),
+        .init(
+            id: "debug-diagnostics-visible",
+            message: "DEBUG build diagnostics",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            expectedVerboseDiagnosticsVisible: true,
+            notes: "DEBUG에서는 verbose diagnostics 활성"
+        ),
+        .init(
+            id: "release-model-override-ignored",
+            message: "Release model override",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            expectedModelOverrideAllowed: false,
+            notes: "Release에서는 model override 무시"
+        ),
+        .init(
+            id: "debug-model-override-allowed",
+            message: "DEBUG model override",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            expectedModelOverrideAllowed: true,
+            notes: "DEBUG에서는 model override 허용"
         )
     ]
 
@@ -1205,12 +1282,19 @@ enum RouterBurnInSuite {
         let goalPassed = testCase.expectedGoalType.map { $0 == goal.goalType.rawValue }
         let actualRecentArtifactReference = GoalContextEngine.referencesRecentArtifact(testCase.message)
         let recentArtifactPassed = testCase.expectedRecentArtifactReference.map { $0 == actualRecentArtifactReference }
+        let memoryBlocked = !MemoryWriteGuard.evaluateFact(testCase.message).canPersistInUserDefaults
+        let memoryPassed = testCase.expectedMemoryWriteBlocked.map { $0 == memoryBlocked }
+        let verboseDiagnosticsPassed = testCase.expectedVerboseDiagnosticsVisible.map { $0 == DiagnosticsVisibilityPolicy.allowsVerboseDiagnostics }
+        let modelOverridePassed = testCase.expectedModelOverrideAllowed.map { $0 == AIModelPolicy.modelOverrideAllowed }
         let passed = actual.route == testCase.expectedRoute
             && (testCase.expectedSkillID == nil || testCase.expectedSkillID == actual.skillID)
             && (testCase.expectedRouteHint == nil || testCase.expectedRouteHint == actual.routeHint)
             && actual.requiresApproval == testCase.shouldRequireApproval
             && (goalPassed ?? true)
             && (recentArtifactPassed ?? true)
+            && (memoryPassed ?? true)
+            && (verboseDiagnosticsPassed ?? true)
+            && (modelOverridePassed ?? true)
 
         return RouterBurnInResult(
             id: testCase.id,
@@ -1349,6 +1433,9 @@ enum RouterBurnInSuite {
         if let skillID = testCase.expectedSkillID { parts.append("skill=\(skillID)") }
         if let routeHint = testCase.expectedRouteHint { parts.append("hint=\(routeHint)") }
         if let recentArtifact = testCase.expectedRecentArtifactReference { parts.append("recentArtifact=\(recentArtifact)") }
+        if let memoryBlocked = testCase.expectedMemoryWriteBlocked { parts.append("memoryBlocked=\(memoryBlocked)") }
+        if let verbose = testCase.expectedVerboseDiagnosticsVisible { parts.append("verboseDiagnostics=\(verbose)") }
+        if let modelOverride = testCase.expectedModelOverrideAllowed { parts.append("modelOverride=\(modelOverride)") }
         parts.append("approval=\(testCase.shouldRequireApproval)")
         return parts.joined(separator: " | ")
     }

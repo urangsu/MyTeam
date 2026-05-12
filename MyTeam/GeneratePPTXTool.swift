@@ -35,7 +35,7 @@ struct GeneratePPTXTool: WorkflowTool {
         ))
 
         return ToolResult(
-            success:      true,
+            status:       .succeeded,
             output:       "\(outputFilename) 생성 완료 (\(result.pageCount)장)",
             artifactPath: outputFilename,
             error:        nil

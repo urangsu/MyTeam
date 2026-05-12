@@ -175,17 +175,21 @@ struct ArtifactCardView: View {
 
     private func revealInFinder() {
         guard canInteract, let url = resolvedURL else { return }
-        NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: "")
-        AppLog.debug("Artifact revealed in Finder: \(artifact.filename)")
+        Task { @MainActor in
+            _ = await ToolExecutionLayer.executeWorkspaceAction(kind: .revealInFinder, path: url.path)
+            AppLog.debug("Artifact revealed in Finder: \(artifact.filename)")
+        }
     }
 
     private func copyPath() {
         guard canInteract else { return }
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(artifact.path, forType: .string)
-        copied = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
-        AppLog.debug("Path copied to pasteboard: \(artifact.path)")
+        Task { @MainActor in
+            let result = await ToolExecutionLayer.executeWorkspaceAction(kind: .copyPath, path: artifact.path)
+            if result.status == .succeeded {
+                copied = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
+                AppLog.debug("Path copied to pasteboard: \(artifact.path)")
+            }
+        }
     }
 }

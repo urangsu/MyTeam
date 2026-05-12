@@ -20,6 +20,6 @@ struct OpenURLTool: WorkflowTool {
             throw ToolError.forbidden("http/https 외 scheme 금지: \(url.scheme ?? "없음")")
         }
         _ = await MainActor.run { NSWorkspace.shared.open(url) }
-        return ToolResult(success: true, output: "\(urlStr) 열기 완료", artifactPath: nil, error: nil)
+        return ToolResult(status: .succeeded, output: "\(urlStr) 열기 완료", artifactPath: nil, error: nil)
     }
 }

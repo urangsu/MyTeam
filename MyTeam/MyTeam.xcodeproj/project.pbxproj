@@ -11,6 +11,11 @@
 		024EECE671B7C83B632E5435 /* te.wav in Resources */ = {isa = PBXBuildFile; fileRef = 80B34E7608C492E59978D2DD /* te.wav */; };
 		0284201050F2487302CC2FE1 /* ja.wav in Resources */ = {isa = PBXBuildFile; fileRef = BDB4525C825E7A48030B632C /* ja.wav */; };
 		036D386602838C8C97115C0D /* ToolExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD601D29125CA14A4EE9FEE /* ToolExecutor.swift */; };
+		D28000000000000000000031 /* MemorySensitivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28000000000000000000030 /* MemorySensitivity.swift */; };
+		D28000000000000000000033 /* MemoryRetentionPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28000000000000000000032 /* MemoryRetentionPolicy.swift */; };
+		D28000000000000000000035 /* AIModelPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28000000000000000000034 /* AIModelPolicy.swift */; };
+		D28000000000000000000037 /* DiagnosticsVisibilityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28000000000000000000036 /* DiagnosticsVisibilityPolicy.swift */; };
+		B19D61E3A0014AAAB100001D /* WorkspaceFileActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = B19D61E3A0014AAAB000001D /* WorkspaceFileActions.swift */; };
 		041445857786A2F4598A5C51 /* hi.wav in Resources */ = {isa = PBXBuildFile; fileRef = 567964A407D5EAD9F7926AD8 /* hi.wav */; };
 		042B51313A86494BBADD9DBC /* yo.wav in Resources */ = {isa = PBXBuildFile; fileRef = 7B1F86EF5ED6918B1E3CEF93 /* yo.wav */; };
 		045CA2CBCC6F1B0611E6F62D /* ni.wav in Resources */ = {isa = PBXBuildFile; fileRef = 5321595C2191CD7430F0F006 /* ni.wav */; };
@@ -441,6 +446,10 @@
 		01D0FC62FAA8D633AF5F8921 /* 폴라.json */ = {isa = PBXFileReference; includeInIndex = 1; name = "폴라.json"; path = "Resources/PrecomputedVoice/폴라.json"; sourceTree = "<group>"; };
 		01EF2C7020B25E2EDC7034DB /* 치코_clockin_011.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_clockin_011.png"; path = "Resources/Sprites/치코/치코_clockin_011.png"; sourceTree = "<group>"; };
 		025F5D1104334193B13EBF736D5DC8F7 /* XLSXWriter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = XLSXWriter.swift; sourceTree = "<group>"; };
+		D28000000000000000000030 /* MemorySensitivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MemorySensitivity.swift; sourceTree = "<group>"; };
+		D28000000000000000000032 /* MemoryRetentionPolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MemoryRetentionPolicy.swift; sourceTree = "<group>"; };
+		D28000000000000000000034 /* AIModelPolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AIModelPolicy.swift; sourceTree = "<group>"; };
+		D28000000000000000000036 /* DiagnosticsVisibilityPolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DiagnosticsVisibilityPolicy.swift; sourceTree = "<group>"; };
 		026CD3C1E60167A185C68D18 /* 치코_idle_009.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_idle_009.png"; path = "Resources/Sprites/치코/치코_idle_009.png"; sourceTree = "<group>"; };
 		0285C9C15CDA16B13B696CAB /* 치코_clockin_015.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_clockin_015.png"; path = "Resources/Sprites/치코/치코_clockin_015.png"; sourceTree = "<group>"; };
 		033BDD2C6989EB1913C6654C /* Contents.json */ = {isa = PBXFileReference; includeInIndex = 1; name = Contents.json; path = Assets.xcassets/AccentColor.colorset/Contents.json; sourceTree = "<group>"; };
@@ -553,6 +562,7 @@
 		B19D61E3A0014AAAB000001A /* WorkflowRunner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkflowRunner.swift; sourceTree = "<group>"; };
 		B19D61E3A0014AAAB000001B /* ToolExecutionLayer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ToolExecutionLayer.swift; sourceTree = "<group>"; };
 		B19D61E3A0014AAAB000001C /* ConnectorGuard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConnectorGuard.swift; sourceTree = "<group>"; };
+		B19D61E3A0014AAAB000001D /* WorkspaceFileActions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkspaceFileActions.swift; sourceTree = "<group>"; };
 		C11A00000000000000000001 /* ConnectorCapabilityPolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConnectorCapabilityPolicy.swift; sourceTree = "<group>"; };
 		D28100000000000000000001 /* RoomRuntimeStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RoomRuntimeStore.swift; sourceTree = "<group>"; };
 		E12000000000000000000001 /* ExecutionStepContract.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExecutionStepContract.swift; sourceTree = "<group>"; };
@@ -1596,6 +1606,10 @@
 				F27000000000000000000016 /* PlanExecutionResult.swift */,
 				F27000000000000000000017 /* PlanRunner.swift */,
 				F27000000000000000000018 /* UniversalDocumentPlanFactory.swift */,
+				D28000000000000000000030 /* MemorySensitivity.swift */,
+				D28000000000000000000032 /* MemoryRetentionPolicy.swift */,
+				D28000000000000000000034 /* AIModelPolicy.swift */,
+				D28000000000000000000036 /* DiagnosticsVisibilityPolicy.swift */,
 				B19D61E3A0014AAAB0000017 /* RouteDecision.swift */,
 				B19D61E3A0014AAAB0000018 /* GoalGate.swift */,
 				B19D61E3A0014AAAB0000019 /* RouteResolver.swift */,
@@ -1707,6 +1721,7 @@
 				0C1390D95DD6B33C6246B7F7 /* CreatePresentationPlanTool.swift */,
 				2FC3366815CA296267D8C9B8 /* CreateSpreadsheetPlanTool.swift */,
 				77A60589AAE42B4978FA07F6 /* OpenURLTool.swift */,
+				B19D61E3A0014AAAB000001D /* WorkspaceFileActions.swift */,
 				6C6474A28EC564261A2BC194 /* ToolRegistry.swift */,
 				FAD601D29125CA14A4EE9FEE /* ToolExecutor.swift */,
 				63E16FBE4F0F639B62AA9420 /* WorkflowEngine.swift */,
@@ -3107,12 +3122,17 @@
 				4D61DBFD3BCB45B79281AFEAA60AD7D8 /* WorkspaceArtifactsView.swift in Sources */,
 				8C7FAE70C156447482C7821A07915858 /* XLSXWriter.swift in Sources */,
 				1E390C64DE9E901266AEE194 /* WorkflowModels.swift in Sources */,
+				D28000000000000000000031 /* MemorySensitivity.swift in Sources */,
+				D28000000000000000000033 /* MemoryRetentionPolicy.swift in Sources */,
+				D28000000000000000000035 /* AIModelPolicy.swift in Sources */,
+				D28000000000000000000037 /* DiagnosticsVisibilityPolicy.swift in Sources */,
 				C2C69AF7AF7C2C435363192D /* ReadFileTool.swift in Sources */,
 				4DBC9D1E1F6A355D41A6DE23 /* WriteTextFileTool.swift in Sources */,
 				F72566B0AA8E2181DC8BDBAB /* CreateMarkdownReportTool.swift in Sources */,
 				33AFCDF7B63CDFC38AE9E2E5 /* CreatePresentationPlanTool.swift in Sources */,
 				EDD51A34150CEE6DFF68B8E5 /* CreateSpreadsheetPlanTool.swift in Sources */,
 				47BD7ACF48ECEE204AAFE98B /* OpenURLTool.swift in Sources */,
+				B19D61E3A0014AAAB100001D /* WorkspaceFileActions.swift in Sources */,
 				E9CDC9EB5E5DDF5374DE9D93 /* ToolRegistry.swift in Sources */,
 				036D386602838C8C97115C0D /* ToolExecutor.swift in Sources */,
 				E0F0C88B5A0046AAF135089E /* WorkflowEngine.swift in Sources */,

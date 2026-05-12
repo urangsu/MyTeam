@@ -213,8 +213,11 @@ class ConversationMemory {
                 post("저장할 내용이 비어 있습니다.")
                 return true
             }
-            manager.addScopedFact(content, scope: scope)
-            post("[\(scope.label)] 장기 기억에 저장했습니다: \(content)")
+            if manager.addScopedFact(content, scope: scope) {
+                post("[\(scope.label)] 장기 기억에 저장했습니다: \(content)")
+            } else {
+                post("이 내용은 민감할 수 있어 장기 기억에 저장하지 않았습니다.\n필요하면 별도 승인 후 저장하도록 바꿀 수 있습니다.")
+            }
             return true
 
         case "/memory":

@@ -57,11 +57,11 @@ final class WorkflowOrchestrator {
     private func capabilityGateNotice(for routeDecision: RouteDecision) -> String? {
         switch routeDecision.kind {
         case .capabilityFuture:
-            return "아직 연결되지 않은 capability입니다. 준비가 끝나면 다시 시도해 주세요."
+            return "이 기능은 아직 준비 중입니다. 현재는 로컬 스케줄/파일/문서 기능만 사용할 수 있습니다."
         case .capabilityRequiresApproval:
-            return "이 작업은 추가 승인이 필요합니다. 승인 후 다시 시도해 주세요."
+            return "이 작업은 승인이 필요합니다. 자동 실행하지 않고 승인 요청으로 전환합니다."
         case .capabilityUnavailable:
-            return "현재 사용할 수 없는 capability입니다. 연결 또는 설정이 필요합니다."
+            return "이 capability는 현재 연결되어 있지 않습니다. 연결 또는 설정이 필요합니다."
         default:
             return nil
         }
@@ -1277,7 +1277,7 @@ final class WorkflowOrchestrator {
             matchedSkillIDs: matchedSkills.map(\.id),
             disabledSkillIDs: disabledSkills.map(\.id),
             effectiveScopes: effectiveScopes.map(\.rawValue).sorted(),
-            candidateTools: ToolRegistry.shared.tools(for: effectiveScopes).map(\.name),
+            candidateTools: ToolRegistry.shared.plannerVisibleTools(for: effectiveScopes).map(\.name),
             blockedTools: blockedTools,
             expectedOutput: expectedOutput,
             requiresApproval: requiresApproval,

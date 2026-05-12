@@ -12,6 +12,7 @@ enum RouteResolver {
     static var isAvailable: Bool { true }
 
     static func resolveInitialRoute(_ input: RouteResolutionInput) -> RouteDecision {
+        // RouteResolver must stay side-effect free.
         if let blocked = GoalGate.blockedDecision(goal: input.goal, capability: input.capabilityDecision) {
             return blocked
         }

@@ -34,17 +34,18 @@ final class AIService {
         case .gemini:
             return geminiStream(text: text, agentID: agentID, chatHistory: chatHistory)
         case .openAI:
-            // 사용자 수동 설정 있으면 그대로, 없으면 openAIStream 내부에서 동적 발견
-            let modelId = UserDefaults.standard.string(forKey: "openAIModelId") ?? ""
+            let modelId = AIModelPolicy.resolvedModelID(
+                provider: .openAI,
+                configuredModelID: UserDefaults.standard.string(forKey: "openAIModelId")
+            )
             return openAIStream(text: text, agentID: agentID, chatHistory: chatHistory, modelId: modelId)
         case .claude:
             return claudeStream(text: text, agentID: agentID, chatHistory: chatHistory)
         case .openRouter:
-            let configuredModel = agentConfig?.openRouterModelId
-                ?? UserDefaults.standard.string(forKey: "openRouterModelId")
-            let modelId = configuredModel?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
-                ? configuredModel!.trimmingCharacters(in: .whitespacesAndNewlines)
-                : "openrouter/auto"
+            let modelId = AIModelPolicy.resolvedModelID(
+                provider: .openRouter,
+                configuredModelID: agentConfig?.openRouterModelId ?? UserDefaults.standard.string(forKey: "openRouterModelId")
+            )
             return openRouterStream(text: text, agentID: agentID, chatHistory: chatHistory, modelId: modelId)
         }
     }
@@ -134,6 +135,9 @@ final class AIService {
 
     // MARK: - Gemini Self-Healing Discovery
     func discoverLatestGeminiModel(apiKey: String) async throws -> String {
+        guard AIModelPolicy.dynamicModelDiscoveryAllowed else {
+            return AIModelPolicy.pinnedModelID(for: .gemini)
+        }
         // ── Provider 전체 쿨다운 중이면 모델 목록 API 호출 자체를 금지 ──
         guard !isGeminiProviderCoolingDown() else {
             throw AIServiceError.httpError(429, "Gemini provider cooldown — discovery 스킵")
@@ -185,6 +189,9 @@ final class AIService {
 
     // MARK: - Claude Model Discovery
     func discoverLatestClaudeModel(apiKey: String) async throws -> String {
+        guard AIModelPolicy.dynamicModelDiscoveryAllowed else {
+            return AIModelPolicy.pinnedModelID(for: .claude)
+        }
         guard let url = URL(string: "https://api.anthropic.com/v1/models") else {
             return "claude-opus-4-7"
         }
@@ -212,6 +219,9 @@ final class AIService {
 
     // MARK: - OpenAI Model Discovery
     func discoverLatestOpenAIModel(apiKey: String) async throws -> String {
+        guard AIModelPolicy.dynamicModelDiscoveryAllowed else {
+            return AIModelPolicy.pinnedModelID(for: .openAI)
+        }
         guard let url = URL(string: "https://api.openai.com/v1/models") else {
             return "gpt-4o"
         }
@@ -347,21 +357,24 @@ final class AIService {
                     return
                 }
 
-                // ── 모델 선택 (쿨다운 중 모델 제외) ──
-                let fallbackFlash = "gemini-2.0-flash"
-                var modelToUse: String
-                if let cached = cachedGeminiModelId, !isGeminiModelCoolingDown(cached) {
-                    modelToUse = cached
-                } else {
-                    cachedGeminiModelId = nil
-                    if let discoveredModel = try? await discoverLatestGeminiModel(apiKey: apiKey),
-                       !isGeminiModelCoolingDown(discoveredModel) {
-                        modelToUse = discoveredModel
-                        cachedGeminiModelId = discoveredModel
+                // ── 모델 선택 (Release는 pinned, DEBUG는 쿨다운 중 모델 제외) ──
+                let fallbackFlash = AIModelPolicy.pinnedModelID(for: .gemini)
+                let modelToUse: String
+                if AIModelPolicy.modelOverrideAllowed {
+                    if let cached = cachedGeminiModelId, !isGeminiModelCoolingDown(cached) {
+                        modelToUse = cached
                     } else {
-                        // 발견 모델도 쿨다운 중이면 flash로 즉시 폴백
-                        modelToUse = fallbackFlash
+                        cachedGeminiModelId = nil
+                        if let discoveredModel = try? await discoverLatestGeminiModel(apiKey: apiKey),
+                           !isGeminiModelCoolingDown(discoveredModel) {
+                            modelToUse = discoveredModel
+                            cachedGeminiModelId = discoveredModel
+                        } else {
+                            modelToUse = fallbackFlash
+                        }
                     }
+                } else {
+                    modelToUse = fallbackFlash
                 }
 
                 guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(modelToUse):streamGenerateContent?key=\(apiKey)&alt=sse") else {
@@ -488,12 +501,18 @@ final class AIService {
                 request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
                 request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
 
-                var claudeModel = "claude-opus-4-7"
-                if let cached = cachedClaudeModelId {
-                    claudeModel = cached
-                } else if let discovered = try? await discoverLatestClaudeModel(apiKey: apiKey) {
-                    claudeModel = discovered
-                    cachedClaudeModelId = discovered
+                let claudeModel: String
+                if AIModelPolicy.modelOverrideAllowed {
+                    if let cached = cachedClaudeModelId {
+                        claudeModel = cached
+                    } else if let discovered = try? await discoverLatestClaudeModel(apiKey: apiKey) {
+                        claudeModel = discovered
+                        cachedClaudeModelId = discovered
+                    } else {
+                        claudeModel = AIModelPolicy.pinnedModelID(for: .claude)
+                    }
+                } else {
+                    claudeModel = AIModelPolicy.pinnedModelID(for: .claude)
                 }
 
                 let messages = buildAnthropicMessages(text: text, chatHistory: chatHistory)
@@ -566,17 +585,22 @@ final class AIService {
                     return
                 }
 
-                // 사용자 수동 설정 우선, 없으면 동적 발견
-                var resolvedModel = modelId.isEmpty ? "" : modelId
-                if resolvedModel.isEmpty {
-                    if let cached = cachedOpenAIModelId {
-                        resolvedModel = cached
-                    } else if let discovered = try? await discoverLatestOpenAIModel(apiKey: apiKey) {
-                        resolvedModel = discovered
-                        cachedOpenAIModelId = discovered
-                    } else {
-                        resolvedModel = "gpt-4o"
+                let resolvedModel: String
+                if AIModelPolicy.modelOverrideAllowed {
+                    var model = modelId.isEmpty ? "" : modelId
+                    if model.isEmpty {
+                        if let cached = cachedOpenAIModelId {
+                            model = cached
+                        } else if let discovered = try? await discoverLatestOpenAIModel(apiKey: apiKey) {
+                            model = discovered
+                            cachedOpenAIModelId = discovered
+                        } else {
+                            model = AIModelPolicy.pinnedModelID(for: .openAI)
+                        }
                     }
+                    resolvedModel = model
+                } else {
+                    resolvedModel = AIModelPolicy.pinnedModelID(for: .openAI)
                 }
 
                 guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else {
@@ -815,7 +839,9 @@ final class AIService {
     }
 
     private func geminiQuickCall(prompt: String, apiKey: String) async throws -> String {
-        let modelId = cachedGeminiModelId ?? "gemini-2.0-flash"
+        let modelId = AIModelPolicy.modelOverrideAllowed
+            ? (cachedGeminiModelId ?? AIModelPolicy.pinnedModelID(for: .gemini))
+            : AIModelPolicy.pinnedModelID(for: .gemini)
         guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(modelId):generateContent?key=\(apiKey)") else {
             throw AIServiceError.invalidResponse
         }
@@ -835,7 +861,9 @@ final class AIService {
 
     private func claudeQuickCall(prompt: String, apiKey: String) async throws -> String {
         guard let url = URL(string: "https://api.anthropic.com/v1/messages") else { throw AIServiceError.invalidResponse }
-        let modelId = cachedClaudeModelId ?? "claude-haiku-4-5"
+        let modelId = AIModelPolicy.modelOverrideAllowed
+            ? (cachedClaudeModelId ?? AIModelPolicy.pinnedModelID(for: .claude))
+            : AIModelPolicy.pinnedModelID(for: .claude)
         let body: [String: Any] = ["model": modelId, "max_tokens": 512,
                                     "messages": [["role": "user", "content": prompt]]]
         var req = URLRequest(url: url)
@@ -853,7 +881,8 @@ final class AIService {
 
     private func openAIQuickCall(prompt: String, apiKey: String) async throws -> String {
         guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else { throw AIServiceError.invalidResponse }
-        let body: [String: Any] = ["model": "gpt-4o-mini", "max_tokens": 512,
+        let modelId = AIModelPolicy.pinnedModelID(for: .openAI)
+        let body: [String: Any] = ["model": modelId, "max_tokens": 512,
                                     "messages": [["role": "user", "content": prompt]]]
         var req = URLRequest(url: url)
         req.httpMethod = "POST"

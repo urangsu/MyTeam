@@ -130,6 +130,47 @@ struct ActionLogEntry: Codable, Sendable {
     }
 }
 
+enum ActionLogRedactionVerifier {
+    static func isEnabled() -> Bool {
+        let entry = ActionLogEntry(
+            ts: "1970-01-01T00:00:00Z",
+            session: "redaction-check",
+            tool: "probe",
+            input: [
+                "content": "RAW-CONTENT",
+                "sourceText": "RAW-SOURCE",
+                "body": "RAW-BODY",
+                "token": "RAW-TOKEN",
+                "key": "RAW-KEY",
+                "secret": "RAW-SECRET",
+                "auth": "RAW-AUTH",
+                "password": "RAW-PASSWORD"
+            ],
+            result: "blocked",
+            artifact: nil,
+            error: nil,
+            declaredRisk: nil,
+            registryRisk: nil,
+            effectiveRisk: nil,
+            failureCode: nil
+        )
+
+        guard let data = try? JSONEncoder().encode(entry),
+              let text = String(data: data, encoding: .utf8) else {
+            return false
+        }
+
+        return !text.contains("RAW-CONTENT")
+            && !text.contains("RAW-SOURCE")
+            && !text.contains("RAW-BODY")
+            && !text.contains("RAW-TOKEN")
+            && !text.contains("RAW-KEY")
+            && !text.contains("RAW-SECRET")
+            && !text.contains("RAW-AUTH")
+            && !text.contains("RAW-PASSWORD")
+    }
+}
+
 // MARK: - ArtifactType
 
 enum ArtifactType: String, Codable {

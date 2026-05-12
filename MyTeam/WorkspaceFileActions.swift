@@ -50,3 +50,58 @@ enum WorkspaceFileActions {
         }
     }
 }
+
+// MARK: - Workspace UI Tools
+
+enum WorkspaceFileActionKind {
+    case revealInFinder
+    case copyPath
+}
+
+struct WorkspaceRevealFileTool: WorkflowTool {
+    let name = "workspace_reveal_in_finder"
+    let description = "Workspace 내부 파일을 Finder에서 표시한다"
+    let riskLevel: ToolRiskLevel = .safe
+    let scope: ToolScope = .localUI
+    let plannerVisible: Bool = false
+    let availability: ToolAvailability = .available
+    let inputSchema: [String: String] = [
+        "path": "Workspace 내부 절대 경로"
+    ]
+
+    func execute(input: ToolInput, context: ToolExecutionContext) async throws -> ToolResult {
+        guard let path = input["path"] else {
+            throw ToolError.invalidInput("path 필수")
+        }
+        switch WorkspaceFileActions.revealInFinder(path: path) {
+        case .success:
+            return ToolResult(status: .succeeded, output: "Finder에서 열었습니다.", artifactPath: path, error: nil)
+        case .failure(let error):
+            return ToolResult(status: .blocked, output: "", artifactPath: nil, error: error.message)
+        }
+    }
+}
+
+struct WorkspaceCopyPathTool: WorkflowTool {
+    let name = "workspace_copy_path"
+    let description = "Workspace 내부 파일의 경로를 복사한다"
+    let riskLevel: ToolRiskLevel = .safe
+    let scope: ToolScope = .localUI
+    let plannerVisible: Bool = false
+    let availability: ToolAvailability = .available
+    let inputSchema: [String: String] = [
+        "path": "Workspace 내부 절대 경로"
+    ]
+
+    func execute(input: ToolInput, context: ToolExecutionContext) async throws -> ToolResult {
+        guard let path = input["path"] else {
+            throw ToolError.invalidInput("path 필수")
+        }
+        switch WorkspaceFileActions.copyPathToPasteboard(path: path) {
+        case .success:
+            return ToolResult(status: .succeeded, output: "경로를 복사했습니다.", artifactPath: path, error: nil)
+        case .failure(let error):
+            return ToolResult(status: .blocked, output: "", artifactPath: nil, error: error.message)
+        }
+    }
+}

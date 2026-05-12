@@ -108,7 +108,7 @@ class AgentWindowManager: ObservableObject {
     // ── 지능형 기억 보호 (Key Fact Buffer) ──
     // V1: 단일 전역 배열 (하위 호환 유지)
     @AppStorage("keyFacts") private var keyFactsData: Data = Data()
-    @Published var keyFacts: [String] = [] {
+    @Published private(set) var keyFacts: [String] = [] {
         didSet {
             if let data = try? JSONEncoder().encode(keyFacts) {
                 keyFactsData = data
@@ -126,14 +126,31 @@ class AgentWindowManager: ObservableObject {
         }
     }
 
-    @AppStorage("automationTasks") private var automationTasksData: Data = Data()
-    @Published var automationTasks: [AutomationTask] = [] {
+    @AppStorage("MyTeam.keyFactPolicies") private var keyFactPoliciesData: Data = Data()
+    private var keyFactPolicies: [String: MemoryRetentionPolicy] = [:] {
         didSet {
-            if let data = try? JSONEncoder().encode(automationTasks) {
-                automationTasksData = data
+            if let data = try? JSONEncoder().encode(keyFactPolicies) {
+                keyFactPoliciesData = data
             }
         }
     }
+
+    @AppStorage("automationTasks") private var automationTasksData: Data = Data()
+    @Published var automationTasks: [AutomationTask] = [] {
+        didSet { persistAutomationTasks() }
+    }
+
+    @AppStorage("MyTeam.automationTaskPolicies") private var automationTaskPoliciesData: Data = Data()
+    private var automationTaskPolicies: [UUID: MemoryRetentionPolicy] = [:] {
+        didSet {
+            if let data = try? JSONEncoder().encode(automationTaskPolicies) {
+                automationTaskPoliciesData = data
+            }
+        }
+    }
+
+    @Published private(set) var memoryWriteBlockedCount: Int = 0
+    @Published private(set) var automationTaskSensitiveBlockedCount: Int = 0
 
     let roomRuntimeStore = RoomRuntimeStore()
     private var roomRuntimeStoreCancellable: AnyCancellable?
@@ -351,14 +368,26 @@ class AgentWindowManager: ObservableObject {
         }
     }
 
-    func addScopedFact(_ fact: String, scope: MemoryScope) {
+    @discardableResult
+    func addScopedFact(_ fact: String, scope: MemoryScope) -> Bool {
         let cleaned = fact.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleaned.isEmpty else { return }
-        var bucket = keyFactsScoped[scope.key] ?? []
-        if !bucket.contains(cleaned) {
-            bucket.append(cleaned)
-            keyFactsScoped[scope.key] = bucket
+        guard !cleaned.isEmpty else { return false }
+        let policy = MemoryWriteGuard.evaluateFact(cleaned)
+        guard policy.canPersistInUserDefaults else {
+            memoryWriteBlockedCount += 1
+            roomRuntimeStore.recordMemoryWriteBlocked()
+            AppLog.warning("[AgentWindowManager] 민감한 기억 저장 차단: \(MemoryWriteGuard.redactedPreview(cleaned))")
+            return false
         }
+        let storedText = MemoryWriteGuard.redactedPreview(cleaned)
+        var bucket = keyFactsScoped[scope.key] ?? []
+        if !bucket.contains(storedText) {
+            bucket.append(storedText)
+            keyFactsScoped[scope.key] = bucket
+            keyFactPolicies[Self.memoryKey(storedText)] = policy
+            return true
+        }
+        return true
     }
 
     func forgetScopedFact(matching query: String, scope: MemoryScope?) -> Int {
@@ -432,17 +461,7 @@ class AgentWindowManager: ObservableObject {
             currentRoomID = rooms.first?.id
         }
         
-        // Key Facts 복구 (V1 레거시)
-        if let decoded = try? JSONDecoder().decode([String].self, from: keyFactsData) {
-            keyFacts = decoded
-        }
-        // Key Facts 복구 (V2 scoped)
-        if let decoded = try? JSONDecoder().decode([String: [String]].self, from: keyFactsScopedData) {
-            keyFactsScoped = decoded
-        }
-        if let decoded = try? JSONDecoder().decode([AutomationTask].self, from: automationTasksData) {
-            automationTasks = decoded
-        }
+        loadMemoryStores()
 
         roomRuntimeStoreCancellable = roomRuntimeStore.objectWillChange
             .sink { [weak self] _ in
@@ -1117,12 +1136,24 @@ class AgentWindowManager: ObservableObject {
         rooms[index].messages.removeAll()
     }
 
-    func addKeyFact(_ fact: String) {
+    @discardableResult
+    func addKeyFact(_ fact: String) -> Bool {
         let cleaned = fact.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleaned.isEmpty else { return }
-        if !keyFacts.contains(cleaned) {
-            keyFacts.append(cleaned)
+        guard !cleaned.isEmpty else { return false }
+        let policy = MemoryWriteGuard.evaluateFact(cleaned)
+        guard policy.canPersistInUserDefaults else {
+            memoryWriteBlockedCount += 1
+            roomRuntimeStore.recordMemoryWriteBlocked()
+            AppLog.warning("[AgentWindowManager] 민감한 기억 저장 차단: \(MemoryWriteGuard.redactedPreview(cleaned))")
+            return false
         }
+        let storedText = MemoryWriteGuard.redactedPreview(cleaned)
+        if !keyFacts.contains(storedText) {
+            keyFacts.append(storedText)
+            keyFactPolicies[Self.memoryKey(storedText)] = policy
+            return true
+        }
+        return true
     }
 
     func forgetKeyFact(matching query: String) -> Int {
@@ -1135,6 +1166,7 @@ class AgentWindowManager: ObservableObject {
 
     func clearKeyFacts() {
         keyFacts.removeAll()
+        keyFactPolicies.removeAll()
     }
 
     // MARK: - 스케줄 업무
@@ -1142,11 +1174,13 @@ class AgentWindowManager: ObservableObject {
     @discardableResult
     func addAutomationTask(prompt: String, nextRunAt: Date, repeatInterval: TimeInterval? = nil, roomID: UUID? = nil, assignedAgentID: String? = nil) -> AutomationTask {
         let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-        let title = String(trimmed.prefix(28))
+        let policy = MemoryWriteGuard.evaluateFact(trimmed)
+        let storedPrompt = policy.canPersistInUserDefaults ? trimmed : MemoryWriteGuard.redactedPreview(trimmed)
+        let title = String(storedPrompt.prefix(28))
         let task = AutomationTask(
             id: UUID(),
             title: title.isEmpty ? "스케줄 업무" : title,
-            prompt: trimmed,
+            prompt: storedPrompt,
             nextRunAt: nextRunAt,
             repeatInterval: repeatInterval,
             roomID: roomID ?? currentRoomID,
@@ -1156,11 +1190,18 @@ class AgentWindowManager: ObservableObject {
             lastRunAt: nil
         )
         automationTasks.append(task)
+        automationTaskPolicies[task.id] = policy
+        if !policy.canPersistInUserDefaults {
+            automationTaskSensitiveBlockedCount += 1
+            roomRuntimeStore.recordAutomationTaskSensitiveBlocked()
+            AppLog.warning("[AgentWindowManager] 민감한 스케줄 작업 저장 차단: \(MemoryWriteGuard.redactedPreview(trimmed))")
+        }
         return task
     }
 
     func cancelAutomationTask(id: UUID) {
         automationTasks.removeAll { $0.id == id }
+        automationTaskPolicies.removeValue(forKey: id)
     }
 
     func cancelAutomationTask(displayIndex: Int) -> Bool {
@@ -1228,6 +1269,7 @@ class AgentWindowManager: ObservableObject {
             automationTasks[idx].nextRunAt = Date().addingTimeInterval(interval)
         } else {
             automationTasks.remove(at: idx)
+            automationTaskPolicies.removeValue(forKey: id)
         }
         if let rid = currentRoomID {
             addChatLog(roomID: rid, agentID: "system", agentName: "스케줄",
@@ -1293,6 +1335,7 @@ class AgentWindowManager: ObservableObject {
                 automationTasks[index].nextRunAt = now.addingTimeInterval(interval)
             } else {
                 automationTasks.remove(at: index)
+                automationTaskPolicies.removeValue(forKey: task.id)
             }
 
             if let rid = targetRoomID {
@@ -1385,6 +1428,37 @@ class AgentWindowManager: ObservableObject {
            let decoded = try? JSONDecoder().decode([ChatRoom].self, from: data) {
             rooms = decoded
         }
+    }
+
+    private func loadMemoryStores() {
+        if let decoded = try? JSONDecoder().decode([String].self, from: keyFactsData) {
+            keyFacts = decoded.map { MemoryWriteGuard.redactedPreview($0) }
+        }
+        if let decoded = try? JSONDecoder().decode([String: [String]].self, from: keyFactsScopedData) {
+            keyFactsScoped = decoded.mapValues { values in values.map { MemoryWriteGuard.redactedPreview($0) } }
+        }
+        if let decoded = try? JSONDecoder().decode([String: MemoryRetentionPolicy].self, from: keyFactPoliciesData) {
+            keyFactPolicies = decoded
+        }
+        if let decoded = try? JSONDecoder().decode([AutomationTask].self, from: automationTasksData) {
+            automationTasks = decoded
+        }
+        if let decoded = try? JSONDecoder().decode([UUID: MemoryRetentionPolicy].self, from: automationTaskPoliciesData) {
+            automationTaskPolicies = decoded
+        }
+    }
+
+    private func persistAutomationTasks() {
+        let persisted = automationTasks.filter { task in
+            automationTaskPolicies[task.id]?.canPersistInUserDefaults ?? true
+        }
+        if let data = try? JSONEncoder().encode(persisted) {
+            automationTasksData = data
+        }
+    }
+
+    private static func memoryKey(_ text: String) -> String {
+        MemoryWriteGuard.redactedPreview(text)
     }
 
     // MARK: - RecentArtifactIndex Facade API

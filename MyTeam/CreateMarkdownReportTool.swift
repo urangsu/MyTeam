@@ -23,6 +23,6 @@ struct CreateMarkdownReportTool: WorkflowTool {
         let url = try safeWritableWorkspaceURL(filename: filename, context: context)
         try md.write(to: url, atomically: true, encoding: .utf8)
         let preview = String(content.prefix(200))
-        return ToolResult(success: true, output: preview, artifactPath: filename, error: nil)
+        return ToolResult(status: .succeeded, output: preview, artifactPath: filename, error: nil)
     }
 }

@@ -40,6 +40,6 @@ struct CreatePresentationPlanTool: WorkflowTool {
         try outputJSON.write(to: url)
 
         let preview = "PPT 초안 '\(title)' — \(slidesArray.count)슬라이드 생성 완료"
-        return ToolResult(success: true, output: preview, artifactPath: filename, error: nil)
+        return ToolResult(status: .succeeded, output: preview, artifactPath: filename, error: nil)
     }
 }

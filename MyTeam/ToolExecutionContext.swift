@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - ToolExecutionContext
 
-struct ToolExecutionContext {
+struct ToolExecutionContext: Sendable {
     let workspaceURL: URL
     /// 이번 workflow의 UUID (WorkflowRunStore / AgentEventStream 연결 키)
     let workflowID: UUID

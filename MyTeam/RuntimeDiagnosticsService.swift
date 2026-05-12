@@ -40,21 +40,34 @@ struct RuntimeDiagnosticsSnapshot {
     let lastPlanExecutionStatus: String?
     let toolResultStatusModelAvailable: Bool
     let dryRunSuccessSeparated: Bool
+    let toolExecutionLayerActive: Bool
+    let toolExecutorDirectCallCount: Int
+    let plannerVisibleToolCount: Int
+    let hiddenStubToolCount: Int
 
     // Artifact UX & Persistence
     let artifactUXActionsAvailable: Bool
     let workspaceFileActionsAvailable: Bool
+    let workspaceFileActionsToolLayerBacked: Bool
+    let artifactActionsToolLayerBacked: Bool
     let recentArtifactIndexPersistenceAvailable: Bool
     let recentArtifactIndexPersistedCount: Int
     let recentArtifactIndexLoadedAt: Date?
     let recentArtifactIndexSavedAt: Date?
     let recentArtifactReuseFailureReason: String?
+    let actionLogRedactionEnabled: Bool
 
     // Feature Flags / Release Path
     let buildConfiguration: String
     let planRunnerEnabled: Bool
     let planRunnerToggleVisible: Bool
     let debugDiagnosticsVisible: Bool
+    let verboseDiagnosticsVisible: Bool
+    let debugToolVisible: Bool
+    let toolContractValidatorStatus: String
+    let memoryWriteBlockedCount: Int
+    let automationTaskSensitiveBlockedCount: Int
+    let modelFamily: String
 
     // Routing / Turn profile
     let lastTurnRoute: String?
@@ -104,11 +117,16 @@ struct RuntimeDiagnosticsSnapshot {
     let workflowRunnerUniversalDocumentPlanEnabled: Bool
     let orchestratorBoundaryReduced: Bool
     let toolRiskRegistryEnforced: Bool
+    let toolScopeFailClosed: Bool
     let toolRiskMismatchBlockedCount: Int
     let toolScopeMissingBlockedCount: Int
     let staleActionBindingBlockedCount: Int
     let agentWorkOrderStableContractID: Bool
     let approvalStateSeparated: Bool
+    let capabilityFutureStopsRoute: Bool
+    let capabilityRequiresApprovalStopsRoute: Bool
+    let capabilityUnavailableStopsRoute: Bool
+    let stubToolsHiddenFromPlanner: Bool
     let roomRuntimeStoreAvailable: Bool
     let roomRuntimeStoreOwnsGoalContext: Bool
     let roomRuntimeStoreOwnsFileIntake: Bool
@@ -192,6 +210,19 @@ struct RuntimeDiagnosticsSnapshot {
     var summary: String {
         var lines: [String] = ["[RuntimeDiagnostics] \(capturedAt.formatted(.iso8601))"]
 
+        if !DiagnosticsVisibilityPolicy.allowsVerboseDiagnostics {
+            lines.append("buildConfiguration: \(buildConfiguration)")
+            lines.append("debugDiagnosticsVisible: \(debugDiagnosticsVisible)")
+            lines.append("planRunnerToggleVisible: \(planRunnerToggleVisible)")
+            lines.append("verboseDiagnosticsVisible: \(verboseDiagnosticsVisible)")
+            lines.append("toolLayer: active=\(toolExecutionLayerActive) artifactActions=\(artifactActionsToolLayerBacked) workspaceActions=\(workspaceFileActionsToolLayerBacked)")
+            lines.append("connectors: calendar=\(calendarProviderAvailable ? "read configured" : "unavailable") gmail=\(gmailMetadataAvailable ? "available" : "unavailable")")
+            lines.append("approvals: pending=\(pendingApprovalTaskCount)")
+            lines.append("lastWorkflow: \(isWorkflowRunning ? "running" : "completed")")
+            lines.append("modelFamily: \(modelFamily)")
+            return lines.joined(separator: "\n  ")
+        }
+
         lines.append("roomID: \(currentRoomID?.uuidString.prefix(8) ?? "nil")")
         lines.append("workflowID: \(activeWorkflowID?.uuidString.prefix(8) ?? "nil")")
         lines.append("isWorkflowRunning: \(isWorkflowRunning)")
@@ -257,8 +288,14 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("workflowRunnerUniversalDocumentPlanEnabled: \(workflowRunnerUniversalDocumentPlanEnabled)")
         lines.append("orchestratorBoundaryReduced: \(orchestratorBoundaryReduced)")
         lines.append("toolRisk: registryEnforced=\(toolRiskRegistryEnforced) mismatchBlocked=\(toolRiskMismatchBlockedCount) scopeMissingBlocked=\(toolScopeMissingBlockedCount)")
+        lines.append("toolExecutionLayer: active=\(toolExecutionLayerActive) directCalls=\(toolExecutorDirectCallCount) plannerVisible=\(plannerVisibleToolCount) hiddenStubs=\(hiddenStubToolCount)")
+        lines.append("memorySecurity: writeBlocked=\(memoryWriteBlockedCount) automationTaskBlocked=\(automationTaskSensitiveBlockedCount)")
+        lines.append("toolContractValidatorStatus: \(toolContractValidatorStatus)")
+        lines.append("modelFamily: \(modelFamily)")
         lines.append("artifactBinding: staleBlocked=\(staleActionBindingBlockedCount) workOrderStableID=\(agentWorkOrderStableContractID)")
         lines.append("approvalStateSeparated: \(approvalStateSeparated)")
+        lines.append("capabilityStops: future=\(capabilityFutureStopsRoute) approval=\(capabilityRequiresApprovalStopsRoute) unavailable=\(capabilityUnavailableStopsRoute)")
+        lines.append("toolSafety: scopeFailClosed=\(toolScopeFailClosed) redaction=\(actionLogRedactionEnabled) stubHidden=\(stubToolsHiddenFromPlanner)")
         lines.append("roomRuntimeStore: available=\(roomRuntimeStoreAvailable) goal=\(roomRuntimeStoreOwnsGoalContext) fileIntake=\(roomRuntimeStoreOwnsFileIntake) tasks=\(roomRuntimeStoreOwnsActiveTasks) facade=\(agentWindowManagerFacadeMode)")
         lines.append("universalDocument: skills=\(universalDocumentSkillCount) available=\(universalDocumentRouteAvailable)")
         lines.append("routeResolver: available=\(routeResolverAvailable)")
@@ -276,7 +313,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("fileIntakeToDocument: available=\(fileIntakeToDocumentAvailable)")
         lines.append("localSchedulerCommand: available=\(localSchedulerCommandAvailable) tasks=\(automationTaskCount) pending=\(pendingApprovalTaskCount) next=\(nextScheduledTaskTime ?? "none")")
         lines.append("artifacts: store=\(artifactStoreAvailable) index=\(recentArtifactIndexAvailable) count=\(recentArtifactIndexCount) dryRunSeparated=\(dryRunSuccessSeparated)")
-        lines.append("artifactUX: actions=\(artifactUXActionsAvailable) fileActions=\(workspaceFileActionsAvailable)")
+        lines.append("artifactUX: actions=\(artifactUXActionsAvailable) fileActions=\(workspaceFileActionsAvailable) toolLayerBacked=\(workspaceFileActionsToolLayerBacked) artifactLayerBacked=\(artifactActionsToolLayerBacked)")
         lines.append("persistence: available=\(recentArtifactIndexPersistenceAvailable) persisted=\(recentArtifactIndexPersistedCount) loaded=\(recentArtifactIndexLoadedAt?.formatted(.iso8601) ?? "nil") saved=\(recentArtifactIndexSavedAt?.formatted(.iso8601) ?? "nil")")
         if let failureReason = recentArtifactReuseFailureReason {
             lines.append("recentArtifactReuseFailed: \(failureReason)")
@@ -392,7 +429,7 @@ final class RuntimeDiagnosticsService {
         }
         let routeResolverAvailable = true
         let workflowRunnerAvailable = WorkflowRunner.isAvailable()
-        let toolExecutionLayerAvailable = true
+        let toolExecutionLayerAvailable = await ToolExecutor.shared.directCallCount == 0
         let connectorGuardAvailable = true
         let planRunnerAvailable = true
         let planRunnerUniversalDocumentEnabled = FeatureFlags.planRunnerUniversalDocumentEnabled
@@ -466,6 +503,10 @@ final class RuntimeDiagnosticsService {
         let recentArtifactActionAvailable = recentArtifactReusableCount > 0
         let actionLogEntries = await ArtifactStore.shared.loadActionLogEntries()
         let toolRiskRegistryEnforced = ToolContractValidator.validate().passed
+        let plannerVisibleToolCount = ToolRegistry.shared.plannerVisibleToolCount()
+        let hiddenStubToolCount = ToolRegistry.shared.hiddenStubToolCount
+        let toolExecutorDirectCallCount = await ToolExecutor.shared.directCallCount
+        let toolExecutionLayerActive = toolExecutorDirectCallCount == 0
         let toolRiskMismatchBlockedCount = actionLogEntries.filter { $0.failureCode == "tool_risk_mismatch_blocked" }.count
         let toolScopeMissingBlockedCount = actionLogEntries.filter { entry in
             entry.failureCode == "tool_scope_missing_blocked" || entry.failureCode == "tool_registry_missing_blocked"
@@ -483,6 +524,46 @@ final class RuntimeDiagnosticsService {
             parts: ["sample-agent", "reviewer", "sample-output", "sample instruction"]
         )
         let approvalStateSeparated = ScheduledTaskApprovalStatus.none != .awaitingApproval
+        let actionLogRedactionEnabled = ActionLogRedactionVerifier.isEnabled()
+        let toolScopeFailClosed = ToolRegistry.shared.allTools.allSatisfy { $0.scope != .chatBasic }
+        let workspaceFileActionsToolLayerBacked = ToolRegistry.shared.lookup(name: "workspace_reveal_in_finder") != nil
+            && ToolRegistry.shared.lookup(name: "workspace_copy_path") != nil
+        let artifactActionsToolLayerBacked = ArtifactPersistencePolicy.shouldPersist(resultStatus: .succeeded)
+            && !ArtifactPersistencePolicy.shouldPersist(resultStatus: .blocked)
+        let capabilityFutureStopsRoute = RouteResolver.resolveInitialRoute(
+            RouteResolutionInput(
+                userMessage: "구글 캘린더 읽어줘",
+                enabledSkills: [],
+                disabledSkills: [],
+                goal: GoalInterpreter.interpret("구글 캘린더 읽어줘"),
+                capabilityDecision: CapabilityAwareRouter.evaluate(goal: GoalInterpreter.interpret("구글 캘린더 읽어줘"))
+            )
+        ).kind == .capabilityFuture
+        let capabilityRequiresApprovalStopsRoute = RouteResolver.resolveInitialRoute(
+            RouteResolutionInput(
+                userMessage: "메일 본문 읽어줘",
+                enabledSkills: [],
+                disabledSkills: [],
+                goal: GoalInterpreter.interpret("메일 본문 읽어줘"),
+                capabilityDecision: CapabilityAwareRouter.evaluate(goal: GoalInterpreter.interpret("메일 본문 읽어줘"))
+            )
+        ).kind == .capabilityRequiresApproval
+        let capabilityUnavailableStopsRoute = RouteResolver.resolveInitialRoute(
+            RouteResolutionInput(
+                userMessage: "연결되지 않은 capability",
+                enabledSkills: [],
+                disabledSkills: [],
+                goal: GoalInterpreter.interpret("연결되지 않은 capability"),
+                capabilityDecision: CapabilityRouteDecision(
+                    status: .unavailable,
+                    goal: .unknown,
+                    missingCapabilities: [.answer],
+                    blockedCapabilities: [],
+                    message: "현재 연결되어 있지 않습니다."
+                )
+            )
+        ).kind == .capabilityUnavailable
+        let stubToolsHiddenFromPlanner = hiddenStubToolCount > 0
 
         // Artifact / Verification diagnostics
         let artifactStoreAvailable = true
@@ -508,6 +589,7 @@ final class RuntimeDiagnosticsService {
         }
         let toolResultStatusModelAvailable = true
         let dryRunSuccessSeparated = true
+        let toolContractValidatorStatus = toolContractSummary.passed ? "pass" : "fail"
 
         // Artifact UX & Persistence
         let artifactUXActionsAvailable = true  // ArtifactCardView actions present
@@ -523,6 +605,11 @@ final class RuntimeDiagnosticsService {
         let planRunnerEnabled = FeatureFlags.planRunnerUniversalDocumentEnabled
         let planRunnerToggleVisible = FeatureFlags.planRunnerToggleVisible
         let debugDiagnosticsVisible = FeatureFlags.debugDiagnosticsVisible
+        let verboseDiagnosticsVisible = DiagnosticsVisibilityPolicy.allowsVerboseDiagnostics
+        let debugToolVisible = FeatureFlags.debugToolVisible
+        let memoryWriteBlockedCount = manager.roomRuntimeStore.memoryWriteBlockedCount
+        let automationTaskSensitiveBlockedCount = manager.roomRuntimeStore.automationTaskSensitiveBlockedCount
+        let modelFamily = AIModelPolicy.modelFamily
 
         let budgetUsageDescription = await MainActor.run { AICallBudgetManager.shared.usageDescription() }
 
@@ -550,17 +637,30 @@ final class RuntimeDiagnosticsService {
             lastPlanExecutionStatus: lastPlanExecutionStatus,
             toolResultStatusModelAvailable: toolResultStatusModelAvailable,
             dryRunSuccessSeparated: dryRunSuccessSeparated,
+            toolExecutionLayerActive: toolExecutionLayerActive,
+            toolExecutorDirectCallCount: toolExecutorDirectCallCount,
+            plannerVisibleToolCount: plannerVisibleToolCount,
+            hiddenStubToolCount: hiddenStubToolCount,
             artifactUXActionsAvailable: artifactUXActionsAvailable,
             workspaceFileActionsAvailable: workspaceFileActionsAvailable,
+            workspaceFileActionsToolLayerBacked: workspaceFileActionsToolLayerBacked,
+            artifactActionsToolLayerBacked: artifactActionsToolLayerBacked,
             recentArtifactIndexPersistenceAvailable: recentArtifactIndexPersistenceAvailable,
             recentArtifactIndexPersistedCount: recentArtifactIndexPersistedCount,
             recentArtifactIndexLoadedAt: recentArtifactIndexLoadedAt,
             recentArtifactIndexSavedAt: recentArtifactIndexSavedAt,
             recentArtifactReuseFailureReason: recentArtifactReuseFailureReason,
+            actionLogRedactionEnabled: actionLogRedactionEnabled,
             buildConfiguration: buildConfiguration,
             planRunnerEnabled: planRunnerEnabled,
             planRunnerToggleVisible: planRunnerToggleVisible,
             debugDiagnosticsVisible: debugDiagnosticsVisible,
+            verboseDiagnosticsVisible: verboseDiagnosticsVisible,
+            debugToolVisible: debugToolVisible,
+            toolContractValidatorStatus: toolContractValidatorStatus,
+            memoryWriteBlockedCount: memoryWriteBlockedCount,
+            automationTaskSensitiveBlockedCount: automationTaskSensitiveBlockedCount,
+            modelFamily: modelFamily,
             lastTurnRoute: lastProfile.map { $0.selectedRoute.rawValue },
             lastRouteReason: lastProfile?.routeReason,
             lastMatchedSkills: lastProfile?.matchedSkillIDs ?? [],
@@ -608,11 +708,16 @@ final class RuntimeDiagnosticsService {
             workflowRunnerUniversalDocumentPlanEnabled: workflowRunnerUniversalDocumentPlanEnabled,
             orchestratorBoundaryReduced: orchestratorBoundaryReduced,
             toolRiskRegistryEnforced: toolRiskRegistryEnforced,
+            toolScopeFailClosed: toolScopeFailClosed,
             toolRiskMismatchBlockedCount: toolRiskMismatchBlockedCount,
             toolScopeMissingBlockedCount: toolScopeMissingBlockedCount,
             staleActionBindingBlockedCount: staleActionBindingBlockedCount,
             agentWorkOrderStableContractID: agentWorkOrderStableContractID,
             approvalStateSeparated: approvalStateSeparated,
+            capabilityFutureStopsRoute: capabilityFutureStopsRoute,
+            capabilityRequiresApprovalStopsRoute: capabilityRequiresApprovalStopsRoute,
+            capabilityUnavailableStopsRoute: capabilityUnavailableStopsRoute,
+            stubToolsHiddenFromPlanner: stubToolsHiddenFromPlanner,
             roomRuntimeStoreAvailable: roomRuntimeStoreAvailable,
             roomRuntimeStoreOwnsGoalContext: roomRuntimeStoreOwnsGoalContext,
             roomRuntimeStoreOwnsFileIntake: roomRuntimeStoreOwnsFileIntake,

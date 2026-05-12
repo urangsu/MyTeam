@@ -382,71 +382,77 @@ struct SettingsView: View {
             }
 
             Section {
-                DisclosureGroup(isExpanded: $showAdvancedModelSettings) {
-                    switch selectedProvider {
-                    case .openAI:
-                        LabeledContent("모델") {
-                            TextField("자동", text: $openAIModelId)
+                if AIModelPolicy.modelOverrideAllowed {
+                    DisclosureGroup(isExpanded: $showAdvancedModelSettings) {
+                        switch selectedProvider {
+                        case .openAI:
+                            LabeledContent("모델") {
+                                TextField("자동", text: $openAIModelId)
+                            }
+                        case .openRouter:
+                            LabeledContent("모델") {
+                                TextField("자동", text: $openRouterModelId)
+                            }
+                        default:
+                            EmptyView()
                         }
-                    case .openRouter:
-                        LabeledContent("모델") {
-                            TextField("자동", text: $openRouterModelId)
-                        }
-                    default:
-                        EmptyView()
-                    }
 
-                    // 발견된 모델 목록
-                    let discoveredModels = LLMConfigCatalog.shared.configs[selectedProvider]?.discoveredModels ?? []
-                    if !discoveredModels.isEmpty {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("발견된 모델")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                            ForEach(discoveredModels.prefix(8), id: \.self) { model in
-                                Button {
-                                    switch selectedProvider {
-                                    case .openAI:     openAIModelId = model
-                                    case .openRouter: openRouterModelId = model
-                                    default: break
-                                    }
-                                } label: {
-                                    HStack {
-                                        Text(model)
-                                            .font(.caption)
-                                            .foregroundStyle(.primary)
-                                        Spacer()
-                                        if (selectedProvider == .openAI && openAIModelId == model) ||
-                                           (selectedProvider == .openRouter && openRouterModelId == model) {
-                                            Image(systemName: "checkmark")
-                                                .font(.caption2)
-                                                .foregroundStyle(.blue)
+                        let discoveredModels = LLMConfigCatalog.shared.configs[selectedProvider]?.discoveredModels ?? []
+                        if !discoveredModels.isEmpty {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("발견된 모델")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                ForEach(discoveredModels.prefix(8), id: \.self) { model in
+                                    Button {
+                                        switch selectedProvider {
+                                        case .openAI:     openAIModelId = model
+                                        case .openRouter: openRouterModelId = model
+                                        default: break
+                                        }
+                                    } label: {
+                                        HStack {
+                                            Text(model)
+                                                .font(.caption)
+                                                .foregroundStyle(.primary)
+                                            Spacer()
+                                            if (selectedProvider == .openAI && openAIModelId == model) ||
+                                               (selectedProvider == .openRouter && openRouterModelId == model) {
+                                                Image(systemName: "checkmark")
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.blue)
+                                            }
                                         }
                                     }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        } else {
+                            HStack {
+                                Text(selectedProvider == .openRouter ? "모델 ID를 직접 입력하세요" : "자동 선택 (검증 후 갱신)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Button {
+                                    Task {
+                                        await LLMConfigCatalog.shared.refreshIfNeeded(selectedProvider)
+                                    }
+                                } label: {
+                                    Image(systemName: "arrow.clockwise")
+                                        .font(.caption)
                                 }
                                 .buttonStyle(.plain)
                             }
                         }
-                        .padding(.vertical, 4)
-                    } else {
-                        HStack {
-                            Text(selectedProvider == .openRouter ? "모델 ID를 직접 입력하세요" : "자동 선택 (검증 후 갱신)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                            Button {
-                                Task {
-                                    await LLMConfigCatalog.shared.refreshIfNeeded(selectedProvider)
-                                }
-                            } label: {
-                                Image(systemName: "arrow.clockwise")
-                                    .font(.caption)
-                            }
-                            .buttonStyle(.plain)
-                        }
+                    } label: {
+                        Label("고급 모델 설정", systemImage: "slider.horizontal.3")
                     }
-                } label: {
-                    Label("고급 모델 설정", systemImage: "slider.horizontal.3")
+                } else {
+                    LabeledContent("모델") {
+                        Text("Release pinned: \(AIModelPolicy.modelFamily)")
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
 
@@ -662,26 +668,38 @@ struct SettingsView: View {
         if let k = KeychainManager.load(key: "openAIAPIKey")     { openAIKey = k }
         if let k = KeychainManager.load(key: "claudeAPIKey")     { claudeKey = k }
         if let k = KeychainManager.load(key: "openRouterAPIKey") { openRouterKey = k }
-        openRouterModelId = UserDefaults.standard.string(forKey: "openRouterModelId")
-            ?? ""
+        if AIModelPolicy.modelOverrideAllowed {
+            openAIModelId = UserDefaults.standard.string(forKey: "openAIModelId") ?? ""
+            openRouterModelId = UserDefaults.standard.string(forKey: "openRouterModelId") ?? ""
+        } else {
+            openAIModelId = ""
+            openRouterModelId = ""
+        }
         if let raw = LLMProvider(rawValue: defaultProviderRaw) { selectedProvider = raw }
         dailyBriefingRefreshToken = UUID()
     }
 
     private func saveSettings() {
-        openAIModelId = openAIModelId.trimmingCharacters(in: .whitespacesAndNewlines)
-        openRouterModelId = openRouterModelId.trimmingCharacters(in: .whitespacesAndNewlines)
         KeychainManager.save(key: "geminiAPIKey",     value: geminiKey)
         KeychainManager.save(key: "openAIAPIKey",     value: openAIKey)
         KeychainManager.save(key: "claudeAPIKey",     value: claudeKey)
         KeychainManager.save(key: "openRouterAPIKey", value: openRouterKey)
-        if openAIModelId.isEmpty {
-            UserDefaults.standard.removeObject(forKey: "openAIModelId")
-        }
-        if openRouterModelId.isEmpty {
-            UserDefaults.standard.removeObject(forKey: "openRouterModelId")
+        if AIModelPolicy.modelOverrideAllowed {
+            openAIModelId = openAIModelId.trimmingCharacters(in: .whitespacesAndNewlines)
+            openRouterModelId = openRouterModelId.trimmingCharacters(in: .whitespacesAndNewlines)
+            if openAIModelId.isEmpty {
+                UserDefaults.standard.removeObject(forKey: "openAIModelId")
+            } else {
+                UserDefaults.standard.set(openAIModelId, forKey: "openAIModelId")
+            }
+            if openRouterModelId.isEmpty {
+                UserDefaults.standard.removeObject(forKey: "openRouterModelId")
+            } else {
+                UserDefaults.standard.set(openRouterModelId, forKey: "openRouterModelId")
+            }
         } else {
-            UserDefaults.standard.set(openRouterModelId, forKey: "openRouterModelId")
+            UserDefaults.standard.removeObject(forKey: "openAIModelId")
+            UserDefaults.standard.removeObject(forKey: "openRouterModelId")
         }
         defaultProviderRaw = selectedProvider.rawValue
     }
@@ -772,7 +790,7 @@ private struct DeskRoutingRow: View {
             .labelsHidden()
         }
 
-        if providerRaw == LLMProvider.openRouter.rawValue {
+        if providerRaw == LLMProvider.openRouter.rawValue && AIModelPolicy.modelOverrideAllowed {
             DisclosureGroup {
                 LabeledContent("모델") {
                     TextField("자동", text: $modelId)
@@ -782,6 +800,10 @@ private struct DeskRoutingRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+        } else if providerRaw == LLMProvider.openRouter.rawValue {
+            Text("Release pinned model")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 }
@@ -821,15 +843,22 @@ struct RuntimeDiagnosticsPlaceholder: View {
                     .foregroundStyle(.red)
             } else if let diag = diagnostics {
                 VStack(alignment: .leading, spacing: 8) {
-                    DiagnosticRow(label: "워크플로우", value: diag.isWorkflowRunning ? "실행 중" : "대기")
-                    DiagnosticRow(label: "이벤트", value: "\(diag.recentEventCount)건")
-                    if let summary = diag.latestEventSummary, !summary.isEmpty {
-                        DiagnosticRow(label: "최근", value: summary)
+                    if DiagnosticsVisibilityPolicy.allowsVerboseDiagnostics {
+                        DiagnosticRow(label: "워크플로우", value: diag.isWorkflowRunning ? "실행 중" : "대기")
+                        DiagnosticRow(label: "이벤트", value: "\(diag.recentEventCount)건")
+                        if let summary = diag.latestEventSummary, !summary.isEmpty {
+                            DiagnosticRow(label: "최근", value: summary)
+                        }
+                        let geminiStatus = (diag.geminiCooldownRemainingSeconds ?? 0) > 0
+                            ? "쿨다운 \(Int(diag.geminiCooldownRemainingSeconds ?? 0))s"
+                            : "준비됨"
+                        DiagnosticRow(label: "Gemini", value: geminiStatus)
+                    } else {
+                        DiagnosticRow(label: "Build", value: diag.buildConfiguration)
+                        DiagnosticRow(label: "Debug", value: diag.debugDiagnosticsVisible ? "visible" : "hidden")
+                        DiagnosticRow(label: "PlanRunner", value: diag.planRunnerToggleVisible ? "visible" : "hidden")
+                        DiagnosticRow(label: "Verbose", value: diag.verboseDiagnosticsVisible ? "visible" : "hidden")
                     }
-                    let geminiStatus = (diag.geminiCooldownRemainingSeconds ?? 0) > 0
-                        ? "쿨다운 \(Int(diag.geminiCooldownRemainingSeconds ?? 0))s"
-                        : "준비됨"
-                    DiagnosticRow(label: "Gemini", value: geminiStatus)
                 }
             } else {
                 Text("새로고침을 눌러 진단 정보를 불러옵니다.")
