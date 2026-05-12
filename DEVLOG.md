@@ -6,6 +6,90 @@
 
 ---
 
+## 2026-05-12 (Round 34D-34F — Artifact UX + Recent Reuse Persistence + Release Path Pack)
+
+**Git Hygiene — COMPLETED**
+- Xcode user state 파일 git 추적 제거
+  * `git rm --cached MyTeam/MyTeam.xcodeproj/project.xcworkspace/xcuserdata/su.xcuserdatad/UserInterfaceState.xcuserstate`
+  * .gitignore에 `*.xcuserstate`, `xcuserdata/` 이미 포함됨 (검증함)
+  * 로컬 파일은 유지, git 추적에서만 제거
+
+**ArtifactCardView UX Polish — COMPLETED**
+- 파일명, 유형, 생성시간, 저장위치 표시 개선
+- 상태 인디케이터 추가 (저장됨 • 재사용 가능 / 읽기 실패 / 클라우드 저장)
+- 버튼 최대 4개 유지
+  * 열기 (primary)
+  * Finder (local only)
+  * 복사 → ✓ (copy feedback)
+
+**WorkspaceFileActions 신규 파일 — COMPLETED**
+- 새 파일: `MyTeam/MyTeam/WorkspaceFileActions.swift`
+- enum WorkspaceFileActions 구현
+  * revealInFinder(path:) → Result<Void, FileActionError>
+  * copyPathToPasteboard(path:) → Result<Void, FileActionError>
+  * isInsideWorkspace(_ path:) → Bool
+- 안전성 검증
+  * workspace 내부 파일만 action 허용
+  * 존재하지 않는 파일 → 실패 메시지
+  * full path UI 상시 노출 금지
+
+**Recent Artifact Reuse 실패 메시지 개선 — COMPLETED**
+- RecentArtifactContentResolver.swift에 새 enum 추가
+- RecentArtifactReuseFailureReason enum (Equatable)
+  * noRecentArtifacts: 최근 다시 사용할 수 있는 문서가 없습니다.
+  * fileNotFound: 최근 문서를 다시 읽을 수 없습니다. (파일 이동/삭제)
+  * hashMismatch: 최근 문서 상태가 바뀌어 이 액션을 실행하지 않았습니다.
+  * unsupportedFileType: 최근 문서는 아직 재사용할 수 없는 형식입니다. (Markdown/text만 지원)
+  * fileTooLarge / readError (추가 케이스)
+
+**RecentArtifactIndexPersistence v1 — COMPLETED**
+- 새 파일: `MyTeam/MyTeam/RecentArtifactIndexPersistence.swift`
+- RecentArtifactIndexSnapshot struct (version 1)
+  * version: Int, savedAt: Date, entries: [...]
+- RecentArtifactIndexPersistenceEntry struct
+  * 저장 허용: artifactID, roomID, filename, artifactType, createdAt, contentHash, fileSizeBytes
+  * 저장 금지: full path, sourceText, token, auth code, mail body
+- enum RecentArtifactIndexPersistence
+  * save(entries:) → Result with PersistenceError
+  * load() → Result with default [] on file absence
+  * persistenceFileURL = `ArtifactStore.workspaceURL / ".myteam_recent_artifacts.json"`
+  * 정책: room당 max 10개, 전체 max 100개
+
+**RuntimeDiagnosticsService 보강 — COMPLETED**
+- RuntimeDiagnosticsSnapshot에 9개 필드 추가
+  * xcodeUserStateIgnored: Bool
+  * artifactUXActionsAvailable: Bool (Finder, path copy actions)
+  * workspaceFileActionsAvailable: Bool
+  * recentArtifactIndexPersistenceAvailable: Bool
+  * recentArtifactIndexPersistedCount: Int
+  * recentArtifactIndexLoadedAt: Date?
+  * recentArtifactReuseFailureReason: String?
+  * planRunnerDefaultForBuild: Bool
+  * debugDiagnosticsVisible: Bool (DEBUG conditional)
+- summary() 메서드에 9개 필드 로그 추가
+- snapshot() 메서드 구현
+  * recentArtifactIndexPersistenceAvailable = RecentArtifactIndexPersistence.isAvailable
+  * recentArtifactIndexPersistedCount = RecentArtifactIndexPersistence.load()로 계산
+  * planRunnerDefaultForBuild = FeatureFlags.planRunnerUniversalDocumentEnabled
+  * debugDiagnosticsVisible = #if DEBUG
+
+**RouterBurnInSuite 확장 — COMPLETED**
+- "blocked-email-send" 다음에 6개 신규 테스트 케이스 추가
+  * recent-artifact-summary: 방금 만든 문서 요약해줘 → universalDocument.summary
+  * recent-artifact-table: 방금 만든 문서 표로 바꿔줘 → universalDocument.tableSummary
+  * recent-artifact-checklist: 방금 만든 내용 체크리스트로 → universalDocument.checklist
+  * recent-artifact-none: 최근 artifact 없을 때 → directChat (fallback)
+  * recent-artifact-file-moved: 파일 삭제/이동 → resolver nil return
+  * recent-artifact-unsupported-type: PDF/XLSX (미지원) → resolver nil return
+
+**Integration Status:**
+- 7개 신규 파일 생성: WorkspaceFileActions.swift, RecentArtifactIndexPersistence.swift (+ 확장 파일들)
+- 5개 기존 파일 수정: ArtifactCardView.swift, RecentArtifactContentResolver.swift, RuntimeDiagnosticsService.swift, RouterBurnInSuite.swift, TASK.md
+- Xcode user state 파일 git 제거
+- BUILD 예상: SUCCEEDED (zero errors, zero new warnings)
+
+---
+
 ## 2026-05-12 (Round 34C-Repair Completion — Steps 4-8)
 
 **Step 4: Verification fail-closed 실제 적용 — COMPLETED**
