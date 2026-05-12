@@ -343,6 +343,7 @@
 		D28000000000000000000026 /* BriefingActionDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28000000000000000000008 /* BriefingActionDispatcher.swift */; };
 		D28000000000000000000028 /* RecentArtifactIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28000000000000000000009 /* RecentArtifactIndex.swift */; };
 		D28000000000000000000029 /* ArtifactPersistencePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2800000000000000000000A /* ArtifactPersistencePolicy.swift */; };
+		D2800000000000000000002D /* StableContentHash.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2800000000000000000002C /* StableContentHash.swift */; };
 		D28000000000000000000027 /* BriefingActionIntegrityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = D28000000000000000000007 /* BriefingActionIntegrityPolicy.swift */; };
 		D25000000000000000000011 /* GoogleOAuthConfigStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D25000000000000000000001 /* GoogleOAuthConfigStore.swift */; };
 		D25000000000000000000012 /* GoogleOAuthConfigValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = D25000000000000000000002 /* GoogleOAuthConfigValidator.swift */; };
@@ -541,6 +542,7 @@
 		1FCD3CD0D938F5EC40F8BAF6 /* 치코_clockout_046.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_clockout_046.png"; path = "Resources/Sprites/치코/치코_clockout_046.png"; sourceTree = "<group>"; };
 		1FE32B322A651895319EAC69 /* UniversalDocumentSkillService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UniversalDocumentSkillService.swift; sourceTree = "<group>"; };
 		B1E7F1E2AA00112233445566 /* RoomGoalContext.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RoomGoalContext.swift; sourceTree = "<group>"; };
+		D2800000000000000000002C /* StableContentHash.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift.source; path = StableContentHash.swift; sourceTree = "<group>"; };
 		B1E7F1E2AA00112233445567 /* GoalContextEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GoalContextEngine.swift; sourceTree = "<group>"; };
 		B1E7F1E2AA00112233445568 /* ResultRecoveryPolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResultRecoveryPolicy.swift; sourceTree = "<group>"; };
 		B19D61E3A0014AAAB0000017 /* RouteDecision.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RouteDecision.swift; sourceTree = "<group>"; };
@@ -3236,6 +3238,7 @@
 				4A797C4B00F3DAD8D954AA38 /* UniversalDocumentSkillType.swift in Sources */,
 				361203E7E6DF878A2A1BB398 /* UniversalDocumentSkillRequest.swift in Sources */,
 				8687D9BE564A2FB8309F5C4D /* UniversalDocumentSkillService.swift in Sources */,
+			D2800000000000000000002D /* StableContentHash.swift in Sources */,
 				7C2D4D5480E3304C54D83B3B /* UniversalDocumentArtifactWriter.swift in Sources */,
 			
 				E53C44F0DAFCBFB7BC86E10D /* LocalSchedulerCommandService.swift in Sources */,

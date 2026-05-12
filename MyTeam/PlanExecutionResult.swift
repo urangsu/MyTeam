@@ -21,4 +21,19 @@ struct PlanExecutionResult: Equatable {
     let message: String
     let artifactID: UUID?
     let failureReason: FailureReason
+
+    /// artifact count for diagnostics aggregation
+    /// - completed + artifactID → 1
+    /// - completed + no artifactID → 0
+    /// - fellBackToLegacy + artifactID → 1
+    /// - fellBackToLegacy + no artifactID → 0
+    /// - failed / cancelled → 0
+    var artifactCountForDiagnostics: Int {
+        switch status {
+        case .completed, .fellBackToLegacy:
+            return artifactID == nil ? 0 : 1
+        case .failed, .cancelled:
+            return 0
+        }
+    }
 }

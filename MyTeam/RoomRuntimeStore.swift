@@ -67,6 +67,35 @@ final class RoomRuntimeStore: ObservableObject {
         roomGoalContexts[roomID] = context
     }
 
+    func updateArtifactRuntimeStatus(
+        roomID: UUID,
+        persistenceStatus: ArtifactPersistenceStatusType? = nil,
+        verificationStatus: VerificationStatusType? = nil,
+        verificationFailureReason: String? = nil,
+        planExecutionStatus: PlanExecutionStatusType? = nil
+    ) {
+        var context = roomGoalContexts[roomID] ?? RoomGoalContext(roomID: roomID)
+
+        if let persistenceStatus {
+            context.lastArtifactPersistenceStatus = persistenceStatus
+        }
+
+        if let verificationStatus {
+            context.lastVerificationStatus = verificationStatus
+        }
+
+        if let verificationFailureReason {
+            context.lastVerificationFailureReason = verificationFailureReason
+        }
+
+        if let planExecutionStatus {
+            context.lastPlanExecutionStatus = planExecutionStatus
+        }
+
+        context.updatedAt = Date()
+        roomGoalContexts[roomID] = context
+    }
+
     func roomGoalContext(for roomID: UUID) -> RoomGoalContext? {
         roomGoalContexts[roomID]
     }

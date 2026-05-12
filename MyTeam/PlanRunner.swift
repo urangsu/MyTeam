@@ -165,7 +165,8 @@ final class PlanRunner {
                         content: verifiedMarkdown,
                         request: request,
                         roomID: roomID,
-                        manager: manager
+                        manager: manager,
+                        resultStatus: .succeeded
                     )
                     if let artifactUUID = UUID(uuidString: artifact.id) {
                         await MainActor.run {

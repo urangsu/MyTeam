@@ -16,10 +16,17 @@ enum UniversalDocumentArtifactWriter {
         content: String,
         request: UniversalDocumentSkillRequest,
         roomID: UUID,
-        manager: AgentWindowManager
+        manager: AgentWindowManager,
+        resultStatus: ToolResultStatus = .succeeded
     ) async throws -> IndexedArtifact {
         let markdown = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !markdown.isEmpty else { throw UniversalDocumentArtifactWriterError.emptyMarkdown }
+
+        // ArtifactPersistencePolicy: 저장 가능 여부 확인
+        guard ArtifactPersistencePolicy.shouldPersist(resultStatus: resultStatus) else {
+            AppLog.warning("[UniversalDocumentArtifactWriter] artifact 저장 skipped: status=\(resultStatus.rawValue)")
+            throw UniversalDocumentArtifactWriterError.emptyMarkdown
+        }
 
         let filename = UniversalDocumentSkillService.outputFilename(for: request)
         let title = UniversalDocumentSkillService.documentTitle(for: request)
@@ -50,22 +57,25 @@ enum UniversalDocumentArtifactWriter {
 
         await ArtifactStore.shared.registerArtifact(artifact)
 
-        // RecentArtifactIndex에 추가 (metadata only)
-        let contentHash = markdown.data(using: .utf8).map { data in
-            String(data.hashValue, radix: 16)
-        } ?? ""
-        let entry = RecentArtifactIndexEntry(
-            artifactID: artifact.id,
-            roomID: roomID,
-            filename: filename,
-            artifactType: "text",
-            createdAt: Date(),
-            contentHash: contentHash,
-            fileSizeBytes: Int64(markdown.utf8.count)
-        )
-        manager.addRecentArtifactIndexEntry(entry)
+        // ArtifactPersistencePolicy: index 추가 여부 확인
+        if ArtifactPersistencePolicy.shouldIndexArtifact(resultStatus: resultStatus) {
+            // RecentArtifactIndex에 추가 (metadata only)
+            let contentHash = StableContentHash.sha256Hex(markdown)
+            let entry = RecentArtifactIndexEntry(
+                artifactID: artifact.id,
+                roomID: roomID,
+                filename: filename,
+                artifactType: "text",
+                createdAt: Date(),
+                contentHash: contentHash,
+                fileSizeBytes: Int64(markdown.utf8.count)
+            )
+            manager.addRecentArtifactIndexEntry(entry)
+            AppLog.info("[UniversalDocumentArtifactWriter] artifact 저장 & indexed: \(filename) workflowID=\(workflowID.uuidString.prefix(8)) roomID=\(roomID.uuidString.prefix(8))")
+        } else {
+            AppLog.info("[UniversalDocumentArtifactWriter] artifact 저장만 (no index): \(filename) status=\(resultStatus.rawValue)")
+        }
 
-        AppLog.info("[UniversalDocumentArtifactWriter] artifact 저장: \(filename) workflowID=\(workflowID.uuidString.prefix(8)) roomID=\(roomID.uuidString.prefix(8))")
         return artifact
     }
 

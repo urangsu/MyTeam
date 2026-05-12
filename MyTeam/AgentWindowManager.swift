@@ -260,6 +260,23 @@ class AgentWindowManager: ObservableObject {
     }
 
     @MainActor
+    func updateArtifactRuntimeStatus(
+        roomID: UUID,
+        persistenceStatus: ArtifactPersistenceStatusType? = nil,
+        verificationStatus: VerificationStatusType? = nil,
+        verificationFailureReason: String? = nil,
+        planExecutionStatus: PlanExecutionStatusType? = nil
+    ) {
+        roomRuntimeStore.updateArtifactRuntimeStatus(
+            roomID: roomID,
+            persistenceStatus: persistenceStatus,
+            verificationStatus: verificationStatus,
+            verificationFailureReason: verificationFailureReason,
+            planExecutionStatus: planExecutionStatus
+        )
+    }
+
+    @MainActor
     func roomGoalContext(for roomID: UUID) -> RoomGoalContext? {
         roomRuntimeStore.roomGoalContext(for: roomID)
     }

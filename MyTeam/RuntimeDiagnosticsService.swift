@@ -461,7 +461,7 @@ final class RuntimeDiagnosticsService {
         }
         let toolResultStatusModelAvailable = true
         let dryRunSuccessSeparated = true
-        let duplicateBuildFileWarningResolved = false  // Fixed in Round 34C-Integration
+        let duplicateBuildFileWarningResolved = true  // Fixed in Round 34C-Integration
 
         return RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),

@@ -944,6 +944,151 @@ enum RouterBurnInSuite {
             expectedGoalType: "unknown",
             shouldRequireApproval: true,
             notes: "email send is blocked"
+        ),
+        // Step 7 additions: Result status artifacts, verification errors, recent index priority
+        .init(
+            id: "artifact-verification-success",
+            message: "보고서 초안 만들어줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.report-draft",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "artifact workflow with successful verification should persist and index"
+        ),
+        .init(
+            id: "artifact-verification-warning",
+            message: "간단한 요약 만들어줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.document-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "verification warning allows storage with review note, index registration succeeds"
+        ),
+        .init(
+            id: "artifact-verification-error-recovery",
+            message: "짧은 내용 정리해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.document-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "verification error triggers recovery retry, success on retry allows storage and index"
+        ),
+        .init(
+            id: "artifact-verification-error-failed",
+            message: "5자 이하 작업 해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.document-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "verification error with failed recovery prevents storage and blocks index registration"
+        ),
+        .init(
+            id: "recent-index-priority-room-scoped",
+            message: "방금 만든 거 표로 정리해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.table-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: true,
+            shouldRequireApproval: false,
+            notes: "RecentArtifactIndex room-scoped entry takes priority over global recent artifacts"
+        ),
+        .init(
+            id: "recent-index-priority-fallback-context",
+            message: "이전 결과 참조해서 요약해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.document-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: true,
+            shouldRequireApproval: false,
+            notes: "RoomGoalContext.recentArtifactIDs fallback when index unavailable"
+        ),
+        .init(
+            id: "recent-index-content-hash-validation",
+            message: "이전 작업 수정해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.document-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: true,
+            shouldRequireApproval: false,
+            notes: "RecentArtifactIndex content hash validation ensures artifact freshness"
+        ),
+        .init(
+            id: "result-status-succeeded-artifact-indexed",
+            message: "작업 결과 저장해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.document-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "ToolResultStatus.succeeded triggers artifact persistence and RecentArtifactIndex registration"
+        ),
+        .init(
+            id: "result-status-dryrun-no-artifact",
+            message: "시뮬레이션으로 작업해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.document-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "ToolResultStatus.dryRun prevents artifact persistence and index registration"
+        ),
+        .init(
+            id: "result-status-blocked-no-artifact",
+            message: "보안 확인 후 작업해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.document-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "ToolResultStatus.blocked prevents artifact persistence, index registration forbidden"
+        ),
+        .init(
+            id: "result-status-failed-no-artifact",
+            message: "실패한 작업 재시도해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.document-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "ToolResultStatus.failed prevents artifact persistence and index registration"
+        ),
+        .init(
+            id: "plan-execution-artifact-count-completed-with-id",
+            message: "최종 보고서 작업 완료",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.report-draft",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "PlanExecutionResult.completed with artifactID = artifactCount 1 for diagnostics"
+        ),
+        .init(
+            id: "plan-execution-artifact-count-completed-without-id",
+            message: "작업만 진행해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.document-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "PlanExecutionResult.completed without artifactID = artifactCount 0 for diagnostics"
+        ),
+        .init(
+            id: "artifact-persistent-cross-room-isolation",
+            message: "다른 방에서 만든 거 사용해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.document-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: false,
+            shouldRequireApproval: false,
+            notes: "RecentArtifactIndex is room-scoped, cross-room fallback is prevented"
         )
     ]
 
