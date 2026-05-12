@@ -1,5 +1,20 @@
 # System Bottleneck Audit — Round 30C
 
+## Round 37A-37D Result
+
+### Fixed / Reduced
+- UserDefaults memory leakage risk
+- automation task prompt persistence risk
+- Release/debug ambiguity
+- dynamic model drift in release
+- diagnostics overexposure
+
+### Still Remaining
+- encrypted memory store
+- ArtifactStore relative path migration
+- release runtime QA
+- full connector QA
+
 ## Executive Summary
 - Overall risk: medium-high
 - 가장 큰 병목: `WorkflowOrchestrator`가 아직 route 결정, workflow 실행, state 갱신, QA trace를 한 곳에서 계속 끌고 간다
@@ -230,6 +245,21 @@ Daily Briefing이 상태 표시를 넘어 실행 가능한 액션 허브로 정�
 - Verification fail-closed by document type
 - Release/Debug PlanRunner path distinction
 - Deferred Runtime QA
+
+## Round 36A-36D Result
+
+### Fixed / Reduced
+- ToolExecutionLayer skeleton gap
+- Planner-visible stub tool risk
+- Capability future/requiresApproval route ambiguity
+- ToolResultStatus aggregation drift
+- ActionLog redaction regression risk
+
+### Still Remaining
+- Memory Security Pack
+- Release AI model pinning
+- ArtifactStore relative path migration
+- Full deferred runtime QA
 
 ## Round 35B-35E Note
 

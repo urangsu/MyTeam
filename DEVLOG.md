@@ -6,6 +6,45 @@
 
 ---
 
+## 2026-05-13 (Round 37A-37D — Memory Security + Release Stability Pack)
+
+- MemorySensitivity / MemoryRetentionPolicy 추가
+- memory write guard 추가
+- automation task prompt redaction
+- Release / DEBUG diagnostics 분리
+- AIService release model pinning
+- diagnostics minimization
+- Deferred Runtime QA Backlog 재분류
+- 외부 write 없음
+- Gmail API 없음
+- Calendar write 없음
+
+## 2026-05-12 (Round 36A-36D — Tool Execution Layer Real Adoption + Capability Surface Pack)
+
+**Round 36A-36D — IN PROGRESS / IMPLEMENTATION**
+
+**Tool Execution Layer Adoption**
+- ToolExecutionLayer를 실제 tool execution 관문으로 확장
+- ReadFile / WriteTextFile / WorkspaceFileActions / Artifact actions를 tool layer 경유로 정리
+- ToolRegistry risk / scope authoritative enforcement 유지
+- ToolResultStatus succeeded / dryRun / blocked / failed / cancelled 정리
+
+**Capability / Registry Surface**
+- CapabilityGate future / requiresApproval / unavailable route stop 반영
+- Google Slides / Sheets stub tool planner 노출 차단
+- Release / DEBUG tool availability matrix 정리
+
+**Action Log / Diagnostics**
+- ActionLog redaction 회귀 방지
+- RuntimeDiagnostics에 tool execution path 상태 추가
+- RouteResolver side-effect free 계약 유지
+
+**Deferred Runtime QA Backlog 유지**
+- 실제 UI QA는 별도 라운드로 유지
+- Gmail API / Calendar write / OAuth 구조 / StoreKit / entitlement 미수정
+
+---
+
 ## 2026-05-12 (Round 35B-35E — Runtime Safety Closure + File Workflow Completion Pack)
 
 **Round 35B-35E — IN PROGRESS / IMPLEMENTATION**

@@ -12,13 +12,25 @@
 - Notes: `xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug build`
 
 ## Deferred Runtime QA Backlog
-- Finder 열기 실제 UI 확인
-- 경로 복사 실제 UI 확인
-- fileImporter sandbox UI 확인
-- multi-room active task isolation 실제 UI 확인
-- PlanRunner flag true app route trace 확인
-- blocked capability actual app route early return UI 확인
-- destructive keyword 과차단 refinement
+### UI Interaction QA
+- Finder open
+- path copy
+- fileImporter sandbox
+- action chip tap
+
+### Multi-room Runtime QA
+- active task isolation
+- wrong-room artifact reuse
+- pending delegation resume
+
+### Connector QA
+- Google Calendar live OAuth
+- Gmail metadata later
+
+### Release QA
+- debug toggles hidden
+- diagnostics minimized
+- PlanRunner default false
 
 ## 2. Router Regression
 | 입력 | 기대 route | 금지 route | 결과 | 비고 |

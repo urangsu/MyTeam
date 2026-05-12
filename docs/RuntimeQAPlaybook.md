@@ -76,3 +76,25 @@ defaults write com.urang.MyTeam MyTeam.FeatureFlags.planRunnerUniversalDocumentE
 - Forbidden routes: 앱스토어 설명문, 개인정보처리방침, 파일 요약, 보고서, PPT, 엑셀
 - ConnectorGuard: calendarRead, mailMetadataRead, mailBodyRead, mailSummarize, mailDraft, mailSend, calendarCreate, calendarModify, automaticLogin, destructiveFileAction
 - diagnostics: connector blocked actions are truncated, no tokens or paths
+
+## 8. Deferred Runtime QA Backlog
+
+### UI Interaction QA
+- Finder open
+- path copy
+- fileImporter sandbox
+- action chip tap
+
+### Multi-room Runtime QA
+- active task isolation
+- wrong-room artifact reuse
+- pending delegation resume
+
+### Connector QA
+- Google Calendar live OAuth
+- Gmail metadata later
+
+### Release QA
+- debug toggles hidden
+- diagnostics minimized
+- PlanRunner default false
