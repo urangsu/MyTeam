@@ -8,6 +8,34 @@ struct RecentArtifactContentResolution: Equatable {
     let binding: RecentArtifactSourceBinding
 }
 
+// MARK: - Recent Artifact Reuse Failure Reason
+
+enum RecentArtifactReuseFailureReason: Equatable {
+    case noRecentArtifacts
+    case fileNotFound
+    case hashMismatch
+    case fileTooLarge
+    case unsupportedFileType
+    case readError
+
+    var message: String {
+        switch self {
+        case .noRecentArtifacts:
+            return "최근 다시 사용할 수 있는 문서가 없습니다.\n먼저 문서를 하나 만든 뒤 \"방금 만든 문서 요약해줘\"처럼 요청해 주세요."
+        case .fileNotFound:
+            return "최근 문서를 다시 읽을 수 없습니다.\n파일이 이동되었거나 삭제되었을 수 있습니다."
+        case .hashMismatch:
+            return "최근 문서 상태가 바뀌어 이 액션을 실행하지 않았습니다.\n오늘 브리핑을 다시 열어 최신 액션으로 진행해 주세요."
+        case .fileTooLarge:
+            return "최근 문서는 너무 커서 다시 사용할 수 없습니다.\n더 작은 파일을 만들어 주세요."
+        case .unsupportedFileType:
+            return "최근 문서는 아직 재사용할 수 없는 형식입니다.\n현재는 Markdown과 텍스트 문서만 지원합니다."
+        case .readError:
+            return "최근 문서를 읽는 중 문제가 발생했습니다.\n다시 시도해 주세요."
+        }
+    }
+}
+
 enum RecentArtifactContentResolver {
     static let isAvailable: Bool = true
     static let supportedExtensions: [String] = ["md", "markdown", "txt"]

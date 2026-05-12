@@ -42,73 +42,109 @@ struct ArtifactCardView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
+            // Header: Title + Type + Date
             HStack(spacing: 6) {
                 Text(typeEmoji)
                     .font(.title2)
-                Text(artifact.title)
-                    .font(.headline)
-                    .lineLimit(1)
-                Text(typeLabel)
-                    .font(.caption2.weight(.semibold))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(Color.secondary.opacity(0.15)))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(artifact.title)
+                        .font(.headline)
+                        .lineLimit(1)
+                    Text(typeLabel)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundColor(.secondary)
+                }
                 Spacer()
                 Text(formattedDate)
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
 
+            // File info: filename + storage
             HStack(spacing: 8) {
-                Text("파일명: \(artifact.filename)")
+                Text(artifact.filename)
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                 Spacer()
-                Text("저장 위치: \(storageLabel)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                Text(storageLabel)
+                    .font(.caption2)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color.secondary.opacity(0.1)))
             }
 
+            // Status indicator
+            statusView
+
+            // Preview (optional)
             if !artifact.preview.isEmpty {
                 Text(artifact.preview)
                     .font(.caption)
                     .foregroundColor(.secondary)
-                    .lineLimit(3)
+                    .lineLimit(2)
             }
 
-            if artifact.type != .cloud && !fileExists {
-                Text("파일을 찾을 수 없습니다.")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
-
-            HStack(spacing: 8) {
-                // 열기 — cloud: URL open, local: NSWorkspace file open
+            // Actions (max 4 buttons)
+            HStack(spacing: 6) {
+                // Primary: open
                 Button("열기") { openArtifact() }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
                     .disabled(!canInteract)
 
-                // Finder — cloud artifact에서는 숨김
+                // Secondary: Finder (local only)
                 if artifact.type != .cloud {
-                    Button("Finder에서 열기") { revealInFinder() }
+                    Button("Finder") { revealInFinder() }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                         .disabled(!canInteract)
                 }
 
-                // 경로/URL 복사
-                Button(copied ? "복사됨" : "경로 복사") { copyPath() }
+                // Copy path
+                Button(copied ? "✓" : "복사") { copyPath() }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .disabled(!canInteract)
+
+                Spacer()
             }
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 10).fill(Color(nsColor: .controlBackgroundColor)))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.secondary.opacity(0.2)))
+    }
+
+    // MARK: - Status View
+
+    private var statusView: some View {
+        HStack(spacing: 4) {
+            Image(systemName: statusIcon)
+                .font(.caption2)
+                .foregroundColor(statusColor)
+            Text(statusText)
+                .font(.caption2)
+                .foregroundColor(statusColor)
+        }
+    }
+
+    private var statusIcon: String {
+        if artifact.type == .cloud { return "cloud.fill" }
+        if !fileExists { return "exclamationmark.circle" }
+        return "checkmark.circle.fill"
+    }
+
+    private var statusColor: Color {
+        if artifact.type == .cloud { return .blue }
+        if !fileExists { return .orange }
+        return .green
+    }
+
+    private var statusText: String {
+        if artifact.type == .cloud { return "클라우드 저장" }
+        if !fileExists { return "읽기 실패" }
+        return "저장됨 • 재사용 가능"
     }
 
     // MARK: - Helpers
@@ -138,15 +174,24 @@ struct ArtifactCardView: View {
     }
 
     private func revealInFinder() {
-        guard let url = resolvedURL, canInteract else { return }
-        NSWorkspace.shared.activateFileViewerSelecting([url])
+        guard canInteract else { return }
+        let result = WorkspaceFileActions.revealInFinder(path: artifact.path)
+        switch result {
+        case .success:
+            AppLog.debug("Artifact revealed in Finder: \(artifact.filename)")
+        case .failure(let error):
+            AppLog.warning("Finder reveal failed: \(error.message)")
+        }
     }
 
     private func copyPath() {
-        guard !artifact.path.isEmpty, canInteract else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(artifact.path, forType: .string)
-        copied = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
+        guard canInteract else { return }
+        let result = WorkspaceFileActions.copyPathToPasteboard(path: artifact.path)
+        switch result {
+        case .success:
+            copied = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
+        case .failure(let error):
+            AppLog.warning("Path copy failed: \(error.message)")
     }
 }

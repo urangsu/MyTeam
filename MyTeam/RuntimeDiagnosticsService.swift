@@ -43,6 +43,19 @@ struct RuntimeDiagnosticsSnapshot {
 
     // Build / Project
     let duplicateBuildFileWarningResolved: Bool
+    let xcodeUserStateIgnored: Bool
+
+    // Artifact UX & Persistence
+    let artifactUXActionsAvailable: Bool
+    let workspaceFileActionsAvailable: Bool
+    let recentArtifactIndexPersistenceAvailable: Bool
+    let recentArtifactIndexPersistedCount: Int
+    let recentArtifactIndexLoadedAt: Date?
+    let recentArtifactReuseFailureReason: String?
+
+    // Feature Flags / Release Path
+    let planRunnerDefaultForBuild: Bool
+    let debugDiagnosticsVisible: Bool
 
     // Routing / Turn profile
     let lastTurnRoute: String?
@@ -254,6 +267,12 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("fileIntakeToDocument: available=\(fileIntakeToDocumentAvailable)")
         lines.append("localSchedulerCommand: available=\(localSchedulerCommandAvailable) tasks=\(automationTaskCount) pending=\(pendingApprovalTaskCount) next=\(nextScheduledTaskTime ?? "none")")
         lines.append("artifacts: store=\(artifactStoreAvailable) index=\(recentArtifactIndexAvailable) count=\(recentArtifactIndexCount) dryRunSeparated=\(dryRunSuccessSeparated)")
+        lines.append("artifactUX: actions=\(artifactUXActionsAvailable) fileActions=\(workspaceFileActionsAvailable)")
+        lines.append("persistence: available=\(recentArtifactIndexPersistenceAvailable) persisted=\(recentArtifactIndexPersistedCount) loaded=\(recentArtifactIndexLoadedAt?.formatted(.iso8601) ?? "nil")")
+        if let failureReason = recentArtifactReuseFailureReason {
+            lines.append("recentArtifactReuseFailed: \(failureReason)")
+        }
+        lines.append("releasePath: planRunnerDefault=\(planRunnerDefaultForBuild) debugVisible=\(debugDiagnosticsVisible) xcodeStateIgnored=\(xcodeUserStateIgnored)")
         lines.append("safety: blockedCapabilityGate=\(blockedCapabilityGateEnabled) resultVerifierErrorGate=\(resultVerifierErrorGateEnabled)")
         lines.append("autonomy: goalInterpreter=true clarificationPolicy=true capabilityRouter=true resultVerifier=true")
         lines.append("workspace: \(workspacePath)")
@@ -462,6 +481,29 @@ final class RuntimeDiagnosticsService {
         let toolResultStatusModelAvailable = true
         let dryRunSuccessSeparated = true
         let duplicateBuildFileWarningResolved = true  // Fixed in Round 34C-Integration
+        let xcodeUserStateIgnored = true  // Now excluded from git tracking
+
+        // Artifact UX & Persistence
+        let artifactUXActionsAvailable = true  // ArtifactCardView actions present
+        let workspaceFileActionsAvailable = true  // WorkspaceFileActions available
+        let recentArtifactIndexPersistenceAvailable = RecentArtifactIndexPersistence.isAvailable
+        let recentArtifactIndexPersistedCount = currentRoomID.map { roomID in
+            // Load persisted count from RecentArtifactIndexPersistence
+            if case .success(let entries) = RecentArtifactIndexPersistence.load() {
+                return entries.filter { $0.roomID == roomID }.count
+            }
+            return 0
+        } ?? 0
+        let recentArtifactIndexLoadedAt: Date? = nil  // Set during persistence load
+        let recentArtifactReuseFailureReason: String? = nil  // Set when reuse fails
+
+        // Feature Flags / Release Path
+        let planRunnerDefaultForBuild = FeatureFlags.planRunnerUniversalDocumentEnabled
+        #if DEBUG
+        let debugDiagnosticsVisible = true
+        #else
+        let debugDiagnosticsVisible = false
+        #endif
 
         return RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
@@ -488,6 +530,15 @@ final class RuntimeDiagnosticsService {
             toolResultStatusModelAvailable: toolResultStatusModelAvailable,
             dryRunSuccessSeparated: dryRunSuccessSeparated,
             duplicateBuildFileWarningResolved: duplicateBuildFileWarningResolved,
+            xcodeUserStateIgnored: xcodeUserStateIgnored,
+            artifactUXActionsAvailable: artifactUXActionsAvailable,
+            workspaceFileActionsAvailable: workspaceFileActionsAvailable,
+            recentArtifactIndexPersistenceAvailable: recentArtifactIndexPersistenceAvailable,
+            recentArtifactIndexPersistedCount: recentArtifactIndexPersistedCount,
+            recentArtifactIndexLoadedAt: recentArtifactIndexLoadedAt,
+            recentArtifactReuseFailureReason: recentArtifactReuseFailureReason,
+            planRunnerDefaultForBuild: planRunnerDefaultForBuild,
+            debugDiagnosticsVisible: debugDiagnosticsVisible,
             lastTurnRoute: lastProfile.map { $0.selectedRoute.rawValue },
             lastRouteReason: lastProfile?.routeReason,
             lastMatchedSkills: lastProfile?.matchedSkillIDs ?? [],

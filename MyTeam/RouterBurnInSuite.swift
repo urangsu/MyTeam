@@ -945,6 +945,73 @@ enum RouterBurnInSuite {
             shouldRequireApproval: true,
             notes: "email send is blocked"
         ),
+        // Round 34D-34F additions: Recent artifact reuse, persistence, UX polish
+        .init(
+            id: "recent-artifact-summary",
+            message: "방금 만든 문서 요약해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.document-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: true,
+            shouldRequireApproval: false,
+            notes: "recent artifact reuse: summary type"
+        ),
+        .init(
+            id: "recent-artifact-table",
+            message: "방금 만든 문서 표로 바꿔줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.table-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: true,
+            shouldRequireApproval: false,
+            notes: "recent artifact reuse: table type"
+        ),
+        .init(
+            id: "recent-artifact-checklist",
+            message: "방금 만든 내용 체크리스트로 바꿔줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.checklist",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: true,
+            shouldRequireApproval: false,
+            notes: "recent artifact reuse: checklist type"
+        ),
+        .init(
+            id: "recent-artifact-none",
+            message: "방금 만든 문서 요약해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: false,
+            shouldRequireApproval: false,
+            notes: "no recent artifact available -> fallback to direct chat or suggest creation"
+        ),
+        .init(
+            id: "recent-artifact-file-moved",
+            message: "방금 만든 문서 요약해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: false,
+            shouldRequireApproval: false,
+            notes: "recent artifact file deleted/moved -> resolver returns nil"
+        ),
+        .init(
+            id: "recent-artifact-unsupported-type",
+            message: "방금 만든 문서 요약해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: false,
+            shouldRequireApproval: false,
+            notes: "recent artifact is PDF/XLSX (unsupported) -> resolver returns nil"
+        ),
         // Step 7 additions: Result status artifacts, verification errors, recent index priority
         .init(
             id: "artifact-verification-success",
