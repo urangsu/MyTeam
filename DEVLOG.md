@@ -6,6 +6,20 @@
 
 ---
 
+## 2026-05-13 (Round 38A-38D — ArtifactStore Relative Path + Compaction Pack)
+
+- ArtifactStore workspace-relative path policy 추가
+- 기존 absolute path entry normalize 지원
+- ArtifactStore / RecentArtifactIndex consistency check 추가
+- action_log.jsonl compaction 정책 추가
+- 오래된 artifact cleanup dry-run policy 추가
+- ArtifactCardView 상태 표시 보강
+- RuntimeDiagnostics artifact store health 추가
+- 자동 삭제 없음
+- 외부 write 없음
+- Gmail API 없음
+- Calendar write 없음
+
 ## 2026-05-13 (Round 37A-37D — Memory Security + Release Stability Pack)
 
 - MemorySensitivity / MemoryRetentionPolicy 추가

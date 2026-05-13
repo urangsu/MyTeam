@@ -1,5 +1,19 @@
 # System Bottleneck Audit — Round 30C
 
+## Round 38A-38D Result
+
+### Fixed / Reduced
+- Artifact absolute path persistence risk
+- RecentArtifactIndex stale entry risk
+- action log unbounded growth
+- artifact missing/hash mismatch ambiguity
+
+### Still Remaining
+- encrypted memory store
+- release runtime QA
+- full connector QA
+- actual cleanup approval UI
+
 ## Round 37A-37D Result
 
 ### Fixed / Reduced

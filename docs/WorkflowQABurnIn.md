@@ -32,6 +32,11 @@
 - diagnostics minimized
 - PlanRunner default false
 
+### Policy Notes
+- ArtifactStore health, relative path normalize, and cleanup dry-run are policy-level verification only
+- 실제 artifact 삭제 QA는 포함하지 않는다
+- full path, sourceText, token, auth 값은 기록하지 않는다
+
 ## 2. Router Regression
 | 입력 | 기대 route | 금지 route | 결과 | 비고 |
 |---|---|---|---|---|

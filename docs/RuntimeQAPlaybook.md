@@ -98,3 +98,9 @@ defaults write com.urang.MyTeam MyTeam.FeatureFlags.planRunnerUniversalDocumentE
 - debug toggles hidden
 - diagnostics minimized
 - PlanRunner default false
+
+## 9. ArtifactStore Policy Notes
+
+- ArtifactStore health, relative path normalize, and cleanup dry-run are policy-level checks only
+- 실제 cleanup delete QA는 하지 않는다
+- full path, sourceText, token, auth는 기록하지 않는다
