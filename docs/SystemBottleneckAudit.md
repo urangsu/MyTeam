@@ -1,5 +1,25 @@
 # System Bottleneck Audit
 
+## Round 40R + 41A-41F Result (In Progress)
+
+### Fixed / Reduced
+- Release readiness overclaim (differentiated build-ready vs submission-ready)
+- First-launch / no-key / offline state ambiguity (RuntimeCapabilityMode enum)
+- First-launch state tracking gap (FirstLaunchState struct)
+- Starter action discoverability (StarterActionProvider enum + 4 actions)
+- Documentation truthfulness (ReleaseWarningAudit + AppStorePackagingChecklist)
+
+### Still Remaining
+- Starter actions actual UI integration
+- no-key / offline / connector-limited message display
+- First result activation flow implementation
+- SettingsView developer setting suppression
+- RuntimeDiagnostics field enhancement
+- RouterBurnInSuite case expansion
+- Manual runtime QA (Round 42A)
+
+---
+
 ## Round 40A-40D Result
 
 ### Fixed / Reduced

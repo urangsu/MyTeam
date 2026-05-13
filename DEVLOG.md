@@ -6,6 +6,34 @@
 
 ---
 
+## 2026-05-14 (Round 40R + 41A-41F — Release Truthfulness Repair + First Launch Activation Pack)
+
+### Completed
+- TASK.md 재구성 (Now/Next/Recently Completed)
+- ReleaseWarningAudit "submission-ready" 과장 표현 수정 → "build-ready: YES / submission-ready: NOT YET"
+- AppStorePackagingChecklist 11개 섹션에 상태 라벨 추가 (code-reviewed / build-confirmed / manual QA pending / deferred)
+- RuntimeCapabilityMode.swift 신규 생성 (localOnly / aiEnabled / connectorLimited)
+- FirstLaunchState.swift 신규 생성 (hasSeenOnboarding / hasAPIKey / isOffline / capabilityMode / hasCreatedFirstArtifact)
+- StarterAction.swift 신규 생성 (4개 starter actions + first-result actions)
+- Debug/Release BUILD SUCCEEDED (app code warning 0)
+
+### Still Remaining
+- Starter actions UI 통합 (TeamStatusView / DailyBriefingCardView에 표시)
+- no-key / offline / connector-limited 메시지 UI 표시
+- First result activation flow (recent artifact reuse action strip)
+- SettingsView 간결화 (developer 설정 숨기기)
+- RuntimeDiagnostics 필드 보강 (firstLaunchGuidanceAvailable 등)
+- RouterBurnInSuite 케이스 추가 (no-key / offline / starter action)
+- Manual runtime QA (Round 42A)
+
+### Architecture Notes
+- RuntimeCapabilityMode enum으로 상태 명확화 (no-key / offline / connector-limited)
+- FirstLaunchState struct로 첫 실행 상태 추적
+- StarterActionProvider enum으로 액션 제공 분리
+- 실제 UI 통합 및 네비게이션은 Round 42A+ 영역
+
+---
+
 ## 2026-05-13 (Round 40A-40D — App Store Submission Hardening Pack)
 
 - App Store packaging checklist 완성 (11개 섹션, 43개 체크리스트)

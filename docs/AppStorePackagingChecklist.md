@@ -7,6 +7,8 @@
 
 ## 1. Sandbox Policy
 
+**Status**: code-reviewed / build-confirmed / manual QA pending
+
 ### Sandbox Enabled
 - [x] App Sandbox enabled in entitlements
 - [x] no arbitrary external file access
@@ -31,6 +33,8 @@
 ---
 
 ## 2. Entitlements & Capability Declarations
+
+**Status**: code-reviewed / build-confirmed
 
 ### Current Entitlements
 ```
@@ -57,6 +61,8 @@ com.apple.security.temporary-exception.sbpl = (Calendar OAuth specific)
 ---
 
 ## 3. Privacy & Data Collection Policy
+
+**Status**: code-reviewed / build-confirmed
 
 ### Data Handling
 - [x] no raw action log input in diagnostics
@@ -102,6 +108,8 @@ Hide (Release suppression):
 
 ## 4. External Connectors & Capabilities
 
+**Status**: code-reviewed / deferred (live OAuth QA separate)
+
 ### Google Calendar
 - [x] read-only status confirmed
 - [x] OAuth scope minimal (calendar.readonly)
@@ -129,6 +137,8 @@ Hide (Release suppression):
 
 ## 5. StoreKit & In-App Purchase
 
+**Status**: code-reviewed / build-confirmed / manual QA pending
+
 ### Current Status
 - [x] StoreKit framework linked (but not active in this round)
 - [x] entitlement present and unchanged
@@ -144,6 +154,8 @@ Hide (Release suppression):
 ---
 
 ## 6. File & Artifact Management
+
+**Status**: code-reviewed / build-confirmed / manual QA pending
 
 ### Workspace Path Policy
 - [x] all artifact paths relative to ~/Library/Application Support/MyTeam/
@@ -171,6 +183,8 @@ Hide (Release suppression):
 ---
 
 ## 7. Runtime Safety & Error Handling
+
+**Status**: code-reviewed / build-confirmed / manual QA pending
 
 ### First Launch State
 User sees:
@@ -227,6 +241,8 @@ NOT shown:
 
 ## 8. Blocked Operations (must not execute)
 
+**Status**: code-reviewed / build-confirmed
+
 ### Email / External Write
 - [x] "메일 보내줘" → blocked with message
 - [x] no mail body draft
@@ -260,6 +276,8 @@ NOT shown:
 
 ## 9. Startup & Termination Safety
 
+**Status**: code-reviewed / build-confirmed
+
 ### App Launch
 - [x] RecentArtifactIndex decode failure → empty index, app continues
 - [x] ArtifactStore index decode failure → safe fallback
@@ -283,6 +301,8 @@ NOT shown:
 ---
 
 ## 10. Manual QA Checklist (Before Submission)
+
+**Status**: manual QA pending
 
 ### First Launch
 - [ ] App starts fresh (no artifacts)
@@ -328,6 +348,8 @@ NOT shown:
 
 ## 11. Before Final Submission
 
+**Status**: manual QA pending
+
 - [ ] Release build: xcodebuild ... -configuration Release build (0 app code warnings)
 - [ ] App Store Connect metadata: all fields complete
 - [ ] Privacy nutrition label: reviewed and accurate
@@ -354,5 +376,6 @@ NOT shown:
 ✅ Release visibility: debug UI hidden, verbose logs suppressed  
 ✅ App code warnings: 0 (all 6 MainActor issues resolved)  
 ✅ Startup/termination: safe, no deadlocks or crashes  
-✅ Manual QA: all items pass  
-✅ Ready for Mac App Store submission
+⏳ Manual QA: pending (first-launch, Finder, file intake, multi-room, artifact reuse)  
+✅ Build-ready: YES  
+⏳ Submission-ready: NOT YET — manual QA required before submission

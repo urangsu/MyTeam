@@ -48,19 +48,26 @@
 
 **Classification**: Known non-blocking for Release
 
-## Release Blocking?
+## Build Blocking?
 
 **Answer**: NO ✅
 
+**Submission Blocking**: YES — manual QA and production connector/payment checks are still pending.
+
 **Rationale**:
-- App code warnings: **0** (all fixed) ✅
+- App code Swift warning count: **0** (all fixed) ✅
 - External package warnings: **0 app code** (mlx-swift only, non-blocking by policy) ✅
 - Xcode/AppIntents notes: **3** (all informational, non-blocking) ✅
 
-**Success Criteria Met**:
-- App code Swift warning count: 0 ✅
-- All warnings classified and documented: ✅
-- Ready for App Store submission: ✅
+**Pending Items** (⏳ Manual QA + QA):
+- Manual runtime QA: pending (first-launch, Finder open/copy, file intake, multi-room isolation, artifact reuse)
+- StoreKit production purchase QA: pending (separate from build)
+- Google OAuth live QA: pending (Desktop Client ID preparation)
+
+**Success Criteria**:
+- App code Swift warning count: **0** ✅
+- Build-ready: **YES** ✅
+- Submission-ready: **NOT YET** — manual QA required before submission ⏳
 
 ## Build Configuration
 
