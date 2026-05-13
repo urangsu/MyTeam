@@ -374,7 +374,7 @@ actor ArtifactStore {
 
     func registerArtifact(_ artifact: IndexedArtifact) async {
         var list = loadArtifacts()
-        let normalized = normalizeArtifact(artifact)
+        let normalized = await normalizeArtifact(artifact)
         list.removeAll { $0.id == normalized.id }
         list.append(normalized)
         guard let data = try? JSONEncoder().encode(list) else { return }
@@ -387,7 +387,7 @@ actor ArtifactStore {
               let list = try? JSONDecoder().decode([IndexedArtifact].self, from: data) else {
             return []
         }
-        return list.map { normalizeArtifact($0) }
+        return list
     }
 
     func artifacts(forWorkflowID id: String) -> [IndexedArtifact] {
@@ -468,15 +468,19 @@ actor ArtifactStore {
         }
     }
 
-    private func normalizeArtifact(_ artifact: IndexedArtifact) -> IndexedArtifact {
+    private func normalizeArtifact(_ artifact: IndexedArtifact) async -> IndexedArtifact {
         let (relativePath, pathStatus) = Self.normalizeStoredPath(artifact.relativePath, workspaceURL: workspaceURL)
         let resolvedRelativePath = relativePath.isEmpty ? artifact.relativePath : relativePath
         guard let url = Self.fileURL(for: resolvedRelativePath, workspaceURL: workspaceURL) else {
-            return artifact.with(relativePath: "", healthStatus: pathStatus == .valid ? .invalidRelativePath : pathStatus)
+            return await MainActor.run {
+                IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: "", preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: artifact.contentHash, fileSizeBytes: artifact.fileSizeBytes, roomID: artifact.roomID, healthStatus: pathStatus == .valid ? .invalidRelativePath : pathStatus)
+            }
         }
 
         guard FileManager.default.fileExists(atPath: url.path) else {
-            return artifact.with(relativePath: resolvedRelativePath, healthStatus: .missingFile)
+            return await MainActor.run {
+                IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: resolvedRelativePath, preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: artifact.contentHash, fileSizeBytes: artifact.fileSizeBytes, roomID: artifact.roomID, healthStatus: .missingFile)
+            }
         }
 
         let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
@@ -487,29 +491,20 @@ actor ArtifactStore {
         }()
 
         if let expectedHash = artifact.contentHash, let contentHash, expectedHash != contentHash {
-            return artifact.with(
-                relativePath: resolvedRelativePath,
-                healthStatus: .hashMismatch,
-                fileSizeBytes: size,
-                contentHash: expectedHash
-            )
+            return await MainActor.run {
+                IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: resolvedRelativePath, preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: expectedHash, fileSizeBytes: size, roomID: artifact.roomID, healthStatus: .hashMismatch)
+            }
         }
 
         if artifact.contentHash == nil {
-            return artifact.with(
-                relativePath: resolvedRelativePath,
-                healthStatus: .metadataOnly,
-                fileSizeBytes: size,
-                contentHash: contentHash
-            )
+            return await MainActor.run {
+                IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: resolvedRelativePath, preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: contentHash, fileSizeBytes: size, roomID: artifact.roomID, healthStatus: .metadataOnly)
+            }
         }
 
-        return artifact.with(
-            relativePath: resolvedRelativePath,
-            healthStatus: pathStatus == .valid ? .valid : pathStatus,
-            fileSizeBytes: size,
-            contentHash: contentHash ?? artifact.contentHash
-        )
+        return await MainActor.run {
+            IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: resolvedRelativePath, preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: contentHash ?? artifact.contentHash, fileSizeBytes: size, roomID: artifact.roomID, healthStatus: pathStatus == .valid ? .valid : pathStatus)
+        }
     }
 
     private func compactActionLogIfNeeded() async {
