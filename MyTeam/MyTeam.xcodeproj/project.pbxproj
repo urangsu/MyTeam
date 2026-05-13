@@ -563,6 +563,7 @@
 		B19D61E3A0014AAAB000001B /* ToolExecutionLayer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ToolExecutionLayer.swift; sourceTree = "<group>"; };
 		B19D61E3A0014AAAB000001C /* ConnectorGuard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConnectorGuard.swift; sourceTree = "<group>"; };
 		B19D61E3A0014AAAB000001D /* WorkspaceFileActions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkspaceFileActions.swift; sourceTree = "<group>"; };
+		B19D61E3A0014AAAB000001E /* WorkspacePath.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkspacePath.swift; sourceTree = "<group>"; };
 		C11A00000000000000000001 /* ConnectorCapabilityPolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ConnectorCapabilityPolicy.swift; sourceTree = "<group>"; };
 		D28100000000000000000001 /* RoomRuntimeStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RoomRuntimeStore.swift; sourceTree = "<group>"; };
 		E12000000000000000000001 /* ExecutionStepContract.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExecutionStepContract.swift; sourceTree = "<group>"; };
@@ -1722,6 +1723,7 @@
 				2FC3366815CA296267D8C9B8 /* CreateSpreadsheetPlanTool.swift */,
 				77A60589AAE42B4978FA07F6 /* OpenURLTool.swift */,
 				B19D61E3A0014AAAB000001D /* WorkspaceFileActions.swift */,
+				B19D61E3A0014AAAB000001E /* WorkspacePath.swift */,
 				6C6474A28EC564261A2BC194 /* ToolRegistry.swift */,
 				FAD601D29125CA14A4EE9FEE /* ToolExecutor.swift */,
 				63E16FBE4F0F639B62AA9420 /* WorkflowEngine.swift */,
@@ -3133,6 +3135,7 @@
 				EDD51A34150CEE6DFF68B8E5 /* CreateSpreadsheetPlanTool.swift in Sources */,
 				47BD7ACF48ECEE204AAFE98B /* OpenURLTool.swift in Sources */,
 				B19D61E3A0014AAAB100001D /* WorkspaceFileActions.swift in Sources */,
+				B19D61E3A0014AAAB100001E /* WorkspacePath.swift in Sources */,
 				E9CDC9EB5E5DDF5374DE9D93 /* ToolRegistry.swift in Sources */,
 				036D386602838C8C97115C0D /* ToolExecutor.swift in Sources */,
 				E0F0C88B5A0046AAF135089E /* WorkflowEngine.swift in Sources */,

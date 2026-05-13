@@ -60,6 +60,10 @@ struct Artifact {
     let stepTitle: String
     let path: String      // Workspace 상대 경로
     let output: String    // 요약 텍스트
+
+    var relativePath: String {
+        path
+    }
 }
 
 // MARK: - WorkflowResult
