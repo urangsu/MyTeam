@@ -31,6 +31,13 @@ struct RouterBurnInCase: Identifiable, Equatable {
     let expectedMemoryWriteBlocked: Bool?
     let expectedVerboseDiagnosticsVisible: Bool?
     let expectedModelOverrideAllowed: Bool?
+    let expectedArtifactPathNormalized: Bool?
+    let expectedArtifactPathInvalidExternal: Bool?
+    let expectedArtifactPathInvalidRelative: Bool?
+    let expectedArtifactMissingFile: Bool?
+    let expectedArtifactHashMismatch: Bool?
+    let expectedActionLogCompactionAvailable: Bool?
+    let expectedCleanupDryRunPolicy: Bool?
     let notes: String
 
     init(
@@ -45,6 +52,13 @@ struct RouterBurnInCase: Identifiable, Equatable {
         expectedMemoryWriteBlocked: Bool? = nil,
         expectedVerboseDiagnosticsVisible: Bool? = nil,
         expectedModelOverrideAllowed: Bool? = nil,
+        expectedArtifactPathNormalized: Bool? = nil,
+        expectedArtifactPathInvalidExternal: Bool? = nil,
+        expectedArtifactPathInvalidRelative: Bool? = nil,
+        expectedArtifactMissingFile: Bool? = nil,
+        expectedArtifactHashMismatch: Bool? = nil,
+        expectedActionLogCompactionAvailable: Bool? = nil,
+        expectedCleanupDryRunPolicy: Bool? = nil,
         notes: String
     ) {
         self.id = id
@@ -58,6 +72,13 @@ struct RouterBurnInCase: Identifiable, Equatable {
         self.expectedMemoryWriteBlocked = expectedMemoryWriteBlocked
         self.expectedVerboseDiagnosticsVisible = expectedVerboseDiagnosticsVisible
         self.expectedModelOverrideAllowed = expectedModelOverrideAllowed
+        self.expectedArtifactPathNormalized = expectedArtifactPathNormalized
+        self.expectedArtifactPathInvalidExternal = expectedArtifactPathInvalidExternal
+        self.expectedArtifactPathInvalidRelative = expectedArtifactPathInvalidRelative
+        self.expectedArtifactMissingFile = expectedArtifactMissingFile
+        self.expectedArtifactHashMismatch = expectedArtifactHashMismatch
+        self.expectedActionLogCompactionAvailable = expectedActionLogCompactionAvailable
+        self.expectedCleanupDryRunPolicy = expectedCleanupDryRunPolicy
         self.notes = notes
     }
 }

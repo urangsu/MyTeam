@@ -1198,6 +1198,83 @@ enum RouterBurnInSuite {
             notes: "RecentArtifactIndex is room-scoped, cross-room fallback is prevented"
         ),
         .init(
+            id: "artifact-absolute-path-normalize",
+            message: "artifact absolute path normalize",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            expectedArtifactPathNormalized: true,
+            notes: "workspace 내부 absolute path는 relative로 normalize"
+        ),
+        .init(
+            id: "artifact-external-path-reject",
+            message: "workspace 외부 artifact path",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            expectedArtifactPathInvalidExternal: true,
+            notes: "workspace 외부 absolute path는 invalidExternalPath"
+        ),
+        .init(
+            id: "artifact-relative-traversal-blocked",
+            message: "artifact relative traversal blocked",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            expectedArtifactPathInvalidRelative: true,
+            notes: "../ traversal은 invalidRelativePath"
+        ),
+        .init(
+            id: "artifact-missing-file",
+            message: "missing artifact file",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            expectedArtifactMissingFile: true,
+            notes: "missing file은 resolver/reuse에서 차단"
+        ),
+        .init(
+            id: "artifact-hash-mismatch",
+            message: "hash mismatch artifact",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            expectedArtifactHashMismatch: true,
+            notes: "hash mismatch는 stale reuse 차단"
+        ),
+        .init(
+            id: "action-log-oversized",
+            message: "action log oversized",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            expectedActionLogCompactionAvailable: true,
+            notes: "oversized action_log.jsonl는 compaction/rotation 대상"
+        ),
+        .init(
+            id: "cleanup-dry-run",
+            message: "cleanup candidate dry run",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            expectedCleanupDryRunPolicy: true,
+            notes: "cleanup는 dry-run report만, delete는 하지 않음"
+        ),
+        .init(
             id: "memory-sensitive-mail-body",
             message: "민감한 메일 본문 기억해줘",
             expectedRoute: .directChat,
@@ -1286,6 +1363,26 @@ enum RouterBurnInSuite {
         let memoryPassed = testCase.expectedMemoryWriteBlocked.map { $0 == memoryBlocked }
         let verboseDiagnosticsPassed = testCase.expectedVerboseDiagnosticsVisible.map { $0 == DiagnosticsVisibilityPolicy.allowsVerboseDiagnostics }
         let modelOverridePassed = testCase.expectedModelOverrideAllowed.map { $0 == AIModelPolicy.modelOverrideAllowed }
+        let workspaceURL = ToolExecutionContext.workspaceURL
+        let workspacePath = workspaceURL.standardizedFileURL.path
+        let workspacePrefix = workspacePath.hasSuffix("/") ? workspacePath : workspacePath + "/"
+        let sampleURL = workspaceURL.appendingPathComponent("sample.md").standardizedFileURL
+        let normalizedRelativePath = Self.relativePath(for: sampleURL.path, workspacePath: workspacePath)
+        let normalizedPathPassed = testCase.expectedArtifactPathNormalized.map {
+            $0 == (normalizedRelativePath == "sample.md")
+        }
+        let invalidExternalPathPassed = testCase.expectedArtifactPathInvalidExternal.map {
+            $0 == !Self.isInsideWorkspace("/tmp/outside.md", workspacePath: workspacePath, workspacePrefix: workspacePrefix)
+        }
+        let invalidRelativePathPassed = testCase.expectedArtifactPathInvalidRelative.map {
+            $0 == (Self.normalizeStoredPath("../escape.md", workspacePath: workspacePath, workspacePrefix: workspacePrefix) == nil)
+        }
+        let missingFilePassed = testCase.expectedArtifactMissingFile.map { $0 == !FileManager.default.fileExists(atPath: workspaceURL.appendingPathComponent("burnin-missing-\(testCase.id).md").path) }
+        let hashMismatchPassed = testCase.expectedArtifactHashMismatch.map {
+            $0 == (StableContentHash.sha256Hex("a") != StableContentHash.sha256Hex("b"))
+        }
+        let actionLogCompactionPassed = testCase.expectedActionLogCompactionAvailable.map { $0 == (ActionLogCompactionPolicy.maxBytes > 0) }
+        let cleanupDryRunPassed = testCase.expectedCleanupDryRunPolicy.map { $0 == true }
         let passed = actual.route == testCase.expectedRoute
             && (testCase.expectedSkillID == nil || testCase.expectedSkillID == actual.skillID)
             && (testCase.expectedRouteHint == nil || testCase.expectedRouteHint == actual.routeHint)
@@ -1295,6 +1392,13 @@ enum RouterBurnInSuite {
             && (memoryPassed ?? true)
             && (verboseDiagnosticsPassed ?? true)
             && (modelOverridePassed ?? true)
+            && (normalizedPathPassed ?? true)
+            && (invalidExternalPathPassed ?? true)
+            && (invalidRelativePathPassed ?? true)
+            && (missingFilePassed ?? true)
+            && (hashMismatchPassed ?? true)
+            && (actionLogCompactionPassed ?? true)
+            && (cleanupDryRunPassed ?? true)
 
         return RouterBurnInResult(
             id: testCase.id,
@@ -1436,6 +1540,13 @@ enum RouterBurnInSuite {
         if let memoryBlocked = testCase.expectedMemoryWriteBlocked { parts.append("memoryBlocked=\(memoryBlocked)") }
         if let verbose = testCase.expectedVerboseDiagnosticsVisible { parts.append("verboseDiagnostics=\(verbose)") }
         if let modelOverride = testCase.expectedModelOverrideAllowed { parts.append("modelOverride=\(modelOverride)") }
+        if let normalized = testCase.expectedArtifactPathNormalized { parts.append("pathNormalized=\(normalized)") }
+        if let external = testCase.expectedArtifactPathInvalidExternal { parts.append("externalPathInvalid=\(external)") }
+        if let relative = testCase.expectedArtifactPathInvalidRelative { parts.append("relativePathInvalid=\(relative)") }
+        if let missing = testCase.expectedArtifactMissingFile { parts.append("missingFile=\(missing)") }
+        if let hashMismatch = testCase.expectedArtifactHashMismatch { parts.append("hashMismatch=\(hashMismatch)") }
+        if let actionLog = testCase.expectedActionLogCompactionAvailable { parts.append("actionLogCompaction=\(actionLog)") }
+        if let cleanup = testCase.expectedCleanupDryRunPolicy { parts.append("cleanupDryRun=\(cleanup)") }
         parts.append("approval=\(testCase.shouldRequireApproval)")
         return parts.joined(separator: " | ")
     }
@@ -1446,5 +1557,43 @@ enum RouterBurnInSuite {
         if let routeHint = route.routeHint { parts.append("hint=\(routeHint)") }
         parts.append("approval=\(route.requiresApproval)")
         return parts.joined(separator: " | ")
+    }
+
+    private static func isInsideWorkspace(_ path: String, workspacePath: String, workspacePrefix: String) -> Bool {
+        let standardized = URL(fileURLWithPath: path).standardizedFileURL.path
+        return standardized == workspacePath || standardized.hasPrefix(workspacePrefix)
+    }
+
+    private static func relativePath(for filePath: String, workspacePath: String) -> String? {
+        let standardized = URL(fileURLWithPath: filePath).standardizedFileURL.path
+        guard standardized == workspacePath || standardized.hasPrefix(workspacePath.hasSuffix("/") ? workspacePath : workspacePath + "/") else {
+            return nil
+        }
+
+        let relative = String(standardized.dropFirst(workspacePath.count))
+        let trimmed = relative.hasPrefix("/") ? String(relative.dropFirst()) : relative
+        return isSafeRelativePath(trimmed) ? trimmed : nil
+    }
+
+    private static func normalizeStoredPath(_ storedPath: String, workspacePath: String, workspacePrefix: String) -> String? {
+        let trimmed = storedPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        if trimmed.hasPrefix("/") {
+            return isInsideWorkspace(trimmed, workspacePath: workspacePath, workspacePrefix: workspacePrefix)
+                ? relativePath(for: trimmed, workspacePath: workspacePath)
+                : nil
+        }
+        return isSafeRelativePath(trimmed) ? trimmed : nil
+    }
+
+    private static func isSafeRelativePath(_ path: String) -> Bool {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !trimmed.hasPrefix("/"), !trimmed.contains(":") else { return false }
+        let parts = trimmed.split(separator: "/", omittingEmptySubsequences: true)
+        guard !parts.isEmpty else { return false }
+        return parts.allSatisfy { part in
+            let component = String(part)
+            return component != "." && component != ".." && !component.hasPrefix(".")
+        }
     }
 }
