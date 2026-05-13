@@ -178,7 +178,7 @@ final class PlanRunner {
                     context.set(artifact.id, for: "artifact_id")
                     context.set(artifact.filename, for: "artifact_filename")
                     context.set(artifact.title, for: "artifact_title")
-                    context.set(artifact.path, for: "artifact_path")
+                    context.set(artifact.relativePath, for: "artifact_path")
                 } catch {
                     return makeFailure(
                         UniversalDocumentArtifactWriter.failureMessage(error: error, request: request),
@@ -207,9 +207,10 @@ final class PlanRunner {
                     title: artifactTitle,
                     type: .text,
                     filename: artifactFilename,
-                    path: artifactPath,
+                    relativePath: artifactPath,
                     preview: String(verifiedMarkdown.prefix(200)),
-                    createdAt: ISO8601DateFormatter().string(from: Date())
+                    createdAt: ISO8601DateFormatter().string(from: Date()),
+                    roomID: roomID.uuidString
                 )
 
                 let message = UniversalDocumentArtifactWriter.completionMessage(

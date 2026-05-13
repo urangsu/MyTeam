@@ -7,23 +7,24 @@ struct ArtifactCardView: View {
 
     @State private var copied = false
 
-    /// cloud artifact이면 URL(string:), local이면 URL(fileURLWithPath:).
-    /// path가 비어 있거나 변환 실패 시 nil → 버튼 disabled.
+    /// cloud artifact이면 URL(string:), local이면 workspace-relative path를 절대 경로로 resolve.
     private var resolvedURL: URL? {
-        guard !artifact.path.isEmpty else { return nil }
+        guard !artifact.relativePath.isEmpty else { return nil }
         if artifact.type == .cloud {
-            return URL(string: artifact.path)
+            return URL(string: artifact.relativePath)
         }
-        return URL(fileURLWithPath: artifact.path)
+        return Self.fileURL(for: artifact.relativePath, workspaceURL: ToolExecutionContext.workspaceURL)
     }
 
     private var fileExists: Bool {
         guard artifact.type != .cloud else { return resolvedURL != nil }
-        return FileManager.default.fileExists(atPath: artifact.path)
+        guard let url = resolvedURL else { return false }
+        return FileManager.default.fileExists(atPath: url.path)
     }
 
     private var canInteract: Bool {
-        resolvedURL != nil && fileExists
+        guard artifact.type != .cloud else { return resolvedURL != nil }
+        return fileExists && (artifact.healthStatus == .valid || artifact.healthStatus == .metadataOnly)
     }
 
     private var typeLabel: String {
@@ -131,20 +132,50 @@ struct ArtifactCardView: View {
 
     private var statusIcon: String {
         if artifact.type == .cloud { return "cloud.fill" }
-        if !fileExists { return "exclamationmark.circle" }
-        return "checkmark.circle.fill"
+        switch artifact.healthStatus {
+        case .valid:
+            return "checkmark.circle.fill"
+        case .metadataOnly:
+            return "doc.text"
+        case .missingFile:
+            return "exclamationmark.circle"
+        case .invalidExternalPath, .invalidRelativePath:
+            return "slash.circle"
+        case .hashMismatch:
+            return "exclamationmark.triangle"
+        }
     }
 
     private var statusColor: Color {
         if artifact.type == .cloud { return .blue }
-        if !fileExists { return .orange }
-        return .green
+        switch artifact.healthStatus {
+        case .valid:
+            return .green
+        case .metadataOnly:
+            return .secondary
+        case .missingFile:
+            return .orange
+        case .invalidExternalPath, .invalidRelativePath:
+            return .red
+        case .hashMismatch:
+            return .yellow
+        }
     }
 
     private var statusText: String {
         if artifact.type == .cloud { return "클라우드 저장" }
-        if !fileExists { return "읽기 실패" }
-        return "저장됨 • 재사용 가능"
+        switch artifact.healthStatus {
+        case .valid:
+            return "저장됨 • 재사용 가능"
+        case .metadataOnly:
+            return "메타데이터만"
+        case .missingFile:
+            return "파일을 찾을 수 없습니다"
+        case .invalidExternalPath, .invalidRelativePath:
+            return "경로 오류"
+        case .hashMismatch:
+            return "파일 상태가 바뀌었습니다"
+        }
     }
 
     // MARK: - Helpers
@@ -184,12 +215,35 @@ struct ArtifactCardView: View {
     private func copyPath() {
         guard canInteract else { return }
         Task { @MainActor in
-            let result = await ToolExecutionLayer.executeWorkspaceAction(kind: .copyPath, path: artifact.path)
+            guard let url = resolvedURL else { return }
+            let result = await ToolExecutionLayer.executeWorkspaceAction(kind: .copyPath, path: url.path)
             if result.status == .succeeded {
                 copied = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
-                AppLog.debug("Path copied to pasteboard: \(artifact.path)")
+                AppLog.debug("Path copied to pasteboard: \(url.path)")
             }
         }
+    }
+
+    private static func fileURL(for relativePath: String, workspaceURL: URL) -> URL? {
+        guard isSafeRelativePath(relativePath) else { return nil }
+        return workspaceURL.appendingPathComponent(relativePath)
+    }
+
+    private static func isSafeRelativePath(_ path: String) -> Bool {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !trimmed.hasPrefix("/"), !trimmed.contains(":") else { return false }
+
+        let parts = trimmed.split(separator: "/", omittingEmptySubsequences: true)
+        guard !parts.isEmpty else { return false }
+
+        for part in parts {
+            let component = String(part)
+            if component == "." || component == ".." || component.hasPrefix(".") {
+                return false
+            }
+        }
+
+        return true
     }
 }

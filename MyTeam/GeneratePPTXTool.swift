@@ -29,9 +29,10 @@ struct GeneratePPTXTool: WorkflowTool {
             title:      result.title,
             type:       .presentation,
             filename:   outputFilename,
-            path:       outputURL.path,
+            relativePath: outputFilename,
             preview:    "\(result.pageCount)장 슬라이드",
-            createdAt:  ISO8601DateFormatter().string(from: Date())
+            createdAt:  ISO8601DateFormatter().string(from: Date()),
+            roomID:     context.roomID.uuidString
         ))
 
         return ToolResult(

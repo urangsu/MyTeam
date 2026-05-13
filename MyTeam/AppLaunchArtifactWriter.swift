@@ -43,9 +43,10 @@ enum AppLaunchArtifactWriter {
             title: "\(request.appName) \(request.skillType.displayName)",
             type: .text,
             filename: filename,
-            path: filePath,
+            relativePath: filename,
             preview: preview,
-            createdAt: ISO8601DateFormatter().string(from: Date())
+            createdAt: ISO8601DateFormatter().string(from: Date()),
+            roomID: roomID.uuidString
         )
 
         await ArtifactStore.shared.registerArtifact(artifact)

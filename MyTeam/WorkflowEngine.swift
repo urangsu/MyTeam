@@ -68,7 +68,6 @@ final class WorkflowEngine {
 
                 if let relPath = result.artifactPath,
                    ArtifactPersistencePolicy.shouldPersist(resultStatus: result.status) {
-                    let absPath = context.workspaceURL.appendingPathComponent(relPath).path
                     // artifact 기록은 실제 실행된 step(executedStep) 기준
                     let artifact = Artifact(
                         stepID: executedStep.id,
@@ -85,9 +84,10 @@ final class WorkflowEngine {
                         title: executedStep.title,
                         type: inferArtifactType(toolName: executedStep.toolName),
                         filename: relPath,
-                        path: absPath,
+                        relativePath: relPath,
                         preview: String(result.output.prefix(200)),
-                        createdAt: ISO8601DateFormatter().string(from: Date())
+                        createdAt: ISO8601DateFormatter().string(from: Date()),
+                        roomID: roomID.uuidString
                     )
                     await ArtifactStore.shared.registerArtifact(indexed)
                     await MainActor.run { WorkflowRunStore.shared.addArtifact(workflowID: workflowID, relativePath: relPath) }
@@ -157,7 +157,7 @@ final class WorkflowEngine {
 
         if !artifacts.isEmpty {
             lines.append("📄 생성 파일:")
-            artifacts.forEach { lines.append("  - \($0.path)") }
+            artifacts.forEach { lines.append("  - \($0.relativePath)") }
             lines.append("📂 Finder에서 열기 가능: \(workspaceURL.path)")
         }
 

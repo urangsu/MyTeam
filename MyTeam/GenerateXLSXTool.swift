@@ -29,9 +29,10 @@ struct GenerateXLSXTool: WorkflowTool {
             title:      result.title,
             type:       .spreadsheet,
             filename:   outputFilename,
-            path:       outputURL.path,
+            relativePath: outputFilename,
             preview:    "\(result.pageCount)행 데이터",
-            createdAt:  ISO8601DateFormatter().string(from: Date())
+            createdAt:  ISO8601DateFormatter().string(from: Date()),
+            roomID:     context.roomID.uuidString
         ))
 
         return ToolResult(

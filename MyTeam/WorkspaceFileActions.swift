@@ -26,9 +26,11 @@ enum WorkspaceFileActions {
 
     static func isInsideWorkspace(_ path: String) -> Bool {
         guard !path.isEmpty else { return false }
-        let workspaceURL = ArtifactStore.shared.workspaceURL
-        let testURL = URL(fileURLWithPath: path)
-        return testURL.path.hasPrefix(workspaceURL.path)
+        let workspaceURL = ToolExecutionContext.workspaceURL
+        let testURL = URL(fileURLWithPath: path).standardizedFileURL
+        let workspacePath = workspaceURL.standardizedFileURL.path
+        let workspacePrefix = workspacePath.hasSuffix("/") ? workspacePath : workspacePath + "/"
+        return testURL.path == workspacePath || testURL.path.hasPrefix(workspacePrefix)
     }
 
     // MARK: - Error

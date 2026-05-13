@@ -39,9 +39,10 @@ enum KoreanPrivacyTermsArtifactWriter {
             title: request.serviceName + " " + (request.documentType == .privacy ? "개인정보처리방침" : "이용약관"),
             type: .text,
             filename: request.filename,
-            path: filePath,
+            relativePath: request.filename,
             preview: preview,
-            createdAt: ISO8601DateFormatter().string(from: Date())
+            createdAt: ISO8601DateFormatter().string(from: Date()),
+            roomID: roomID.uuidString
         )
 
         await ArtifactStore.shared.registerArtifact(artifact)

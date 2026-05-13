@@ -35,7 +35,6 @@ enum UniversalDocumentArtifactWriter {
             filename: filename,
             context: ToolExecutionContext.current(workflowID: workflowID, roomID: roomID)
         )
-        let filePath = fileURL.path
 
         do {
             try markdown.write(to: fileURL, atomically: true, encoding: .utf8)
@@ -54,9 +53,12 @@ enum UniversalDocumentArtifactWriter {
             title: title,
             type: .text,
             filename: filename,
-            path: filePath,
+            relativePath: filename,
             preview: preview,
-            createdAt: ISO8601DateFormatter().string(from: Date())
+            createdAt: ISO8601DateFormatter().string(from: Date()),
+            contentHash: StableContentHash.sha256Hex(markdown),
+            fileSizeBytes: Int64(markdown.utf8.count),
+            roomID: roomID.uuidString
         )
 
         await ArtifactStore.shared.registerArtifact(artifact)
