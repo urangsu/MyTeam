@@ -34,6 +34,13 @@ struct RuntimeDiagnosticsSnapshot {
     let artifactStoreAvailable: Bool
     let recentArtifactIndexAvailable: Bool
     let recentArtifactIndexCount: Int
+    let artifactStoreHealthAvailable: Bool
+    let artifactTotalCount: Int
+    let artifactValidCount: Int
+    let artifactMissingFileCount: Int
+    let artifactInvalidPathCount: Int
+    let artifactHashMismatchCount: Int
+    let recentIndexStaleCount: Int
     let lastArtifactPersistenceStatus: String?
     let lastVerificationStatus: String?
     let lastVerificationFailureReason: String?
@@ -56,6 +63,13 @@ struct RuntimeDiagnosticsSnapshot {
     let recentArtifactIndexSavedAt: Date?
     let recentArtifactReuseFailureReason: String?
     let actionLogRedactionEnabled: Bool
+    let actionLogCompactionAvailable: Bool
+    let actionLogCompactionCount: Int
+    let lastActionLogCompactedAt: Date?
+    let actionLogApproxBytes: Int64
+    let cleanupCandidateCount: Int
+    let relativePathPolicyEnabled: Bool
+    let absolutePathNormalizeAvailable: Bool
 
     // Feature Flags / Release Path
     let buildConfiguration: String
@@ -216,6 +230,8 @@ struct RuntimeDiagnosticsSnapshot {
             lines.append("planRunnerToggleVisible: \(planRunnerToggleVisible)")
             lines.append("verboseDiagnosticsVisible: \(verboseDiagnosticsVisible)")
             lines.append("toolLayer: active=\(toolExecutionLayerActive) artifactActions=\(artifactActionsToolLayerBacked) workspaceActions=\(workspaceFileActionsToolLayerBacked)")
+            lines.append("artifacts: health=\(artifactStoreHealthAvailable ? "available" : "unavailable") total=\(artifactTotalCount) valid=\(artifactValidCount) missing=\(artifactMissingFileCount) invalid=\(artifactInvalidPathCount) hashMismatch=\(artifactHashMismatchCount)")
+            lines.append("actionLog: compacted=\(actionLogCompactionAvailable) count=\(actionLogCompactionCount) bytes=\(actionLogApproxBytes) cleanup=\(cleanupCandidateCount)")
             lines.append("connectors: calendar=\(calendarProviderAvailable ? "read configured" : "unavailable") gmail=\(gmailMetadataAvailable ? "available" : "unavailable")")
             lines.append("approvals: pending=\(pendingApprovalTaskCount)")
             lines.append("lastWorkflow: \(isWorkflowRunning ? "running" : "completed")")
@@ -238,6 +254,9 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("qwen: enabled=\(qwenEnabled) unavailable=\(qwenUnavailable)")
         lines.append("stt: initialized=\(sttInitialized) recording=\(sttRecording) starting=\(sttStarting)")
         lines.append("recentArtifacts: \(recentArtifactsCount)")
+        lines.append("artifactStore: total=\(artifactTotalCount) valid=\(artifactValidCount) missing=\(artifactMissingFileCount) invalid=\(artifactInvalidPathCount) hashMismatch=\(artifactHashMismatchCount) staleRecent=\(recentIndexStaleCount)")
+        lines.append("actionLog: compacted=\(actionLogCompactionAvailable) count=\(actionLogCompactionCount) approxBytes=\(actionLogApproxBytes) lastCompacted=\(lastActionLogCompactedAt?.formatted(.iso8601) ?? "nil")")
+        lines.append("cleanupCandidates: \(cleanupCandidateCount) relativePathPolicy=\(relativePathPolicyEnabled) normalizeAvailable=\(absolutePathNormalizeAvailable)")
         lines.append("lastTurnRoute: \(lastTurnRoute ?? "nil")")
         if let reason = lastRouteReason, !reason.isEmpty {
             lines.append("lastRouteReason: \(reason)")
@@ -599,6 +618,24 @@ final class RuntimeDiagnosticsService {
         let recentArtifactIndexLoadedAt = manager.roomRuntimeStore.recentArtifactIndexLoadedAt
         let recentArtifactIndexSavedAt = manager.roomRuntimeStore.recentArtifactIndexLastSavedAt
         let recentArtifactReuseFailureReason = manager.roomRuntimeStore.recentArtifactIndexPersistenceError
+        let recentArtifactEntries = currentRoomID.map { roomID in
+            manager.recentArtifactIndexEntries(for: roomID)
+        } ?? []
+        let artifactHealthReport = await ArtifactStore.shared.healthReport(recentEntries: recentArtifactEntries)
+        let actionLogURL = ToolExecutionContext.workspaceURL.appendingPathComponent("action_log.jsonl")
+        let actionLogApproxBytes: Int64 = {
+            guard let attributes = try? FileManager.default.attributesOfItem(atPath: actionLogURL.path),
+                  let size = attributes[.size] as? NSNumber else {
+                return 0
+            }
+            return size.int64Value
+        }()
+        let actionLogCompactionCount = await ArtifactStore.shared.actionLogCompactionCount
+        let lastActionLogCompactedAt = await ArtifactStore.shared.lastActionLogCompactedAt
+        let actionLogCompactionAvailable = true
+        let cleanupCandidateCount = await ArtifactStore.shared.cleanupCandidates(recentEntries: recentArtifactEntries).count
+        let relativePathPolicyEnabled = true
+        let absolutePathNormalizeAvailable = true
 
         // Feature Flags / Release Path
         let buildConfiguration = FeatureFlags.buildConfiguration
@@ -631,6 +668,13 @@ final class RuntimeDiagnosticsService {
             artifactStoreAvailable: artifactStoreAvailable,
             recentArtifactIndexAvailable: recentArtifactIndexAvailable,
             recentArtifactIndexCount: recentArtifactIndexCount,
+            artifactStoreHealthAvailable: true,
+            artifactTotalCount: artifactHealthReport.totalArtifacts,
+            artifactValidCount: artifactHealthReport.validArtifacts,
+            artifactMissingFileCount: artifactHealthReport.missingFiles,
+            artifactInvalidPathCount: artifactHealthReport.invalidPaths,
+            artifactHashMismatchCount: artifactHealthReport.hashMismatches,
+            recentIndexStaleCount: artifactHealthReport.staleRecentEntries,
             lastArtifactPersistenceStatus: lastArtifactPersistenceStatus,
             lastVerificationStatus: lastVerificationStatus,
             lastVerificationFailureReason: lastVerificationFailureReason,
@@ -651,6 +695,13 @@ final class RuntimeDiagnosticsService {
             recentArtifactIndexSavedAt: recentArtifactIndexSavedAt,
             recentArtifactReuseFailureReason: recentArtifactReuseFailureReason,
             actionLogRedactionEnabled: actionLogRedactionEnabled,
+            actionLogCompactionAvailable: actionLogCompactionAvailable,
+            actionLogCompactionCount: actionLogCompactionCount,
+            lastActionLogCompactedAt: lastActionLogCompactedAt,
+            actionLogApproxBytes: actionLogApproxBytes,
+            cleanupCandidateCount: cleanupCandidateCount,
+            relativePathPolicyEnabled: relativePathPolicyEnabled,
+            absolutePathNormalizeAvailable: absolutePathNormalizeAvailable,
             buildConfiguration: buildConfiguration,
             planRunnerEnabled: planRunnerEnabled,
             planRunnerToggleVisible: planRunnerToggleVisible,

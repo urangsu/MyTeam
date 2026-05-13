@@ -171,18 +171,8 @@ final class RoomRuntimeStore: ObservableObject {
                     )
                 )
             }
-            let persistedArtifacts = await ArtifactStore.shared.loadArtifacts()
-            let persistedIDs = Set(persistedArtifacts.map(\.id))
-            let mismatched = entries.filter { entry in
-                !persistedIDs.contains(entry.artifactID)
-            }
-            if !mismatched.isEmpty {
-                recentArtifactIndexPersistenceError = "artifact cross-check mismatch: \(mismatched.count)"
-            } else {
-                recentArtifactIndexPersistenceError = nil
-            }
             recentArtifactIndexLoadedAt = Date()
-            recentArtifactIndexPersistedCount = entries.count
+            await compactRecentArtifactIndex(using: ArtifactStore.shared)
             AppLog.info("[RoomRuntimeStore] RecentArtifactIndex loaded: \(entries.count)")
         case .failure(let error):
             recentArtifactIndexLoadedAt = Date()
@@ -217,6 +207,35 @@ final class RoomRuntimeStore: ObservableObject {
             recentArtifactIndexPersistedCount = entries.count
             recentArtifactIndexPersistenceError = error.message
             AppLog.warning("[RoomRuntimeStore] RecentArtifactIndex save failed: \(error.message)")
+        }
+    }
+
+    @MainActor
+    func compactRecentArtifactIndex(using artifactStore: ArtifactStore) async {
+        let artifacts = await artifactStore.loadArtifacts()
+        let artifactsByID = Dictionary(uniqueKeysWithValues: artifacts.map { ($0.id, $0) })
+        let previousEntries = recentArtifactIndex.allEntries
+        let before = previousEntries.count
+
+        recentArtifactIndex.clear()
+        for entry in compactedRecentArtifactIndexEntries(previousEntries, for: artifactsByID) {
+            recentArtifactIndex.add(entry)
+        }
+
+        recentArtifactIndexPersistenceError = before == recentArtifactIndex.allEntries.count ? nil : "stale recent entry removed: \(before - recentArtifactIndex.allEntries.count)"
+        recentArtifactIndexPersistedCount = recentArtifactIndex.allEntries.count
+        saveRecentArtifactIndex()
+    }
+
+    @MainActor
+    private func compactedRecentArtifactIndexEntries(
+        _ entries: [RecentArtifactIndexEntry],
+        for artifactsByID: [String: IndexedArtifact]
+    ) -> [RecentArtifactIndexEntry] {
+        entries.compactMap { entry in
+            guard let artifact = artifactsByID[entry.artifactID] else { return nil }
+            guard artifact.healthStatus == .valid || artifact.healthStatus == .metadataOnly else { return nil }
+            return entry
         }
     }
 }

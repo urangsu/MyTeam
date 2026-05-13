@@ -74,7 +74,8 @@ enum RecentArtifactContentResolver {
 
         guard let resolution = await resolveArtifact(
             artifact,
-            roomID: roomID
+            roomID: roomID,
+            manager: manager
         ) else {
             return nil
         }
@@ -90,7 +91,7 @@ enum RecentArtifactContentResolver {
         guard let artifact = latestReusableArtifact(roomID: roomID, manager: manager, allowGlobalFallback: false) else {
             return nil
         }
-        return await resolveArtifact(artifact, roomID: roomID)?.binding
+        return await resolveArtifact(artifact, roomID: roomID, manager: manager)?.binding
     }
 
     @MainActor
@@ -109,6 +110,7 @@ enum RecentArtifactContentResolver {
         manager: AgentWindowManager,
         allowGlobalFallback: Bool
     ) -> [IndexedArtifact] {
+        let workspaceURL = ToolExecutionContext.workspaceURL
         // 1. RecentArtifactIndex 우선 조회 (room-scoped)
         let indexEntries = manager.recentArtifactIndexEntries(for: roomID)
         let indexArtifactIDs = Set(indexEntries.map(\.artifactID))
@@ -120,8 +122,8 @@ enum RecentArtifactContentResolver {
         let indexedArtifacts = recent.filter { indexArtifactIDs.contains($0.id) }
         if !indexedArtifacts.isEmpty {
             return indexedArtifacts.filter { artifact in
-                let url = URL(fileURLWithPath: artifact.path)
-                return isInsideWorkspace(url) && isMarkdownLike(url)
+                guard let url = artifact.resolvedURL(in: workspaceURL) else { return false }
+                return isInsideWorkspace(url) && isMarkdownLike(url) && artifact.healthStatus != .missingFile && artifact.healthStatus != .invalidExternalPath && artifact.healthStatus != .invalidRelativePath && artifact.healthStatus != .hashMismatch
             }
         }
 
@@ -139,8 +141,8 @@ enum RecentArtifactContentResolver {
         }
 
         return scopedArtifacts.filter { artifact in
-            let url = URL(fileURLWithPath: artifact.path)
-            return isInsideWorkspace(url) && isMarkdownLike(url)
+            guard let url = artifact.resolvedURL(in: workspaceURL) else { return false }
+            return isInsideWorkspace(url) && isMarkdownLike(url) && artifact.healthStatus != .missingFile && artifact.healthStatus != .invalidExternalPath && artifact.healthStatus != .invalidRelativePath && artifact.healthStatus != .hashMismatch
         }
     }
 
@@ -162,10 +164,16 @@ enum RecentArtifactContentResolver {
 
     private static func resolveArtifact(
         _ artifact: IndexedArtifact,
-        roomID: UUID
+        roomID: UUID,
+        manager: AgentWindowManager
     ) async -> RecentArtifactContentResolution? {
-        let url = URL(fileURLWithPath: artifact.path)
+        let workspaceURL = ToolExecutionContext.workspaceURL
+        guard let url = artifact.resolvedURL(in: workspaceURL) else { return nil }
         guard isInsideWorkspace(url), isMarkdownLike(url) else { return nil }
+        guard artifact.healthStatus != .missingFile,
+              artifact.healthStatus != .invalidExternalPath,
+              artifact.healthStatus != .invalidRelativePath,
+              artifact.healthStatus != .hashMismatch else { return nil }
 
         guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
               let sizeNumber = attributes[.size] as? NSNumber else {
@@ -178,6 +186,14 @@ enum RecentArtifactContentResolver {
         }
 
         guard let readResult = readPrefix(from: url) else { return nil }
+        if let recentEntry = manager.recentArtifactIndexEntry(artifactID: artifact.id, roomID: roomID) {
+            if let expectedSize = recentEntry.fileSizeBytes, expectedSize != fileSize {
+                return nil
+            }
+            if let expectedHash = recentEntry.contentHash, expectedHash != readResult.contentHash {
+                return nil
+            }
+        }
         let sourceText = String(readResult.text.prefix(maxReusableCharacterCount)).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !sourceText.isEmpty else { return nil }
 
