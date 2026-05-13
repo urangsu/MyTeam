@@ -316,7 +316,7 @@ actor ArtifactStore {
     private(set) var lastActionLogCompactedAt: Date?
     private(set) var actionLogCompactionCount: Int = 0
 
-    var workspaceURL: URL {
+    nonisolated var workspaceURL: URL {
         let appSupport = FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask

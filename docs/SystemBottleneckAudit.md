@@ -1,4 +1,26 @@
-# System Bottleneck Audit — Round 30C
+# System Bottleneck Audit
+
+## Round 40A-40D Result
+
+### Fixed / Reduced
+- App Store packaging uncertainty
+- Release diagnostics overexposure (minimized)
+- first launch / no-key / offline state ambiguity (clarified)
+- sandbox / file access policy ambiguity (finalized)
+- external write policy ambiguity (finalized)
+- debug UI visibility in Release (hidden)
+- model override visibility in Release (hidden)
+- startup crash-prone paths (safety guards added)
+- MainActor isolation warnings (6 warnings fixed)
+
+### Still Remaining
+- actual App Store archive submission (deferred to Round 41+)
+- StoreKit production purchase QA (deferred)
+- Google Calendar live OAuth (deferred until Desktop Client ID available)
+- first-launch onboarding polish (Round 41A)
+- PDF/DOCX/XLSX/PPTX parser implementation (announced as future)
+
+---
 
 ## Round 38A-38D Result
 

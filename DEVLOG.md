@@ -6,7 +6,28 @@
 
 ---
 
-## 2026-05-13 (Round 38A-38D — ArtifactStore Relative Path + Compaction Pack)
+## 2026-05-13 (Round 40A-40D — App Store Submission Hardening Pack)
+
+- App Store packaging checklist 완성 (11개 섹션, 43개 체크리스트)
+- Release diagnostics minimization 재점검 (verbose mode 사용 금지)
+- first launch / no-key / offline UX 확정
+- sandbox / file access policy 최종 가드 정리
+- external write / destructive action policy 최종 가드 정리
+- StoreKit / entitlement 상태 문서화
+- startup / termination crash-prone path 점검 (safety guard 추가)
+- Release warning audit 마감
+- Submission runtime QA checklist 정리 (8개 섹션)
+- TASK.md 정리 (Round 40A-40D now, Round 41A next)
+- 외부 write 없음
+- Gmail API 없음
+- Calendar write 없음
+- debug toggles hidden in Release
+- model override hidden in Release
+- verbose diagnostics disabled in Release
+
+---
+
+## 2026-05-13 (Round 39A-39D — Release Runtime QA + Packaging Readiness Pack)
 
 - ArtifactStore workspace-relative path policy 추가
 - 기존 absolute path entry normalize 지원

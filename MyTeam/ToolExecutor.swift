@@ -34,21 +34,23 @@ actor ToolExecutor {
     ) async -> ToolResult {
         let toolName = await MainActor.run { tool.name }
         let ts = ISO8601DateFormatter().string(from: Date())
-        let executionEntry = ActionLogEntry(
-            ts: ts,
-            session: sessionID,
-            tool: toolName,
-            inputSummary: baseEntry.inputSummary,
-            inputHash: baseEntry.inputHash,
-            redactedFields: baseEntry.redactedFields,
-            result: "pending",
-            artifact: nil,
-            error: nil,
-            declaredRisk: declaredRisk.rawValue,
-            registryRisk: registryRisk.rawValue,
-            effectiveRisk: effectiveRisk.rawValue,
-            failureCode: nil
-        )
+        let executionEntry = await MainActor.run {
+            ActionLogEntry(
+                ts: ts,
+                session: sessionID,
+                tool: toolName,
+                inputSummary: baseEntry.inputSummary,
+                inputHash: baseEntry.inputHash,
+                redactedFields: baseEntry.redactedFields,
+                result: "pending",
+                artifact: nil,
+                error: nil,
+                declaredRisk: declaredRisk.rawValue,
+                registryRisk: registryRisk.rawValue,
+                effectiveRisk: effectiveRisk.rawValue,
+                failureCode: nil
+            )
+        }
 
         do {
             let result = try await tool.execute(input: ToolInput(parameters: input), context: context)

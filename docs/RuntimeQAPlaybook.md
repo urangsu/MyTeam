@@ -104,3 +104,133 @@ defaults write com.urang.MyTeam MyTeam.FeatureFlags.planRunnerUniversalDocumentE
 - ArtifactStore health, relative path normalize, and cleanup dry-run are policy-level checks only
 - 실제 cleanup delete QA는 하지 않는다
 - full path, sourceText, token, auth는 기록하지 않는다
+
+---
+
+# Submission Runtime QA — Round 40A-40D
+
+## 1. First Launch State
+
+### Expected Behavior
+```
+API key 없음:
+"설정에서 API 키를 연결하거나, 로컬 파일/문서 기능부터 사용할 수 있습니다."
+
+네트워크 없음:
+"네트워크 연결이 없어 AI 응답은 제한됩니다. 로컬 파일/문서 기능은 계속 사용할 수 있습니다."
+
+Google OAuth not configured:
+"Google 캘린더 연결 준비 중입니다."
+```
+
+### Verification Points
+- [ ] App starts without errors (no force unwrap crash)
+- [ ] Settings view shows API key input
+- [ ] no error dialogs on launch
+- [ ] local file operations available
+- [ ] no OAuth setup instructions exposed to general user
+
+## 2. Artifact Workflow QA
+
+- [ ] Document creation: "검토보고서 만들어줘"
+- [ ] Artifact appears in ArtifactCard
+- [ ] ArtifactCard shows file size, type
+- [ ] Finder open: workspace file opens correctly
+- [ ] Path copy: copies workspace-relative path to pasteboard
+- [ ] Recent artifact reuse: works in subsequent messages
+- [ ] Multiple artifacts: list shows all created files
+
+## 3. File Intake QA
+
+- [ ] txt file: import works, content displayed
+- [ ] md file: import works, markdown formatted
+- [ ] csv file: import works, table view available
+- [ ] pdf file: labeled "준비 중" (not functional)
+- [ ] docx file: labeled "준비 중" (not functional)
+- [ ] xlsx file: labeled "준비 중" (not functional)
+- [ ] pptx file: labeled "준비 중" (not functional)
+- [ ] sh file: blocked, message shows reason
+- [ ] app file: blocked, message shows reason
+- [ ] pkg file: blocked, message shows reason
+
+## 4. Blocked Operations QA
+
+### Mail / External Write
+- [ ] "메일 보내줘" → displays "blocked" message only
+- [ ] no draft composition
+- [ ] no mailto: URL triggered
+- [ ] tool execution returns .blocked status
+
+### Calendar / External Events
+- [ ] "일정 만들어줘" → displays "blocked" message only
+- [ ] "캘린더에 추가해줘" → blocked
+- [ ] "예약 잡아줘" → blocked
+- [ ] no calendar API call attempted
+
+### Destructive File Actions
+- [ ] "파일 삭제해줘" → displays "blocked" message only
+- [ ] "폴더 비워줘" → blocked
+- [ ] no file deletion occurs
+- [ ] no undo dialog
+
+### External Upload
+- [ ] "외부 사이트에 올려줘" → displays "blocked" message only
+- [ ] no HTTP POST to external domains
+- [ ] no S3/Drive/Box integration attempted
+
+## 5. Release Visibility QA
+
+### Hidden in Release Build
+- [ ] PlanRunner button not visible
+- [ ] Model override not accessible
+- [ ] Model picker not available
+- [ ] Verbose diagnostics suppressed
+- [ ] Debug toggles hidden in Settings
+- [ ] Runtime trace suppressed in error messages
+
+### Visible in Release Build (Safe)
+- [ ] Tool layer status (enabled/disabled)
+- [ ] Artifact availability (count only)
+- [ ] Memory guard status
+- [ ] External write policy status
+- [ ] Last workflow status
+
+## 6. Safety Constraint QA
+
+### No Auto-Approval
+- [ ] requiresApproval actions: not executed
+- [ ] no silent approval
+- [ ] confirmation UI: shown when required
+
+### No Auto-Login
+- [ ] stored credentials: not used automatically
+- [ ] OAuth token: requires user action
+- [ ] session: no silent re-authentication
+
+### No Automatic Deletion
+- [ ] cleanup: dry-run only
+- [ ] user confirmation: required
+- [ ] no background cleanup
+
+## 7. Startup / Termination Safety QA
+
+### Startup
+- [ ] RecentArtifactIndex decode error → empty index (no crash)
+- [ ] ArtifactStore index error → safe fallback
+- [ ] API key missing → no-key state
+- [ ] TTS model missing → TTS disabled gracefully
+- [ ] no force unwrap, try!, fatalError
+
+### Termination
+- [ ] TTS task cancellation: completes safely
+- [ ] Audio playback: stopped
+- [ ] Active workflows: cancelled
+- [ ] no hanging processes
+
+## 8. Multi-Room Isolation QA
+
+- [ ] Room A: long workflow (e.g., report generation)
+- [ ] Room B: quick action (e.g., word count)
+- [ ] Room A: continues independently (not cancelled by Room B)
+- [ ] Room B: completes normally
+- [ ] task isolation: verified by separate activeTasksByRoom entries
