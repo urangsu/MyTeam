@@ -1,0 +1,655 @@
+From a2c61ea8fe4a7c272a3a3336855075fe726dc12e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 14 May 2026 06:47:32 +0000
+Subject: [PATCH 4/7] =?UTF-8?q?Round=2043R-47R=20=E2=80=94=20Phase=202=20I?=
+ =?UTF-8?q?ntegration=20(Part=201):=20FirstLaunchBannerView=20+=20LocalOnl?=
+ =?UTF-8?q?yModeCardView=20+=20Message=20Standardization?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- Added FirstLaunchState management to AgentWindowManager
+- Integrated FirstLaunchBannerView into TeamStatusView with proper state binding
+- Added dismissFirstLaunchBanner and state update methods to AgentWindowManager
+- Integrated LocalOnlyModeCardView into SettingsView API Key section (when no API key)
+- Standardized blocked/approval/unavailable message copy across:
+  * CapabilityAwareRouter (all 4 decision types)
+  * WorkflowOrchestrator (skill execution messages)
+  * ApprovalPolicy (blocked scope)
+  * AssistantConnectorPolicy (connector decision)
+  * ConnectorCapabilityPolicy (blocked capabilities)
+  * ToolExecutionLayer (high-risk/destructive tools)
+- All messages now use consistent standard copy for policy/approval/unavailable states
+
+https://claude.ai/code/session_01SxLHrP9LirtqDTyoT7RJpd
+---
+ MyTeam/AgentWindowManager.swift        |  26 +-
+ MyTeam/ApprovalPolicy.swift            |   2 +-
+ MyTeam/AssistantConnectorPolicy.swift  |   2 +-
+ MyTeam/CapabilityAwareRouter.swift     |   8 +-
+ MyTeam/ConnectorCapabilityPolicy.swift |   2 +-
+ MyTeam/SettingsView.swift              |   6 +
+ MyTeam/TeamStatusView.swift            |  18 ++
+ MyTeam/ToolExecutionLayer.swift        |   4 +-
+ MyTeam/WorkflowOrchestrator.swift      |   6 +-
+ TASK.md                                |  30 +--
+ docs/Round43R47R_INTEGRATION_PLAN.md   | 339 +++++++++++++++++++++++++
+ 11 files changed, 414 insertions(+), 29 deletions(-)
+ create mode 100644 docs/Round43R47R_INTEGRATION_PLAN.md
+
+diff --git a/MyTeam/AgentWindowManager.swift b/MyTeam/AgentWindowManager.swift
+index e7d0001..cb366da 100644
+--- a/MyTeam/AgentWindowManager.swift
++++ b/MyTeam/AgentWindowManager.swift
+@@ -63,7 +63,10 @@ class AgentWindowManager: ObservableObject {
+ 
+     // 팀의 현재 큰 업무
+     @Published var currentMainTask: String = "AI 팀 프로젝트 매니징 및 고도화"
+-    
++
++    // 첫 실행 상태 — 첫 실행 배너, 로컬 전용 모드 카드, 스타터 액션 표시에 사용
++    @Published var firstLaunchState: FirstLaunchState = .empty
++
+     // 팀 전체 설정 — 현재 화면에 나와있는 4명의 에이전트 (순서 변경 및 교체 가능)
+     @Published var activeAgents: [AgentConfig]
+ 
+@@ -261,6 +264,27 @@ class AgentWindowManager: ObservableObject {
+         pendingDelegatedExecutionRequestsByRoom.removeValue(forKey: roomID)
+     }
+ 
++    // MARK: - First Launch State Management
++    @MainActor
++    func dismissFirstLaunchBanner() {
++        firstLaunchState = firstLaunchState.updated(hasSeenOnboarding: true)
++    }
++
++    @MainActor
++    func updateFirstLaunchAPIKeyState(hasAPIKey: Bool) {
++        firstLaunchState = firstLaunchState.updated(hasAPIKey: hasAPIKey)
++    }
++
++    @MainActor
++    func updateFirstLaunchOfflineState(isOffline: Bool) {
++        firstLaunchState = firstLaunchState.updated(isOffline: isOffline)
++    }
++
++    @MainActor
++    func updateFirstLaunchCapabilityMode(_ mode: RuntimeCapabilityMode) {
++        firstLaunchState = firstLaunchState.updated(capabilityMode: mode)
++    }
++
+     @MainActor
+     func updateRoomGoalContext(
+         roomID: UUID,
+diff --git a/MyTeam/ApprovalPolicy.swift b/MyTeam/ApprovalPolicy.swift
+index 9adfb59..9856408 100644
+--- a/MyTeam/ApprovalPolicy.swift
++++ b/MyTeam/ApprovalPolicy.swift
+@@ -16,7 +16,7 @@ enum ApprovalPolicy {
+         case .externalWrite:
+             return .requiresApproval(reason: "외부 전송은 실행 전 확인이 필요합니다.")
+         case .payment, .login, .destructive:
+-            return .blocked(reason: "현재 버전에서는 자동 실행할 수 없습니다.")
++            return .blocked(reason: "이 작업은 안전 정책상 자동 실행하지 않습니다.")
+         }
+     }
+ 
+diff --git a/MyTeam/AssistantConnectorPolicy.swift b/MyTeam/AssistantConnectorPolicy.swift
+index de97d51..4523a55 100644
+--- a/MyTeam/AssistantConnectorPolicy.swift
++++ b/MyTeam/AssistantConnectorPolicy.swift
+@@ -27,7 +27,7 @@ enum AssistantConnectorPolicy {
+             Self.decision(for: capability)
+         }
+         if decisions.contains(where: { if case .blocked = $0 { return true } else { return false } }) {
+-            return .blocked(reason: "현재 버전에서는 자동 실행할 수 없습니다.")
++            return .blocked(reason: "이 작업은 안전 정책상 자동 실행하지 않습니다.")
+         }
+         if decisions.contains(where: { if case .requiresApproval = $0 { return true } else { return false } }) {
+             return .requiresApproval(reason: "추가 확인이 필요합니다.")
+diff --git a/MyTeam/CapabilityAwareRouter.swift b/MyTeam/CapabilityAwareRouter.swift
+index 4efd0c4..17e998e 100644
+--- a/MyTeam/CapabilityAwareRouter.swift
++++ b/MyTeam/CapabilityAwareRouter.swift
+@@ -29,7 +29,7 @@ enum CapabilityAwareRouter {
+                 goal: goal.goalType,
+                 missingCapabilities: goal.requiredCapabilities,
+                 blockedCapabilities: blocked,
+-                message: "현재 버전에서는 자동 실행할 수 없는 capability가 포함되어 있습니다."
++                message: "이 작업은 안전 정책상 자동 실행하지 않습니다."
+             )
+         }
+ 
+@@ -39,7 +39,7 @@ enum CapabilityAwareRouter {
+                 goal: goal.goalType,
+                 missingCapabilities: goal.requiredCapabilities.filter { $0.accessTier != .available },
+                 blockedCapabilities: [],
+-                message: "추가 확인이 필요한 capability가 포함되어 있습니다."
++                message: "이 작업은 승인이 필요합니다. 자동 실행하지 않고 승인 대기로 남겨둘게요."
+             )
+         }
+ 
+@@ -49,7 +49,7 @@ enum CapabilityAwareRouter {
+                 goal: goal.goalType,
+                 missingCapabilities: future,
+                 blockedCapabilities: [],
+-                message: "아직 연결되지 않은 capability가 포함되어 있습니다."
++                message: "이 기능은 준비 중입니다. 현재 지원되는 기능으로 먼저 도와드릴게요."
+             )
+         }
+ 
+@@ -68,7 +68,7 @@ enum CapabilityAwareRouter {
+             goal: goal.goalType,
+             missingCapabilities: goal.requiredCapabilities,
+             blockedCapabilities: [],
+-            message: "현재 앱 capability를 확인할 수 없습니다."
++            message: "이 기능은 아직 사용할 수 없습니다. 현재는 로컬 파일/문서 기능을 사용할 수 있습니다."
+         )
+     }
+ }
+diff --git a/MyTeam/ConnectorCapabilityPolicy.swift b/MyTeam/ConnectorCapabilityPolicy.swift
+index 9052ae9..d0c1bcc 100644
+--- a/MyTeam/ConnectorCapabilityPolicy.swift
++++ b/MyTeam/ConnectorCapabilityPolicy.swift
+@@ -37,7 +37,7 @@ enum ConnectorCapabilityPolicy {
+             return .init(status: .requiresApproval, message: "이 작업은 추가 확인이 필요합니다.")
+ 
+         case .mailSend, .calendarCreate, .calendarModify, .destructiveFileAction, .automaticLogin:
+-            return .init(status: .blocked, message: "이 작업은 현재 버전에서 자동 실행할 수 없습니다.")
++            return .init(status: .blocked, message: "이 작업은 안전 정책상 자동 실행하지 않습니다.")
+ 
+         case .answer, .localSkill, .llmGeneration, .artifactCreation, .dailyBriefingPreview, .userInitiatedOAuth:
+             return .init(status: .allowed, message: "실행 가능합니다.")
+diff --git a/MyTeam/SettingsView.swift b/MyTeam/SettingsView.swift
+index cd1c31d..008665c 100644
+--- a/MyTeam/SettingsView.swift
++++ b/MyTeam/SettingsView.swift
+@@ -379,6 +379,12 @@ struct SettingsView: View {
+                         .controlSize(.small)
+                         .disabled(currentKey(for: selectedProvider).isEmpty)
+                 }
++
++                if currentKey(for: selectedProvider).isEmpty {
++                    LocalOnlyModeCardView(
++                        onOpenSettings: { /* Settings already open */ }
++                    )
++                }
+             }
+ 
+             Section {
+diff --git a/MyTeam/TeamStatusView.swift b/MyTeam/TeamStatusView.swift
+index 49c5f51..c44dfd4 100644
+--- a/MyTeam/TeamStatusView.swift
++++ b/MyTeam/TeamStatusView.swift
+@@ -128,6 +128,24 @@ struct TeamStatusView: View {
+             }
+             
+             if !isCollapsed {
++                // ── 첫 실행 배너 ──
++                if manager.firstLaunchState.shouldShowOnboarding {
++                    FirstLaunchBannerView(
++                        state: manager.firstLaunchState,
++                        onDismiss: {
++                            withAnimation(.easeInOut(duration: 0.2)) {
++                                manager.dismissFirstLaunchBanner()
++                            }
++                        },
++                        onOpenSettings: {
++                            manager.showSettingsWindow()
++                        }
++                    )
++                    .transition(.move(edge: .top).combined(with: .opacity))
++                    .padding(.horizontal, 16)
++                    .padding(.vertical, 10)
++                }
++
+                 Divider().background(textColor.opacity(0.05))
+ 
+                 if selectedTab == 0 {
+diff --git a/MyTeam/ToolExecutionLayer.swift b/MyTeam/ToolExecutionLayer.swift
+index 1ffd9e1..3db55ad 100644
+--- a/MyTeam/ToolExecutionLayer.swift
++++ b/MyTeam/ToolExecutionLayer.swift
+@@ -135,9 +135,7 @@ enum ToolExecutionLayer {
+         }
+ 
+         if registryRisk == .high || registryRisk == .destructive {
+-            let message = registryRisk == .destructive
+-                ? "파괴적 위험 도구는 현재 버전에서 실행할 수 없습니다."
+-                : "고위험 도구는 현재 버전에서 실행할 수 없습니다."
++            let message = "이 작업은 안전 정책상 자동 실행하지 않습니다."
+             let failureCode = registryRisk == .destructive ? "tool_destructive_blocked" : "tool_high_risk_blocked"
+             await appendBlockedLog(
+                 baseEntry: baseEntry,
+diff --git a/MyTeam/WorkflowOrchestrator.swift b/MyTeam/WorkflowOrchestrator.swift
+index 12e2c91..234aa39 100644
+--- a/MyTeam/WorkflowOrchestrator.swift
++++ b/MyTeam/WorkflowOrchestrator.swift
+@@ -207,7 +207,7 @@ final class WorkflowOrchestrator {
+                 await MainActor.run {
+                     manager.addChatLog(
+                         roomID: roomID, agentID: "system", agentName: "시스템",
+-                        text: "'\(highRiskSkill.name)' 스킬은 로그인/개인정보/예약/결제 등 민감 작업이므로 현재 버전에서는 실행할 수 없습니다.",
++                        text: "이 기능은 아직 사용할 수 없습니다. 현재는 로컬 파일/문서 기능을 사용할 수 있습니다.",
+                         isUser: false, isSystem: true
+                     )
+                 }
+@@ -219,8 +219,8 @@ final class WorkflowOrchestrator {
+                 AppLog.info("[Skill] matched disabled '\(disabledSkill.id)'")
+                 let isHighRisk = SkillRegistry.isHighRiskSkill(disabledSkill)
+                 let message = isHighRisk
+-                    ? "'\(disabledSkill.name)' 스킬은 로그인/개인정보/예약/결제 등 민감 작업이므로 아직 비활성화되어 있습니다. 현재 버전에서는 사용할 수 없습니다."
+-                    : "'\(disabledSkill.name)' 스킬은 현재 비활성화되어 있습니다. 설정 > 스킬 탭에서 활성화할 수 있습니다."
++                    ? "이 기능은 아직 사용할 수 없습니다. 현재는 로컬 파일/문서 기능을 사용할 수 있습니다."
++                    : "이 기능은 준비 중입니다. 현재 지원되는 기능으로 먼저 도와드릴게요."
+                 await MainActor.run {
+                     self.recordRouteTrace(
+                         manager: manager,
+diff --git a/TASK.md b/TASK.md
+index 4a3f344..229f896 100644
+--- a/TASK.md
++++ b/TASK.md
+@@ -58,23 +58,21 @@ MyTeam은 Mac 안에서 사용자의 자연어 요청을 받아, 문서/파일/
+ 
+ ### Now
+ 
+-#### Round 43A-47H — Product Completion Without QA Pack
++#### Round 43R-47R — Product Surface Real Integration + Build Recovery Pack
+ 
+ 목표:
+ 
+-- first launch onboarding UI 실제 연결
+-- no-key / offline / connector-limited UX 표시
+-- local-only mode 제품 상태화
+-- starter actions 4개 실제 UI 연결
+-- first result activation flow 실제 UI 연결
+-- Workspace home / artifact library / recent artifact action 정리
+-- SettingsView 일반 사용자 기준 간결화
+-- Connector Center read-only / planned / blocked 상태 정리
+-- approval / blocked / unavailable action surface 정리
+-- StoreKit / entitlement / paywall 표면 문구 정리
+-- TTS/audio fallback 상태 표시
+-- App Store metadata / privacy copy 초안 작성
+-- RuntimeDiagnostics release/debug 분리 유지
++- Round 43A-47H 브랜치 main 반영 ✅
++- FirstLaunchBannerView를 실제 TeamStatusView / DailyBriefingCardView 표면에 연결
++- LocalOnlyModeCardView를 no-key / local-only 상태에 연결
++- StarterActionStripView를 실제 empty state / starter surface에 연결
++- StarterActionDispatcher를 실제 WorkflowOrchestrator / file intake 경로에 연결
++- FirstResultActionStripView를 최근 artifact / first result surface에 연결
++- RuntimeDiagnosticsService에 Round 43 flags 실제값 연결
++- SettingsView 일반 사용자 copy 간결화
++- Connector Center 상태 라벨을 readOnly / planned / blocked / unavailable 기준으로 통일
++- StoreKit / TTS / connector 상태는 표면 문구만 정리하고 로직 변경 없음
++- AppStoreMetadataDraft / PrivacyNutritionDraft 유지
+ - QA 없이 Debug / Release build warning 0 유지
+ 
+ ### Next
+@@ -83,16 +81,18 @@ MyTeam은 Mac 안에서 사용자의 자연어 요청을 받아, 문서/파일/
+ 
+ 목표:
+ 
++- first launch onboarding runtime 확인
++- starter action 실제 클릭 확인
+ - Finder open / path copy 실제 UI 확인
+ - fileImporter sandbox 실제 확인
+ - multi-room active task isolation 확인
+ - wrong-room artifact reuse 실제 확인
+-- first-launch onboarding runtime 확인
+ - Google Calendar live OAuth 준비 상태 확인
+ - StoreKit production purchase QA 준비
+ 
+ ### Recently Completed
+ 
++- Round 43A-47H — Product Completion Without QA Pack (components/docs prepared) ✅
+ - Round 40R + 41A-41F — Release Truthfulness Repair + First Launch Activation Pack (Structural Foundation) ✅
+ - Round 40A-40D — App Store Submission Hardening Pack ✅
+ - Round 39A-39D — Release Runtime QA + Packaging Readiness Pack ✅
+diff --git a/docs/Round43R47R_INTEGRATION_PLAN.md b/docs/Round43R47R_INTEGRATION_PLAN.md
+new file mode 100644
+index 0000000..2f6db1a
+--- /dev/null
++++ b/docs/Round43R47R_INTEGRATION_PLAN.md
+@@ -0,0 +1,339 @@
++# Round 43R-47R — Product Surface Real Integration Plan
++
++## Overview
++Round 43R-47R focuses on integrating the UI components and views created in Round 43A-47H into the actual product surface. This requires:
++
++1. **Target Registration** (requires Xcode on macOS)
++2. **View Integration** (code changes)
++3. **Message Surface Updates** (code changes)
++4. **Build & Verification** (requires xcodebuild on macOS)
++
++## Phase 1: Target Registration (Xcode Required)
++
++### Files to Register in Xcode Target "MyTeam"
++```
++MyTeam/FirstLaunchBannerView.swift
++MyTeam/LocalOnlyModeCardView.swift  
++MyTeam/StarterActionStripView.swift
++MyTeam/StarterActionDispatcher.swift
++```
++
++### Steps (on macOS with Xcode)
++1. Open `MyTeam/MyTeam.xcodeproj` in Xcode
++2. Select target "MyTeam"
++3. Go to Build Phases → Compile Sources
++4. Click "+" and add the 4 new .swift files
++5. Verify no duplicate entries
++6. Save project
++
++## Phase 2: Code Integration (Linux/macOS)
++
++### 2.1 FirstLaunchBannerView Integration
++
++**Files to Modify:**
++- `MyTeam/TeamStatusView.swift`
++- `MyTeam/DailyBriefingCardView.swift`
++- `MyTeam/FirstLaunchBannerView.swift` (already created)
++
++**Location in TeamStatusView:**
++- Add after header section (line ~210), before agentListView
++- Show banner if `shouldShowFirstLaunchBanner` is true
++- Banner dismisses when user taps API key button
++
++**Location in DailyBriefingCardView:**
++- Add in empty state (when no briefing items)
++- Before "실행 가능한 액션이 없습니다." text
++
++**Integration Code Pattern:**
++```swift
++if shouldShowFirstLaunchBanner {
++    FirstLaunchBannerView(
++        state: firstLaunchState,
++        onDismiss: { /* hide banner */ },
++        onOpenSettings: { /* navigate to settings */ }
++    )
++    .transition(.move(edge: .top).combined(with: .opacity))
++}
++```
++
++### 2.2 LocalOnlyModeCardView Integration
++
++**Files to Modify:**
++- `MyTeam/SettingsView.swift`
++- `MyTeam/AgentWindowManager.swift` (for state)
++
++**Location in SettingsView:**
++- Add in API Key section (when key is missing)
++- Show local features available (3-4 items)
++- Include "Set API Key" button
++
++**Integration Code Pattern:**
++```swift
++if !hasAPIKey {
++    LocalOnlyModeCardView(
++        onOpenSettings: { /* show file */ }
++    )
++}
++```
++
++### 2.3 StarterActionStripView Integration
++
++**Files to Modify:**
++- `MyTeam/TeamStatusView.swift` or `MyTeam/DailyBriefingCardView.swift`
++- `MyTeam/StarterActionDispatcher.swift` (already created)
++- `MyTeam/WorkflowOrchestrator.swift` (for routing)
++
++**Location:**
++- In empty state or first-launch state
++- Replace/supplement basic empty message
++- Show 4 starter action buttons
++
++**Integration Code Pattern:**
++```swift
++StarterActionStripView(
++    actions: StarterActionProvider.actions(for: firstLaunchState),
++    onActionTap: { action in
++        Task {
++            await StarterActionDispatcher.dispatch(
++                action,
++                roomID: currentRoomID,
++                manager: manager,
++                orchestrator: orchestrator,
++                onFileIntakeRequested: {
++                    isFileIntakeSheetPresented = true
++                }
++            )
++        }
++    }
++)
++```
++
++### 2.4 FirstResultActionStripView Integration
++
++**Files to Modify:**
++- `MyTeam/ArtifactCardView.swift`
++- `MyTeam/StarterActionStripView.swift` (already has FirstResultActionStripView)
++
++**Location:**
++- After first artifact created
++- Show 4 action buttons (요약, 표, 체크리스트, Finder)
++- Only for markdown/txt artifacts with valid hash
++
++**Conditions:**
++```swift
++if let artifact = recentArtifact,
++   artifact.fileExists,
++   artifact.hashValid,
++   artifact.type == .markdown || artifact.type == .text {
++    FirstResultActionStripView(
++        actions: StarterActionProvider.actionsForFirstResult(),
++        onActionTap: { action in
++            // Handle first result action
++        }
++    )
++}
++```
++
++### 2.5 SettingsView Message Simplification
++
++**Files to Modify:**
++- `MyTeam/SettingsView.swift`
++- `MyTeam/AssistantConnectorCenterView.swift`
++
++**Changes:**
++1. Hide OAuth client ID explanations (general users)
++2. Show only: "API key status", "Local features available", "Connection status"
++3. Remove lengthy descriptions
++4. Move debug settings to DEBUG-only section
++
++**Messages to Use:**
++```swift
++"로컬 문서와 파일 기능은 바로 사용할 수 있습니다.
++연결 기능은 읽기 전용 또는 준비 중입니다.
++메일 발송, 일정 생성, 파일 삭제는 자동 실행하지 않습니다."
++```
++
++### 2.6 Connector Center State Labels
++
++**Files to Modify:**
++- `MyTeam/AssistantConnectorCatalog.swift`
++- `MyTeam/AssistantConnectorPolicy.swift`
++- `MyTeam/AssistantConnectorCenterView.swift`
++
++**State Label Standardization:**
++```swift
++enum ConnectorStateLabel: String {
++    case available       // Fully operational
++    case readOnly        // Read-only access
++    case planned         // Preparation in progress
++    case requiresApproval // Needs user approval
++    case blocked         // Blocked by policy
++    case unavailable     // Not yet implemented
++}
++```
++
++**Mapping:**
++- Calendar read → readOnly or unavailable
++- Calendar write → blocked
++- Gmail metadata → planned or unavailable
++- Gmail body read → requiresApproval or planned
++- Mail send → blocked
++- Naver → planned
++
++### 2.7 Approval/Blocked Message Standardization
++
++**Files to Modify:**
++- `MyTeam/CapabilityAwareRouter.swift`
++- `MyTeam/GoalGate.swift`
++- `MyTeam/WorkflowOrchestrator.swift`
++- `MyTeam/BriefingActionDispatcher.swift`
++
++**Message Copy Standard:**
++```swift
++// Blocked (Policy)
++"이 작업은 안전 정책상 자동 실행하지 않습니다."
++
++// Unavailable (Not implemented)
++"이 기능은 아직 사용할 수 없습니다. 현재는 로컬 파일/문서 기능을 사용할 수 있습니다."
++
++// Approval Required
++"이 작업은 승인이 필요합니다. 자동 실행하지 않고 승인 대기로 남겨둘게요."
++
++// Feature Preparing
++"이 기능은 준비 중입니다. 현재 지원되는 기능으로 먼저 도와드릴게요."
++```
++
++## Phase 3: RuntimeDiagnostics Flags (Code Changes)
++
++**Files to Modify:**
++- `MyTeam/RuntimeDiagnosticsService.swift`
++
++**Flags to Connect:**
++```swift
++// First Launch / Onboarding
++firstLaunchGuidanceAvailable: Bool
++localOnlyModeAvailable: Bool
++noKeyStateHandled: Bool
++offlineStateHandled: Bool
++connectorLimitedStateHandled: Bool
++
++// Product Surface
++starterActionsAvailable: Bool
++firstResultActivationAvailable: Bool
++workspaceHomeAvailable: Bool
++connectorSurfaceSimplified: Bool
++settingsUserFacingCopySimplified: Bool
++
++// Feature Status
++ttsFallbackAvailable: Bool
++storeKitSurfaceDocumented: Bool
++appStoreMetadataDraftAvailable: Bool
++privacyNutritionDraftAvailable: Bool
++
++// QA Status
++manualQAPendingCount: Int  // = 1 (Round 48A)
++```
++
++## Phase 4: Build & Verification (xcodebuild on macOS)
++
++### Step 1: Add Files to Target (Xcode)
++- Register new Swift files in project.pbxproj
++- Verify no warnings about duplicate build files
++
++### Step 2: Build Debug
++```bash
++xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug build
++```
++
++**Success Criteria:**
++- BUILD SUCCEEDED
++- 0 Swift warnings in app code
++- All new views compile without errors
++
++### Step 3: Build Release
++```bash
++xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Release build
++```
++
++**Success Criteria:**
++- BUILD SUCCEEDED
++- 0 Swift warnings in app code
++- Debug toggles hidden
++- Connector write tools hidden
++
++## Files to Modify (Summary)
++
++### High Priority (Integration)
++- [ ] TeamStatusView.swift - Add FirstLaunchBannerView, StarterActionStripView
++- [ ] DailyBriefingCardView.swift - Add FirstLaunchBannerView, StarterActionStripView
++- [ ] ArtifactCardView.swift - Add FirstResultActionStripView
++- [ ] SettingsView.swift - Simplify copy, add LocalOnlyModeCardView
++- [ ] StarterActionDispatcher.swift - Already created, verify routing
++
++### Medium Priority (State & Messages)
++- [ ] AssistantConnectorCenterView.swift - Update state labels
++- [ ] AssistantConnectorPolicy.swift - Define state labels
++- [ ] WorkflowOrchestrator.swift - Update message copy
++- [ ] BriefingActionDispatcher.swift - Update message copy
++- [ ] CapabilityAwareRouter.swift - Update message copy
++
++### Low Priority (Diagnostics)
++- [ ] RuntimeDiagnosticsService.swift - Add/connect new flags
++- [ ] DiagnosticsVisibilityPolicy.swift - Ensure Release hides debug info
++
++## Xcode Project File Note
++
++**Critical:** The new Swift files are NOT yet registered in `MyTeam.xcodeproj`. 
++
++**Resolution:**
++1. Open project in Xcode on macOS
++2. Go to: Target "MyTeam" → Build Phases → Compile Sources
++3. Click "+" and select:
++   - FirstLaunchBannerView.swift
++   - LocalOnlyModeCardView.swift
++   - StarterActionStripView.swift
++   - StarterActionDispatcher.swift
++4. Verify entries (should have no duplicates)
++5. Save project (Xcode auto-saves)
++6. Build to verify
++
++## Testing Strategy
++
++Since this round does NOT include manual QA:
++
++1. Build must pass (Debug & Release)
++2. Zero compiler warnings in app code
++3. Unused view warnings should not appear
++4. All integration points should type-check correctly
++5. Message copy should be consistent
++
++## Expected Commit Summary
++
++```
++Round 43R-47R — Product Surface Real Integration + Build Recovery Pack
++
++- Integrated FirstLaunchBannerView into TeamStatusView / DailyBriefingCardView
++- Integrated LocalOnlyModeCardView into SettingsView  
++- Integrated StarterActionStripView into empty states
++- Integrated FirstResultActionStripView into ArtifactCardView
++- Connected StarterActionDispatcher routing to WorkflowOrchestrator
++- Standardized connector state labels (available/readOnly/planned/blocked/unavailable)
++- Simplified SettingsView copy for general users
++- Updated approval/blocked/unavailable messages for consistency
++- Connected RuntimeDiagnostics flags to actual states
++- Verified no external write, no Gmail API, no Calendar write
++- Target registration pending (requires Xcode on macOS)
++- Debug/Release build verification pending (requires xcodebuild on macOS)
++```
++
++## Status
++
++- **Code Integration:** In progress
++- **Target Registration:** Pending (macOS/Xcode)
++- **Build Verification:** Pending (macOS/xcodebuild)
++- **Manual QA:** Deferred to Round 48A
++
++---
++
++Last Updated: 2026-05-14
++Round: 43R-47R
+-- 
+2.43.0
+
