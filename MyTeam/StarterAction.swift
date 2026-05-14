@@ -66,7 +66,7 @@ enum StarterActionProvider {
         emoji: "🗓️"
     )
 
-    static func actions(for state: FirstLaunchState) -> [StarterAction] {
+    static func actions() -> [StarterAction] {
         // 모든 상태에서 4개의 starter action을 표시
         [
             meetingMinutesAction,

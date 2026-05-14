@@ -610,15 +610,32 @@ struct AgentChatView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 2) {
-                        ForEach(Array(chatHistory.enumerated()), id: \.element.id) { index, log in
-                            if index == 0 || !Calendar.current.isDate(
-                                log.timestamp, inSameDayAs: chatHistory[index - 1].timestamp
-                            ) {
-                                DateSeparator(date: log.timestamp)
-                            }
+                        // 첫 채팅일 때 시작 액션 표시
+                        if chatHistory.isEmpty {
+                            VStack(spacing: 16) {
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 32))
+                                    .foregroundColor(currentAgent.color)
 
-                            deletableMessageBubble(log: log)
-                                .id(log.id)
+                                Text("\(currentAgent.name)와 대화를 시작해 보세요")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(textColor)
+
+                                starterActionsStripView
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 40)
+                        } else {
+                            ForEach(Array(chatHistory.enumerated()), id: \.element.id) { index, log in
+                                if index == 0 || !Calendar.current.isDate(
+                                    log.timestamp, inSameDayAs: chatHistory[index - 1].timestamp
+                                ) {
+                                    DateSeparator(date: log.timestamp)
+                                }
+
+                                deletableMessageBubble(log: log)
+                                    .id(log.id)
+                            }
                         }
 
                         // 타이핑 인디케이터 ("..." 애니메이션)
@@ -903,6 +920,31 @@ struct AgentChatView: View {
         }
         .frame(maxWidth: .infinity)
         .background(bgColor)
+    }
+
+    // MARK: - StarterAction 브리지 (AgentChatView+StarterActions.swift에서 접근)
+    // private 메서드를 extension에서 호출할 수 있도록 내부 래퍼 제공
+    func _sendStarterPrompt(_ prompt: String) {
+        inputText = prompt
+        sendMessage()
+    }
+
+    func _openFileIntake() {
+        openFilePicker()
+    }
+
+    func _ensureRoomID() -> UUID? {
+        let targetID = activeAgentID ?? config.id
+        if let rid = agentRoomID { return rid }
+        let agentName = manager.activeAgents.first(where: { $0.id == targetID })?.name
+            ?? manager.allAvailableAgents.first(where: { $0.id == targetID })?.name
+            ?? config.name
+        manager.createAgentRoom(name: "\(agentName) 대화 1", agentID: targetID)
+        let newRoomID = manager.rooms.last(where: {
+            $0.agentIDs.count == 1 && $0.agentIDs[0] == targetID
+        })?.id
+        agentRoomID = newRoomID
+        return newRoomID
     }
 
     // MARK: - 메시지 전송
