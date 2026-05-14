@@ -234,3 +234,134 @@ Google OAuth not configured:
 - [ ] Room A: continues independently (not cancelled by Room B)
 - [ ] Room B: completes normally
 - [ ] task isolation: verified by separate activeTasksByRoom entries
+
+---
+
+# Next Manual QA Scope — Round 48A
+
+## Overview
+Round 43A-47H completes UI integration and product state readiness. Round 48A will execute manual QA across all user-facing flows without QA pack. Status: manual QA pending.
+
+## 1. First Launch Onboarding
+
+### Scenario: Fresh App Launch (No API Key)
+- [ ] FirstLaunchBannerView displays "API 키 필요" message
+- [ ] Banner shows "지금은 로컬 파일 정리, 문서 템플릿, 스케줄 확인 기능부터 사용할 수 있습니다."
+- [ ] StarterActionStripView shows 4 actions: 회의록, 체크리스트, 파일 읽기, 오늘 할 일
+- [ ] User taps "회의록 양식 만들기" → generates document
+- [ ] User taps "파일 읽기" → file intake panel opens
+- [ ] First artifact created → FirstResultActionStripView appears
+- [ ] FirstResultActionStripView shows 4 actions: 요약, 표, 체크리스트, Finder
+
+### Scenario: Offline State
+- [ ] Network disconnected (Wi-Fi off)
+- [ ] FirstLaunchBannerView displays "네트워크 연결 없음"
+- [ ] LocalOnlyModeCardView shows local features available
+- [ ] Starter actions still functional (no network needed)
+- [ ] Network reconnected → banner disappears
+
+### Scenario: Connector Limited
+- [ ] API key configured, network available
+- [ ] Google Calendar client ID missing
+- [ ] FirstLaunchBannerView displays "연결 기능 준비 중"
+- [ ] Starter actions available
+- [ ] Calendar read attempt → shows "준비 중" message
+
+## 2. Workspace & Artifact Library
+
+### Artifact Visibility
+- [ ] Recent artifacts list shows status: 저장됨 / 파일 없음 / 해시 불일치 / 재사용 가능
+- [ ] Artifact card shows file name, date created
+- [ ] No full paths displayed in UI
+- [ ] Status icons accurate for each state
+
+### First Result Activation
+- [ ] After creating document: summary action routes to LLM
+- [ ] Table action: converts markdown to CSV/table format
+- [ ] Checklist action: extracts checklist from document
+- [ ] Finder action: opens file in Finder (no full path leak)
+- [ ] All actions respect room isolation (no cross-room artifact reuse)
+
+## 3. Connector Center & External Features
+
+### Calendar Read (Prepared)
+- [ ] Calendar settings show "읽기 전용 준비 중"
+- [ ] Write operations blocked (calendar create, modify)
+- [ ] No configuration leaks (client ID not shown to general user)
+
+### Gmail Features (Not Yet)
+- [ ] Gmail metadata shows "준비 중"
+- [ ] No mail body read
+- [ ] No auto-send or draft composition
+- [ ] Settings message: "Gmail 메타데이터 연결은 준비 중입니다. 메일 본문 읽기와 발송은 자동 실행하지 않습니다."
+
+### External Write (Blocked)
+- [ ] Mail send request → "이 작업은 안전 정책상 자동 실행하지 않습니다."
+- [ ] Calendar create → "이 기능은 아직 사용할 수 없습니다."
+- [ ] File delete → "이 작업은 안전 정책상 자동 실행하지 않습니다."
+
+## 4. SettingsView Simplification
+
+### General User View (Release)
+- [ ] API key input field visible
+- [ ] "로컬 기능만 사용 가능" status line
+- [ ] "Google Calendar 읽기는 준비 중입니다." status
+- [ ] No OAuth client ID explanation
+- [ ] No developer toggles
+- [ ] No model override
+- [ ] No connector internals
+
+### Debug View (DEBUG)
+- [ ] All flags visible if DEBUG enabled
+- [ ] Diagnostics available for troubleshooting
+
+## 5. Failure Message Surface
+
+### Approval Required
+- [ ] "이 작업은 승인이 필요합니다. 자동 실행하지 않고 승인 대기로 남겨둘게요."
+- [ ] Shows pending approvals count
+- [ ] /approve command available
+
+### Unavailable Features
+- [ ] "이 기능은 아직 사용할 수 없습니다. 현재는 로컬 파일/문서 기능을 사용할 수 있습니다."
+- [ ] Suggests available alternatives
+
+### Blocked Actions
+- [ ] "이 작업은 안전 정책상 자동 실행하지 않습니다."
+- [ ] Explains why (external write, destructive, etc.)
+
+## 6. Release Build Verification
+
+### Hidden
+- [ ] Debug toggles not visible
+- [ ] Model override not accessible
+- [ ] Verbose diagnostics suppressed
+- [ ] Raw error traces not shown
+- [ ] Token/auth codes not logged
+
+### Visible (Safe)
+- [ ] Build-ready status
+- [ ] Local-only mode status
+- [ ] Memory guard active status
+- [ ] Manual QA pending status
+
+## 7. Starter Actions Behavior
+
+### User Messages
+- [ ] "회의록 양식 만들어줘" → routes to universal document
+- [ ] "앱 출시 체크리스트 만들어줘" → routes to universal document
+- [ ] "오늘 할 일 뭐야" → routes to local scheduler brief
+- [ ] User sees chat log entry with message
+
+### File Intake
+- [ ] "파일 읽기" → file picker opens
+- [ ] File selected → text extraction (txt, md, csv)
+- [ ] File processing → document creation
+
+## Status
+- Starter action UI integration: pending
+- FirstResultActionStripView integration: pending
+- SettingsView simplification: pending
+- Connector state labels: pending
+- Manual QA execution: pending
+- All code builds successfully: pending verification

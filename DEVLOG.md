@@ -6,6 +6,49 @@
 
 ---
 
+## 2026-05-14 (Round 43A-47H — Product Completion Without QA Pack)
+
+### Completed
+- FirstLaunchBannerView.swift 신규 생성 (no-key / offline / connector-limited 메시지)
+- LocalOnlyModeCardView.swift 신규 생성 (로컬 전용 모드 카드 UI)
+- StarterActionStripView.swift 신규 생성 (4개 starter actions + first result actions UI)
+- StarterActionDispatcher.swift 신규 생성 (starter action 라우팅)
+- AppStoreMetadataDraft.md 신규 생성 (앱 이름, 부제, 설명, 키워드, 사용 사례)
+- PrivacyNutritionDraft.md 신규 생성 (개인정보 수집, 저장, 네트워크 정책)
+- TASK.md 업데이트 (Round 43A-47H를 Now로 이동, Round 48A를 Next로 설정)
+- First launch, no-key, offline, connector-limited UX 메시지 정리
+- Starter actions 4개 정의 + first result actions 정의
+- Local-only mode 제품 상태화
+- TTS/audio fallback 상태 표시 정책
+- StoreKit/paywall 표면 문구 정리 (로직 변경 없음)
+- 외부 write 없음
+- Gmail API 없음
+- Calendar write 없음
+- QA 실행 없음
+
+### Pending (Integration & Build)
+- Starter actions UI → TeamStatusView / DailyBriefingCardView 통합
+- FirstLaunchBannerView UI → empty state 표시
+- First result activation flow → ArtifactCardView 통합
+- SettingsView 간결화 (일반 사용자 중심)
+- Connector state 표준화 (available/readOnly/planned/requiresApproval/blocked/unavailable)
+- RuntimeDiagnosticsService 필드 추가 (firstLaunchGuidanceAvailable 등)
+- RouterBurnInSuite 케이스 추가 (starter actions / approval / blocked scenarios)
+- ToolContractValidator 보강 (debug visibility / connector write / TTS safety)
+- RuntimeQAPlaybook 업데이트 (next manual QA scope)
+- Debug / Release build 검증
+
+### Architecture Notes
+- FirstLaunchBannerView: no-key / offline / connector-limited state 표시, API 키 설정 액션
+- LocalOnlyModeCardView: local-only 상태 및 사용 가능 기능 (파일 정리, 문서 템플릿, 스케줄)
+- StarterActionStripView: 4개 버튼 (회의록, 체크리스트, 파일 읽기, 오늘 할 일)
+- FirstResultActionStripView: 4개 다음 단계 (요약, 표, 체크리스트, Finder)
+- StarterActionDispatcher: prompt routing (orchestrator.dispatch) + file intake callback
+- App Store metadata / privacy nutrition label 초안 완성
+- 다음 Round 48A (Manual Runtime QA)에서 실제 UI 확인 및 폴리시 검증
+
+---
+
 ## 2026-05-14 (Round 40R + 41A-41F — Release Truthfulness Repair + First Launch Activation Pack)
 
 ### Completed
