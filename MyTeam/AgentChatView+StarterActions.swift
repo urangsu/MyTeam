@@ -18,13 +18,25 @@ extension AgentChatView {
     }
 
     // MARK: - 스타터 액션 디스패치
+    // WorkflowOrchestrator를 통해 라우팅하여 universalDocument, artifactWorkflow 등으로 분기
     func dispatchStarterAction(_ action: StarterAction) {
         // roomID 확보 (없으면 생성)
-        guard _ensureRoomID() != nil else { return }
+        guard let roomID = _ensureRoomID() else { return }
 
         switch action.actionType {
         case .userMessage(let prompt):
-            _sendStarterPrompt(prompt)
+            // ── WorkflowOrchestrator를 통해 라우팅 ──
+            // GoalInterpreter → CapabilityAwareRouter → RouteResolver → 최적 경로
+            // "회의록 양식 만들어줘" → universalDocument / meetingMinutes
+            // "PPT 만들어줘" → artifactWorkflow
+            // 기타 → directChat
+            Task {
+                await WorkflowOrchestrator.shared.dispatch(
+                    userMessage: prompt,
+                    roomID: roomID,
+                    manager: manager
+                )
+            }
         case .fileIntakeOpen:
             _openFileIntake()
         }
