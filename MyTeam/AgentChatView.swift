@@ -613,6 +613,33 @@ struct AgentChatView: View {
                         // 첫 채팅일 때 시작 액션 표시
                         if chatHistory.isEmpty {
                             VStack(spacing: 16) {
+                                // FirstLaunchBannerView (상단)
+                                let hasAnyAPIKey = KeychainManager.load(key: "claudeAPIKey") != nil ||
+                                                   KeychainManager.load(key: "geminiAPIKey") != nil ||
+                                                   KeychainManager.load(key: "openAIAPIKey") != nil ||
+                                                   KeychainManager.load(key: "openRouterAPIKey") != nil
+                                let firstLaunchState = FirstLaunchStateProvider.currentState(
+                                    hasAPIKey: hasAnyAPIKey
+                                )
+                                FirstLaunchBannerView(
+                                    state: firstLaunchState,
+                                    onDismiss: {
+                                        FirstLaunchStateProvider.markOnboardingSeen()
+                                    },
+                                    onOpenSettings: {
+                                        manager.showSettingsWindow()
+                                    }
+                                )
+
+                                // LocalOnlyModeCardView (localOnly 상태)
+                                if !hasAnyAPIKey {
+                                    LocalOnlyModeCardView(
+                                        onOpenSettings: {
+                                            manager.showSettingsWindow()
+                                        }
+                                    )
+                                }
+
                                 Image(systemName: "sparkles")
                                     .font(.system(size: 32))
                                     .foregroundColor(currentAgent.color)
