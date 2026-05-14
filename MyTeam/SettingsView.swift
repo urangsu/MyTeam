@@ -379,6 +379,12 @@ struct SettingsView: View {
                         .controlSize(.small)
                         .disabled(currentKey(for: selectedProvider).isEmpty)
                 }
+
+                if currentKey(for: selectedProvider).isEmpty {
+                    LocalOnlyModeCardView(
+                        onOpenSettings: { /* Settings already open */ }
+                    )
+                }
             }
 
             Section {

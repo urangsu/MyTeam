@@ -207,7 +207,7 @@ final class WorkflowOrchestrator {
                 await MainActor.run {
                     manager.addChatLog(
                         roomID: roomID, agentID: "system", agentName: "시스템",
-                        text: "'\(highRiskSkill.name)' 스킬은 로그인/개인정보/예약/결제 등 민감 작업이므로 현재 버전에서는 실행할 수 없습니다.",
+                        text: "이 기능은 아직 사용할 수 없습니다. 현재는 로컬 파일/문서 기능을 사용할 수 있습니다.",
                         isUser: false, isSystem: true
                     )
                 }
@@ -219,8 +219,8 @@ final class WorkflowOrchestrator {
                 AppLog.info("[Skill] matched disabled '\(disabledSkill.id)'")
                 let isHighRisk = SkillRegistry.isHighRiskSkill(disabledSkill)
                 let message = isHighRisk
-                    ? "'\(disabledSkill.name)' 스킬은 로그인/개인정보/예약/결제 등 민감 작업이므로 아직 비활성화되어 있습니다. 현재 버전에서는 사용할 수 없습니다."
-                    : "'\(disabledSkill.name)' 스킬은 현재 비활성화되어 있습니다. 설정 > 스킬 탭에서 활성화할 수 있습니다."
+                    ? "이 기능은 아직 사용할 수 없습니다. 현재는 로컬 파일/문서 기능을 사용할 수 있습니다."
+                    : "이 기능은 준비 중입니다. 현재 지원되는 기능으로 먼저 도와드릴게요."
                 await MainActor.run {
                     self.recordRouteTrace(
                         manager: manager,

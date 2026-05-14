@@ -27,7 +27,7 @@ enum AssistantConnectorPolicy {
             Self.decision(for: capability)
         }
         if decisions.contains(where: { if case .blocked = $0 { return true } else { return false } }) {
-            return .blocked(reason: "현재 버전에서는 자동 실행할 수 없습니다.")
+            return .blocked(reason: "이 작업은 안전 정책상 자동 실행하지 않습니다.")
         }
         if decisions.contains(where: { if case .requiresApproval = $0 { return true } else { return false } }) {
             return .requiresApproval(reason: "추가 확인이 필요합니다.")

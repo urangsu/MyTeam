@@ -128,6 +128,24 @@ struct TeamStatusView: View {
             }
             
             if !isCollapsed {
+                // ── 첫 실행 배너 ──
+                if manager.firstLaunchState.shouldShowOnboarding {
+                    FirstLaunchBannerView(
+                        state: manager.firstLaunchState,
+                        onDismiss: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                manager.dismissFirstLaunchBanner()
+                            }
+                        },
+                        onOpenSettings: {
+                            manager.showSettingsWindow()
+                        }
+                    )
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                }
+
                 Divider().background(textColor.opacity(0.05))
 
                 if selectedTab == 0 {

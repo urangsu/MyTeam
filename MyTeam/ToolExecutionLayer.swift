@@ -135,9 +135,7 @@ enum ToolExecutionLayer {
         }
 
         if registryRisk == .high || registryRisk == .destructive {
-            let message = registryRisk == .destructive
-                ? "파괴적 위험 도구는 현재 버전에서 실행할 수 없습니다."
-                : "고위험 도구는 현재 버전에서 실행할 수 없습니다."
+            let message = "이 작업은 안전 정책상 자동 실행하지 않습니다."
             let failureCode = registryRisk == .destructive ? "tool_destructive_blocked" : "tool_high_risk_blocked"
             await appendBlockedLog(
                 baseEntry: baseEntry,

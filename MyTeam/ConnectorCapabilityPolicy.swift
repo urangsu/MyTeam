@@ -37,7 +37,7 @@ enum ConnectorCapabilityPolicy {
             return .init(status: .requiresApproval, message: "이 작업은 추가 확인이 필요합니다.")
 
         case .mailSend, .calendarCreate, .calendarModify, .destructiveFileAction, .automaticLogin:
-            return .init(status: .blocked, message: "이 작업은 현재 버전에서 자동 실행할 수 없습니다.")
+            return .init(status: .blocked, message: "이 작업은 안전 정책상 자동 실행하지 않습니다.")
 
         case .answer, .localSkill, .llmGeneration, .artifactCreation, .dailyBriefingPreview, .userInitiatedOAuth:
             return .init(status: .allowed, message: "실행 가능합니다.")

@@ -63,7 +63,10 @@ class AgentWindowManager: ObservableObject {
 
     // 팀의 현재 큰 업무
     @Published var currentMainTask: String = "AI 팀 프로젝트 매니징 및 고도화"
-    
+
+    // 첫 실행 상태 — 첫 실행 배너, 로컬 전용 모드 카드, 스타터 액션 표시에 사용
+    @Published var firstLaunchState: FirstLaunchState = .empty
+
     // 팀 전체 설정 — 현재 화면에 나와있는 4명의 에이전트 (순서 변경 및 교체 가능)
     @Published var activeAgents: [AgentConfig]
 
@@ -259,6 +262,27 @@ class AgentWindowManager: ObservableObject {
     @MainActor
     func clearPendingDelegatedExecutionRequest(for roomID: UUID) {
         pendingDelegatedExecutionRequestsByRoom.removeValue(forKey: roomID)
+    }
+
+    // MARK: - First Launch State Management
+    @MainActor
+    func dismissFirstLaunchBanner() {
+        firstLaunchState = firstLaunchState.updated(hasSeenOnboarding: true)
+    }
+
+    @MainActor
+    func updateFirstLaunchAPIKeyState(hasAPIKey: Bool) {
+        firstLaunchState = firstLaunchState.updated(hasAPIKey: hasAPIKey)
+    }
+
+    @MainActor
+    func updateFirstLaunchOfflineState(isOffline: Bool) {
+        firstLaunchState = firstLaunchState.updated(isOffline: isOffline)
+    }
+
+    @MainActor
+    func updateFirstLaunchCapabilityMode(_ mode: RuntimeCapabilityMode) {
+        firstLaunchState = firstLaunchState.updated(capabilityMode: mode)
     }
 
     @MainActor
