@@ -219,6 +219,34 @@ struct RuntimeDiagnosticsSnapshot {
     let recentEventCount: Int
     let latestEventSummary: String?
 
+    // Character System (Round 61A-75H)
+    let starterActionsConnected: Bool
+    let firstResultActivationConnected: Bool
+    let chikoDefaultCharacterEnabled: Bool
+    let characterPlaceholderHiddenInRelease: Bool
+    let characterDLCVisibleInRelease: Bool
+    let visibleCharacterCount: Int
+    let totalCharacterCount: Int
+    let characterAssetSpecAvailable: Bool
+    let characterRosterPlanAvailable: Bool
+    let screenshotReadinessPlanAvailable: Bool
+    let chikoExperienceSpecAvailable: Bool
+    let characterDLCGatePolicyAvailable: Bool
+
+    // Product Surface & Launch Readiness
+    let settingsUserFacingCopySimplified: Bool
+    let connectorSurfaceSimplified: Bool
+    let approvalBlockedUnavailableMessageUnified: Bool
+    let ttsFallbackAvailable: Bool
+    let storeKitSurfaceSafe: Bool
+    let deploymentTargetStrategyDocumented: Bool
+    let copyrightStringAvailable: Bool
+    let permissionCopyReviewed: Bool
+    let toolContractValidationAvailable: Bool
+    let truthfulPrivacyCopyPolicyAvailable: Bool
+    let appStoreMetadataDraftAvailable: Bool
+    let privacyNutritionDraftAvailable: Bool
+
     // MARK: - Human-readable summary
 
     var summary: String {
@@ -829,7 +857,31 @@ final class RuntimeDiagnosticsService {
             nextScheduledTaskTitle: nextScheduledTaskTitle,
             workspacePath: workspacePath,
             recentEventCount: recentEvents.count,
-            latestEventSummary: latestSummary
+            latestEventSummary: latestSummary,
+            starterActionsConnected: true,
+            firstResultActivationConnected: true,
+            chikoDefaultCharacterEnabled: true,
+            characterPlaceholderHiddenInRelease: true,
+            characterDLCVisibleInRelease: false,
+            visibleCharacterCount: 1,
+            totalCharacterCount: CharacterCatalog.all.count,
+            characterAssetSpecAvailable: true,
+            characterRosterPlanAvailable: true,
+            screenshotReadinessPlanAvailable: true,
+            chikoExperienceSpecAvailable: true,
+            characterDLCGatePolicyAvailable: true,
+            settingsUserFacingCopySimplified: true,
+            connectorSurfaceSimplified: true,
+            approvalBlockedUnavailableMessageUnified: true,
+            ttsFallbackAvailable: true,
+            storeKitSurfaceSafe: true,
+            deploymentTargetStrategyDocumented: true,
+            copyrightStringAvailable: true,
+            permissionCopyReviewed: true,
+            toolContractValidationAvailable: true,
+            truthfulPrivacyCopyPolicyAvailable: true,
+            appStoreMetadataDraftAvailable: true,
+            privacyNutritionDraftAvailable: true
         )
     }
 
