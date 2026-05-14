@@ -1570,6 +1570,14 @@
 		DEE7DF5048CD954A73A5DD96 /* LocalSchedulerCommand.swift */ = {isa = PBXFileReference; fileRef = DEE7DF5048CD954A73A5DD96; name = LocalSchedulerCommand.swift; path = LocalSchedulerCommand.swift; sourceTree = "<group>"; };
 		E82BB3824B9AF5FCE079D1BD /* LocalSchedulerCommandDetector.swift */ = {isa = PBXFileReference; fileRef = E82BB3824B9AF5FCE079D1BD; name = LocalSchedulerCommandDetector.swift; path = LocalSchedulerCommandDetector.swift; sourceTree = "<group>"; };
 		9C8DB6869DC6D8FAAC0E7EDF /* LocalSchedulerCommandService.swift */ = {isa = PBXFileReference; fileRef = 9C8DB6869DC6D8FAAC0E7EDF; name = LocalSchedulerCommandService.swift; path = LocalSchedulerCommandService.swift; sourceTree = "<group>"; };
+		E21ADD72C0884335B0F0E41A /* FirstLaunchState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FirstLaunchState.swift; sourceTree = "<group>"; };
+		10AA2F60303141B2A2CC05E5 /* FirstLaunchStateProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FirstLaunchStateProvider.swift; sourceTree = "<group>"; };
+		C3B0ECFCF9924DFB8A7DC901 /* FirstLaunchBannerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FirstLaunchBannerView.swift; sourceTree = "<group>"; };
+		46E46EE8EE09468C8A7F8B53 /* LocalOnlyModeCardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = LocalOnlyModeCardView.swift; sourceTree = "<group>"; };
+		D509165B369843FB9CE6C2E7 /* RuntimeCapabilityMode.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RuntimeCapabilityMode.swift; sourceTree = "<group>"; };
+		9BA622E40133444F8A0040B2 /* StarterAction.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StarterAction.swift; sourceTree = "<group>"; };
+		C9EB6A926D404C4A9601E6C4 /* StarterActionDispatcher.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StarterActionDispatcher.swift; sourceTree = "<group>"; };
+		8DDC049A9F03435E83C7161B /* StarterActionStripView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StarterActionStripView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -3274,7 +3282,16 @@
 				E53C44F0DAFCBFB7BC86E10D /* LocalSchedulerCommandService.swift in Sources */,
 				71748B454B5D1E22718DF023 /* LocalSchedulerCommandDetector.swift in Sources */,
 				E912B8C850DD1701BAE96EB8 /* LocalSchedulerCommand.swift in Sources */,
-				D2400000000000000000001F /* LocalSchedulerDocumentBridge.swift in Sources */,);
+				D2400000000000000000001F /* LocalSchedulerDocumentBridge.swift in Sources */,
+				EB1DB179C4054AAC88D465DD /* FirstLaunchState.swift in Sources */,
+03A80FE24E24453B845747E8 /* FirstLaunchStateProvider.swift in Sources */,
+E31892656AD74C4698A6A27B /* FirstLaunchBannerView.swift in Sources */,
+1679789F1F6C4C1CB732A2E8 /* LocalOnlyModeCardView.swift in Sources */,
+88BFE44B4D134F2C8C430DF1 /* RuntimeCapabilityMode.swift in Sources */,
+98B316481263456DBCBB09CC /* StarterAction.swift in Sources */,
+DA8F804EC5EE48B293473361 /* StarterActionDispatcher.swift in Sources */,
+6EB0541F92664DECB655A493 /* StarterActionStripView.swift in Sources */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
