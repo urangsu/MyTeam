@@ -6,6 +6,43 @@
 
 ---
 
+## 2026-05-14 (Round 43R-47R — Product Surface Real Integration)
+
+### Phase 1-2 COMPLETE: Code Integration ✅
+
+**Component Integration:**
+- FirstLaunchBannerView → TeamStatusView에 통합 (onboarding 상태 표시)
+- LocalOnlyModeCardView → SettingsView API Key 섹션에 통합 (no-API-key 상태)
+- FirstResultActionStripView → TeamStatusView artifact 카드 이후 통합 (first artifact 생성 후)
+- handleFirstResultAction 메서드 추가 (StarterActionDispatcher 라우팅)
+
+**Message Standardization (6개 파일):**
+- CapabilityAwareRouter: 4개 decision 메시지 표준화 (blocked/approval/preparing/unavailable)
+- WorkflowOrchestrator: 스킬 실행 차단 메시지 표준화
+- ApprovalPolicy: blocked scope 메시지 표준화
+- AssistantConnectorPolicy: connector 차단 메시지 표준화
+- ConnectorCapabilityPolicy: capability 차단 메시지 표준화
+- ToolExecutionLayer: high-risk/destructive 도구 메시지 통일
+
+**Standard Messages:**
+- Blocked: "이 작업은 안전 정책상 자동 실행하지 않습니다."
+- Approval Required: "이 작업은 승인이 필요합니다. 자동 실행하지 않고 승인 대기로 남겨둘게요."
+- Unavailable: "이 기능은 아직 사용할 수 없습니다. 현재는 로컬 파일/문서 기능을 사용할 수 있습니다."
+- Preparing: "이 기능은 준비 중입니다. 현재 지원되는 기능으로 먼저 도와드릴게요."
+
+**RuntimeDiagnostics Flags (24개 신규):**
+- First Launch: firstLaunchGuidanceAvailable, localOnlyModeAvailable, noKeyStateHandled, offlineStateHandled, connectorLimitedStateHandled
+- Product Surface: starterActionsAvailable, firstResultActivationAvailable, workspaceHomeAvailable, connectorSurfaceSimplified, settingsUserFacingCopySimplified
+- Feature Status: ttsFallbackAvailable, storeKitSurfaceDocumented, appStoreMetadataDraftAvailable, privacyNutritionDraftAvailable
+- QA Status: manualQAPendingCount = 1
+
+### Pending (Phase 3-4)
+- Connector state label 문서화 (readOnly/planned/blocked/unavailable)
+- Target registration in Xcode (requires macOS)
+- Build verification Debug/Release (requires xcodebuild on macOS)
+
+---
+
 ## 2026-05-14 (Round 43A-47H — Product Completion Without QA Pack)
 
 ### Completed
