@@ -24,7 +24,7 @@ enum AppLaunchArtifactWriter {
 
         let finalMarkdown = addSafetyDisclaimer(to: content)
         let filename = AppLaunchSkillService.outputFilename(request)
-        let filePath = await ArtifactStore.shared.workspaceURL.appendingPathComponent(filename).path
+        let filePath = ArtifactStore.shared.workspaceURL.appendingPathComponent(filename).path
 
         do {
             try finalMarkdown.write(toFile: filePath, atomically: true, encoding: .utf8)

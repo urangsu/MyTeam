@@ -50,7 +50,7 @@ struct ToolResult: Sendable {
         status == .succeeded
     }
 
-    init(
+    nonisolated init(
         status: ToolResultStatus,
         output: String,
         artifactPath: String?,
@@ -63,7 +63,7 @@ struct ToolResult: Sendable {
     }
 
     @available(*, deprecated, message: "Use init(status:output:artifactPath:error:) so the result status stays explicit.")
-    init(
+    nonisolated init(
         success: Bool,
         output: String,
         artifactPath: String?,
@@ -77,7 +77,7 @@ struct ToolResult: Sendable {
         )
     }
 
-    static func failure(_ message: String) -> ToolResult {
+    nonisolated static func failure(_ message: String) -> ToolResult {
         ToolResult(status: .failed, output: "", artifactPath: nil, error: message)
     }
 }
@@ -110,35 +110,36 @@ enum ToolError: Error, LocalizedError {
 // AgentToolKit.swift의 AgentTool(struct)과 구분하기 위해 WorkflowTool로 명명.
 
 protocol WorkflowTool: Sendable {
-    var name: String { get }
-    var description: String { get }
-    var riskLevel: ToolRiskLevel { get }
+    // nonisolated: these properties must be accessible from any actor context
+    nonisolated var name: String { get }
+    nonisolated var description: String { get }
+    nonisolated var riskLevel: ToolRiskLevel { get }
     /// 이 도구가 속하는 scope — 기본 chatBasic
-    var scope: ToolScope { get }
+    nonisolated var scope: ToolScope { get }
     /// planner-visible surface에서 노출할지 여부. stub / localUI tool은 false 가능.
-    var plannerVisible: Bool { get }
+    nonisolated var plannerVisible: Bool { get }
     /// 실행 가능성. stub tool이나 아직 연결되지 않은 tool은 available이 아닐 수 있다.
-    var availability: ToolAvailability { get }
+    nonisolated var availability: ToolAvailability { get }
     /// Release에서 planner-visible이면 안 되는 디버그 전용 도구 여부.
-    var debugOnly: Bool { get }
+    nonisolated var debugOnly: Bool { get }
     /// 장기 기억/UserDefaults에 쓰는 도구 여부.
-    var writesMemory: Bool { get }
+    nonisolated var writesMemory: Bool { get }
     /// 메모리 저장을 수행하는 경우 필요한 retention policy.
-    var memorySensitivityPolicy: MemoryRetentionPolicy? { get }
+    nonisolated var memorySensitivityPolicy: MemoryRetentionPolicy? { get }
     /// 연결/외부 write 계열 도구가 승인 정책을 명시했는지 여부.
-    var requiresApprovalPolicy: Bool { get }
+    nonisolated var requiresApprovalPolicy: Bool { get }
     /// paramName → 설명 (LLM 플래너에게 노출)
-    var inputSchema: [String: String] { get }
+    nonisolated var inputSchema: [String: String] { get }
     func execute(input: ToolInput, context: ToolExecutionContext) async throws -> ToolResult
 }
 
 extension WorkflowTool {
-    var plannerVisible: Bool { true }
-    var availability: ToolAvailability { .available }
-    var debugOnly: Bool { false }
-    var writesMemory: Bool { false }
-    var memorySensitivityPolicy: MemoryRetentionPolicy? { nil }
-    var requiresApprovalPolicy: Bool { false }
+    nonisolated var plannerVisible: Bool { true }
+    nonisolated var availability: ToolAvailability { .available }
+    nonisolated var debugOnly: Bool { false }
+    nonisolated var writesMemory: Bool { false }
+    nonisolated var memorySensitivityPolicy: MemoryRetentionPolicy? { nil }
+    nonisolated var requiresApprovalPolicy: Bool { false }
 }
 
 // MARK: - Shared path-safety helper
