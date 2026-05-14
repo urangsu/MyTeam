@@ -27,11 +27,11 @@ struct LocalOnlyModeCardView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("로컬 기능만 활성")
+                    Text("로컬 중심으로 시작")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.primary)
 
-                    Text("AI 응답이 아직 활성화되지 않았습니다.")
+                    Text("API key 없이도 지금 바로 시작할 수 있습니다.")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                 }
@@ -41,10 +41,10 @@ struct LocalOnlyModeCardView: View {
 
             // 사용 가능한 기능 목록
             VStack(alignment: .leading, spacing: 8) {
-                featureRow(icon: "folder.fill", title: "로컬 파일 정리", available: true)
-                featureRow(icon: "doc.fill", title: "문서 템플릿", available: true)
-                featureRow(icon: "calendar.fill", title: "스케줄 관리", available: true)
-                featureRow(icon: "sparkles", title: "AI 응답 (미활성화)", available: false)
+                featureRow(icon: "doc.text.fill", title: "회의록, 체크리스트, 보고서 초안", available: true)
+                featureRow(icon: "folder.fill", title: "로컬 파일 읽기 & 정리", available: true)
+                featureRow(icon: "calendar.fill", title: "오늘 할 일 확인", available: true)
+                featureRow(icon: "sparkles", title: "AI 기능 (설정에서 활성화)", available: false)
             }
             .padding(.vertical, 8)
 
@@ -54,7 +54,7 @@ struct LocalOnlyModeCardView: View {
                     Image(systemName: "key.fill")
                         .font(.system(size: 12, weight: .semibold))
 
-                    Text("API 키 연결하기")
+                    Text("AI 기능 활성화하기")
                         .font(.system(size: 12, weight: .semibold))
 
                     Spacer()
