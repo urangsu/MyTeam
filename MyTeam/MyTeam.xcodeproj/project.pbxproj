@@ -3452,7 +3452,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleURLTypes = "{\"CFBundleURLName\"=>\"com.urang.MyTeam.oauth\", \"CFBundleURLSchemes\"=>[\"myteam\"]}";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 MyTeam. All rights reserved.";
 				INFOPLIST_KEY_NSLocationUsageDescription = "에이전트가 현실적인 대화를 하기 위해 위치 정보를 사용합니다";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "STT 음성 입력을 위해 마이크가 필요합니다.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "에이전트에게 전달할 음성을 텍스트로 변환합니다.";
@@ -3501,7 +3501,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleURLTypes = "{\"CFBundleURLName\"=>\"com.urang.MyTeam.oauth\", \"CFBundleURLSchemes\"=>[\"myteam\"]}";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 MyTeam. All rights reserved.";
 				INFOPLIST_KEY_NSLocationUsageDescription = "에이전트가 현실적인 대화를 하기 위해 위치 정보를 사용합니다";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "STT 음성 입력을 위해 마이크가 필요합니다.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "에이전트에게 전달할 음성을 텍스트로 변환합니다.";

@@ -29,6 +29,8 @@ enum ToolContractValidator {
 
         validateTools(tools, issues: &issues)
         validateSkills(skills, issues: &issues)
+        validateCharacterDLCPolicy(issues: &issues)
+        validateProductSurfacePolicy(issues: &issues)
 
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
@@ -161,6 +163,57 @@ enum ToolContractValidator {
         case .payment: return 6
         case .regulated: return 7
         }
+    }
+
+    private static func validateCharacterDLCPolicy(issues: inout [ToolContractValidationIssue]) {
+        #if !DEBUG
+        // Release mode: enforce DLC gate policy
+        let allCharacters = CharacterCatalog.all
+
+        for character in allCharacters {
+            // Built-in characters must be visible
+            if character.isBuiltIn && character.spriteAssetName.contains("placeholder") {
+                issues.append(issue(.error, "Built-in character '\(character.name)' has placeholder sprite in Release mode."))
+            }
+
+            // Premium characters must have 6 conditions met or be hidden
+            if character.isPremium && !character.isComingSoon {
+                // If not coming soon, it must meet DLC conditions
+                let hasProductionSprite = !character.spriteAssetName.contains("placeholder")
+                if !hasProductionSprite {
+                    issues.append(issue(.error, "Premium character '\(character.name)' visible in Release but has placeholder sprite."))
+                }
+            }
+
+            // No "Coming Soon" characters should be visible in Release
+            if character.isComingSoon && !character.isPremium {
+                issues.append(issue(.warning, "Character '\(character.name)' marked as coming soon but may be visible in Release."))
+            }
+        }
+        #endif
+    }
+
+    private static func validateProductSurfacePolicy(issues: inout [ToolContractValidationIssue]) {
+        #if !DEBUG
+        // Release mode: enforce product surface policy
+
+        // Check if privacy copy policy is in place
+        let hasPrivacyPolicy = FileManager.default.fileExists(atPath: "/Users/su/Desktop/MyTeam/docs/growth/TruthfulPrivacyCopyPolicy.md")
+        if !hasPrivacyPolicy {
+            issues.append(issue(.warning, "TruthfulPrivacyCopyPolicy.md not found. Privacy copy audit may be incomplete."))
+        }
+
+        // Check if app store metadata draft exists
+        let hasAppStoreCopy = FileManager.default.fileExists(atPath: "/Users/su/Desktop/MyTeam/docs/AppStoreMetadataDraft.md")
+        if !hasAppStoreCopy {
+            issues.append(issue(.warning, "AppStoreMetadataDraft.md not found. App Store copy may be incomplete."))
+        }
+
+        // Check if copyright string is set
+        if ProcessInfo.processInfo.environment["MYTEAM_COPYRIGHT_SET"] != "1" {
+            issues.append(issue(.warning, "Copyright string may not be set in Info.plist. Verify via build settings."))
+        }
+        #endif
     }
 
     private static func issue(_ severity: ToolContractValidationIssue.Severity, _ message: String) -> ToolContractValidationIssue {

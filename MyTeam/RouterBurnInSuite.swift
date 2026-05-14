@@ -1443,6 +1443,47 @@ enum RouterBurnInSuite {
             expectedGoalType: "destructiveAction",
             shouldRequireApproval: true,
             notes: "Approval required: file delete action blocked by policy"
+        ),
+        // Killer Flow Test Cases (Round 61A-75H)
+        .init(
+            id: "killer-flow-meeting-minutes",
+            message: "회의록 양식 만들어줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.meeting-minutes",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "Killer flow: Meeting minutes template (local-only)"
+        ),
+        .init(
+            id: "killer-flow-checklist",
+            message: "앱 출시 체크리스트 만들어줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.checklist",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "Killer flow: Checklist creation (local-only)"
+        ),
+        .init(
+            id: "killer-flow-file-intake",
+            message: "이 파일 읽어줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "Killer flow: File reading (local-only, requires file input)"
+        ),
+        .init(
+            id: "killer-flow-daily-briefing",
+            message: "오늘 할 일 뭐야",
+            expectedRoute: .dailyBriefing,
+            expectedSkillID: nil,
+            expectedRouteHint: "dailyBriefing",
+            expectedGoalType: "dailyBriefing",
+            shouldRequireApproval: false,
+            notes: "Killer flow: Today's tasks briefing (local-only)"
         )
     ]
 
