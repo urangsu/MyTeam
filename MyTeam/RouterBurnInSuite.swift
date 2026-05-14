@@ -1350,6 +1350,99 @@ enum RouterBurnInSuite {
             shouldRequireApproval: false,
             expectedModelOverrideAllowed: true,
             notes: "DEBUG에서는 model override 허용"
+        ),
+        .init(
+            id: "starter-action-meeting-minutes",
+            message: "회의록 양식 만들어줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.meeting-minutes",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "First launch starter action: meeting minutes template"
+        ),
+        .init(
+            id: "starter-action-checklist",
+            message: "앱 출시 체크리스트 만들어줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.checklist",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "First launch starter action: app launch checklist"
+        ),
+        .init(
+            id: "starter-action-schedule",
+            message: "오늘 할 일 뭐야",
+            expectedRoute: .dailyBriefing,
+            expectedSkillID: nil,
+            expectedRouteHint: "localScheduler",
+            expectedGoalType: "scheduleQuery",
+            shouldRequireApproval: false,
+            notes: "First launch starter action: today's tasks"
+        ),
+        .init(
+            id: "first-result-summary",
+            message: "요약해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.document-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: true,
+            shouldRequireApproval: false,
+            notes: "First result activation: summary"
+        ),
+        .init(
+            id: "first-result-table",
+            message: "표로 바꿔줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.table-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: true,
+            shouldRequireApproval: false,
+            notes: "First result activation: convert to table"
+        ),
+        .init(
+            id: "first-result-checklist",
+            message: "체크리스트로 바꿔줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.checklist",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: true,
+            shouldRequireApproval: false,
+            notes: "First result activation: convert to checklist"
+        ),
+        .init(
+            id: "approval-required-mail-send",
+            message: "메일 보내줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "mailAction",
+            shouldRequireApproval: true,
+            notes: "Approval required: mail send action blocked by policy"
+        ),
+        .init(
+            id: "approval-required-calendar-create",
+            message: "일정 만들어줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "calendarAction",
+            shouldRequireApproval: true,
+            notes: "Approval required: calendar create action blocked by policy"
+        ),
+        .init(
+            id: "approval-required-file-delete",
+            message: "파일 삭제해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "destructiveAction",
+            shouldRequireApproval: true,
+            notes: "Approval required: file delete action blocked by policy"
         )
     ]
 

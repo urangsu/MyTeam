@@ -73,6 +73,13 @@ enum ToolContractValidator {
             if (tool.name.contains("google") && (tool.name.contains("slides") || tool.name.contains("sheets"))) && tool.plannerVisible {
                 issues.append(issue(.error, "stub Google tool '\(tool.name)' 이 planner-visible surface에 노출되었습니다."))
             }
+
+            // Round 43A-47H: connector write tools should not be visible in Release
+            if tool.scope == .officeLive && tool.name.contains(where: { $0 == "w" }) {  // Write-like tools
+                if !tool.debugOnly && FeatureFlags.debugToolVisible == false {
+                    issues.append(issue(.warning, "connector write tool '\(tool.name)' 이 Release surface에 노출될 수 있습니다."))
+                }
+            }
         }
     }
 

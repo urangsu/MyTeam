@@ -1,132 +1,173 @@
 import SwiftUI
 
 // MARK: - StarterActionStripView
+// 4개의 starter action을 UI 버튼으로 표시
 
 struct StarterActionStripView: View {
     let actions: [StarterAction]
-    var onActionTapped: (StarterAction) -> Void
+    let onActionTap: (StarterAction) -> Void
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("시작해보세요")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 12)
-                .padding(.top, 8)
+    @Environment(\.colorScheme) var colorScheme
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(actions) { action in
-                        StarterActionButton(
-                            action: action,
-                            onTap: { onActionTapped(action) }
-                        )
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.bottom, 8)
-            }
-        }
-        .background(Color(.controlBackgroundColor))
-        .cornerRadius(8)
+    private var isDarkMode: Bool {
+        colorScheme == .dark
     }
-}
-
-// MARK: - StarterActionButton
-
-struct StarterActionButton: View {
-    let action: StarterAction
-    var onTap: () -> Void
-
-    @State private var isHovering = false
 
     var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text(action.emoji)
-                        .font(.system(size: 16))
-                    Text(action.title)
-                        .font(.system(size: 12, weight: .semibold))
-                    Spacer()
+        VStack(alignment: .leading, spacing: 12) {
+            Text("시작하기")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.primary)
+                .padding(.horizontal, 12)
+
+            VStack(spacing: 10) {
+                ForEach(Array(actions.enumerated()), id: \.element.id) { _, action in
+                    actionButton(for: action)
                 }
-                Text(action.description)
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
             }
-            .frame(minWidth: 140, minHeight: 60)
-            .padding(10)
-            .background(isHovering ? Color(.controlAccentColor).opacity(0.1) : Color.clear)
-            .cornerRadius(6)
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(Color(.controlBorderColor), lineWidth: 1)
+            .padding(.horizontal, 12)
+        }
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(isDarkMode ? Color(nsColor: NSColor.controlBackgroundColor) : .white)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+        )
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+
+    private func actionButton(for action: StarterAction) -> some View {
+        Button(action: { onActionTap(action) }) {
+            HStack(spacing: 12) {
+                Text(action.emoji)
+                    .font(.system(size: 18))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(action.title)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.primary)
+
+                    Text(action.description)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.blue.opacity(0.05))
+                    .stroke(Color.blue.opacity(0.2), lineWidth: 1)
             )
         }
-        .buttonStyle(.plain)
-        .onHover { hovering in
-            isHovering = hovering
-        }
+        .buttonStyle(PlainButtonStyle())
+        .contentShape(Rectangle())
     }
 }
 
 // MARK: - FirstResultActionStripView
+// 첫 artifact 생성 후 보여줄 활성화 액션
 
 struct FirstResultActionStripView: View {
     let actions: [StarterAction]
-    var onActionTapped: (StarterAction) -> Void
+    let onActionTap: (StarterAction) -> Void
+
+    @Environment(\.colorScheme) var colorScheme
+
+    private var isDarkMode: Bool {
+        colorScheme == .dark
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("다음 단계")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.secondary)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(.primary)
                 .padding(.horizontal, 12)
-                .padding(.top, 8)
 
-            HStack(spacing: 6) {
-                ForEach(actions.prefix(4)) { action in
-                    Button(action: { onActionTapped(action) }) {
-                        HStack(spacing: 4) {
-                            Text(action.emoji)
-                                .font(.system(size: 13))
-                            Text(action.title)
-                                .font(.system(size: 11, weight: .medium))
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .background(Color(.controlBackgroundColor))
-                        .cornerRadius(4)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color(.controlBorderColor), lineWidth: 0.5)
-                        )
-                    }
-                    .buttonStyle(.plain)
+            VStack(spacing: 10) {
+                ForEach(Array(actions.enumerated()), id: \.element.id) { _, action in
+                    actionButton(for: action)
                 }
-                Spacer()
             }
             .padding(.horizontal, 12)
-            .padding(.bottom, 8)
         }
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(isDarkMode ? Color(nsColor: NSColor.controlBackgroundColor) : .white)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+        )
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+
+    private func actionButton(for action: StarterAction) -> some View {
+        Button(action: { onActionTap(action) }) {
+            HStack(spacing: 12) {
+                Text(action.emoji)
+                    .font(.system(size: 18))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(action.title)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.primary)
+
+                    Text(action.description)
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.green.opacity(0.05))
+                    .stroke(Color.green.opacity(0.2), lineWidth: 1)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+        .contentShape(Rectangle())
     }
 }
 
 #Preview {
-    VStack(spacing: 16) {
+    VStack(spacing: 20) {
         StarterActionStripView(
-            actions: StarterActionProvider.actions(for: .empty)
-        ) { action in
-            print("Tapped: \(action.title)")
-        }
+            actions: StarterActionProvider.actions(for: .empty),
+            onActionTap: { _ in }
+        )
 
         FirstResultActionStripView(
-            actions: StarterActionProvider.actionsForFirstResult()
-        ) { action in
-            print("Tapped: \(action.title)")
-        }
+            actions: StarterActionProvider.actionsForFirstResult(),
+            onActionTap: { _ in }
+        )
+
+        Spacer()
     }
     .padding()
+    .preferredColorScheme(.dark)
 }
