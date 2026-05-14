@@ -580,6 +580,20 @@ struct TeamStatusView: View {
                     .padding(.horizontal, 10).padding(.vertical, 6)
                 }
                 .frame(maxHeight: 110)
+
+                // ── First Result Action Strip (첫 artifact 생성 후) ──
+                if manager.firstLaunchState.shouldShowFirstResultActions,
+                   let firstArtifact = manager.recentArtifacts.first,
+                   firstArtifact.fileExists,
+                   firstArtifact.healthStatus == .valid {
+                    Divider().background(textColor.opacity(0.06))
+                    FirstResultActionStripView(
+                        actions: StarterActionProvider.actionsForFirstResult(),
+                        onActionTap: { action in
+                            handleFirstResultAction(action, artifact: firstArtifact)
+                        }
+                    )
+                }
             }
 
             // ── 하단: 입력창 (팀 채팅 + 첨부파일) ──
@@ -1208,6 +1222,23 @@ struct TeamStatusView: View {
                 userMessage: prompt,
                 roomID: roomID,
                 manager: manager
+            )
+        }
+    }
+
+    private func handleFirstResultAction(_ action: StarterAction, artifact: IndexedArtifact) {
+        guard let roomID = manager.currentRoomID ?? manager.rooms.first?.id else { return }
+
+        // First result actions route through StarterActionDispatcher
+        Task {
+            await StarterActionDispatcher.dispatch(
+                action,
+                roomID: roomID,
+                manager: manager,
+                orchestrator: WorkflowOrchestrator.shared,
+                onFileIntakeRequested: {
+                    isFileIntakeSheetPresented = true
+                }
             )
         }
     }

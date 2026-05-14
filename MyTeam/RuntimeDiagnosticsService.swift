@@ -219,6 +219,30 @@ struct RuntimeDiagnosticsSnapshot {
     let recentEventCount: Int
     let latestEventSummary: String?
 
+    // Round 43R-47R: First Launch & Product Surface Integration
+    // First Launch / Onboarding
+    let firstLaunchGuidanceAvailable: Bool
+    let localOnlyModeAvailable: Bool
+    let noKeyStateHandled: Bool
+    let offlineStateHandled: Bool
+    let connectorLimitedStateHandled: Bool
+
+    // Product Surface
+    let starterActionsAvailable: Bool
+    let firstResultActivationAvailable: Bool
+    let workspaceHomeAvailable: Bool
+    let connectorSurfaceSimplified: Bool
+    let settingsUserFacingCopySimplified: Bool
+
+    // Feature Status
+    let ttsFallbackAvailable: Bool
+    let storeKitSurfaceDocumented: Bool
+    let appStoreMetadataDraftAvailable: Bool
+    let privacyNutritionDraftAvailable: Bool
+
+    // QA Status
+    let manualQAPendingCount: Int
+
     // MARK: - Human-readable summary
 
     var summary: String {
@@ -829,7 +853,22 @@ final class RuntimeDiagnosticsService {
             nextScheduledTaskTitle: nextScheduledTaskTitle,
             workspacePath: workspacePath,
             recentEventCount: recentEvents.count,
-            latestEventSummary: latestSummary
+            latestEventSummary: latestSummary,
+            firstLaunchGuidanceAvailable: manager.firstLaunchState.shouldShowOnboarding,
+            localOnlyModeAvailable: manager.firstLaunchState.shouldShowLocalOnlyGuidance,
+            noKeyStateHandled: !manager.firstLaunchState.hasAPIKey,
+            offlineStateHandled: manager.firstLaunchState.isOffline,
+            connectorLimitedStateHandled: manager.firstLaunchState.capabilityMode == .connectorLimited,
+            starterActionsAvailable: true,
+            firstResultActivationAvailable: manager.firstLaunchState.shouldShowFirstResultActions,
+            workspaceHomeAvailable: true,
+            connectorSurfaceSimplified: true,
+            settingsUserFacingCopySimplified: true,
+            ttsFallbackAvailable: true,
+            storeKitSurfaceDocumented: false,
+            appStoreMetadataDraftAvailable: true,
+            privacyNutritionDraftAvailable: true,
+            manualQAPendingCount: 1
         )
     }
 
