@@ -26,6 +26,9 @@
 		094EE7E1A73885A5472F9EA1 /* CharacterDLC.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0FE7F45205ED6A4AF4269C1 /* CharacterDLC.swift */; };
 		094EE7E1A73885A5472F9EA2 /* CharacterCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0FE7F45205ED6A4AF4269C2 /* CharacterCatalog.swift */; };
 		094EE7E1A73885A5472F9EA3 /* CharacterEntitlementManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0FE7F45205ED6A4AF4269C3 /* CharacterEntitlementManager.swift */; };
+		7CA1B2C3D4E5F60178901234 /* CharacterAssetManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CA1B2C3D4E5F60178901235 /* CharacterAssetManifest.swift */; };
+		7CA1B2C3D4E5F60178901236 /* CharacterAssetAvailability.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CA1B2C3D4E5F60178901237 /* CharacterAssetAvailability.swift */; };
+		7CA1B2C3D4E5F60178901238 /* ReleaseVisibleCharacterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CA1B2C3D4E5F60178901239 /* ReleaseVisibleCharacterPolicy.swift */; };
 		094EE7E1A73885A5472F9EA4 /* CharacterGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0FE7F45205ED6A4AF4269C4 /* CharacterGalleryView.swift */; };
 		094EE7E1A73885A5472F9EA5 /* MonetizationPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0FE7F45205ED6A4AF4269C5 /* MonetizationPlan.swift */; };
 		094EE7E1A73885A5472F9EA6 /* AppEntitlementManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0FE7F45205ED6A4AF4269C6 /* AppEntitlementManager.swift */; };
@@ -1494,6 +1497,9 @@
 		F0E5F7806BAEBCC80585E8B5 /* 레오_ko_manifest.json */ = {isa = PBXFileReference; includeInIndex = 1; name = "레오_ko_manifest.json"; path = "Resources/CharacterPhonemes/레오_reference/ko/레오_ko_manifest.json"; sourceTree = "<group>"; };
 		F0FE7F45205ED6A4AF4269B0 /* UserSkillStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UserSkillStore.swift; sourceTree = "<group>"; };
 		F0FE7F45205ED6A4AF4269C1 /* CharacterDLC.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CharacterDLC.swift; sourceTree = "<group>"; };
+		7CA1B2C3D4E5F60178901235 /* CharacterAssetManifest.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CharacterAssetManifest.swift; sourceTree = "<group>"; };
+		7CA1B2C3D4E5F60178901237 /* CharacterAssetAvailability.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CharacterAssetAvailability.swift; sourceTree = "<group>"; };
+		7CA1B2C3D4E5F60178901239 /* ReleaseVisibleCharacterPolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReleaseVisibleCharacterPolicy.swift; sourceTree = "<group>"; };
 		F0FE7F45205ED6A4AF4269C2 /* CharacterCatalog.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CharacterCatalog.swift; sourceTree = "<group>"; };
 		F0FE7F45205ED6A4AF4269C3 /* CharacterEntitlementManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CharacterEntitlementManager.swift; sourceTree = "<group>"; };
 		F0FE7F45205ED6A4AF4269C4 /* CharacterGalleryView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CharacterGalleryView.swift; sourceTree = "<group>"; };
@@ -1700,6 +1706,9 @@
 				F0FE7F45205ED6A4AF4269C1 /* CharacterDLC.swift */,
 				F0FE7F45205ED6A4AF4269C2 /* CharacterCatalog.swift */,
 				F0FE7F45205ED6A4AF4269C3 /* CharacterEntitlementManager.swift */,
+				7CA1B2C3D4E5F60178901235 /* CharacterAssetManifest.swift */,
+				7CA1B2C3D4E5F60178901237 /* CharacterAssetAvailability.swift */,
+				7CA1B2C3D4E5F60178901239 /* ReleaseVisibleCharacterPolicy.swift */,
 				F0FE7F45205ED6A4AF4269C4 /* CharacterGalleryView.swift */,
 				F0FE7F45205ED6A4AF4269C5 /* MonetizationPlan.swift */,
 				F0FE7F45205ED6A4AF4269C6 /* AppEntitlementManager.swift */,
@@ -3115,6 +3124,9 @@
 				094EE7E1A73885A5472F9EA1 /* CharacterDLC.swift in Sources */,
 				094EE7E1A73885A5472F9EA2 /* CharacterCatalog.swift in Sources */,
 				094EE7E1A73885A5472F9EA3 /* CharacterEntitlementManager.swift in Sources */,
+				7CA1B2C3D4E5F60178901234 /* CharacterAssetManifest.swift in Sources */,
+				7CA1B2C3D4E5F60178901236 /* CharacterAssetAvailability.swift in Sources */,
+				7CA1B2C3D4E5F60178901238 /* ReleaseVisibleCharacterPolicy.swift in Sources */,
 				094EE7E1A73885A5472F9EA4 /* CharacterGalleryView.swift in Sources */,
 				094EE7E1A73885A5472F9EA5 /* MonetizationPlan.swift in Sources */,
 				094EE7E1A73885A5472F9EA6 /* AppEntitlementManager.swift in Sources */,
@@ -3452,9 +3464,9 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleURLTypes = "{\"CFBundleURLName\"=>\"com.urang.MyTeam.oauth\", \"CFBundleURLSchemes\"=>[\"myteam\"]}";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 MyTeam. All rights reserved.";
-				INFOPLIST_KEY_NSLocationUsageDescription = "에이전트가 현실적인 대화를 하기 위해 위치 정보를 사용합니다";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "STT 음성 입력을 위해 마이크가 필요합니다.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 DALGRACSTUDIO. All rights reserved.";
+				INFOPLIST_KEY_NSLocationUsageDescription = "날씨·지역 기반 브리핑 제공을 위해 위치를 사용할 수 있습니다.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "회의록 작성을 위해 사용자가 시작한 녹음에만 마이크를 사용합니다.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "에이전트에게 전달할 음성을 텍스트로 변환합니다.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -3501,9 +3513,9 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleURLTypes = "{\"CFBundleURLName\"=>\"com.urang.MyTeam.oauth\", \"CFBundleURLSchemes\"=>[\"myteam\"]}";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 MyTeam. All rights reserved.";
-				INFOPLIST_KEY_NSLocationUsageDescription = "에이전트가 현실적인 대화를 하기 위해 위치 정보를 사용합니다";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "STT 음성 입력을 위해 마이크가 필요합니다.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 DALGRACSTUDIO. All rights reserved.";
+				INFOPLIST_KEY_NSLocationUsageDescription = "날씨·지역 기반 브리핑 제공을 위해 위치를 사용할 수 있습니다.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "회의록 작성을 위해 사용자가 시작한 녹음에만 마이크를 사용합니다.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "에이전트에게 전달할 음성을 텍스트로 변환합니다.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

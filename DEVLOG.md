@@ -6,6 +6,68 @@
 
 ---
 
+## 2026-05-15 (Round 76A-95Z — Character Asset Pipeline + Release Gate Audit Mega Pack)
+
+### Completed
+
+**Character Asset Pipeline (Items 4-7)**
+- `CharacterAssetAvailability.swift` 신규 — 4단계 가용성 enum (productionReady/partialAllowed/placeholder/missing)
+- `CharacterAssetManifest.swift` 신규 — 캐릭터별 스프라이트 완성도 선언 + CharacterAssetRegistry (spriteName heuristic)
+- `ReleaseVisibleCharacterPolicy.swift` 신규 — Release/DEBUG 노출 단일 게이트, policyReport
+- pbxproj: 3개 파일 PBXBuildFile/PBXFileReference/PBXGroup/PBXSourcesBuildPhase 등록 완료
+- v1.0 기준: 치코(partialAllowed) 1명 노출. DLC 구매 버튼 전면 숨김 (isDLCReady=false)
+
+**Swift 6 Actor Isolation (Item 3)**
+- `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` 환경에서 nonisolated 명시
+- `ArtifactStore.swift`: ActionLogEntry/IndexedArtifact explicit Codable + nonisolated init
+- `AgentTool.swift`: WorkflowTool protocol 모든 property nonisolated
+- `AppLaunchArtifactWriter.swift` / `KoreanPrivacyTermsArtifactWriter.swift`: 불필요 await 제거
+- 결과: Debug/Release 앱 코드 warning 0
+
+**Privacy Copy 감사 (Item 12)**
+- `BuiltInKoreanSkills.swift` L101, L109: "완전 로컬" → "로컬에서 계산" / "기기 내에서 계산"
+- `RouterBurnInSuite.swift` notes: "완전 로컬 처리" → "로컬 처리 (기기 내 계산)"
+- `DEVLOG.md` 이전 항목: "완전 로컬 처리" → "기기 내 로컬 처리"
+- Swift 소스 전체 금지 표현 0건
+
+**저작권/권한 Copy (Item 14)**
+- Copyright: "© 2026 DALGRACSTUDIO. All rights reserved."
+- NSMicrophoneUsageDescription: "회의록 작성을 위해 사용자가 시작한 녹음에만 마이크를 사용합니다."
+- NSLocationWhenInUseUsageDescription: "날씨·지역 기반 브리핑 제공을 위해 위치를 사용할 수 있습니다."
+
+**RuntimeDiagnostics Round 76 (Item 16)**
+- 신규 필드 6개: characterAssetManifestAvailable, releaseVisibleCharacterPolicyAvailable, chikoDefaultExperienceReady, privacyCopyForbiddenPhraseClean, visibleCharacterCountLive, purchasableCharacterCountLive
+- summary 라인: `characterAssetPipeline: manifest=true policy=true chikoReady=true privacyClean=true visible=1 purchasable=0`
+
+**Preflight Script (Item 17)**
+- `scripts/preflight_round76.sh` 작성
+- 10개 체크포인트: privacy phrase, 파일 존재, pbxproj 등록, copyright, permission copy, 문서, validator, ReleaseWarningAudit, DEVLOG, git
+- 결과: PASS=16, WARN=2, FAIL=0
+
+**Review 문서 (Items 18-20)**
+- `docs/InternalReviewReport.md` — 전체 Round 76 완료 요약, 한계 명시
+- `docs/growth/MarketingReviewFollowup.md` — 마케팅 copy 후속 조치
+- `docs/PMReviewFollowup.md` — PM 리스크 레지스터 + v1.0 승인 체크리스트
+
+**ToolContractValidator (Item 21)**
+- `validateCharacterAssetPipeline()` 추가
+- placeholder 캐릭터 Release 노출 gate, DLC policy 일관성, policyReport 수치 검증
+
+**RouterBurnInSuite (Item 22)**
+- Round 76 5개 케이스 추가: char-count-local, spell-check-local, no-forbidden-privacy-phrase, chiko-visible-built-in, dlc-purchase-blocked-when-not-ready
+
+**ReleaseWarningAudit + SystemBottleneckAudit (Items 23-24)**
+- `docs/ReleaseWarningAudit.md` Round 76 addendum 추가
+- `docs/SystemBottleneckAudit.md` Round 76 업데이트 + 잔여 리스크 레지스터
+
+### 알려진 이월 항목
+
+- 치코 working/success/screenshot 스프라이트 미제작 → Round 96A
+- App Store 스크린샷 0장 → Round 96A 완료 후
+- Premium DLC 구매 경로 → Round 96A 이후
+
+---
+
 ## 2026-05-14 (Round 56A-60H — Character Team Identity + Killer Flow Productization Pack)
 
 ### Completed (First Wave)
@@ -1538,7 +1600,7 @@
 ## 2026-05-05 (Round 8-2 — Skill Result Card UI + Local Skill Polish)
 
 ### 빌드 목표
-- `korean.character-count`는 계속 **완전 로컬 처리**
+- `korean.character-count`는 계속 **기기 내 로컬 처리**
 - local skill 경로에서는 `AICallBudgetManager`, `IntentRouter`, `WorkflowEngine` 미호출
 - SettingsView는 대규모 리팩터링 없이 검색/토글 반응성만 보강
 

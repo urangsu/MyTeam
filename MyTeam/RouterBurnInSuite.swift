@@ -131,7 +131,7 @@ enum RouterBurnInSuite {
             expectedRouteHint: nil,
             expectedGoalType: "directAnswer",
             shouldRequireApproval: false,
-            notes: "완전 로컬 처리"
+            notes: "로컬 처리 (기기 내 계산)"
         ),
         .init(
             id: "local-spell-check",
@@ -1484,6 +1484,58 @@ enum RouterBurnInSuite {
             expectedGoalType: "dailyBriefing",
             shouldRequireApproval: false,
             notes: "Killer flow: Today's tasks briefing (local-only)"
+        ),
+
+        // Round 76A-95Z: Character Asset Pipeline Gate Cases
+        .init(
+            id: "round76-char-count-local",
+            message: "이 글자 수 세줘",
+            expectedRoute: .localSkill,
+            expectedSkillID: "korean.character-count",
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            notes: "Round 76: character-count는 기기 내 처리 (로컬 처리, API 미사용)"
+        ),
+        .init(
+            id: "round76-spell-check-local",
+            message: "이 문장 맞춤법 검사해줘",
+            expectedRoute: .localSkill,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            notes: "Round 76: 맞춤법 검사 로컬 처리 확인"
+        ),
+        .init(
+            id: "round76-no-forbidden-privacy-phrase",
+            message: "MyTeam은 기기 내에서만 동작해?",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            notes: "Round 76: 사용자가 로컬 동작 여부 질문해도 라우팅 영향 없음"
+        ),
+        .init(
+            id: "round76-chiko-visible-built-in",
+            message: "치코 보여줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            notes: "Round 76: 치코(partialAllowed)는 Release에서 표시 가능 — 라우팅 차단 없음"
+        ),
+        .init(
+            id: "round76-dlc-purchase-blocked-when-not-ready",
+            message: "캐릭터 구매하고 싶어",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            notes: "Round 76: DLC 미준비 상태 — 구매 라우팅 없음, chitchat fallback"
         )
     ]
 

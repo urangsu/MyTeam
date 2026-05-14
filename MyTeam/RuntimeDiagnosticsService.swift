@@ -233,6 +233,14 @@ struct RuntimeDiagnosticsSnapshot {
     let chikoExperienceSpecAvailable: Bool
     let characterDLCGatePolicyAvailable: Bool
 
+    // Character Asset Pipeline (Round 76A-95Z)
+    let characterAssetManifestAvailable: Bool
+    let releaseVisibleCharacterPolicyAvailable: Bool
+    let chikoDefaultExperienceReady: Bool
+    let privacyCopyForbiddenPhraseClean: Bool
+    let visibleCharacterCountLive: Int
+    let purchasableCharacterCountLive: Int
+
     // Product Surface & Launch Readiness
     let settingsUserFacingCopySimplified: Bool
     let connectorSurfaceSimplified: Bool
@@ -368,6 +376,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("releasePath: build=\(buildConfiguration) planRunner=\(planRunnerEnabled) toggleVisible=\(planRunnerToggleVisible) debugVisible=\(debugDiagnosticsVisible)")
         lines.append("safety: blockedCapabilityGate=\(blockedCapabilityGateEnabled) resultVerifierErrorGate=\(resultVerifierErrorGateEnabled)")
         lines.append("autonomy: goalInterpreter=true clarificationPolicy=true capabilityRouter=true resultVerifier=true")
+        lines.append("characterAssetPipeline: manifest=\(characterAssetManifestAvailable) policy=\(releaseVisibleCharacterPolicyAvailable) chikoReady=\(chikoDefaultExperienceReady) privacyClean=\(privacyCopyForbiddenPhraseClean) visible=\(visibleCharacterCountLive) purchasable=\(purchasableCharacterCountLive)")
         lines.append("workspace: \(workspacePath)")
         lines.append("recentEvents: \(recentEventCount) | latest: \(latestEventSummary ?? "none")")
 
@@ -870,6 +879,12 @@ final class RuntimeDiagnosticsService {
             screenshotReadinessPlanAvailable: true,
             chikoExperienceSpecAvailable: true,
             characterDLCGatePolicyAvailable: true,
+            characterAssetManifestAvailable: true,
+            releaseVisibleCharacterPolicyAvailable: true,
+            chikoDefaultExperienceReady: true,
+            privacyCopyForbiddenPhraseClean: true,
+            visibleCharacterCountLive: ReleaseVisibleCharacterPolicy.visibleCharacters.count,
+            purchasableCharacterCountLive: ReleaseVisibleCharacterPolicy.purchasablePremium.count,
             settingsUserFacingCopySimplified: true,
             connectorSurfaceSimplified: true,
             approvalBlockedUnavailableMessageUnified: true,

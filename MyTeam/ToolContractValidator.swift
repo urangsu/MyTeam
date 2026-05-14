@@ -30,6 +30,7 @@ enum ToolContractValidator {
         validateTools(tools, issues: &issues)
         validateSkills(skills, issues: &issues)
         validateCharacterDLCPolicy(issues: &issues)
+        validateCharacterAssetPipeline(issues: &issues)
         validateProductSurfacePolicy(issues: &issues)
 
         let errorCount = issues.filter { $0.severity == .error }.count
@@ -191,6 +192,55 @@ enum ToolContractValidator {
             }
         }
         #endif
+    }
+
+    // MARK: - Round 76A-95Z: Character Asset Pipeline Gate
+
+    private static func validateCharacterAssetPipeline(issues: inout [ToolContractValidationIssue]) {
+        // 1. visibleBuiltIn이 최소 1명 이상이어야 함 (chiko)
+        let visibleBuiltIn = ReleaseVisibleCharacterPolicy.visibleBuiltIn
+        if visibleBuiltIn.isEmpty {
+            #if !DEBUG
+            issues.append(issue(.error, "Release 모드에서 표시 가능한 built-in 캐릭터가 없습니다. ReleaseVisibleCharacterPolicy 또는 CharacterAssetRegistry를 확인하세요."))
+            #else
+            issues.append(issue(.warning, "DEBUG: 표시 가능한 built-in 캐릭터 없음 — CharacterAssetRegistry 확인 필요."))
+            #endif
+        }
+
+        // 2. placeholder 스프라이트인 built-in이 Release에 노출되면 안 됨
+        let allBuiltIn = CharacterCatalog.builtIn
+        for character in allBuiltIn {
+            let manifest = CharacterAssetRegistry.manifest(
+                for: character.id,
+                spriteName: character.spriteAssetName
+            )
+            #if !DEBUG
+            if manifest.isPlaceholder && ReleaseVisibleCharacterPolicy.isVisible(character) {
+                issues.append(issue(.error, "Built-in character '\(character.name)' (id=\(character.id)) is placeholder but visible in Release. Policy gate failure."))
+            }
+            #endif
+            // DEBUG: warn only
+            if manifest.availability == .missing {
+                issues.append(issue(.warning, "Character '\(character.name)' (id=\(character.id)) has no asset manifest — availability=missing."))
+            }
+        }
+
+        // 3. isDLCPurchasable이지만 isComingSoon인 캐릭터가 없어야 함
+        let purchasable = ReleaseVisibleCharacterPolicy.purchasablePremium
+        for character in purchasable {
+            if character.isComingSoon {
+                issues.append(issue(.error, "Premium character '\(character.name)' marked purchasable but isComingSoon=true. Policy conflict."))
+            }
+        }
+
+        // 4. policy report 일관성 체크
+        let report = ReleaseVisibleCharacterPolicy.policyReport
+        if report.visibleCount > report.totalCharacters {
+            issues.append(issue(.error, "PolicyReport inconsistency: visibleCount(\(report.visibleCount)) > totalCharacters(\(report.totalCharacters))."))
+        }
+        if report.purchasableCount > report.totalCharacters {
+            issues.append(issue(.error, "PolicyReport inconsistency: purchasableCount(\(report.purchasableCount)) > totalCharacters(\(report.totalCharacters))."))
+        }
     }
 
     private static func validateProductSurfacePolicy(issues: inout [ToolContractValidationIssue]) {

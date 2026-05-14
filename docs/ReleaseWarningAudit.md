@@ -124,3 +124,53 @@ This document tracks Swift compiler warnings and runtime alerts for Release buil
 **Last Updated**: 2026-05-15  
 **Owner**: Engineering & QA Team  
 **Status**: Complete  
+
+---
+
+## Round 76A-95Z Addendum (2026-05-15)
+
+### 신규 파일 추가
+
+| 파일 | 등록 |
+|---|---|
+| `CharacterAssetManifest.swift` | ✅ pbxproj 등록 완료 |
+| `CharacterAssetAvailability.swift` | ✅ pbxproj 등록 완료 |
+| `ReleaseVisibleCharacterPolicy.swift` | ✅ pbxproj 등록 완료 |
+
+### Privacy Copy 감사 결과
+
+- ✅ Swift 소스 전체 금지 표현 0건 (preflight check 1 통과)
+- ✅ `BuiltInKoreanSkills.swift` "완전 로컬" 2개 → 대체 표현 교체 완료
+- ✅ `RouterBurnInSuite.swift` notes 1개 교체 완료
+
+### Swift 6 Actor Isolation
+
+- ✅ `ArtifactStore.swift` — ActionLogEntry/IndexedArtifact nonisolated 명시
+- ✅ `AgentTool.swift` — WorkflowTool protocol 전체 nonisolated
+- ✅ `AppLaunchArtifactWriter.swift` / `KoreanPrivacyTermsArtifactWriter.swift` — 불필요 await 제거
+- **결과**: Debug/Release 앱 코드 warning 0
+
+### RuntimeDiagnostics Round 76 신규 필드
+
+```
+characterAssetManifestAvailable, releaseVisibleCharacterPolicyAvailable,
+chikoDefaultExperienceReady, privacyCopyForbiddenPhraseClean,
+visibleCharacterCountLive, purchasableCharacterCountLive
+```
+
+### preflight_round76.sh
+
+- PASS=16, WARN=2 (미commit + InternalReviewReport 생성 전), FAIL=0
+- InternalReviewReport.md 생성 후 warning 해소
+
+### ToolContractValidator 추가 검증
+
+- `validateCharacterAssetPipeline()` 신규 — placeholder 캐릭터 Release 노출 차단, DLC policy 일관성 체크
+
+### RouterBurnInSuite 추가 케이스 (Round 76)
+
+- `round76-char-count-local` — 글자 수 계산 localSkill 라우팅
+- `round76-spell-check-local` — 맞춤법 검사 로컬 처리
+- `round76-no-forbidden-privacy-phrase` — 오버클레임 표현 라우팅 영향 없음
+- `round76-chiko-visible-built-in` — 치코 noблок 확인
+- `round76-dlc-purchase-blocked-when-not-ready` — DLC 미준비 시 chitchat fallback
