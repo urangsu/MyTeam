@@ -663,6 +663,20 @@ struct AgentChatView: View {
                                 deletableMessageBubble(log: log)
                                     .id(log.id)
                             }
+
+                            // ── 첫 아티팩트 생성 후 "다음 단계" 액션 표시 ──
+                            // 회의록/보고서/체크리스트 등이 생성되면 요약/표로 변경/체크리스트로 변경/Finder 열기 등의 다음 액션 제안
+                            if !manager.recentArtifacts.isEmpty {
+                                Divider()
+                                    .padding(.vertical, 12)
+
+                                FirstResultActionStripView(
+                                    actions: StarterActionProvider.actionsForFirstResult(),
+                                    onActionTap: { action in
+                                        dispatchStarterAction(action)
+                                    }
+                                )
+                            }
                         }
 
                         // 타이핑 인디케이터 ("..." 애니메이션)
