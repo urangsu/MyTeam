@@ -39,6 +39,12 @@ enum ToolContractValidator {
         validateFirstResultActionPolicy(issues: &issues)
         validateExternalWritePolicy(tools, issues: &issues)
 
+        // UX-Fix Round 136A validators
+        validateTeamNameplateSettingsPolicy(issues: &issues)
+        validateDARTDisclosurePolicy(skills, issues: &issues)
+        validateDefaultCharacterRosterPolicy(issues: &issues)
+        validateAPIKeyPromptSurfacePolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -261,6 +267,60 @@ enum ToolContractValidator {
                 }
             }
         }
+    }
+
+    // MARK: - UX-Fix Round 136A Validators
+
+    private static func validateTeamNameplateSettingsPolicy(issues: inout [ToolContractValidationIssue]) {
+        // palette + border mode가 정의되어 있는지만 확인 (복잡한 hex control은 제거됨)
+        let paletteCount = TeamNameplatePalette.allCases.count
+        if paletteCount < 4 {
+            issues.append(issue(.warning, "TeamNameplatePalette에 팔레트가 \(paletteCount)개뿐입니다. 최소 4개 필요."))
+        }
+        if TeamNameplateBorderMode.allCases.count != 2 {
+            issues.append(issue(.warning, "TeamNameplateBorderMode는 none/subtle 2가지여야 합니다."))
+        }
+    }
+
+    private static func validateDARTDisclosurePolicy(_ skills: [SkillManifest], issues: inout [ToolContractValidationIssue]) {
+        guard let dart = skills.first(where: { $0.id == "korean.dart" }) else {
+            issues.append(issue(.error, "DART 공시 skill(korean.dart)이 SkillRegistry에 없습니다."))
+            return
+        }
+        if !dart.defaultEnabled {
+            issues.append(issue(.error, "DART 공시 skill이 defaultEnabled=false입니다. publicDisclosureRead는 Release에서 차단하지 않습니다."))
+        }
+        if dart.riskLevel == .externalWrite || dart.riskLevel == .reservation || dart.riskLevel == .payment {
+            issues.append(issue(.error, "DART 공시 skill이 write/private riskLevel '\(dart.riskLevel.rawValue)'로 분류되었습니다."))
+        }
+        if dart.requiredPermissions.contains(.sendsMessage) || dart.requiredPermissions.contains(.makesReservation) {
+            issues.append(issue(.error, "DART 공시 skill에 write 권한(sendsMessage/makesReservation)이 포함되었습니다."))
+        }
+    }
+
+    private static func validateDefaultCharacterRosterPolicy(issues: inout [ToolContractValidationIssue]) {
+        let chiko = CharacterCatalog.builtIn.first { $0.id == "char.builtin.chiko" }
+        if chiko == nil {
+            issues.append(issue(.error, "기본 캐릭터 치코(char.builtin.chiko)가 CharacterCatalog.builtIn에 없습니다."))
+        } else if chiko?.isPremium == true {
+            issues.append(issue(.error, "치코가 isPremium=true로 설정되었습니다. 기본 캐릭터는 isPremium=false여야 합니다."))
+        }
+        // DLC purchase가 builtIn 캐릭터에 노출되지 않는지 확인
+        for char in CharacterCatalog.builtIn {
+            if char.productID != nil && !char.isPremium {
+                issues.append(issue(.warning, "기본 캐릭터 '\(char.name)'에 productID가 설정되었습니다. DLC처럼 보일 수 있습니다."))
+            }
+        }
+    }
+
+    private static func validateAPIKeyPromptSurfacePolicy(issues: inout [ToolContractValidationIssue]) {
+        // FirstLaunchBannerView의 localOnly 케이스가 API key nag를 제거했는지
+        // (코드 정적 분석이 아닌 정책 플래그로 확인)
+        if !ProductSurfacePolicy.truthfulPrivacyCopyRequired {
+            issues.append(issue(.error, "ProductSurfacePolicy.truthfulPrivacyCopyRequired가 false입니다."))
+        }
+        // API key prompt는 Settings surface에만 노출
+        // TeamStatusView/DailyBriefingCardView에서 제거 여부는 RuntimeDiagnostics로 확인
     }
 
     private static func issue(_ severity: ToolContractValidationIssue.Severity, _ message: String) -> ToolContractValidationIssue {

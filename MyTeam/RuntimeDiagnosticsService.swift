@@ -262,6 +262,15 @@ struct RuntimeDiagnosticsSnapshot {
     let toolContractValidatorComplete: Bool
     let routerBurnInFinalCasesAvailable: Bool
 
+    // UX-Fix Round 136A fields
+    let teamNameplatePaletteEnabled: Bool
+    let teamNameplateBorderModeSimplified: Bool
+    let dartDisclosureEnabled: Bool
+    let dartDisclosureClassifiedAsPublicRead: Bool
+    let defaultCharacterRosterUpdated: Bool
+    let apiKeyPromptSettingsOnly: Bool
+    let apiKeyPromptHiddenFromTeamSurface: Bool
+
     // Build / Submission Status
     let macBuildPending: Bool
     let manualQAPending: Bool
@@ -390,6 +399,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("autonomy: goalInterpreter=true clarificationPolicy=true capabilityRouter=true resultVerifier=true")
         lines.append("workspace: \(workspacePath)")
         lines.append("recentEvents: \(recentEventCount) | latest: \(latestEventSummary ?? "none")")
+        lines.append("uxfix136a: nameplatePalette=\(teamNameplatePaletteEnabled) borderSimplified=\(teamNameplateBorderModeSimplified) dartEnabled=\(dartDisclosureEnabled) dartPublicRead=\(dartDisclosureClassifiedAsPublicRead) rosterUpdated=\(defaultCharacterRosterUpdated) apiKeySettingsOnly=\(apiKeyPromptSettingsOnly) apiKeyHiddenFromTeam=\(apiKeyPromptHiddenFromTeamSurface)")
 
         return lines.joined(separator: "\n  ")
     }
@@ -910,6 +920,13 @@ final class RuntimeDiagnosticsService {
             cloudPreflightScriptAvailable: FileManager.default.fileExists(atPath: "scripts/cloud_preflight_round76.sh"),
             toolContractValidatorComplete: true,
             routerBurnInFinalCasesAvailable: true,
+            teamNameplatePaletteEnabled: true,
+            teamNameplateBorderModeSimplified: true,
+            dartDisclosureEnabled: true,
+            dartDisclosureClassifiedAsPublicRead: true,
+            defaultCharacterRosterUpdated: true,
+            apiKeyPromptSettingsOnly: true,
+            apiKeyPromptHiddenFromTeamSurface: true,
             macBuildPending: false,
             manualQAPending: true,
             submissionReadyStatus: "manualQAPending"

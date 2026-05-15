@@ -255,10 +255,11 @@ enum BuiltInKoreanSkills {
 """,
         outputType: .chat,
         isBuiltIn: true,
-        defaultEnabled: false,
+        defaultEnabled: true,   // publicDisclosureRead — Release에서 차단하지 않음
         requiresApprovalEveryRun: false,
         backendHint: "dart-open-api",
         notes: [
+            "publicDisclosureRead — 공개 공시 조회, write 없음, OAuth 없음",
             "투자 조언 아님 — 공시 데이터 요약",
             "수치 미확인 시 추측 금지",
             "미구현: DART Open API 연동 (Round 7 이후)"

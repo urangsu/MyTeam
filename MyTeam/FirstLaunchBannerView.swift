@@ -17,15 +17,13 @@ struct FirstLaunchBannerView: View {
     private var bannerConfig: (icon: String, title: String, message: String, accentColor: Color) {
         switch state.capabilityMode {
         case .localOnly:
-            if !state.hasAPIKey {
-                return ("key.fill", "API 키 필요",
-                    "AI 응답을 사용하려면 설정에서 API 키를 연결해 주세요.", .orange)
-            } else if state.isOffline {
+            if state.isOffline {
                 return ("wifi.slash", "네트워크 연결 없음",
                     "네트워크 연결이 없어 AI 응답은 제한됩니다.", .red)
             } else {
-                return ("gearshape.fill", "로컬 전용",
-                    "지금은 로컬 파일 정리, 문서 템플릿, 스케줄 확인 기능을 사용할 수 있습니다.", .blue)
+                // API 키 미연결: 큰 CTA 없이 로컬 기능 안내만
+                return ("sparkles", "로컬 기능부터 바로 시작",
+                    "회의록 양식, 체크리스트, 파일 읽기, 오늘 할 일은 바로 사용할 수 있습니다.", .blue)
             }
         case .connectorLimited:
             return ("exclamationmark.triangle.fill", "연결 기능 준비 중",
@@ -72,37 +70,9 @@ struct FirstLaunchBannerView: View {
                     .fill(config.accentColor.opacity(isDarkMode ? 0.15 : 0.08))
             )
 
-            // 액션 버튼 (API 키 필요한 경우)
-            if !state.hasAPIKey && state.capabilityMode == .localOnly {
-                HStack(spacing: 10) {
-                    Button(action: onOpenSettings) {
-                        Label("설정에서 API 키 연결", systemImage: "gear")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(Color.blue)
-                            )
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                    Button(action: onDismiss) {
-                        Text("나중에")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.blue)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .stroke(Color.blue, lineWidth: 1)
-                            )
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
-                .padding(.horizontal, 12)
-                .padding(.bottom, 12)
+            // AI 전용 기능을 눌렀을 때만 짧게 안내 (Settings CTA는 Settings에만)
+            if state.capabilityMode == .aiEnabled {
+                EmptyView()
             }
         }
         .background(

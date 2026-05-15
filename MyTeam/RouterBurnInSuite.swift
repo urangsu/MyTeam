@@ -1503,6 +1503,108 @@ enum RouterBurnInSuite {
             expectedGoalType: "characterInvite",
             shouldRequireApproval: false,
             notes: "Blocked: placeholder character (leo) not available in Release"
+        ),
+
+        // MARK: Round 136A-UXFIX — DART / Settings / Blocked write
+        .init(
+            id: "dart-disclosure-1",
+            message: "다트 공시 확인해줘",
+            expectedRoute: .localSkill,
+            expectedSkillID: "korean.dart",
+            expectedRouteHint: nil,
+            expectedGoalType: "publicDisclosureRead",
+            shouldRequireApproval: false,
+            notes: "publicDisclosureRead — allowed, write 없음"
+        ),
+        .init(
+            id: "dart-disclosure-2",
+            message: "삼성전자 공시 봐줘",
+            expectedRoute: .localSkill,
+            expectedSkillID: "korean.dart",
+            expectedRouteHint: nil,
+            expectedGoalType: "publicDisclosureRead",
+            shouldRequireApproval: false,
+            notes: "publicDisclosureRead — allowed"
+        ),
+        .init(
+            id: "dart-disclosure-3",
+            message: "전자공시 찾아줘",
+            expectedRoute: .localSkill,
+            expectedSkillID: "korean.dart",
+            expectedRouteHint: nil,
+            expectedGoalType: "publicDisclosureRead",
+            shouldRequireApproval: false,
+            notes: "publicDisclosureRead — allowed"
+        ),
+        .init(
+            id: "settings-api-key",
+            message: "API key 설정",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: "settings",
+            expectedGoalType: "settingsNavigation",
+            shouldRequireApproval: false,
+            notes: "API key 안내는 Settings에만 — team surface에서 차단"
+        ),
+        .init(
+            id: "settings-ai-provider",
+            message: "AI provider 연결",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: "settings",
+            expectedGoalType: "settingsNavigation",
+            shouldRequireApproval: false,
+            notes: "AI provider 연결 안내는 Settings에만"
+        ),
+        .init(
+            id: "starter-meeting-minutes",
+            message: "회의록 양식",
+            expectedRoute: .localSkill,
+            expectedSkillID: "starter_meeting_minutes",
+            expectedRouteHint: nil,
+            expectedGoalType: "starterAction",
+            shouldRequireApproval: false,
+            notes: "starter action — allowed"
+        ),
+        .init(
+            id: "starter-today-tasks",
+            message: "오늘 할 일",
+            expectedRoute: .localSkill,
+            expectedSkillID: "starter_today_tasks",
+            expectedRouteHint: nil,
+            expectedGoalType: "starterAction",
+            shouldRequireApproval: false,
+            notes: "starter action — allowed"
+        ),
+        .init(
+            id: "blocked-mail-send-uxfix",
+            message: "메일 보내줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "mailSend",
+            shouldRequireApproval: true,
+            notes: "Blocked: external write — mail send"
+        ),
+        .init(
+            id: "blocked-calendar-create-uxfix",
+            message: "일정 만들어줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "calendarWrite",
+            shouldRequireApproval: true,
+            notes: "Blocked: external write — calendar create"
+        ),
+        .init(
+            id: "blocked-file-delete-uxfix",
+            message: "파일 삭제해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "destructiveFileAction",
+            shouldRequireApproval: true,
+            notes: "Blocked: destructive file action"
         )
     ]
 

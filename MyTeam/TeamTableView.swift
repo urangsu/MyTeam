@@ -13,8 +13,8 @@ struct TeamTableView: View {
 
     @AppStorage("teamName") private var teamName: String = "MyTeam"
     @AppStorage(TeamNameplateAppearanceSettings.enabledKey) private var teamNameplateEnabled: Bool = TeamNameplateAppearanceSettings.defaultEnabled
-    @AppStorage(TeamNameplateAppearanceSettings.colorHexKey) private var teamNameplateColorHex: String = TeamNameplateAppearanceSettings.defaultColorHex
-    @AppStorage(TeamNameplateAppearanceSettings.borderColorHexKey) private var teamNameplateBorderColorHex: String = TeamNameplateAppearanceSettings.defaultBorderColorHex
+    @AppStorage(TeamNameplateAppearanceSettings.paletteKey) private var teamNameplatePaletteRaw: String = TeamNameplateAppearanceSettings.defaultPalette.rawValue
+    @AppStorage(TeamNameplateAppearanceSettings.borderModeKey) private var teamNameplateBorderModeRaw: String = TeamNameplateAppearanceSettings.defaultBorderMode.rawValue
     @AppStorage("agentWindowOpacity") private var agentWindowOpacity: Double = 0.0
 
     // 드래그 스팸 방지: 한 번의 드래그 제스처 당 알림 1회만 발생
@@ -23,20 +23,24 @@ struct TeamTableView: View {
     @State private var hasSpokenOnDragBegan: Bool = false
     @State private var hasSpokenOnDragEnded: Bool = false
 
-    private var plaqueBaseColor: Color {
-        TeamNameplateAppearanceSettings.color(from: teamNameplateColorHex)
+    private var currentPalette: TeamNameplatePalette {
+        TeamNameplatePalette(rawValue: teamNameplatePaletteRaw) ?? .clear
     }
 
-    private var plaqueBorderColor: Color {
-        TeamNameplateAppearanceSettings.color(from: teamNameplateBorderColorHex)
+    private var currentBorderMode: TeamNameplateBorderMode {
+        TeamNameplateBorderMode(rawValue: teamNameplateBorderModeRaw) ?? .none
+    }
+
+    private var plaqueBaseColor: Color {
+        currentPalette.color
     }
 
     private var plaqueHasBackground: Bool {
-        !TeamNameplateAppearanceSettings.isTransparent(teamNameplateColorHex)
+        currentPalette != .clear
     }
 
     private var plaqueHasBorder: Bool {
-        !TeamNameplateAppearanceSettings.isTransparent(teamNameplateBorderColorHex)
+        currentBorderMode == .subtle
     }
 
     private var plaqueTextColor: Color {
@@ -61,7 +65,7 @@ struct TeamTableView: View {
                             .fill(plaqueHasBackground ? plaqueBaseColor.opacity(0.12) : Color.clear)
                             .overlay {
                                 if plaqueHasBorder {
-                                    Capsule().stroke(plaqueBorderColor.opacity(0.22), lineWidth: 1)
+                                    Capsule().stroke(Color.white.opacity(0.35), lineWidth: 1)
                                 }
                             }
                     )
