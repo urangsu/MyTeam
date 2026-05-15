@@ -15,7 +15,11 @@ REQUIRED_SWIFT_FILES = [
     "StarterActionStripView.swift",
     "Color+Hex.swift",
     "CharacterAssetManifest.swift",
-    "ReleaseVisibleCharacterPolicy.swift"
+    "ReleaseVisibleCharacterPolicy.swift",
+    "ProductSurfacePolicy.swift",
+    "ConnectorSurfacePolicy.swift",
+    "FirstResultActionPolicy.swift",
+    "StarterActionPolicy.swift"
 ]
 
 def read_pbxproj(path):
