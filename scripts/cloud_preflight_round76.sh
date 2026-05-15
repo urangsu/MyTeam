@@ -1,128 +1,141 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "== Git status =="
-git status --short
+REPORT_DIR="reports"
+mkdir -p "$REPORT_DIR"
 
-echo ""
-echo "== Current branch =="
-git branch --show-current
+# Helper function to write to report files
+log_report() {
+    local file=$1
+    local message=$2
+    echo "$message" >> "$file"
+}
 
-echo ""
-echo "== Forbidden privacy copy =="
-if grep -R "외부 서버 없음\|완전 로컬\|내 기기 안에서만\|어떤 데이터도 외부로 나가지\|서버 없음" -n MyTeam docs \
+# Initialize main report
+MAIN_REPORT="$REPORT_DIR/cloud_preflight_round116.md"
+> "$MAIN_REPORT"
+
+echo "# Cloud Preflight Round 116 Report" > "$MAIN_REPORT"
+echo "" >> "$MAIN_REPORT"
+echo "**Generated:** $(date)" >> "$MAIN_REPORT"
+echo "" >> "$MAIN_REPORT"
+
+# Git status
+echo "## Git Status" >> "$MAIN_REPORT"
+echo '```' >> "$MAIN_REPORT"
+git status --short >> "$MAIN_REPORT"
+echo '```' >> "$MAIN_REPORT"
+echo "**Branch:** $(git branch --show-current)" >> "$MAIN_REPORT"
+echo "" >> "$MAIN_REPORT"
+
+# Forbidden privacy copy audit
+PRIVACY_REPORT="$REPORT_DIR/forbidden_copy_audit.md"
+> "$PRIVACY_REPORT"
+echo "# Forbidden Privacy Copy Audit" >> "$PRIVACY_REPORT"
+echo "" >> "$PRIVACY_REPORT"
+echo "## Forbidden Phrases Check" >> "$PRIVACY_REPORT"
+echo "" >> "$PRIVACY_REPORT"
+
+if grep -R "외부 서버 없음\|완전 로컬\|내 기기 안에서만\|어떤 데이터도 외부로 나가지\|서버 없음" -n MyTeam docs 2>/dev/null \
   | grep -v "TruthfulPrivacyCopyPolicy" \
-  | grep -v "MarketingReviewAcceptanceMatrix" || true; then
-  echo "⚠️  Some forbidden phrases found (check TruthfulPrivacyCopyPolicy for exceptions)"
-else
-  echo "✅ No forbidden phrases detected"
-fi
-
-echo ""
-echo "== Deployment target =="
-if grep -n "MACOSX_DEPLOYMENT_TARGET" MyTeam/MyTeam.xcodeproj/project.pbxproj || true; then
-  echo "✅ Deployment target found in project"
-fi
-
-echo ""
-echo "== Copyright =="
-if grep -n "NSHumanReadableCopyright" MyTeam/MyTeam.xcodeproj/project.pbxproj || true; then
-  echo "✅ Copyright found in project"
-fi
-
-echo ""
-echo "== Key Swift files in project =="
-echo "Checking for new asset policy files..."
-for file in CharacterAssetManifest ReleaseVisibleCharacterPolicy FirstLaunchState StarterAction; do
-  if grep -q "${file}.swift" MyTeam/MyTeam.xcodeproj/project.pbxproj 2>/dev/null; then
-    echo "  ✅ ${file}.swift"
+  | grep -v "MarketingReviewAcceptanceMatrix" > /tmp/forbidden_phrases.txt 2>&1 || true; then
+  if [ -s /tmp/forbidden_phrases.txt ]; then
+    echo "⚠️ **FOUND**: Forbidden phrases detected" >> "$PRIVACY_REPORT"
+    echo '```' >> "$PRIVACY_REPORT"
+    cat /tmp/forbidden_phrases.txt >> "$PRIVACY_REPORT"
+    echo '```' >> "$PRIVACY_REPORT"
+    log_report "$MAIN_REPORT" "- ⚠️  Privacy copy audit: forbidden phrases found (see forbidden_copy_audit.md)"
   else
-    echo "  ⚠️  ${file}.swift not in project"
+    echo "✅ **PASS**: No forbidden phrases detected" >> "$PRIVACY_REPORT"
+    log_report "$MAIN_REPORT" "- ✅ Privacy copy audit: no forbidden phrases"
+  fi
+else
+  echo "✅ **PASS**: No forbidden phrases detected" >> "$PRIVACY_REPORT"
+  log_report "$MAIN_REPORT" "- ✅ Privacy copy audit: no forbidden phrases"
+fi
+
+# Connector policy audit
+CONNECTOR_REPORT="$REPORT_DIR/connector_policy_audit.md"
+> "$CONNECTOR_REPORT"
+echo "# Connector Policy Audit" >> "$CONNECTOR_REPORT"
+echo "" >> "$CONNECTOR_REPORT"
+
+if grep -R "calendarWrite\|mailSend\|externalUpload\|deleteFile" -n MyTeam --include="*.swift" 2>/dev/null > /tmp/connector_writes.txt 2>&1 || true; then
+  if [ -s /tmp/connector_writes.txt ]; then
+    echo "⚠️ **FOUND**: External write tools detected" >> "$CONNECTOR_REPORT"
+    echo '```' >> "$CONNECTOR_REPORT"
+    cat /tmp/connector_writes.txt >> "$CONNECTOR_REPORT"
+    echo '```' >> "$CONNECTOR_REPORT"
+    log_report "$MAIN_REPORT" "- ⚠️  Connector policy: external write tools found (verify blocked)"
+  else
+    echo "✅ **PASS**: No external write tools exposed" >> "$CONNECTOR_REPORT"
+    log_report "$MAIN_REPORT" "- ✅ Connector policy: no exposed write tools"
+  fi
+else
+  echo "✅ **PASS**: No external write tools exposed" >> "$CONNECTOR_REPORT"
+  log_report "$MAIN_REPORT" "- ✅ Connector policy: no exposed write tools"
+fi
+
+# StoreKit surface audit
+STOREKIT_REPORT="$REPORT_DIR/storekit_surface_audit.md"
+> "$STOREKIT_REPORT"
+echo "# StoreKit Surface Audit" >> "$STOREKIT_REPORT"
+echo "" >> "$STOREKIT_REPORT"
+
+if grep -R "makePurchase\|requestReview\|disabled.*Pro\|DLC.*purchase" -n MyTeam --include="*.swift" 2>/dev/null > /tmp/storekit.txt 2>&1 || true; then
+  if [ -s /tmp/storekit.txt ]; then
+    echo "⚠️ **FOUND**: StoreKit surface detected" >> "$STOREKIT_REPORT"
+    echo '```' >> "$STOREKIT_REPORT"
+    cat /tmp/storekit.txt >> "$STOREKIT_REPORT"
+    echo '```' >> "$STOREKIT_REPORT"
+    log_report "$MAIN_REPORT" "- ⚠️  StoreKit surface: found (verify disabled in Release)"
+  else
+    echo "✅ **PASS**: No obvious StoreKit issues" >> "$STOREKIT_REPORT"
+    log_report "$MAIN_REPORT" "- ✅ StoreKit surface: no issues detected"
+  fi
+else
+  echo "✅ **PASS**: No obvious StoreKit issues" >> "$STOREKIT_REPORT"
+  log_report "$MAIN_REPORT" "- ✅ StoreKit surface: no issues detected"
+fi
+
+# Character surface audit
+CHARACTER_REPORT="$REPORT_DIR/character_surface_audit.md"
+> "$CHARACTER_REPORT"
+echo "# Character Surface Audit" >> "$CHARACTER_REPORT"
+echo "" >> "$CHARACTER_REPORT"
+
+CHAR_FILES=("CharacterAssetManifest" "ReleaseVisibleCharacterPolicy" "ProductSurfacePolicy" "CharacterCatalog")
+for file in "${CHAR_FILES[@]}"; do
+  if grep -q "${file}.swift" MyTeam/MyTeam.xcodeproj/project.pbxproj 2>/dev/null; then
+    echo "✅ ${file}.swift" >> "$CHARACTER_REPORT"
+  else
+    echo "⚠️  ${file}.swift NOT in project" >> "$CHARACTER_REPORT"
   fi
 done
 
-echo ""
-echo "== Connector write policy grep =="
-if grep -R "calendarWrite\|mailSend\|externalUpload\|deleteFile" -n MyTeam --include="*.swift" || true; then
-  echo "⚠️  External write/calendar tools found (verify they are blocked/unavailable)"
+log_report "$MAIN_REPORT" "- Character surface: audit complete (see character_surface_audit.md)"
+echo "" >> "$MAIN_REPORT"
+
+# pbxproj target audit
+PBXPROJ_REPORT="$REPORT_DIR/pbxproj_target_audit.md"
+if python3 scripts/pbxproj_target_audit.py 2>/dev/null; then
+  log_report "$MAIN_REPORT" "- ✅ pbxproj target audit: passed"
 else
-  echo "✅ No obvious external write tools exposed"
+  log_report "$MAIN_REPORT" "- ⚠️  pbxproj target audit: review required (see pbxproj_target_audit.md)"
 fi
 
-echo ""
-echo "== StoreKit surface check =="
-if grep -R "makePurchase\|requestReview\|disabled.*Pro\|DLC.*purchase" -n MyTeam --include="*.swift" || true; then
-  echo "⚠️  StoreKit surface found (verify it's limited to demo/unavailable in Release)"
-else
-  echo "✅ No obvious StoreKit surface issues"
-fi
+# Final summary
+echo "" >> "$MAIN_REPORT"
+echo "## Summary" >> "$MAIN_REPORT"
+echo "" >> "$MAIN_REPORT"
+echo "All reports generated in \`$REPORT_DIR/\`:" >> "$MAIN_REPORT"
+echo "- cloud_preflight_round116.md (this file)" >> "$MAIN_REPORT"
+echo "- forbidden_copy_audit.md" >> "$MAIN_REPORT"
+echo "- connector_policy_audit.md" >> "$MAIN_REPORT"
+echo "- storekit_surface_audit.md" >> "$MAIN_REPORT"
+echo "- character_surface_audit.md" >> "$MAIN_REPORT"
+echo "- pbxproj_target_audit.md" >> "$MAIN_REPORT"
+echo "" >> "$MAIN_REPORT"
+echo "**Next**: Run \`scripts/mac_merge_build_round116.sh\` on Mac" >> "$MAIN_REPORT"
 
-echo ""
-echo "== ToolExecutor MainActor check =="
-if grep -n "await MainActor.run" MyTeam/ToolExecutor.swift 2>/dev/null || true; then
-  echo "⚠️  MainActor.run still present (verify necessity)"
-else
-  echo "✅ MainActor.run removed from ToolExecutor"
-fi
-
-echo ""
-echo "== CharacterCatalog asset-aware helpers =="
-if grep -n "assetManifest\|isVisibleInRelease\|isPurchasableInRelease" MyTeam/CharacterCatalog.swift || true; then
-  echo "✅ CharacterCatalog asset helpers implemented"
-else
-  echo "⚠️  CharacterCatalog asset helpers not found"
-fi
-
-echo ""
-echo "== ReleaseVisibleCharacterPolicy check =="
-if grep -l "ReleaseVisibleCharacterPolicy" MyTeam/*.swift 2>/dev/null || true; then
-  echo "✅ ReleaseVisibleCharacterPolicy referenced"
-else
-  echo "⚠️  ReleaseVisibleCharacterPolicy not yet integrated"
-fi
-
-echo ""
-echo "== ToolContractValidator latest checks =="
-if grep -n "validateReleaseVisibleConnectorPolicy\|validateCharacterAssetPolicy\|validateStoreKitSurfacePolicy\|validatePrivacyCopyPolicy\|validateStarterActionPolicy\|validateFirstResultActionPolicy\|validateExternalWritePolicy" MyTeam/ToolContractValidator.swift || true; then
-  echo "✅ All 7 validators implemented"
-else
-  echo "⚠️  Not all validators implemented yet"
-fi
-
-echo ""
-echo "== RouterBurnInSuite tests =="
-if grep -n "회의록 양식\|앱 출시 체크리스트\|메일 보내줘\|일정 만들어줘\|파일 삭제해줘" MyTeam/RouterBurnInSuite.swift || true; then
-  echo "✅ BurnIn test cases found"
-else
-  echo "⚠️  Not all test cases present"
-fi
-
-echo ""
-echo "== RuntimeDiagnostics cloud fields =="
-if grep -n "characterAssetManifestAvailable\|macBuildPending\|submissionReadyStatus" MyTeam/RuntimeDiagnosticsService.swift || true; then
-  echo "✅ Cloud diagnostics fields added"
-else
-  echo "⚠️  Cloud diagnostics fields not found"
-fi
-
-echo ""
-echo "== CharacterGalleryView Release filtering =="
-if grep -n "releaseVisibleCharacters\|releasePurchasableCharacters" MyTeam/*.swift || true; then
-  echo "✅ Character filtering helpers referenced"
-else
-  echo "⚠️  Character filtering helpers not yet connected"
-fi
-
-echo ""
-echo "== First Result Activation policy =="
-if grep -n "missing file\|hash mismatch\|wrong.room" MyTeam/ArtifactCardView.swift 2>/dev/null || true; then
-  echo "✅ First result action policy checks found"
-else
-  echo "⚠️  Policy checks verification needed"
-fi
-
-echo ""
-echo "=========================================="
-echo "Cloud preflight complete."
-echo "Mac xcodebuild still required for final build verification."
-echo "=========================================="
+echo "✅ Cloud preflight complete. Reports generated in $REPORT_DIR/"

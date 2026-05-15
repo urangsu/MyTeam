@@ -198,4 +198,10 @@ enum CharacterCatalog {
     static func releasePurchasableCharacters() -> [CharacterDLC] {
         all.filter { isPurchasableInRelease($0) }
     }
+
+    static func releasePrimaryCharacter() -> CharacterDLC? {
+        character(id: "char.builtin.chiko")
+    }
+
+    static let chikoDefaultExperienceCopy = "치코는 사용자 흐름을 집요하게 보는 UX 메이트로, MyTeam의 핵심 팀원입니다. 어떤 작업이든 사용자 관점으로 함께 검토해 드립니다."
 }

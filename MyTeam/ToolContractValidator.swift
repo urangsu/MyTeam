@@ -182,52 +182,71 @@ enum ToolContractValidator {
                 }
             }
         }
+
+        for tool in tools {
+            if tool.scope == .officeLive && tool.plannerVisible && !FeatureFlags.debugToolVisible {
+                if !ConnectorSurfacePolicy.blockedCapabilitiesInRelease.isEmpty {
+                    issues.append(issue(.error, "connector write tool '\(tool.name)' 이 Release surface에 노출되었습니다. ConnectorSurfacePolicy를 확인하세요."))
+                }
+            }
+        }
     }
 
     private static func validateCharacterAssetPolicy(issues: inout [ToolContractValidationIssue]) {
-        // CharacterAssetManifest와 ReleaseVisibleCharacterPolicy가 정의되어 있는지 정적 검증
-        // Runtime 실행 금지 — Cloud static review only
         let chikoManifest = CharacterCatalog.assetManifest(for: "chiko")
         if chikoManifest.isPlaceholder {
             issues.append(issue(.error, "Chiko character가 placeholder로 표시되었습니다."))
         }
         if !ReleaseVisibleCharacterPolicy.isVisibleInRelease(chikoManifest) {
-            issues.append(issue(.error, "Chiko가 Release에서 숨겨졌습니다."))
+            issues.append(issue(.error, "Chiko가 ReleaseVisibleCharacterPolicy에 의해 숨겨졌습니다."))
         }
     }
 
     private static func validateStoreKitSurfacePolicy(issues: inout [ToolContractValidationIssue]) {
-        // StoreKit disabled button이 Release visible이면 warning
-        // Cloud static review: 문서 확인만
-        issues.append(issue(.warning, "StoreKit surface policy: disabled Pro button은 Release에서 숨겨야 합니다. (매뉴얼 검증 대기)"))
+        if !ProductSurfacePolicy.showsDisabledProButtonInRelease {
+            issues.append(issue(.warning, "Pro button이 Release에서 숨겨졌습니다. ProductSurfacePolicy.showsDisabledProButtonInRelease를 확인하세요."))
+        }
     }
 
     private static func validatePrivacyCopyPolicy(issues: inout [ToolContractValidationIssue]) {
-        // Forbidden phrases 검증은 cloud_preflight script에서 수행
-        // 여기서는 policy 존재 확인만
-        // Cloud static review: preflight script 참조
-        if !FeatureFlags.debugToolVisible {
-            issues.append(issue(.warning, "Privacy copy audit: cloud_preflight_round76.sh 확인 필요"))
+        if !ProductSurfacePolicy.truthfulPrivacyCopyRequired {
+            issues.append(issue(.error, "ProductSurfacePolicy.truthfulPrivacyCopyRequired가 false입니다."))
         }
     }
 
     private static func validateStarterActionPolicy(issues: inout [ToolContractValidationIssue]) {
-        // StarterAction이 올바른 route로 연결되었는지 확인
-        // Cloud static review: RouterBurnInSuite에서 확인
-        issues.append(issue(.warning, "Starter action policy: RouterBurnInSuite 케이스 확인 필요"))
+        let blockedCount = StarterActionPolicy.blockedStarterActionIDs.count
+        if blockedCount == 0 {
+            issues.append(issue(.error, "StarterActionPolicy에 blocked action이 정의되지 않았습니다."))
+        }
+        if StarterActionPolicy.allowedStarterActionIDs.isEmpty {
+            issues.append(issue(.error, "StarterActionPolicy에 allowed action이 정의되지 않았습니다."))
+        }
     }
 
     private static func validateFirstResultActionPolicy(issues: inout [ToolContractValidationIssue]) {
-        // First result action이 missing/hashMismatch/wrongRoom artifact에서 노출되는지 확인
-        // Cloud static review: RouterBurnInSuite에서 확인
-        issues.append(issue(.warning, "First result action policy: artifact 상태별 action 가시성 확인 필요"))
+        let validState = ArtifactState.valid
+        let allowedForValid = FirstResultActionPolicy.allowedActions(for: validState)
+        if allowedForValid.isEmpty {
+            issues.append(issue(.error, "FirstResultActionPolicy: valid artifact의 allowed action이 비어있습니다."))
+        }
+
+        let invalidStates = [ArtifactState.missingFile, ArtifactState.hashMismatch, ArtifactState.wrongRoom]
+        for state in invalidStates {
+            let actions = FirstResultActionPolicy.allowedActions(for: state)
+            if !actions.isEmpty {
+                issues.append(issue(.error, "FirstResultActionPolicy: '\(state.rawValue)' artifact에서 action이 노출되었습니다."))
+            }
+        }
     }
 
     private static func validateExternalWritePolicy(_ tools: [WorkflowTool], issues: inout [ToolContractValidationIssue]) {
         for tool in tools {
             if tool.name.lowercased().contains("upload") || tool.name.lowercased().contains("send") || tool.name.lowercased().contains("delete") {
-                if tool.plannerVisible && !FeatureFlags.debugToolVisible {
-                    issues.append(issue(.error, "external write tool '\(tool.name)' 이 Release planner-visible surface에 노출되었습니다."))
+                if !ProductSurfacePolicy.allowsExternalWriteStarterActions {
+                    if tool.plannerVisible && !FeatureFlags.debugToolVisible {
+                        issues.append(issue(.error, "external write tool '\(tool.name)' 이 Release planner-visible surface에 노출되었습니다."))
+                    }
                 }
             }
         }

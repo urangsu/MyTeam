@@ -6,6 +6,69 @@
 
 ---
 
+## 2026-05-15 (Round 116C-135Z Cloud — Policy Centralization + Build Automation + Compile-Risk Reduction)
+
+### Cloud-Side Completion: Policy Centralization & Build Automation ✅
+
+**Policy Centralization:**
+- ProductSurfacePolicy.swift: 8 static Release control constants ✅
+- ConnectorSurfacePolicy.swift: capability visibility matrix + blockedCapabilitiesInRelease ✅
+- FirstResultActionPolicy.swift: ArtifactState → allowedActions mapping ✅
+- StarterActionPolicy.swift: allowedStarterActionIDs / blockedStarterActionIDs sets ✅
+
+**Validator Refactoring:**
+- validateCharacterAssetPolicy(): now uses ReleaseVisibleCharacterPolicy ✅
+- validateStarterActionPolicy(): now uses StarterActionPolicy constants ✅
+- validateFirstResultActionPolicy(): now uses FirstResultActionPolicy.allowedActions() ✅
+- validateStoreKitSurfacePolicy(): now uses ProductSurfacePolicy.showsDisabledProButtonInRelease ✅
+- validateExternalWritePolicy(): now uses ProductSurfacePolicy.allowsExternalWriteStarterActions ✅
+
+**Build Automation Scripts:**
+- pbxproj_target_audit.py: 11-file target verification, markdown report generation ✅
+- mac_register_round116_files.rb: xcodeproj-based Swift file auto-registration ✅
+- mac_merge_build_round116.sh: full orchestration (fetch → merge → audit → Debug/Release) ✅
+
+**CharacterCatalog Enhancement:**
+- releasePrimaryCharacter() → CharacterDLC? ✅
+- chikoDefaultExperienceCopy: String (UX mate intro) ✅
+- CharacterGalleryView: ProductSurfacePolicy filtering ✅
+
+**RouterBurnInSuite Expansion:**
+- Added 6 new test cases: recent artifact reuse (2) + blocked capabilities (4) ✅
+- Total: 60+ cases covering routing + policy blocking ✅
+
+**Report Generation:**
+- cloud_preflight_round76.sh: converted to report-generator ✅
+- 6 markdown reports: main + 5 category-specific ✅
+- reports/ directory automatic creation ✅
+
+**Documentation Completion:**
+- MacLocalBuildHandoff.md: 8 focused sections (Branch, Commands, Conflicts, Missing Files, Failures, Warnings, Labels, Troubleshooting) ✅
+- MacBuildFailurePlaybook.md: 7 error patterns + recovery decision tree ✅
+- PolicyFixtureMatrix.md: 6 validation tables + cross-policy dependencies ✅
+- CompileRiskRegister.md: high/medium/low risk assessment ✅
+- CloudCompletionReport.md: Round 116C-135Z addendum ✅
+
+**Status:**
+- Policy centralization: COMPLETE
+- Build automation: COMPLETE
+- Compile-risk reduction: COMPLETE
+- Documentation: COMPLETE
+- Mac build: PENDING
+- Manual QA: PENDING
+- Submission: NOT READY
+
+### Pending (Round 136A — Mac Local Merge + Build)
+- git fetch origin
+- git checkout main
+- git merge --no-ff origin/claude/round76-release-gate-audit-cloud
+- python3 scripts/pbxproj_target_audit.py
+- ruby scripts/mac_register_round116_files.rb (if needed)
+- xcodebuild -configuration Debug clean build
+- xcodebuild -configuration Release clean build
+
+---
+
 ## 2026-05-15 (Round 96C-115Z Cloud — Static Integration Expansion + Policy Validator Completion + Mac Handoff Hardening Pack)
 
 ### Cloud-Side Completion: Policy Integration & Validation ✅

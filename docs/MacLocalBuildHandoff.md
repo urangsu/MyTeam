@@ -1,245 +1,259 @@
-# Mac Local Build Handoff — Round 96A
+# Mac Local Build Handoff — Round 116A
 
 ## Overview
-Cloud round (76A-95Z) complete. All code/policy/document work ready for Mac verification and manual QA.
 
-## Prerequisite: Cloud Work Completion
-✅ ToolExecutor MainActor.run calls removed  
-✅ CharacterAssetManifest / ReleaseVisibleCharacterPolicy added  
-✅ Privacy copy audit complete  
-✅ Cloud preflight script passing  
-✅ All static policy checks passing  
+Cloud round (96C-115Z) complete with policy centralization, compile-risk identification, and build automation scripts. This document guides the Mac local merge and build sequence.
 
-## Mac Local Tasks
+**Status**: Ready for Mac merge and build verification
 
-### Task 1: Fetch Latest Branch
+## Branch
+
+```
+Cloud Branch:  claude/round76-release-gate-audit-cloud
+Merge Target:  main
+Strategy:      git merge --no-ff
+```
+
+## Exact Commands
+
+Run these commands sequentially on Mac:
+
 ```bash
+# Step 1: Fetch latest
 cd ~/Desktop/MyTeam
 git fetch origin
+
+# Step 2: Checkout main
 git checkout main
-git pull origin main
-```
 
-### Task 2: Xcode Project Verification
-```bash
-# Verify project opens without errors
-open MyTeam/MyTeam.xcodeproj
+# Step 3: Merge cloud branch
+git merge --no-ff origin/claude/round76-release-gate-audit-cloud \
+  -m "Merge Round 116A: policy centralization and build automation"
 
-# Check for missing references
-# (Xcode → Product → Analyze)
-```
+# Step 4: Audit pbxproj target (check which files are missing)
+python3 scripts/pbxproj_target_audit.py
 
-### Task 3: Build — Debug Configuration
-
-```bash
+# Step 5: Debug build
 xcodebuild \
-  -project MyTeam/MyTeam.xcodeproj \
   -scheme MyTeam \
   -configuration Debug \
-  build
-```
+  -derivedDataPath build/Debug \
+  clean build
 
-**Expected Output**:
-```
-Build complete!
-
-Build settings from command line:
-...
-** BUILD SUCCEEDED **
-```
-
-**Check**:
-- [ ] `** BUILD SUCCEEDED **` present
-- [ ] Build time noted (typically 30-60 sec)
-- [ ] App code warning count: ____
-- [ ] Duplicate build file warning count: ____
-- [ ] ToolExecutor Swift 6 warning status: ✅ Resolved / ⚠️ Still Present
-
-### Task 4: Build — Release Configuration
-
-```bash
+# Step 6: Release build
 xcodebuild \
-  -project MyTeam/MyTeam.xcodeproj \
   -scheme MyTeam \
   -configuration Release \
-  build
+  -derivedDataPath build/Release \
+  clean build
+
+# Step 7: Verify ToolExecutor Swift 6 warnings
+grep -i "toolexecutor\|mainactor" build/Release/*.log 2>/dev/null || echo "✅ No ToolExecutor warnings"
+
+# Step 8: Verify validator compilation
+grep -i "ToolContractValidator" build/Release/*.log 2>/dev/null | grep -i "error" || echo "✅ Validator compiled"
 ```
 
-**Expected Output**:
-```
-Build complete!
+## If Merge Conflicts
 
-Build settings from command line:
-...
-** BUILD SUCCEEDED **
-```
+Merge conflicts typically occur in:
+- `project.pbxproj` (file registration)
+- `DEVLOG.md` (multiple rounds of work)
+- `TASK.md` (status updates)
 
-**Check**:
-- [ ] `** BUILD SUCCEEDED **` present
-- [ ] Build time noted (typically 1-2 min, slower than Debug)
-- [ ] App code warning count: ____
-- [ ] Duplicate build file warning count: ____
-- [ ] Swift 6 warnings: ____
+**Resolution Steps**:
 
-### Task 5: Verify File Locations
+1. Open Xcode: `open MyTeam/MyTeam.xcodeproj`
+2. Resolve conflicts in Xcode UI (easier for pbxproj)
+3. For text files:
+   ```bash
+   # View conflicts
+   git status
+   
+   # Resolve manually (use VS Code or your editor)
+   code .
+   
+   # Verify resolution
+   git diff
+   
+   # Complete merge
+   git add .
+   git commit --no-edit
+   ```
+
+## If Swift Files Are Missing From Target
+
+If `pbxproj_target_audit.py` reports missing files:
 
 ```bash
-ls -1 MyTeam/MyTeam/ | grep -E "(FirstLaunch|LocalOnly|StarterAction|CharacterAsset|ReleaseVisible)"
+# Auto-register missing files
+ruby scripts/mac_register_round116_files.rb
+
+# Verify registration
+python3 scripts/pbxproj_target_audit.py
+
+# Commit registration
+git add MyTeam/MyTeam.xcodeproj/project.pbxproj
+git commit -m "Register missing Swift files in target"
 ```
 
-**Expected Output**:
-```
-CharacterAssetManifest.swift
-FirstLaunchBannerView.swift
-LocalOnlyModeCardView.swift
-ReleaseVisibleCharacterPolicy.swift
-StarterActionDispatcher.swift
-StarterActionStripView.swift
-```
+**Files That Must Be Present**:
+- CharacterAssetManifest.swift
+- ReleaseVisibleCharacterPolicy.swift
+- ProductSurfacePolicy.swift
+- ConnectorSurfacePolicy.swift
+- FirstResultActionPolicy.swift
+- StarterActionPolicy.swift
+- (11 other files from earlier rounds)
 
-### Task 6: Launch App (Debug Build)
+## If Debug Build Fails
 
+**Common Causes**:
+
+1. **Sendable conformance mismatch**
+   - Check if new policy files implement `Sendable`
+   - Verify: `enum ProductSurfacePolicy: Sendable { ... }`
+
+2. **Type mismatch in CharacterCatalog helpers**
+   - Ensure `releasePrimaryCharacter()` returns `CharacterDLC?`
+   - Ensure `chikoDefaultExperienceCopy` is `String`
+
+3. **Missing imports**
+   - Policy files need: `import Foundation`
+
+**Recovery**:
 ```bash
-# Build and run in simulator/device
+# Clean and rebuild
 xcodebuild \
-  -project MyTeam/MyTeam.xcodeproj \
   -scheme MyTeam \
   -configuration Debug \
-  -destination 'platform=macOS' \
-  build
+  -derivedDataPath build/Debug \
+  clean
+
+# Check error details
+xcodebuild -scheme MyTeam -configuration Debug build 2>&1 | tee build_debug.log
+
+# Fix issues (consult error log)
+# Rerun build
 ```
 
-Or manually from Xcode:
-- Product → Scheme → MyTeam
-- Product → Destination → My Mac
-- Product → Run (⌘R)
+## If Release Build Fails
 
-**Manual QA Checklist**:
-- [ ] App launches without crash
-- [ ] First launch screen visible (no API key state)
-- [ ] FirstLaunchBannerView visible with correct message
-- [ ] Starter action buttons visible and clickable
-  - [ ] "회의록 양식 만들어" works
-  - [ ] "체크리스트 만들어" works
-  - [ ] "파일 읽기" shows file picker
-  - [ ] "오늘 할 일 뭐야" works
-- [ ] First artifact generates in < 90 seconds
-- [ ] FirstResultActionStripView visible with 4 buttons
-- [ ] First result actions work
-  - [ ] "요약하기" transforms artifact
-  - [ ] "표로 바꾸기" transforms artifact
-  - [ ] "체크리스트로 바꿔줘" transforms artifact
-  - [ ] "Finder에서 보기" opens file in Finder
-- [ ] Settings → LocalOnlyModeCardView visible when no API key
-- [ ] Finder integration works (path copy, reveal)
-- [ ] No placeholder characters visible
-- [ ] No Pro/Premium button visible
-- [ ] No Gmail/Naver/Calendar write visible
-- [ ] Character (Chiko) visible and responsive
+**Common Causes**:
 
-## Not Included in This Handoff
+1. **FeatureFlags access in policy files**
+   - Policy files should NOT import FeatureFlags
+   - Policy decisions must be compile-time constants
 
-### Out of Scope for Round 96A
-❌ StoreKit production purchase QA  
-❌ Google Calendar live OAuth testing  
-❌ Archive / export build  
-❌ App Store submission test flight  
-❌ Character DLC asset production  
-❌ Performance profiling  
+2. **MainActor isolation in validators**
+   - ToolContractValidator methods must be static
+   - No `@MainActor` needed in policy validator
 
-### Deferred to Round 97+
-❌ Full automation test suite  
-❌ A/B testing configuration  
-❌ Analytics event tracking  
-❌ Sentry/crash reporting  
+3. **Circular dependency**
+   - CharacterCatalog → ReleaseVisibleCharacterPolicy
+   - ToolContractValidator → (all policy files)
+   - Check import order
 
-## Known Issues / Limitations
+**Recovery**:
+```bash
+# Clean and rebuild Release
+xcodebuild \
+  -scheme MyTeam \
+  -configuration Release \
+  -derivedDataPath build/Release \
+  clean
 
-### Deployment Target
-- Current: macOS 26.2
-- Investigation pending: may lower to 15+ if feasible
-- See `docs/DeploymentTargetStrategy.md`
+# Full build with verbose output
+xcodebuild \
+  -scheme MyTeam \
+  -configuration Release \
+  -derivedDataPath build/Release \
+  build -verbose 2>&1 | tee build_release.log
 
-### ToolExecutor Swift 6 Warning
-- Status: MainActor.run calls removed
-- Expected: warning should be gone
-- If still present: check Xcode build log, file `docs/ReleaseWarningAudit.md`
+# Review compilation order in build_release.log
+# Fix import statements and Sendable conformance
+```
 
-### Character Assets
-- Sprites: placeholder assets only (production assets pending)
-- Manifest: defined but not fully integrated into CharacterCatalog
-- Impact: no visual character change, but policy structure ready
+## If ToolExecutor Warning Remains
 
-## Build Verification Checklist
+**Expected Warning**: None (removed in Round 76A-95Z)
 
-- [ ] Debug build: BUILD SUCCEEDED
-- [ ] Release build: BUILD SUCCEEDED
-- [ ] App code warnings < 5
-- [ ] No duplicate build file warnings
-- [ ] ToolExecutor Swift 6 warning resolved
-- [ ] All Swift files compile without syntax errors
-- [ ] No references to undefined symbols
-- [ ] Project target includes all new Swift files:
-  - CharacterAssetManifest.swift
-  - ReleaseVisibleCharacterPolicy.swift
+**If Still Present**:
 
-## Go/No-Go Decision
+1. **Verify MainActor.run removed**
+   ```bash
+   grep -n "await MainActor.run" MyTeam/ToolExecutor.swift
+   # Should return: (nothing)
+   ```
 
-### Go to Round 97A if:
-✅ Debug build succeeds  
-✅ Release build succeeds  
-✅ First artifact generates in < 90s  
-✅ Starter actions work  
-✅ First result actions work  
-✅ Finder integration works  
-✅ No placeholder characters visible  
-✅ No Pro/Premium button visible  
-✅ No external write tools visible  
+2. **If found, check context**:
+   - Only `String` property access? Remove MainActor.run
+   - Complex async operation? Keep (unlikely)
 
-### No-Go if:
-❌ Debug build fails  
-❌ Release build fails  
-❌ Artifact generation > 2 minutes  
-❌ Starter actions error  
-❌ Placeholder character visible in Release  
-❌ Pro/Premium button visible  
-❌ External write tool visible  
+3. **Recompile after fix**:
+   ```bash
+   xcodebuild -scheme MyTeam -configuration Release clean build
+   ```
 
-## Output to Report
+## Required Status Labels
 
-After completing all builds and manual QA:
+After successful build, verify these exist in build output:
 
-1. **Build Summary**
-   - Debug BUILD SUCCEEDED / FAILED
-   - Release BUILD SUCCEEDED / FAILED
-   - App code warning count
-   - Duplicate build file warning count
-   - ToolExecutor Swift 6 warning: resolved / still present
+```
+✅ Debug BUILD SUCCEEDED
+✅ Release BUILD SUCCEEDED
+✅ 0 app code warnings
+✅ No MainActor overcalls
+✅ No duplicate build file warnings
+✅ ToolContractValidator compiled
+✅ CharacterCatalog helpers present
+✅ All policy files in target
+```
 
-2. **Manual QA Summary**
-   - First launch flow: working / issues noted
-   - Starter actions: all 4 working / issues noted
-   - First result actions: all 4 working / issues noted
-   - Finder integration: working / issues noted
-   - Character visibility: correct (no placeholder/DLC) / issues noted
-   - Paywall visibility: hidden / visible (issue)
+## Next Phase
 
-3. **File Verification**
-   - CharacterAssetManifest.swift: present / missing
-   - ReleaseVisibleCharacterPolicy.swift: present / missing
-   - All 4 starter action files: present / missing
+After successful build:
 
-4. **Issues Found**
-   - None / list of issues with severity
+1. Commit build reports:
+   ```bash
+   mkdir -p reports
+   git add reports/
+   git commit -m "Add Mac build reports Round 116A"
+   ```
 
-5. **Approval**
-   - Ready for Round 97A: Yes / No
-   - If No: specific blockers
+2. Push to main:
+   ```bash
+   git push origin main
+   ```
 
-## Questions?
+3. Next: Manual runtime QA (Round 140A)
+   - First launch experience
+   - Starter action routing
+   - First result activation
+   - Character availability
 
-Refer to:
-- `docs/InternalReviewReport.md` — full policy review
-- `docs/DeploymentTargetStrategy.md` — build configuration
-- `docs/ScreenshotSurfaceAudit.md` — UI verification
-- `docs/ReleaseWarningAudit.md` — warning catalog
+## Troubleshooting
+
+**Build hangs**:
+- Press Ctrl+C to interrupt
+- Check: `ps aux | grep xcodebuild` for orphaned processes
+- Rerun build from clean state
+
+**Xcode cache issues**:
+```bash
+rm -rf ~/Library/Developer/Xcode/DerivedData/MyTeam*
+xcodebuild -scheme MyTeam -configuration Debug clean build
+```
+
+**File permission errors**:
+```bash
+chmod +x scripts/*.sh scripts/*.py scripts/*.rb
+git add -A
+git commit -m "Fix script permissions"
+```
+
+---
+
+**Created**: Round 116A  
+**Status**: Ready for Mac execution  
+**Handoff Goal**: Successful Debug + Release build, no blocking warnings  
