@@ -102,10 +102,7 @@ class AgentWindowManager: ObservableObject {
     @Published var delegatedWorkflowPlansByRoom: [UUID: DelegatedWorkflowPlan] = [:]
     /// room별 pending delegated execution request.
     @Published var pendingDelegatedExecutionRequestsByRoom: [UUID: DelegatedExecutionRequest] = [:]
-    /// 최근 완료된 workflow artifact 목록 — 채팅 하단 ArtifactCardView에 표시.
-    /// TODO: room scope 분리 — 현재는 앱 전역이라 여러 채팅방에서 artifact가 섞일 수 있음.
-    ///       제품 구조에서는 recentArtifactsByRoom: [UUID: [IndexedArtifact]] 또는
-    ///       ChatRoom에 artifacts 필드를 붙여야 한다. 데모 이후 우선 적용.
+    /// 최근 완료된 workflow artifact 목록 — 전역 fallback용. 직접 참조 대신 recentArtifacts(for:) 사용 권장.
     @Published var recentArtifacts: [IndexedArtifact] = []
     
     // ── 지능형 기억 보호 (Key Fact Buffer) ──
@@ -477,7 +474,7 @@ class AgentWindowManager: ObservableObject {
         loadRooms()
         
         if rooms.isEmpty {
-            let defaultRoom = ChatRoom(id: UUID(), name: "기본 프로젝트",
+            let defaultRoom = ChatRoom(id: UUID(), name: "워크룸 1",
                 messages: [], agentIDs: ["team_all"], createdAt: Date())
             rooms.append(defaultRoom)
             currentRoomID = defaultRoom.id
@@ -1503,5 +1500,24 @@ class AgentWindowManager: ObservableObject {
         roomID: UUID
     ) -> RecentArtifactIndexEntry? {
         roomRuntimeStore.recentArtifactIndex.entry(for: artifactID, roomID: roomID)
+    }
+
+    // MARK: - Room-Scoped Artifact Facade (Round 137A)
+
+    /// 특정 방의 최근 artifact만 반환한다.
+    /// RecentArtifactIndex(room-scoped) 우선 조회 → index 미기록 시 currentRoomID 한정 global fallback.
+    @MainActor
+    func recentArtifacts(for roomID: UUID) -> [IndexedArtifact] {
+        let indexEntries = recentArtifactIndexEntries(for: roomID)
+        if !indexEntries.isEmpty {
+            let idSet = Set(indexEntries.map(\.artifactID))
+            let filtered = recentArtifacts.filter { idSet.contains($0.id) }
+            if !filtered.isEmpty { return filtered }
+        }
+        // Fallback: 현재 방인 경우에만 전역 목록 허용 (다른 방에 오염 방지)
+        if roomID == currentRoomID {
+            return recentArtifacts
+        }
+        return []
     }
 }

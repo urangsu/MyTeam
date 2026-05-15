@@ -1605,6 +1605,99 @@ enum RouterBurnInSuite {
             expectedGoalType: "destructiveFileAction",
             shouldRequireApproval: true,
             notes: "Blocked: destructive file action"
+        ),
+
+        // Round 137A-145Z: Product IA Hardening cases
+        .init(
+            id: "starter-file-handoff",
+            message: "파일 맡기기",
+            expectedRoute: .localSkill,
+            expectedSkillID: nil,
+            expectedRouteHint: "fileIntake",
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Starter: 파일 맡기기 → fileIntake 경로"
+        ),
+        .init(
+            id: "starter-document-create",
+            message: "문서 만들기",
+            expectedRoute: .artifactWorkflow,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "Starter: 문서 만들기 → universalDocument 또는 artifactWorkflow"
+        ),
+        .init(
+            id: "starter-today-organize",
+            message: "오늘 정리하기",
+            expectedRoute: .localSkill,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "calendarBriefing",
+            shouldRequireApproval: false,
+            notes: "Starter: 오늘 정리하기 → localBriefing/calendarBriefing 경로"
+        ),
+        .init(
+            id: "room-artifact-same-room",
+            message: "방금 만든 보고서 요약해줘",
+            expectedRoute: .artifactWorkflow,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: true,
+            shouldRequireApproval: false,
+            notes: "현재 방 artifact 참조 — room-scoped 조회 확인"
+        ),
+        .init(
+            id: "workroom-create",
+            message: "새 워크룸 만들어줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "워크룸 생성 → 안내 메시지 (UI action 위임)"
+        ),
+        .init(
+            id: "reserved-task-create",
+            message: "매일 아침 9시에 오늘 할 일 정리해줘",
+            expectedRoute: .localSkill,
+            expectedSkillID: nil,
+            expectedRouteHint: "scheduleTask",
+            expectedGoalType: "scheduledTask",
+            shouldRequireApproval: false,
+            notes: "예약 작업 생성 → scheduler 단일 entry point"
+        ),
+        .init(
+            id: "reserved-task-list",
+            message: "예약 작업 목록 보여줘",
+            expectedRoute: .localSkill,
+            expectedSkillID: nil,
+            expectedRouteHint: "scheduleList",
+            expectedGoalType: "scheduledTask",
+            shouldRequireApproval: false,
+            notes: "예약 작업 조회 → 단일 entry point 확인"
+        ),
+        .init(
+            id: "terminology-chat-room",
+            message: "새 채팅방 만들어줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "사용자가 '채팅방' 표현 사용 → '워크룸' 안내 포함 응답 확인"
+        ),
+        .init(
+            id: "terminology-schedule-work",
+            message: "스케줄 근무 등록해줘",
+            expectedRoute: .localSkill,
+            expectedSkillID: nil,
+            expectedRouteHint: "scheduleTask",
+            expectedGoalType: "scheduledTask",
+            shouldRequireApproval: false,
+            notes: "구 용어 '스케줄 근무' → 예약 작업으로 처리"
         )
     ]
 

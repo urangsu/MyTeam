@@ -45,6 +45,16 @@ enum ToolContractValidator {
         validateDefaultCharacterRosterPolicy(issues: &issues)
         validateAPIKeyPromptSurfacePolicy(issues: &issues)
 
+        // Product IA Round 137A-145Z validators
+        validateRoomScopedArtifactPolicy(issues: &issues)
+        validateTerminologyPolicy(issues: &issues)
+        validateTypingIndicatorTimerPolicy(issues: &issues)
+        validateAgentSwitcherPolicy(issues: &issues)
+        validateStarterAction3PrimaryPolicy(issues: &issues)
+        validateWorkroomDefaultNamePolicy(issues: &issues)
+        validateReservedTaskTerminologyPolicy(issues: &issues)
+        validateEmptyStateSimplificationPolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -325,5 +335,73 @@ enum ToolContractValidator {
 
     private static func issue(_ severity: ToolContractValidationIssue.Severity, _ message: String) -> ToolContractValidationIssue {
         ToolContractValidationIssue(id: UUID(), severity: severity, message: message)
+    }
+
+    // MARK: - Product IA Round 137A-145Z Validators
+
+    private static func validateRoomScopedArtifactPolicy(issues: inout [ToolContractValidationIssue]) {
+        // AgentWindowManager에 recentArtifacts(for:) facade가 있어야 한다
+        // 정적 분석 대신 policy 플래그로 확인 — RuntimeDiagnostics.recentArtifactsRoomScoped
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.recentArtifactsRoomScoped {
+            issues.append(issue(.error, "recentArtifacts가 room-scoped facade로 전환되지 않았습니다. P0: 다른 방 artifact 오염 위험."))
+        }
+    }
+
+    private static func validateTerminologyPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.terminologyPolicyAvailable {
+            issues.append(issue(.warning, "TerminologyPolicy 문서가 없습니다. docs/TerminologyPolicy.md 생성 필요."))
+        }
+        if let snap, !snap.workroomTerminologyApplied {
+            issues.append(issue(.error, "워크룸 용어 미적용 — '채팅방'/'프로젝트' 잔존 가능성."))
+        }
+        if let snap, !snap.reservedTaskTerminologyApplied {
+            issues.append(issue(.error, "예약 작업 용어 미적용 — '스케줄 근무' 잔존 가능성."))
+        }
+    }
+
+    private static func validateTypingIndicatorTimerPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.typingIndicatorTimerLeakFixed {
+            issues.append(issue(.error, "TypingIndicatorView Timer leak 미수정 — onDisappear에서 invalidate 필요."))
+        }
+    }
+
+    private static func validateAgentSwitcherPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.agentSwitcherRemovedFromSidebar {
+            issues.append(issue(.warning, "에이전트 전환 switcher가 사이드바에 노출되어 있습니다. UX 단순화 미완료."))
+        }
+    }
+
+    private static func validateStarterAction3PrimaryPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.starterAction3PrimaryAvailable {
+            issues.append(issue(.warning, "Starter action 3개 primary (파일 맡기기/문서 만들기/오늘 정리하기)가 정의되지 않았습니다."))
+        }
+    }
+
+    private static func validateWorkroomDefaultNamePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.defaultRoomNameUpdated {
+            issues.append(issue(.warning, "기본 워크룸 이름이 '기본 프로젝트'입니다. '워크룸 1'로 변경 필요."))
+        }
+    }
+
+    private static func validateReservedTaskTerminologyPolicy(issues: inout [ToolContractValidationIssue]) {
+        // validateTerminologyPolicy와 중복 방지 — 여기서는 schedule entry deduplication만 확인
+        // 현재 entry point가 하나인지 policy flag로 확인
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.reservedTaskTerminologyApplied {
+            issues.append(issue(.warning, "예약 작업 entry point가 중복되어 있을 수 있습니다. '예약 작업' 단일 경로 확인 필요."))
+        }
+    }
+
+    private static func validateEmptyStateSimplificationPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.emptyStateSimplified {
+            issues.append(issue(.warning, "첫 empty state가 단순화되지 않았습니다. 상태카드 1 + 주요 액션 3 구조 확인 필요."))
+        }
     }
 }

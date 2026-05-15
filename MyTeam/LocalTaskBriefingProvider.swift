@@ -243,7 +243,9 @@ enum LocalTaskBriefingProvider {
         roomGoalContext: RoomGoalContext?,
         manager: AgentWindowManager
     ) -> [IndexedArtifact] {
-        let recent = manager.recentArtifacts
+        // room-scoped facade 사용 (Round 137A: 전역 recentArtifacts 직접 참조 제거)
+        guard let roomID = roomGoalContext?.roomID else { return [] }
+        let recent = manager.recentArtifacts(for: roomID)
         guard !recent.isEmpty else { return [] }
 
         if let contextIDs = roomGoalContext?.recentArtifactIDs, !contextIDs.isEmpty {

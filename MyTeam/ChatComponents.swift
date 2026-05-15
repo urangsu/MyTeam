@@ -266,6 +266,7 @@ struct TypingIndicatorView: View {
     let agentName: String
     let agentColor: Color
     @State private var dotPhase: Int = 0
+    @State private var animationTimer: Timer? = nil
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 6) {
@@ -295,13 +296,20 @@ struct TypingIndicatorView: View {
         .padding(.leading, 4)
         .padding(.vertical, 2)
         .onAppear { startAnimation() }
+        .onDisappear { stopAnimation() }
     }
 
     private func startAnimation() {
-        Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { _ in
+        animationTimer?.invalidate()
+        animationTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { _ in
             withAnimation(.easeInOut(duration: 0.3)) {
                 dotPhase = (dotPhase + 1) % 3
             }
         }
+    }
+
+    private func stopAnimation() {
+        animationTimer?.invalidate()
+        animationTimer = nil
     }
 }

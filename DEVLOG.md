@@ -6,6 +6,30 @@
 
 ---
 
+## 2026-05-16 (Round 137A-145Z — Product IA Hardening + Room-Scoped Artifact + Work Surface Simplification)
+
+### 완료
+
+- **Room-scoped recentArtifacts (P0)**: `AgentWindowManager.recentArtifacts(for: UUID)` facade 추가. RecentArtifactIndex 우선 조회 → currentRoomID 한정 global fallback. TeamStatusView / AgentChatView / RecentArtifactContentResolver / LocalTaskBriefingProvider 모두 facade 사용으로 전환. 다른 방 artifact 오염 차단.
+- **용어 정책 (TerminologyPolicy.md)**: 채팅방→워크룸, 스케줄 근무→예약 작업, 프로젝트→대화(사이드바), 기본 방 이름 "워크룸 1". TeamStatusView / AgentChatView / AgentWindowManager 적용.
+- **에이전트 switcher 제거**: AgentChatView 사이드바 하단 ForEach(manager.activeAgents) avatar 행 삭제. 사이드바 단순화.
+- **TypingIndicatorView timer leak 수정**: `@State private var animationTimer: Timer?` 추가. `.onAppear` startAnimation, `.onDisappear` stopAnimation(invalidate). 누수 차단.
+- **RuntimeDiagnostics 보강**: 12개 신규 필드 (recentArtifactsRoomScoped, terminologyPolicyAvailable, agentSwitcherRemovedFromSidebar, typingIndicatorTimerLeakFixed 등). cachedSnapshot 추가 (ToolContractValidator 동기 접근용).
+- **ToolContractValidator 보강**: 8개 신규 validator (validateRoomScopedArtifactPolicy, validateTerminologyPolicy, validateTypingIndicatorTimerPolicy, validateAgentSwitcherPolicy, validateStarterAction3PrimaryPolicy, validateWorkroomDefaultNamePolicy, validateReservedTaskTerminologyPolicy, validateEmptyStateSimplificationPolicy).
+- **RouterBurnInSuite 보강**: 9개 신규 케이스 (starter-file-handoff, starter-document-create, starter-today-organize, room-artifact-same-room, workroom-create, reserved-task-create, reserved-task-list, terminology-chat-room, terminology-schedule-work).
+- **docs 추가**: TerminologyPolicy.md, RoomScopedArtifactPolicy.md, ProductIAPolicy.md, WorkSurfaceSimplificationPlan.md.
+- Debug + Release BUILD SUCCEEDED, warning 0
+
+### 미수정 (다음 라운드)
+
+- TeamStatusView 경량화 (핵심 5요소)
+- Empty state 단순화 (상태카드 1 + 주요 액션 3)
+- Result/Conversation 분리 (ResultMessageBlockView)
+- sendMessage await 패턴
+- DelegationMode 진짜 실행 (DelegationModeHandler)
+
+---
+
 ## 2026-05-16 (Round 136A-UXFIX — Product Surface P0 Repair)
 
 ### 완료

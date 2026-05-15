@@ -115,7 +115,8 @@ enum RecentArtifactContentResolver {
         let indexEntries = manager.recentArtifactIndexEntries(for: roomID)
         let indexArtifactIDs = Set(indexEntries.map(\.artifactID))
 
-        let recent = manager.recentArtifacts
+        // room-scoped facade 사용 (Round 137A: 전역 recentArtifacts 직접 참조 제거)
+        let recent = manager.recentArtifacts(for: roomID)
         guard !recent.isEmpty else { return [] }
 
         // Index에서 찾은 artifact들을 우선 반환

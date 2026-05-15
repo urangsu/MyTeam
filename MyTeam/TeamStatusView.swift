@@ -67,7 +67,7 @@ struct TeamStatusView: View {
                     Circle()
                         .fill(selectedTab == 0 ? Color.orange : Color.blue)
                         .frame(width: 8, height: 8)
-                    Text(selectedTab == 0 ? "팀 협업 중" : "팀 채팅방")
+                    Text(selectedTab == 0 ? "팀 협업 중" : "팀 워크룸")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(textColor.opacity(0.8))
                 }
@@ -92,7 +92,7 @@ struct TeamStatusView: View {
                         .foregroundColor(manager.isSchedulePanelPresented ? .orange : (manager.isDarkMode ? .white.opacity(0.5) : .gray.opacity(0.6)))
                     }
                     .buttonStyle(PlainButtonStyle())
-                    .help("스케줄 업무")
+                    .help("예약 작업")
 
                     // 탭 전환 버튼
                     Button(action: { selectedTab = (selectedTab == 0 ? 1 : 0) }) {
@@ -152,7 +152,7 @@ struct TeamStatusView: View {
                     // ── 탭 0: 에이전트 리스트 ──
                     agentListView
                 } else {
-                    // ── 탭 1: 팀 채팅방 (로그) ──
+                    // ── 탭 1: 팀 워크룸 (로그) ──
                     chatroomView
                 }
 
@@ -386,7 +386,7 @@ struct TeamStatusView: View {
 
     private var chatroomSidebarHeader: some View {
         HStack {
-            Text("채팅방")
+            Text("워크룸")
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(textColor.opacity(0.5))
             Spacer()
@@ -419,7 +419,7 @@ struct TeamStatusView: View {
             // 채팅방 추가 (+)
             Button(action: {
                 isDeleteMode = false
-                manager.createRoom(name: "프로젝트 \(manager.rooms.count + 1)")
+                manager.createRoom(name: "워크룸 \(manager.rooms.count + 1)")
             }) {
                 Image(systemName: "plus.circle.fill")
                     .font(.system(size: 14))
@@ -428,7 +428,7 @@ struct TeamStatusView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
-            .help("채팅방 추가")
+            .help("워크룸 추가")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -452,7 +452,7 @@ struct TeamStatusView: View {
                             .offset(x: 4, y: -3)
                     }
                 }
-                Text("스케줄")
+                Text("예약 작업")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundColor(textColor.opacity(manager.isSchedulePanelPresented ? 0.78 : 0.48))
                 Spacer()
@@ -473,7 +473,7 @@ struct TeamStatusView: View {
         .buttonStyle(.plain)
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
-        .help("스케줄 업무")
+        .help("예약 작업")
     }
 
     private var chatroomLogView: some View {
@@ -567,12 +567,16 @@ struct TeamStatusView: View {
                 }
             }
 
-            // ── Artifact 카드 (workflow 완료 후 생성 파일 빠른 열기) ──
-            if !manager.recentArtifacts.isEmpty {
+            // ── Artifact 카드 (workflow 완료 후 생성 파일 빠른 열기, room-scoped) ──
+            let roomArtifacts: [IndexedArtifact] = {
+                if let rid = manager.currentRoomID { return manager.recentArtifacts(for: rid) }
+                return []
+            }()
+            if !roomArtifacts.isEmpty {
                 Divider().background(textColor.opacity(0.06))
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        ForEach(manager.recentArtifacts, id: \.id) { artifact in
+                        ForEach(roomArtifacts, id: \.id) { artifact in
                             ArtifactCardView(artifact: artifact)
                                 .frame(width: 240)
                         }
@@ -583,7 +587,7 @@ struct TeamStatusView: View {
 
                 // ── First Result Action Strip (첫 artifact 생성 후) ──
                 if manager.firstLaunchState.shouldShowFirstResultActions,
-                   let firstArtifact = manager.recentArtifacts.first,
+                   let firstArtifact = roomArtifacts.first,
                    firstArtifact.healthStatus == .valid {
                     Divider().background(textColor.opacity(0.06))
                     FirstResultActionStripView(
@@ -673,7 +677,7 @@ struct TeamStatusView: View {
                 Image(systemName: "clock.badge.checkmark")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(.orange)
-                Text("스케줄 업무")
+                Text("예약 작업")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundColor(textColor.opacity(0.55))
                 Spacer()
@@ -703,7 +707,7 @@ struct TeamStatusView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "tray")
                         .font(.system(size: 10))
-                    Text("등록된 스케줄 업무가 없습니다.")
+                    Text("등록된 예약 작업가 없습니다.")
                         .font(.system(size: 10))
                         .lineLimit(1)
                     Spacer()
@@ -736,7 +740,7 @@ struct TeamStatusView: View {
                 Image(systemName: "clock.badge.checkmark")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.orange)
-                Text("스케줄 근무")
+                Text("예약 작업")
                     .font(.system(size: 12, weight: .bold))
                     .foregroundColor(textColor.opacity(0.8))
                 Spacer()
@@ -755,14 +759,14 @@ struct TeamStatusView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
                     if manager.automationTasks.isEmpty {
-                        Text("등록된 근무가 없습니다.")
+                        Text("등록된 예약 작업이 없습니다.")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(textColor.opacity(0.78))
                         Text("정해진 시간에 자동으로 작업하는 기능이 준비 중입니다.")
                             .font(.system(size: 10))
                             .foregroundColor(textColor.opacity(0.55))
                     } else {
-                        Text("\(manager.automationTasks.count)개의 스케줄이 있습니다.")
+                        Text("\(manager.automationTasks.count)개의 예약 작업이 있습니다.")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundColor(textColor.opacity(0.78))
 

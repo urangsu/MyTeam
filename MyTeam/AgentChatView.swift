@@ -362,7 +362,7 @@ struct AgentChatView: View {
                     .frame(width: 18, height: 18)
                     .clipShape(Circle())
                 if !isSidebarCollapsed {
-                    Text("프로젝트")
+                    Text("대화")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundColor(textColor.opacity(0.5))
                 }
@@ -406,48 +406,6 @@ struct AgentChatView: View {
                 .padding(.vertical, 6)
             }
 
-            Divider().background(dividerColor)
-
-            // 에이전트 전환
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(manager.activeAgents) { agent in
-                        Button(action: {
-                            withAnimation {
-                                activeAgentID = agent.id
-                                let personalRooms = manager.rooms.filter {
-                                    $0.agentIDs.count == 1 && $0.agentIDs[0] == agent.id
-                                }
-                                if let firstRoom = personalRooms.first {
-                                    agentRoomID = firstRoom.id
-                                } else {
-                                    // 개인방 없으면 생성 — currentRoomID로 fallback 금지
-                                    let agentName = manager.activeAgents.first(where: { $0.id == agent.id })?.name ?? "대화"
-                                    manager.createAgentRoom(name: "\(agentName) 대화 1", agentID: agent.id)
-                                    agentRoomID = manager.rooms.last(where: {
-                                        $0.agentIDs.count == 1 && $0.agentIDs[0] == agent.id
-                                    })?.id
-                                }
-                            }
-                            isEditingProjects = false
-                        }) {
-                            Image(agent.fallbackImageName)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 20, height: 20)
-                                .clipShape(Circle())
-                                .font(.system(size: 18))
-                                .frame(width: 32, height: 32)
-                                .background(
-                                    Circle().fill(activeAgentID == agent.id ? agent.color.opacity(0.2) : Color.clear)
-                                )
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 8)
-            }
         }
         .frame(width: isSidebarCollapsed ? 50 : 160)
         .background(manager.isDarkMode ? Color.white.opacity(0.03) : Color.black.opacity(0.08))
@@ -664,9 +622,9 @@ struct AgentChatView: View {
                                     .id(log.id)
                             }
 
-                            // ── 첫 아티팩트 생성 후 "다음 단계" 액션 표시 ──
+                            // ── 첫 아티팩트 생성 후 "다음 단계" 액션 표시 (room-scoped) ──
                             // 회의록/보고서/체크리스트 등이 생성되면 요약/표로 변경/체크리스트로 변경/Finder 열기 등의 다음 액션 제안
-                            if !manager.recentArtifacts.isEmpty {
+                            if !manager.recentArtifacts(for: agentRoomID ?? UUID()).isEmpty {
                                 Divider()
                                     .padding(.vertical, 12)
 

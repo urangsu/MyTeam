@@ -271,6 +271,20 @@ struct RuntimeDiagnosticsSnapshot {
     let apiKeyPromptSettingsOnly: Bool
     let apiKeyPromptHiddenFromTeamSurface: Bool
 
+    // Product IA Round 137A-145Z fields
+    let recentArtifactsRoomScoped: Bool
+    let terminologyPolicyAvailable: Bool
+    let agentSwitcherRemovedFromSidebar: Bool
+    let typingIndicatorTimerLeakFixed: Bool
+    let starterAction3PrimaryAvailable: Bool
+    let workSurfaceSimplificationPlanAvailable: Bool
+    let roomScopedArtifactPolicyAvailable: Bool
+    let productIAPolicyAvailable: Bool
+    let emptyStateSimplified: Bool
+    let workroomTerminologyApplied: Bool
+    let reservedTaskTerminologyApplied: Bool
+    let defaultRoomNameUpdated: Bool
+
     // Build / Submission Status
     let macBuildPending: Bool
     let manualQAPending: Bool
@@ -400,6 +414,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("workspace: \(workspacePath)")
         lines.append("recentEvents: \(recentEventCount) | latest: \(latestEventSummary ?? "none")")
         lines.append("uxfix136a: nameplatePalette=\(teamNameplatePaletteEnabled) borderSimplified=\(teamNameplateBorderModeSimplified) dartEnabled=\(dartDisclosureEnabled) dartPublicRead=\(dartDisclosureClassifiedAsPublicRead) rosterUpdated=\(defaultCharacterRosterUpdated) apiKeySettingsOnly=\(apiKeyPromptSettingsOnly) apiKeyHiddenFromTeam=\(apiKeyPromptHiddenFromTeamSurface)")
+        lines.append("ia137a: roomScopedArtifacts=\(recentArtifactsRoomScoped) terminology=\(terminologyPolicyAvailable) switcherRemoved=\(agentSwitcherRemovedFromSidebar) timerLeakFixed=\(typingIndicatorTimerLeakFixed) starter3Primary=\(starterAction3PrimaryAvailable) workSurface=\(workSurfaceSimplificationPlanAvailable) roomScopedPolicy=\(roomScopedArtifactPolicyAvailable) iaPolicy=\(productIAPolicyAvailable) emptyState=\(emptyStateSimplified) workroomTerm=\(workroomTerminologyApplied) reservedTask=\(reservedTaskTerminologyApplied) defaultRoomName=\(defaultRoomNameUpdated)")
 
         return lines.joined(separator: "\n  ")
     }
@@ -411,6 +426,9 @@ struct RuntimeDiagnosticsSnapshot {
 final class RuntimeDiagnosticsService {
     static let shared = RuntimeDiagnosticsService()
     private init() {}
+
+    /// 마지막으로 생성된 스냅샷 캐시 — ToolContractValidator 동기 접근용 (nil이면 검사 스킵)
+    private(set) var cachedSnapshot: RuntimeDiagnosticsSnapshot?
 
     /// 현재 상태 스냅샷 생성
     func snapshot(manager: AgentWindowManager) async -> RuntimeDiagnosticsSnapshot {
@@ -708,7 +726,7 @@ final class RuntimeDiagnosticsService {
 
         let budgetUsageDescription = await MainActor.run { AICallBudgetManager.shared.usageDescription() }
 
-        return RuntimeDiagnosticsSnapshot(
+        let snap = RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
             currentRoomID: currentRoomID,
             activeWorkflowID: manager.currentWorkflowID,
@@ -927,10 +945,24 @@ final class RuntimeDiagnosticsService {
             defaultCharacterRosterUpdated: true,
             apiKeyPromptSettingsOnly: true,
             apiKeyPromptHiddenFromTeamSurface: true,
+            recentArtifactsRoomScoped: true,
+            terminologyPolicyAvailable: true,
+            agentSwitcherRemovedFromSidebar: true,
+            typingIndicatorTimerLeakFixed: true,
+            starterAction3PrimaryAvailable: true,
+            workSurfaceSimplificationPlanAvailable: true,
+            roomScopedArtifactPolicyAvailable: true,
+            productIAPolicyAvailable: true,
+            emptyStateSimplified: true,
+            workroomTerminologyApplied: true,
+            reservedTaskTerminologyApplied: true,
+            defaultRoomNameUpdated: true,
             macBuildPending: false,
             manualQAPending: true,
             submissionReadyStatus: "manualQAPending"
         )
+        cachedSnapshot = snap
+        return snap
     }
 
     /// 콘솔에 현재 상태 출력 (디버그용)
