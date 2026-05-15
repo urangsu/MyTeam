@@ -30,7 +30,7 @@ enum CharacterCatalog {
         makeBuiltIn(id: "luna", agentID: "agent_2", name: "루나", subtitle: "캠페인 감각이 빠른 콘텐츠 메이커", portrait: "루나_profile", sprite: "luna_placeholder", bundledSkillIDs: ["korean.naver-news", "korean.naver-blog-research"]),
         makeBuiltIn(id: "moko", agentID: "agent_3", name: "모코", subtitle: "일정을 정리하고 우선순위를 잡는 PM", portrait: "모코_profile", sprite: "moko_placeholder", bundledSkillIDs: ["korean.weather"]),
         makeBuiltIn(id: "rex", agentID: "agent_6", name: "렉스", subtitle: "규제와 리스크를 먼저 보는 법률 검토자", portrait: "렉스_profile", sprite: "rex_placeholder", bundledSkillIDs: ["korean.law-search"]),
-        makeBuiltIn(id: "chiko", agentID: "agent_5", name: "치코", subtitle: "사용자 흐름을 집요하게 보는 UX 메이트", portrait: "치코_profile", sprite: "치코", bundledSkillIDs: ["korean.naver-blog-research"]),
+        makeBuiltIn(id: "chiko", agentID: "agent_5", name: "치코", subtitle: "문서와 할 일을 정리하는 기본 팀원", portrait: "치코_profile", sprite: "치코", bundledSkillIDs: ["korean.naver-blog-research"]),
         makeBuiltIn(id: "kei", agentID: "agent_7", name: "케이", subtitle: "로그와 권한 경계를 따지는 보안 분석가", portrait: "케이_profile", sprite: "kei_placeholder", bundledSkillIDs: ["korean.dart"]),
         makeBuiltIn(id: "lucky", agentID: "agent_8", name: "래키", subtitle: "API와 서버 병목을 파고드는 백엔드 메이트", portrait: "래키_profile", sprite: "lucky_placeholder", bundledSkillIDs: ["korean.hwp-read"]),
         makeBuiltIn(id: "pola", agentID: "agent_9", name: "폴라", subtitle: "거래 구조와 제안을 정리하는 BD 파트너", portrait: "폴라_profile", sprite: "pola_placeholder", bundledSkillIDs: ["korean.naver-news"]),

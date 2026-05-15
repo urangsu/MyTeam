@@ -26,9 +26,6 @@
 		094EE7E1A73885A5472F9EA1 /* CharacterDLC.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0FE7F45205ED6A4AF4269C1 /* CharacterDLC.swift */; };
 		094EE7E1A73885A5472F9EA2 /* CharacterCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0FE7F45205ED6A4AF4269C2 /* CharacterCatalog.swift */; };
 		094EE7E1A73885A5472F9EA3 /* CharacterEntitlementManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0FE7F45205ED6A4AF4269C3 /* CharacterEntitlementManager.swift */; };
-		7CA1B2C3D4E5F60178901234 /* CharacterAssetManifest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CA1B2C3D4E5F60178901235 /* CharacterAssetManifest.swift */; };
-		7CA1B2C3D4E5F60178901236 /* CharacterAssetAvailability.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CA1B2C3D4E5F60178901237 /* CharacterAssetAvailability.swift */; };
-		7CA1B2C3D4E5F60178901238 /* ReleaseVisibleCharacterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CA1B2C3D4E5F60178901239 /* ReleaseVisibleCharacterPolicy.swift */; };
 		094EE7E1A73885A5472F9EA4 /* CharacterGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0FE7F45205ED6A4AF4269C4 /* CharacterGalleryView.swift */; };
 		094EE7E1A73885A5472F9EA5 /* MonetizationPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0FE7F45205ED6A4AF4269C5 /* MonetizationPlan.swift */; };
 		094EE7E1A73885A5472F9EA6 /* AppEntitlementManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0FE7F45205ED6A4AF4269C6 /* AppEntitlementManager.swift */; };
@@ -429,15 +426,6 @@
 		E912B8C850DD1701BAE96EB8 /* LocalSchedulerCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEE7DF5048CD954A73A5DD96 /* LocalSchedulerCommand.swift */; };
 		71748B454B5D1E22718DF023 /* LocalSchedulerCommandDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = E82BB3824B9AF5FCE079D1BD /* LocalSchedulerCommandDetector.swift */; };
 		E53C44F0DAFCBFB7BC86E10D /* LocalSchedulerCommandService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C8DB6869DC6D8FAAC0E7EDF /* LocalSchedulerCommandService.swift */; };
-		A1C00000000000000000A002 /* AgentChatView+StarterActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C00000000000000000A001 /* AgentChatView+StarterActions.swift */; };
-		98B316481263456DBCBB09CC /* StarterAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BA622E40133444F8A0040B2 /* StarterAction.swift */; };
-		DA8F804EC5EE48B293473361 /* StarterActionDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9EB6A926D404C4A9601E6C4 /* StarterActionDispatcher.swift */; };
-		6EB0541F92664DECB655A493 /* StarterActionStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DDC049A9F03435E83C7161B /* StarterActionStripView.swift */; };
-		EB1DB179C4054AAC88D465DD /* FirstLaunchState.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21ADD72C0884335B0F0E41A /* FirstLaunchState.swift */; };
-		03A80FE24E24453B845747E8 /* FirstLaunchStateProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10AA2F60303141B2A2CC05E5 /* FirstLaunchStateProvider.swift */; };
-		E31892656AD74C4698A6A27B /* FirstLaunchBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3B0ECFCF9924DFB8A7DC901 /* FirstLaunchBannerView.swift */; };
-		1679789F1F6C4C1CB732A2E8 /* LocalOnlyModeCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46E46EE8EE09468C8A7F8B53 /* LocalOnlyModeCardView.swift */; };
-		88BFE44B4D134F2C8C430DF1 /* RuntimeCapabilityMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = D509165B369843FB9CE6C2E7 /* RuntimeCapabilityMode.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -1497,9 +1485,6 @@
 		F0E5F7806BAEBCC80585E8B5 /* 레오_ko_manifest.json */ = {isa = PBXFileReference; includeInIndex = 1; name = "레오_ko_manifest.json"; path = "Resources/CharacterPhonemes/레오_reference/ko/레오_ko_manifest.json"; sourceTree = "<group>"; };
 		F0FE7F45205ED6A4AF4269B0 /* UserSkillStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UserSkillStore.swift; sourceTree = "<group>"; };
 		F0FE7F45205ED6A4AF4269C1 /* CharacterDLC.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CharacterDLC.swift; sourceTree = "<group>"; };
-		7CA1B2C3D4E5F60178901235 /* CharacterAssetManifest.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CharacterAssetManifest.swift; sourceTree = "<group>"; };
-		7CA1B2C3D4E5F60178901237 /* CharacterAssetAvailability.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CharacterAssetAvailability.swift; sourceTree = "<group>"; };
-		7CA1B2C3D4E5F60178901239 /* ReleaseVisibleCharacterPolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReleaseVisibleCharacterPolicy.swift; sourceTree = "<group>"; };
 		F0FE7F45205ED6A4AF4269C2 /* CharacterCatalog.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CharacterCatalog.swift; sourceTree = "<group>"; };
 		F0FE7F45205ED6A4AF4269C3 /* CharacterEntitlementManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CharacterEntitlementManager.swift; sourceTree = "<group>"; };
 		F0FE7F45205ED6A4AF4269C4 /* CharacterGalleryView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CharacterGalleryView.swift; sourceTree = "<group>"; };
@@ -1593,7 +1578,6 @@
 		9BA622E40133444F8A0040B2 /* StarterAction.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StarterAction.swift; sourceTree = "<group>"; };
 		C9EB6A926D404C4A9601E6C4 /* StarterActionDispatcher.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StarterActionDispatcher.swift; sourceTree = "<group>"; };
 		8DDC049A9F03435E83C7161B /* StarterActionStripView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StarterActionStripView.swift; sourceTree = "<group>"; };
-		A1C00000000000000000A001 /* AgentChatView+StarterActions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "AgentChatView+StarterActions.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1706,9 +1690,6 @@
 				F0FE7F45205ED6A4AF4269C1 /* CharacterDLC.swift */,
 				F0FE7F45205ED6A4AF4269C2 /* CharacterCatalog.swift */,
 				F0FE7F45205ED6A4AF4269C3 /* CharacterEntitlementManager.swift */,
-				7CA1B2C3D4E5F60178901235 /* CharacterAssetManifest.swift */,
-				7CA1B2C3D4E5F60178901237 /* CharacterAssetAvailability.swift */,
-				7CA1B2C3D4E5F60178901239 /* ReleaseVisibleCharacterPolicy.swift */,
 				F0FE7F45205ED6A4AF4269C4 /* CharacterGalleryView.swift */,
 				F0FE7F45205ED6A4AF4269C5 /* MonetizationPlan.swift */,
 				F0FE7F45205ED6A4AF4269C6 /* AppEntitlementManager.swift */,
@@ -3092,10 +3073,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				98B316481263456DBCBB09CC /* StarterAction.swift in Sources */,
-				DA8F804EC5EE48B293473361 /* StarterActionDispatcher.swift in Sources */,
-				6EB0541F92664DECB655A493 /* StarterActionStripView.swift in Sources */,
-				A1C00000000000000000A002 /* AgentChatView+StarterActions.swift in Sources */,
 				72637E03A46FFDD47296CCCE /* AudioUtils.swift in Sources */,
 				72F20090AC8DCBD20E9F41E0 /* AgentWindowManager.swift in Sources */,
 				643EACEF5ADAF52DAE3B6C58 /* AgentConfig.swift in Sources */,
@@ -3124,9 +3101,6 @@
 				094EE7E1A73885A5472F9EA1 /* CharacterDLC.swift in Sources */,
 				094EE7E1A73885A5472F9EA2 /* CharacterCatalog.swift in Sources */,
 				094EE7E1A73885A5472F9EA3 /* CharacterEntitlementManager.swift in Sources */,
-				7CA1B2C3D4E5F60178901234 /* CharacterAssetManifest.swift in Sources */,
-				7CA1B2C3D4E5F60178901236 /* CharacterAssetAvailability.swift in Sources */,
-				7CA1B2C3D4E5F60178901238 /* ReleaseVisibleCharacterPolicy.swift in Sources */,
 				094EE7E1A73885A5472F9EA4 /* CharacterGalleryView.swift in Sources */,
 				094EE7E1A73885A5472F9EA5 /* MonetizationPlan.swift in Sources */,
 				094EE7E1A73885A5472F9EA6 /* AppEntitlementManager.swift in Sources */,
@@ -3310,10 +3284,13 @@
 				E912B8C850DD1701BAE96EB8 /* LocalSchedulerCommand.swift in Sources */,
 				D2400000000000000000001F /* LocalSchedulerDocumentBridge.swift in Sources */,
 				EB1DB179C4054AAC88D465DD /* FirstLaunchState.swift in Sources */,
-				03A80FE24E24453B845747E8 /* FirstLaunchStateProvider.swift in Sources */,
-				E31892656AD74C4698A6A27B /* FirstLaunchBannerView.swift in Sources */,
-				1679789F1F6C4C1CB732A2E8 /* LocalOnlyModeCardView.swift in Sources */,
-				88BFE44B4D134F2C8C430DF1 /* RuntimeCapabilityMode.swift in Sources */,
+03A80FE24E24453B845747E8 /* FirstLaunchStateProvider.swift in Sources */,
+E31892656AD74C4698A6A27B /* FirstLaunchBannerView.swift in Sources */,
+1679789F1F6C4C1CB732A2E8 /* LocalOnlyModeCardView.swift in Sources */,
+88BFE44B4D134F2C8C430DF1 /* RuntimeCapabilityMode.swift in Sources */,
+98B316481263456DBCBB09CC /* StarterAction.swift in Sources */,
+DA8F804EC5EE48B293473361 /* StarterActionDispatcher.swift in Sources */,
+6EB0541F92664DECB655A493 /* StarterActionStripView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3464,9 +3441,9 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleURLTypes = "{\"CFBundleURLName\"=>\"com.urang.MyTeam.oauth\", \"CFBundleURLSchemes\"=>[\"myteam\"]}";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 DALGRACSTUDIO. All rights reserved.";
-				INFOPLIST_KEY_NSLocationUsageDescription = "날씨·지역 기반 브리핑 제공을 위해 위치를 사용할 수 있습니다.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "회의록 작성을 위해 사용자가 시작한 녹음에만 마이크를 사용합니다.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSLocationUsageDescription = "에이전트가 현실적인 대화를 하기 위해 위치 정보를 사용합니다";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "STT 음성 입력을 위해 마이크가 필요합니다.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "에이전트에게 전달할 음성을 텍스트로 변환합니다.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -3513,9 +3490,9 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleURLTypes = "{\"CFBundleURLName\"=>\"com.urang.MyTeam.oauth\", \"CFBundleURLSchemes\"=>[\"myteam\"]}";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 DALGRACSTUDIO. All rights reserved.";
-				INFOPLIST_KEY_NSLocationUsageDescription = "날씨·지역 기반 브리핑 제공을 위해 위치를 사용할 수 있습니다.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "회의록 작성을 위해 사용자가 시작한 녹음에만 마이크를 사용합니다.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSLocationUsageDescription = "에이전트가 현실적인 대화를 하기 위해 위치 정보를 사용합니다";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "STT 음성 입력을 위해 마이크가 필요합니다.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "에이전트에게 전달할 음성을 텍스트로 변환합니다.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

@@ -27,7 +27,7 @@ struct ActionLogEntry: Codable, Sendable {
     let effectiveRisk: String?
     let failureCode: String?
 
-    func with(
+    nonisolated func with(
         result: String,
         artifact: String? = nil,
         error: String? = nil,
@@ -53,7 +53,7 @@ struct ActionLogEntry: Codable, Sendable {
         )
     }
 
-    init(
+    nonisolated init(
         ts: String,
         session: String,
         tool: String,
@@ -82,7 +82,7 @@ struct ActionLogEntry: Codable, Sendable {
         self.failureCode = failureCode
     }
 
-    init(
+    nonisolated init(
         ts: String,
         session: String,
         tool: String,
@@ -112,7 +112,48 @@ struct ActionLogEntry: Codable, Sendable {
         self.failureCode = failureCode
     }
 
-    private static func redact(input: [String: String]) -> (summary: [String: String], hash: String, redactedFields: [String]) {
+    // Explicit nonisolated Codable implementations to prevent @MainActor inference
+    // Required when SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor (Xcode 26+)
+    nonisolated func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(ts, forKey: .ts)
+        try container.encode(session, forKey: .session)
+        try container.encode(tool, forKey: .tool)
+        try container.encode(inputSummary, forKey: .inputSummary)
+        try container.encode(inputHash, forKey: .inputHash)
+        try container.encode(redactedFields, forKey: .redactedFields)
+        try container.encode(result, forKey: .result)
+        try container.encodeIfPresent(artifact, forKey: .artifact)
+        try container.encodeIfPresent(error, forKey: .error)
+        try container.encodeIfPresent(declaredRisk, forKey: .declaredRisk)
+        try container.encodeIfPresent(registryRisk, forKey: .registryRisk)
+        try container.encodeIfPresent(effectiveRisk, forKey: .effectiveRisk)
+        try container.encodeIfPresent(failureCode, forKey: .failureCode)
+    }
+
+    nonisolated init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        ts = try container.decode(String.self, forKey: .ts)
+        session = try container.decode(String.self, forKey: .session)
+        tool = try container.decode(String.self, forKey: .tool)
+        inputSummary = try container.decode([String: String].self, forKey: .inputSummary)
+        inputHash = try container.decode(String.self, forKey: .inputHash)
+        redactedFields = try container.decode([String].self, forKey: .redactedFields)
+        result = try container.decode(String.self, forKey: .result)
+        artifact = try container.decodeIfPresent(String.self, forKey: .artifact)
+        error = try container.decodeIfPresent(String.self, forKey: .error)
+        declaredRisk = try container.decodeIfPresent(String.self, forKey: .declaredRisk)
+        registryRisk = try container.decodeIfPresent(String.self, forKey: .registryRisk)
+        effectiveRisk = try container.decodeIfPresent(String.self, forKey: .effectiveRisk)
+        failureCode = try container.decodeIfPresent(String.self, forKey: .failureCode)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case ts, session, tool, inputSummary, inputHash, redactedFields, result, artifact, error
+        case declaredRisk, registryRisk, effectiveRisk, failureCode
+    }
+
+    nonisolated private static func redact(input: [String: String]) -> (summary: [String: String], hash: String, redactedFields: [String]) {
         let sortedKeys = input.keys.sorted()
         var summary: [String: String] = [:]
         var redactedFields: [String] = []
@@ -208,7 +249,7 @@ struct IndexedArtifact: Codable, Sendable {
     let roomID: String?
     let healthStatus: ArtifactIndexHealthStatus
 
-    init(
+    nonisolated init(
         id: String,
         workflowID: String,
         title: String,
@@ -242,7 +283,7 @@ struct IndexedArtifact: Codable, Sendable {
         case id, workflowID, title, type, filename, relativePath, path, preview, createdAt, updatedAt, contentHash, fileSizeBytes, roomID, healthStatus
     }
 
-    init(from decoder: Decoder) throws {
+    nonisolated init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(String.self, forKey: .id)
         workflowID = try container.decode(String.self, forKey: .workflowID)
@@ -263,7 +304,7 @@ struct IndexedArtifact: Codable, Sendable {
         healthStatus = try container.decodeIfPresent(ArtifactIndexHealthStatus.self, forKey: .healthStatus) ?? .valid
     }
 
-    func encode(to encoder: Encoder) throws {
+    nonisolated func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
         try container.encode(workflowID, forKey: .workflowID)
@@ -333,7 +374,7 @@ actor ArtifactStore {
     // MARK: - Action Log (append-only JSONL)
 
     func appendActionLog(_ entry: ActionLogEntry) async {
-        let data = await MainActor.run { try? JSONEncoder().encode(entry) }
+        let data = try? JSONEncoder().encode(entry)
         guard let data,
               let line = String(data: data, encoding: .utf8) else { return }
         let logLine = line + "\n"
@@ -356,18 +397,16 @@ actor ArtifactStore {
             return []
         }
 
-        guard let text = await MainActor.run(body: { String(data: data, encoding: .utf8) }) else {
+        guard let text = String(data: data, encoding: .utf8) else {
             return []
         }
-        return await MainActor.run {
-            let decoder = JSONDecoder()
-            return text
-                .split(whereSeparator: { $0.isNewline })
-                .compactMap { line in
-                    guard !line.isEmpty else { return nil }
-                    return try? decoder.decode(ActionLogEntry.self, from: Data(line.utf8))
-                }
-        }
+        let decoder = JSONDecoder()
+        return text
+            .split(whereSeparator: { $0.isNewline })
+            .compactMap { line in
+                guard !line.isEmpty else { return nil }
+                return try? decoder.decode(ActionLogEntry.self, from: Data(line.utf8))
+            }
     }
 
     // MARK: - Artifact Index (artifacts.json)
@@ -472,15 +511,11 @@ actor ArtifactStore {
         let (relativePath, pathStatus) = Self.normalizeStoredPath(artifact.relativePath, workspaceURL: workspaceURL)
         let resolvedRelativePath = relativePath.isEmpty ? artifact.relativePath : relativePath
         guard let url = Self.fileURL(for: resolvedRelativePath, workspaceURL: workspaceURL) else {
-            return await MainActor.run {
-                IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: "", preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: artifact.contentHash, fileSizeBytes: artifact.fileSizeBytes, roomID: artifact.roomID, healthStatus: pathStatus == .valid ? .invalidRelativePath : pathStatus)
-            }
+            return IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: "", preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: artifact.contentHash, fileSizeBytes: artifact.fileSizeBytes, roomID: artifact.roomID, healthStatus: pathStatus == .valid ? .invalidRelativePath : pathStatus)
         }
 
         guard FileManager.default.fileExists(atPath: url.path) else {
-            return await MainActor.run {
-                IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: resolvedRelativePath, preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: artifact.contentHash, fileSizeBytes: artifact.fileSizeBytes, roomID: artifact.roomID, healthStatus: .missingFile)
-            }
+            return IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: resolvedRelativePath, preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: artifact.contentHash, fileSizeBytes: artifact.fileSizeBytes, roomID: artifact.roomID, healthStatus: .missingFile)
         }
 
         let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
@@ -491,20 +526,14 @@ actor ArtifactStore {
         }()
 
         if let expectedHash = artifact.contentHash, let contentHash, expectedHash != contentHash {
-            return await MainActor.run {
-                IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: resolvedRelativePath, preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: expectedHash, fileSizeBytes: size, roomID: artifact.roomID, healthStatus: .hashMismatch)
-            }
+            return IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: resolvedRelativePath, preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: expectedHash, fileSizeBytes: size, roomID: artifact.roomID, healthStatus: .hashMismatch)
         }
 
         if artifact.contentHash == nil {
-            return await MainActor.run {
-                IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: resolvedRelativePath, preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: contentHash, fileSizeBytes: size, roomID: artifact.roomID, healthStatus: .metadataOnly)
-            }
+            return IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: resolvedRelativePath, preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: contentHash, fileSizeBytes: size, roomID: artifact.roomID, healthStatus: .metadataOnly)
         }
 
-        return await MainActor.run {
-            IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: resolvedRelativePath, preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: contentHash ?? artifact.contentHash, fileSizeBytes: size, roomID: artifact.roomID, healthStatus: pathStatus == .valid ? .valid : pathStatus)
-        }
+        return IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: resolvedRelativePath, preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: contentHash ?? artifact.contentHash, fileSizeBytes: size, roomID: artifact.roomID, healthStatus: pathStatus == .valid ? .valid : pathStatus)
     }
 
     private func compactActionLogIfNeeded() async {

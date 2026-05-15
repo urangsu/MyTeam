@@ -74,11 +74,11 @@ struct AssistantConnectorCenterView: View {
                     .background(Capsule().fill(validation.status == .ready ? Color.green.opacity(0.12) : Color.orange.opacity(0.12)))
             }
 
-            Text("Google Calendar: 연결 준비 중")
+            Text("Google Calendar 읽기 연결은 준비 중입니다.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
-            Text("Calendar read-only부터 지원합니다. Gmail metadata는 다음 단계입니다.")
+            Text("일정 생성/수정은 자동 실행하지 않습니다.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 

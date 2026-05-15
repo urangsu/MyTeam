@@ -18,7 +18,7 @@ enum KoreanPrivacyTermsArtifactWriter {
         roomID: UUID
     ) async throws -> IndexedArtifact {
         // 1. Workspace에 파일 저장
-        let filePath = await ArtifactStore.shared.workspaceURL.appendingPathComponent(request.filename).path
+        let filePath = ArtifactStore.shared.workspaceURL.appendingPathComponent(request.filename).path
 
         do {
             try markdown.write(toFile: filePath, atomically: true, encoding: .utf8)

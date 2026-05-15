@@ -18,21 +18,21 @@ struct FirstLaunchBannerView: View {
         switch state.capabilityMode {
         case .localOnly:
             if !state.hasAPIKey {
-                return ("key.fill", "API 키 필요",
-                    "AI 응답을 사용하려면 설정에서 API 키를 연결해 주세요.", .orange)
+                return ("key.fill", "AI 기능 준비",
+                    "로컬 기능은 API key 없이 사용할 수 있습니다. AI 기능은 설정에서 API key를 연결해 확장하세요.", .orange)
             } else if state.isOffline {
                 return ("wifi.slash", "네트워크 연결 없음",
-                    "네트워크 연결이 없어 AI 응답은 제한됩니다.", .red)
+                    "로컬 기능은 사용 가능합니다. AI 기능은 네트워크 연결 후 사용할 수 있습니다.", .red)
             } else {
-                return ("gearshape.fill", "로컬 전용",
-                    "지금은 로컬 파일 정리, 문서 템플릿, 스케줄 확인 기능을 사용할 수 있습니다.", .blue)
+                return ("gearshape.fill", "로컬 중심",
+                    "회의록, 체크리스트, 오늘 할 일은 API key 없이 시작할 수 있습니다.", .blue)
             }
         case .connectorLimited:
             return ("exclamationmark.triangle.fill", "연결 기능 준비 중",
                 "Google Calendar 읽기 연결은 준비 중입니다. 메일 발송이나 일정 생성은 자동 실행하지 않습니다.", .yellow)
         case .aiEnabled:
             return ("checkmark.circle.fill", "모든 기능 활성화",
-                "AI 기능과 모든 기능을 사용할 수 있습니다.", .green)
+                "로컬 기능과 AI 기능을 모두 사용할 수 있습니다.", .green)
         }
     }
 
