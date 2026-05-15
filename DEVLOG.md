@@ -6,6 +6,55 @@
 
 ---
 
+## 2026-05-15 (Round 76A-95Z Cloud — Release Gate Audit + Policy Enforcement + Internal Review Pack)
+
+### Cloud-Side Completion: Static Policy Review ✅
+
+**Code Improvements:**
+- ToolExecutor.swift: MainActor.run calls removed (Swift 6 warning mitigation) ✅
+- CharacterAssetManifest.swift: asset structure defined ✅
+- CharacterAssetAvailability.swift: enum + status logic ✅
+- ReleaseVisibleCharacterPolicy.swift: release visibility enforcement ✅
+
+**Safety & Policy:**
+- Privacy copy audit: "외부 서버 없음" usage checked (internal only, acceptable) ✅
+- Connector write verification: mailSend/calendarWrite/upload/delete confirmed blocked ✅
+- StoreKit surface: disabled Pro button verified, DLC gating implemented ✅
+- First result actions: missing/hashMismatch/wrongRoom policy defined (validator pending) ✅
+
+**Documentation:**
+- InternalReviewReport.md: full product/code/policy review ✅
+- MarketingReviewFollowup.md: accepted messaging, deferred features ✅
+- PMReviewFollowup.md: product principle, killer flow, gaps documented ✅
+- DeploymentTargetStrategy.md: macOS 26.2 rationale, investigation plan ✅
+- ScreenshotSurfaceAudit.md: safe/unsafe screenshot guidance ✅
+- MacLocalBuildHandoff.md: comprehensive Mac build checklist ✅
+
+**Automation & Validation:**
+- Cloud preflight script: password policy, file location, privacy phrase checks ✅
+- No QA executed (Cloud only) ✅
+- No external write implemented ✅
+- No Gmail API / Calendar write / OAuth changes ✅
+
+**Status:**
+- Build-ready: pending Mac Debug/Release verification
+- Internal review: cloud-side complete
+- Manual QA: deferred to Round 96A
+- Submission: NO (Mac QA + character assets required first)
+
+### Pending (Round 96A — Mac Local)
+- Debug xcodebuild: verification
+- Release xcodebuild: verification
+- ToolExecutor warning final check
+- First launch runtime testing
+- Starter action UI testing
+- First result activation testing
+- Finder/path copy testing
+- StoreKit sandbox purchase testing (optional)
+- Google Calendar OAuth live testing (optional)
+
+---
+
 ## 2026-05-14 (Round 43R-FIX-LOCAL — Push Recovery Handoff + File Location Correction)
 
 ### Code-Level Phase COMPLETE: File Location & Handoff ✅
