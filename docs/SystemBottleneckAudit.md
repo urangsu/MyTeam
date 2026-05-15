@@ -1,5 +1,28 @@
 # System Bottleneck Audit
 
+## Round 116C-135Z Result (Policy Centralization)
+
+### Fixed / Reduced
+- Policy fragmentation (4 centralized policy files created)
+- Validator coupling (refactored to use policy references instead of inline checks)
+- Release surface visibility ambiguity (ProductSurfacePolicy constant matrix)
+- Starter action blocking lack of clarity (StarterActionPolicy sets)
+- First result action state mapping (FirstResultActionPolicy enum)
+- Connector capability visibility scattered (ConnectorSurfacePolicy centralized)
+- Character release visibility scatter (ProductSurfacePolicy filtering)
+- Build automation missing (3 Mac scripts: audit, register, merge)
+- Compile-risk documentation gap (CompileRiskRegister.md assessment)
+
+### Still Remaining
+- Mac actual xcodebuild execution (requires Mac local)
+- Runtime character asset production (deferred to Round 140A)
+- Manual runtime QA scenarios (deferred to Round 140A)
+- StoreKit sandbox/production purchase QA (deferred)
+- Google Calendar live OAuth QA (deferred)
+- Actual app submission (deferred post-QA)
+
+---
+
 ## Round 40R + 41A-41F Result (In Progress)
 
 ### Fixed / Reduced

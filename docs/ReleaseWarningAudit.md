@@ -69,10 +69,38 @@
 - Build-ready: **YES** ✅
 - Submission-ready: **NOT YET** — manual QA required before submission ⏳
 
+## Round 76A-95Z Cloud Review
+
+**Static Code Review**: ✅ Complete
+
+**Changes Made**:
+- ToolExecutor.swift: MainActor.run calls removed (lines 35-53, 92-94)
+  - Rationale: ActionLogEntry is pure Sendable value, doesn't need MainActor isolation
+  - Expected impact: Swift 6 warning count should remain 0 or improve
+- CharacterAssetManifest.swift: new file (pure Sendable struct + enum)
+- ReleaseVisibleCharacterPolicy.swift: new file (static policy enforcement)
+
+**Swift 6 Warning Status**: Pending Mac build verification
+- Cloud analysis: MainActor isolation issues removed
+- Expected: 0 warnings (to be confirmed on Mac Debug/Release builds)
+
 ## Build Configuration
 
 **Release build**: xcodebuild -project MyTeam.xcodeproj -scheme MyTeam -configuration Release build
 
-**Build date**: 2026-05-12
+**Build date**: 2026-05-12 (last Mac verification)
 
-**Next step**: Release / DEBUG UI visibility verification
+**Next step**: Round 96A Mac Local: Debug/Release xcodebuild verification + warning count final check
+
+## Current Status (Round 76A-95Z)
+
+**App code warnings**:
+- Cloud static review: MainActor issues addressed ✅
+- Mac build pending: confirmation needed
+
+**Expected Round 96A result**:
+- Debug BUILD SUCCEEDED, 0 app code warnings ✅
+- Release BUILD SUCCEEDED, 0 app code warnings ✅
+- ToolExecutor Swift 6 warning: resolved ✅
+
+**Submission readiness**: Still NO until Round 96A manual QA complete

@@ -41,7 +41,11 @@ struct CharacterGalleryView: View {
     }
 
     private func section(title: String, characters: [CharacterDLC]) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let visibleCharacters = characters.filter { character in
+            ProductSurfacePolicy.characterVisibilityInRelease(character.id)
+        }
+
+        return VStack(alignment: .leading, spacing: 12) {
             Text(title)
                 .font(.system(size: 14, weight: .semibold))
 
@@ -53,7 +57,7 @@ struct CharacterGalleryView: View {
             }
 
             LazyVGrid(columns: columns, spacing: 12) {
-                ForEach(characters) { character in
+                ForEach(visibleCharacters) { character in
                     CharacterGalleryCard(
                         character: character,
                         accessState: entitlementManager.accessState(for: character)

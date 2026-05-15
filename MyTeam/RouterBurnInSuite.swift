@@ -1443,6 +1443,66 @@ enum RouterBurnInSuite {
             expectedGoalType: "destructiveAction",
             shouldRequireApproval: true,
             notes: "Approval required: file delete action blocked by policy"
+        ),
+        .init(
+            id: "recent-artifact-reuse-meeting-minutes",
+            message: "방금 만든 문서 회의록으로 정리해줘",
+            expectedRoute: .artifactGeneration,
+            expectedSkillID: "korean.summary",
+            expectedRouteHint: "meetingMinutes",
+            expectedGoalType: "recentArtifactReuse",
+            shouldRequireApproval: false,
+            notes: "Recent artifact reuse: convert to meeting minutes"
+        ),
+        .init(
+            id: "recent-artifact-reuse-action-items",
+            message: "방금 만든 문서 액션아이템 뽑아줘",
+            expectedRoute: .artifactGeneration,
+            expectedSkillID: "korean.summary",
+            expectedRouteHint: "actionItems",
+            expectedGoalType: "recentArtifactReuse",
+            shouldRequireApproval: false,
+            notes: "Recent artifact reuse: extract action items"
+        ),
+        .init(
+            id: "blocked-external-upload",
+            message: "이 파일을 클라우드에 업로드해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "externalUpload",
+            shouldRequireApproval: true,
+            notes: "Blocked: external file upload not available in Release"
+        ),
+        .init(
+            id: "blocked-calendar-write",
+            message: "회의 일정을 캘린더에 추가해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "calendarWrite",
+            shouldRequireApproval: true,
+            notes: "Blocked: calendar write capability disabled in Release"
+        ),
+        .init(
+            id: "blocked-mail-send",
+            message: "이 내용으로 메일 보내줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "mailSend",
+            shouldRequireApproval: true,
+            notes: "Blocked: mail send capability disabled in Release"
+        ),
+        .init(
+            id: "blocked-placeholder-character",
+            message: "레오와 함께 논의해줄래",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "characterInvite",
+            shouldRequireApproval: false,
+            notes: "Blocked: placeholder character (leo) not available in Release"
         )
     ]
 

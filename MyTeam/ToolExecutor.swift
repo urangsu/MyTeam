@@ -32,25 +32,23 @@ actor ToolExecutor {
         effectiveRisk: ToolRiskLevel,
         baseEntry: ActionLogEntry
     ) async -> ToolResult {
-        let toolName = await MainActor.run { tool.name }
+        let toolName = tool.name
         let ts = ISO8601DateFormatter().string(from: Date())
-        let executionEntry = await MainActor.run {
-            ActionLogEntry(
-                ts: ts,
-                session: sessionID,
-                tool: toolName,
-                inputSummary: baseEntry.inputSummary,
-                inputHash: baseEntry.inputHash,
-                redactedFields: baseEntry.redactedFields,
-                result: "pending",
-                artifact: nil,
-                error: nil,
-                declaredRisk: declaredRisk.rawValue,
-                registryRisk: registryRisk.rawValue,
-                effectiveRisk: effectiveRisk.rawValue,
-                failureCode: nil
-            )
-        }
+        let executionEntry = ActionLogEntry(
+            ts: ts,
+            session: sessionID,
+            tool: toolName,
+            inputSummary: baseEntry.inputSummary,
+            inputHash: baseEntry.inputHash,
+            redactedFields: baseEntry.redactedFields,
+            result: "pending",
+            artifact: nil,
+            error: nil,
+            declaredRisk: declaredRisk.rawValue,
+            registryRisk: registryRisk.rawValue,
+            effectiveRisk: effectiveRisk.rawValue,
+            failureCode: nil
+        )
 
         do {
             let result = try await tool.execute(input: ToolInput(parameters: input), context: context)
@@ -89,9 +87,7 @@ actor ToolExecutor {
                 failureCode: "tool_execution_failed"
             ))
             AppLog.error("[ToolExecutor] '\(toolName)' 실패: \(err)")
-            return await MainActor.run {
-                ToolResult.failure(err)
-            }
+            return ToolResult.failure(err)
         }
     }
 

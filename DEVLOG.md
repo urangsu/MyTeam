@@ -6,6 +6,178 @@
 
 ---
 
+## 2026-05-15 (Round 116C-135Z Cloud — Policy Centralization + Build Automation + Compile-Risk Reduction)
+
+### Cloud-Side Completion: Policy Centralization & Build Automation ✅
+
+**Policy Centralization:**
+- ProductSurfacePolicy.swift: 8 static Release control constants ✅
+- ConnectorSurfacePolicy.swift: capability visibility matrix + blockedCapabilitiesInRelease ✅
+- FirstResultActionPolicy.swift: ArtifactState → allowedActions mapping ✅
+- StarterActionPolicy.swift: allowedStarterActionIDs / blockedStarterActionIDs sets ✅
+
+**Validator Refactoring:**
+- validateCharacterAssetPolicy(): now uses ReleaseVisibleCharacterPolicy ✅
+- validateStarterActionPolicy(): now uses StarterActionPolicy constants ✅
+- validateFirstResultActionPolicy(): now uses FirstResultActionPolicy.allowedActions() ✅
+- validateStoreKitSurfacePolicy(): now uses ProductSurfacePolicy.showsDisabledProButtonInRelease ✅
+- validateExternalWritePolicy(): now uses ProductSurfacePolicy.allowsExternalWriteStarterActions ✅
+
+**Build Automation Scripts:**
+- pbxproj_target_audit.py: 11-file target verification, markdown report generation ✅
+- mac_register_round116_files.rb: xcodeproj-based Swift file auto-registration ✅
+- mac_merge_build_round116.sh: full orchestration (fetch → merge → audit → Debug/Release) ✅
+
+**CharacterCatalog Enhancement:**
+- releasePrimaryCharacter() → CharacterDLC? ✅
+- chikoDefaultExperienceCopy: String (UX mate intro) ✅
+- CharacterGalleryView: ProductSurfacePolicy filtering ✅
+
+**RouterBurnInSuite Expansion:**
+- Added 6 new test cases: recent artifact reuse (2) + blocked capabilities (4) ✅
+- Total: 60+ cases covering routing + policy blocking ✅
+
+**Report Generation:**
+- cloud_preflight_round76.sh: converted to report-generator ✅
+- 6 markdown reports: main + 5 category-specific ✅
+- reports/ directory automatic creation ✅
+
+**Documentation Completion:**
+- MacLocalBuildHandoff.md: 8 focused sections (Branch, Commands, Conflicts, Missing Files, Failures, Warnings, Labels, Troubleshooting) ✅
+- MacBuildFailurePlaybook.md: 7 error patterns + recovery decision tree ✅
+- PolicyFixtureMatrix.md: 6 validation tables + cross-policy dependencies ✅
+- CompileRiskRegister.md: high/medium/low risk assessment ✅
+- CloudCompletionReport.md: Round 116C-135Z addendum ✅
+
+**Status:**
+- Policy centralization: COMPLETE
+- Build automation: COMPLETE
+- Compile-risk reduction: COMPLETE
+- Documentation: COMPLETE
+- Mac build: PENDING
+- Manual QA: PENDING
+- Submission: NOT READY
+
+### Pending (Round 136A — Mac Local Merge + Build)
+- git fetch origin
+- git checkout main
+- git merge --no-ff origin/claude/round76-release-gate-audit-cloud
+- python3 scripts/pbxproj_target_audit.py
+- ruby scripts/mac_register_round116_files.rb (if needed)
+- xcodebuild -configuration Debug clean build
+- xcodebuild -configuration Release clean build
+
+---
+
+## 2026-05-15 (Round 96C-115Z Cloud — Static Integration Expansion + Policy Validator Completion + Mac Handoff Hardening Pack)
+
+### Cloud-Side Completion: Policy Integration & Validation ✅
+
+**Code Integration:**
+- CharacterCatalog asset-aware visibility helpers: assetManifest(), isVisibleInRelease(), isPurchasableInRelease() ✅
+- releaseVisibleCharacters() / releasePurchasableCharacters() filter helpers ✅
+- RuntimeDiagnosticsService: 19 new cloud/preflight status fields ✅
+  * characterAssetManifestAvailable, releaseVisibleCharacterPolicyAvailable, chikoDefaultExperienceReady, etc.
+  * submissionReadyStatus: "buildPending" | "buildConfirmed" | "manualQAPending" | "submissionBlocked"
+
+**Policy Validators:**
+- ToolContractValidator: 7 final validators implemented ✅
+  * validateReleaseVisibleConnectorPolicy(): planned connector visibility
+  * validateCharacterAssetPolicy(): Chiko availability check
+  * validateStoreKitSurfacePolicy(): Pro button Release visibility
+  * validatePrivacyCopyPolicy(): forbidden phrase reference
+  * validateStarterActionPolicy(): action routing
+  * validateFirstResultActionPolicy(): artifact state handling
+  * validateExternalWritePolicy(): write tool Release visibility
+
+**Automation & Verification:**
+- cloud_preflight_round76.sh: 12 new checks ✅
+  * CharacterCatalog helpers verification
+  * ReleaseVisibleCharacterPolicy integration
+  * ToolContractValidator 7-method completion
+  * RuntimeDiagnostics cloud fields
+  * Character filtering helpers
+  * First Result Activation policy
+- No QA executed (Cloud only) ✅
+- No external write implemented ✅
+- No Gmail API / Calendar write / OAuth changes ✅
+
+**Documentation:**
+- TASK.md: Round 96C-115Z Now, Round 116A Next ✅
+- DEVLOG.md: Round 96C-115Z entry ✅
+- ReleaseWarningAudit.md: Cloud status section ✅
+- CloudCompletionReport.md: comprehensive status report ✅
+- MacLocalBuildHandoff.md: merge instructions (pending final enhancement) ⏳
+
+**Status:**
+- Cloud static review: COMPLETE
+- Mac build: PENDING
+- Manual QA: PENDING
+- Submission: NOT READY (xcodebuild + QA required)
+
+### Pending (Round 116A — Mac Local)
+- Debug xcodebuild: verification
+- Release xcodebuild: verification
+- Xcode target compile confirmation for CharacterAssetManifest.swift, ReleaseVisibleCharacterPolicy.swift
+- ToolExecutor Swift 6 warning final check
+- CharacterCatalog compile verification
+- ToolContractValidator compile verification
+- RouterBurnInSuite compile verification
+- First launch runtime testing
+- Starter action UI testing
+- First result activation testing
+
+---
+
+## 2026-05-15 (Round 76A-95Z Cloud — Release Gate Audit + Policy Enforcement + Internal Review Pack)
+
+### Cloud-Side Completion: Static Policy Review ✅
+
+**Code Improvements:**
+- ToolExecutor.swift: MainActor.run calls removed (Swift 6 warning mitigation) ✅
+- CharacterAssetManifest.swift: asset structure defined ✅
+- CharacterAssetAvailability.swift: enum + status logic ✅
+- ReleaseVisibleCharacterPolicy.swift: release visibility enforcement ✅
+
+**Safety & Policy:**
+- Privacy copy audit: "외부 서버 없음" usage checked (internal only, acceptable) ✅
+- Connector write verification: mailSend/calendarWrite/upload/delete confirmed blocked ✅
+- StoreKit surface: disabled Pro button verified, DLC gating implemented ✅
+- First result actions: missing/hashMismatch/wrongRoom policy defined (validator pending) ✅
+
+**Documentation:**
+- InternalReviewReport.md: full product/code/policy review ✅
+- MarketingReviewFollowup.md: accepted messaging, deferred features ✅
+- PMReviewFollowup.md: product principle, killer flow, gaps documented ✅
+- DeploymentTargetStrategy.md: macOS 26.2 rationale, investigation plan ✅
+- ScreenshotSurfaceAudit.md: safe/unsafe screenshot guidance ✅
+- MacLocalBuildHandoff.md: comprehensive Mac build checklist ✅
+
+**Automation & Validation:**
+- Cloud preflight script: password policy, file location, privacy phrase checks ✅
+- No QA executed (Cloud only) ✅
+- No external write implemented ✅
+- No Gmail API / Calendar write / OAuth changes ✅
+
+**Status:**
+- Build-ready: pending Mac Debug/Release verification
+- Internal review: cloud-side complete
+- Manual QA: deferred to Round 96A
+- Submission: NO (Mac QA + character assets required first)
+
+### Pending (Round 96A — Mac Local)
+- Debug xcodebuild: verification
+- Release xcodebuild: verification
+- ToolExecutor warning final check
+- First launch runtime testing
+- Starter action UI testing
+- First result activation testing
+- Finder/path copy testing
+- StoreKit sandbox purchase testing (optional)
+- Google Calendar OAuth live testing (optional)
+
+---
+
 ## 2026-05-14 (Round 43R-FIX-LOCAL — Push Recovery Handoff + File Location Correction)
 
 ### Code-Level Phase COMPLETE: File Location & Handoff ✅
