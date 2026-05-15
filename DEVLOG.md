@@ -6,6 +6,21 @@
 
 ---
 
+## 2026-05-16 (Round 136A-UXFIX — Product Surface P0 Repair)
+
+### 완료
+
+- **팀 이름 명패 설정 compact화**: TeamNameplatePalette(9색) + TeamNameplateBorderMode(none/subtle) 도입. 복잡한 hex color picker / border 색상·굵기 제거. migration 지원.
+- **DART 공시 활성화**: `korean.dart` skill `defaultEnabled: false → true`. `publicDisclosureRead` 재분류 — write 없음, OAuth 없음, Release 차단 해제.
+- **기본 캐릭터 roster 반영**: 치코 `isPremium: true → false`, role "UX 디자이너" → "문서·할일 정리 팀원", status 업데이트. CharacterCatalog 기준 정렬.
+- **API key nag 제거**: FirstLaunchBannerView localOnly 케이스에서 "API 키 필요" 제목·큰 CTA 버튼 제거. "로컬 기능부터 바로 시작" 안내로 교체. Settings에만 API provider 섹션 유지.
+- **RuntimeDiagnostics 보강**: teamNameplatePaletteEnabled, dartDisclosureEnabled, apiKeyPromptHiddenFromTeamSurface 등 7개 필드 추가.
+- **ToolContractValidator 보강**: validateTeamNameplateSettingsPolicy, validateDARTDisclosurePolicy, validateDefaultCharacterRosterPolicy, validateAPIKeyPromptSurfacePolicy 추가.
+- **RouterBurnInSuite 보강**: DART 공시 3케이스, API key 설정 2케이스, starter action 2케이스, blocked write 3케이스 추가.
+- 외부 write 없음 / Gmail API 없음 / Calendar write 없음 / StoreKit 미수정
+
+---
+
 ## 2026-05-16 (Round 136A — Mac Local Sync + Target Registration + Build Repair)
 
 ### 완료
