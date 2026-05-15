@@ -200,6 +200,11 @@ enum ToolContractValidator {
         if !ReleaseVisibleCharacterPolicy.isVisibleInRelease(chikoManifest) {
             issues.append(issue(.error, "Chiko가 ReleaseVisibleCharacterPolicy에 의해 숨겨졌습니다."))
         }
+
+        let fullIDManifest = CharacterCatalog.assetManifest(for: "char.builtin.chiko")
+        if fullIDManifest.isPlaceholder {
+            issues.append(issue(.error, "CharacterIDNormalizer: 'char.builtin.chiko' normalize 실패"))
+        }
     }
 
     private static func validateStoreKitSurfacePolicy(issues: inout [ToolContractValidationIssue]) {
@@ -221,6 +226,11 @@ enum ToolContractValidator {
         }
         if StarterActionPolicy.allowedStarterActionIDs.isEmpty {
             issues.append(issue(.error, "StarterActionPolicy에 allowed action이 정의되지 않았습니다."))
+        }
+
+        if StarterActionPolicy.allowedStarterActionIDs.contains("회의록_양식") ||
+           StarterActionPolicy.allowedStarterActionIDs.contains("앱_출시_체크리스트") {
+            issues.append(issue(.error, "StarterActionPolicy: 한글 ID 발견. 실제 'starter_*' ID 형식 사용 필요"))
         }
     }
 

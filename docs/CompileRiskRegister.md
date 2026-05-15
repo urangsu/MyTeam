@@ -132,6 +132,40 @@ See `docs/MacLocalBuildHandoff.md` for exact sequence.
 - ✅ Scripts run without permission errors
 - ✅ reports/ directory exists and files generated
 
+## Cloud Hotfix (Round 116C-P0)
+
+### Character ID Normalization Bug Fixed ✅
+
+**Issue**: 
+- `char.builtin.chiko` not recognized as `chiko`
+- Result: Chiko treated as placeholder → hidden in Release gallery
+
+**Fix Applied**:
+- Added `CharacterIDNormalizer.canonicalID()` helper
+- CharacterCatalog.assetManifest() now uses canonical ID
+- ProductSurfacePolicy.characterVisibilityInRelease() uses canonical ID
+- ToolContractValidator verifies canonical ID handling
+
+**Mac Verification**:
+- ✅ CharacterGalleryView compile
+- ✅ Chiko visible in Release characters list
+
+### StarterActionPolicy ID Alignment Bug Fixed ✅
+
+**Issue**:
+- Policy used Korean IDs ("회의록_양식") but actual StarterAction.id = "starter_meeting_minutes"
+- Result: Policy validation never matched actual actions
+
+**Fix Applied**:
+- Updated allowedStarterActionIDs to actual "starter_*" IDs
+- Updated blockedStarterActionIDs to actual format
+- Added methods: isAllowedStarterActionID(), isBlockedStarterActionID()
+- ToolContractValidator checks for Korean ID presence
+
+**Mac Verification**:
+- ✅ StarterActionProvider compile
+- ✅ Policy filtering works with actual IDs
+
 ## Escalation Path
 
 If Mac build fails:

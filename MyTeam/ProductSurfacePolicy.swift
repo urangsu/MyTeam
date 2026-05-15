@@ -11,11 +11,12 @@ enum ProductSurfacePolicy: Sendable {
     static let truthfulPrivacyCopyRequired = true
 
     static func isStarterActionVisibleInRelease(_ actionID: String) -> Bool {
-        return !StarterActionPolicy.blockedStarterActionIDs.contains(actionID)
+        return StarterActionPolicy.isAllowedStarterActionID(actionID) && !StarterActionPolicy.isBlockedStarterActionID(actionID)
     }
 
     static func characterVisibilityInRelease(_ characterID: String) -> Bool {
-        if characterID == "chiko" {
+        let canonical = CharacterIDNormalizer.canonicalID(characterID)
+        if canonical == "chiko" {
             return true
         }
         let manifest = CharacterCatalog.assetManifest(for: characterID)

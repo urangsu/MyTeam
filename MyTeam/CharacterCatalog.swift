@@ -1,5 +1,29 @@
 import Foundation
 
+enum CharacterIDNormalizer: Sendable {
+    static func canonicalID(_ rawID: String) -> String {
+        let lowered = rawID.lowercased()
+
+        if lowered == "chiko" || lowered.hasSuffix(".chiko") { return "chiko" }
+        if lowered == "sena" || lowered.hasSuffix(".sena") { return "sena" }
+        if lowered == "kai" || lowered.hasSuffix(".kai") { return "kai" }
+        if lowered == "yuna" || lowered.hasSuffix(".yuna") { return "yuna" }
+
+        if lowered == "leo" || lowered.hasSuffix(".leo") { return "leo" }
+        if lowered == "luna" || lowered.hasSuffix(".luna") { return "luna" }
+        if lowered == "moko" || lowered.hasSuffix(".moko") { return "moko" }
+        if lowered == "rex" || lowered.hasSuffix(".rex") { return "rex" }
+        if lowered == "kei" || lowered.hasSuffix(".kei") { return "kei" }
+        if lowered == "lucky" || lowered.hasSuffix(".lucky") { return "lucky" }
+        if lowered == "pola" || lowered.hasSuffix(".pola") { return "pola" }
+        if lowered == "mongmong" || lowered.hasSuffix(".mongmong") { return "mongmong" }
+        if lowered == "oliver" || lowered.hasSuffix(".oliver") { return "oliver" }
+        if lowered == "pin" || lowered.hasSuffix(".pin") { return "pin" }
+
+        return lowered
+    }
+}
+
 enum CharacterCatalog {
     static let builtIn: [CharacterDLC] = [
         makeBuiltIn(id: "leo", agentID: "agent_1", name: "레오", subtitle: "시장과 수익 구조를 먼저 보는 전략가", portrait: "레오_profile", sprite: "leo_placeholder", bundledSkillIDs: ["korean.weather", "korean.dart"]),
@@ -151,7 +175,9 @@ enum CharacterCatalog {
     // MARK: - Asset-Aware Visibility Policy
 
     static func assetManifest(for characterID: String) -> CharacterAssetManifest {
-        switch characterID.lowercased() {
+        let canonical = CharacterIDNormalizer.canonicalID(characterID)
+
+        switch canonical {
         case "chiko":
             return CharacterAssetManifest(
                 characterID: "chiko",
@@ -166,7 +192,7 @@ enum CharacterCatalog {
             )
         default:
             return CharacterAssetManifest(
-                characterID: characterID,
+                characterID: canonical,
                 hasIdleSprite: false,
                 hasThinkingSprite: false,
                 hasWorkingSprite: false,

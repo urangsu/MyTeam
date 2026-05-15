@@ -171,6 +171,34 @@ Cloud-side static integration expansion and policy validator completion for Rele
 
 ---
 
+## Round 116C-P0 Hotfix Addendum
+
+### P0 Bugs Fixed ✅
+
+1. **Character ID Normalization** - `char.builtin.chiko` now correctly resolves to `chiko` asset manifest
+   - Prevents Chiko from being hidden as placeholder in Release gallery
+   - Added CharacterIDNormalizer.canonicalID() helper
+   - Affects: CharacterCatalog, ProductSurfacePolicy, CharacterGalleryView
+
+2. **StarterActionPolicy ID Alignment** - Policy IDs now match actual StarterAction.id format
+   - Allows policy to correctly filter "starter_meeting_minutes", "starter_checklist", etc.
+   - Removed Korean display IDs from policy (moved to UI labels only)
+   - ToolContractValidator now detects misalignment
+
+3. **FirstResultActionPolicy Completeness** - Added missing ArtifactState cases
+   - Added: metadataOnly, invalidPath
+   - Both states return empty action list (safe default)
+
+### Files Modified in Hotfix
+- CharacterCatalog.swift: +CharacterIDNormalizer
+- ProductSurfacePolicy.swift: canonical ID usage
+- StarterActionPolicy.swift: actual action ID alignment
+- FirstResultActionPolicy.swift: state completeness
+- ToolContractValidator.swift: normalization + ID alignment checks
+- cloud_preflight_round76.sh: normalization audits
+
+---
+
 ## Round 116C-135Z Addendum
 
 ### Policy Centralization Completion

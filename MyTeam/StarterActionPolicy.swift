@@ -2,26 +2,40 @@ import Foundation
 
 enum StarterActionPolicy: Sendable {
     static let allowedStarterActionIDs: Set<String> = [
-        "회의록_양식",
-        "앱_출시_체크리스트",
-        "최근_문서_요약",
-        "최근_문서_회의록",
-        "최근_문서_액션아이템"
+        "starter_meeting_minutes",
+        "starter_checklist",
+        "starter_file_intake",
+        "starter_schedule",
+        "first_result_summary",
+        "first_result_table",
+        "first_result_checklist",
+        "first_result_open_finder"
     ]
 
     static let blockedStarterActionIDs: Set<String> = [
-        "메일_보내줘",
-        "일정_만들어줘",
-        "파일_삭제해줘",
-        "외부_업로드",
-        "캘린더_쓰기"
+        "starter_mail_send",
+        "starter_calendar_write",
+        "starter_file_delete",
+        "starter_external_upload",
+        "mailSend",
+        "calendarWrite",
+        "fileDelete",
+        "externalUpload"
     ]
 
+    static func isAllowedStarterActionID(_ id: String) -> Bool {
+        return allowedStarterActionIDs.contains(id)
+    }
+
+    static func isBlockedStarterActionID(_ id: String) -> Bool {
+        return blockedStarterActionIDs.contains(id)
+    }
+
     static func isAllowed(_ actionID: String) -> Bool {
-        return allowedStarterActionIDs.contains(actionID) && !blockedStarterActionIDs.contains(actionID)
+        return isAllowedStarterActionID(actionID) && !isBlockedStarterActionID(actionID)
     }
 
     static func isBlocked(_ actionID: String) -> Bool {
-        return blockedStarterActionIDs.contains(actionID)
+        return isBlockedStarterActionID(actionID)
     }
 }

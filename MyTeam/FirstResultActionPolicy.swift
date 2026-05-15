@@ -2,9 +2,11 @@ import Foundation
 
 enum ArtifactState: String, Sendable, Codable {
     case valid = "valid"
+    case metadataOnly = "metadataOnly"
     case missingFile = "missingFile"
     case hashMismatch = "hashMismatch"
     case wrongRoom = "wrongRoom"
+    case invalidPath = "invalidPath"
 }
 
 enum FirstResultActionPolicy: Sendable {
@@ -12,7 +14,9 @@ enum FirstResultActionPolicy: Sendable {
         switch state {
         case .valid:
             return ["summary", "table", "checklist", "revealInFinder"]
-        case .missingFile, .hashMismatch, .wrongRoom:
+        case .metadataOnly:
+            return []
+        case .missingFile, .hashMismatch, .wrongRoom, .invalidPath:
             return []
         }
     }
@@ -25,7 +29,7 @@ enum FirstResultActionPolicy: Sendable {
         switch state {
         case .valid:
             return "summary"
-        case .missingFile, .hashMismatch, .wrongRoom:
+        case .metadataOnly, .missingFile, .hashMismatch, .wrongRoom, .invalidPath:
             return nil
         }
     }
