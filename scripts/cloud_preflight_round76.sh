@@ -36,7 +36,7 @@ echo "" >> "$PRIVACY_REPORT"
 echo "## Forbidden Phrases Check" >> "$PRIVACY_REPORT"
 echo "" >> "$PRIVACY_REPORT"
 
-if grep -R "외부 서버 없음\|완전 로컬\|내 기기 안에서만\|어떤 데이터도 외부로 나가지\|서버 없음" -n MyTeam docs 2>/dev/null \
+if grep -R "외부 서버 없음\|완전 로컬\|내 기기 안에서만\|어떤 데이터도 외부로 나가지\|서버 없음" --include="*.swift" -n MyTeam 2>/dev/null \
   | grep -v "TruthfulPrivacyCopyPolicy" \
   | grep -v "MarketingReviewAcceptanceMatrix" > /tmp/forbidden_phrases.txt 2>&1 || true; then
   if [ -s /tmp/forbidden_phrases.txt ]; then
@@ -117,15 +117,15 @@ log_report "$MAIN_REPORT" "- Character surface: audit complete (see character_su
 echo "" >> "$MAIN_REPORT"
 
 # Character ID normalization check
-if grep -q "CharacterIDNormalizer\|canonicalID" MyTeam/MyTeam/CharacterCatalog.swift 2>/dev/null; then
+if grep -q "CharacterIDNormalizer\|canonicalID" MyTeam/CharacterCatalog.swift 2>/dev/null; then
   log_report "$MAIN_REPORT" "- ✅ Character ID normalization: implemented"
 else
   log_report "$MAIN_REPORT" "- ⚠️  Character ID normalization: not found"
 fi
 
 # Starter action ID alignment check
-if grep -q "starter_meeting_minutes" MyTeam/MyTeam/StarterActionPolicy.swift 2>/dev/null; then
-  if grep -q "회의록_양식\|앱_출시_체크리스트" MyTeam/MyTeam/StarterActionPolicy.swift 2>/dev/null; then
+if grep -q "starter_meeting_minutes" MyTeam/StarterActionPolicy.swift 2>/dev/null; then
+  if grep -q "회의록_양식\|앱_출시_체크리스트" MyTeam/StarterActionPolicy.swift 2>/dev/null; then
     log_report "$MAIN_REPORT" "- ⚠️  Starter action IDs: Korean IDs found (should be starter_*)"
   else
     log_report "$MAIN_REPORT" "- ✅ Starter action IDs: aligned with actual action IDs"

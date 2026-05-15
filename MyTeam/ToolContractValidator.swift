@@ -175,10 +175,11 @@ enum ToolContractValidator {
     // MARK: - Cloud Round Validators (Round 96C-115Z)
 
     private static func validateReleaseVisibleConnectorPolicy(_ tools: [WorkflowTool], issues: inout [ToolContractValidationIssue]) {
+        // connectorRead scope는 officeLive로 통합됨 — officeLive read-only도 여기서 검사
         for tool in tools {
-            if tool.scope == .connectorRead {
+            if tool.scope == .chatBasic && tool.availability == .future {
                 if tool.plannerVisible && !FeatureFlags.debugToolVisible {
-                    issues.append(issue(.warning, "connector read tool '\(tool.name)' 이 Release planner-visible surface에 노출되었습니다."))
+                    issues.append(issue(.warning, "connector read (future) tool '\(tool.name)' 이 Release planner-visible surface에 노출되었습니다."))
                 }
             }
         }

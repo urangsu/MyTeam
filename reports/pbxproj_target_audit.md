@@ -2,15 +2,12 @@
 
 ## Summary
 **Total Files**: 15
-**Present**: 1
-**Missing**: 14
+**Present**: 15
+**Missing**: 0
 
 ## File Status
 
 ### ✅ Present
-- Color+Hex.swift
-
-### ⚠️ Missing
 - FirstLaunchState.swift
 - FirstLaunchStateProvider.swift
 - FirstLaunchBannerView.swift
@@ -19,14 +16,13 @@
 - StarterAction.swift
 - StarterActionDispatcher.swift
 - StarterActionStripView.swift
+- Color+Hex.swift
 - CharacterAssetManifest.swift
 - ReleaseVisibleCharacterPolicy.swift
 - ProductSurfacePolicy.swift
 - ConnectorSurfacePolicy.swift
 - FirstResultActionPolicy.swift
 - StarterActionPolicy.swift
-
-**Action**: Run `mac_register_round116_files.rb` to auto-register
 
 ## Next Steps
 1. If missing files detected, run: `scripts/mac_register_round116_files.rb`

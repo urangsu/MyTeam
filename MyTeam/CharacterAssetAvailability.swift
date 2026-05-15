@@ -9,7 +9,7 @@ enum CharacterAssetAvailability: String, Codable, Equatable, Sendable {
     case productionReady
 
     /// 일부 스프라이트만 있으나 명시적 승인으로 Release 노출 허용
-    case partialAllowed
+    case partial
 
     /// placeholder 에셋만 있음 — Release 대표 UI 숨김
     case placeholder
@@ -19,7 +19,7 @@ enum CharacterAssetAvailability: String, Codable, Equatable, Sendable {
 
     var isVisibleInRelease: Bool {
         switch self {
-        case .productionReady, .partialAllowed: return true
+        case .productionReady, .partial: return true
         case .placeholder, .missing: return false
         }
     }
@@ -31,7 +31,7 @@ enum CharacterAssetAvailability: String, Codable, Equatable, Sendable {
     var shortLabel: String {
         switch self {
         case .productionReady: return "✅ production"
-        case .partialAllowed:  return "⚠️ partial"
+        case .partial:         return "⚠️ partial"
         case .placeholder:     return "🔲 placeholder"
         case .missing:         return "❌ missing"
         }

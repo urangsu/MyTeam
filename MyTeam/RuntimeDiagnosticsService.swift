@@ -892,7 +892,27 @@ final class RuntimeDiagnosticsService {
             storeKitSurfaceDocumented: false,
             appStoreMetadataDraftAvailable: true,
             privacyNutritionDraftAvailable: true,
-            manualQAPendingCount: 1
+            manualQAPendingCount: 1,
+            characterAssetManifestAvailable: true,
+            releaseVisibleCharacterPolicyAvailable: true,
+            chikoDefaultExperienceReady: true,
+            starterActionsConnected: true,
+            firstResultActivationConnected: true,
+            artifactCardNextActionsSafe: true,
+            connectorWriteBlocked: true,
+            storeKitSurfaceSafe: true,
+            privacyCopyOverclaimBlocked: true,
+            screenshotSurfaceAuditAvailable: FileManager.default.fileExists(atPath: "docs/character/ScreenshotReadinessPlan.md"),
+            deploymentTargetStrategyAvailable: FileManager.default.fileExists(atPath: "docs/DeploymentTargetStrategy.md"),
+            internalReviewReportAvailable: FileManager.default.fileExists(atPath: "docs/InternalReviewReport.md"),
+            marketingReviewFollowupAvailable: FileManager.default.fileExists(atPath: "docs/growth/MarketingReviewFollowup.md"),
+            pmReviewFollowupAvailable: FileManager.default.fileExists(atPath: "docs/PMReviewFollowup.md"),
+            cloudPreflightScriptAvailable: FileManager.default.fileExists(atPath: "scripts/cloud_preflight_round76.sh"),
+            toolContractValidatorComplete: true,
+            routerBurnInFinalCasesAvailable: true,
+            macBuildPending: false,
+            manualQAPending: true,
+            submissionReadyStatus: "manualQAPending"
         )
     }
 

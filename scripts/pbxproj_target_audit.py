@@ -35,9 +35,15 @@ def check_file_presence(pbxproj_content, filename):
     """Check if file has PBXFileReference, PBXBuildFile, and PBXSourcesBuildPhase entries."""
     basename = filename.replace('.swift', '')
 
-    has_file_ref = f'path = "{filename}"' in pbxproj_content or f'name = "{filename}"' in pbxproj_content
+    # Match both quoted `path = "Foo.swift"` and unquoted `path = Foo.swift;`
+    has_file_ref = (
+        f'path = "{filename}"' in pbxproj_content
+        or f'name = "{filename}"' in pbxproj_content
+        or f'path = {filename};' in pbxproj_content
+        or f'name = {filename};' in pbxproj_content
+    )
     has_build_file = f'fileRef = ' in pbxproj_content and f'/* {filename}' in pbxproj_content
-    has_sources_phase = f'sourceRoot' in pbxproj_content
+    has_sources_phase = f'sourceRoot' in pbxproj_content or f'PBXSourcesBuildPhase' in pbxproj_content
 
     return {
         'filename': filename,

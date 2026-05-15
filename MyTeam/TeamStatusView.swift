@@ -584,7 +584,6 @@ struct TeamStatusView: View {
                 // ── First Result Action Strip (첫 artifact 생성 후) ──
                 if manager.firstLaunchState.shouldShowFirstResultActions,
                    let firstArtifact = manager.recentArtifacts.first,
-                   firstArtifact.fileExists,
                    firstArtifact.healthStatus == .valid {
                     Divider().background(textColor.opacity(0.06))
                     FirstResultActionStripView(

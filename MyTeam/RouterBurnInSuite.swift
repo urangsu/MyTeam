@@ -131,7 +131,7 @@ enum RouterBurnInSuite {
             expectedRouteHint: nil,
             expectedGoalType: "directAnswer",
             shouldRequireApproval: false,
-            notes: "완전 로컬 처리"
+            notes: "로컬 처리 (기기 내 계산)"
         ),
         .init(
             id: "local-spell-check",
@@ -1447,7 +1447,7 @@ enum RouterBurnInSuite {
         .init(
             id: "recent-artifact-reuse-meeting-minutes",
             message: "방금 만든 문서 회의록으로 정리해줘",
-            expectedRoute: .artifactGeneration,
+            expectedRoute: .artifactWorkflow,
             expectedSkillID: "korean.summary",
             expectedRouteHint: "meetingMinutes",
             expectedGoalType: "recentArtifactReuse",
@@ -1457,7 +1457,7 @@ enum RouterBurnInSuite {
         .init(
             id: "recent-artifact-reuse-action-items",
             message: "방금 만든 문서 액션아이템 뽑아줘",
-            expectedRoute: .artifactGeneration,
+            expectedRoute: .artifactWorkflow,
             expectedSkillID: "korean.summary",
             expectedRouteHint: "actionItems",
             expectedGoalType: "recentArtifactReuse",

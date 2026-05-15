@@ -157,7 +157,7 @@ struct FirstResultActionStripView: View {
 #Preview {
     VStack(spacing: 20) {
         StarterActionStripView(
-            actions: StarterActionProvider.actions(for: .empty),
+            actions: StarterActionProvider.actions(),
             onActionTap: { _ in }
         )
 

@@ -23,19 +23,3 @@ struct CharacterAssetManifest: Codable, Equatable, Sendable {
         case isDLCReady = "is_dlc_ready"
     }
 }
-
-enum CharacterAssetAvailability: String, Codable, Equatable, Sendable {
-    case productionReady = "production_ready"
-    case partial = "partial"
-    case placeholder = "placeholder"
-    case missing = "missing"
-
-    var description: String {
-        switch self {
-        case .productionReady: return "Production Ready"
-        case .partial: return "Partial Assets"
-        case .placeholder: return "Placeholder"
-        case .missing: return "Missing Assets"
-        }
-    }
-}
