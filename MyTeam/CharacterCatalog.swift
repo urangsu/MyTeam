@@ -147,4 +147,55 @@ enum CharacterCatalog {
             specialty: "기본 협업"
         )
     }
+
+    // MARK: - Asset-Aware Visibility Policy
+
+    static func assetManifest(for characterID: String) -> CharacterAssetManifest {
+        switch characterID.lowercased() {
+        case "chiko":
+            return CharacterAssetManifest(
+                characterID: "chiko",
+                hasIdleSprite: true,
+                hasThinkingSprite: false,
+                hasWorkingSprite: true,
+                hasSuccessSprite: true,
+                hasSmallIcon: true,
+                hasScreenshotPose: false,
+                isPlaceholder: false,
+                isDLCReady: false
+            )
+        default:
+            return CharacterAssetManifest(
+                characterID: characterID,
+                hasIdleSprite: false,
+                hasThinkingSprite: false,
+                hasWorkingSprite: false,
+                hasSuccessSprite: false,
+                hasSmallIcon: false,
+                hasScreenshotPose: false,
+                isPlaceholder: true,
+                isDLCReady: false
+            )
+        }
+    }
+
+    static func isVisibleInRelease(_ character: CharacterDLC) -> Bool {
+        ReleaseVisibleCharacterPolicy.isVisibleInRelease(
+            assetManifest(for: character.id)
+        )
+    }
+
+    static func isPurchasableInRelease(_ character: CharacterDLC) -> Bool {
+        ReleaseVisibleCharacterPolicy.isPurchasableInRelease(
+            assetManifest(for: character.id)
+        )
+    }
+
+    static func releaseVisibleCharacters() -> [CharacterDLC] {
+        all.filter { isVisibleInRelease($0) }
+    }
+
+    static func releasePurchasableCharacters() -> [CharacterDLC] {
+        all.filter { isPurchasableInRelease($0) }
+    }
 }

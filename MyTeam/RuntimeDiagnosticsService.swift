@@ -243,6 +243,30 @@ struct RuntimeDiagnosticsSnapshot {
     // QA Status
     let manualQAPendingCount: Int
 
+    // Cloud / Preflight Status
+    let characterAssetManifestAvailable: Bool
+    let releaseVisibleCharacterPolicyAvailable: Bool
+    let chikoDefaultExperienceReady: Bool
+    let starterActionsConnected: Bool
+    let firstResultActivationConnected: Bool
+    let artifactCardNextActionsSafe: Bool
+    let connectorWriteBlocked: Bool
+    let storeKitSurfaceSafe: Bool
+    let privacyCopyOverclaimBlocked: Bool
+    let screenshotSurfaceAuditAvailable: Bool
+    let deploymentTargetStrategyAvailable: Bool
+    let internalReviewReportAvailable: Bool
+    let marketingReviewFollowupAvailable: Bool
+    let pmReviewFollowupAvailable: Bool
+    let cloudPreflightScriptAvailable: Bool
+    let toolContractValidatorComplete: Bool
+    let routerBurnInFinalCasesAvailable: Bool
+
+    // Build / Submission Status
+    let macBuildPending: Bool
+    let manualQAPending: Bool
+    let submissionReadyStatus: String  // "buildPending" | "buildConfirmed" | "manualQAPending" | "submissionBlocked"
+
     // MARK: - Human-readable summary
 
     var summary: String {

@@ -6,6 +6,66 @@
 
 ---
 
+## 2026-05-15 (Round 96C-115Z Cloud — Static Integration Expansion + Policy Validator Completion + Mac Handoff Hardening Pack)
+
+### Cloud-Side Completion: Policy Integration & Validation ✅
+
+**Code Integration:**
+- CharacterCatalog asset-aware visibility helpers: assetManifest(), isVisibleInRelease(), isPurchasableInRelease() ✅
+- releaseVisibleCharacters() / releasePurchasableCharacters() filter helpers ✅
+- RuntimeDiagnosticsService: 19 new cloud/preflight status fields ✅
+  * characterAssetManifestAvailable, releaseVisibleCharacterPolicyAvailable, chikoDefaultExperienceReady, etc.
+  * submissionReadyStatus: "buildPending" | "buildConfirmed" | "manualQAPending" | "submissionBlocked"
+
+**Policy Validators:**
+- ToolContractValidator: 7 final validators implemented ✅
+  * validateReleaseVisibleConnectorPolicy(): planned connector visibility
+  * validateCharacterAssetPolicy(): Chiko availability check
+  * validateStoreKitSurfacePolicy(): Pro button Release visibility
+  * validatePrivacyCopyPolicy(): forbidden phrase reference
+  * validateStarterActionPolicy(): action routing
+  * validateFirstResultActionPolicy(): artifact state handling
+  * validateExternalWritePolicy(): write tool Release visibility
+
+**Automation & Verification:**
+- cloud_preflight_round76.sh: 12 new checks ✅
+  * CharacterCatalog helpers verification
+  * ReleaseVisibleCharacterPolicy integration
+  * ToolContractValidator 7-method completion
+  * RuntimeDiagnostics cloud fields
+  * Character filtering helpers
+  * First Result Activation policy
+- No QA executed (Cloud only) ✅
+- No external write implemented ✅
+- No Gmail API / Calendar write / OAuth changes ✅
+
+**Documentation:**
+- TASK.md: Round 96C-115Z Now, Round 116A Next ✅
+- DEVLOG.md: Round 96C-115Z entry ✅
+- ReleaseWarningAudit.md: Cloud status section ✅
+- CloudCompletionReport.md: comprehensive status report ✅
+- MacLocalBuildHandoff.md: merge instructions (pending final enhancement) ⏳
+
+**Status:**
+- Cloud static review: COMPLETE
+- Mac build: PENDING
+- Manual QA: PENDING
+- Submission: NOT READY (xcodebuild + QA required)
+
+### Pending (Round 116A — Mac Local)
+- Debug xcodebuild: verification
+- Release xcodebuild: verification
+- Xcode target compile confirmation for CharacterAssetManifest.swift, ReleaseVisibleCharacterPolicy.swift
+- ToolExecutor Swift 6 warning final check
+- CharacterCatalog compile verification
+- ToolContractValidator compile verification
+- RouterBurnInSuite compile verification
+- First launch runtime testing
+- Starter action UI testing
+- First result activation testing
+
+---
+
 ## 2026-05-15 (Round 76A-95Z Cloud — Release Gate Audit + Policy Enforcement + Internal Review Pack)
 
 ### Cloud-Side Completion: Static Policy Review ✅

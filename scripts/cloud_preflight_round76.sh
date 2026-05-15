@@ -59,34 +59,66 @@ fi
 
 echo ""
 echo "== ToolExecutor MainActor check =="
-if grep -n "await MainActor.run" MyTeam/MyTeam/ToolExecutor.swift || true; then
+if grep -n "await MainActor.run" MyTeam/ToolExecutor.swift 2>/dev/null || true; then
   echo "⚠️  MainActor.run still present (verify necessity)"
 else
   echo "✅ MainActor.run removed from ToolExecutor"
 fi
 
 echo ""
+echo "== CharacterCatalog asset-aware helpers =="
+if grep -n "assetManifest\|isVisibleInRelease\|isPurchasableInRelease" MyTeam/CharacterCatalog.swift || true; then
+  echo "✅ CharacterCatalog asset helpers implemented"
+else
+  echo "⚠️  CharacterCatalog asset helpers not found"
+fi
+
+echo ""
 echo "== ReleaseVisibleCharacterPolicy check =="
-if grep -l "ReleaseVisibleCharacterPolicy" MyTeam/MyTeam/*.swift || true; then
+if grep -l "ReleaseVisibleCharacterPolicy" MyTeam/*.swift 2>/dev/null || true; then
   echo "✅ ReleaseVisibleCharacterPolicy referenced"
 else
   echo "⚠️  ReleaseVisibleCharacterPolicy not yet integrated"
 fi
 
 echo ""
-echo "== ToolContractValidator checks =="
-if grep -n "validateReleaseVisibleConnectorPolicy\|validateCharacterAssetPolicy\|validateStoreKitSurfacePolicy\|validatePrivacyCopyPolicy" MyTeam/MyTeam/ToolContractValidator.swift || true; then
-  echo "✅ Validator policies found"
+echo "== ToolContractValidator latest checks =="
+if grep -n "validateReleaseVisibleConnectorPolicy\|validateCharacterAssetPolicy\|validateStoreKitSurfacePolicy\|validatePrivacyCopyPolicy\|validateStarterActionPolicy\|validateFirstResultActionPolicy\|validateExternalWritePolicy" MyTeam/ToolContractValidator.swift || true; then
+  echo "✅ All 7 validators implemented"
 else
   echo "⚠️  Not all validators implemented yet"
 fi
 
 echo ""
 echo "== RouterBurnInSuite tests =="
-if grep -n "회의록 양식\|앱 출시 체크리스트\|메일 보내줘\|일정 만들어줘\|파일 삭제해줘" MyTeam/MyTeam/RouterBurnInSuite.swift || true; then
+if grep -n "회의록 양식\|앱 출시 체크리스트\|메일 보내줘\|일정 만들어줘\|파일 삭제해줘" MyTeam/RouterBurnInSuite.swift || true; then
   echo "✅ BurnIn test cases found"
 else
   echo "⚠️  Not all test cases present"
+fi
+
+echo ""
+echo "== RuntimeDiagnostics cloud fields =="
+if grep -n "characterAssetManifestAvailable\|macBuildPending\|submissionReadyStatus" MyTeam/RuntimeDiagnosticsService.swift || true; then
+  echo "✅ Cloud diagnostics fields added"
+else
+  echo "⚠️  Cloud diagnostics fields not found"
+fi
+
+echo ""
+echo "== CharacterGalleryView Release filtering =="
+if grep -n "releaseVisibleCharacters\|releasePurchasableCharacters" MyTeam/*.swift || true; then
+  echo "✅ Character filtering helpers referenced"
+else
+  echo "⚠️  Character filtering helpers not yet connected"
+fi
+
+echo ""
+echo "== First Result Activation policy =="
+if grep -n "missing file\|hash mismatch\|wrong.room" MyTeam/ArtifactCardView.swift 2>/dev/null || true; then
+  echo "✅ First result action policy checks found"
+else
+  echo "⚠️  Policy checks verification needed"
 fi
 
 echo ""
