@@ -6,6 +6,42 @@
 
 ---
 
+## 2026-05-16 (Round 136A — Mac Local Sync + Target Registration + Build Repair)
+
+### 완료
+
+**Git Sync**
+- `git pull origin main` — 889a269, 7b39c7d, 9426434 커밋 포함 확인
+- 복원된 4개 파일 정상 위치 확인: FirstLaunchBannerView, LocalOnlyModeCardView, StarterActionDispatcher, StarterActionStripView
+
+**pbxproj Target Audit**
+- audit script 버그 수정: 따옴표 없는 `path = filename;` format 미감지 → 수정 후 15/15 PASS
+- `mac_register_round116_files.rb` 실행: ProductSurfacePolicy, ConnectorSurfacePolicy, FirstResultActionPolicy, StarterActionPolicy 4개 등록
+
+**Compile 에러 수정 (6종)**
+- `CharacterAssetAvailability` 중복 선언 — CharacterAssetManifest.swift에서 제거, `partialAllowed` → `partial` rename
+- `StarterActionStripView` Preview: `actions(for: .empty)` → `actions()` (오버로드 없음)
+- `RouterBurnInSuite`: `.artifactGeneration` → `.artifactWorkflow` (케이스 없음)
+- `ToolContractValidator`: `ToolScope.connectorRead` → `chatBasic + availability == .future` (케이스 없음)
+- `RuntimeDiagnosticsService`: snapshot init 20개 필드 누락 → 추가 (characterAssetManifestAvailable 등)
+- `TeamStatusView`: `firstArtifact.fileExists` → 제거 (멤버 없음, healthStatus == .valid 충분)
+
+**빌드 결과**
+- Debug: BUILD SUCCEEDED, app warning 0, duplicate 0
+- Release: BUILD SUCCEEDED, app warning 0, duplicate 0
+
+**Cloud Preflight 재실행**
+- Privacy copy (Swift 소스): ✅ clean
+- Character ID normalization: ✅
+- Starter action IDs: ✅ starter_* format
+- pbxproj 15/15: ✅
+- Connector write: ⚠️ → 정책상 blocked 확인 (ConnectorSurfacePolicy)
+- StoreKit: ⚠️ → 정책상 disabled 확인 (ProductSurfacePolicy)
+
+**다음**: Round 140A — Manual Runtime QA
+
+---
+
 ## 2026-05-15 (Round 116C-135Z Cloud — Policy Centralization + Build Automation + Compile-Risk Reduction)
 
 ### Cloud-Side Completion: Policy Centralization & Build Automation ✅

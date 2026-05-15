@@ -104,3 +104,33 @@
 - ToolExecutor Swift 6 warning: resolved ✅
 
 **Submission readiness**: Still NO until Round 96A manual QA complete
+
+---
+
+## Round 136A Addendum (2026-05-16)
+
+### Mac Local Build Verification
+
+| 항목 | Debug | Release |
+|---|---|---|
+| BUILD SUCCEEDED | ✅ | ✅ |
+| App code Swift warnings | 0 | 0 |
+| Duplicate build file warnings | 0 | 0 |
+
+### Compile 에러 수정
+
+| 에러 | 수정 |
+|---|---|
+| `CharacterAssetAvailability` 중복 선언 | 중복 enum 제거, `partialAllowed` → `partial` rename |
+| `ExpectedRoute.artifactGeneration` 없음 | `.artifactWorkflow`로 교체 |
+| `ToolScope.connectorRead` 없음 | `chatBasic + future` 조건으로 교체 |
+| `IndexedArtifact.fileExists` 없음 | `healthStatus == .valid`로 교체 |
+| RuntimeDiagnosticsSnapshot 필드 20개 누락 | init call에 추가 |
+| `StarterActionProvider.actions(for:)` 없음 | `actions()`로 교체 |
+
+### pbxproj Target Audit
+- 15/15 present (ProductSurfacePolicy, ConnectorSurfacePolicy, FirstResultActionPolicy, StarterActionPolicy 신규 등록)
+- audit 스크립트 쿼트 버그 수정
+
+### 남은 항목
+- Round 140A Manual Runtime QA 필요
