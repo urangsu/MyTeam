@@ -1792,6 +1792,112 @@ enum RouterBurnInSuite {
             expectedGoalType: "directAnswer",
             shouldRequireApproval: false,
             notes: "특정 팀원과의 개인 대화 요청"
+        ),
+
+        // Round 164A-180Z: Killer Workflow Completion Pack
+        .init(
+            id: "document-creation-hub",
+            message: "문서 만들기",
+            expectedRoute: .universalDocument,
+            expectedSkillID: nil,
+            expectedRouteHint: "documentCreationHub",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "문서 만들기 → hub 진입"
+        ),
+        .init(
+            id: "meeting-minutes-template",
+            message: "회의록 양식 만들어줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.meeting-minutes",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "회의록 양식 → meeting minutes skill"
+        ),
+        .init(
+            id: "meeting-minutes-direct",
+            message: "회의록 만들어줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.meeting-minutes",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "회의록 직접 요청"
+        ),
+        .init(
+            id: "checklist-direct",
+            message: "업무 준비 체크리스트 만들어줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.checklist",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "체크리스트 직접 요청"
+        ),
+        .init(
+            id: "checklist-short",
+            message: "체크리스트 만들어줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.checklist",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "짧은 체크리스트 요청"
+        ),
+        .init(
+            id: "report-draft-direct",
+            message: "보고서 초안 만들어줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.report-draft",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "보고서 초안 직접 요청"
+        ),
+        .init(
+            id: "recent-document-summary",
+            message: "방금 만든 문서 요약해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.document-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: true,
+            shouldRequireApproval: false,
+            notes: "최근 문서 요약 → room-scoped artifact lookup"
+        ),
+        .init(
+            id: "recent-document-table",
+            message: "방금 만든 문서 표로 바꿔줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.document-table-summary",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: true,
+            shouldRequireApproval: false,
+            notes: "최근 문서 표 변환"
+        ),
+        .init(
+            id: "recent-document-checklist",
+            message: "방금 만든 문서 체크리스트로 바꿔줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.checklist",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: true,
+            shouldRequireApproval: false,
+            notes: "최근 문서 체크리스트 변환"
+        ),
+        .init(
+            id: "recent-document-action-items",
+            message: "방금 만든 문서 액션아이템 뽑아줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.action-items",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            expectedRecentArtifactReference: true,
+            shouldRequireApproval: false,
+            notes: "최근 문서 액션아이템 추출"
         )
     ]
 

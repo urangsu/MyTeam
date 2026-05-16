@@ -74,6 +74,13 @@ enum ToolContractValidator {
         validateTeamWorkroomReturnPolicy(issues: &issues)
         validateStarterChecklistCopyPolicy(issues: &issues)
 
+        // Round 164A-180Z validators
+        validateDocumentCreationCoreFlow(issues: &issues)
+        validateLocalDocumentFallbackPolicy(issues: &issues)
+        validateWorkResultKindPolicy(issues: &issues)
+        validateRecentDocumentReuseLoop(issues: &issues)
+        validateArtifactActionSurfacePolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -522,6 +529,52 @@ enum ToolContractValidator {
         let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
         if let snap, !snap.starterChecklistCopyUpdated {
             issues.append(issue(.warning, "StarterAction 체크리스트 description이 업데이트되지 않았습니다. '업무 준비 요소를 체크리스트로 정리합니다'로 변경해야 합니다."))
+        }
+    }
+
+    // Round 164A-180Z: Killer Workflow Completion Pack validators
+    private static func validateDocumentCreationCoreFlow(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap {
+            if !snap.documentCreationHubAvailable {
+                issues.append(issue(.error, "문서 만들기 core flow가 unavailable 상태입니다."))
+            }
+            if !snap.meetingMinutesCoreFlowAvailable || !snap.checklistCoreFlowAvailable || !snap.reportDraftCoreFlowAvailable {
+                issues.append(issue(.warning, "일부 core document types (회의록/체크리스트/보고서)가 unavailable 상태입니다."))
+            }
+        }
+    }
+
+    private static func validateLocalDocumentFallbackPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.localDocumentFallbackAvailable {
+            issues.append(issue(.error, "로컬 document fallback이 unavailable 상태입니다. API key 없어도 기본 템플릿 결과를 생성해야 합니다."))
+        }
+    }
+
+    private static func validateWorkResultKindPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.workResultKindAvailable {
+            issues.append(issue(.warning, "WorkResultCardView가 document kind를 구분하지 못합니다. 문서 타입별 제목/아이콘을 구분해야 합니다."))
+        }
+    }
+
+    private static func validateRecentDocumentReuseLoop(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap {
+            if !snap.recentDocumentReuseLoopAvailable {
+                issues.append(issue(.warning, "방금 만든 문서 후속 액션 loop가 unavailable 상태입니다."))
+            }
+            if !snap.documentResultInlineArtifactAvailable {
+                issues.append(issue(.warning, "document result에 inline artifact display가 unavailable 상태입니다."))
+            }
+        }
+    }
+
+    private static func validateArtifactActionSurfacePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.artifactActionSurfaceSimplified {
+            issues.append(issue(.warning, "Artifact action surface가 너무 복잡합니다. Compact: 2개, Full: 4개 버튼으로 제한해야 합니다."))
         }
     }
 }

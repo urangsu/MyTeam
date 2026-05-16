@@ -13,6 +13,7 @@ struct WorkResultCardView: View {
     let timestamp: Date?
     var sources: [AgentWindowManager.SourceReference] = []
     var relatedArtifacts: [IndexedArtifact] = []
+    var kind: WorkResultKind = .generic
 
     @State private var isExpanded: Bool = false
 
@@ -27,14 +28,25 @@ struct WorkResultCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // 헤더: 에이전트 이름 + 시간 (아바타 없음)
+            // 헤더: 문서 타입 또는 에이전트 이름 + 시간
             HStack(spacing: 6) {
-                Circle()
-                    .fill(agentColor.opacity(0.3))
-                    .frame(width: 8, height: 8)
-                Text(agentName)
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(agentColor.opacity(0.85))
+                if kind != .generic {
+                    // 문서 타입 표시
+                    Image(systemName: kind.iconName)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(kind.accentColor)
+                    Text(kind.title)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(kind.accentColor)
+                } else {
+                    // 일반 결과는 에이전트 이름
+                    Circle()
+                        .fill(agentColor.opacity(0.3))
+                        .frame(width: 8, height: 8)
+                    Text(agentName)
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(agentColor.opacity(0.85))
+                }
                 Spacer()
                 if let ts = timestamp {
                     Text(ts, style: .time)

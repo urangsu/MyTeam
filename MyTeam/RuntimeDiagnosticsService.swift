@@ -308,6 +308,17 @@ struct RuntimeDiagnosticsSnapshot {
     let teamWorkroomReturnShortcutAvailable: Bool
     let starterChecklistCopyUpdated: Bool
 
+    // Round 164A-180Z: Killer Workflow Completion Pack
+    let documentCreationHubAvailable: Bool
+    let localDocumentFallbackAvailable: Bool
+    let meetingMinutesCoreFlowAvailable: Bool
+    let checklistCoreFlowAvailable: Bool
+    let reportDraftCoreFlowAvailable: Bool
+    let workResultKindAvailable: Bool
+    let documentResultInlineArtifactAvailable: Bool
+    let recentDocumentReuseLoopAvailable: Bool
+    let artifactActionSurfaceSimplified: Bool
+
     // Build / Submission Status
     let macBuildPending: Bool
     let manualQAPending: Bool
@@ -997,6 +1008,15 @@ final class RuntimeDiagnosticsService {
             personalChatIdentityPreserved: true,
             teamWorkroomReturnShortcutAvailable: true,
             starterChecklistCopyUpdated: true,
+            documentCreationHubAvailable: true,
+            localDocumentFallbackAvailable: true,
+            meetingMinutesCoreFlowAvailable: true,
+            checklistCoreFlowAvailable: true,
+            reportDraftCoreFlowAvailable: true,
+            workResultKindAvailable: true,
+            documentResultInlineArtifactAvailable: true,
+            recentDocumentReuseLoopAvailable: true,
+            artifactActionSurfaceSimplified: true,
             macBuildPending: false,
             manualQAPending: true,
             submissionReadyStatus: "manualQAPending"
