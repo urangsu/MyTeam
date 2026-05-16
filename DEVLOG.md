@@ -8,7 +8,7 @@
 
 ## 2026-05-16 (Round 153A-162Z — WorkResult Inline Artifact + Skill Result Card + Message Linking Pack)
 
-### 진행 중
+### 완료 (Part 1-2, 2026-05-16)
 
 - **workflow 완료 메시지와 artifact 연결**:
   - WorkflowOrchestrator.removeProgressAndPost() 함수 확장: `artifactIDs: [String] = []` 파라미터 추가
@@ -17,6 +17,10 @@
 - **SkillResultRendererView generic card fallback**:
   - shouldRenderAsGenericCard() 판정: 5줄 이상, 마크다운 헤더/표/체크리스트 포함
   - 구조화된 스킬 결과 → WorkResultCardView로 렌더링
+- **ArtifactCardView compact mode**:
+  - compactMode 파라미터 (기본값 false)
+  - Compact: 한 줄 HStack, emoji + 제목/파일명 + 상태 + 열기 버튼
+  - Standard: 기존 다중 줄 카드 (변경 없음)
 - **RuntimeDiagnostics 4개 신규 필드**:
   - workResultInlineArtifactsAvailable
   - chatLogArtifactIDsLinked
@@ -27,7 +31,14 @@
   - validateChatLogArtifactLinkingPolicy()
   - validateSkillResultCardFallbackPolicy()
 - **docs**: ResultPresentationPolicy.md "Inline Artifact Linking" 섹션 추가
-- Debug BUILD SUCCEEDED
+- Debug + Release BUILD SUCCEEDED
+- Commits: ea38e91 (Part 1), ff0ef76 (Part 2)
+
+### 다음 (Round 154A+)
+
+- WorkResultCardView 내부에 관련 artifact inline 표시 (artifact 테칭 로직 필요)
+- AgentChatView 하단 artifact 목록 중복 제거 로직
+- 추가 스킬별 전용 카드 (spell-check, accounting-tax 등)
 
 ---
 
