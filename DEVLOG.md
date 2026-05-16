@@ -6,6 +6,65 @@
 
 ---
 
+## 2026-05-16 (Round 181A-195Z — Workroom Productization + Core Loop Surface Pack)
+
+### 진행 중 (2026-05-16)
+
+**핵심 달성**:
+- "워크룸"을 업무 공간으로 완성. 단순 대화방이 아니라 목표/결과물/다음 액션이 한눈에 보이는 제품.
+- AgentChatView await warning 해결: Task + await 제거, 동기식 호출로 변경
+- 문서 만들기를 워크룸의 메인 CTA로 고정 (+ 파일 맡기기, 오늘 정리하기)
+- 워크룸 내 결과물은 room-scoped only (다른 방의 artifact 절대 표시 금지)
+- 후속 액션 4가지는 최근 artifact 있을 때만 활성화
+
+**구현 상세**:
+- **AgentChatView.swift** (modified):
+  - Line 298: `await manager.returnToTeamWorkroom()` → `manager.returnToTeamWorkroom()` (동기식)
+  - Line 432: `await manager.openPersonalChat()` → `manager.openPersonalChat()` (동기식)
+  - Task 래퍼 제거, await 제거
+- **WorkroomHomeModel.swift** (new): UI projection, room-scoped data 관리
+- **WorkroomHomeView.swift** (new):
+  - 워크룸 홈 대시보드
+  - 목표 표시 (있으면 표시, 없으면 "무엇을 정리할까요?")
+  - 3 primary actions: 문서 / 파일 / 정리
+  - Recent artifacts rail: max 3, room-scoped only
+  - Next actions: 최근 artifact 있을 때만, max 4
+- **WorkroomPrimaryAction** enum: 3 main CTA + title/icon/description
+- **WorkroomNextAction** enum: 4 follow-up actions + skillID mapping
+- **RuntimeDiagnosticsService.swift** (modified): 8개 신규 필드
+  - workroomHomeAvailable
+  - workroomPrimaryActionsAvailable
+  - workroomUsesRoomScopedArtifacts
+  - workroomNextActionsRoomScoped
+  - workroomGoalContextVisible
+  - teamStatusMiniWidgetPreserved
+  - personalChatSurfaceSeparated
+  - agentChatAwaitWarningsResolved
+- **ToolContractValidator.swift** (modified): 5개 신규 validator
+  - validateWorkroomHomePolicy()
+  - validateWorkroomPrimaryActionPolicy()
+  - validateWorkroomArtifactRailPolicy()
+  - validateWorkroomNextActionPolicy()
+  - validateAgentChatWarningDebtPolicy()
+- **RouterBurnInSuite.swift** (modified): 5개 신규 테스트 케이스
+  - workroom-open: 워크룸 네비게이션
+  - workroom-new: 새 워크룸 생성
+  - workroom-create-document: 워크룸에서 문서 만들기
+  - workroom-today-organize: "오늘 정리하기"
+  - workroom-file-handoff: "파일 맡기기"
+
+**문서**:
+- docs/WorkroomProductizationPolicy.md (new): 워크룸 설계 원칙, 금지사항, 표면 레이아웃
+- docs/WorkroomCoreLoop.md (new): 6단계 core loop (open → create → review → use → reuse → next)
+
+**기술 결정**:
+- Await warning 정책: 실제 async가 아니면 제거 (Task 래퍼 포함)
+- Room-scoped guarantee: recentArtifactIndexEntries(for: roomID) 패턴 강제
+- Primary action 우선순위: 문서 > 파일 > 정리 (사용 빈도순)
+- Next action 활성화: recent artifact 존재 여부 단일 조건
+
+---
+
 ## 2026-05-16 (Round 164A-180Z — Document Creation Killer Workflow Pack)
 
 ### 완료 (2026-05-16)
