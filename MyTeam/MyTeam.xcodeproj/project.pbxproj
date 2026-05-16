@@ -191,6 +191,7 @@
 		962509089AAF00E7A6B82A1A /* 올리버_03_우.wav in Resources */ = {isa = PBXBuildFile; fileRef = 2D5187EE34D1BA610FEE60DE /* 올리버_03_우.wav */; };
 		988B0C6F9C81695A726604AE /* AudioPlaybackService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 261F294D0071A219C94C4067 /* AudioPlaybackService.swift */; };
 		98B316481263456DBCBB09CC /* StarterAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BA622E40133444F8A0040B2 /* StarterAction.swift */; };
+	5F1100FAF826407FA355F3A9 /* AgentQuickSwitchBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = C13A035950844A709FF3B5F8 /* AgentQuickSwitchBar.swift */; };
 		994B4271BBFD806BAAA4AD6D /* 몽몽_01_あ.wav in Resources */ = {isa = PBXBuildFile; fileRef = 8880C33D58679F3B25FF4984 /* 몽몽_01_あ.wav */; };
 		9C5146336551A9BA5621803E /* 모코_03_우.wav in Resources */ = {isa = PBXBuildFile; fileRef = B18C2CB34F7FB7DC0BE666B9 /* 모코_03_우.wav */; };
 		9C9641ABA802EF2528E3F168 /* 래키_02_e.wav in Resources */ = {isa = PBXBuildFile; fileRef = 0AB6884771D6BA60E2D2F89A /* 래키_02_e.wav */; };
@@ -1066,6 +1067,7 @@
 		9B58E10130BAE366B1756CA2 /* 치코_angry_043.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_angry_043.png"; path = "Resources/Sprites/치코/치코_angry_043.png"; sourceTree = "<group>"; };
 		9B785E5198A3C43C264F08A0 /* 치코_clockout_014.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_clockout_014.png"; path = "Resources/Sprites/치코/치코_clockout_014.png"; sourceTree = "<group>"; };
 		9BA622E40133444F8A0040B2 /* StarterAction.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StarterAction.swift; sourceTree = "<group>"; };
+	C13A035950844A709FF3B5F8 /* AgentQuickSwitchBar.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AgentQuickSwitchBar.swift; sourceTree = "<group>"; };
 		9BC74BD0B69E037F2EB69C86 /* 치코_sad_020.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_sad_020.png"; path = "Resources/Sprites/치코/치코_sad_020.png"; sourceTree = "<group>"; };
 		9C1FF2DA743C1E52C2FFAF32 /* 올리버_02_e.wav */ = {isa = PBXFileReference; includeInIndex = 1; name = "올리버_02_e.wav"; path = "Resources/CharacterPhonemes/올리버_reference/en/올리버_02_e.wav"; sourceTree = "<group>"; };
 		9C520199CA9011881DDF0C40 /* 치코_angry_023.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_angry_023.png"; path = "Resources/Sprites/치코/치코_angry_023.png"; sourceTree = "<group>"; };
@@ -3208,6 +3210,7 @@
 				83A8E7A152A015ED5FFA30D2 /* PermissionsManager.swift in Sources */,
 				50F124C45A44B6E3A29CAA32 /* AudioCaptureService.swift in Sources */,
 				63B1DDFE7603CD8F398A63A6 /* AgentChatView.swift in Sources */,
+				5F1100FAF826407FA355F3A9 /* AgentQuickSwitchBar.swift in Sources */,
 				A49E6167CF1DFA358EA782E9 /* AgentSeatView.swift in Sources */,
 				243772B48E7512E2BB3FB0A3 /* ConversationMemory.swift in Sources */,
 				D06A2F0510035B2B9D002687 /* AgentMenuPopupView.swift in Sources */,

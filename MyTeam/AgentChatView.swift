@@ -422,9 +422,7 @@ struct AgentChatView: View {
 
             Spacer()
 
-            // TODO: Quick agent switcher (sidebar 하단) - Round 163B
-            // AgentQuickSwitchBar가 프로젝트에 제대로 추가될 때까지 주석처리
-            /*
+            // Quick agent switcher (sidebar 하단)
             if !isSidebarCollapsed {
                 AgentQuickSwitchBar(
                     manager: manager,
@@ -436,7 +434,6 @@ struct AgentChatView: View {
                     }
                 )
             }
-            */
         }
         .frame(width: isSidebarCollapsed ? 50 : 160)
         .background(manager.isDarkMode ? Color.white.opacity(0.03) : Color.black.opacity(0.08))
