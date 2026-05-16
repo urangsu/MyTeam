@@ -6,6 +6,52 @@
 
 ---
 
+## 2026-05-16 (Round 164A-180Z — Document Creation Killer Workflow Pack)
+
+### 완료 (2026-05-16)
+
+**핵심 달성**:
+- "문서 만들기"를 MyTeam의 **첫 번째 킬러 워크플로우** 완성
+  - API 없이도 로컬 템플릿으로 즉시 결과 제공 (local fallback)
+  - 3가지 문서 타입: 회의록, 체크리스트, 보고서 초안
+  - WorkResultCardView로 문서 유형별 다른 UI 표시
+  - 같은 방 내에서 후속 작업 가능 (요약, 표 변환, 액션아이템 등)
+
+**구현 상세**:
+- **DocumentCreationType.swift** (new): enum + skillType mapping
+- **LocalDocumentTemplate.swift** (new): markdown 템플릿 생성 (fallback)
+- **DocumentCreationService.swift** (new):
+  - detectDocumentCreationIntent(): 메시지 → 문서 타입 감지
+  - createLocalDocument(): IndexedArtifact + RecentArtifactIndexEntry 생성 및 등록
+  - sanitizeFilename(): 파일명 정규화
+- **WorkResultKind.swift** (new): enum + 문서별 아이콘/제목/색상
+- **WorkResultCardView.swift** (modified): `kind` 파라미터 추가 → 조건부 헤더
+- **RouterBurnInSuite.swift** (modified): 10개 신규 테스트 케이스
+  - 문서 만들기 hub
+  - 3가지 타입 직접 진입
+  - 4가지 follow-up actions (room-scoped)
+- **RuntimeDiagnosticsService.swift** (modified): 9개 신규 필드 추가
+- **ToolContractValidator.swift** (modified): 5개 신규 validator 추가
+
+**문서**:
+- docs/KillerWorkflowPolicy.md (new): 킬러 워크플로우 정의 및 설계 원칙
+- docs/DocumentCreationCoreFlow.md (new): 구현 아키텍처 상세 설명
+
+**빌드 결과**:
+- Debug BUILD SUCCEEDED
+- Release BUILD SUCCEEDED
+- AgentChatView 기존 경고 2개 유지 (unrelated to this round)
+- No duplicate build file warnings
+- External write unchanged (no Gmail API, Calendar write, StoreKit changes)
+
+**주요 기술 결정**:
+- Room-scoped artifact linking: 다른 방의 artifact 참조 불가 (보안, 혼동 방지)
+- Local fallback mandatory: API 부재 시에도 기본 템플릿으로 즉시 가치 제공
+- WorkResultKind enum: artifact type-aware rendering (UI 차별화)
+- RecentArtifactIndexEntry 추적: room별 최대 10개 artifact만 유지
+
+---
+
 ## 2026-05-16 (Round 163B-UXNAV — Agent Quick Navigation + Starter Copy Polish Pack)
 
 ### 진행 중
