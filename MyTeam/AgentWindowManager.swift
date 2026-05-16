@@ -1520,4 +1520,13 @@ class AgentWindowManager: ObservableObject {
         }
         return []
     }
+
+    /// room-scoped artifact lookup by ID
+    /// 지정한 방의 artifact만 반환한다. 다른 room artifact는 nil.
+    @MainActor
+    func artifact(withID artifactID: String, roomID: UUID) -> IndexedArtifact? {
+        return recentArtifacts(for: roomID).first { artifact in
+            artifact.id == artifactID
+        }
+    }
 }

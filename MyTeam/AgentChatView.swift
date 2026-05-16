@@ -733,13 +733,15 @@ struct AgentChatView: View {
             }
         } else if WorkResultCardView.shouldRenderAsWorkResult(log.text, isUser: log.isUser) {
             // WP2-lite: 긴 어시스턴트 응답 → 전체 너비 업무 결과 카드
+            let relatedArtifacts = artifactsForLog(log, roomID: agentRoomID ?? UUID())
             WorkResultCardView(
                 text: log.text,
                 agentName: log.agentName,
                 agentColor: currentAgent.color,
                 isDarkMode: manager.isDarkMode,
                 timestamp: log.timestamp,
-                sources: log.sources
+                sources: log.sources,
+                relatedArtifacts: relatedArtifacts
             )
         } else {
             // Regular chat: use standard message bubble
@@ -896,6 +898,14 @@ struct AgentChatView: View {
         let explicitWebKeywords = ["웹", "검색", "인터넷", "구글"]
         if explicitWebKeywords.contains(where: { lower.contains($0) }) { return "explicit_web" }
         return "external_info_keyword"
+    }
+
+    // MARK: - Artifact Resolution
+    private func artifactsForLog(_ log: AgentWindowManager.ChatLog, roomID: UUID) -> [IndexedArtifact] {
+        /// ChatLog.artifactIDs → IndexedArtifact resolve (room-scoped)
+        log.artifactIDs.compactMap { artifactID in
+            manager.artifact(withID: artifactID, roomID: roomID)
+        }
     }
 
     // MARK: - 프로필/상태

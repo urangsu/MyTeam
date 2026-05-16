@@ -12,6 +12,7 @@ struct WorkResultCardView: View {
     let isDarkMode: Bool
     let timestamp: Date?
     var sources: [AgentWindowManager.SourceReference] = []
+    var relatedArtifacts: [IndexedArtifact] = []
 
     @State private var isExpanded: Bool = false
 
@@ -66,6 +67,23 @@ struct WorkResultCardView: View {
             // 출처 칩
             if !sources.isEmpty {
                 SourceChipsView(sources: sources, isDarkMode: isDarkMode)
+            }
+
+            // 관련 결과물 (inline artifact display)
+            if !relatedArtifacts.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("관련 결과물")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    ForEach(relatedArtifacts, id: \.id) { artifact in
+                        ArtifactCardView(
+                            artifact: artifact,
+                            compactMode: true
+                        )
+                    }
+                }
+                .padding(.top, 4)
             }
         }
         .padding(.horizontal, 14)
