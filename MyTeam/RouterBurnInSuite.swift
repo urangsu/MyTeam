@@ -1898,6 +1898,57 @@ enum RouterBurnInSuite {
             expectedRecentArtifactReference: true,
             shouldRequireApproval: false,
             notes: "최근 문서 액션아이템 추출"
+        ),
+
+        // Round 181A-195Z: Workroom Productization + Core Loop Surface Pack
+        .init(
+            id: "workroom-open",
+            message: "워크룸 열어줘",
+            expectedRoute: .teamDiscussion,
+            expectedSkillID: nil,
+            expectedRouteHint: "teamWorkroom",
+            expectedGoalType: "teamWorkroom",
+            shouldRequireApproval: false,
+            notes: "워크룸 네비게이션 의도"
+        ),
+        .init(
+            id: "workroom-new",
+            message: "새 워크룸 만들어줘",
+            expectedRoute: .teamDiscussion,
+            expectedSkillID: nil,
+            expectedRouteHint: "createTeamWorkroom",
+            expectedGoalType: "createTeamWorkroom",
+            shouldRequireApproval: false,
+            notes: "새 팀 워크룸 생성"
+        ),
+        .init(
+            id: "workroom-create-document",
+            message: "워크룸에서 문서 만들기",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.meeting-minutes",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "워크룸 홈에서 문서 만들기"
+        ),
+        .init(
+            id: "workroom-today-organize",
+            message: "오늘 정리해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: nil,
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "dailyOrganization",
+            shouldRequireApproval: false,
+            notes: "WorkroomHomeView의 '오늘 정리하기' action"
+        ),
+        .init(
+            id: "workroom-file-handoff",
+            message: "파일 맡기기",
+            expectedRoute: .artifactWorkflow,
+            expectedSkillID: nil,
+            expectedRouteHint: "fileIntake",
+            shouldRequireApproval: false,
+            notes: "WorkroomHomeView의 '파일 맡기기' action"
         )
     ]
 

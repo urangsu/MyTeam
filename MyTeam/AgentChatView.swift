@@ -294,9 +294,7 @@ struct AgentChatView: View {
                 // 팀 워크룸으로 돌아가기 (개인 대화에서만 표시)
                 if isPersonalChat {
                     Button(action: {
-                        Task {
-                            await manager.returnToTeamWorkroom()
-                        }
+                        manager.returnToTeamWorkroom()
                     }) {
                         Image(systemName: "person.3.fill")
                             .font(.system(size: 12, weight: .medium))
@@ -428,9 +426,7 @@ struct AgentChatView: View {
                     manager: manager,
                     currentAgentID: activeAgentID,
                     onSelectAgent: { agentID in
-                        Task {
-                            await manager.openPersonalChat(for: agentID)
-                        }
+                        manager.openPersonalChat(for: agentID)
                     }
                 )
             }

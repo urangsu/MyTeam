@@ -81,6 +81,13 @@ enum ToolContractValidator {
         validateRecentDocumentReuseLoop(issues: &issues)
         validateArtifactActionSurfacePolicy(issues: &issues)
 
+        // Round 181A-195Z validators
+        validateWorkroomHomePolicy(issues: &issues)
+        validateWorkroomPrimaryActionPolicy(issues: &issues)
+        validateWorkroomArtifactRailPolicy(issues: &issues)
+        validateWorkroomNextActionPolicy(issues: &issues)
+        validateAgentChatWarningDebtPolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -575,6 +582,43 @@ enum ToolContractValidator {
         let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
         if let snap, !snap.artifactActionSurfaceSimplified {
             issues.append(issue(.warning, "Artifact action surface가 너무 복잡합니다. Compact: 2개, Full: 4개 버튼으로 제한해야 합니다."))
+        }
+    }
+
+    // MARK: - Round 181A-195Z Validators
+
+    private static func validateWorkroomHomePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.workroomHomeAvailable {
+            issues.append(issue(.warning, "WorkroomHomeView가 unavailable 상태입니다. 팀 워크룸에서 대시보드 역할이 필요합니다."))
+        }
+    }
+
+    private static func validateWorkroomPrimaryActionPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.workroomPrimaryActionsAvailable {
+            issues.append(issue(.error, "WorkroomHomeView primary actions (문서 만들기, 파일 맡기기, 오늘 정리하기)가 unavailable 상태입니다."))
+        }
+    }
+
+    private static func validateWorkroomArtifactRailPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.workroomUsesRoomScopedArtifacts {
+            issues.append(issue(.error, "Workroom artifact rail이 global recentArtifacts를 사용합니다. Room-scoped로만 표시해야 합니다."))
+        }
+    }
+
+    private static func validateWorkroomNextActionPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.workroomNextActionsRoomScoped {
+            issues.append(issue(.error, "Workroom next actions (요약/표/체크리스트/액션아이템)이 room-scoped가 아닙니다. RoomID 체크가 필요합니다."))
+        }
+    }
+
+    private static func validateAgentChatWarningDebtPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.agentChatAwaitWarningsResolved {
+            issues.append(issue(.warning, "AgentChatView에 await warning이 남아 있습니다. 비동기 작업이 실제로 있는지 검토하세요."))
         }
     }
 }

@@ -319,6 +319,16 @@ struct RuntimeDiagnosticsSnapshot {
     let recentDocumentReuseLoopAvailable: Bool
     let artifactActionSurfaceSimplified: Bool
 
+    // Round 181A-195Z: Workroom Productization + Core Loop Surface Pack
+    let workroomHomeAvailable: Bool
+    let workroomPrimaryActionsAvailable: Bool
+    let workroomUsesRoomScopedArtifacts: Bool
+    let workroomNextActionsRoomScoped: Bool
+    let workroomGoalContextVisible: Bool
+    let teamStatusMiniWidgetPreserved: Bool
+    let personalChatSurfaceSeparated: Bool
+    let agentChatAwaitWarningsResolved: Bool
+
     // Build / Submission Status
     let macBuildPending: Bool
     let manualQAPending: Bool
@@ -1017,6 +1027,14 @@ final class RuntimeDiagnosticsService {
             documentResultInlineArtifactAvailable: true,
             recentDocumentReuseLoopAvailable: true,
             artifactActionSurfaceSimplified: true,
+            workroomHomeAvailable: true,
+            workroomPrimaryActionsAvailable: true,
+            workroomUsesRoomScopedArtifacts: true,
+            workroomNextActionsRoomScoped: true,
+            workroomGoalContextVisible: true,
+            teamStatusMiniWidgetPreserved: true,
+            personalChatSurfaceSeparated: true,
+            agentChatAwaitWarningsResolved: true,
             macBuildPending: false,
             manualQAPending: true,
             submissionReadyStatus: "manualQAPending"
