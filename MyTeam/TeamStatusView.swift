@@ -2,6 +2,72 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
+// MARK: - Workroom Action Enums
+
+public enum WorkroomPrimaryAction: String, CaseIterable, Codable, Sendable {
+    case createDocument
+    case handoffFile
+    case organizeToday
+
+    var title: String {
+        switch self {
+        case .createDocument: return "문서 만들기"
+        case .handoffFile: return "파일 맡기기"
+        case .organizeToday: return "오늘 정리하기"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .createDocument: return "회의록, 체크리스트, 보고서 등을 만듭니다"
+        case .handoffFile: return "파일을 AI팀에 맡겨 분석/정리합니다"
+        case .organizeToday: return "오늘의 작업을 정리하고 정리합니다"
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .createDocument: return "doc.badge.plus"
+        case .handoffFile: return "hand.thumbsup"
+        case .organizeToday: return "calendar.badge.checkmark"
+        }
+    }
+}
+
+public enum WorkroomNextAction: String, CaseIterable, Codable, Sendable {
+    case summarize
+    case table
+    case checklist
+    case actionItems
+
+    var title: String {
+        switch self {
+        case .summarize: return "요약하기"
+        case .table: return "표로 바꾸기"
+        case .checklist: return "체크리스트로 바꾸기"
+        case .actionItems: return "액션아이템"
+        }
+    }
+
+    var skillID: String {
+        switch self {
+        case .summarize: return "korean.document-summary"
+        case .table: return "korean.table-summary"
+        case .checklist: return "korean.checklist"
+        case .actionItems: return "korean.action-items"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .summarize: return "지금 보는 문서의 핵심을 요약합니다"
+        case .table: return "내용을 표 형태로 정리합니다"
+        case .checklist: return "체크리스트 형식으로 변환합니다"
+        case .actionItems: return "액션 아이템을 추출합니다"
+        }
+    }
+}
+
 // MARK: - TeamStatusView
 // 고도화: 팀 전체 채팅방(Logs) + 사운드/무음 모드 토글 + 다크모드
 struct TeamStatusView: View {
@@ -421,20 +487,43 @@ struct TeamStatusView: View {
 
     private var chatroomLogView: some View {
         VStack(spacing: 0) {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 8) {
-                        if manager.teamChatLogs.isEmpty {
-                            VStack(spacing: 8) {
-                                Image(systemName: "bubble.left.and.bubble.right")
-                                    .font(.system(size: 28))
-                                    .foregroundColor(textColor.opacity(0.2))
-                                Text("아직 대화 내용이 없습니다.")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(textColor.opacity(0.3))
+            // ── WorkroomHomeView (team room + no messages) ──
+            if let rid = manager.currentRoomID,
+               let currentRoom = manager.rooms.first(where: { $0.id == rid }),
+               currentRoom.computedRoomKind == .teamWorkroom,
+               manager.teamChatLogs.isEmpty {
+                // Team room with no messages → show Workroom dashboard
+                WorkroomHomeView(
+                    model: WorkroomHomeModel.fromRuntime(
+                        roomID: rid,
+                        roomTitle: currentRoom.name,
+                        recentArtifacts: manager.recentArtifacts(for: rid)
+                    ),
+                    manager: manager,
+                    isDarkMode: manager.isDarkMode,
+                    onPrimaryActionTapped: { action in
+                        handleWorkroomAction(action)
+                    },
+                    onNextActionTapped: { action in
+                        handleWorkroomNextAction(action)
+                    }
+                )
+            } else {
+                // Regular chat logs or personal chat
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 8) {
+                            if manager.teamChatLogs.isEmpty {
+                                VStack(spacing: 8) {
+                                    Image(systemName: "bubble.left.and.bubble.right")
+                                        .font(.system(size: 28))
+                                        .foregroundColor(textColor.opacity(0.2))
+                                    Text("아직 대화 내용이 없습니다.")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(textColor.opacity(0.3))
+                                }
+                                .frame(maxWidth: .infinity).padding(.top, 30)
                             }
-                            .frame(maxWidth: .infinity).padding(.top, 30)
-                        }
 
                         ForEach(Array(manager.teamChatLogs.enumerated()), id: \.element.id) { index, log in
                             if index == 0 || !Calendar.current.isDate(
@@ -502,10 +591,11 @@ struct TeamStatusView: View {
                     }
                     .padding(12)
                 }
-                .background(Color.clear)
-                .onChange(of: manager.teamChatLogs.count) { _, _ in
-                    if let last = manager.teamChatLogs.last {
-                        withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                    .background(Color.clear)
+                    .onChange(of: manager.teamChatLogs.count) { _, _ in
+                        if let last = manager.teamChatLogs.last {
+                            withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                        }
                     }
                 }
             }
@@ -1139,6 +1229,101 @@ struct TeamStatusView: View {
         Task {
             await WorkflowOrchestrator.shared.dispatch(
                 userMessage: prompt,
+                roomID: roomID,
+                manager: manager
+            )
+        }
+    }
+
+    // MARK: - Workroom Action Handlers (Round 196A-230Z)
+
+    private func handleWorkroomAction(_ action: WorkroomPrimaryAction) {
+        guard let roomID = manager.currentRoomID ?? manager.rooms.first?.id else { return }
+
+        let message: String
+        switch action {
+        case .createDocument:
+            message = "문서 만들기"
+        case .handoffFile:
+            message = "파일 맡기기"
+        case .organizeToday:
+            message = "오늘 정리하기"
+        }
+
+        dispatchWorkroomPrompt(roomID: roomID, message: message)
+    }
+
+    private func handleWorkroomNextAction(_ action: WorkroomNextAction) {
+        guard let roomID = manager.currentRoomID ?? manager.rooms.first?.id else { return }
+
+        Task {
+            // 최근 artifact 내용 조회
+            guard let resolution = await RecentArtifactContentResolver.resolveLatestMarkdownArtifact(
+                roomID: roomID,
+                manager: manager,
+                allowGlobalFallback: false
+            ) else {
+                // Artifact 없으면 안내 메시지
+                let message: String
+                switch action {
+                case .summarize:
+                    message = "최근 문서를 요약할 수 없습니다.\n먼저 문서를 만들어주세요."
+                case .table:
+                    message = "최근 문서를 표로 바꿀 수 없습니다.\n먼저 문서를 만들어주세요."
+                case .checklist:
+                    message = "최근 문서를 체크리스트로 바꿀 수 없습니다.\n먼저 문서를 만들어주세요."
+                case .actionItems:
+                    message = "최근 문서에서 액션아이템을 뽑을 수 없습니다.\n먼저 문서를 만들어주세요."
+                }
+
+                await MainActor.run {
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "시스템",
+                        text: message,
+                        isUser: false,
+                        isSystem: true
+                    )
+                }
+                return
+            }
+
+            // 액션별 메시지 구성
+            let baseMessage: String
+            switch action {
+            case .summarize:
+                baseMessage = "위 문서 요약해줘"
+            case .table:
+                baseMessage = "위 문서 표로 바꿔줘"
+            case .checklist:
+                baseMessage = "위 문서 체크리스트로 바꿔줘"
+            case .actionItems:
+                baseMessage = "위 문서에서 액션아이템 뽑아줘"
+            }
+
+            // Artifact 내용을 메시지에 포함
+            let contextBlock = "\n---\n\(resolution.sourceText)\n---"
+            let fullMessage = baseMessage + contextBlock
+
+            await MainActor.run {
+                dispatchWorkroomPrompt(roomID: roomID, message: fullMessage)
+            }
+        }
+    }
+
+    private func dispatchWorkroomPrompt(roomID: UUID, message: String) {
+        manager.addChatLog(
+            roomID: roomID,
+            agentID: "user",
+            agentName: "나",
+            text: message,
+            isUser: true
+        )
+
+        Task {
+            await WorkflowOrchestrator.shared.dispatch(
+                userMessage: message,
                 roomID: roomID,
                 manager: manager
             )
