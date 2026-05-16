@@ -731,6 +731,16 @@ struct AgentChatView: View {
 
                 if log.isUser { Spacer().frame(width: 8) }
             }
+        } else if WorkResultCardView.shouldRenderAsWorkResult(log.text, isUser: log.isUser) {
+            // WP2-lite: 긴 어시스턴트 응답 → 전체 너비 업무 결과 카드
+            WorkResultCardView(
+                text: log.text,
+                agentName: log.agentName,
+                agentColor: currentAgent.color,
+                isDarkMode: manager.isDarkMode,
+                timestamp: log.timestamp,
+                sources: log.sources
+            )
         } else {
             // Regular chat: use standard message bubble
             IMMessageBubble(

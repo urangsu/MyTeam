@@ -6,6 +6,33 @@
 
 ---
 
+## 2026-05-16 (Round 146A-152Z — Result Presentation + Room Kind + UX Surface Polish)
+
+### 완료
+
+- **WP6 FirstResultActionStrip 중복 제거**:
+  - TeamStatusView에서 FirstResultActionStripView + handleFirstResultAction 제거
+  - AgentChatView에서만 표시 (단일 표면)
+- **WP7 협업 상태 배너 압축**:
+  - 2줄 카드(62px) → 1줄 컴팩트 바(~32px)
+  - subtitle 제거, 아이콘 28→11px, 완료/실패 상태는 색상 점
+- **WP2-lite 결과물/대화 분리**:
+  - WorkResultCardView 신규 — 500자+ 또는 마크다운 헤더/표 포함 시 전체 너비 카드로 렌더링
+  - 300자 미리보기 + 접기/펼치기 토글
+  - 어시스턴트 버블 maxWidth 260→480
+  - `shouldRenderAsWorkResult()` 정적 판정 메서드
+- **ChatLog artifactIDs**: 메시지-artifact 연결 필드 추가 (기본값 `[]`, 디코딩 호환)
+- **ArtifactCardView 상태 텍스트 순화**: "메타데이터만"→"파일 정보만 저장됨", "경로 오류"→"파일을 열 수 없음"
+- **RoomKind computed property**: `.teamWorkroom` / `.personalChat` 자동 판정, 사이드바 아이콘 분리 (person.3.fill / person.fill)
+- **TeamStatusView 용어 잔존 정리**: "프로젝트 이름 변경"→"이름 변경"
+- **RuntimeDiagnostics 8개 신규 필드**: firstResultActionDeduplicated, collaborationStatusCompact, workResultCardAvailable, longAssistantResultEscapesBubble, chatLogArtifactIDsAvailable, artifactStatusCopyUserFriendly, roomKindComputedAvailable, teamWorkroomPersonalChatSeparated
+- **ToolContractValidator 5개 신규 validator**: validateFirstResultActionSurfacePolicy, validateCollaborationStatusCompactPolicy, validateWorkResultPresentationPolicy, validateArtifactStatusCopyPolicy, validateRoomKindPolicy
+- **RouterBurnInSuite 6개 신규 케이스**: long-report-result-card, markdown-table-result-card, room-kind-team-workroom, room-kind-personal-chat, artifact-status-friendly, collaboration-status-compact
+- **docs**: ResultPresentationPolicy.md, RoomKindPolicy.md 신규, ProductIAPolicy.md + WorkSurfaceSimplificationPlan.md 갱신
+- Debug + Release BUILD SUCCEEDED
+
+---
+
 ## 2026-05-16 (WP3+WP5+WP1 — Product UX Surface Cleanup)
 
 ### 완료

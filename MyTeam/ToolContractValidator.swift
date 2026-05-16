@@ -55,6 +55,13 @@ enum ToolContractValidator {
         validateReservedTaskTerminologyPolicy(issues: &issues)
         validateEmptyStateSimplificationPolicy(issues: &issues)
 
+        // Round 146A-152Z validators
+        validateFirstResultActionSurfacePolicy(issues: &issues)
+        validateCollaborationStatusCompactPolicy(issues: &issues)
+        validateWorkResultPresentationPolicy(issues: &issues)
+        validateArtifactStatusCopyPolicy(issues: &issues)
+        validateRoomKindPolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -402,6 +409,49 @@ enum ToolContractValidator {
         let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
         if let snap, !snap.emptyStateSimplified {
             issues.append(issue(.warning, "첫 empty state가 단순화되지 않았습니다. 상태카드 1 + 주요 액션 3 구조 확인 필요."))
+        }
+    }
+
+    // MARK: - Round 146A-152Z Validators
+
+    private static func validateFirstResultActionSurfacePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.firstResultActionDeduplicated {
+            issues.append(issue(.error, "FirstResultActionStrip이 TeamStatusView와 AgentChatView 양쪽에 표시됩니다. AgentChatView에서만 표시 필요."))
+        }
+    }
+
+    private static func validateCollaborationStatusCompactPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.collaborationStatusCompact {
+            issues.append(issue(.warning, "협업 상태 배너가 2줄 카드입니다. 1줄 컴팩트 바로 압축 필요."))
+        }
+    }
+
+    private static func validateWorkResultPresentationPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.workResultCardAvailable {
+            issues.append(issue(.error, "WorkResultCardView가 없습니다. 긴 어시스턴트 응답이 260px 말풍선으로 렌더링됩니다."))
+        }
+        if let snap, !snap.longAssistantResultEscapesBubble {
+            issues.append(issue(.error, "어시스턴트 메시지 maxWidth가 260px입니다. 480px로 확장 필요."))
+        }
+    }
+
+    private static func validateArtifactStatusCopyPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.artifactStatusCopyUserFriendly {
+            issues.append(issue(.warning, "ArtifactCardView 상태 텍스트에 진단 용어('메타데이터만', '경로 오류')가 포함되어 있습니다."))
+        }
+    }
+
+    private static func validateRoomKindPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.roomKindComputedAvailable {
+            issues.append(issue(.warning, "RoomKind computed property가 없습니다. 워크룸/개인 대화 구분 불가."))
+        }
+        if let snap, !snap.teamWorkroomPersonalChatSeparated {
+            issues.append(issue(.warning, "팀 워크룸과 개인 대화에 동일한 아이콘이 표시됩니다. 시각적 구분 필요."))
         }
     }
 }

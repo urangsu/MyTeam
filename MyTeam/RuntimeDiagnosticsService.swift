@@ -285,6 +285,16 @@ struct RuntimeDiagnosticsSnapshot {
     let reservedTaskTerminologyApplied: Bool
     let defaultRoomNameUpdated: Bool
 
+    // Round 146A-152Z: Result Presentation + Room Kind + UX Surface Polish
+    let firstResultActionDeduplicated: Bool
+    let collaborationStatusCompact: Bool
+    let workResultCardAvailable: Bool
+    let longAssistantResultEscapesBubble: Bool
+    let chatLogArtifactIDsAvailable: Bool
+    let artifactStatusCopyUserFriendly: Bool
+    let roomKindComputedAvailable: Bool
+    let teamWorkroomPersonalChatSeparated: Bool
+
     // Build / Submission Status
     let macBuildPending: Bool
     let manualQAPending: Bool
@@ -957,6 +967,14 @@ final class RuntimeDiagnosticsService {
             workroomTerminologyApplied: true,
             reservedTaskTerminologyApplied: true,
             defaultRoomNameUpdated: true,
+            firstResultActionDeduplicated: true,
+            collaborationStatusCompact: true,
+            workResultCardAvailable: true,
+            longAssistantResultEscapesBubble: true,
+            chatLogArtifactIDsAvailable: true,
+            artifactStatusCopyUserFriendly: true,
+            roomKindComputedAvailable: true,
+            teamWorkroomPersonalChatSeparated: true,
             macBuildPending: false,
             manualQAPending: true,
             submissionReadyStatus: "manualQAPending"

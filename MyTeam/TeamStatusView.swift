@@ -194,64 +194,41 @@ struct TeamStatusView: View {
     }
     
     // MARK: - 하위 뷰 (에이전트 리스트)
+    // WP7: 협업 상태 배너 압축 — 2줄 카드 → 1줄 컴팩트 바 (~32px)
     private var collaborationStatusBanner: some View {
-        HStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .fill(collaborationStatus.accentColor.opacity(0.14))
-                    .frame(width: 28, height: 28)
-                Image(systemName: collaborationStatus.iconName)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(collaborationStatus.accentColor)
-            }
+        HStack(spacing: 8) {
+            Image(systemName: collaborationStatus.iconName)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(collaborationStatus.accentColor)
 
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(collaborationStatus.title)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(textColor.opacity(0.8))
-                        .lineLimit(1)
-                    if let agentName = collaborationStatus.agentName {
-                        Text(agentName)
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(textColor.opacity(0.45))
-                            .lineLimit(1)
-                    }
-                }
-                if !collaborationStatus.detail.isEmpty {
-                    Text(collaborationStatus.detail)
-                        .font(.system(size: 10))
-                        .foregroundColor(textColor.opacity(0.48))
-                        .lineLimit(1)
-                }
+            Text(collaborationStatus.title)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(textColor.opacity(0.75))
+                .lineLimit(1)
+
+            if let agentName = collaborationStatus.agentName {
+                Text("· \(agentName)")
+                    .font(.system(size: 10))
+                    .foregroundColor(textColor.opacity(0.45))
+                    .lineLimit(1)
             }
 
             Spacer()
 
             if collaborationStatus.kind == .completed {
-                Text("최근")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(.green)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(Color.green.opacity(0.12)))
+                Circle().fill(Color.green).frame(width: 6, height: 6)
             } else if collaborationStatus.kind == .failed {
-                Text("확인")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(.red)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(Color.red.opacity(0.12)))
+                Circle().fill(Color.red).frame(width: 6, height: 6)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 6)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(collaborationStatus.accentColor.opacity(manager.isDarkMode ? 0.10 : 0.08))
+            RoundedRectangle(cornerRadius: 8)
+                .fill(collaborationStatus.accentColor.opacity(manager.isDarkMode ? 0.08 : 0.05))
         )
         .padding(.horizontal, 16)
-        .padding(.top, 10)
+        .padding(.top, 6)
     }
 
     private var agentListView: some View {
@@ -320,7 +297,7 @@ struct TeamStatusView: View {
                 }
                 .padding(.horizontal, 8).padding(.vertical, 6)
             }
-            .alert("프로젝트 이름 변경", isPresented: $showRenameAlert) {
+            .alert("이름 변경", isPresented: $showRenameAlert) {
                 TextField("새 이름", text: $newName)
                 Button("변경") {
                     if let r = roomToRename {
@@ -329,7 +306,7 @@ struct TeamStatusView: View {
                 }
                 Button("취소", role: .cancel) { }
             } message: {
-                Text("새 프로젝트 이름을 입력하세요.")
+                Text("새 이름을 입력하세요.")
             }
             .alert(item: $roomToDelete) { room in
                 Alert(
@@ -551,18 +528,7 @@ struct TeamStatusView: View {
                 }
                 .frame(maxHeight: 110)
 
-                // ── First Result Action Strip (첫 artifact 생성 후) ──
-                if manager.firstLaunchState.shouldShowFirstResultActions,
-                   let firstArtifact = roomArtifacts.first,
-                   firstArtifact.healthStatus == .valid {
-                    Divider().background(textColor.opacity(0.06))
-                    FirstResultActionStripView(
-                        actions: StarterActionProvider.actionsForFirstResult(),
-                        onActionTap: { action in
-                            handleFirstResultAction(action, artifact: firstArtifact)
-                        }
-                    )
-                }
+                // First Result Action Strip은 AgentChatView에서만 표시 (WP6 중복 제거)
             }
 
             // ── 하단: 입력창 (팀 채팅 + 첨부파일) ──
@@ -1041,13 +1007,13 @@ struct TeamStatusView: View {
 
         var body: some View {
             HStack(spacing: 6) {
-                // 삭제 모드: 빨간 원 아이콘 / 일반: 말풍선
+                // 삭제 모드: 빨간 원 아이콘 / 일반: RoomKind별 아이콘
                 if isDeleteMode {
                     Image(systemName: "minus.circle.fill")
                         .font(.system(size: 13))
                         .foregroundColor(.red)
                 } else {
-                    Image(systemName: "bubble.left.fill")
+                    Image(systemName: room.computedRoomKind == .teamWorkroom ? "person.3.fill" : "person.fill")
                         .font(.system(size: 10))
                         .foregroundColor(isSelected ? .blue : .gray.opacity(0.5))
                 }
@@ -1179,22 +1145,7 @@ struct TeamStatusView: View {
         }
     }
 
-    private func handleFirstResultAction(_ action: StarterAction, artifact: IndexedArtifact) {
-        guard let roomID = manager.currentRoomID ?? manager.rooms.first?.id else { return }
-
-        // First result actions route through StarterActionDispatcher
-        Task {
-            await StarterActionDispatcher.dispatch(
-                action,
-                roomID: roomID,
-                manager: manager,
-                orchestrator: WorkflowOrchestrator.shared,
-                onFileIntakeRequested: {
-                    isFileIntakeSheetPresented = true
-                }
-            )
-        }
-    }
+    // handleFirstResultAction 제거 — WP6: AgentChatView에서만 처리
 }
 
 // MARK: - StatusAgentRow

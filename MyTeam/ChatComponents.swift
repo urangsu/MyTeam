@@ -105,7 +105,7 @@ struct IMMessageBubble: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 9)
                     .background(RoundedRectangle(cornerRadius: 18).fill(bubbleBg))
-                    .frame(maxWidth: 260, alignment: .leading)
+                    .frame(maxWidth: 480, alignment: .leading)
                     .contextMenu {
                         Button(action: {
                             NSPasteboard.general.clearContents()

@@ -397,6 +397,7 @@
 		E15B08D0B72E4AF49B9EB09ECE4BE00B /* DocumentModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = D233C8E2E74D4E59967AF9411ADE4426 /* DocumentModels.swift */; };
 		E31892656AD74C4698A6A27B /* FirstLaunchBannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3B0ECFCF9924DFB8A7DC901 /* FirstLaunchBannerView.swift */; };
 		D559804DD1E041ABA71C4C81 /* OnboardingCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3755946CB7EB44DABD75A3B8 /* OnboardingCardView.swift */; };
+		A146B001F7E84D2C9E1FWORK /* WorkResultCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A146B002F7E84D2C9E1FWORK /* WorkResultCardView.swift */; };
 		E38592CE24144381A131C1B9 /* KoreanPrivacyTermsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33BDB0206ACA43B6A84A3528 /* KoreanPrivacyTermsService.swift */; };
 		E53C44F0DAFCBFB7BC86E10D /* LocalSchedulerCommandService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C8DB6869DC6D8FAAC0E7EDF /* LocalSchedulerCommandService.swift */; };
 		E571F49146206EE0284BDB70 /* ae.wav in Resources */ = {isa = PBXBuildFile; fileRef = 36E428B9C0FB174EB69C0838 /* ae.wav */; };
@@ -1272,6 +1273,7 @@
 		C373C19C411EF6D36C1B5A05 /* 치코_resting_004.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_resting_004.png"; path = "Resources/Sprites/치코/치코_resting_004.png"; sourceTree = "<group>"; };
 		C3B0ECFCF9924DFB8A7DC901 /* FirstLaunchBannerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FirstLaunchBannerView.swift; sourceTree = "<group>"; };
 		3755946CB7EB44DABD75A3B8 /* OnboardingCardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnboardingCardView.swift; sourceTree = "<group>"; };
+		A146B002F7E84D2C9E1FWORK /* WorkResultCardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WorkResultCardView.swift; sourceTree = "<group>"; };
 		C3E0C65F9BD046748F09020E /* 치코_landing_031.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_landing_031.png"; path = "Resources/Sprites/치코/치코_landing_031.png"; sourceTree = "<group>"; };
 		C3E7C1672B95B6D827546A7F /* 치코_01_a.wav */ = {isa = PBXFileReference; includeInIndex = 1; name = "치코_01_a.wav"; path = "Resources/CharacterPhonemes/치코_reference/en/치코_01_a.wav"; sourceTree = "<group>"; };
 		C4C8B70E275B2D3BC51E7DED /* 치코_drag_012.png */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = image.png; name = "치코_drag_012.png"; path = "Resources/Sprites/치코/치코_drag_012.png"; sourceTree = "<group>"; };
@@ -1796,6 +1798,7 @@
 				831A9193F81CEB521FA263A9 /* AgentMenuPopupView.swift */,
 				A2E3CE54DB16D3480AFD5027 /* CharacterVoiceConfig.swift */,
 				8134F5DCEAE6B2A61F684FEB /* ChatComponents.swift */,
+				A146B002F7E84D2C9E1FWORK /* WorkResultCardView.swift */,
 				32E40E7F7C4267AC38CAB6DF /* CharacterSpriteScene.swift */,
 				75E81EAF90D801F28126E03A /* TeamStatusView.swift */,
 				B33AAEE2C77B168F4ADF852E /* eo.wav */,
@@ -3321,6 +3324,7 @@
 				03A80FE24E24453B845747E8 /* FirstLaunchStateProvider.swift in Sources */,
 				E31892656AD74C4698A6A27B /* FirstLaunchBannerView.swift in Sources */,
 				D559804DD1E041ABA71C4C81 /* OnboardingCardView.swift in Sources */,
+				A146B001F7E84D2C9E1FWORK /* WorkResultCardView.swift in Sources */,
 				1679789F1F6C4C1CB732A2E8 /* LocalOnlyModeCardView.swift in Sources */,
 				88BFE44B4D134F2C8C430DF1 /* RuntimeCapabilityMode.swift in Sources */,
 				AB3502AEE8DFC07269BDAB58 /* ProductSurfacePolicy.swift in Sources */,

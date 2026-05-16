@@ -5,7 +5,7 @@ import Foundation
 
 extension AgentWindowManager {
 
-    // ── 채팅방(프로젝트) 모델 ──
+    // ── 채팅방(워크룸/개인 대화) 모델 ──
     struct ChatRoom: Identifiable, Codable {
         let id: UUID
         var name: String
@@ -13,6 +13,14 @@ extension AgentWindowManager {
         var agentIDs: [String]
         var leaderAgentID: String? = nil
         let createdAt: Date
+
+        /// Round 146A: agentIDs 기반 방 종류 자동 판정
+        var computedRoomKind: RoomKind {
+            if agentIDs.contains("team_all") || agentIDs.count > 1 {
+                return .teamWorkroom
+            }
+            return .personalChat
+        }
     }
 
     // ── 채팅 메시지 모델 ──
@@ -27,6 +35,13 @@ extension AgentWindowManager {
         var attachments: [ChatAttachment] = []  // 첨부파일
         var sources: [SourceReference] = []  // 웹 검색/자료 출처
         var skillID: String? = nil
+        var artifactIDs: [String] = []  // Round 146A: 이 메시지가 생성한 artifact ID 목록
+    }
+
+    // ── 워크룸/개인 대화 구분 (Round 146A) ──
+    enum RoomKind: String, Codable {
+        case teamWorkroom    // 팀 전체 협업 공간 (team_all 또는 agentIDs 2개+)
+        case personalChat    // 개인 에이전트 대화 (agentIDs 1개)
     }
 
     struct SourceReference: Identifiable, Codable, Hashable {

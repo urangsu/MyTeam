@@ -1698,6 +1698,69 @@ enum RouterBurnInSuite {
             expectedGoalType: "scheduledTask",
             shouldRequireApproval: false,
             notes: "구 용어 '스케줄 근무' → 예약 작업으로 처리"
+        ),
+
+        // Round 146A-152Z: Result Presentation + Room Kind
+        .init(
+            id: "long-report-result-card",
+            message: "MyTeam 앱 소개 문서를 3000자 이상으로 작성해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.report-draft",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "긴 결과물은 WorkResultCardView로 렌더링 확인"
+        ),
+        .init(
+            id: "markdown-table-result-card",
+            message: "팀원별 업무 분담표를 마크다운 표로 만들어줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.report-draft",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "마크다운 표 포함 결과 → WorkResultCardView 렌더링"
+        ),
+        .init(
+            id: "room-kind-team-workroom",
+            message: "팀 워크룸에서 회의록 정리해줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.report-draft",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "team_all 방 → computedRoomKind == .teamWorkroom"
+        ),
+        .init(
+            id: "room-kind-personal-chat",
+            message: "레오한테 개인적으로 물어볼게 있어",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            notes: "단일 에이전트 방 → computedRoomKind == .personalChat"
+        ),
+        .init(
+            id: "artifact-status-friendly",
+            message: "아까 만든 보고서 상태 확인해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            expectedRecentArtifactReference: true,
+            shouldRequireApproval: false,
+            notes: "artifact 상태 텍스트가 사용자 친화적으로 순화됨 확인"
+        ),
+        .init(
+            id: "collaboration-status-compact",
+            message: "지금 팀 상태 어때?",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            notes: "협업 상태 배너가 1줄 컴팩트 바로 압축됨 확인"
         )
     ]
 

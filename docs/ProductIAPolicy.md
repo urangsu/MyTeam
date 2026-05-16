@@ -33,3 +33,19 @@
 | 파일 맡기기 | `starter_file_handoff` | fileIntake |
 | 문서 만들기 | `starter_document_create` | universalDocument |
 | 오늘 정리하기 | `starter_today_organize` | localBriefing |
+
+## Round 146A-152Z 추가 정책
+
+### FirstResultActionStrip 단일화 (WP6)
+- TeamStatusView에서 제거, AgentChatView에서만 표시
+- 사용자가 작업 중인 화면(개인 대화)에서만 다음 단계 액션 제안
+
+### 협업 상태 배너 압축 (WP7)
+- 2줄 카드(62px) → 1줄 컴팩트 바(~32px)
+- subtitle 제거, 아이콘 축소, 완료/실패 상태는 색상 점으로 표시
+
+### 결과물/대화 분리 (WP2-lite)
+- 상세: docs/ResultPresentationPolicy.md 참조
+
+### 방 구분 (RoomKind)
+- 상세: docs/RoomKindPolicy.md 참조

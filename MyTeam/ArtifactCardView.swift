@@ -168,11 +168,11 @@ struct ArtifactCardView: View {
         case .valid:
             return "저장됨 • 재사용 가능"
         case .metadataOnly:
-            return "메타데이터만"
+            return "파일 정보만 저장됨"
         case .missingFile:
             return "파일을 찾을 수 없습니다"
         case .invalidExternalPath, .invalidRelativePath:
-            return "경로 오류"
+            return "파일을 열 수 없음"
         case .hashMismatch:
             return "파일 상태가 바뀌었습니다"
         }

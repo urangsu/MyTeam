@@ -12,22 +12,25 @@
 | TypingIndicator timer leak | `onDisappear` invalidate 추가 |
 | 기본 방 이름 | "기본 프로젝트" → "워크룸 1" |
 
-## 다음 단계 (Round 146A 이후)
+## Round 146A-152Z 완료 항목
 
-### TeamStatusView 경량화 (P1)
-현재 TeamStatusView는 에이전트 리스트 + 채팅 로그 + artifact 카드 + 스케줄 + 커넥터 상태 + API key 상태를 모두 포함.
-목표: 팀 상태 + 현재 작업 + 빠른 입력 + starter 3개 + 워크플로우 중단 버튼.
+| 항목 | 내용 |
+|---|---|
+| FirstResultActionStrip 단일화 | TeamStatusView에서 제거, AgentChatView만 유지 (WP6) |
+| 협업 배너 압축 | 2줄 카드 → 1줄 컴팩트 바 (WP7) |
+| WorkResultCardView | 500자+/마크다운 헤더/표 → 전체 너비 카드 (WP2-lite) |
+| 버블 확장 | 어시스턴트 maxWidth 260→480 |
+| ChatLog artifactIDs | 메시지-artifact 연결 필드 |
+| ArtifactCardView 상태 순화 | 진단 용어 → 사용자 친화적 텍스트 |
+| RoomKind | 워크룸/개인 대화 자동 판정 + 아이콘 분리 |
 
-### Empty State 단순화 (P2)
-`FirstLaunchBannerView`와 `LocalOnlyModeCardView` 동시 표시 방지.
-상태카드 1개 + 주요 액션 3개로 정리.
-
-### Result/Conversation 분리 (P3)
-긴 답변 = 넓은 블록, artifact = 카드 스타일.
-`ResultMessageBlockView` 신규 컴포넌트.
+## 다음 단계 (Round 153A 이후)
 
 ### sendMessage await (P3)
 `ConversationMemory.handleChatCommand()` 비동기 완료 후 LLM 호출.
+
+### WP4 확장: 방 생성 안내 텍스트 (P2)
+팀 워크룸 생성 시 "모든 팀원이 함께 작업합니다" 안내.
 
 ## 변경 금지 사항
 
