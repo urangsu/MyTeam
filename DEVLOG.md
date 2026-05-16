@@ -6,9 +6,9 @@
 
 ---
 
-## 2026-05-16 (Round 153A-162Z — WorkResult Inline Artifact + Skill Result Card + Message Linking Pack)
+## 2026-05-16 (Round 153A-162Z FINAL — Inline Artifact Resolver + Result Card Completion Pack)
 
-### 완료 (Part 1-2, 2026-05-16)
+### 완료 (Part 1-3, 2026-05-16)
 
 - **workflow 완료 메시지와 artifact 연결**:
   - WorkflowOrchestrator.removeProgressAndPost() 함수 확장: `artifactIDs: [String] = []` 파라미터 추가
@@ -32,7 +32,16 @@
   - validateSkillResultCardFallbackPolicy()
 - **docs**: ResultPresentationPolicy.md "Inline Artifact Linking" 섹션 추가
 - Debug + Release BUILD SUCCEEDED
-- Commits: ea38e91 (Part 1), ff0ef76 (Part 2)
+- Commits: ea38e91 (Part 1), ff0ef76 (Part 2), 8520219 (Part 3)
+
+**Part 3: 완료 (2026-05-16)**
+- AgentWindowManager.artifact(withID:roomID:) room-scoped lookup 추가
+- WorkResultCardView.relatedArtifacts 파라미터 추가 및 inline 표시
+- AgentChatView.artifactsForLog() resolver 구현
+- ChatLog.artifactIDs → IndexedArtifact 해석 연결
+- Artifact deduplication: inline 표시 → 하단 목록 중복 제거
+- ArtifactCardView compact mode 최종 통합
+- Debug + Release BUILD SUCCEEDED, 0 warnings
 
 ### 다음 (Round 154A+)
 
