@@ -1681,7 +1681,7 @@ final class WorkflowOrchestrator {
 
     @MainActor
     private func removeProgressAndPost(
-        manager: AgentWindowManager, roomID: UUID, progressID: UUID, text: String, isSystem: Bool
+        manager: AgentWindowManager, roomID: UUID, progressID: UUID, text: String, isSystem: Bool, artifactIDs: [String] = []
     ) {
         // TODO: P1 — ChatLog 삽입 방식 대신 manager.workflowStatusText(@Published)로 분리
         //       rooms 저장과 결합도가 높아 데모 이후 별도 UI state로 교체할 것.
@@ -1691,7 +1691,7 @@ final class WorkflowOrchestrator {
         // 실제 결과 추가
         let log = AgentWindowManager.ChatLog(
             id: UUID(), agentID: "system", agentName: "작업봇",
-            text: text, isUser: false, timestamp: Date(), isSystem: isSystem, sources: []
+            text: text, isUser: false, timestamp: Date(), isSystem: isSystem, sources: [], artifactIDs: artifactIDs
         )
         manager.rooms[idx].messages.append(log)
     }
@@ -1971,7 +1971,8 @@ final class WorkflowOrchestrator {
                     removeProgressAndPost(
                         manager: manager, roomID: roomID, progressID: progressMsgID,
                         text: "✅ \(artifact.title) 생성 완료!\n파일: \(artifact.filename)",
-                        isSystem: false
+                        isSystem: false,
+                        artifactIDs: [artifact.id]
                     )
                 }
                 AppLog.info("[PrivacyTermsWorkflow] 완료 artifact=\(request.filename)")
@@ -2233,7 +2234,8 @@ final class WorkflowOrchestrator {
                         request: request,
                         verification: verification
                     ),
-                    isSystem: false
+                    isSystem: false,
+                    artifactIDs: [artifact.id]
                 )
             }
             AppLog.info("[UniversalDocumentWorkflow] 완료 artifact=\(artifact.filename)")
@@ -2513,7 +2515,8 @@ final class WorkflowOrchestrator {
                     removeProgressAndPost(
                         manager: manager, roomID: roomID, progressID: progressMsgID,
                         text: AppLaunchArtifactWriter.completionMessage(for: artifact),
-                        isSystem: false
+                        isSystem: false,
+                        artifactIDs: [artifact.id]
                     )
                 }
                 AppLog.info("[AppLaunchWorkflow] 완료 artifact=\(artifact.filename)")

@@ -36,11 +36,32 @@ struct SkillResultRendererView: View {
             Text(text)
                 .font(.system(size: 12))
                 .foregroundColor(.white)
+        } else if shouldRenderAsGenericCard(text) {
+            // Generic WorkResultCard fallback for structured output (5+ lines, markdown headers, tables, checklists)
+            WorkResultCardView(
+                text: text,
+                agentName: "작업봇",
+                agentColor: .blue.opacity(0.7),
+                isDarkMode: isDarkMode,
+                timestamp: Date(),
+                sources: []
+            )
         } else {
             MarkdownTextView(
                 text: text,
                 isDarkMode: isDarkMode
             )
         }
+    }
+
+    /// 스킬 결과가 generic WorkResultCard로 렌더링되어야 하는지 판정
+    private func shouldRenderAsGenericCard(_ text: String) -> Bool {
+        let lineCount = text.split(separator: "\n").count
+        return lineCount >= 5
+            || text.contains("# ")
+            || text.contains("## ")
+            || text.contains("### ")
+            || (text.contains("|") && text.contains("---"))
+            || text.contains("- [ ]")
     }
 }

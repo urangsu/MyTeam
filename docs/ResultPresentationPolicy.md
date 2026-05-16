@@ -30,12 +30,26 @@
 | "경로 오류" | "파일을 열 수 없음" |
 | "파일 상태가 바뀌었습니다" | (유지) |
 
+## Inline Artifact Linking (Round 153A-162Z)
+
+- **workflow 완료 메시지와 artifact 연결**: `removeProgressAndPost(..., artifactIDs: [artifact.id])`로 생성된 artifact ID를 ChatLog에 저장
+- **WorkResultCardView 인라인 표시**: WorkResultCardView가 관련 artifact를 카드 내부에 inline으로 표시 (아래 floating 목록과 중복 제거)
+- **SkillResultRendererView generic card fallback**: 5줄 이상, 마크다운 헤더/표/체크리스트 포함 스킬 결과 → WorkResultCardView로 렌더링
+- **ArtifactCardView compact mode**: inline 표시 모드에서 더 컴팩트한 레이아웃 (선택사항)
+
 ## 검증
 
 - `WorkResultCardView.shouldRenderAsWorkResult()` 정적 메서드로 판정
+- `SkillResultRendererView.shouldRenderAsGenericCard()` 동적 판정
 - `RuntimeDiagnosticsSnapshot.workResultCardAvailable`
 - `RuntimeDiagnosticsSnapshot.longAssistantResultEscapesBubble`
 - `RuntimeDiagnosticsSnapshot.chatLogArtifactIDsAvailable`
+- `RuntimeDiagnosticsSnapshot.chatLogArtifactIDsLinked`
 - `RuntimeDiagnosticsSnapshot.artifactStatusCopyUserFriendly`
+- `RuntimeDiagnosticsSnapshot.workResultInlineArtifactsAvailable`
+- `RuntimeDiagnosticsSnapshot.skillResultGenericCardFallbackAvailable`
 - `ToolContractValidator.validateWorkResultPresentationPolicy()`
 - `ToolContractValidator.validateArtifactStatusCopyPolicy()`
+- `ToolContractValidator.validateWorkResultInlineArtifactPolicy()`
+- `ToolContractValidator.validateChatLogArtifactLinkingPolicy()`
+- `ToolContractValidator.validateSkillResultCardFallbackPolicy()`

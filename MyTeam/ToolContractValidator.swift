@@ -62,6 +62,11 @@ enum ToolContractValidator {
         validateArtifactStatusCopyPolicy(issues: &issues)
         validateRoomKindPolicy(issues: &issues)
 
+        // Round 153A-162Z validators
+        validateWorkResultInlineArtifactPolicy(issues: &issues)
+        validateChatLogArtifactLinkingPolicy(issues: &issues)
+        validateSkillResultCardFallbackPolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -452,6 +457,27 @@ enum ToolContractValidator {
         }
         if let snap, !snap.teamWorkroomPersonalChatSeparated {
             issues.append(issue(.warning, "팀 워크룸과 개인 대화에 동일한 아이콘이 표시됩니다. 시각적 구분 필요."))
+        }
+    }
+
+    private static func validateWorkResultInlineArtifactPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.workResultInlineArtifactsAvailable {
+            issues.append(issue(.warning, "WorkResultCardView에서 inline artifact 표시가 없습니다. 관련 artifact를 카드 내부에 표시해야 합니다."))
+        }
+    }
+
+    private static func validateChatLogArtifactLinkingPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.chatLogArtifactIDsLinked {
+            issues.append(issue(.warning, "ChatLog.artifactIDs가 workflow 완료 메시지에서 사용되지 않습니다. 메시지와 artifact 연결 필요."))
+        }
+    }
+
+    private static func validateSkillResultCardFallbackPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.skillResultGenericCardFallbackAvailable {
+            issues.append(issue(.warning, "SkillResultRendererView에 generic card fallback이 없습니다. 구조화된 스킬 결과를 카드로 표시해야 합니다."))
         }
     }
 }

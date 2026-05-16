@@ -295,6 +295,12 @@ struct RuntimeDiagnosticsSnapshot {
     let roomKindComputedAvailable: Bool
     let teamWorkroomPersonalChatSeparated: Bool
 
+    // Round 153A-162Z: WorkResult Inline Artifact + Skill Result Card + Message Linking Pack
+    let workResultInlineArtifactsAvailable: Bool
+    let chatLogArtifactIDsLinked: Bool
+    let skillResultGenericCardFallbackAvailable: Bool
+    let bottomArtifactListDeduplicated: Bool
+
     // Build / Submission Status
     let macBuildPending: Bool
     let manualQAPending: Bool
@@ -975,6 +981,10 @@ final class RuntimeDiagnosticsService {
             artifactStatusCopyUserFriendly: true,
             roomKindComputedAvailable: true,
             teamWorkroomPersonalChatSeparated: true,
+            workResultInlineArtifactsAvailable: true,
+            chatLogArtifactIDsLinked: true,
+            skillResultGenericCardFallbackAvailable: true,
+            bottomArtifactListDeduplicated: true,
             macBuildPending: false,
             manualQAPending: true,
             submissionReadyStatus: "manualQAPending"

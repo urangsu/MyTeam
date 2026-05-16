@@ -6,6 +6,31 @@
 
 ---
 
+## 2026-05-16 (Round 153A-162Z — WorkResult Inline Artifact + Skill Result Card + Message Linking Pack)
+
+### 진행 중
+
+- **workflow 완료 메시지와 artifact 연결**:
+  - WorkflowOrchestrator.removeProgressAndPost() 함수 확장: `artifactIDs: [String] = []` 파라미터 추가
+  - UniversalDocument, PrivacyTerms, AppLaunch 완료 메시지에 artifact ID 링킹
+  - ChatLog 저장 시 artifactIDs 배열 포함
+- **SkillResultRendererView generic card fallback**:
+  - shouldRenderAsGenericCard() 판정: 5줄 이상, 마크다운 헤더/표/체크리스트 포함
+  - 구조화된 스킬 결과 → WorkResultCardView로 렌더링
+- **RuntimeDiagnostics 4개 신규 필드**:
+  - workResultInlineArtifactsAvailable
+  - chatLogArtifactIDsLinked
+  - skillResultGenericCardFallbackAvailable
+  - bottomArtifactListDeduplicated
+- **ToolContractValidator 3개 신규 validator**:
+  - validateWorkResultInlineArtifactPolicy()
+  - validateChatLogArtifactLinkingPolicy()
+  - validateSkillResultCardFallbackPolicy()
+- **docs**: ResultPresentationPolicy.md "Inline Artifact Linking" 섹션 추가
+- Debug BUILD SUCCEEDED
+
+---
+
 ## 2026-05-16 (Round 146A-152Z — Result Presentation + Room Kind + UX Surface Polish)
 
 ### 완료
