@@ -40,6 +40,30 @@ struct WorkroomHomeModel: Equatable, Sendable {
             activeTaskSummary: activeTaskSummary
         )
     }
+
+    /// Runtime에서 실제 room과 artifact 데이터로 모델 생성
+    /// - Parameters:
+    ///   - roomID: 현재 선택된 room ID
+    ///   - roomTitle: room의 이름
+    ///   - recentArtifacts: room-scoped recent artifacts
+    nonisolated static func fromRuntime(
+        roomID: UUID,
+        roomTitle: String,
+        recentArtifacts: [IndexedArtifact]
+    ) -> WorkroomHomeModel {
+        let subtitle = "팀 공간"
+
+        return WorkroomHomeModel(
+            roomID: roomID,
+            title: roomTitle,
+            subtitle: subtitle,
+            currentGoal: nil,
+            primaryActions: WorkroomPrimaryAction.allCases,
+            recentArtifacts: Array(recentArtifacts.prefix(5)),
+            nextActions: recentArtifacts.isEmpty ? [] : WorkroomNextAction.allCases,
+            activeTaskSummary: nil
+        )
+    }
 }
 
 // MARK: - WorkroomPrimaryAction
