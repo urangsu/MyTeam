@@ -329,6 +329,22 @@ struct RuntimeDiagnosticsSnapshot {
     let personalChatSurfaceSeparated: Bool
     let agentChatAwaitWarningsResolved: Bool
 
+    // Round 196A-230Z: Workroom Stabilization + Type Consolidation
+    let workroomActionTypesConsolidated: Bool
+    let workroomEnumDuplicationRemoved: Bool
+    let workroomPbxprojRegistered: Bool
+    let workroomHandlerMethodsConsolidated: Bool
+    let workroomRoomScopeEnforced: Bool
+    let workroomCharacterSystemPreserved: Bool
+    let workroomCharacterReactionBridgeBacklogDocumented: Bool
+    let workroomSpriteSheetProductionSpecDocumented: Bool
+    let workroomCharacterReactionEnginePlanDocumented: Bool
+    let workroomRuntimeDiagnosticsEnhanced: Bool
+    let workroomToolContractValidatorEnhanced: Bool
+    let workroomRouterBurnInSuiteEnhanced: Bool
+    let workroomPreflightScriptAvailable: Bool
+    let workroomInternalReviewReportAvailable: Bool
+
     // Build / Submission Status
     let macBuildPending: Bool
     let manualQAPending: Bool

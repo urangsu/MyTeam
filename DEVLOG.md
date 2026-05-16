@@ -6,6 +6,36 @@
 
 ---
 
+## 2026-05-17 (Round 196A-230Z — Workroom Stabilization + Type Consolidation)
+
+### 완료 (2026-05-17)
+
+**핵심 달성**:
+- Workroom action types 중앙 집중식 정의 (WorkroomActionTypes.swift)
+- TeamStatusView handler 메서드 통합 및 refactoring
+- 캐릭터 시스템 완전 보존 확인
+- 다음 라운드 (231A) 준비 문서 작성 완료
+
+**구현**:
+- **WorkroomActionTypes.swift** (new): 2 enum + 모든 프롭들 중앙화
+  - WorkroomPrimaryAction: createDocument, handoffFile, organizeToday
+  - WorkroomNextAction: summarize, table, checklist, actionItems
+- **pbxproj**: file ref + build file 등록, sources phase 추가
+- **TeamStatusView.swift**: handlers refactored to use action.dispatchPrompt
+- **Room scope**: recentArtifacts() 0, recentArtifacts(for:) 10개 확인
+- **Character preservation**: 4 files + 7 referencing files 검증
+
+**문서**:
+- .claude/CLAUDE.md (project config)
+- .claude/commands/{preflight,review,repair-build,workroom-final}.md
+- docs/character/{CharacterReactionBridgeBacklog,SpriteSheetProductionSpec,CharacterReactionEnginePlan}.md
+- scripts/preflight_workroom_round196.sh
+- docs/workroom/WorkroomRound196ReviewReport.md
+
+**Build**: Debug ✅, Release ✅, 0 warnings
+
+---
+
 ## 2026-05-16 (Round 181A-195Z — Workroom Productization + Core Loop Surface Pack)
 
 ### 진행 중 (2026-05-16)

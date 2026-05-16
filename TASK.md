@@ -607,6 +607,40 @@ Mac App Store에 출시 가능한 macOS 네이티브 AI 팀 앱.
 
 ---
 
+---
+
+## Round 196A-230Z Completion (2026-05-17)
+
+### Completed
+- [x] WorkroomActionTypes.swift created (canonical enum source)
+- [x] Enum deduplication (removed from TeamStatusView, WorkroomHomeModel)
+- [x] pbxproj registration (file ref + build file + sources phase)
+- [x] TeamStatusView handlers refactored to use dispatchPrompt
+- [x] Build validation: Debug + Release succeeded, 0 warnings
+- [x] Room scope enforcement: 10 scoped calls, 0 global calls
+- [x] Character system preservation verified (4 core files, 7 referencing files)
+- [x] CharacterReactionBridgeBacklog.md documented
+- [x] SpriteSheetProductionSpec.md documented
+- [x] CharacterReactionEnginePlan.md documented
+- [x] RuntimeDiagnosticsService enhanced (14 Workroom fields added)
+- [x] CLAUDE.md project config created
+- [x] Command scripts created (.claude/commands/)
+- [x] Preflight script created (scripts/preflight_workroom_round196.sh)
+- [x] Workroom review report created (docs/workroom/WorkroomRound196ReviewReport.md)
+
+### Pending (Manual QA)
+- [ ] Runtime QA: open workroom, create document, reuse artifact, switch rooms
+- [ ] Character sprite asset production (design team)
+- [ ] CharacterReactionEngine implementation (Round 231A)
+- [ ] App Store submission review
+
+### Status
+- **Build**: READY ✅
+- **Manual QA**: PENDING ⏳
+- **Submission**: NOT READY (character assets + QA required)
+
+---
+
 ## Archive 메모
 
 ONNX, Chatterbox Multilingual Python 서버, VITS2/Piper/Kokoro 비교, TTSEngine 프로토콜 초안은 모두 과거 실험 기록이다.

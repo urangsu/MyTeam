@@ -2,38 +2,6 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
-// MARK: - Workroom Enums (Temporary - defined here for build compatibility)
-// These are defined in WorkroomHomeModel.swift but re-declared here for TeamStatusView access
-enum WorkroomPrimaryAction: String, CaseIterable, Codable, Sendable {
-    case createDocument
-    case handoffFile
-    case organizeToday
-
-    var title: String {
-        switch self {
-        case .createDocument: return "문서 만들기"
-        case .handoffFile: return "파일 맡기기"
-        case .organizeToday: return "오늘 정리하기"
-        }
-    }
-}
-
-enum WorkroomNextAction: String, CaseIterable, Codable, Sendable {
-    case summarize
-    case table
-    case checklist
-    case actionItems
-
-    var title: String {
-        switch self {
-        case .summarize: return "요약하기"
-        case .table: return "표로 바꾸기"
-        case .checklist: return "체크리스트로 바꾸기"
-        case .actionItems: return "액션아이템"
-        }
-    }
-}
-
 // MARK: - TeamStatusView
 // 고도화: 팀 전체 채팅방(Logs) + 사운드/무음 모드 토글 + 다크모드
 struct TeamStatusView: View {
@@ -1185,12 +1153,12 @@ struct TeamStatusView: View {
 
         switch action {
         case .createDocument:
-            dispatchWorkroomPrompt("회의록 양식 만들어줘", roomID: roomID)
+            dispatchWorkroomPrompt(action.dispatchPrompt, roomID: roomID)
         case .handoffFile:
             // TODO: Open file intake workflow
-            dispatchWorkroomPrompt("파일 읽기 시작", roomID: roomID)
+            dispatchWorkroomPrompt(action.dispatchPrompt, roomID: roomID)
         case .organizeToday:
-            dispatchWorkroomPrompt("오늘 할 일 뭐야", roomID: roomID)
+            dispatchWorkroomPrompt(action.dispatchPrompt, roomID: roomID)
         }
     }
 
@@ -1198,19 +1166,7 @@ struct TeamStatusView: View {
     private func handleWorkroomNextAction(_ action: WorkroomNextAction) {
         guard let roomID = manager.currentRoomID else { return }
 
-        let prompt: String
-        switch action {
-        case .summarize:
-            prompt = "방금 만든 문서 요약해줘"
-        case .table:
-            prompt = "방금 만든 문서 표로 바꿔줘"
-        case .checklist:
-            prompt = "방금 만든 문서 체크리스트로 바꿔줘"
-        case .actionItems:
-            prompt = "방금 만든 문서 액션아이템 뽑아줘"
-        }
-
-        dispatchWorkroomPrompt(prompt, roomID: roomID)
+        dispatchWorkroomPrompt(action.dispatchPrompt, roomID: roomID)
     }
 
     /// Helper: dispatch Workroom prompt through WorkflowOrchestrator
