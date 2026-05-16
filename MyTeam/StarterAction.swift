@@ -45,7 +45,7 @@ enum StarterActionProvider {
     static let checklistAction = StarterAction(
         id: "starter_checklist",
         title: "체크리스트",
-        description: "앱 출시나 업무 준비를 체크리스트로 정리합니다.",
+        description: "업무 준비 요소를 체크리스트로 정리합니다.",
         actionType: .userMessage("앱 출시 체크리스트 만들어줘"),
         emoji: "✅"
     )

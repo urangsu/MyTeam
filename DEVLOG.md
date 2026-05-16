@@ -6,6 +6,33 @@
 
 ---
 
+## 2026-05-16 (Round 163B-UXNAV — Agent Quick Navigation + Starter Copy Polish Pack)
+
+### 진행 중
+
+- **체크리스트 starter action 복사 수정**:
+  - StarterAction.checklistAction description: "앱 출시나 업무 준비를 체크리스트로 정리합니다." → "업무 준비 요소를 체크리스트로 정리합니다."
+- **AgentQuickSwitchBar 신규 컴포넌트**:
+  - 팀원 얼굴 icon array (28×28px) with selected ring overlay
+  - "팀원" caption + 수평 scrolling
+  - OnSelectAgent closure로 personalChat navigation
+- **AgentWindowManager 신규 메서드**:
+  - openPersonalChat(for agentID:) — 개인 대화방 열기/생성, room agentIDs mutation 아님
+  - returnToTeamWorkroom() — 팀 워크룸 복귀
+- **AgentChatView 사이드바 통합**:
+  - projectSidebarView 하단에 AgentQuickSwitchBar 배치
+  - 개인 대화창 header에 "팀 워크룸으로" 버튼 추가
+- **RuntimeDiagnostics 5개 신규 필드**:
+  - agentQuickSwitchBarAvailable
+  - agentQuickSwitchUsesNavigationNotMutation
+  - personalChatIdentityPreserved
+  - teamWorkroomReturnShortcutAvailable
+  - starterChecklistCopyUpdated
+- **ToolContractValidator 5개 신규 validator**
+- **RouterBurnInSuite 3개 신규 케이스**
+
+---
+
 ## 2026-05-16 (Round 153A-162Z FINAL — Inline Artifact Resolver + Result Card Completion Pack)
 
 ### 완료 (Part 1-3, 2026-05-16)

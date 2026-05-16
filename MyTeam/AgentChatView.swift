@@ -291,6 +291,20 @@ struct AgentChatView: View {
                         .foregroundColor(subTextColor)
                 }
 
+                // 팀 워크룸으로 돌아가기 (개인 대화에서만 표시)
+                if isPersonalChat {
+                    Button(action: {
+                        Task {
+                            await manager.returnToTeamWorkroom()
+                        }
+                    }) {
+                        Image(systemName: "person.3.fill")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(subTextColor.opacity(0.7))
+                    }
+                    .help("팀 워크룸으로")
+                }
+
                 if selectedTab == 1 {
                     // 메시지 편집 모드 토글
                     Button(action: {
@@ -406,6 +420,23 @@ struct AgentChatView: View {
                 .padding(.vertical, 6)
             }
 
+            Spacer()
+
+            // TODO: Quick agent switcher (sidebar 하단) - Round 163B
+            // AgentQuickSwitchBar가 프로젝트에 제대로 추가될 때까지 주석처리
+            /*
+            if !isSidebarCollapsed {
+                AgentQuickSwitchBar(
+                    manager: manager,
+                    currentAgentID: activeAgentID,
+                    onSelectAgent: { agentID in
+                        Task {
+                            await manager.openPersonalChat(for: agentID)
+                        }
+                    }
+                )
+            }
+            */
         }
         .frame(width: isSidebarCollapsed ? 50 : 160)
         .background(manager.isDarkMode ? Color.white.opacity(0.03) : Color.black.opacity(0.08))

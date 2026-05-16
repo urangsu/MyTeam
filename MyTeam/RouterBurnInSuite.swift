@@ -1761,6 +1761,37 @@ enum RouterBurnInSuite {
             expectedGoalType: "directAnswer",
             shouldRequireApproval: false,
             notes: "협업 상태 배너가 1줄 컴팩트 바로 압축됨 확인"
+        ),
+        // Round 163B-UXNAV: Agent Quick Navigation
+        .init(
+            id: "personal-chat-checklist",
+            message: "업무 준비 요소를 체크리스트로 정리합니다",
+            expectedRoute: .universalDocument,
+            expectedSkillID: "korean.checklist",
+            expectedRouteHint: "universalDocument",
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "업무 준비 체크리스트는 universalDocument로 라우팅됨"
+        ),
+        .init(
+            id: "team-return-shortcut",
+            message: "팀 워크룸으로",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: "teamNav",
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            notes: "팀 워크룸 복귀는 직접 채팅"
+        ),
+        .init(
+            id: "personal-chat-creation",
+            message: "레오와 대화",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: "agentNav",
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            notes: "특정 팀원과의 개인 대화 요청"
         )
     ]
 

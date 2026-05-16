@@ -1416,6 +1416,53 @@ class AgentWindowManager: ObservableObject {
         rooms.append(newRoom)
     }
 
+    /// 특정 에이전트의 개인 대화방 열기 (없으면 생성)
+    /// - Note: 현재 방의 agentIDs를 mutate하지 않음 (navigation 전용)
+    @MainActor
+    func openPersonalChat(for agentID: String) {
+        // 해당 에이전트의 개인 대화방 찾기
+        if let existing = rooms.first(where: { $0.agentIDs == [agentID] }) {
+            currentRoomID = existing.id
+            return
+        }
+
+        // 없으면 생성
+        let agentName = activeAgents.first(where: { $0.id == agentID })?.name ?? "팀원"
+        let newRoom = ChatRoom(
+            id: UUID(),
+            name: "\(agentName)과의 대화",
+            messages: [],
+            agentIDs: [agentID],
+            createdAt: Date()
+        )
+        rooms.append(newRoom)
+        currentRoomID = newRoom.id
+    }
+
+    /// 팀 워크룸으로 돌아가기
+    /// - Note: 기존 team_all 워크룸 찾기, 없으면 생성
+    @MainActor
+    func returnToTeamWorkroom() {
+        // 팀 워크룸 찾기 (team_all이 포함되거나 agentIDs 2개 이상)
+        if let teamRoom = rooms.first(where: {
+            $0.agentIDs.contains("team_all") || $0.agentIDs.count > 1
+        }) {
+            currentRoomID = teamRoom.id
+            return
+        }
+
+        // 없으면 기본 팀 워크룸 생성
+        let defaultTeamRoom = ChatRoom(
+            id: UUID(),
+            name: "팀 워크룸",
+            messages: [],
+            agentIDs: ["team_all"],
+            createdAt: Date()
+        )
+        rooms.append(defaultTeamRoom)
+        currentRoomID = defaultTeamRoom.id
+    }
+
     func renameRoom(id: UUID, newName: String) {
         guard let index = rooms.firstIndex(where: { $0.id == id }) else { return }
         rooms[index].name = newName

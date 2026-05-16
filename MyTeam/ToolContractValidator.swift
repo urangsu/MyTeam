@@ -67,6 +67,13 @@ enum ToolContractValidator {
         validateChatLogArtifactLinkingPolicy(issues: &issues)
         validateSkillResultCardFallbackPolicy(issues: &issues)
 
+        // Round 163B-UXNAV validators
+        validateAgentQuickSwitchPolicy(issues: &issues)
+        validateAgentNavigationMutationPolicy(issues: &issues)
+        validatePersonalChatIdentityPolicy(issues: &issues)
+        validateTeamWorkroomReturnPolicy(issues: &issues)
+        validateStarterChecklistCopyPolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -478,6 +485,43 @@ enum ToolContractValidator {
         let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
         if let snap, !snap.skillResultGenericCardFallbackAvailable {
             issues.append(issue(.warning, "SkillResultRendererView에 generic card fallback이 없습니다. 구조화된 스킬 결과를 카드로 표시해야 합니다."))
+        }
+    }
+
+    // Round 163B-UXNAV: Agent Quick Navigation + Starter Copy Polish Pack
+
+    private static func validateAgentQuickSwitchPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.agentQuickSwitchBarAvailable {
+            issues.append(issue(.warning, "AgentQuickSwitchBar가 없습니다. 팀원 빠른 이동 기능이 필요합니다."))
+        }
+    }
+
+    private static func validateAgentNavigationMutationPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.agentQuickSwitchUsesNavigationNotMutation {
+            issues.append(issue(.error, "Agent quick switch가 현재 room agentIDs를 mutate하고 있습니다. Navigation으로 변경해야 합니다."))
+        }
+    }
+
+    private static func validatePersonalChatIdentityPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.personalChatIdentityPreserved {
+            issues.append(issue(.error, "개인 대화의 정체성이 손상되었습니다. agentIDs.count != 1인 개인 대화가 있거나, 팀 워크룸이 개인 대화로 변형되었을 가능성이 있습니다."))
+        }
+    }
+
+    private static func validateTeamWorkroomReturnPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.teamWorkroomReturnShortcutAvailable {
+            issues.append(issue(.warning, "개인 대화에서 팀 워크룸으로 돌아가는 shortcut이 없습니다."))
+        }
+    }
+
+    private static func validateStarterChecklistCopyPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.starterChecklistCopyUpdated {
+            issues.append(issue(.warning, "StarterAction 체크리스트 description이 업데이트되지 않았습니다. '업무 준비 요소를 체크리스트로 정리합니다'로 변경해야 합니다."))
         }
     }
 }

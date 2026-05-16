@@ -301,6 +301,13 @@ struct RuntimeDiagnosticsSnapshot {
     let skillResultGenericCardFallbackAvailable: Bool
     let bottomArtifactListDeduplicated: Bool
 
+    // Round 163B-UXNAV: Agent Quick Navigation + Starter Copy Polish Pack
+    let agentQuickSwitchBarAvailable: Bool
+    let agentQuickSwitchUsesNavigationNotMutation: Bool
+    let personalChatIdentityPreserved: Bool
+    let teamWorkroomReturnShortcutAvailable: Bool
+    let starterChecklistCopyUpdated: Bool
+
     // Build / Submission Status
     let macBuildPending: Bool
     let manualQAPending: Bool
@@ -985,6 +992,11 @@ final class RuntimeDiagnosticsService {
             chatLogArtifactIDsLinked: true,
             skillResultGenericCardFallbackAvailable: true,
             bottomArtifactListDeduplicated: true,
+            agentQuickSwitchBarAvailable: true,
+            agentQuickSwitchUsesNavigationNotMutation: true,
+            personalChatIdentityPreserved: true,
+            teamWorkroomReturnShortcutAvailable: true,
+            starterChecklistCopyUpdated: true,
             macBuildPending: false,
             manualQAPending: true,
             submissionReadyStatus: "manualQAPending"
