@@ -78,7 +78,7 @@ enum AssistantConnectorCatalog {
                 status: .comingSoon,
                 grantedScopes: [.gmailMetadata],
                 lastCheckedAt: nil,
-                message: "메타데이터 준비 중"
+                message: "준비 중"
             )
         case .naverMail:
             return GoogleOAuthConnectionState(
@@ -86,7 +86,7 @@ enum AssistantConnectorCatalog {
                 status: .comingSoon,
                 grantedScopes: [],
                 lastCheckedAt: nil,
-                message: "IMAP 기반 read-only 검토 중"
+                message: "준비 중"
             )
         case .naverCalendar:
             return GoogleOAuthConnectionState(
@@ -94,7 +94,7 @@ enum AssistantConnectorCatalog {
                 status: .comingSoon,
                 grantedScopes: [],
                 lastCheckedAt: nil,
-                message: "연동 가능성 검토 중"
+                message: "준비 중"
             )
         }
     }

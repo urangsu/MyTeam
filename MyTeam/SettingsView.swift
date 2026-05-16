@@ -832,10 +832,8 @@ struct RuntimeDiagnosticsPlaceholder: View {
                             : "준비됨"
                         DiagnosticRow(label: "Gemini", value: geminiStatus)
                     } else {
-                        DiagnosticRow(label: "Build", value: diag.buildConfiguration)
-                        DiagnosticRow(label: "Debug", value: diag.debugDiagnosticsVisible ? "visible" : "hidden")
-                        DiagnosticRow(label: "PlanRunner", value: diag.planRunnerToggleVisible ? "visible" : "hidden")
-                        DiagnosticRow(label: "Verbose", value: diag.verboseDiagnosticsVisible ? "visible" : "hidden")
+                        // Release: 내부 플래그 대신 간결한 상태 1줄만 표시
+                        DiagnosticRow(label: "상태", value: "정상")
                     }
                 }
             } else {

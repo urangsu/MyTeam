@@ -75,25 +75,6 @@ struct TeamStatusView: View {
                 Spacer()
                 
                 HStack(spacing: 14) {
-                    // ⏰ 스케줄 버튼 (헤더 상단 접근)
-                    Button(action: {
-                        withAnimation(.spring(response: 0.26, dampingFraction: 0.82)) {
-                            manager.isSchedulePanelPresented.toggle()
-                        }
-                    }) {
-                        HStack(spacing: 3) {
-                            Image(systemName: "clock.badge.checkmark")
-                                .font(.system(size: 11, weight: .semibold))
-                            if !manager.automationTasks.isEmpty {
-                                Text("\(manager.automationTasks.count)")
-                                    .font(.system(size: 9, weight: .bold))
-                            }
-                        }
-                        .foregroundColor(manager.isSchedulePanelPresented ? .orange : (manager.isDarkMode ? .white.opacity(0.5) : .gray.opacity(0.6)))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .help("예약 작업")
-
                     // 탭 전환 버튼
                     Button(action: { selectedTab = (selectedTab == 0 ? 1 : 0) }) {
                         Image(systemName: selectedTab == 0 ? "bubble.left.and.bubble.right.fill" : "person.3.fill")
@@ -128,9 +109,9 @@ struct TeamStatusView: View {
             }
             
             if !isCollapsed {
-                // ── 첫 실행 배너 ──
+                // ── 첫 실행 온보딩 (WP1: 통합 카드, 팀 패널에서는 간결하게만) ──
                 if manager.firstLaunchState.shouldShowOnboarding {
-                    FirstLaunchBannerView(
+                    OnboardingCardView(
                         state: manager.firstLaunchState,
                         onDismiss: {
                             withAnimation(.easeInOut(duration: 0.2)) {
@@ -142,8 +123,6 @@ struct TeamStatusView: View {
                         }
                     )
                     .transition(.move(edge: .top).combined(with: .opacity))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
                 }
 
                 Divider().background(textColor.opacity(0.05))
@@ -180,20 +159,7 @@ struct TeamStatusView: View {
                     .stroke(textColor.opacity(0.2), lineWidth: 1)
             }
         )
-        .overlay(alignment: .topTrailing) {
-            if manager.isSchedulePanelPresented {
-                GeometryReader { proxy in
-                    let popupWidth = min(260, max(220, proxy.size.width - 22))
-                    let popupHeight = min(220, max(160, proxy.size.height - 70))
-
-                    schedulePopupCard
-                        .frame(width: popupWidth, height: popupHeight, alignment: .topLeading)
-                        .padding(.trailing, 10)
-                        .padding(.top, 48)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                }
-            }
-        }
+        // schedulePopupCard 오버레이 제거됨 (WP5: 사이드바 단일 진입점)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if !isCollapsed {
                 footerView
@@ -791,10 +757,7 @@ struct TeamStatusView: View {
             }
             .frame(maxHeight: 126)
 
-            Button("스케줄 관리 준비 중") { }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .disabled(true)
+            // 스케줄 관리 UI는 사이드바 단일 진입점으로 통합 (WP5)
         }
         .padding(12)
         .background(
@@ -843,9 +806,13 @@ struct TeamStatusView: View {
             }
 
             if let scheduleDraftError {
-                Text(scheduleDraftError)
-                    .font(.system(size: 9))
-                    .foregroundColor(.red.opacity(0.85))
+                HStack(spacing: 4) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 10))
+                    Text(scheduleDraftError)
+                        .font(.system(size: 11))
+                }
+                .foregroundColor(.red.opacity(0.85))
             }
         }
     }
@@ -1140,23 +1107,6 @@ struct TeamStatusView: View {
             }
             .buttonStyle(PlainButtonStyle())
 
-            Button(action: { isFileIntakeSheetPresented = true }) {
-                Image(systemName: "doc.badge.plus")
-                    .font(.system(size: 12))
-                    .foregroundColor(.blue.opacity(0.7))
-            }
-            .buttonStyle(PlainButtonStyle())
-            .help("파일 읽기")
-            
-            // 위치 초기화 버튼 (추가)
-            Button(action: { manager.resetWindowPositions() }) {
-                Image(systemName: "location.fill.viewfinder")
-                    .font(.system(size: 11))
-                    .foregroundColor(.blue.opacity(0.6))
-            }
-            .buttonStyle(PlainButtonStyle())
-            .help("윈도우 위치 초기화 (중앙으로)")
-            
             Button(action: { manager.showSettingsWindow() }) {
                 Image(systemName: "gearshape.fill")
                     .font(.system(size: 12))

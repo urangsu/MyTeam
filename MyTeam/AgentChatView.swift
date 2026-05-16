@@ -568,10 +568,9 @@ struct AgentChatView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 2) {
-                        // 첫 채팅일 때 시작 액션 표시
+                        // 첫 채팅일 때: 온보딩 카드 OR 인사말+액션 (동시 표시 금지, WP1)
                         if chatHistory.isEmpty {
                             VStack(spacing: 16) {
-                                // FirstLaunchBannerView (상단)
                                 let hasAnyAPIKey = KeychainManager.load(key: "claudeAPIKey") != nil ||
                                                    KeychainManager.load(key: "geminiAPIKey") != nil ||
                                                    KeychainManager.load(key: "openAIAPIKey") != nil ||
@@ -579,34 +578,30 @@ struct AgentChatView: View {
                                 let firstLaunchState = FirstLaunchStateProvider.currentState(
                                     hasAPIKey: hasAnyAPIKey
                                 )
-                                FirstLaunchBannerView(
-                                    state: firstLaunchState,
-                                    onDismiss: {
-                                        FirstLaunchStateProvider.markOnboardingSeen()
-                                    },
-                                    onOpenSettings: {
-                                        manager.showSettingsWindow()
-                                    }
-                                )
 
-                                // LocalOnlyModeCardView (localOnly 상태)
-                                if !hasAnyAPIKey {
-                                    LocalOnlyModeCardView(
+                                if firstLaunchState.shouldShowOnboarding {
+                                    // 온보딩 카드 1개만 (배너+카드 동시 표시 없음)
+                                    OnboardingCardView(
+                                        state: firstLaunchState,
+                                        onDismiss: {
+                                            FirstLaunchStateProvider.markOnboardingSeen()
+                                        },
                                         onOpenSettings: {
                                             manager.showSettingsWindow()
                                         }
                                     )
+                                } else {
+                                    // 온보딩 완료 후: 인사말 + 액션
+                                    Image(systemName: "sparkles")
+                                        .font(.system(size: 32))
+                                        .foregroundColor(currentAgent.color)
+
+                                    Text("\(currentAgent.name)와 대화를 시작해 보세요")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundColor(textColor)
+
+                                    starterActionsStripView
                                 }
-
-                                Image(systemName: "sparkles")
-                                    .font(.system(size: 32))
-                                    .foregroundColor(currentAgent.color)
-
-                                Text("\(currentAgent.name)와 대화를 시작해 보세요")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundColor(textColor)
-
-                                starterActionsStripView
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 40)

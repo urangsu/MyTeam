@@ -6,6 +6,30 @@
 
 ---
 
+## 2026-05-16 (WP3+WP5+WP1 — Product UX Surface Cleanup)
+
+### 완료
+
+- **WP3 설정/진단 누출 차단**:
+  - AssistantConnectorCatalog comingSoon 메시지 "IMAP 기반 read-only 검토 중" 등 → "준비 중" 통일
+  - DailyBriefingCardView 커넥터 상태 섹션을 DiagnosticsVisibilityPolicy 뒤로 (Release 비표시)
+  - TeamStatusView 푸터 7개→4개 (파일 첨부 + 위치 초기화 버튼 제거)
+  - "스케줄 관리 준비 중" 비활성 버튼 제거
+  - SettingsView Release 진단: Build/Debug/PlanRunner/Verbose 플래그 → "상태: 정상" 1줄로 축소
+- **WP5 예약 작업 진입점 통합**:
+  - 헤더 시계 버튼 제거
+  - 팝업 카드 오버레이 제거
+  - 사이드바 단일 진입점 유지
+  - 검증 에러 폰트 9pt→11pt + 경고 아이콘 추가
+- **WP1 온보딩 표면 통합**:
+  - OnboardingCardView 신규 — FirstLaunchBannerView + LocalOnlyModeCardView 합침
+  - localOnly: 기능 목록 + Settings 텍스트 링크 (큰 CTA 제거)
+  - AgentChatView: 온보딩 OR (인사말+액션), 동시 표시 금지
+  - TeamStatusView: OnboardingCardView로 교체
+- Debug + Release BUILD SUCCEEDED, warning 0
+
+---
+
 ## 2026-05-16 (Round 137A-145Z — Product IA Hardening + Room-Scoped Artifact + Work Surface Simplification)
 
 ### 완료

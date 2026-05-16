@@ -69,7 +69,9 @@ struct DailyBriefingCardView: View {
                 }
             }
 
-            if !briefing.connectorMessages.isEmpty {
+            // 커넥터 상태 — Release에서는 개발 현황이 노출되지 않도록 숨김
+            if DiagnosticsVisibilityPolicy.allowsVerboseDiagnostics,
+               !briefing.connectorMessages.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("연결 상태")
                         .font(.system(size: 11, weight: .semibold))
