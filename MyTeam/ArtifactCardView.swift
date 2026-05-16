@@ -4,6 +4,7 @@ import SwiftUI
 
 struct ArtifactCardView: View {
     let artifact: IndexedArtifact
+    var compactMode: Bool = false
 
     @State private var copied = false
 
@@ -43,6 +44,15 @@ struct ArtifactCardView: View {
     }
 
     var body: some View {
+        if compactMode {
+            compactView
+        } else {
+            standardView
+        }
+    }
+
+    @ViewBuilder
+    private var standardView: some View {
         VStack(alignment: .leading, spacing: 10) {
             // Header: Title + Type + Date
             HStack(spacing: 6) {
@@ -115,6 +125,46 @@ struct ArtifactCardView: View {
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 10).fill(Color(nsColor: .controlBackgroundColor)))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.secondary.opacity(0.2)))
+    }
+
+    @ViewBuilder
+    private var compactView: some View {
+        HStack(alignment: .center, spacing: 8) {
+            Text(typeEmoji)
+                .font(.body)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(artifact.title)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                Text(artifact.filename)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            // Compact status
+            HStack(spacing: 4) {
+                Image(systemName: statusIcon)
+                    .font(.caption2)
+                    .foregroundColor(statusColor)
+                Text(statusText)
+                    .font(.caption2)
+                    .foregroundColor(statusColor)
+            }
+
+            // Minimal actions
+            Button("열기") { openArtifact() }
+                .buttonStyle(.bordered)
+                .controlSize(.mini)
+                .disabled(!canInteract)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: .controlBackgroundColor)))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.2)))
     }
 
     // MARK: - Status View
