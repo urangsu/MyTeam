@@ -1742,6 +1742,16 @@ enum RouterBurnInSuite {
             notes: "단일 에이전트 방 → computedRoomKind == .personalChat"
         ),
         .init(
+            id: "content-draft-auxiliary-direct-chat",
+            message: "기존 글 URL 참고해서 원고 초안 봐줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            notes: "콘텐츠 초안은 MyTeam 메인 CTA가 아니라 워크룸 맥락을 보조하는 direct chat 경로"
+        ),
+        .init(
             id: "artifact-status-friendly",
             message: "아까 만든 보고서 상태 확인해줘",
             expectedRoute: .directChat,

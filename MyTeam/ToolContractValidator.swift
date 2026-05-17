@@ -119,6 +119,9 @@ enum ToolContractValidator {
         validateBeginnerExampleArtifactPolicy(issues: &issues)
         validateFriendlyRecoveryActionPolicy(issues: &issues)
 
+        // Round 236: auxiliary content draft room profile
+        validateContentDraftAuxiliaryPolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -895,5 +898,18 @@ enum ToolContractValidator {
         // ✅ 외부 업로드 없음
         // ✅ 메일 발송 없음
         // ✅ 캘린더 write 없음
+    }
+
+    private static func validateContentDraftAuxiliaryPolicy(issues: inout [ToolContractValidationIssue]) {
+        let profile = AgentWindowManager.RoomProfile.blogWriting()
+        if profile.purpose.contains("최적화") || profile.purpose.contains("메인") {
+            issues.append(issue(.warning, "콘텐츠 초안 프로필이 MyTeam의 핵심 워크룸 루프보다 앞서는 문구를 사용합니다. 보조 기능으로 유지해야 합니다."))
+        }
+        if !profile.systemInstruction.contains("문서/파일/표/정리") {
+            issues.append(issue(.warning, "콘텐츠 초안 프로필이 ONBOARDING.md의 핵심 루프와 연결되어 있지 않습니다."))
+        }
+        if profile.preferredOutputFormat?.contains("본문 초안") != true {
+            issues.append(issue(.warning, "콘텐츠 초안 프로필에 사용자가 바로 고쳐 쓸 초안 출력 형식이 없습니다."))
+        }
     }
 }
