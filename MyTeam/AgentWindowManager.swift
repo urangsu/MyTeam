@@ -368,6 +368,45 @@ class AgentWindowManager: ObservableObject {
         return "\n[기억해야 할 핵심 정보]\n" + facts.map { "- \($0)" }.joined(separator: "\n") + "\n"
     }
 
+    func roomProfileContext(roomID: UUID?) -> String {
+        guard let roomID,
+              let room = rooms.first(where: { $0.id == roomID }) else { return "" }
+        let profile = room.effectiveProfile
+        guard profile.mode != .general || !profile.purpose.isEmpty || !profile.systemInstruction.isEmpty else { return "" }
+
+        var lines: [String] = ["\n[이 워크룸의 작업 목적]", "- 워크룸 이름: \(room.name)"]
+        if !profile.purpose.isEmpty {
+            lines.append("- 목적: \(profile.purpose)")
+        }
+        if !profile.systemInstruction.isEmpty {
+            lines.append("- 운영 지침: \(profile.systemInstruction)")
+        }
+        if let outputFormat = profile.preferredOutputFormat, !outputFormat.isEmpty {
+            lines.append("- 선호 출력 형식: \(outputFormat)")
+        }
+        if !profile.sourceURLs.isEmpty {
+            lines.append("- 참고 소스 URL: \(profile.sourceURLs.prefix(8).joined(separator: ", "))")
+        }
+        if let styleProfile = profile.styleProfile {
+            lines.append("- 글투 요약: \(styleProfile.voiceSummary)")
+            if !styleProfile.headlinePatterns.isEmpty {
+                lines.append("- 제목 패턴: \(styleProfile.headlinePatterns.prefix(5).joined(separator: " / "))")
+            }
+            if !styleProfile.expressionNotes.isEmpty {
+                lines.append("- 표현 메모: \(styleProfile.expressionNotes.prefix(6).joined(separator: " / "))")
+            }
+            if !styleProfile.bannedPhrases.isEmpty {
+                lines.append("- 피할 표현: \(styleProfile.bannedPhrases.prefix(6).joined(separator: " / "))")
+            }
+        }
+        if let seoProfile = profile.seoProfile {
+            lines.append("- SEO 로케일: \(seoProfile.targetLocale)")
+            lines.append("- SEO 필수 섹션: \(seoProfile.requiredSections.joined(separator: ", "))")
+            lines.append("- SEO 체크리스트: \(seoProfile.checklist.joined(separator: " / "))")
+        }
+        return lines.joined(separator: "\n") + "\n"
+    }
+
     // MARK: - Scoped Key Facts API
 
     enum MemoryScope {
@@ -1404,17 +1443,33 @@ class AgentWindowManager: ObservableObject {
 
     // MARK: - 방 생성 / 이름 변경 / 삭제
     func createRoom(name: String) {
-        let newRoom = ChatRoom(id: UUID(), name: name,
+        var newRoom = ChatRoom(id: UUID(), name: name,
             messages: [], agentIDs: ["team_all"], createdAt: Date())
+        newRoom.profile = inferredRoomProfile(for: name)
         rooms.append(newRoom)
         currentRoomID = newRoom.id
     }
 
     /// 특정 에이전트 전용 방 생성
     func createAgentRoom(name: String, agentID: String) {
-        let newRoom = ChatRoom(id: UUID(), name: name,
+        var newRoom = ChatRoom(id: UUID(), name: name,
             messages: [], agentIDs: [agentID], createdAt: Date())
+        newRoom.profile = inferredRoomProfile(for: name)
         rooms.append(newRoom)
+    }
+
+    @MainActor
+    func createBlogWritingRoom() {
+        var newRoom = ChatRoom(
+            id: UUID(),
+            name: "콘텐츠 초안 보조",
+            messages: [],
+            agentIDs: ["team_all"],
+            createdAt: Date()
+        )
+        newRoom.profile = .blogWriting()
+        rooms.append(newRoom)
+        currentRoomID = newRoom.id
     }
 
     /// 특정 에이전트의 개인 대화방 열기 (없으면 생성)
@@ -1429,13 +1484,14 @@ class AgentWindowManager: ObservableObject {
 
         // 없으면 생성
         let agentName = activeAgents.first(where: { $0.id == agentID })?.name ?? "팀원"
-        let newRoom = ChatRoom(
+        var newRoom = ChatRoom(
             id: UUID(),
             name: "\(agentName)과의 대화",
             messages: [],
             agentIDs: [agentID],
             createdAt: Date()
         )
+        newRoom.profile = inferredRoomProfile(for: newRoom.name)
         rooms.append(newRoom)
         currentRoomID = newRoom.id
     }
@@ -1453,13 +1509,14 @@ class AgentWindowManager: ObservableObject {
         }
 
         // 없으면 기본 팀 워크룸 생성
-        let defaultTeamRoom = ChatRoom(
+        var defaultTeamRoom = ChatRoom(
             id: UUID(),
             name: "팀 워크룸",
             messages: [],
             agentIDs: ["team_all"],
             createdAt: Date()
         )
+        defaultTeamRoom.profile = .general()
         rooms.append(defaultTeamRoom)
         currentRoomID = defaultTeamRoom.id
     }
@@ -1467,6 +1524,78 @@ class AgentWindowManager: ObservableObject {
     func renameRoom(id: UUID, newName: String) {
         guard let index = rooms.firstIndex(where: { $0.id == id }) else { return }
         rooms[index].name = newName
+        if rooms[index].profile?.mode != .blogWriting,
+           inferredRoomProfile(for: newName).mode == .blogWriting {
+            rooms[index].profile = .blogWriting(sourceURLs: rooms[index].profile?.sourceURLs ?? [])
+        }
+    }
+
+    func applyRoomTemplate(_ mode: RoomMode, to roomID: UUID) {
+        guard let index = rooms.firstIndex(where: { $0.id == roomID }) else { return }
+        switch mode {
+        case .general:
+            rooms[index].profile = .general()
+        case .blogWriting:
+            rooms[index].profile = .blogWriting(sourceURLs: rooms[index].profile?.sourceURLs ?? [])
+        }
+    }
+
+    func updateBlogProfile(
+        roomID: UUID,
+        sourceURLs: [String],
+        styleProfile: BlogStyleProfile,
+        seoProfile: BlogSEOProfile = .defaultKoreanBlog
+    ) {
+        guard let index = rooms.firstIndex(where: { $0.id == roomID }) else { return }
+        var profile = rooms[index].effectiveProfile
+        if profile.mode != .blogWriting {
+            profile = .blogWriting(sourceURLs: profile.sourceURLs)
+        }
+        let mergedURLs = Array(NSOrderedSet(array: profile.sourceURLs + sourceURLs).compactMap { $0 as? String })
+        profile.sourceURLs = mergedURLs
+        profile.styleProfile = styleProfile
+        profile.seoProfile = seoProfile
+        rooms[index].profile = profile
+    }
+
+    func roomProfileSummary(roomID: UUID?) -> String {
+        guard let roomID,
+              let room = rooms.first(where: { $0.id == roomID }) else {
+            return "현재 방을 찾지 못했습니다."
+        }
+        let profile = room.effectiveProfile
+        switch profile.mode {
+        case .general:
+            return "이 워크룸은 일반 업무 워크룸입니다. 문서 만들기, 파일 정리, 표 정리 같은 핵심 작업을 먼저 처리합니다. 콘텐츠 초안이 필요하면 우클릭 메뉴나 /blog-source URL로 참고 글투를 추가할 수 있습니다."
+        case .blogWriting:
+            var lines = [
+                "콘텐츠 초안 보조 워크룸",
+                "- 위치: MyTeam의 문서/파일/정리 루프를 보조하는 선택 기능",
+                "- 참고 URL: \(profile.sourceURLs.isEmpty ? "아직 없음" : profile.sourceURLs.joined(separator: ", "))"
+            ]
+            if let style = profile.styleProfile {
+                lines.append("- 글투: \(style.voiceSummary)")
+                if !style.headlinePatterns.isEmpty {
+                    lines.append("- 제목 패턴: \(style.headlinePatterns.prefix(5).joined(separator: " / "))")
+                }
+                if !style.expressionNotes.isEmpty {
+                    lines.append("- 표현 메모: \(style.expressionNotes.prefix(6).joined(separator: " / "))")
+                }
+                if !style.ctaPatterns.isEmpty {
+                    lines.append("- CTA 패턴: \(style.ctaPatterns.prefix(4).joined(separator: " / "))")
+                }
+            }
+            return lines.joined(separator: "\n")
+        }
+    }
+
+    private func inferredRoomProfile(for name: String) -> RoomProfile {
+        let normalized = name.lowercased()
+        let blogKeywords = ["블로그", "blog", "seo", "검색최적화", "글쓰기", "콘텐츠"]
+        if blogKeywords.contains(where: { normalized.contains($0) }) {
+            return .blogWriting()
+        }
+        return .general()
     }
 
     func deleteRoom(id: UUID) {
