@@ -54,9 +54,11 @@ final class CharacterReactionEventSink {
             let artifacts = notification.userInfo?["artifacts"] as? [Any] ?? []
             guard !artifacts.isEmpty else { return }
 
-            // roomID: workflowCompleted에는 workspaceURL만 있어 currentRoomID로 fallback
-            let roomID = AgentWindowManager.shared.currentRoomID ?? UUID()
-            self.notifyDocumentCreated(documentType: "workflowArtifact", roomID: roomID)
+            Task { @MainActor in
+                // roomID: workflowCompleted에는 workspaceURL만 있어 currentRoomID로 fallback
+                let roomID = AgentWindowManager.shared.currentRoomID ?? UUID()
+                self.notifyDocumentCreated(documentType: "workflowArtifact", roomID: roomID)
+            }
         }
     }
 

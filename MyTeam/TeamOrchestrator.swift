@@ -68,7 +68,9 @@ class TeamOrchestrator {
             let unavailableMentionedAgent = (mention?.isActive == false) ? mention?.mentionedAgent : nil
             let toolPolicy = ToolPolicy.evaluate(userMessage)
             let toolEvidence = await ToolEvidenceService.gather(for: userMessage, policy: toolPolicy)
-            let groundedUserMessage = userMessage + toolEvidence.promptContext
+            let groundedUserMessage = userMessage
+                + manager.roomProfileContext(roomID: roomID)
+                + toolEvidence.promptContext
 
             // 1. 의도 분류 및 리더 추천 (Intent Router)
             let routing: IntentResult
@@ -167,7 +169,9 @@ class TeamOrchestrator {
         } else {
             toolEvidence = .empty
         }
-        let groundedUserMessage = userMessage + toolEvidence.promptContext
+        let groundedUserMessage = userMessage
+            + manager.roomProfileContext(roomID: roomID)
+            + toolEvidence.promptContext
 
         let alreadySpoke = await emitUnavailableMentionNoticeIfNeeded(
             unavailableAgent: unavailableMentionedAgent,

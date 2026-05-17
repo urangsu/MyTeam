@@ -97,7 +97,11 @@ struct TeamTableView: View {
                         isSpeaking: manager.speakingAgentID == agent.id,
                         isThinking: false,
                         speechText: manager.speakingAgentID == agent.id
-                            ? manager.rooms.flatMap { $0.messages }.last(where: { $0.agentID == agent.id && !$0.isUser })?.text
+                            ? manager.rooms
+                                .first(where: { $0.id == manager.currentRoomID })?
+                                .messages
+                                .last(where: { $0.agentID == agent.id && !$0.isUser })?
+                                .text
                             : nil,
                         isSelected: selectedAgentIndex == index,
                         onTap: {
