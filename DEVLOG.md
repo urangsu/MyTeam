@@ -6,6 +6,37 @@
 
 ---
 
+## 2026-05-17 (Round 233B — Beginner Mode UX Complete)
+
+### 완료 (2026-05-17)
+
+**핵심 달성**:
+- 간편 모드 UX 완전 구현 — API 키 없이 즉시 동작하는 초보자 플로우
+- 예시로 먼저 해보기: BeginnerExampleDocumentService 로컬 템플릿 fallback
+- ArtifactCardView 친절한 복구 UI (기술 용어 제거)
+- SettingsView 간편 모드 Toggle
+- Debug BUILD SUCCEEDED 0 warnings 확인
+
+**구현**:
+- **BeginnerExampleDocumentService.swift** (new): API 없이 샘플 회의록 마크다운 생성 → ArtifactStore 등록 → workflowCompleted 알림
+- **WorkroomHomeView.swift**: handleBeginnerCardTap(.tryExample) → BeginnerExampleDocumentService 연결, onPromptDispatched 콜백 추가
+- **SettingsView.swift**: 사용자 설정 탭에 간편 모드 Section + Toggle 추가
+- **ArtifactCardView.swift**: RecoveryAction/RecoveryInfo struct + friendlyRecovery computed property (4개 오류 케이스, orange-tinted UI)
+- **RuntimeDiagnosticsService.swift**: Round 233B beginner 필드 9개 + 스냅샷 값 + summary 라인 추가
+- **ToolContractValidator.swift**: 3개 beginner validator (Mode/ExampleFlow/FriendlyRecovery)
+- **RouterBurnInSuite.swift**: 5개 beginner 케이스 추가
+- **pbxproj**: BC233B001FR/BF 등록 (BeginnerExampleDocumentService.swift)
+
+**문서**:
+- `docs/beginner/BeginnerModeProductSpec.md` — 간편 모드 전체 스펙 문서
+- `scripts/preflight_beginner_round233.sh` — 5단계 사전 검증 스크립트
+
+**결정 사항**:
+- 친절한 복구 버튼은 현재 모두 "새 문서로 시작" (myteam.beginnerNewDocument notification) → Round 234+에서 파일 선택 UI 직접 연결 예정
+- BeginnerExampleDocumentService: 현재 하드코딩 마크다운 → API 연결 시 LLM 생성으로 전환 예정
+
+---
+
 ## 2026-05-17 (Round 196A-230Z — Workroom Stabilization + Type Consolidation)
 
 ### 완료 (2026-05-17)

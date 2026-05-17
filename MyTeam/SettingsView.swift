@@ -310,6 +310,29 @@ struct SettingsView: View {
                 }
             }
 
+            // MARK: - 간편 모드
+            Section {
+                Toggle(isOn: $manager.isBeginnerMode) {
+                    Label("간편 모드", systemImage: "sparkles")
+                }
+                if manager.isBeginnerMode {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("회의록, 체크리스트, 파일 읽기, 오늘 할 일을 버튼으로 시작합니다.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("API 연결 없이도 로컬 기능부터 사용할 수 있어요.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.top, 2)
+                }
+            } header: {
+                Text("시작 방식")
+            } footer: {
+                Text("AI가 익숙하지 않아도 업무 카드로 바로 시작할 수 있어요.")
+                    .font(.caption2)
+            }
+
             Section {
                 Button("저장") { saveSettings() }
                     .buttonStyle(.borderedProminent)

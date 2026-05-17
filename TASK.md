@@ -660,6 +660,20 @@ Mac App Store에 출시 가능한 macOS 네이티브 AI 팀 앱.
 - [x] Debug BUILD SUCCEEDED — 0 Swift warnings
 - [x] Release BUILD SUCCEEDED — 0 Swift warnings
 
+### Completed (Round 233B — Beginner Mode UX Complete)
+- [x] BeginnerExampleDocumentService.swift 신규 생성 — API 키 없이 샘플 회의록 생성 (로컬 전용)
+- [x] pbxproj 등록 — BC233B001FR/BF 추가 (BeginnerExampleDocumentService.swift)
+- [x] WorkroomHomeView.swift — handleBeginnerCardTap(.tryExample) BeginnerExampleDocumentService 연결
+- [x] WorkroomHomeView.swift — onPromptDispatched 콜백으로 업무 카드 → AgentChatView dispatch 연결
+- [x] SettingsView.swift — 간편 모드 Toggle 추가 (사용자 설정 탭)
+- [x] ArtifactCardView.swift — friendlyRecovery: RecoveryInfo 친절한 복구 UI 추가 (4개 오류 케이스)
+- [x] RuntimeDiagnosticsService.swift — Round 233B beginner 필드 9개 추가
+- [x] ToolContractValidator.swift — validateBeginnerModePolicy/ExampleFlowPolicy/FriendlyRecoveryPolicy 추가
+- [x] RouterBurnInSuite.swift — 5개 beginner 케이스 추가
+- [x] scripts/preflight_beginner_round233.sh 생성
+- [x] docs/beginner/BeginnerModeProductSpec.md 생성
+- [x] Debug BUILD SUCCEEDED (0 Swift warnings)
+
 ### Completed (Round 233A — Beginner Mode)
 - [x] BeginnerMode.swift 신규 생성 — BeginnerTaskCard(6), BeginnerGuidanceMessage, UserFacingTerm 구현
 - [x] BeginnerTaskCardView.swift 신규 생성 — 초보자 업무 카드 UI (사용자/치코 역할 분리)
@@ -675,18 +689,19 @@ Mac App Store에 출시 가능한 macOS 네이티브 AI 팀 앱.
 - [ ] Runtime QA: workroom 열기, 문서 생성, artifact 재사용, room 전환 시 치코 반응 확인
 - [ ] workflowCompleted → .joy 전환 실기 확인 (artifact 생성 후)
 - [ ] Beginner Mode 실기 확인 — 업무 카드 탭 → 프롬프트 dispatch → 결과
-- [ ] "예시로 먼저 해보기" 실기 확인 — 샘플 회의록 생성
+- [ ] "예시로 먼저 해보기" 실기 확인 — 샘플 회의록 생성 (API 키 없이)
 - [ ] Character sprite asset production (디자인팀 — idle/typing/greeting/joy/backwork 우선)
 - [ ] sleeping state 연결 (long idle timer hook — backlog)
 - [ ] artifactVerificationFailed → .sad/.confused 연결 (ResultVerifier hook — backlog)
 - [ ] App Store submission review
 
 ### Status
-- **Build**: ✅ Debug + Release BUILD SUCCEEDED, 0 warnings
-- **Code Validation**: ✅ COMPLETE (ToolContractValidator, RouterBurnInSuite, RuntimeDiagnostics)
-- **Character Reaction**: ✅ 6개 이벤트 연결 (workroomOpened/workflowStarted/documentCreated/artifactReuse/multiRoomSwitched/workflowCompleted bridge)
+- **Build**: ✅ Debug BUILD SUCCEEDED, 0 warnings (Release 재확인 필요)
+- **Code Validation**: ✅ COMPLETE (ToolContractValidator 3개 beginner validator, RouterBurnInSuite 5개 beginner case, RuntimeDiagnostics 9개 beginner 필드)
+- **Beginner Mode**: ✅ 간편/기본 분기 + 예시 플로우 + 친절한 복구 + Settings 토글 완성
+- **Character Reaction**: ✅ 6개 이벤트 연결
 - **Sprite Handoff**: ✅ ChikoSpriteSheetHandoff.md + CharacterSpriteRosterRoadmap.md 완료
-- **Delegate Strategy**: ✅ agentEmotions 경로 우선, delegate deferred (문서화 완료)
+- **Delegate Strategy**: ✅ agentEmotions 경로 우선, delegate deferred
 - **Manual QA**: ⏳ PENDING (runtime verified 아님)
 - **Submission**: ❌ NOT READY (character assets + manual QA 필요)
 

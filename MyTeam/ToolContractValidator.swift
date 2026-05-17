@@ -109,6 +109,11 @@ enum ToolContractValidator {
         validateCharacterReactionDelegatePolicy(issues: &issues)
         validateCharacterSpriteRosterPolicy(issues: &issues)
 
+        // Round 233B: Beginner Mode validators
+        validateBeginnerModePolicy(issues: &issues)
+        validateBeginnerExampleFlowPolicy(issues: &issues)
+        validateBeginnerFriendlyRecoveryPolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -789,6 +794,50 @@ enum ToolContractValidator {
         let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
         if let snap, !snap.characterSpriteRosterRoadmapAvailable {
             issues.append(issue(.warning, "CharacterSpriteRosterRoadmap.md가 없습니다. DLC 캐릭터 노출 정책이 문서화되어야 합니다."))
+        }
+    }
+
+    // MARK: - Round 233B: Beginner Mode Validators
+
+    private static func validateBeginnerModePolicy(issues: inout [ToolContractValidationIssue]) {
+        // 간편 모드 UI 표면 존재 여부 확인
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.beginnerModeAvailable {
+            issues.append(issue(.error, "BeginnerMode: 간편 모드 기능이 비활성화되어 있습니다. BeginnerMode.swift 등록을 확인하세요."))
+        }
+        if !snap.beginnerTaskCardsAvailable {
+            issues.append(issue(.error, "BeginnerMode: BeginnerTaskCard가 없습니다. BeginnerMode.swift 등록을 확인하세요."))
+        }
+        if !snap.beginnerSettingsToggleAvailable {
+            issues.append(issue(.warning, "BeginnerMode: SettingsView 간편 모드 토글이 없습니다."))
+        }
+        if !snap.beginnerWorkroomHomeViewAvailable {
+            issues.append(issue(.error, "BeginnerMode: WorkroomHomeView 간편 모드 분기가 없습니다."))
+        }
+    }
+
+    private static func validateBeginnerExampleFlowPolicy(issues: inout [ToolContractValidationIssue]) {
+        // 예시로 먼저 해보기 플로우 — API 키 없이 동작해야 함
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.beginnerExampleFlowAvailable {
+            issues.append(issue(.error, "BeginnerMode: 예시 플로우(BeginnerExampleDocumentService)가 없습니다. API 키 없이 동작하는 fallback이 필요합니다."))
+        }
+        if !snap.beginnerExampleDocumentServiceAvailable {
+            issues.append(issue(.error, "BeginnerMode: BeginnerExampleDocumentService 싱글턴이 없습니다."))
+        }
+        if !snap.beginnerGuidanceMessagesAvailable {
+            issues.append(issue(.warning, "BeginnerMode: BeginnerGuidanceMessage 정의가 없습니다."))
+        }
+    }
+
+    private static func validateBeginnerFriendlyRecoveryPolicy(issues: inout [ToolContractValidationIssue]) {
+        // ArtifactCardView 친절한 복구 UI 확인
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.beginnerFriendlyRecoveryAvailable {
+            issues.append(issue(.warning, "BeginnerMode: ArtifactCardView 친절한 복구 UI(friendlyRecovery)가 없습니다. 비전문가 사용자 오류 복구 경험이 저하됩니다."))
         }
     }
 }

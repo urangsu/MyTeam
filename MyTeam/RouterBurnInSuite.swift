@@ -2024,6 +2024,61 @@ enum RouterBurnInSuite {
             expectedGoalType: nil,
             shouldRequireApproval: false,
             notes: "Policy: artifactVerificationFailed → .sad / .confused. Not yet connected — backlog. ResultVerifier hook needed."
+        ),
+
+        // MARK: Round 233B — Beginner Mode policy cases
+        // 간편 모드 UX 동작 정책 케이스.
+        // API 키 없이 동작하는 흐름과 친절한 복구 UI를 검증한다.
+
+        .init(
+            id: "beginner-example-flow-no-api-key",
+            message: "예시로 먼저 해보기",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Policy: '예시로 먼저 해보기' → BeginnerExampleDocumentService.generateExampleMeetingMinutes(). API 키 불필요. ArtifactStore 등록 + workflowCompleted 알림 발생 확인."
+        ),
+        .init(
+            id: "beginner-meeting-minutes-dispatch",
+            message: "회의록 양식 만들어줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "Policy: BeginnerTaskCard.meetingMinutes.dispatchPrompt → universalDocument 라우팅. WorkroomHomeView.handleBeginnerCardTap(.meetingMinutes) 발동."
+        ),
+        .init(
+            id: "beginner-checklist-dispatch",
+            message: "체크리스트 만들어줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "Policy: BeginnerTaskCard.checklist.dispatchPrompt → universalDocument 라우팅."
+        ),
+        .init(
+            id: "beginner-mode-toggle-settings",
+            message: "",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Policy: SettingsView 간편 모드 토글 → AgentWindowManager.isBeginnerMode @AppStorage 동기화. WorkroomHomeView 분기 전환 확인."
+        ),
+        .init(
+            id: "beginner-friendly-recovery-missing-file",
+            message: "",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Policy: ArtifactCardView.healthStatus == .missingFile → friendlyRecovery 표시. '새 문서로 시작' 버튼 → myteam.beginnerNewDocument notification 발생."
         )
     ]
 

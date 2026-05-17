@@ -271,15 +271,26 @@ struct WorkroomHomeView: View {
 
     /// 초보자 카드 탭 → 적절한 action으로 변환
     private func handleBeginnerCardTap(_ card: BeginnerTaskCard) {
+        guard let roomID = manager.currentRoomID else { return }
+
+        if card == .tryExample {
+            // tryExample: API key 없어도 local template으로 즉시 생성
+            Task {
+                await BeginnerExampleDocumentService.shared.generateExampleMeetingMinutes(roomID: roomID)
+            }
+            CharacterReactionEventSink.shared.notifyDocumentGenerationStarted(
+                workflowType: "beginnerExample", roomID: roomID)
+            return
+        }
+
+        // 그 외 카드: 프롬프트 dispatch
         let prompt = card.dispatchPrompt
         onPromptDispatched?(prompt)
 
-        // Character reaction: 문서 생성 시작
-        if let roomID = manager.currentRoomID {
-            let workflowType = card == .fileSummary ? "fileSummary" : "universalDocument"
-            CharacterReactionEventSink.shared.notifyDocumentGenerationStarted(
-                workflowType: workflowType, roomID: roomID)
-        }
+        // Character reaction
+        let workflowType = card == .fileSummary ? "fileSummary" : "universalDocument"
+        CharacterReactionEventSink.shared.notifyDocumentGenerationStarted(
+            workflowType: workflowType, roomID: roomID)
     }
 
     /// 현재 상태에 맞는 치코 안내 메시지

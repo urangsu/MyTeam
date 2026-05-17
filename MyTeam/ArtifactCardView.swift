@@ -89,8 +89,31 @@ struct ArtifactCardView: View {
             // Status indicator
             statusView
 
+            // ── Friendly Recovery (초보자 안내 + 복구 버튼) ──
+            if let recovery = friendlyRecovery {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(recovery.message)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 6) {
+                        ForEach(recovery.actions, id: \.title) { action in
+                            Button(action.title) { action.handler() }
+                                .buttonStyle(.bordered)
+                                .controlSize(.mini)
+                        }
+                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.orange.opacity(0.06))
+                )
+            }
+
             // Preview (optional)
-            if !artifact.preview.isEmpty {
+            if !artifact.preview.isEmpty && canInteract {
                 Text(artifact.preview)
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -225,6 +248,56 @@ struct ArtifactCardView: View {
             return "파일을 열 수 없음"
         case .hashMismatch:
             return "파일 상태가 바뀌었습니다"
+        }
+    }
+
+    // MARK: - Friendly Recovery
+
+    private struct RecoveryAction {
+        let title: String
+        let handler: () -> Void
+    }
+
+    private struct RecoveryInfo {
+        let message: String
+        let actions: [RecoveryAction]
+    }
+
+    private var friendlyRecovery: RecoveryInfo? {
+        switch artifact.healthStatus {
+        case .valid, .metadataOnly:
+            return nil  // 정상 상태 — 복구 안내 불필요
+        case .missingFile:
+            return RecoveryInfo(
+                message: "파일을 찾을 수 없어요. 다시 선택하면 이어서 정리할 수 있습니다.",
+                actions: [
+                    RecoveryAction(title: "새 문서로 시작") {
+                        // 현재는 워크룸 기본 프롬프트로 안내
+                        NotificationCenter.default.post(
+                            name: Notification.Name("myteam.beginnerNewDocument"), object: nil)
+                    }
+                ]
+            )
+        case .hashMismatch:
+            return RecoveryInfo(
+                message: "파일 내용이 바뀐 것 같아요. 최신 파일로 다시 정리할 수 있어요.",
+                actions: [
+                    RecoveryAction(title: "새 문서로 시작") {
+                        NotificationCenter.default.post(
+                            name: Notification.Name("myteam.beginnerNewDocument"), object: nil)
+                    }
+                ]
+            )
+        case .invalidExternalPath, .invalidRelativePath:
+            return RecoveryInfo(
+                message: "파일을 열 수 없어요. 파일을 다시 선택해주세요.",
+                actions: [
+                    RecoveryAction(title: "새 문서로 시작") {
+                        NotificationCenter.default.post(
+                            name: Notification.Name("myteam.beginnerNewDocument"), object: nil)
+                    }
+                ]
+            )
         }
     }
 

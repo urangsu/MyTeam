@@ -370,6 +370,17 @@ struct RuntimeDiagnosticsSnapshot {
     let characterSpriteRosterRoadmapAvailable: Bool
     let characterReactionDelegateDecisionAvailable: Bool
 
+    // Round 233B: Beginner Mode UX
+    let beginnerModeAvailable: Bool
+    let beginnerModeEnabled: Bool
+    let beginnerTaskCardsAvailable: Bool
+    let beginnerExampleFlowAvailable: Bool
+    let beginnerFriendlyRecoveryAvailable: Bool
+    let beginnerGuidanceMessagesAvailable: Bool
+    let beginnerSettingsToggleAvailable: Bool
+    let beginnerWorkroomHomeViewAvailable: Bool
+    let beginnerExampleDocumentServiceAvailable: Bool
+
     // Build / Submission Status
     let macBuildPending: Bool
     let manualQAPending: Bool
@@ -500,6 +511,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("recentEvents: \(recentEventCount) | latest: \(latestEventSummary ?? "none")")
         lines.append("uxfix136a: nameplatePalette=\(teamNameplatePaletteEnabled) borderSimplified=\(teamNameplateBorderModeSimplified) dartEnabled=\(dartDisclosureEnabled) dartPublicRead=\(dartDisclosureClassifiedAsPublicRead) rosterUpdated=\(defaultCharacterRosterUpdated) apiKeySettingsOnly=\(apiKeyPromptSettingsOnly) apiKeyHiddenFromTeam=\(apiKeyPromptHiddenFromTeamSurface)")
         lines.append("ia137a: roomScopedArtifacts=\(recentArtifactsRoomScoped) terminology=\(terminologyPolicyAvailable) switcherRemoved=\(agentSwitcherRemovedFromSidebar) timerLeakFixed=\(typingIndicatorTimerLeakFixed) starter3Primary=\(starterAction3PrimaryAvailable) workSurface=\(workSurfaceSimplificationPlanAvailable) roomScopedPolicy=\(roomScopedArtifactPolicyAvailable) iaPolicy=\(productIAPolicyAvailable) emptyState=\(emptyStateSimplified) workroomTerm=\(workroomTerminologyApplied) reservedTask=\(reservedTaskTerminologyApplied) defaultRoomName=\(defaultRoomNameUpdated)")
+        lines.append("beginner233b: mode=\(beginnerModeAvailable) enabled=\(beginnerModeEnabled) taskCards=\(beginnerTaskCardsAvailable) example=\(beginnerExampleFlowAvailable) recovery=\(beginnerFriendlyRecoveryAvailable) guidance=\(beginnerGuidanceMessagesAvailable) settings=\(beginnerSettingsToggleAvailable) homeView=\(beginnerWorkroomHomeViewAvailable) exampleSvc=\(beginnerExampleDocumentServiceAvailable)")
 
         return lines.joined(separator: "\n  ")
     }
@@ -1111,6 +1123,15 @@ final class RuntimeDiagnosticsService {
             chikoSpriteSheetHandoffAvailable: FileManager.default.fileExists(atPath: "docs/character/ChikoSpriteSheetHandoff.md"),
             characterSpriteRosterRoadmapAvailable: FileManager.default.fileExists(atPath: "docs/character/CharacterSpriteRosterRoadmap.md"),
             characterReactionDelegateDecisionAvailable: FileManager.default.fileExists(atPath: "docs/character/CharacterReactionDelegateDecision.md"),
+            beginnerModeAvailable: true,
+            beginnerModeEnabled: manager.isBeginnerMode,
+            beginnerTaskCardsAvailable: true,
+            beginnerExampleFlowAvailable: true,
+            beginnerFriendlyRecoveryAvailable: true,
+            beginnerGuidanceMessagesAvailable: true,
+            beginnerSettingsToggleAvailable: true,
+            beginnerWorkroomHomeViewAvailable: true,
+            beginnerExampleDocumentServiceAvailable: true,
             macBuildPending: false,
             manualQAPending: true,
             submissionReadyStatus: "manualQAPending"
