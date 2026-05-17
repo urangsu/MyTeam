@@ -241,8 +241,11 @@ struct TeamStatusView: View {
                 VStack(spacing: 14) {
                     ForEach(manager.activeAgents) { agent in
                         StatusAgentRow(agent: agent, isDarkMode: manager.isDarkMode)
+                            .contentShape(Rectangle())
                             .onTapGesture {
-                                manager.showChat(for: agent)
+                                Task { @MainActor in
+                                    manager.openPersonalChat(for: agent.id)
+                                }
                             }
                     }
                 }
@@ -511,7 +514,11 @@ struct TeamStatusView: View {
                                             .padding(.horizontal, 10).padding(.vertical, 6)
                                             .background(
                                                 RoundedRectangle(cornerRadius: 12)
-                                                    .fill(manager.isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.06))
+                                                    .fill(Color.mtCardBackground)
+                                                    .overlay(
+                                                        RoundedRectangle(cornerRadius: 12)
+                                                            .strokeBorder(Color.mtCardBorder, lineWidth: 0.5)
+                                                    )
                                             )
                                         }
                                     }
@@ -586,12 +593,13 @@ struct TeamStatusView: View {
 
                 TextField("팀원들에게 메시지...", text: $inputText)
                     .textFieldStyle(PlainTextFieldStyle())
+                    .foregroundColor(.mtTextPrimary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
                     .background(
                         RoundedRectangle(cornerRadius: 14)
-                            .fill(isTargetedForDrop ? Color.blue.opacity(0.1) : textColor.opacity(0.05))
-                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(isTargetedForDrop ? Color.blue : Color.clear, lineWidth: 1))
+                            .fill(isTargetedForDrop ? Color.blue.opacity(0.1) : Color.mtInputBackground)
+                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(isTargetedForDrop ? Color.blue : Color.mtCardBorder, lineWidth: 1))
                     )
                     .onSubmit { sendTeamMessage() }
 
@@ -1253,19 +1261,20 @@ struct StatusAgentRow: View {
             }
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(agent.name).font(.system(size: 13, weight: .semibold)).foregroundColor(isDarkMode ? .white : .black)
-                Text(agent.status).font(.system(size: 10)).foregroundColor(isDarkMode ? .white.opacity(0.5) : .gray)
+                Text(agent.name).font(.system(size: 13, weight: .semibold)).foregroundColor(.mtTextPrimary)
+                Text(agent.status).font(.system(size: 10)).foregroundColor(.mtTextSecondary)
             }
             Spacer()
             
             Image(systemName: "chevron.right")
                 .font(.system(size: 10, weight: .bold))
-                .foregroundColor(isDarkMode ? .white.opacity(0.2) : .gray.opacity(0.3))
+                .foregroundColor(.mtTextTertiary)
         }
         .padding(10)
         .background(
             RoundedRectangle(cornerRadius: 15)
-                .fill(isDarkMode ? Color.white.opacity(0.05) : Color.black.opacity(0.02))
+                .fill(Color.mtCardBackground)
+                .overlay(RoundedRectangle(cornerRadius: 15).strokeBorder(Color.mtCardBorder, lineWidth: 0.5))
         )
     }
 }

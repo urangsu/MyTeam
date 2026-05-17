@@ -134,3 +134,11 @@
 
 ### 남은 항목
 - Round 140A Manual Runtime QA 필요
+
+### Round 235 — P0 UX Issues Resolved (2026-05-17)
+
+- Chat text contrast (P0): resolved — MT Readability Token system, glass overlays replaced
+- Input placeholder readability (P0): resolved — mtInputBackground + mtTextSecondary
+- Beginner card contrast (P0): resolved — mtCardBackground on all card surfaces
+- Agent chat switching (P0): resolved — openPersonalChat() wired to seat/nameplate taps
+- Status: Build-ready, Manual QA pending

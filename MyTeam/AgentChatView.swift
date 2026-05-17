@@ -73,9 +73,9 @@ struct AgentChatView: View {
         manager.isDarkMode ? Color(red: 0.09, green: 0.09, blue: 0.11) : Color(red: 0.97, green: 0.97, blue: 0.99)
     }
     private var textColor: Color { manager.isDarkMode ? .white : Color(red: 0.1, green: 0.1, blue: 0.12) }
-    private var subTextColor: Color { manager.isDarkMode ? .white.opacity(0.45) : .black.opacity(0.35) }
+    private var subTextColor: Color { Color.mtTextSecondary }
     private var dividerColor: Color { manager.isDarkMode ? .white.opacity(0.07) : .black.opacity(0.06) }
-    private var inputBgColor: Color { manager.isDarkMode ? Color.white.opacity(0.06) : Color.black.opacity(0.04) }
+    private var inputBgColor: Color { Color.mtInputBackground }
 
     private var viewWidth: CGFloat {
         if selectedTab == 0 { return 300 }
@@ -798,7 +798,7 @@ struct AgentChatView: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 6)
                 }
-                .background(inputBgColor.opacity(0.5))
+                .background(inputBgColor)
                 Divider()
             }
 

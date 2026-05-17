@@ -12,7 +12,7 @@ struct BeginnerTaskCardView: View {
     @State private var isExpanded: Bool = false
 
     private var bgColor: Color {
-        isDarkMode ? Color.white.opacity(0.05) : Color.black.opacity(0.03)
+        Color.mtCardBackground
     }
 
     private var borderColor: Color {
@@ -39,7 +39,7 @@ struct BeginnerTaskCardView: View {
                             .foregroundColor(.primary)
                         Text(card.subtitle)
                             .font(.system(size: 11))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.mtTextSecondary)
                             .multilineTextAlignment(.leading)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -65,15 +65,15 @@ struct BeginnerTaskCardView: View {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("내가 할 일")
                                 .font(.system(size: 9, weight: .semibold))
-                                .foregroundColor(.secondary)
+                                .foregroundColor(.mtTextSecondary)
                             ForEach(card.userTasks, id: \.self) { task in
                                 HStack(alignment: .top, spacing: 4) {
                                     Text("•")
                                         .font(.system(size: 9))
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(.mtTextTertiary)
                                     Text(task)
                                         .font(.system(size: 10))
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(.mtTextSecondary)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
                             }
@@ -84,15 +84,15 @@ struct BeginnerTaskCardView: View {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("치코가 할 일")
                                 .font(.system(size: 9, weight: .semibold))
-                                .foregroundColor(.blue.opacity(0.7))
+                                .foregroundColor(.blue.opacity(0.85))
                             ForEach(card.chikoTasks, id: \.self) { task in
                                 HStack(alignment: .top, spacing: 4) {
                                     Text("✦")
                                         .font(.system(size: 8))
-                                        .foregroundColor(.blue.opacity(0.5))
+                                        .foregroundColor(.blue.opacity(0.7))
                                     Text(task)
                                         .font(.system(size: 10))
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(.mtTextSecondary)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
                             }

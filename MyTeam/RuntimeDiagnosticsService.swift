@@ -391,6 +391,13 @@ struct RuntimeDiagnosticsSnapshot {
     let beginnerWorkroomHomeViewAvailable: Bool
     let beginnerExampleDocumentServiceAvailable: Bool
 
+    // Round 235: UI Readability + Agent Chat Switching
+    let chatReadabilityTokensAvailable: Bool
+    let inputPlaceholderReadable: Bool
+    let agentChatSwitchingAvailable: Bool
+    let decorativeOverlaysNonBlocking: Bool
+    let beginnerCardsReadable: Bool
+
     // Build / Submission Status
     let macBuildPending: Bool
     let manualQAPending: Bool
@@ -523,6 +530,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("ia137a: roomScopedArtifacts=\(recentArtifactsRoomScoped) terminology=\(terminologyPolicyAvailable) switcherRemoved=\(agentSwitcherRemovedFromSidebar) timerLeakFixed=\(typingIndicatorTimerLeakFixed) starter3Primary=\(starterAction3PrimaryAvailable) workSurface=\(workSurfaceSimplificationPlanAvailable) roomScopedPolicy=\(roomScopedArtifactPolicyAvailable) iaPolicy=\(productIAPolicyAvailable) emptyState=\(emptyStateSimplified) workroomTerm=\(workroomTerminologyApplied) reservedTask=\(reservedTaskTerminologyApplied) defaultRoomName=\(defaultRoomNameUpdated)")
         lines.append("beginner233b: mode=\(beginnerModeAvailable) enabled=\(beginnerModeEnabled) taskCards=\(beginnerTaskCardsAvailable) example=\(beginnerExampleFlowAvailable) recovery=\(beginnerFriendlyRecoveryAvailable) guidance=\(beginnerGuidanceMessagesAvailable) settings=\(beginnerSettingsToggleAvailable) homeView=\(beginnerWorkroomHomeViewAvailable) exampleSvc=\(beginnerExampleDocumentServiceAvailable)")
         lines.append("sprite234: intakeFolder=\(spriteAssetFolderAvailable) chikoRuntime=\(chikoSpriteFolderAvailable) readme=\(chikoSpriteReadmeAvailable) validator=\(spriteValidatorAvailable) manifest=\(characterSpriteManifestAvailable) states=\(chikoRequiredSpriteStatesDocumented) nextAction=\(beginnerExampleNextActionsAvailable) recovery=\(friendlyRecoveryActionsAvailable)")
+        lines.append("ui235: tokens=\(chatReadabilityTokensAvailable ? "✅" : "❌") placeholder=\(inputPlaceholderReadable ? "✅" : "❌") agentSwitch=\(agentChatSwitchingAvailable ? "✅" : "❌") overlays=\(decorativeOverlaysNonBlocking ? "✅" : "❌") cards=\(beginnerCardsReadable ? "✅" : "❌")")
 
         return lines.joined(separator: "\n  ")
     }
@@ -1154,6 +1162,11 @@ final class RuntimeDiagnosticsService {
             beginnerSettingsToggleAvailable: true,
             beginnerWorkroomHomeViewAvailable: true,
             beginnerExampleDocumentServiceAvailable: true,
+            chatReadabilityTokensAvailable: true,
+            inputPlaceholderReadable: true,
+            agentChatSwitchingAvailable: true,
+            decorativeOverlaysNonBlocking: true,
+            beginnerCardsReadable: true,
             macBuildPending: false,
             manualQAPending: true,
             submissionReadyStatus: "manualQAPending"

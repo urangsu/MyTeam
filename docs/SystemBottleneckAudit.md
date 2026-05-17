@@ -371,3 +371,12 @@ Tool risk registry enforcement, artifact binding 재검증, deterministic execut
 PASS=16, WARN=2, FAIL=0
 (WARN: InternalReviewReport 생성 전 → 생성 후 해소, git uncommitted)
 ```
+
+
+### Round 235 — UI Overlay/Contrast Issue Resolution (2026-05-17)
+
+- Low-opacity glass overlays burying chat text: resolved — MT Readability Tokens introduced, glass backgrounds replaced with NSColor.controlBackgroundColor-based tokens
+- Input placeholder contrast below WCAG AA: resolved — inputBgColor and subTextColor raised to mtInputBackground / mtTextSecondary
+- BeginnerTaskCard / WorkroomHomeView card surfaces near-invisible: resolved — mtCardBackground applied
+- Agent nameplate click not switching chat room: resolved — openPersonalChat(for:) wired to both TeamTableView and TeamStatusView taps
+- Status: Build-ready, Manual QA pending

@@ -102,6 +102,10 @@ struct TeamTableView: View {
                         isSelected: selectedAgentIndex == index,
                         onTap: {
                             selectedAgentIndex = (selectedAgentIndex == index) ? nil : index
+                            // Round 235: switch chat room to this agent on tap
+                            Task { @MainActor in
+                                manager.openPersonalChat(for: agent.id)
+                            }
                         }
                     )
                     .overlay(alignment: .topTrailing) {

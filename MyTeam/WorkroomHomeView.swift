@@ -124,7 +124,8 @@ struct WorkroomHomeView: View {
                         .padding(.vertical, 8)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
-                                .fill(isDarkMode ? Color.white.opacity(0.04) : Color.black.opacity(0.02))
+                                .fill(Color.mtCardBackground)
+                                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.mtCardBorder, lineWidth: 0.5))
                         )
                         .padding(.horizontal, 14)
                     } else {
@@ -158,7 +159,8 @@ struct WorkroomHomeView: View {
                                     .foregroundColor(.blue)
                                     .background(
                                         RoundedRectangle(cornerRadius: 8)
-                                            .fill(isDarkMode ? Color.white.opacity(0.06) : Color.black.opacity(0.04))
+                                            .fill(Color.mtCardBackground)
+                                            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.mtCardBorder, lineWidth: 0.5))
                                     )
                                 }
                                 .buttonStyle(PlainButtonStyle())
@@ -223,7 +225,8 @@ struct WorkroomHomeView: View {
                     .padding(.vertical, 6)
                     .background(
                         RoundedRectangle(cornerRadius: 6)
-                            .fill(isDarkMode ? Color.white.opacity(0.03) : Color.black.opacity(0.02))
+                            .fill(Color.mtCardBackground)
+                            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.mtCardBorder, lineWidth: 0.5))
                     )
                 }
             }
@@ -236,7 +239,7 @@ struct WorkroomHomeView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(label)
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.secondary)
+                .foregroundColor(.mtTextSecondary)
                 .padding(.horizontal, 14)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -247,11 +250,11 @@ struct WorkroomHomeView: View {
                         HStack(spacing: 8) {
                             Text(action.title)
                                 .font(.system(size: 12))
-                                .foregroundColor(.primary)
+                                .foregroundColor(.mtTextPrimary)
                             Spacer()
                             Image(systemName: "arrow.right")
                                 .font(.system(size: 10, weight: .semibold))
-                                .foregroundColor(.secondary)
+                                .foregroundColor(.mtTextSecondary)
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
@@ -259,7 +262,8 @@ struct WorkroomHomeView: View {
                     .buttonStyle(PlainButtonStyle())
                     .background(
                         RoundedRectangle(cornerRadius: 6)
-                            .fill(isDarkMode ? Color.white.opacity(0.03) : Color.black.opacity(0.02))
+                            .fill(Color.mtCardBackground)
+                            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.mtCardBorder, lineWidth: 0.5))
                     )
                 }
             }

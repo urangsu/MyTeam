@@ -6,6 +6,38 @@
 
 ---
 
+## 2026-05-17 (Round 235 — UI Readability P0 Fixes + Agent Chat Switching)
+
+### 완료 (2026-05-17)
+
+**핵심 달성**:
+- MT Readability Token 시스템 도입 — Color+Hex.swift에 6개 토큰 (primary/secondary/tertiary text, card/input background, border)
+- 채팅 버블/카드 배경 low-opacity glass 교체 — Color.mtCardBackground (NSColor.controlBackgroundColor 기반, dark mode 자동 대응)
+- 입력 필드 placeholder/background 가독성 상향 — mtInputBackground + mtTextSecondary
+- 에이전트 nameplate 탭 → openPersonalChat(for:) 연결 — currentRoomID 전환 (TeamTableView + TeamStatusView 양쪽)
+- BeginnerTaskCardView / WorkroomHomeView 카드 명시적 배경 + border
+- RuntimeDiagnostics Round 235 필드 5개 + summary line
+- Debug + Release BUILD SUCCEEDED 0 warnings
+
+**구현**:
+- **Color+Hex.swift**: mtTextPrimary(0.88)/mtTextSecondary(0.64)/mtTextTertiary(0.45), mtCardBackground(0.94), mtInputBackground(0.96), mtCardBorder(0.10) 추가
+- **TeamStatusView.swift**: 채팅 버블 배경 → mtCardBackground + strokeBorder, 입력 필드 배경/foreground 명시, StatusAgentRow 배경/텍스트 토큰화, 에이전트 탭 → openPersonalChat()
+- **AgentChatView.swift**: inputBgColor → mtInputBackground, subTextColor → mtTextSecondary, attachment area opacity stacking 제거
+- **BeginnerTaskCardView.swift**: bgColor → mtCardBackground, 내부 텍스트 secondary/tertiary 토큰 적용
+- **WorkroomHomeView.swift**: 목표/액션 카드 배경 mtCardBackground, nextActions 텍스트 명시, 섹션 헤더 mtTextSecondary
+- **TeamTableView.swift**: 에이전트 시트 onTap에 openPersonalChat(for:) 추가
+- **RuntimeDiagnosticsService.swift**: Round 235 필드 5개 + ui235 summary line
+- **scripts/preflight_ui_readability_round235.sh** (new): 12단계 preflight
+
+**핵심 기술 결정**:
+- Color.primary 기반 opacity 토큰: isDarkMode 분기 없이 NSColor adaptive 동작 활용
+- NSColor.controlBackgroundColor 기반 배경: macOS system 배경으로 dark mode 자동 전환
+- openPersonalChat(for:) 재사용: 이미 구현된 메서드로 최소 코드 변경
+
+**문서**: TASK.md Round 235 Completed 추가, DEVLOG.md 이 항목
+
+---
+
 ## 2026-05-17 (Round 234 — Sprite Asset Gate + Beginner Flow QA Prep)
 
 ### 완료 (2026-05-17)

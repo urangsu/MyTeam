@@ -1,6 +1,16 @@
 import SwiftUI
 import AppKit
 
+// MARK: - MT Readability Tokens (Round 235)
+extension Color {
+    static let mtTextPrimary   = Color.primary.opacity(0.88)
+    static let mtTextSecondary = Color.primary.opacity(0.64)
+    static let mtTextTertiary  = Color.primary.opacity(0.45)
+    static let mtCardBackground  = Color(NSColor.controlBackgroundColor).opacity(0.94)
+    static let mtInputBackground = Color(NSColor.controlBackgroundColor).opacity(0.96)
+    static let mtCardBorder      = Color.primary.opacity(0.10)
+}
+
 extension Color {
     init?(hex: String) {
         var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
