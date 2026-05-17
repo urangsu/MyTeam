@@ -609,35 +609,53 @@ Mac App Store에 출시 가능한 macOS 네이티브 AI 팀 앱.
 
 ---
 
-## Round 196A-230Z Completion (2026-05-17)
+## Round 196A-230Z + Round 231A Completion (2026-05-17)
 
-### Completed
+### Completed (Round 196A-230Z)
 - [x] WorkroomActionTypes.swift created (canonical enum source)
 - [x] Enum deduplication (removed from TeamStatusView, WorkroomHomeModel)
 - [x] pbxproj registration (file ref + build file + sources phase)
 - [x] TeamStatusView handlers refactored to use dispatchPrompt
-- [x] Build validation: Debug + Release succeeded, 0 warnings
 - [x] Room scope enforcement: 10 scoped calls, 0 global calls
-- [x] Character system preservation verified (4 core files, 7 referencing files)
+- [x] Character system preservation verified (4 core files, 11 referencing files)
 - [x] CharacterReactionBridgeBacklog.md documented
-- [x] SpriteSheetProductionSpec.md documented
+- [x] SpriteSheetProductionSpec.md documented (실제 AnimationState 기준 보정 완료)
 - [x] CharacterReactionEnginePlan.md documented
-- [x] RuntimeDiagnosticsService enhanced (14 Workroom fields added)
+- [x] RuntimeDiagnosticsService enhanced (14 Workroom fields + 11 CharacterReaction fields)
+- [x] ToolContractValidator enhanced (9 Round 196 + 3 Round 231A validators)
+- [x] RouterBurnInSuite: 존재 확인 (ToolContractValidator/RouterBurnInSuite 미존재 표현 정정)
 - [x] CLAUDE.md project config created
 - [x] Command scripts created (.claude/commands/)
-- [x] Preflight script created (scripts/preflight_workroom_round196.sh)
-- [x] Workroom review report created (docs/workroom/WorkroomRound196ReviewReport.md)
+- [x] Preflight script updated (scripts/preflight_workroom_round196.sh)
+- [x] Workroom review report created
+
+### Completed (Round 231A)
+- [x] WorkroomCharacterEvent.swift created — 5개 이벤트 (workroomOpened/workflowStarted/documentCreated/artifactReuse/multiRoomSwitched)
+- [x] CharacterReactionEngine.swift created — event 처리, 30s cooldown, delegate 패턴
+- [x] CharacterReactionEventSink.swift created — AgentWindowManager.agentEmotions 직접 연결
+- [x] 3개 파일 pbxproj 등록 (PBXFileReference + PBXBuildFile + PBXSourcesBuildPhase + PBXGroup)
+- [x] WorkroomHomeView.onAppear → workroomOpened event
+- [x] handleWorkroomAction(.createDocument) → documentGenerationStarted event
+- [x] handleWorkroomAction(.handoffFile) → artifactReuseRequested event
+- [x] handleWorkroomNextAction → documentGenerationStarted event
+- [x] CharacterReactionEventSink → agentEmotions[agentID] = state (agentID no-op 안전 처리)
+- [x] AnimationState 기존 enum 재사용 (CharacterMood/CharacterActivity 미도입)
+- [x] CharacterDialogues/SpriteAgentView/CharacterSpriteScene/AgentSeatView 미수정
+- [x] RuntimeDiagnosticsService snapshot 초기화 fix (14 + 11 필드)
+- [x] Debug BUILD SUCCEEDED — 0 Swift warnings
+- [x] Release BUILD SUCCEEDED — 0 Swift warnings
 
 ### Pending (Manual QA)
-- [ ] Runtime QA: open workroom, create document, reuse artifact, switch rooms
-- [ ] Character sprite asset production (design team)
-- [ ] CharacterReactionEngine implementation (Round 231A)
+- [ ] Runtime QA: workroom 열기, 문서 생성, artifact 재사용, room 전환 시 치코 반응 확인
+- [ ] Character sprite asset production (디자인팀 — greeting/typing/joy/backwork 우선)
 - [ ] App Store submission review
 
 ### Status
-- **Build**: READY ✅
-- **Manual QA**: PENDING ⏳
-- **Submission**: NOT READY (character assets + QA required)
+- **Build**: ✅ Debug + Release BUILD SUCCEEDED, 0 warnings
+- **Code Validation**: ✅ COMPLETE (ToolContractValidator, RouterBurnInSuite, RuntimeDiagnostics)
+- **Character Reaction**: ✅ Engine 구현 + agentEmotions 연결 (sprite 파일 없으면 fallback)
+- **Manual QA**: ⏳ PENDING (runtime verified 아님)
+- **Submission**: ❌ NOT READY (character assets + manual QA 필요)
 
 ---
 

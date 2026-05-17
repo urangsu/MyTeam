@@ -1661,6 +1661,39 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>BC231A001FR00001FR001001</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>WorkroomCharacterEvent.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>BC231A002FR00002FR002002</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>CharacterReactionEngine.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>BC231A003FR00003FR003003</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>CharacterReactionEventSink.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
 		<key>1A62B27C523B7E0C0373DB2E</key>
 		<dict>
 			<key>fileRef</key>
@@ -5047,6 +5080,27 @@
 		<dict>
 			<key>fileRef</key>
 			<string>1A470D8252E371DB05ED3A67</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>BC231A001BF00001BF001001</key>
+		<dict>
+			<key>fileRef</key>
+			<string>BC231A001FR00001FR001001</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>BC231A002BF00002BF002002</key>
+		<dict>
+			<key>fileRef</key>
+			<string>BC231A002FR00002FR002002</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>BC231A003BF00003BF003003</key>
+		<dict>
+			<key>fileRef</key>
+			<string>BC231A003FR00003FR003003</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
@@ -9343,6 +9397,9 @@
 				<string>B1E7F1E2AA00112233445568</string>
 				<string>D28100000000000000000001</string>
 				<string>1A470D8252E371DB05ED3A67</string>
+				<string>BC231A001FR00001FR001001</string>
+				<string>BC231A002FR00002FR002002</string>
+				<string>BC231A003FR00003FR003003</string>
 			</array>
 			<key>isa</key>
 			<string>PBXGroup</string>
@@ -10943,6 +11000,9 @@
 				<string>BFWORKROOM001NEW00001</string>
 				<string>BFWORKROOM002NEW00002</string>
 				<string>4EEAE8A8793EDC19632B4A35</string>
+				<string>BC231A001BF00001BF001001</string>
+				<string>BC231A002BF00002BF002002</string>
+				<string>BC231A003BF00003BF003003</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>

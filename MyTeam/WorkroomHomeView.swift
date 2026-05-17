@@ -165,6 +165,12 @@ struct WorkroomHomeView: View {
             Spacer()
         }
         .frame(maxHeight: .infinity, alignment: .topLeading)
+        .onAppear {
+            // Event 1: workroomOpened → greeting/clockIn
+            if let roomID = manager.currentRoomID {
+                CharacterReactionEventSink.shared.notifyWorkroomOpened(roomID: roomID)
+            }
+        }
     }
 }
 

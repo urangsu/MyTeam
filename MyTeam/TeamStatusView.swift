@@ -1153,11 +1153,18 @@ struct TeamStatusView: View {
 
         switch action {
         case .createDocument:
+            // Character reaction: documentGenerationStarted → .typing
+            CharacterReactionEventSink.shared.notifyDocumentGenerationStarted(
+                workflowType: "universalDocument", roomID: roomID)
             dispatchWorkroomPrompt(action.dispatchPrompt, roomID: roomID)
         case .handoffFile:
-            // TODO: Open file intake workflow
+            // Character reaction: fileReadStarted → .thinking(fallback)
+            CharacterReactionEventSink.shared.notifyArtifactReuseRequested(
+                artifactID: "fileIntake", roomID: roomID)
             dispatchWorkroomPrompt(action.dispatchPrompt, roomID: roomID)
         case .organizeToday:
+            CharacterReactionEventSink.shared.notifyDocumentGenerationStarted(
+                workflowType: "universalDocument", roomID: roomID)
             dispatchWorkroomPrompt(action.dispatchPrompt, roomID: roomID)
         }
     }
@@ -1166,6 +1173,9 @@ struct TeamStatusView: View {
     private func handleWorkroomNextAction(_ action: WorkroomNextAction) {
         guard let roomID = manager.currentRoomID else { return }
 
+        // Character reaction: promptSubmitted → .thinking
+        CharacterReactionEventSink.shared.notifyDocumentGenerationStarted(
+            workflowType: "universalDocument", roomID: roomID)
         dispatchWorkroomPrompt(action.dispatchPrompt, roomID: roomID)
     }
 

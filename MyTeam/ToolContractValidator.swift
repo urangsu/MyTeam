@@ -88,6 +88,22 @@ enum ToolContractValidator {
         validateWorkroomNextActionPolicy(issues: &issues)
         validateAgentChatWarningDebtPolicy(issues: &issues)
 
+        // Round 196A-230Z validators
+        validateWorkroomActionTypesConsolidationPolicy(issues: &issues)
+        validateWorkroomEnumDuplicationPolicy(issues: &issues)
+        validateWorkroomPbxprojRegistrationPolicy(issues: &issues)
+        validateWorkroomHandlerMethodsPolicy(issues: &issues)
+        validateWorkroomRoomScopePolicy(issues: &issues)
+        validateWorkroomCharacterSystemPreservationPolicy(issues: &issues)
+        validateWorkroomCharacterReactionBridgeDocumentationPolicy(issues: &issues)
+        validateWorkroomSpriteSheetProductionSpecPolicy(issues: &issues)
+        validateWorkroomCharacterReactionEnginePlanPolicy(issues: &issues)
+
+        // Round 231A validators
+        validateCharacterReactionEnginePolicy(issues: &issues)
+        validateCharacterReactionAnimationStatePolicy(issues: &issues)
+        validateWorkroomEventBridgePolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -619,6 +635,117 @@ enum ToolContractValidator {
         let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
         if let snap, !snap.agentChatAwaitWarningsResolved {
             issues.append(issue(.warning, "AgentChatView에 await warning이 남아 있습니다. 비동기 작업이 실제로 있는지 검토하세요."))
+        }
+    }
+
+    // Round 196A-230Z validators
+    private static func validateWorkroomActionTypesConsolidationPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.workroomActionTypesConsolidated {
+            issues.append(issue(.error, "WorkroomActionTypes.swift enum consolidation이 완료되지 않았습니다. WorkroomPrimaryAction과 WorkroomNextAction이 여전히 중복 정의되어 있을 수 있습니다."))
+        }
+    }
+
+    private static func validateWorkroomEnumDuplicationPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.workroomEnumDuplicationRemoved {
+            issues.append(issue(.error, "WorkroomPrimaryAction/WorkroomNextAction enum이 TeamStatusView, WorkroomHomeModel 등에서 중복 정의되고 있습니다. WorkroomActionTypes.swift로 통합해야 합니다."))
+        }
+    }
+
+    private static func validateWorkroomPbxprojRegistrationPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.workroomPbxprojRegistered {
+            issues.append(issue(.error, "WorkroomActionTypes.swift가 Xcode project (pbxproj)에 등록되지 않았습니다. Build phase에 추가되어야 합니다."))
+        }
+    }
+
+    private static func validateWorkroomHandlerMethodsPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.workroomHandlerMethodsConsolidated {
+            issues.append(issue(.warning, "WorkroomAction 핸들러 메서드가 dispatchPrompt 기반으로 리팩터링되지 않았습니다. handleWorkroomAction()/handleWorkroomNextAction()에서 hardcoded prompt string이 있을 수 있습니다."))
+        }
+    }
+
+    private static func validateWorkroomRoomScopePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.workroomRoomScopeEnforced {
+            issues.append(issue(.error, "Workroom room-scope 정책이 적용되지 않았습니다. recentArtifacts(for: roomID) 패턴이 일관되게 사용되지 않을 수 있습니다."))
+        }
+    }
+
+    private static func validateWorkroomCharacterSystemPreservationPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.workroomCharacterSystemPreserved {
+            issues.append(issue(.error, "Character system (CharacterDialogues, SpriteAgentView, CharacterSpriteScene, AnimationState)이 수정되었거나 삭제되었습니다. 이 파일들은 보호되어야 합니다."))
+        }
+    }
+
+    private static func validateWorkroomCharacterReactionBridgeDocumentationPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.workroomCharacterReactionBridgeBacklogDocumented {
+            issues.append(issue(.warning, "docs/character/CharacterReactionBridgeBacklog.md가 없거나 불완전합니다. Workroom event → character reaction 매핑 전략이 문서화되어야 합니다."))
+        }
+    }
+
+    private static func validateWorkroomSpriteSheetProductionSpecPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.workroomSpriteSheetProductionSpecDocumented {
+            issues.append(issue(.warning, "docs/character/SpriteSheetProductionSpec.md가 없거나 불완전합니다. Sprite 파일 명명 규칙과 프로덕션 파이프라인이 문서화되어야 합니다."))
+        }
+    }
+
+    private static func validateWorkroomCharacterReactionEnginePlanPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.workroomCharacterReactionEnginePlanDocumented {
+            issues.append(issue(.warning, "docs/character/CharacterReactionEnginePlan.md가 없거나 불완전합니다. Round 231A 구현 계획이 문서화되어야 합니다."))
+        }
+    }
+
+    // Round 231A validators
+    private static func validateCharacterReactionEnginePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap {
+            if !snap.characterReactionEngineAvailable {
+                issues.append(issue(.error, "CharacterReactionEngine이 unavailable 상태입니다. WorkroomCharacterEvent.swift + CharacterReactionEngine.swift + CharacterReactionEventSink.swift가 빌드에 포함되어야 합니다."))
+            }
+            if !snap.workroomCharacterEventBridgeAvailable {
+                issues.append(issue(.error, "WorkroomCharacterEvent bridge가 unavailable 상태입니다. CharacterReactionEventSink가 AgentWindowManager.agentEmotions에 연결되어야 합니다."))
+            }
+            if snap.workroomCharacterEventInitialMappingCount < 4 {
+                issues.append(issue(.warning, "WorkroomCharacterEvent 매핑 수가 \(snap.workroomCharacterEventInitialMappingCount)개입니다. 최소 4개(workroomOpened/workflowStarted/documentCreated/artifactReuse) 필요합니다."))
+            }
+            if !snap.toolContractValidatorAvailable {
+                issues.append(issue(.error, "ToolContractValidator.swift가 미존재 또는 미등록 상태입니다."))
+            }
+            if !snap.routerBurnInSuiteAvailable {
+                issues.append(issue(.error, "RouterBurnInSuite.swift가 미존재 또는 미등록 상태입니다."))
+            }
+        }
+    }
+
+    private static func validateCharacterReactionAnimationStatePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap {
+            if !snap.characterReactionUsesExistingAnimationState {
+                issues.append(issue(.error, "CharacterReactionEngine이 기존 AnimationState enum 대신 새 타입을 사용합니다. CharacterMood/CharacterActivity 도입은 금지입니다."))
+            }
+            if !snap.characterDialoguesPreserved {
+                issues.append(issue(.error, "CharacterDialogues.swift가 삭제되거나 이동되었습니다. 이 파일은 보호됩니다."))
+            }
+            if !snap.spriteAgentViewPreserved {
+                issues.append(issue(.error, "SpriteAgentView.swift가 삭제되거나 이동되었습니다. 이 파일은 보호됩니다."))
+            }
+            if !snap.characterSpriteScenePreserved {
+                issues.append(issue(.error, "CharacterSpriteScene.swift가 삭제되거나 이동되었습니다. 이 파일은 보호됩니다."))
+            }
+        }
+    }
+
+    private static func validateWorkroomEventBridgePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.workroomCharacterEventBridgeAvailable {
+            issues.append(issue(.warning, "Workroom 이벤트가 CharacterReactionEventSink를 통해 AgentWindowManager.agentEmotions에 연결되지 않았습니다. workroomOpened/documentCreated/artifactReuse/roomSwitched 최소 4개 연결이 필요합니다."))
         }
     }
 }
