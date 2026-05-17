@@ -6,6 +6,22 @@
 
 ---
 
+## 2026-05-18 (Round 236 — Auxiliary Content Draft Room Profile)
+
+### 진행 중
+
+**핵심 결정**:
+- `ONBOARDING.md` 기준 MyTeam의 메인 포지션은 문서/파일/표/정리 작업을 처리하는 AI 업무 워크룸이다.
+- 블로그/콘텐츠 글쓰기는 메인 기능이 아니라 콘텐츠 초안 보조 기능으로 유지한다.
+- `blogWriting` 저장 enum은 호환성을 위해 유지하되, 사용자-facing 문구는 "콘텐츠 초안 보조"로 낮춘다.
+
+**검증 방향**:
+- WorkroomHomeView 핵심 CTA보다 콘텐츠 기능을 우선 노출하지 않는다.
+- `/blog-source`는 공개 글 URL을 워크룸 참고 정보로 축적하는 power user shortcut으로 유지한다.
+- 개인 대화와 팀 워크룸의 메시지, artifact, LLM context가 섞이지 않는 room-scoped 격리를 계속 P0로 본다.
+
+---
+
 ## 2026-05-17 (Round 235 — UI Readability P0 Fixes + Agent Chat Switching)
 
 ### 완료 (2026-05-17)
