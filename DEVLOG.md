@@ -6,6 +6,42 @@
 
 ---
 
+## 2026-05-17 (Round 234 — Sprite Asset Gate + Beginner Flow QA Prep)
+
+### 완료 (2026-05-17)
+
+**핵심 달성**:
+- Sprite asset intake gate 구축 — CharacterSpriteManifest + CharacterSpriteAssetPolicy
+- validate_sprites.sh — macOS NFD(한국어 파일명 NFD 정규화) 대응, Python os.listdir+re 사용
+- RouterBurnInSuite 6개 케이스 + ToolContractValidator 3개 validator + RuntimeDiagnostics 8개 필드
+- 수동 QA 체크리스트 작성 (ManualRuntimeQA_Round234.md) — 4개 시나리오
+- Debug + Release BUILD SUCCEEDED 0 warnings
+
+**구현**:
+- **Sprites/** (new): 디자이너 핸드오프 intake 폴더 — 치코/세나/카이/유나 폴더 + README 5개
+- **CharacterSpriteManifest.swift** (new): 정적 캐릭터 스프라이트 매니페스트 — requiredStates, optionalStates, runtimePath, releaseVisible (4 chars: 치코=visible, 나머지=DLC)
+- **CharacterSpriteAssetPolicy.swift** (new): ValidationResult (missing/malformed/total), validate(), isReadyForRelease(), summary()
+- **scripts/validate_sprites.sh** (new): 4단계 검증 — intake 구조 → 런타임 폴더 → 파일명 컨벤션 → state frame count. Python 기반 NFD 대응
+- **RuntimeDiagnosticsService.swift**: Round 234 필드 8개 추가 + sprite234 summary 라인
+- **ToolContractValidator.swift**: validateSpriteAssetPolicy + validateBeginnerExampleArtifactPolicy + validateFriendlyRecoveryActionPolicy
+- **RouterBurnInSuite.swift**: 6개 케이스 (sprite-asset/sprite-fallback/beginner-next-action/recovery/blocked)
+- **pbxproj**: BC234A001FR/BF (CharacterSpriteManifest), BC234A002FR/BF (CharacterSpriteAssetPolicy) 등록
+- **scripts/preflight_sprite_round234.sh** (new): 11단계 preflight
+- **docs/qa/ManualRuntimeQA_Round234.md** (new): 수동 QA 4개 시나리오
+
+**핵심 기술 결정**:
+- macOS HFS+ NFD 파일명: bash grep/find은 한국어 글자 분해 문자와 매칭 불가 → Python os.listdir() + re.search()로 모든 한국어 파일명 처리
+- 치코 런타임 스프라이트 현황: MyTeam/Resources/Sprites/치코/ — 674 PNG, 22개 state (요구 13개 전부 포함)
+- Intake vs Runtime 구분: Sprites/ (디자이너 핸드오프) vs MyTeam/Resources/Sprites/ (런타임 번들)
+- DLC gate: CharacterSpriteManifest.releaseVisible = false → isReadyForRelease() 조기 반환
+
+**문서**:
+- docs/qa/ManualRuntimeQA_Round234.md (new) — 4개 시나리오 pending
+- TASK.md: Round 234 Completed 섹션 추가
+- DEVLOG.md: 이 항목
+
+---
+
 ## 2026-05-17 (Round 233B — Beginner Mode UX Complete)
 
 ### 완료 (2026-05-17)

@@ -1,7 +1,10 @@
 # SpriteSheet Production Spec
 
-**Updated**: 2026-05-17 (Round 232)
+**Updated**: 2026-05-17 (Round 234)
 **Source of truth**: `MyTeam/CharacterSpriteScene.swift` — `enum AnimationState`
+**Asset Policy**: `MyTeam/CharacterSpriteAssetPolicy.swift` — 런타임 검증
+**Manifest**: `MyTeam/CharacterSpriteManifest.swift` — requiredStates / optionalStates
+**Validator**: `scripts/validate_sprites.sh` — CI/수동 실행, macOS NFD 대응
 
 ---
 
@@ -148,7 +151,13 @@ Sprites/치코/치코_greeting_001.png
 
 | 항목 | 상태 |
 |------|------|
-| 치코 v1 필수 스프라이트 | ⏳ 디자인팀 대기 |
+| 치코 v1 필수 스프라이트 (런타임) | ✅ 674 PNG 확인 (13개 required state 포함) |
+| Sprites/ intake 폴더 | ✅ Round 234 scaffold 완료 |
+| CharacterSpriteManifest | ✅ Round 234 완료 |
+| CharacterSpriteAssetPolicy | ✅ Round 234 완료 |
+| validate_sprites.sh | ✅ Round 234 완료 (NFD 대응) |
+| 세나/카이/유나 스프라이트 | ⏳ DLC 대기 (releaseVisible = false) |
+| 치코 v2 optional 스프라이트 | ⏳ 디자인팀 대기 |
 | CharacterReactionEngine 구현 | ✅ Round 231A 완료 |
 | AnimationState → Reaction 매핑 | ✅ 6개 이벤트 완료 |
 | workflowCompleted → joy 연결 | ✅ Round 232 NotificationCenter 브리지 |

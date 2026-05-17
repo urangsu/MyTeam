@@ -660,6 +660,21 @@ Mac App Store에 출시 가능한 macOS 네이티브 AI 팀 앱.
 - [x] Debug BUILD SUCCEEDED — 0 Swift warnings
 - [x] Release BUILD SUCCEEDED — 0 Swift warnings
 
+### Completed (Round 234 — Sprite Asset Gate + Beginner Flow QA Prep)
+- [x] Sprites/ intake 폴더 scaffold — README + 치코/세나/카이/유나 폴더 및 README
+- [x] CharacterSpriteManifest.swift — static struct, requiredStates/optionalStates, 4개 캐릭터, DLC gate
+- [x] CharacterSpriteAssetPolicy.swift — ValidationResult, validate(), isReadyForRelease(), summary()
+- [x] pbxproj 등록 — BC234A001/002 (CharacterSpriteManifest + CharacterSpriteAssetPolicy)
+- [x] scripts/validate_sprites.sh — 4단계 검증 (intake 구조, 런타임 폴더, 파일명 컨벤션, state frame count)
+- [x] macOS NFD Python 대응 — 모든 한국어 파일명 검사를 Python os.listdir()+re로 처리
+- [x] RuntimeDiagnosticsService.swift — Round 234 sprite + beginner 필드 8개 추가
+- [x] ToolContractValidator.swift — validateSpriteAssetPolicy/BeginnerExampleArtifactPolicy/FriendlyRecoveryActionPolicy 추가
+- [x] RouterBurnInSuite.swift — 6개 sprite/recovery 케이스 추가
+- [x] scripts/preflight_sprite_round234.sh — 11단계 preflight (git, 폴더, validator, 파일, 금지 문구, Debug/Release 빌드)
+- [x] docs/qa/ManualRuntimeQA_Round234.md — 4개 시나리오 수동 QA 체크리스트
+- [x] Debug BUILD SUCCEEDED (0 Swift warnings)
+- [x] Release BUILD SUCCEEDED (0 Swift warnings)
+
 ### Completed (Round 233B — Beginner Mode UX Complete)
 - [x] BeginnerExampleDocumentService.swift 신규 생성 — API 키 없이 샘플 회의록 생성 (로컬 전용)
 - [x] pbxproj 등록 — BC233B001FR/BF 추가 (BeginnerExampleDocumentService.swift)
@@ -696,13 +711,15 @@ Mac App Store에 출시 가능한 macOS 네이티브 AI 팀 앱.
 - [ ] App Store submission review
 
 ### Status
-- **Build**: ✅ Debug BUILD SUCCEEDED, 0 warnings (Release 재확인 필요)
-- **Code Validation**: ✅ COMPLETE (ToolContractValidator 3개 beginner validator, RouterBurnInSuite 5개 beginner case, RuntimeDiagnostics 9개 beginner 필드)
+- **Build**: ✅ Debug + Release BUILD SUCCEEDED, 0 warnings (Round 234)
+- **Code Validation**: ✅ COMPLETE (ToolContractValidator 6개 validator, RouterBurnInSuite 11개 case, RuntimeDiagnostics 17개 필드 — Round 233B+234 합산)
 - **Beginner Mode**: ✅ 간편/기본 분기 + 예시 플로우 + 친절한 복구 + Settings 토글 완성
 - **Character Reaction**: ✅ 6개 이벤트 연결
+- **Sprite Asset Gate**: ✅ Round 234 — CharacterSpriteManifest + AssetPolicy + validate_sprites.sh (macOS NFD 대응)
+- **Sprite Production**: ⏳ 디자인팀 핸드오프 대기 (치코 674 PNG 확인, 세나/카이/유나 DLC 대기)
 - **Sprite Handoff**: ✅ ChikoSpriteSheetHandoff.md + CharacterSpriteRosterRoadmap.md 완료
 - **Delegate Strategy**: ✅ agentEmotions 경로 우선, delegate deferred
-- **Manual QA**: ⏳ PENDING (runtime verified 아님)
+- **Manual QA**: ⏳ PENDING — docs/qa/ManualRuntimeQA_Round234.md 4개 시나리오 미완
 - **Submission**: ❌ NOT READY (character assets + manual QA 필요)
 
 ---

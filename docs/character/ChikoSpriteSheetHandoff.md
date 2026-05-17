@@ -1,8 +1,8 @@
 # Chiko Sprite Sheet Handoff
 
 **Version**: v1
-**Updated**: 2026-05-17 (Round 232)
-**Status**: ⏳ Design team pending
+**Updated**: 2026-05-17 (Round 234)
+**Status**: ✅ Runtime sprites confirmed (674 PNG) | 📁 Intake folder ready at `Sprites/치코/`
 
 ---
 
@@ -178,6 +178,11 @@ Priority: ship `idle` and `typing` first. App will not crash without other clips
 
 ## Handoff Notes
 
-After delivery, drop files into `MyTeam/Sprites/치코/` in the Xcode project.
-Add the `Sprites/` folder as a Resources group reference.
-No code changes required — `CharacterSpriteScene` loads by filename pattern automatically.
+**Round 234 업데이트**: 런타임 번들에 674 PNG 확인됨 (`MyTeam/Resources/Sprites/치코/`).
+요구 13개 state 전부 포함. 디자인팀 v2/optional state 핸드오프는 아래 intake 폴더로:
+
+- **Intake**: `Sprites/치코/` (repo root) — 디자이너가 여기에 드롭
+- **Validator**: `bash scripts/validate_sprites.sh` 실행 후 pass 확인
+- **Runtime**: Xcode 빌드 시 `MyTeam/Resources/Sprites/치코/` 로 복사
+- No code changes required — `CharacterSpriteScene` loads by filename pattern automatically.
+- 파일명 컨벤션: `치코_{state}_{NNN:03d}.png` (예: `치코_idle_001.png`)

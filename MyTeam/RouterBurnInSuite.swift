@@ -2079,6 +2079,69 @@ enum RouterBurnInSuite {
             expectedGoalType: nil,
             shouldRequireApproval: false,
             notes: "Policy: ArtifactCardView.healthStatus == .missingFile → friendlyRecovery 표시. '새 문서로 시작' 버튼 → myteam.beginnerNewDocument notification 발생."
+        ),
+
+        // MARK: Round 234 — Sprite Asset Gate + Beginner Next Action policy cases
+
+        .init(
+            id: "sprite-asset-chiko-folder-present",
+            message: "",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Policy: 치코 Sprites 폴더(MyTeam/Resources/Sprites/치코/) 존재해야 함. CharacterSpriteScene.loadTextures() 가 폴더를 직접 탐색. Missing → SKSpriteNode placeholder + fallbackImageNode 표시."
+        ),
+        .init(
+            id: "sprite-missing-fallback-to-idle",
+            message: "",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Policy: 스프라이트 없는 state → resolveWithFallback() → fallbackStates chain → 최종 .idle. idle PNG 반드시 존재해야 함. 현재 치코_idle_001.png ~ _011.png 확인됨."
+        ),
+        .init(
+            id: "beginner-example-next-action-exists",
+            message: "",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Policy: BeginnerExampleDocumentService → ArtifactStore.registerArtifact() → WorkroomHomeModel.recentArtifacts not empty → nextActions = WorkroomNextAction.allCases [summarize/table/checklist/actionItems]. WorkroomHomeView에 표시."
+        ),
+        .init(
+            id: "friendly-recovery-no-external-write",
+            message: "",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Policy: ArtifactCardView friendlyRecovery 버튼은 NotificationCenter.post('myteam.beginnerNewDocument') 만 발행. 삭제/업로드/메일/캘린더 write action 없음. ConnectorGuard 범위 외 (내부 Notification 전용)."
+        ),
+        .init(
+            id: "friendly-recovery-hash-mismatch",
+            message: "",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Policy: healthStatus == .hashMismatch → friendlyRecovery '파일 내용이 바뀐 것 같아요' + '새 문서로 시작' 버튼. 기술 용어(hash mismatch) 사용자 화면 노출 금지."
+        ),
+        .init(
+            id: "blocked-mail-calendar-write",
+            message: "이메일 보내줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: true,
+            notes: "Policy: .sendEmail / .createCalendarEvent → CapabilityAwareRouter .blocked 또는 .requiresApproval. Connector write는 항상 사용자 확인 필요. FriendlyRecovery 버튼은 이 경로를 열지 않음."
         )
     ]
 

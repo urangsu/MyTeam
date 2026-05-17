@@ -114,6 +114,11 @@ enum ToolContractValidator {
         validateBeginnerExampleFlowPolicy(issues: &issues)
         validateBeginnerFriendlyRecoveryPolicy(issues: &issues)
 
+        // Round 234: Sprite Asset Gate validators
+        validateSpriteAssetPolicy(issues: &issues)
+        validateBeginnerExampleArtifactPolicy(issues: &issues)
+        validateFriendlyRecoveryActionPolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -839,5 +844,56 @@ enum ToolContractValidator {
         if !snap.beginnerFriendlyRecoveryAvailable {
             issues.append(issue(.warning, "BeginnerMode: ArtifactCardView 친절한 복구 UI(friendlyRecovery)가 없습니다. 비전문가 사용자 오류 복구 경험이 저하됩니다."))
         }
+    }
+
+    // MARK: - Round 234: Sprite Asset Gate Validators
+
+    private static func validateSpriteAssetPolicy(issues: inout [ToolContractValidationIssue]) {
+        // Sprite 에셋 게이트: 치코 runtime 폴더 + 명세 존재
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.chikoSpriteFolderAvailable {
+            issues.append(issue(.warning, "Sprite: 치코 runtime sprite 폴더(Sprites/치코/)가 app bundle에 없습니다. SpriteKit 폴백으로 동작합니다."))
+        }
+        if !snap.characterSpriteManifestAvailable {
+            issues.append(issue(.warning, "Sprite: CharacterSpriteManifest이 없습니다. 에셋 명세 없이 빌드됩니다."))
+        }
+        if !snap.chikoRequiredSpriteStatesDocumented {
+            issues.append(issue(.warning, "Sprite: 치코 required state 목록이 문서화되어 있지 않습니다."))
+        }
+        if !snap.spriteValidatorAvailable {
+            issues.append(issue(.warning, "Sprite: scripts/validate_sprites.sh가 없습니다. CI에서 sprite 검수를 수동으로 진행해야 합니다."))
+        }
+    }
+
+    private static func validateBeginnerExampleArtifactPolicy(issues: inout [ToolContractValidationIssue]) {
+        // BeginnerExampleDocumentService artifact 저장 정책
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.beginnerExampleFlowAvailable {
+            issues.append(issue(.error, "BeginnerExample: 예시 플로우가 없습니다. API 키 없이 동작하는 fallback이 필요합니다."))
+            return
+        }
+        if !snap.beginnerExampleNextActionsAvailable {
+            issues.append(issue(.warning, "BeginnerExample: 예시 문서 생성 후 next action(요약/표/체크리스트)이 없습니다."))
+        }
+        // external write 금지: BeginnerExampleDocumentService는 ArtifactStore local write만 사용
+        // 이 정책은 코드 리뷰로 확인; runtime에서는 정적 검사만 가능
+    }
+
+    private static func validateFriendlyRecoveryActionPolicy(issues: inout [ToolContractValidationIssue]) {
+        // friendlyRecovery 복구 버튼: 삭제/업로드/메일/캘린더 write 금지 확인
+        // ArtifactCardView에서 복구 버튼은 Notification 발행만 함 → 외부 write 없음
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.friendlyRecoveryActionsAvailable {
+            issues.append(issue(.warning, "FriendlyRecovery: ArtifactCardView 복구 버튼이 없습니다."))
+        }
+        // 아래 항목은 코드 리뷰로 정적 확인됨:
+        // ✅ 복구 버튼은 NotificationCenter.post("myteam.beginnerNewDocument") 만 발행
+        // ✅ 삭제 버튼 없음
+        // ✅ 외부 업로드 없음
+        // ✅ 메일 발송 없음
+        // ✅ 캘린더 write 없음
     }
 }

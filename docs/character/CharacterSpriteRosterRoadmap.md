@@ -1,7 +1,7 @@
 # Character Sprite Roster Roadmap
 
-**Updated**: 2026-05-17 (Round 232)
-**Status**: Chiko v1 in production pipeline. Others deferred.
+**Updated**: 2026-05-17 (Round 234)
+**Status**: Chiko v1 runtime confirmed (674 PNG). CharacterSpriteManifest + AssetPolicy gate in place. Others DLC-gated.
 
 ---
 
@@ -95,11 +95,14 @@ Each character needs at minimum:
 ## Milestone Checklist
 
 ### Chiko v1 Ship
-- [ ] All v1 required sprite clips delivered
-- [ ] `CharacterSpriteScene` loads clips without crash
-- [ ] `AnimationState` fallback chain verified for each missing clip
-- [ ] `AgentSeatView` renders Chiko in idle/typing during normal use
-- [ ] Workroom events trigger correct state transitions (manual QA)
+- [x] All v1 required sprite clips confirmed in runtime bundle (674 PNG, Round 234)
+- [x] `CharacterSpriteManifest` + `CharacterSpriteAssetPolicy` gate (Round 234)
+- [x] `scripts/validate_sprites.sh` — macOS NFD 대응 (Round 234)
+- [x] `Sprites/치코/` intake 폴더 scaffold (Round 234)
+- [ ] `CharacterSpriteScene` loads clips without crash (manual QA pending)
+- [ ] `AnimationState` fallback chain verified for each missing clip (manual QA pending)
+- [ ] `AgentSeatView` renders Chiko in idle/typing during normal use (manual QA pending)
+- [ ] Workroom events trigger correct state transitions (manual QA pending)
 - [ ] `치코_profile.png` as fallback confirmed working
 
 ### Future Characters (per character)

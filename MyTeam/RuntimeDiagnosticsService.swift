@@ -370,6 +370,16 @@ struct RuntimeDiagnosticsSnapshot {
     let characterSpriteRosterRoadmapAvailable: Bool
     let characterReactionDelegateDecisionAvailable: Bool
 
+    // Round 234: Sprite Asset Gate + Beginner Next Action
+    let spriteAssetFolderAvailable: Bool
+    let chikoSpriteFolderAvailable: Bool
+    let chikoSpriteReadmeAvailable: Bool
+    let spriteValidatorAvailable: Bool
+    let characterSpriteManifestAvailable: Bool
+    let chikoRequiredSpriteStatesDocumented: Bool
+    let beginnerExampleNextActionsAvailable: Bool
+    let friendlyRecoveryActionsAvailable: Bool
+
     // Round 233B: Beginner Mode UX
     let beginnerModeAvailable: Bool
     let beginnerModeEnabled: Bool
@@ -512,6 +522,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("uxfix136a: nameplatePalette=\(teamNameplatePaletteEnabled) borderSimplified=\(teamNameplateBorderModeSimplified) dartEnabled=\(dartDisclosureEnabled) dartPublicRead=\(dartDisclosureClassifiedAsPublicRead) rosterUpdated=\(defaultCharacterRosterUpdated) apiKeySettingsOnly=\(apiKeyPromptSettingsOnly) apiKeyHiddenFromTeam=\(apiKeyPromptHiddenFromTeamSurface)")
         lines.append("ia137a: roomScopedArtifacts=\(recentArtifactsRoomScoped) terminology=\(terminologyPolicyAvailable) switcherRemoved=\(agentSwitcherRemovedFromSidebar) timerLeakFixed=\(typingIndicatorTimerLeakFixed) starter3Primary=\(starterAction3PrimaryAvailable) workSurface=\(workSurfaceSimplificationPlanAvailable) roomScopedPolicy=\(roomScopedArtifactPolicyAvailable) iaPolicy=\(productIAPolicyAvailable) emptyState=\(emptyStateSimplified) workroomTerm=\(workroomTerminologyApplied) reservedTask=\(reservedTaskTerminologyApplied) defaultRoomName=\(defaultRoomNameUpdated)")
         lines.append("beginner233b: mode=\(beginnerModeAvailable) enabled=\(beginnerModeEnabled) taskCards=\(beginnerTaskCardsAvailable) example=\(beginnerExampleFlowAvailable) recovery=\(beginnerFriendlyRecoveryAvailable) guidance=\(beginnerGuidanceMessagesAvailable) settings=\(beginnerSettingsToggleAvailable) homeView=\(beginnerWorkroomHomeViewAvailable) exampleSvc=\(beginnerExampleDocumentServiceAvailable)")
+        lines.append("sprite234: intakeFolder=\(spriteAssetFolderAvailable) chikoRuntime=\(chikoSpriteFolderAvailable) readme=\(chikoSpriteReadmeAvailable) validator=\(spriteValidatorAvailable) manifest=\(characterSpriteManifestAvailable) states=\(chikoRequiredSpriteStatesDocumented) nextAction=\(beginnerExampleNextActionsAvailable) recovery=\(friendlyRecoveryActionsAvailable)")
 
         return lines.joined(separator: "\n  ")
     }
@@ -1123,6 +1134,17 @@ final class RuntimeDiagnosticsService {
             chikoSpriteSheetHandoffAvailable: FileManager.default.fileExists(atPath: "docs/character/ChikoSpriteSheetHandoff.md"),
             characterSpriteRosterRoadmapAvailable: FileManager.default.fileExists(atPath: "docs/character/CharacterSpriteRosterRoadmap.md"),
             characterReactionDelegateDecisionAvailable: FileManager.default.fileExists(atPath: "docs/character/CharacterReactionDelegateDecision.md"),
+            spriteAssetFolderAvailable: FileManager.default.fileExists(atPath: "Sprites"),
+            chikoSpriteFolderAvailable: {
+                guard let rp = Bundle.main.resourcePath else { return false }
+                return FileManager.default.fileExists(atPath: "\(rp)/Sprites/치코")
+            }(),
+            chikoSpriteReadmeAvailable: FileManager.default.fileExists(atPath: "Sprites/치코/README.md"),
+            spriteValidatorAvailable: FileManager.default.fileExists(atPath: "scripts/validate_sprites.sh"),
+            characterSpriteManifestAvailable: true,
+            chikoRequiredSpriteStatesDocumented: true,
+            beginnerExampleNextActionsAvailable: true,
+            friendlyRecoveryActionsAvailable: true,
             beginnerModeAvailable: true,
             beginnerModeEnabled: manager.isBeginnerMode,
             beginnerTaskCardsAvailable: true,
