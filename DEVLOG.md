@@ -2836,3 +2836,78 @@ Connected via CharacterReactionMapping.reactionFor():
   - characterReactionActiveCooldowns: Int
 - Added initialization in snapshot() method with actual delegate check
 - Diagnostic queries available via CharacterReactionEventSink.diagnosticsSnapshot()
+
+---
+
+## Round 232 — Character Reaction Surface + Sprite Production Handoff (2026-05-17)
+
+### Summary
+CharacterReactionEngine의 이벤트 커버리지를 확장하고, 디자인팀 sprite 제작을 위한 handoff 문서를 완성했다.
+agentEmotions 경로를 통한 전체 체인(event → engine → agentEmotions → AgentSeatView → SpriteAgentView → CharacterSpriteScene)이 구조적으로 연결됐다.
+
+### Event Coverage 추가
+
+**workflowCompleted → .joy (NotificationCenter bridge)**
+- `CharacterReactionEventSink.setupWorkflowCompletedObserver()` 추가
+- `WorkflowEngine.swift`이 발송하는 `Notification.Name.workflowCompleted`를 수신
+- `userInfo["artifacts"]`가 비어 있지 않을 때만 `notifyDocumentCreated` 호출 → `.joy`
+- WorkflowEngine/ArtifactStore 구조 변경 없음
+
+**multiRoomSwitched → .idle (TeamStatusView room tap)**
+- `TeamStatusView.swift` room tap `onTapGesture`에 추가
+- `previousRoomID != room.id` 조건으로 자기 자신 전환 시 no-op
+- `notifyRoomSwitched(fromRoomID:toRoomID:)` 호출
+
+### 전체 이벤트 커버리지 (6개)
+1. `workroomOpened` → `.greeting` — WorkroomHomeView.onAppear
+2. `workflowStarted(universalDocument)` → `.typing` — handleWorkroomAction(.createDocument)
+3. `documentCreated` → `.joy` — workflowCompleted NotificationCenter bridge
+4. `artifactReuseRequested` → `.backToWork` — handleWorkroomAction(.handoffFile)
+5. `multiRoomSwitched` → `.idle` — TeamStatusView room tap
+6. `workflowStarted(기타)` → `.thinking` (→ idle fallback) — handleWorkroomNextAction
+
+### 신규 문서
+
+**ChikoSpriteSheetHandoff.md**
+- v1 필수 12개 clip 상세 명세 (idle/typing/thinking/speaking/greeting/joy/sad/confused/drag/landing/clockIn/backToWork)
+- Canvas spec: transparent PNG, consistent baseline, no baked-in text
+- Style: warm but professional, work-focused props, no exaggerated motion
+- Fallback policy 명시
+
+**CharacterSpriteRosterRoadmap.md**
+- 치코/세나/카이/유나 로드맵
+- 노출 정책: spriteName 없으면 Release 구매 UI 금지
+- DLC 정책: StoreKit QA 전 노출 금지
+
+**CharacterReactionDelegateDecision.md**
+- 결정: agentEmotions 경로 우선, CharacterReactionDelegate direct path deferred
+- 근거: agentEmotions는 이미 연결돼 있음; delegate 추가는 manual QA 결과 보고 결정
+- 보존 목록 명시 (AnimationState/CharacterSpriteScene/SpriteAgentView/CharacterDialogues/AgentSeatView 무수정)
+
+### Validator / BurnIn 보강
+- ToolContractValidator: 3개 Round 232 validators (SpriteSheetHandoff/DelegatePolicy/RosterPolicy)
+- RouterBurnInSuite: 7개 Round 232 character reaction policy cases (2개 backlog 포함)
+
+### RuntimeDiagnostics 보강 (8개 필드)
+- characterReactionEventSinkConnected
+- characterReactionAgentEmotionsConnected
+- characterReactionDelegateDeferred
+- characterReactionWorkflowCompletedBridge
+- characterReactionRoomSwitchBridge
+- chikoSpriteSheetHandoffAvailable
+- characterSpriteRosterRoadmapAvailable
+- characterReactionDelegateDecisionAvailable
+
+### Preflight
+- `scripts/preflight_character_round231.sh` 신규 생성
+- agentEmotions 연결 확인, 이벤트 firing point 확인, 문서 존재 확인, CharacterMood guard 포함
+- Debug + Release BUILD SUCCEEDED 확인 포함
+
+### Backlog (연결 미완료)
+- sleeping state: long idle timer hook 없음 — RouterBurnInSuite notes에 기록
+- artifactVerificationFailed: ResultVerifier hook 필요 — RouterBurnInSuite notes에 기록
+- CharacterReactionDelegate conformance: manual QA 후 agentEmotions 경로 검증 완료 시 재검토
+
+### Build
+- Debug BUILD SUCCEEDED, 0 Swift warnings
+- Release BUILD SUCCEEDED, 0 Swift warnings

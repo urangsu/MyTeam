@@ -35,7 +35,30 @@ final class CharacterReactionEventSink {
 
     private weak var delegate: CharacterReactionDelegate?
 
-    private init() {}
+    private init() {
+        setupWorkflowCompletedObserver()
+    }
+
+    // MARK: - WorkflowCompleted Observer
+    // WorkflowEngine이 artifact를 생성 완료할 때 .joy 반응을 트리거한다.
+    // WorkflowEngine / ArtifactStore 구조 변경 없이 Notification으로 연결.
+
+    private func setupWorkflowCompletedObserver() {
+        NotificationCenter.default.addObserver(
+            forName: .workflowCompleted,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self else { return }
+            // artifactCount > 0인 경우에만 documentCreated 반응
+            let artifacts = notification.userInfo?["artifacts"] as? [Any] ?? []
+            guard !artifacts.isEmpty else { return }
+
+            // roomID: workflowCompleted에는 workspaceURL만 있어 currentRoomID로 fallback
+            let roomID = AgentWindowManager.shared.currentRoomID ?? UUID()
+            self.notifyDocumentCreated(documentType: "workflowArtifact", roomID: roomID)
+        }
+    }
 
     // MARK: - Delegate Registration
 

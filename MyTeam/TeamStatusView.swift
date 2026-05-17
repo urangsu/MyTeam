@@ -290,7 +290,13 @@ struct TeamStatusView: View {
                             if isDeleteMode {
                                 roomToDelete = room
                             } else {
+                                let previousRoomID = manager.currentRoomID
                                 manager.currentRoomID = room.id
+                                // Character reaction: room switched → .idle
+                                if let prev = previousRoomID, prev != room.id {
+                                    CharacterReactionEventSink.shared.notifyRoomSwitched(
+                                        fromRoomID: prev, toRoomID: room.id)
+                                }
                             }
                         }
                     }

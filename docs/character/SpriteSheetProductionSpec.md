@@ -1,6 +1,6 @@
 # SpriteSheet Production Spec
 
-**Updated**: 2026-05-17 (Round 231A)  
+**Updated**: 2026-05-17 (Round 232)
 **Source of truth**: `MyTeam/CharacterSpriteScene.swift` — `enum AnimationState`
 
 ---
@@ -14,6 +14,7 @@
 | `CharacterSpriteScene` | `CharacterSpriteScene.swift` | SpriteKit scene, PNG 시퀀스 로더 |
 | `CharacterDialogues` | `CharacterDialogues.swift` | 캐릭터별 대사 딕셔너리 |
 | `AgentSeatView` | `AgentSeatView.swift` | 좌석 레이아웃, agentEmotions 바인딩 |
+| `CharacterReactionEventSink` | `CharacterReactionEventSink.swift` | Workroom 이벤트 → agentEmotions 브리지 |
 
 ---
 
@@ -25,47 +26,57 @@ Sprites/{characterID}/{characterID}_{state}_{index}.png
 
 - `{characterID}`: 캐릭터 이름 (예: `치코`, `레오`, `루나`, `렉스`)
 - `{state}`: `AnimationState.rawValue` 그대로 사용
-- `{index}`: 1부터 시작하는 프레임 번호 (예: `01`, `02`, `03`)
+- `{index}`: 3자리 숫자 (예: `001`, `002`, `003`)
 
 ### 예시
 ```
-Sprites/치코/치코_typing_01.png
-Sprites/치코/치코_typing_02.png
-Sprites/치코/치코_joy_01.png
-Sprites/치코/치코_greeting_01.png
+Sprites/치코/치코_typing_001.png
+Sprites/치코/치코_typing_002.png
+Sprites/치코/치코_joy_001.png
+Sprites/치코/치코_greeting_001.png
 ```
 
 ---
 
-## Chiko (치코) — Runtime Required States
+## AnimationState 전체 목록 (CharacterSpriteScene.swift 기준)
 
-치코: `spriteName: "치코"`, `fallbackImageName: "치코_profile"`.
-
-### Runtime-required (반드시 스프라이트 필요)
-
+### 핵심 루프 모션
 | AnimationState | rawValue | 용도 |
 |----------------|----------|------|
-| `.typing` | `"typing"` | 기본 업무 상태 ★ 최우선 |
-| `.idle` | `"idle"` | 대기 상태 |
+| `.idle` | `"idle"` | 대기 (앉아있는 앵커) |
+| `.typing` | `"typing"` | 업무 중 ★ 기본 상태 |
+| `.idleLoop` | `"idle_loop"` | 아이들 루프 (있으면 사용) |
 | `.speaking` | `"speaking"` | 말하는 중 |
-| `.greeting` | `"greeting"` | 인사 (workroomOpened reaction) |
-| `.joy` | `"joy"` | 완료/성공 (documentCreated reaction) |
-| `.backToWork` | `"backwork"` | 업무 복귀 (artifactReuse reaction) |
+| `.resting` | `"resting"` | 휴식 (노트북 닫힘, 수면 통합) |
 
-### Secondary (있으면 좋음)
-
+### 감정/반응 모션
 | AnimationState | rawValue | 용도 |
 |----------------|----------|------|
-| `.resting` | `"resting"` | 휴식 / sleeping fallback |
-| `.agree` | `"agree"` | 긍정 반응 |
-| `.confused` | `"confused"` | 오류/모호한 입력 |
-| `.sad` | `"sad"` | 실패 |
-| `.clockIn` | `"clockin"` | 출근 |
+| `.joy` | `"joy"` | 기쁨 (어깨 으쓱) |
+| `.sad` | `"sad"` | 슬픔 (눈물 맺힘) |
+| `.agree` | `"agree"` | 긍정대답 + 칭찬 흡수 |
+| `.angry` | `"angry"` | 화남 |
+| `.confused` | `"confused"` | 갸우뚱 (disagree 대체) |
 
-### Fallback-only (파일 불필요, 코드 호환용)
+### 인터랙션 모션
+| AnimationState | rawValue | 용도 |
+|----------------|----------|------|
+| `.greeting` | `"greeting"` | 인사 (목례) |
+| `.drag` | `"drag"` | 드래그 중 |
+| `.lifted` | `"lifted"` | 들려짐 |
+| `.dropped` | `"drop"` | 떨어짐 (구 파일명 유지) |
+| `.lowering` | `"lowering"` | 내려감 |
+| `.landing` | `"landing"` | 착지 |
 
-실제 AnimationState enum에 정의되어 있으나 스프라이트 파일 없이도 fallback으로 처리됨.
+### 업무 흐름 모션
+| AnimationState | rawValue | 용도 |
+|----------------|----------|------|
+| `.clockIn` | `"clockin"` | 출근 (노트북 열기) |
+| `.clockOut` | `"clockout"` | 퇴근 |
+| `.backToWork` | `"backwork"` | 업무 복귀 |
+| `.returnToTyping` | `"typing_return"` | 타자 복귀 |
 
+### 폴백 전용 케이스 (파일 불필요, 코드 호환용)
 | AnimationState | rawValue | Fallback 대상 |
 |----------------|----------|---------------|
 | `.thinking` | `"thinking"` | → `idle` |
@@ -78,15 +89,39 @@ Sprites/치코/치코_greeting_01.png
 
 ---
 
-## Other Characters (레오, 루나, 렉스)
+## Chiko (치코) v1 — Runtime Required
 
-동일 파일 규칙 적용. 스프라이트 없으면 캐릭터별 `fallbackImageName` 사용.
+치코: `spriteName: "치코"`, `fallbackImageName: "치코_profile"`
 
-Release DLC 캐릭터 스프라이트는 앱 번들에 포함하지 않는다.
+### v1 필수 (스프라이트 파일 반드시 필요)
+
+| AnimationState | rawValue | 용도 |
+|----------------|----------|------|
+| `.idle` | `"idle"` | 대기 ★ |
+| `.typing` | `"typing"` | 업무 중 ★ |
+| `.speaking` | `"speaking"` | 말하는 중 |
+| `.greeting` | `"greeting"` | 워크룸 오픈 인사 |
+| `.joy` | `"joy"` | artifact 생성 완료 |
+| `.sad` | `"sad"` | 실패/오류 |
+| `.confused` | `"confused"` | 검증 경고/애매함 |
+| `.drag` | `"drag"` | 사용자가 집어 듦 |
+| `.landing` | `"landing"` | 착지 |
+| `.clockIn` | `"clockin"` | 출근/앱 오픈 |
+| `.backToWork` | `"backwork"` | 작업 재개 |
+
+### v1 선택 (있으면 사용, 없으면 fallback)
+
+| AnimationState | rawValue | 폴백 |
+|----------------|----------|------|
+| `.thinking` | `"thinking"` | → idle |
+| `.agree` | `"agree"` | optional |
+| `.resting` | `"resting"` | optional |
+| `.sleeping` | `"sleeping"` | → resting |
+| `.look` | `"look"` | → idle |
 
 ---
 
-## CharacterReaction → AnimationState 매핑 (Round 231A)
+## CharacterReaction → AnimationState 매핑 (Round 232)
 
 | WorkroomCharacterEvent | AnimationState | rawValue |
 |------------------------|----------------|----------|
@@ -101,8 +136,8 @@ Release DLC 캐릭터 스프라이트는 앱 번들에 포함하지 않는다.
 
 ## Production Pipeline
 
-1. **디자이너**: 각 캐릭터 × Runtime-required 상태별 PNG 시퀀스 제작
-2. **파일명**: 규칙 준수 (`{characterID}_{state}_{index}.png`)
+1. **디자이너**: 각 캐릭터 × v1 필수 상태별 PNG 시퀀스 제작
+2. **파일명**: 규칙 준수 (`{characterID}_{rawValue}_{index:3}.png`)
 3. **Xcode**: `Sprites/` 폴더를 Resources group에 추가
 4. **CharacterSpriteScene**: 자동으로 해당 경로에서 로드 (코드 변경 불필요)
 5. **QA**: `AnimationState.allCases`로 모든 상태 순회 테스트
@@ -113,8 +148,11 @@ Release DLC 캐릭터 스프라이트는 앱 번들에 포함하지 않는다.
 
 | 항목 | 상태 |
 |------|------|
-| 치코 Runtime-required 스프라이트 | ⏳ 디자인팀 대기 |
+| 치코 v1 필수 스프라이트 | ⏳ 디자인팀 대기 |
 | CharacterReactionEngine 구현 | ✅ Round 231A 완료 |
-| AnimationState → Reaction 매핑 | ✅ 5개 이벤트 완료 |
+| AnimationState → Reaction 매핑 | ✅ 6개 이벤트 완료 |
+| workflowCompleted → joy 연결 | ✅ Round 232 NotificationCenter 브리지 |
+| multiRoomSwitched 연결 | ✅ Round 232 TeamStatusView 탭 훅 |
 | SpriteKit 로더 | ✅ 기존 코드 유지 (변경 없음) |
 | agentEmotions 연결 | ✅ CharacterReactionEventSink 완료 |
+| delegate direct path | ⏳ deferred — agentEmotions 경로 먼저 검증 |

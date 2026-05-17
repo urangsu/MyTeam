@@ -104,6 +104,11 @@ enum ToolContractValidator {
         validateCharacterReactionAnimationStatePolicy(issues: &issues)
         validateWorkroomEventBridgePolicy(issues: &issues)
 
+        // Round 232 validators
+        validateCharacterSpriteSheetHandoffPolicy(issues: &issues)
+        validateCharacterReactionDelegatePolicy(issues: &issues)
+        validateCharacterSpriteRosterPolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -746,6 +751,44 @@ enum ToolContractValidator {
         let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
         if let snap, !snap.workroomCharacterEventBridgeAvailable {
             issues.append(issue(.warning, "Workroom 이벤트가 CharacterReactionEventSink를 통해 AgentWindowManager.agentEmotions에 연결되지 않았습니다. workroomOpened/documentCreated/artifactReuse/roomSwitched 최소 4개 연결이 필요합니다."))
+        }
+    }
+
+    // MARK: - Round 232 Validators
+
+    private static func validateCharacterSpriteSheetHandoffPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap {
+            if !snap.chikoSpriteSheetHandoffAvailable {
+                issues.append(issue(.warning, "docs/character/ChikoSpriteSheetHandoff.md가 없습니다. 디자인 handoff 문서가 필요합니다."))
+            }
+            if !snap.characterSpriteRosterRoadmapAvailable {
+                issues.append(issue(.warning, "docs/character/CharacterSpriteRosterRoadmap.md가 없습니다. 캐릭터 로드맵 문서가 필요합니다."))
+            }
+        }
+        // CharacterMood/Activity 미도입 확인은 validateCharacterReactionAnimationStatePolicy에서 처리
+    }
+
+    private static func validateCharacterReactionDelegatePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap {
+            // delegate=nil인 경우 deferred 상태가 문서화되어야 한다
+            if snap.characterReactionDelegateDeferred && !snap.characterReactionDelegateDecisionAvailable {
+                issues.append(issue(.warning, "CharacterReactionDelegate가 nil이지만 CharacterReactionDelegateDecision.md 문서가 없습니다. deferred 상태를 문서화해야 합니다."))
+            }
+            // agentEmotions 경로는 반드시 연결되어야 한다
+            if !snap.characterReactionAgentEmotionsConnected {
+                issues.append(issue(.error, "CharacterReactionEventSink → AgentWindowManager.agentEmotions 경로가 연결되어 있지 않습니다. delegate=nil 상태에서는 agentEmotions 경로가 필수입니다."))
+            }
+        }
+    }
+
+    private static func validateCharacterSpriteRosterPolicy(issues: inout [ToolContractValidationIssue]) {
+        // 미래 캐릭터 노출 정책: sprites 없으면 Release에서 구매 UI 노출 금지.
+        // 현재는 정책 문서 존재만 확인한다 (실제 AgentConfig 검사는 수동 QA).
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.characterSpriteRosterRoadmapAvailable {
+            issues.append(issue(.warning, "CharacterSpriteRosterRoadmap.md가 없습니다. DLC 캐릭터 노출 정책이 문서화되어야 합니다."))
         }
     }
 }

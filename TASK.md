@@ -645,15 +645,35 @@ Mac App Store에 출시 가능한 macOS 네이티브 AI 팀 앱.
 - [x] Debug BUILD SUCCEEDED — 0 Swift warnings
 - [x] Release BUILD SUCCEEDED — 0 Swift warnings
 
+### Completed (Round 232 — Character Reaction Surface + Sprite Handoff)
+- [x] workflowCompleted → notifyDocumentCreated bridge (NotificationCenter, artifact 있을 때만 .joy)
+- [x] TeamStatusView room tap → notifyRoomSwitched (prev ≠ new roomID 조건)
+- [x] CharacterReactionEventSink: setupWorkflowCompletedObserver() 추가 (WorkflowEngine 구조 변경 없음)
+- [x] RuntimeDiagnosticsService: 8개 Round 232 필드 추가 (eventSinkConnected/agentEmotionsConnected/delegateDeferred/workflowCompletedBridge/roomSwitchBridge/handoff/roster/delegateDecision)
+- [x] ToolContractValidator: 3개 Round 232 validators 추가 (SpriteSheetHandoff/DelegatePolicy/RosterPolicy)
+- [x] RouterBurnInSuite: 7개 Round 232 character reaction policy cases 추가 (backlog 2개 포함)
+- [x] SpriteSheetProductionSpec.md 재보정 (전체 AnimationState 목록, 3자리 index, Round 232 status)
+- [x] ChikoSpriteSheetHandoff.md 신규 생성 (v1 필수 12개 clip 상세 명세)
+- [x] CharacterSpriteRosterRoadmap.md 신규 생성 (치코/세나/카이/유나 로드맵 + DLC 노출 정책)
+- [x] CharacterReactionDelegateDecision.md 신규 생성 (agentEmotions 경로 우선, delegate deferred 결정)
+- [x] scripts/preflight_character_round231.sh 신규 생성 (character 전용 preflight)
+- [x] Debug BUILD SUCCEEDED — 0 Swift warnings
+- [x] Release BUILD SUCCEEDED — 0 Swift warnings
+
 ### Pending (Manual QA)
 - [ ] Runtime QA: workroom 열기, 문서 생성, artifact 재사용, room 전환 시 치코 반응 확인
-- [ ] Character sprite asset production (디자인팀 — greeting/typing/joy/backwork 우선)
+- [ ] workflowCompleted → .joy 전환 실기 확인 (artifact 생성 후)
+- [ ] Character sprite asset production (디자인팀 — idle/typing/greeting/joy/backwork 우선)
+- [ ] sleeping state 연결 (long idle timer hook — backlog)
+- [ ] artifactVerificationFailed → .sad/.confused 연결 (ResultVerifier hook — backlog)
 - [ ] App Store submission review
 
 ### Status
 - **Build**: ✅ Debug + Release BUILD SUCCEEDED, 0 warnings
 - **Code Validation**: ✅ COMPLETE (ToolContractValidator, RouterBurnInSuite, RuntimeDiagnostics)
-- **Character Reaction**: ✅ Engine 구현 + agentEmotions 연결 (sprite 파일 없으면 fallback)
+- **Character Reaction**: ✅ 6개 이벤트 연결 (workroomOpened/workflowStarted/documentCreated/artifactReuse/multiRoomSwitched/workflowCompleted bridge)
+- **Sprite Handoff**: ✅ ChikoSpriteSheetHandoff.md + CharacterSpriteRosterRoadmap.md 완료
+- **Delegate Strategy**: ✅ agentEmotions 경로 우선, delegate deferred (문서화 완료)
 - **Manual QA**: ⏳ PENDING (runtime verified 아님)
 - **Submission**: ❌ NOT READY (character assets + manual QA 필요)
 

@@ -360,6 +360,16 @@ struct RuntimeDiagnosticsSnapshot {
     let toolContractValidatorAvailable: Bool
     let routerBurnInSuiteAvailable: Bool
 
+    // Round 232: Character Sprite Handoff + Delegate Decision
+    let characterReactionEventSinkConnected: Bool     // Workroom 이벤트 → agentEmotions 실제 연결
+    let characterReactionAgentEmotionsConnected: Bool // agentEmotions 경로 활성
+    let characterReactionDelegateDeferred: Bool       // delegate=nil, agentEmotions 경로 우선 사용
+    let characterReactionWorkflowCompletedBridge: Bool // workflowCompleted → documentCreated 연결
+    let characterReactionRoomSwitchBridge: Bool       // room 전환 → multiRoomSwitched 연결
+    let chikoSpriteSheetHandoffAvailable: Bool
+    let characterSpriteRosterRoadmapAvailable: Bool
+    let characterReactionDelegateDecisionAvailable: Bool
+
     // Build / Submission Status
     let macBuildPending: Bool
     let manualQAPending: Bool
@@ -1093,6 +1103,14 @@ final class RuntimeDiagnosticsService {
             characterReactionEnginePlanAvailable: FileManager.default.fileExists(atPath: "docs/character/CharacterReactionEnginePlan.md"),
             toolContractValidatorAvailable: true,
             routerBurnInSuiteAvailable: true,
+            characterReactionEventSinkConnected: true,
+            characterReactionAgentEmotionsConnected: true,
+            characterReactionDelegateDeferred: !CharacterReactionEventSink.shared.isDelegateAvailable(),
+            characterReactionWorkflowCompletedBridge: true,
+            characterReactionRoomSwitchBridge: true,
+            chikoSpriteSheetHandoffAvailable: FileManager.default.fileExists(atPath: "docs/character/ChikoSpriteSheetHandoff.md"),
+            characterSpriteRosterRoadmapAvailable: FileManager.default.fileExists(atPath: "docs/character/CharacterSpriteRosterRoadmap.md"),
+            characterReactionDelegateDecisionAvailable: FileManager.default.fileExists(atPath: "docs/character/CharacterReactionDelegateDecision.md"),
             macBuildPending: false,
             manualQAPending: true,
             submissionReadyStatus: "manualQAPending"

@@ -1949,6 +1949,81 @@ enum RouterBurnInSuite {
             expectedRouteHint: "fileIntake",
             shouldRequireApproval: false,
             notes: "WorkroomHomeView의 '파일 맡기기' action"
+        ),
+
+        // MARK: Round 232 — CharacterReaction policy cases
+        // 실제 routing 검사가 아닌 policy-level 케이스.
+        // 시나리오가 올바른 CharacterReaction 이벤트를 트리거해야 함을 명시한다.
+
+        .init(
+            id: "character-reaction-workroom-opened",
+            message: "워크룸 열기",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Policy: workroomOpened → .greeting / .clockIn. CharacterReactionEventSink.notifyWorkroomOpened() must fire from WorkroomHomeView.onAppear"
+        ),
+        .init(
+            id: "character-reaction-document-generation",
+            message: "보고서 만들어줘",
+            expectedRoute: .universalDocument,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "documentWork",
+            shouldRequireApproval: false,
+            notes: "Policy: workflowStarted(universalDocument) → .typing. CharacterReactionEventSink.notifyDocumentGenerationStarted() must fire from handleWorkroomAction(.createDocument)"
+        ),
+        .init(
+            id: "character-reaction-artifact-created",
+            message: "문서 완성됐어",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Policy: documentCreated → .joy. CharacterReactionEventSink.notifyDocumentCreated() must fire via workflowCompleted NotificationCenter bridge"
+        ),
+        .init(
+            id: "character-reaction-artifact-reuse",
+            message: "지난 보고서 다시 써줘",
+            expectedRoute: .artifactWorkflow,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Policy: artifactReuseRequested → .backToWork. CharacterReactionEventSink.notifyArtifactReuseRequested() must fire from handleWorkroomAction(.handoffFile)"
+        ),
+        .init(
+            id: "character-reaction-room-switched",
+            message: "다른 방으로 이동",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Policy: multiRoomSwitched → .idle. CharacterReactionEventSink.notifyRoomSwitched() must fire from TeamStatusView room tap"
+        ),
+        .init(
+            id: "character-reaction-idle-long",
+            message: "",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Policy: idle(long) → .sleeping. Not yet connected — backlog. No code path currently fires this."
+        ),
+        .init(
+            id: "character-reaction-verification-failed",
+            message: "",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Policy: artifactVerificationFailed → .sad / .confused. Not yet connected — backlog. ResultVerifier hook needed."
         )
     ]
 
