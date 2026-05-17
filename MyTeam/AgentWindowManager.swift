@@ -30,6 +30,7 @@ class AgentWindowManager: ObservableObject {
     
     // ── 전역 설정 ──
     @AppStorage("isDarkMode") var isDarkMode: Bool = false
+    @AppStorage("MyTeam.isBeginnerMode") var isBeginnerMode: Bool = false
     @AppStorage("isVoiceMode") var isVoiceMode: Bool = true
     @AppStorage("isSilentMode") var isSilentMode: Bool = false {
         didSet {

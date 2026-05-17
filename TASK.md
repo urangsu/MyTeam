@@ -660,9 +660,22 @@ Mac App Store에 출시 가능한 macOS 네이티브 AI 팀 앱.
 - [x] Debug BUILD SUCCEEDED — 0 Swift warnings
 - [x] Release BUILD SUCCEEDED — 0 Swift warnings
 
+### Completed (Round 233A — Beginner Mode)
+- [x] BeginnerMode.swift 신규 생성 — BeginnerTaskCard(6), BeginnerGuidanceMessage, UserFacingTerm 구현
+- [x] BeginnerTaskCardView.swift 신규 생성 — 초보자 업무 카드 UI (사용자/치코 역할 분리)
+- [x] BeginnerGuidanceBar — 치코 안내 문구 뷰 (BeginnerTaskCardView.swift 내)
+- [x] WorkroomHomeView.swift 재작성 — 초보자/표준 모드 분기, 치코 안내, 예시 시작하기
+- [x] AgentWindowManager.isBeginnerMode @AppStorage 추가
+- [x] TeamStatusView.chatroomLogView에 WorkroomHomeView 마운트 (초보자모드 or 빈 대화)
+- [x] pbxproj 등록 — WorkroomHomeView/HomeModel 누락 BF 추가 + BeginnerMode/TaskCardView 신규 등록
+- [x] WorkroomHomeModel Equatable 제거 (IndexedArtifact 비Equatable 호환)
+- [x] Debug BUILD SUCCEEDED + Release BUILD SUCCEEDED (0 Swift warnings)
+
 ### Pending (Manual QA)
 - [ ] Runtime QA: workroom 열기, 문서 생성, artifact 재사용, room 전환 시 치코 반응 확인
 - [ ] workflowCompleted → .joy 전환 실기 확인 (artifact 생성 후)
+- [ ] Beginner Mode 실기 확인 — 업무 카드 탭 → 프롬프트 dispatch → 결과
+- [ ] "예시로 먼저 해보기" 실기 확인 — 샘플 회의록 생성
 - [ ] Character sprite asset production (디자인팀 — idle/typing/greeting/joy/backwork 우선)
 - [ ] sleeping state 연결 (long idle timer hook — backlog)
 - [ ] artifactVerificationFailed → .sad/.confused 연결 (ResultVerifier hook — backlog)

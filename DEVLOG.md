@@ -2911,3 +2911,67 @@ agentEmotions 경로를 통한 전체 체인(event → engine → agentEmotions 
 ### Build
 - Debug BUILD SUCCEEDED, 0 Swift warnings
 - Release BUILD SUCCEEDED, 0 Swift warnings
+
+---
+
+## Round 233A — Beginner Mode + Guided WorkroomHome (2026-05-17)
+
+### Summary
+초보자가 프롬프트 없이 버튼 하나로 업무를 시작할 수 있는 Beginner Mode 레이어를 구현했다.
+WorkroomHomeView에 치코 안내 문구, 업무 카드, "예시로 시작하기"가 추가됐다.
+기존 표준 모드(고급 사용자)는 그대로 유지된다.
+
+### 신규 파일
+
+**BeginnerMode.swift**
+- `BeginnerTaskCard` enum (meetingMinutes/checklist/reportDraft/fileSummary/todayPlan/tryExample)
+  - title, subtitle, iconName, userTasks, chikoTasks, dispatchPrompt 계산 프로퍼티
+  - tryExample: 샘플 회의 내용 → exampleMeetingPrompt 포함
+- `BeginnerGuidanceMessage` struct (title/body/primaryActionTitle/prompt)
+  - firstLaunch / fileDetected / documentCreated / errorRecovery / returnFromIdle / idle 사전 정의
+- `UserFacingTerm` enum (artifact/connector/blocked/unavailable/route/skill/token/model/diagnostic/capability/router)
+  - displayName / description / friendlyErrorMessage(for:) — 기술 용어 → 사용자 언어 변환
+
+**BeginnerTaskCardView.swift**
+- `BeginnerTaskCardView`: 업무 카드 UI
+  - Header: 아이콘 + 제목 + 부제목 + 화살표
+  - Role Split: "내가 할 일" / "치코가 할 일" 두 컬럼
+  - tryExample 카드는 강조 스타일 (파란 테두리 + 화살표)
+- `BeginnerGuidanceBar`: 치코 안내 문구 뷰
+  - 치코 아이콘(🐾) + 제목/본문 + CTA 버튼
+
+### 수정 파일
+
+**WorkroomHomeView.swift** (전면 재작성)
+- isBeginnerMode 분기 추가
+- Beginner 모드: GuideBar + 업무 카드 4개 + tryExample + 최근 문서 + 다음 액션
+- 표준 모드: 기존 primary action 버튼 유지
+- 모드 전환 토글 버튼 (헤더 우측)
+- onPromptDispatched 콜백 추가 (카드 탭 → 직접 프롬프트 dispatch)
+- ScrollView로 감싸 긴 내용도 스크롤 가능
+
+**AgentWindowManager.swift**
+- `@AppStorage("MyTeam.isBeginnerMode") var isBeginnerMode: Bool = false` 추가
+
+**TeamStatusView.swift**
+- chatroomLogView에 WorkroomHomeView 마운트
+- isBeginnerMode 또는 teamChatLogs.isEmpty일 때 WorkroomHomeView를 스크롤 상단에 표시
+- onPromptDispatched → dispatchWorkroomPrompt로 연결
+
+**WorkroomHomeModel.swift**
+- `Equatable` 제거 (IndexedArtifact가 Equatable 미준수)
+
+**project.pbxproj**
+- WorkroomHomeView.swift / WorkroomHomeModel.swift PBXBuildFile 누락 수정 (BFWORKROOM001/002)
+- BeginnerMode.swift 신규 등록 (BC233A001FR/BF)
+- BeginnerTaskCardView.swift 신규 등록 (BC233A002FR/BF)
+
+### 금지 사항 준수
+- CharacterMood/CharacterActivity 미도입
+- AnimationState enum 보존
+- CharacterDialogues/SpriteAgentView/CharacterSpriteScene/AgentSeatView 무수정
+- 외부 write 없음
+
+### Build
+- Debug BUILD SUCCEEDED, 0 Swift warnings
+- Release BUILD SUCCEEDED, 0 Swift warnings

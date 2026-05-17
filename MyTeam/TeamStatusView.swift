@@ -430,16 +430,38 @@ struct TeamStatusView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 8) {
-                        if manager.teamChatLogs.isEmpty {
-                            VStack(spacing: 8) {
-                                Image(systemName: "bubble.left.and.bubble.right")
-                                    .font(.system(size: 28))
-                                    .foregroundColor(textColor.opacity(0.2))
-                                Text("아직 대화 내용이 없습니다.")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(textColor.opacity(0.3))
-                            }
-                            .frame(maxWidth: .infinity).padding(.top, 30)
+
+                        // ── WorkroomHomeView: 초보자 모드 or 빈 대화 상태 ──
+                        if manager.isBeginnerMode || manager.teamChatLogs.isEmpty {
+                            let roomArtifactsForHome: [IndexedArtifact] = {
+                                if let rid = manager.currentRoomID { return manager.recentArtifacts(for: rid) }
+                                return []
+                            }()
+                            let homeModel = WorkroomHomeModel.fromRuntime(
+                                roomID: manager.currentRoomID ?? UUID(),
+                                roomTitle: manager.rooms.first(where: { $0.id == manager.currentRoomID })?.name ?? "워크룸",
+                                recentArtifacts: roomArtifactsForHome
+                            )
+                            WorkroomHomeView(
+                                model: homeModel,
+                                manager: manager,
+                                isDarkMode: manager.isDarkMode,
+                                onPrimaryActionTapped: { action in
+                                    handleWorkroomAction(action)
+                                },
+                                onNextActionTapped: { action in
+                                    handleWorkroomNextAction(action)
+                                },
+                                onPromptDispatched: { prompt in
+                                    guard let roomID = manager.currentRoomID else { return }
+                                    dispatchWorkroomPrompt(prompt, roomID: roomID)
+                                }
+                            )
+                            .padding(.bottom, manager.teamChatLogs.isEmpty ? 0 : 8)
+                        }
+
+                        if manager.teamChatLogs.isEmpty && !manager.isBeginnerMode {
+                            // standard 빈 상태 (이미 WorkroomHomeView가 위에 표시됨)
                         }
 
                         ForEach(Array(manager.teamChatLogs.enumerated()), id: \.element.id) { index, log in

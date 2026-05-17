@@ -4,7 +4,7 @@ import Foundation
 
 /// 워크룸을 UI에서 보여주기 위한 전용 projection
 /// Source of truth를 복제하지 않고, 현재 room 기준 데이터만 사용
-struct WorkroomHomeModel: Equatable, Sendable {
+struct WorkroomHomeModel: Sendable {
     let roomID: UUID
     let title: String
     let subtitle: String
