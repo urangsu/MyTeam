@@ -287,6 +287,12 @@ struct TeamStatusView: View {
                                 roomToRename = room
                                 newName = room.name
                                 showRenameAlert = true
+                            },
+                            onApplyBlogTemplate: {
+                                manager.applyRoomTemplate(.blogWriting, to: room.id)
+                            },
+                            onApplyGeneralTemplate: {
+                                manager.applyRoomTemplate(.general, to: room.id)
                             }
                         )
                         .onTapGesture {
@@ -381,6 +387,18 @@ struct TeamStatusView: View {
             }
             .buttonStyle(PlainButtonStyle())
             .help("워크룸 추가")
+            Button(action: {
+                isDeleteMode = false
+                manager.createBlogWritingRoom()
+            }) {
+                Image(systemName: "doc.text.magnifyingglass")
+                    .font(.system(size: 13))
+                    .foregroundColor(.green)
+                    .frame(width: 22, height: 22)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(PlainButtonStyle())
+            .help("콘텐츠 초안 보조 워크룸 추가")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -1040,6 +1058,8 @@ struct TeamStatusView: View {
         let isDarkMode: Bool
         var isDeleteMode: Bool = false
         var onRename: () -> Void
+        var onApplyBlogTemplate: () -> Void
+        var onApplyGeneralTemplate: () -> Void
 
         var body: some View {
             HStack(spacing: 6) {
@@ -1049,7 +1069,7 @@ struct TeamStatusView: View {
                         .font(.system(size: 13))
                         .foregroundColor(.red)
                 } else {
-                    Image(systemName: room.computedRoomKind == .teamWorkroom ? "person.3.fill" : "person.fill")
+                    Image(systemName: room.effectiveProfile.mode == .blogWriting ? "doc.text.magnifyingglass" : (room.computedRoomKind == .teamWorkroom ? "person.3.fill" : "person.fill"))
                         .font(.system(size: 10))
                         .foregroundColor(isSelected ? .blue : .gray.opacity(0.5))
                 }
@@ -1074,6 +1094,19 @@ struct TeamStatusView: View {
             .padding(.vertical, 8)
             .background(RoundedRectangle(cornerRadius: 10).fill(isSelected ? Color.blue.opacity(0.1) : Color.clear))
             .animation(.easeInOut(duration: 0.15), value: isDeleteMode)
+            .contextMenu {
+                Button(action: onRename) {
+                    Label("이름 변경", systemImage: "pencil")
+                }
+                Button(action: onApplyBlogTemplate) {
+                    Label("콘텐츠 초안 보조", systemImage: "doc.text.magnifyingglass")
+                }
+                if room.effectiveProfile.mode != .general {
+                    Button(action: onApplyGeneralTemplate) {
+                        Label("일반 워크룸으로 전환", systemImage: "person.3.fill")
+                    }
+                }
+            }
         }
     }
 

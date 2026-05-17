@@ -128,6 +128,8 @@ class ConversationMemory {
             /open URL 또는 파일경로 - 브라우저/파일 열기
             /fetch URL - 웹페이지 직접 읽기
             /search 검색어 - 웹 자료 찾기
+            /blog-source URL... - 공개 글 URL을 읽어 이 워크룸의 콘텐츠 초안 참고 글투로 저장
+            /blog-profile - 이 워크룸의 콘텐츠 초안 참고 정보 보기
             /schedule 09:00 할 일 - 앱이 켜져 있을 때 예약 실행
             /schedule every 30m 할 일 - 반복 예약
             /tasks - 스케줄 업무 보기
@@ -296,6 +298,41 @@ class ConversationMemory {
             let policy = ToolPolicy.evaluate(argument + " 검색 출처")
             let evidence = await ToolEvidenceService.gather(for: argument, policy: policy)
             post(evidence.promptContext.isEmpty ? "검색 결과를 찾지 못했습니다." : evidence.promptContext, sources: evidence.sources)
+            return true
+
+        case "/blog-source", "/blogstyle", "/blog-style":
+            guard let roomID else {
+                post("현재 방을 찾지 못했습니다.")
+                return true
+            }
+            guard !argument.isEmpty else {
+                post("""
+                참고할 공개 글 URL을 입력해 주세요.
+                이 기능은 MyTeam의 문서/파일/정리 작업을 보조하는 콘텐츠 초안용 shortcut입니다.
+                예: /blog-source https://example.com/post-1 https://example.com/post-2
+                """)
+                return true
+            }
+            post("공개 글을 읽고 이 워크룸의 콘텐츠 초안 참고 정보를 만드는 중입니다...")
+            let result = await BlogSourceProfileBuilder.build(from: argument)
+            guard !result.profile.voiceSummary.isEmpty else {
+                post("읽을 수 있는 본문을 찾지 못했습니다. 공개 URL인지, 본문이 서버에서 내려오는 페이지인지 확인해 주세요.", sources: result.sources)
+                return true
+            }
+            manager.updateBlogProfile(
+                roomID: roomID,
+                sourceURLs: result.sourceURLs,
+                styleProfile: result.profile
+            )
+            post("""
+            이 워크룸에 콘텐츠 초안 참고 정보를 추가했습니다.
+
+            \(manager.roomProfileSummary(roomID: roomID))
+            """, sources: result.sources)
+            return true
+
+        case "/blog-profile", "/room-profile":
+            post(manager.roomProfileSummary(roomID: roomID))
             return true
 
         case "/schedule":
@@ -661,6 +698,284 @@ class ConversationMemory {
         }
         let scope: AgentWindowManager.MemoryScope = roomID != nil ? .room(roomID!) : .global
         return (scope, trimmed)
+    }
+}
+
+// MARK: - BlogSourceProfileBuilder
+
+enum BlogSourceProfileBuilder {
+    struct Result {
+        let sourceURLs: [String]
+        let profile: AgentWindowManager.BlogStyleProfile
+        let sources: [AgentWindowManager.SourceReference]
+    }
+
+    private struct Document {
+        let url: URL
+        let title: String
+        let description: String
+        let headings: [String]
+        let body: String
+    }
+
+    static func build(from rawInput: String) async -> Result {
+        let urls = extractURLs(from: rawInput)
+        guard !urls.isEmpty else {
+            return Result(sourceURLs: [], profile: .empty, sources: [])
+        }
+
+        var documents: [Document] = []
+        var sources: [AgentWindowManager.SourceReference] = []
+
+        for url in urls.prefix(8) {
+            guard ["http", "https"].contains(url.scheme?.lowercased() ?? "") else { continue }
+            if let document = await fetchDocument(url: url) {
+                documents.append(document)
+                sources.append(AgentWindowManager.SourceReference(
+                    title: document.title,
+                    url: url.absoluteString,
+                    provider: url.host() ?? "URL",
+                    accessedAt: Date()
+                ))
+            }
+        }
+
+        let profile = analyze(documents: documents)
+        return Result(
+            sourceURLs: documents.map { $0.url.absoluteString },
+            profile: profile,
+            sources: sources
+        )
+    }
+
+    private static func extractURLs(from text: String) -> [URL] {
+        let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        let matches = detector?.matches(in: text, options: [], range: range) ?? []
+        return matches.compactMap { $0.url }
+    }
+
+    private static func fetchDocument(url: URL) async -> Document? {
+        do {
+            var request = URLRequest(url: url)
+            request.timeoutInterval = 14
+            request.setValue("Mozilla/5.0 MyTeam/1.0 BlogProfile", forHTTPHeaderField: "User-Agent")
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse,
+                  (200..<300).contains(http.statusCode),
+                  data.count <= 1_500_000 else {
+                return nil
+            }
+            let raw = String(data: data, encoding: .utf8)
+                ?? String(data: data, encoding: .ascii)
+                ?? ""
+            let title = extractHTMLTitle(from: raw) ?? url.host() ?? "웹페이지"
+            let description = extractMetaDescription(from: raw) ?? ""
+            let headings = extractHeadings(from: raw)
+            let body = extractMainContent(from: raw)
+            guard body.count > 120 || !description.isEmpty || !headings.isEmpty else { return nil }
+            return Document(
+                url: url,
+                title: cleanText(title),
+                description: cleanText(description),
+                headings: headings.map(cleanText),
+                body: String(body.prefix(18_000))
+            )
+        } catch {
+            return nil
+        }
+    }
+
+    private static func analyze(documents: [Document]) -> AgentWindowManager.BlogStyleProfile {
+        guard !documents.isEmpty else { return .empty }
+
+        let titles = documents.map(\.title).filter { !$0.isEmpty }
+        let headings = documents.flatMap(\.headings).filter { !$0.isEmpty }
+        let bodies = documents.map(\.body).joined(separator: "\n")
+        let sentences = splitSentences(bodies)
+        let introPatterns = Array(documents.compactMap { firstSentence(in: $0.body) }.prefix(5))
+        let avgSentenceLength = averageSentenceLength(sentences)
+        let endings = dominantEndings(sentences)
+        let questionRatio = sentences.isEmpty ? 0 : Double(sentences.filter { $0.contains("?") || $0.contains("나요") || $0.contains("까요") }.count) / Double(sentences.count)
+        let listLike = bodies.contains("1.") || bodies.contains("- ") || headings.count >= documents.count * 3
+        let ctas = extractCTAs(from: sentences)
+
+        var expressionNotes: [String] = []
+        expressionNotes.append("평균 문장 길이 약 \(avgSentenceLength)자")
+        if !endings.isEmpty {
+            expressionNotes.append("자주 쓰는 종결: \(endings.joined(separator: ", "))")
+        }
+        if questionRatio >= 0.18 {
+            expressionNotes.append("질문형 문장으로 독자 문제를 먼저 여는 편")
+        }
+        if listLike {
+            expressionNotes.append("목록형/소제목형 구조를 자주 사용")
+        }
+        if headings.contains(where: { $0.contains("방법") || $0.contains("팁") || $0.contains("정리") }) {
+            expressionNotes.append("실무 팁·정리형 소제목이 잘 맞음")
+        }
+
+        let voice = makeVoiceSummary(
+            documentCount: documents.count,
+            avgSentenceLength: avgSentenceLength,
+            endings: endings,
+            questionRatio: questionRatio,
+            hasCTA: !ctas.isEmpty,
+            listLike: listLike
+        )
+
+        return AgentWindowManager.BlogStyleProfile(
+            voiceSummary: voice,
+            headlinePatterns: Array((titles + headings.prefix(8)).prefix(10)),
+            introPatterns: Array(introPatterns),
+            expressionNotes: Array(NSOrderedSet(array: expressionNotes).compactMap { $0 as? String }),
+            ctaPatterns: Array(ctas.prefix(6)),
+            bannedPhrases: []
+        )
+    }
+
+    private static func makeVoiceSummary(
+        documentCount: Int,
+        avgSentenceLength: Int,
+        endings: [String],
+        questionRatio: Double,
+        hasCTA: Bool,
+        listLike: Bool
+    ) -> String {
+        var parts = ["기존 글 \(documentCount)개 기준"]
+        if avgSentenceLength < 45 {
+            parts.append("짧고 빠른 문장")
+        } else if avgSentenceLength > 85 {
+            parts.append("설명 밀도가 높은 긴 문장")
+        } else {
+            parts.append("중간 길이의 설명형 문장")
+        }
+        if endings.contains("해요체") {
+            parts.append("친근한 해요체")
+        } else if endings.contains("합니다체") {
+            parts.append("단정한 합니다체")
+        }
+        if questionRatio >= 0.18 {
+            parts.append("질문형 도입")
+        }
+        if listLike {
+            parts.append("소제목/목록 중심 구조")
+        }
+        if hasCTA {
+            parts.append("마지막에 행동 유도")
+        }
+        return parts.joined(separator: ", ")
+    }
+
+    private static func extractHTMLTitle(from html: String) -> String? {
+        guard let range = html.range(of: #"<title[^>]*>(.*?)</title>"#, options: [.regularExpression, .caseInsensitive]) else {
+            return nil
+        }
+        return stripTags(String(html[range]))
+            .replacingOccurrences(of: "\n", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func extractMetaDescription(from html: String) -> String? {
+        let patterns = [
+            #"<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["'][^>]*>"#,
+            #"<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["'][^>]*>"#,
+            #"<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["'][^>]*>"#,
+            #"<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:description["'][^>]*>"#
+        ]
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { continue }
+            let range = NSRange(html.startIndex..<html.endIndex, in: html)
+            guard let match = regex.firstMatch(in: html, range: range),
+                  match.numberOfRanges > 1,
+                  let contentRange = Range(match.range(at: 1), in: html) else { continue }
+            return cleanText(String(html[contentRange]))
+        }
+        return nil
+    }
+
+    private static func extractHeadings(from html: String) -> [String] {
+        guard let regex = try? NSRegularExpression(pattern: #"<h[1-3][^>]*>(.*?)</h[1-3]>"#, options: [.caseInsensitive, .dotMatchesLineSeparators]) else {
+            return []
+        }
+        let range = NSRange(html.startIndex..<html.endIndex, in: html)
+        return regex.matches(in: html, range: range).compactMap { match in
+            guard let titleRange = Range(match.range(at: 1), in: html) else { return nil }
+            let heading = cleanText(stripTags(String(html[titleRange])))
+            return heading.isEmpty ? nil : heading
+        }
+    }
+
+    private static func extractMainContent(from html: String) -> String {
+        var text = html
+        let removablePatterns = [
+            #"<script[\s\S]*?</script>"#,
+            #"<style[\s\S]*?</style>"#,
+            #"<noscript[\s\S]*?</noscript>"#,
+            #"<!--[\s\S]*?-->"#
+        ]
+        for pattern in removablePatterns {
+            text = text.replacingOccurrences(of: pattern, with: " ", options: [.regularExpression, .caseInsensitive])
+        }
+        text = text.replacingOccurrences(of: #"</(p|div|br|li|h[1-6])>"#, with: "\n", options: [.regularExpression, .caseInsensitive])
+        text = stripTags(text)
+        return cleanText(text)
+    }
+
+    private static func stripTags(_ text: String) -> String {
+        text.replacingOccurrences(of: #"<[^>]+>"#, with: " ", options: .regularExpression)
+    }
+
+    private static func cleanText(_ text: String) -> String {
+        text
+            .replacingOccurrences(of: "&nbsp;", with: " ")
+            .replacingOccurrences(of: "&amp;", with: "&")
+            .replacingOccurrences(of: "&lt;", with: "<")
+            .replacingOccurrences(of: "&gt;", with: ">")
+            .replacingOccurrences(of: "&quot;", with: "\"")
+            .replacingOccurrences(of: "&#39;", with: "'")
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func splitSentences(_ text: String) -> [String] {
+        text
+            .components(separatedBy: CharacterSet(charactersIn: ".!?\n。！？"))
+            .map { cleanText($0) }
+            .filter { $0.count >= 12 }
+    }
+
+    private static func firstSentence(in text: String) -> String? {
+        splitSentences(text).first.map { String($0.prefix(160)) }
+    }
+
+    private static func averageSentenceLength(_ sentences: [String]) -> Int {
+        guard !sentences.isEmpty else { return 0 }
+        return sentences.map(\.count).reduce(0, +) / sentences.count
+    }
+
+    private static func dominantEndings(_ sentences: [String]) -> [String] {
+        var counts: [String: Int] = [:]
+        for sentence in sentences {
+            if sentence.hasSuffix("합니다") || sentence.hasSuffix("습니다") || sentence.hasSuffix("됩니다") {
+                counts["합니다체", default: 0] += 1
+            }
+            if sentence.hasSuffix("해요") || sentence.hasSuffix("예요") || sentence.hasSuffix("이에요") || sentence.hasSuffix("돼요") {
+                counts["해요체", default: 0] += 1
+            }
+            if sentence.hasSuffix("다") {
+                counts["단정형", default: 0] += 1
+            }
+        }
+        return counts.sorted { $0.value > $1.value }.prefix(3).map(\.key)
+    }
+
+    private static func extractCTAs(from sentences: [String]) -> [String] {
+        let keywords = ["문의", "댓글", "공유", "신청", "예약", "확인", "상담", "방문", "눌러", "남겨"]
+        let matches = sentences.filter { sentence in
+            keywords.contains(where: { sentence.contains($0) })
+        }
+        return Array(NSOrderedSet(array: matches.map { String($0.prefix(140)) }).compactMap { $0 as? String })
     }
 }
 

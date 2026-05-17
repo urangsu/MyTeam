@@ -471,7 +471,7 @@ struct AgentChatView: View {
         ZStack(alignment: .topTrailing) {
             // 버튼 대신 HStack 제스처로 대체하여 더블클릭 이벤트 충돌 완전 방지
             HStack(spacing: 6) {
-                    Image(systemName: "bubble.left.fill")
+                    Image(systemName: room.effectiveProfile.mode == .blogWriting ? "doc.text.magnifyingglass" : "bubble.left.fill")
                         .font(.system(size: 10))
                         .foregroundColor(isSelected ? currentAgent.color : .gray.opacity(0.5))
                     if !isSidebarCollapsed {
@@ -550,6 +550,18 @@ struct AgentChatView: View {
                     }
                 }) {
                     Label("이름 변경", systemImage: "pencil")
+                }
+                Button(action: {
+                    manager.applyRoomTemplate(.blogWriting, to: room.id)
+                }) {
+                    Label("콘텐츠 초안 보조", systemImage: "doc.text.magnifyingglass")
+                }
+                if room.effectiveProfile.mode != .general {
+                    Button(action: {
+                        manager.applyRoomTemplate(.general, to: room.id)
+                    }) {
+                        Label("일반 대화방으로 전환", systemImage: "bubble.left")
+                    }
                 }
                 Divider()
                 Button(role: .destructive, action: {
@@ -1089,6 +1101,7 @@ struct AgentChatView: View {
                         toolPolicy: toolPolicy
                     )
                     let groundedText = fullText
+                        + manager.roomProfileContext(roomID: roomID)
                         + manager.persistentContext
                         + personalPolicy
                         + toolEvidence.promptContext
