@@ -1479,6 +1479,13 @@ class AgentWindowManager: ObservableObject {
         // 해당 에이전트의 개인 대화방 찾기
         if let existing = rooms.first(where: { $0.agentIDs == [agentID] }) {
             currentRoomID = existing.id
+            // AgentChatView.agentRoomID(local @State)는 currentRoomID를 직접 관찰하지 않으므로
+            // didSelectAgentForChat 알림으로 개인창에 방 전환을 명시적으로 전달한다
+            NotificationCenter.default.post(
+                name: NSNotification.Name("didSelectAgentForChat"),
+                object: nil,
+                userInfo: ["agentID": agentID]
+            )
             return
         }
 
@@ -1494,6 +1501,11 @@ class AgentWindowManager: ObservableObject {
         newRoom.profile = inferredRoomProfile(for: newRoom.name)
         rooms.append(newRoom)
         currentRoomID = newRoom.id
+        NotificationCenter.default.post(
+            name: NSNotification.Name("didSelectAgentForChat"),
+            object: nil,
+            userInfo: ["agentID": agentID]
+        )
     }
 
     /// 팀 워크룸으로 돌아가기

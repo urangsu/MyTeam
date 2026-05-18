@@ -30,7 +30,7 @@ struct DailyBriefingCardView: View {
             briefingSection(
                 title: "새 메일",
                 icon: "envelope",
-                emptyText: "Gmail 메타데이터 브리핑은 준비 중입니다. 메일 본문 요약/발송/삭제는 아직 지원하지 않습니다."
+                emptyText: "Gmail 연결 후 새 메일 알림을 볼 수 있어요."
             ) {
                 ForEach(briefing.mailItems) { item in
                     briefingRow(

@@ -6,6 +6,38 @@
 
 ---
 
+## 2026-05-19 (Round 239 — Personal Chat Nav Fix + Connector UX Cleanup)
+
+### 완료 (2026-05-19)
+
+**코드 수정 라운드** — 앱 실행 없이 정적 수정 + Debug/Release 빌드만 진행
+
+**수정 내역**:
+1. **개인 대화창 이동 버그 수정** (`AgentWindowManager.swift`)
+   - `openPersonalChat(for:)` — 기존방/신규방 두 분기 모두 `didSelectAgentForChat` 알림 추가
+   - 기존: `manager.currentRoomID`만 변경, `AgentChatView.agentRoomID`(@State) 미반응
+   - 수정: 알림 전파로 AgentChatView가 `agentRoomID`를 올바르게 갱신
+
+2. **커넥터 내부 개발 문구 제거** (`AssistantConnectorCatalog.swift`)
+   - Google Calendar: `Desktop OAuth + Calendar read-only 연동 예정` → 사용자 향 문구
+   - Gmail: `metadata 먼저, 본문 읽기는 추후 승인 필요` → 사용자 향 문구
+   - Naver Mail: `IMAP 기반 read-only 연동 검토` → `연동 준비 중입니다.`
+   - Naver Calendar: `공식 API 제약 검토 필요` → `연동 준비 중입니다.`
+
+3. **DailyBriefingCard Gmail 빈 상태 문구 정리** (`DailyBriefingCardView.swift`)
+   - `Gmail 메타데이터 브리핑은 준비 중입니다. 메일 본문 요약/발송/삭제는 아직 지원하지 않습니다.`
+   - → `Gmail 연결 후 새 메일 알림을 볼 수 있어요.`
+
+4. **`schedulePopupCard` 데드 코드 제거** (`TeamStatusView.swift`)
+   - WP5에서 오버레이 제거 후 정의만 남아있던 66줄 computed property 삭제
+
+**Preflight 239**: 9/9 전체 통과
+
+**신규 파일**:
+- `scripts/preflight_nav_connector_round239.sh`
+
+---
+
 ## 2026-05-19 (Round 238 — Chat Surface Visibility Fix)
 
 ### 완료 (2026-05-19)

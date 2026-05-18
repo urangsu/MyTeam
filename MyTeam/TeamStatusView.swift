@@ -720,72 +720,7 @@ struct TeamStatusView: View {
         .padding(.top, 8)
     }
 
-    private var schedulePopupCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Image(systemName: "clock.badge.checkmark")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.orange)
-                Text("예약 작업")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(textColor.opacity(0.8))
-                Spacer()
-                Button {
-                    withAnimation(.spring(response: 0.24, dampingFraction: 0.85)) {
-                        manager.isSchedulePanelPresented = false
-                    }
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(textColor.opacity(0.38))
-                }
-                .buttonStyle(.plain)
-            }
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
-                    if manager.automationTasks.isEmpty {
-                        Text("등록된 예약 작업이 없습니다.")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(textColor.opacity(0.78))
-                        Text("정해진 시간에 자동으로 작업하는 기능이 준비 중입니다.")
-                            .font(.system(size: 10))
-                            .foregroundColor(textColor.opacity(0.55))
-                    } else {
-                        Text("\(manager.automationTasks.count)개의 예약 작업이 있습니다.")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(textColor.opacity(0.78))
-
-                        VStack(alignment: .leading, spacing: 6) {
-                            ForEach(Array(manager.automationTasks.prefix(3))) { task in
-                                HStack(spacing: 6) {
-                                    Circle()
-                                        .fill(Color.orange)
-                                        .frame(width: 6, height: 6)
-                                    Text(task.prompt)
-                                        .font(.system(size: 10))
-                                        .foregroundColor(textColor.opacity(0.7))
-                                        .lineLimit(1)
-                                    Spacer()
-                                }
-                            }
-                        }
-                    }
-                }
-                .padding(.top, 2)
-                .padding(.trailing, 2)
-            }
-            .frame(maxHeight: 126)
-
-            // 스케줄 관리 UI는 사이드바 단일 진입점으로 통합 (WP5)
-        }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(manager.isDarkMode ? Color.black.opacity(0.92) : Color.white.opacity(0.98))
-                .shadow(color: .black.opacity(manager.isDarkMode ? 0.22 : 0.12), radius: 12, x: 0, y: 5)
-        )
-    }
+    // schedulePopupCard 제거됨 (WP5: 사이드바 scheduleSidebarButton 단일 진입점)
 
     private var scheduleComposer: some View {
         VStack(alignment: .leading, spacing: 6) {

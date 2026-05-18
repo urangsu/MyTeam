@@ -8,7 +8,7 @@ enum AssistantConnectorCatalog {
             description: "오늘 일정과 다가오는 회의를 브리핑합니다.",
             capabilities: [.readCalendarEvents, .createCalendarEvent, .modifyCalendarEvent],
             isImplemented: false,
-            notes: "Desktop OAuth + Calendar read-only 연동 예정"
+            notes: "Google 계정 연결 후 오늘 일정을 자동으로 가져옵니다."
         ),
         AssistantConnector(
             id: .gmail,
@@ -16,7 +16,7 @@ enum AssistantConnectorCatalog {
             description: "새 메일 수와 메일 요약 브리핑을 준비합니다.",
             capabilities: [.readEmailMetadata, .readEmailBody, .summarizeEmail, .createDraft, .sendEmail],
             isImplemented: false,
-            notes: "metadata 먼저, 본문 읽기는 추후 승인 필요"
+            notes: "연결 후 새 메일 수와 발신자, 제목을 확인할 수 있습니다."
         ),
         AssistantConnector(
             id: .naverMail,
@@ -24,15 +24,15 @@ enum AssistantConnectorCatalog {
             description: "네이버 메일 브리핑을 준비합니다.",
             capabilities: [.readEmailMetadata, .readEmailBody, .summarizeEmail],
             isImplemented: false,
-            notes: "IMAP 기반 read-only 연동 검토"
+            notes: "연동 준비 중입니다."
         ),
         AssistantConnector(
             id: .naverCalendar,
             displayName: "Naver Calendar",
-            description: "네이버 캘린더 연동 가능성을 검토합니다.",
+            description: "네이버 캘린더 일정을 브리핑합니다.",
             capabilities: [.createCalendarEvent],
             isImplemented: false,
-            notes: "공식 API 제약 검토 필요"
+            notes: "연동 준비 중입니다."
         )
     ]
 
