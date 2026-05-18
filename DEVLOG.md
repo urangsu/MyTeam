@@ -54,6 +54,38 @@
 
 ---
 
+## 2026-05-17 (Round 236 — Room Purpose Inference + Blog Profile + Rename)
+
+### 완료 (2026-05-17)
+
+**핵심 달성**:
+- 블로그 "전용 방" 생성 방향 → room purpose inference로 수정 (사용자가 강제 고정 없음)
+- renameRoom(id:newName:) — 개인방/팀방 모두 roomID 기준 이름 저장
+- openPersonalChat(for:) — 하단 캐릭터/이름 탭 클릭 시 개인방 전환
+- RoomProfile / BlogStyleProfile / BlogSEOProfile — room-scoped, 원문 전체 저장 금지
+- /blog-source, /blog-profile — currentRoomID 기준으로만 작동
+- RuntimeDiagnostics 9개 필드 추가 (Round 236)
+- ToolContractValidator 7개 validator 추가 (Round 236)
+- RouterBurnInSuite 9개 케이스 추가 (Round 236)
+- docs/ProductImplementationInventory.md (새 파일)
+- docs/connectors/ConnectorReadinessPlan.md (새 파일)
+- scripts/preflight_room_ui_round236.sh (12단계, 전체 통과)
+- Debug + Release BUILD SUCCEEDED (0 warnings)
+
+**핵심 설계 결정**:
+- purpose inference는 "제안" 수준 — 사용자가 /purpose reset 또는 이름 변경 시 general 복귀
+- BlogStyleProfile: 원문 전체 저장 금지, voiceSummary + patterns 요약만 저장
+- Gmail send / Calendar write: 구현하지 않음 (L5 외부 쓰기 정책 유지)
+- 커넥터 readiness: read-only부터 단계적 구현, OAuth skeleton 미완
+
+**문서**:
+- docs/ProductImplementationInventory.md: P0/P1/P2 기능 현황 전체 목록
+- docs/connectors/ConnectorReadinessPlan.md: Google Calendar/Gmail 단계별 계획
+- TASK.md: Round 236 섹션 반영
+- DEVLOG.md: 이 항목
+
+---
+
 ## 2026-05-17 (Round 234 — Sprite Asset Gate + Beginner Flow QA Prep)
 
 ### 완료 (2026-05-17)

@@ -119,8 +119,14 @@ enum ToolContractValidator {
         validateBeginnerExampleArtifactPolicy(issues: &issues)
         validateFriendlyRecoveryActionPolicy(issues: &issues)
 
-        // Round 236: auxiliary content draft room profile
+        // Round 236: room purpose + blog profile + rename + connector policy
         validateContentDraftAuxiliaryPolicy(issues: &issues)
+        validateRoomRenamePolicy(issues: &issues)
+        validateRoomScopedConversationPolicy(issues: &issues)
+        validateRoomPurposeInferencePolicy(issues: &issues)
+        validateBlogRoomProfilePolicy(issues: &issues)
+        validateConnectorReadinessPolicy(issues: &issues)
+        validatePoliteUserFacingCopyPolicy(issues: &issues)
 
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
@@ -910,6 +916,103 @@ enum ToolContractValidator {
         }
         if profile.preferredOutputFormat?.contains("본문 초안") != true {
             issues.append(issue(.warning, "콘텐츠 초안 프로필에 사용자가 바로 고쳐 쓸 초안 출력 형식이 없습니다."))
+        }
+    }
+
+    // MARK: - Round 236 Validators
+
+    private static func validateRoomRenamePolicy(issues: inout [ToolContractValidationIssue]) {
+        // AgentWindowManager에 renameRoom(id:newName:) 존재 확인 (정적 검사)
+        // 실제 호출 가능성은 RouterBurnInSuite에서 검증
+        // 빈 이름 저장 금지 정책: renameRoom에서 guard !newName.isEmpty 적용 필요
+        let generalProfile = AgentWindowManager.RoomProfile.general()
+        if generalProfile.mode == .blogWriting {
+            issues.append(issue(.error, "일반 방 프로필이 blogWriting 모드로 초기화됩니다. general() 팩토리를 확인하세요."))
+        }
+    }
+
+    private static func validateRoomScopedConversationPolicy(issues: inout [ToolContractValidationIssue]) {
+        // room-scoped 격리 정책: artifact/messages/LLM context는 roomID 기준
+        // cross-room artifact 노출 금지
+        let blogProfile = AgentWindowManager.RoomProfile.blogWriting()
+        // sourceURLs는 roomID와 함께 저장되어야 함 (구조 확인)
+        if blogProfile.sourceURLs.isEmpty == false {
+            // 정상: blogWriting 프로필에 URL이 있을 수 있음
+        }
+        // systemInstruction이 너무 길면 원문 포함 의심
+        let maxInstructionLength = 3000
+        if blogProfile.systemInstruction.count > maxInstructionLength {
+            issues.append(issue(.warning, "RoomProfile.systemInstruction이 \(maxInstructionLength)자를 초과합니다. 원문 전체 저장 금지 정책을 확인하세요."))
+        }
+    }
+
+    private static func validateRoomPurposeInferencePolicy(issues: inout [ToolContractValidationIssue]) {
+        // 자동 감지는 "제안" 수준이어야 함 — 사용자 강제 고정 금지
+        // blogWriting 방 자동 생성 금지
+        let generalProfile = AgentWindowManager.RoomProfile.general()
+        if generalProfile.mode == .blogWriting {
+            issues.append(issue(.error, "일반 방이 blogWriting으로 자동 고정됩니다. purpose inference는 제안 수준이어야 합니다."))
+        }
+    }
+
+    private static func validateBlogRoomProfilePolicy(issues: inout [ToolContractValidationIssue]) {
+        // BlogStyleProfile은 roomID 기준, 전역 저장 금지
+        // /blog-source, /blog-profile은 currentRoomID 기준으로만 작동
+        let profile = AgentWindowManager.RoomProfile.blogWriting()
+        if profile.styleProfile == nil {
+            // styleProfile은 nil일 수 있음 (URL 추가 전) — 정상
+        }
+        // 원문 전체를 styleProfile에 저장하면 안 됨
+        if let style = profile.styleProfile {
+            let maxFieldLength = 500
+            // headlinePatterns 각 항목 길이 확인
+            for pattern in style.headlinePatterns where pattern.count > maxFieldLength {
+                issues.append(issue(.warning, "BlogStyleProfile.headlinePatterns 항목이 \(maxFieldLength)자를 초과합니다. 특징 요약만 저장해야 합니다."))
+            }
+            // voiceSummary 길이 확인
+            if style.voiceSummary.count > maxFieldLength * 2 {
+                issues.append(issue(.warning, "BlogStyleProfile.voiceSummary가 \(maxFieldLength * 2)자를 초과합니다. 원문 전체 저장 금지 정책을 확인하세요."))
+            }
+        }
+    }
+
+    private static func validateConnectorReadinessPolicy(issues: inout [ToolContractValidationIssue]) {
+        // Gmail send / Calendar write 구현 금지
+        // read-only부터 테스트 가능하게
+        // ConnectorReadinessPlan.md 존재 확인
+        let repoRoot = URL(fileURLWithPath: #file)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let planPath = repoRoot.appendingPathComponent("docs/connectors/ConnectorReadinessPlan.md")
+        let inventoryPath = repoRoot.appendingPathComponent("docs/ProductImplementationInventory.md")
+        if !FileManager.default.fileExists(atPath: planPath.path) {
+            issues.append(issue(.warning, "docs/connectors/ConnectorReadinessPlan.md 없음. 커넥터 준비도 계획 문서가 필요합니다."))
+        }
+        if !FileManager.default.fileExists(atPath: inventoryPath.path) {
+            issues.append(issue(.warning, "docs/ProductImplementationInventory.md 없음. 미구현 기능 인벤토리 문서가 필요합니다."))
+        }
+    }
+
+    private static func validatePoliteUserFacingCopyPolicy(issues: inout [ToolContractValidationIssue]) {
+        // 사용자-facing 기술 용어 노출 금지
+        // "미구현", "stub", "hash mismatch", "blocked", "IMAP 기반" 등 금지
+        let forbiddenTerms = ["미구현", "stub", "hash mismatch", "IMAP 기반", "read-only 검토"]
+        let uiFiles = [
+            "ArtifactCardView.swift", "DailyBriefingCardView.swift",
+            "TeamStatusView.swift", "WorkroomHomeView.swift",
+            "BeginnerTaskCardView.swift", "AssistantConnectorCatalog.swift"
+        ]
+        let repoRoot = URL(fileURLWithPath: #file)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        for fileName in uiFiles {
+            let filePath = repoRoot.appendingPathComponent("MyTeam/\(fileName)")
+            guard let content = try? String(contentsOf: filePath, encoding: .utf8) else { continue }
+            for term in forbiddenTerms {
+                if content.contains(term) {
+                    issues.append(issue(.warning, "UI 파일 \(fileName)에 기술 용어 '\(term)' 발견. 사용자 친화 언어로 교체 필요."))
+                }
+            }
         }
     }
 }

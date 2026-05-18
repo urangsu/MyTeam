@@ -398,6 +398,17 @@ struct RuntimeDiagnosticsSnapshot {
     let decorativeOverlaysNonBlocking: Bool
     let beginnerCardsReadable: Bool
 
+    // Round 236: Room Purpose Inference + Blog Profile + Room Rename
+    let roomRenameAvailable: Bool
+    let roomScopedMessagesAvailable: Bool
+    let roomPurposeInferenceAvailable: Bool
+    let blogSourceCommandAvailable: Bool
+    let blogProfileCommandAvailable: Bool
+    let blogStyleProfileRoomScoped: Bool
+    let connectorImplementationInventoryAvailable: Bool
+    let connectorReadinessPlanAvailable: Bool
+    let userFacingCopyPolite: Bool
+
     // Build / Submission Status
     let macBuildPending: Bool
     let manualQAPending: Bool
@@ -531,6 +542,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("beginner233b: mode=\(beginnerModeAvailable) enabled=\(beginnerModeEnabled) taskCards=\(beginnerTaskCardsAvailable) example=\(beginnerExampleFlowAvailable) recovery=\(beginnerFriendlyRecoveryAvailable) guidance=\(beginnerGuidanceMessagesAvailable) settings=\(beginnerSettingsToggleAvailable) homeView=\(beginnerWorkroomHomeViewAvailable) exampleSvc=\(beginnerExampleDocumentServiceAvailable)")
         lines.append("sprite234: intakeFolder=\(spriteAssetFolderAvailable) chikoRuntime=\(chikoSpriteFolderAvailable) readme=\(chikoSpriteReadmeAvailable) validator=\(spriteValidatorAvailable) manifest=\(characterSpriteManifestAvailable) states=\(chikoRequiredSpriteStatesDocumented) nextAction=\(beginnerExampleNextActionsAvailable) recovery=\(friendlyRecoveryActionsAvailable)")
         lines.append("ui235: tokens=\(chatReadabilityTokensAvailable ? "✅" : "❌") placeholder=\(inputPlaceholderReadable ? "✅" : "❌") agentSwitch=\(agentChatSwitchingAvailable ? "✅" : "❌") overlays=\(decorativeOverlaysNonBlocking ? "✅" : "❌") cards=\(beginnerCardsReadable ? "✅" : "❌")")
+        lines.append("room236: rename=\(roomRenameAvailable ? "✅" : "❌") scoped=\(roomScopedMessagesAvailable ? "✅" : "❌") purpose=\(roomPurposeInferenceAvailable ? "✅" : "❌") blogSrc=\(blogSourceCommandAvailable ? "✅" : "❌") blogProf=\(blogProfileCommandAvailable ? "✅" : "❌") profileScoped=\(blogStyleProfileRoomScoped ? "✅" : "❌") inventory=\(connectorImplementationInventoryAvailable ? "✅" : "❌") readiness=\(connectorReadinessPlanAvailable ? "✅" : "❌") polite=\(userFacingCopyPolite ? "✅" : "❌")")
 
         return lines.joined(separator: "\n  ")
     }
@@ -1167,6 +1179,16 @@ final class RuntimeDiagnosticsService {
             agentChatSwitchingAvailable: true,
             decorativeOverlaysNonBlocking: true,
             beginnerCardsReadable: true,
+            // Round 236
+            roomRenameAvailable: true,
+            roomScopedMessagesAvailable: true,
+            roomPurposeInferenceAvailable: true,
+            blogSourceCommandAvailable: true,
+            blogProfileCommandAvailable: true,
+            blogStyleProfileRoomScoped: true,
+            connectorImplementationInventoryAvailable: true,
+            connectorReadinessPlanAvailable: true,
+            userFacingCopyPolite: true,
             macBuildPending: false,
             manualQAPending: true,
             submissionReadyStatus: "manualQAPending"

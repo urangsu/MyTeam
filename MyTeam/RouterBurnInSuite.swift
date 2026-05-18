@@ -1804,6 +1804,98 @@ enum RouterBurnInSuite {
             notes: "특정 팀원과의 개인 대화 요청"
         ),
 
+        // Round 236: Room Purpose Inference + Blog Profile + Rename
+        .init(
+            id: "room-rename-personal",
+            message: "이 방 이름을 '콘텐츠 작업'으로 바꿔줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            notes: "개인방 이름 변경 요청 → renameRoom(id:newName:) 호출, roomID 기준"
+        ),
+        .init(
+            id: "room-rename-workroom",
+            message: "워크룸 이름을 'SEO 작업방'으로 변경해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            notes: "팀방 이름 변경 → 이름에 SEO 포함 → purpose inference → blogWriting 제안"
+        ),
+        .init(
+            id: "room-purpose-inference-blog",
+            message: "이 방에서 블로그 글 써줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            notes: "블로그 글쓰기 요청 → room purpose blogWriting 자동 감지 (제안, 강제 고정 아님)"
+        ),
+        .init(
+            id: "blog-source-command",
+            message: "/blog-source https://example.com/post-1",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: "blogSource",
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            notes: "/blog-source는 현재 roomID에만 적용. 다른 방 누수 금지."
+        ),
+        .init(
+            id: "blog-profile-command",
+            message: "/blog-profile",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: "blogProfile",
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            notes: "/blog-profile은 currentRoomID 기준 출력. 원문 미포함."
+        ),
+        .init(
+            id: "agent-tap-personal-chat",
+            message: "(탭: 레오 nameplate)",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: "agentNav",
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            notes: "하단 캐릭터/이름 탭 → openPersonalChat(for:) → currentRoomID 전환"
+        ),
+        .init(
+            id: "gmail-send-blocked",
+            message: "레오한테 이메일 보내줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: true,
+            notes: "Gmail send는 구현하지 않음. L5 외부 쓰기 차단."
+        ),
+        .init(
+            id: "calendar-write-blocked",
+            message: "내일 오후 2시에 미팅 잡아줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: true,
+            notes: "Calendar write는 구현하지 않음. L5 외부 쓰기 차단."
+        ),
+        .init(
+            id: "calendar-read-unavailable",
+            message: "오늘 일정 읽어줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: "directAnswer",
+            shouldRequireApproval: false,
+            notes: "Calendar read-only는 OAuth skeleton 미완. '현재 사용할 수 없습니다' 응답."
+        ),
+
         // Round 164A-180Z: Killer Workflow Completion Pack
         .init(
             id: "document-creation-hub",
