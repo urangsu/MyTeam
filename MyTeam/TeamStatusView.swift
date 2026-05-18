@@ -452,8 +452,8 @@ struct TeamStatusView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 8) {
 
-                        // ── WorkroomHomeView: 초보자 모드 or 빈 대화 상태 ──
-                        if manager.isBeginnerMode || manager.teamChatLogs.isEmpty {
+                        // ── WorkroomHomeView: 대화가 없을 때만 표시 (isBeginnerMode와 무관) ──
+                        if manager.teamChatLogs.isEmpty {
                             let roomArtifactsForHome: [IndexedArtifact] = {
                                 if let rid = manager.currentRoomID { return manager.recentArtifacts(for: rid) }
                                 return []
@@ -1110,47 +1110,57 @@ struct TeamStatusView: View {
         }
     }
 
-    // MARK: - 하위 뷰 (푸터 토글 및 버튼)
+    // MARK: - 하위 뷰 (컴팩트 플로팅 컨트롤 바)
     private var footerView: some View {
-        HStack(spacing: 12) {
-            // 소리 테마 (음성/무음)
-            HStack(spacing: 8) {
-                Button(action: { manager.isSilentMode.toggle() }) {
-                    Image(systemName: manager.isSilentMode ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                        .font(.system(size: 11))
-                        .foregroundColor(manager.isSilentMode ? .red.opacity(0.6) : .gray.opacity(0.6))
-                }
-                .buttonStyle(PlainButtonStyle())
-                .help(manager.isSilentMode ? "무음 모드 켬" : "무음 모드 꿈")
-                
-                Button(action: { manager.isVoiceMode.toggle() }) {
-                    Image(systemName: "waveform")
-                        .font(.system(size: 11))
-                        .foregroundColor(manager.isVoiceMode ? .blue : .gray.opacity(0.4))
-                }
-                .buttonStyle(PlainButtonStyle())
-                .help(manager.isVoiceMode ? "음성 모드 활성" : "음성 모드 비활성")
-            }
-            
-            Spacer()
-            
-            // 다크모드 토글
-            Button(action: { withAnimation { manager.isDarkMode.toggle() } }) {
-                Image(systemName: manager.isDarkMode ? "moon.stars.fill" : "sun.max.fill")
-                    .font(.system(size: 12))
-                    .foregroundColor(manager.isDarkMode ? .yellow : .orange.opacity(0.8))
+        HStack(spacing: 10) {
+            // 음소거
+            Button(action: { manager.isSilentMode.toggle() }) {
+                Image(systemName: manager.isSilentMode ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                    .font(.system(size: 11))
+                    .foregroundColor(manager.isSilentMode ? .red.opacity(0.7) : .secondary.opacity(0.6))
             }
             .buttonStyle(PlainButtonStyle())
+            .help(manager.isSilentMode ? "무음 모드" : "소리 켜기")
 
+            // 음성 모드
+            Button(action: { manager.isVoiceMode.toggle() }) {
+                Image(systemName: "waveform")
+                    .font(.system(size: 11))
+                    .foregroundColor(manager.isVoiceMode ? .blue.opacity(0.8) : .secondary.opacity(0.4))
+            }
+            .buttonStyle(PlainButtonStyle())
+            .help(manager.isVoiceMode ? "음성 모드 켜짐" : "음성 모드 꺼짐")
+
+            Spacer()
+
+            // 다크모드 토글
+            Button(action: { withAnimation(.easeInOut(duration: 0.2)) { manager.isDarkMode.toggle() } }) {
+                Image(systemName: manager.isDarkMode ? "moon.stars.fill" : "sun.max.fill")
+                    .font(.system(size: 11))
+                    .foregroundColor(manager.isDarkMode ? .yellow.opacity(0.8) : .orange.opacity(0.7))
+            }
+            .buttonStyle(PlainButtonStyle())
+            .help(manager.isDarkMode ? "라이트 모드로 전환" : "다크 모드로 전환")
+
+            // 설정
             Button(action: { manager.showSettingsWindow() }) {
                 Image(systemName: "gearshape.fill")
-                    .font(.system(size: 12))
-                    .foregroundColor(.gray.opacity(0.4))
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary.opacity(0.5))
             }
             .buttonStyle(PlainButtonStyle())
+            .help("설정")
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(manager.isDarkMode
+                      ? Color.white.opacity(0.06)
+                      : Color.black.opacity(0.04))
+        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
     }
 
     private func handleFileIntakeResult(_ result: FileIntakeResult) {

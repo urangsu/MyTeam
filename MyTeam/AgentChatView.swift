@@ -50,9 +50,11 @@ struct AgentChatView: View {
         let logs = manager.rooms.first(where: { $0.id == roomID })?.messages ?? []
         let targetID = activeAgentID ?? config.id
         if isPersonalChat {
-            return logs.filter { $0.agentID == targetID || $0.isUser }
+            // isSystem=true 시스템 내부 로그는 대화창에 절대 노출하지 않음
+            return logs.filter { !$0.isSystem && ($0.agentID == targetID || $0.isUser) }
         } else {
-            return logs
+            // 팀 워크룸도 시스템 로그 제외
+            return logs.filter { !$0.isSystem }
         }
     }
 
@@ -604,43 +606,52 @@ struct AgentChatView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 2) {
-                        // 첫 채팅일 때: 온보딩 카드 OR 인사말+액션 (동시 표시 금지, WP1)
+                        // 첫 채팅일 때: 개인 대화창은 간단한 힌트만, 팀 워크룸만 온보딩 카드/액션 표시
                         if chatHistory.isEmpty {
-                            VStack(spacing: 16) {
-                                let hasAnyAPIKey = KeychainManager.load(key: "claudeAPIKey") != nil ||
-                                                   KeychainManager.load(key: "geminiAPIKey") != nil ||
-                                                   KeychainManager.load(key: "openAIAPIKey") != nil ||
-                                                   KeychainManager.load(key: "openRouterAPIKey") != nil
-                                let firstLaunchState = FirstLaunchStateProvider.currentState(
-                                    hasAPIKey: hasAnyAPIKey
-                                )
-
-                                if firstLaunchState.shouldShowOnboarding {
-                                    // 온보딩 카드 1개만 (배너+카드 동시 표시 없음)
-                                    OnboardingCardView(
-                                        state: firstLaunchState,
-                                        onDismiss: {
-                                            FirstLaunchStateProvider.markOnboardingSeen()
-                                        },
-                                        onOpenSettings: {
-                                            manager.showSettingsWindow()
-                                        }
+                            if isPersonalChat {
+                                // 개인 대화창: 불필요한 온보딩/스파클 없이 한 줄 안내만
+                                Text("\(currentAgent.name)에게 바로 말을 걸 수 있어요.")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(textColor.opacity(0.4))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 48)
+                            } else {
+                                VStack(spacing: 16) {
+                                    let hasAnyAPIKey = KeychainManager.load(key: "claudeAPIKey") != nil ||
+                                                       KeychainManager.load(key: "geminiAPIKey") != nil ||
+                                                       KeychainManager.load(key: "openAIAPIKey") != nil ||
+                                                       KeychainManager.load(key: "openRouterAPIKey") != nil
+                                    let firstLaunchState = FirstLaunchStateProvider.currentState(
+                                        hasAPIKey: hasAnyAPIKey
                                     )
-                                } else {
-                                    // 온보딩 완료 후: 인사말 + 액션
-                                    Image(systemName: "sparkles")
-                                        .font(.system(size: 32))
-                                        .foregroundColor(currentAgent.color)
 
-                                    Text("\(currentAgent.name)와 대화를 시작해 보세요")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundColor(textColor)
+                                    if firstLaunchState.shouldShowOnboarding {
+                                        // 온보딩 카드 1개만 (배너+카드 동시 표시 없음)
+                                        OnboardingCardView(
+                                            state: firstLaunchState,
+                                            onDismiss: {
+                                                FirstLaunchStateProvider.markOnboardingSeen()
+                                            },
+                                            onOpenSettings: {
+                                                manager.showSettingsWindow()
+                                            }
+                                        )
+                                    } else {
+                                        // 온보딩 완료 후: 인사말 + 액션
+                                        Image(systemName: "sparkles")
+                                            .font(.system(size: 32))
+                                            .foregroundColor(currentAgent.color)
 
-                                    starterActionsStripView
+                                        Text("\(currentAgent.name)와 대화를 시작해 보세요")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundColor(textColor)
+
+                                        starterActionsStripView
+                                    }
                                 }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 40)
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 40)
                         } else {
                             ForEach(Array(chatHistory.enumerated()), id: \.element.id) { index, log in
                                 if index == 0 || !Calendar.current.isDate(

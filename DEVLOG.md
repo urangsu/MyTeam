@@ -6,6 +6,36 @@
 
 ---
 
+## 2026-05-19 (Round 238 — Chat Surface Visibility Fix)
+
+### 완료 (2026-05-19)
+
+**코드 수정 라운드** — 앱 실행 없이 정적 수정 + Debug/Release 빌드만 진행
+
+**수정 내역**:
+1. **시스템 로그 대화창 노출 차단** (`AgentChatView.swift`)
+   - `chatHistory` 계산 속성에 `!$0.isSystem` 필터 추가 (개인 대화 + 팀 워크룸 양쪽)
+   - `isSystem=true` 내부 라우팅/진단 로그가 사용자 대화창에 절대 표시되지 않음
+
+2. **시작 화면이 대화를 덮는 문제 수정** (`TeamStatusView.swift`)
+   - `WorkroomHomeView` 표시 조건 `isBeginnerMode || teamChatLogs.isEmpty` → `teamChatLogs.isEmpty` 단독으로 변경
+   - 초보자 모드 여부와 무관하게 대화 내용이 있으면 대화 화면 표시
+
+3. **개인 대화창 빈 상태 단순화** (`AgentChatView.swift`)
+   - `isPersonalChat && chatHistory.isEmpty` 시 온보딩카드/스파클/액션스트립 대신 한 줄 힌트만 표시
+   - "이 팀원에게 바로 말을 걸 수 있어요." (팀원 이름 포함)
+
+4. **푸터 컴팩트 플로팅 스타일** (`TeamStatusView.swift`)
+   - `.padding(.vertical, 14)` → `.padding(.vertical, 6)` + `RoundedRectangle(cornerRadius: 18)` 배경
+   - 사각박스 느낌 제거, 아이콘 크기 12→11pt 통일
+
+**Preflight 238**: 10/10 전체 통과
+
+**신규 파일**:
+- `scripts/preflight_chat_surface_round238.sh`
+
+---
+
 ## 2026-05-18 (Round 237 — Local Runtime QA)
 
 ### 완료 (2026-05-18)
