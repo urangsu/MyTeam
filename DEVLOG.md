@@ -6,6 +6,33 @@
 
 ---
 
+## 2026-05-18 (Round 237 — Local Runtime QA)
+
+### 완료 (2026-05-18)
+
+**수동 QA 진행**: Debug 앱 실행 후 computer-use로 UI 직접 검증
+
+**검증 결과**:
+- 앱 실행: Antigravity (com.google.antigravity), PID 55102, 다크 모드 ✅
+- 팀 협업 패널: 레오/루나/모코/핀 에이전트 카드 정상 ✅
+- 온보딩 카드 닫기 ✅
+- 에이전트 초상화 컨텍스트 메뉴 (추가/교체/팀장) ✅
+- 에이전트 카탈로그 모달 (무료/프리미엄 분류) ✅
+- 메시지 전송 → Gemini API 호출 확인, 429 우아한 처리 ✅
+- 커넥터 설정: Google Calendar "읽기 준비 중, 쓰기 차단" ✅
+- 기술 UX 금지 문구 미노출 ✅
+- Preflight 236 (12/12) + Preflight 237 (10/10) 통과 ✅
+
+**발견 이슈**:
+- P2: 설정 창 X 버튼 위치가 macOS Window 메뉴와 충돌 (화면 렌더링 좌표 이슈)
+- INFO: Gemini API 429 rate limit (개발 환경, 120초 자동 해제 확인)
+
+**신규 파일**:
+- `docs/qa/LocalRuntimeQA_Round237.md`
+- `scripts/preflight_local_runtime_round237.sh`
+
+---
+
 ## 2026-05-18 (Round 236 — Auxiliary Content Draft Room Profile)
 
 ### 진행 중
