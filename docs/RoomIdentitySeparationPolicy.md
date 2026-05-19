@@ -96,6 +96,36 @@ manager.returnToTeamWorkroom()
 
 ---
 
+## Composer Routing Invariant (Round 241C)
+
+| Composer | 사용 ID | 금지 |
+|---|---|---|
+| 팀 워크룸 composer (`sendTeamInput`, `sendTeamMessage`) | `selectedTeamWorkroomID` | `currentRoomID`, `activePersonalAgentID` |
+| 개인 대화 composer (`sendMessage` in AgentChatView) | `agentRoomID` (= `selectedPersonalConversationIDByAgentID[agentID]`) | `selectedTeamWorkroomID` |
+
+`currentRoomID`는 legacy UI selection 용도로만 존재.  
+메시지 전송, artifact reuse, sidebar preview에서는 explicit surface roomID만 사용.
+
+---
+
+## Unread Badge Semantics (Round 241C)
+
+```swift
+func unreadCount(for roomID: UUID) -> Int {
+    let lastReadAt = lastReadAtByRoomID[roomID] ?? .distantPast
+    return room.messages.filter { msg in
+        msg.timestamp > lastReadAt
+        && !msg.isUser    // 내가 보낸 메시지 제외
+        && !msg.isSystem  // system/progress/artifact internal 제외
+    }.count
+}
+```
+
+- `markRoomRead(roomID)`: 방을 화면에 열 때만 호출. 메시지 전송 시 자동 호출 금지.
+- badge = 0이면 숨김.
+
+---
+
 ## 금지 사항
 
 | 패턴 | 이유 |
@@ -105,6 +135,8 @@ manager.returnToTeamWorkroom()
 | 개인 대화 room을 팀 워크룸으로 재사용 | 타입 혼동 |
 | 개인 대화 사이드바에 `room.messages.last.text` 표시 | 개인 정보 노출 |
 | TeamStatusView에서 `activePersonalAgentID` 읽기 | 상태 오염 |
+| 팀 composer에서 `currentRoomID` 사용 | 개인 대화 중이면 wrong room으로 전송 |
+| unread badge에 `room.messages.count` 직접 사용 | 내 메시지/system 포함됨 |
 
 ---
 

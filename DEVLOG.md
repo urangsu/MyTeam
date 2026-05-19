@@ -6,6 +6,61 @@
 
 ---
 
+## 2026-05-20 (Round 241C-SURFACE — Team Composer Routing + Unread Badge + Overlay/Chrome Repair)
+
+### 완료 (2026-05-20)
+
+확인된 P0 surface 버그 4개를 수정. 새 기능 없음.
+
+### Bug 1: 팀 워크룸 메시지가 개인 대화방으로 전송됨
+
+**원인**: `TeamTableView.sendTeamInput()`이 `manager.currentRoomID`를 타겟으로 사용.  
+개인 에이전트 대화 중에는 `currentRoomID`가 personal room으로 바뀌어 있어 팀 메시지가 wrong room으로 감.
+
+**수정**:
+- `TeamTableView.sendTeamInput()`: `currentRoomID` → `manager.selectedTeamWorkroomID`
+- 동일 파일 내 종료 메뉴, speechText 참조도 `selectedTeamWorkroomID` 우선으로 전환
+- `currentRoomID`는 legacy UI selection 용도로만 남김 (주석 추가)
+
+### Bug 2: 개인 대화 sidebar badge가 unread가 아닌 총 메시지 수
+
+**원인**: `room.messages.filter({ !$0.isSystem }).count` — 내가 보낸 메시지 포함, lastReadAt 기준 없음.
+
+**수정**:
+- `AgentWindowManager`: `lastReadAtByRoomID: [UUID: Date]` 추가
+- `markRoomRead(_ roomID: UUID)`: 방 화면 열 때만 호출
+- `unreadCount(for roomID: UUID) -> Int`: `isUser == false && isSystem == false && timestamp > lastReadAt`
+- `AgentChatView` sidebar badge: `manager.unreadCount(for: room.id)` 사용
+- `selectTeamWorkroom`, `openPersonalConversation` 내부에서 `markRoomRead` 자동 호출
+
+### Bug 3: 에이전트 선택 메뉴가 패널 경계에 잘림
+
+**원인**: `AgentMenuPopupView`를 `AgentSeatView.overlay()`에 `.offset(x:±100, y:-80)`으로 배치 → 부모 bounds에 clip됨.
+
+**수정**:
+- `AgentMenuPopupView` 커스텀 overlay 제거
+- SwiftUI `.contextMenu { }` 로 교체 (시스템이 위치 자동 보정, 클리핑 없음)
+- 우클릭 / 길게 누르기로 대화/추가 설정/교체/팀장 설정 메뉴 접근
+
+### Bug 4: footer chrome 상태 검증
+
+**확인**: `TeamStatusView.footerView`는 이미 `safeAreaInset(edge: .bottom)` + `Divider` + `HStack` 구조.  
+별도 detached RoundedRectangle 없음 → 수정 불필요, 정책 문서 신규 작성으로 확인.
+
+### 추가 파일
+
+- `AgentWindowManager.swift`: `lastReadAtByRoomID`, `markRoomRead`, `unreadCount`, `currentPersonalConversationRoomID` 추가
+- `RuntimeDiagnosticsService.swift`: 241C 8개 필드 추가
+- `ToolContractValidator.swift`: 241C 5개 validator 추가
+- `scripts/preflight_round241c.sh`: 신규 (12/12 통과)
+- `docs/PanelChromePolicy.md`: 신규
+- `docs/AgentMenuPresentationPolicy.md`: 신규
+- `docs/RoomIdentitySeparationPolicy.md`: composer routing invariant + unread badge semantics 추가
+
+**Preflight 241C**: 12/12 통과 | Debug BUILD SUCCEEDED | Release BUILD SUCCEEDED
+
+---
+
 ## 2026-05-19 (Round 241B-COREVERIFY — Personal Conversation Map + GoalGate Pivot + BYOK Fix)
 
 ### 완료 (2026-05-19)
