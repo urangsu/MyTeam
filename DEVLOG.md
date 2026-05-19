@@ -6,6 +6,45 @@
 
 ---
 
+## 2026-05-20 (Round 244A-MEMORY — Memory Scope + User Preference + Procedural Learning Foundation)
+
+### 완료 (2026-05-20)
+
+room state와 user memory를 완전히 분리하는 scoped memory 아키텍처 구축.
+LLM extraction 없이 heuristic keyword/pattern 기반으로 candidate 자동 추출.
+
+### 핵심 원칙
+
+- **room state ≠ user memory**: 방 컨텍스트와 사용자 기억 절대 혼합 금지
+- **원문 저장 금지**: 파일/artifact 원문은 어떤 scope에도 저장 불가 (최대 120자 요약만)
+- **credentialLike 하드 블록**: API key/token/password 패턴 → 저장 경로 자체 차단
+- **민감 정보 승인**: businessConfidential/personalSensitive → 사용자 승인 후에만 저장
+- **cross-room 격리**: room memory는 roomID 필터링으로 다른 방에서 접근 불가
+
+### 신규 파일
+
+- `MemoryModels.swift`: MemoryScope / MemorySensitivityClass / MemoryItem / MemoryCandidate / MemoryContext 등 핵심 타입
+- `MemoryScopePolicy.swift`: classify(), detectDomain(), canAutoStore() — heuristic 분류 엔진
+- `MemoryStore.swift`: 중앙 저장소. credentialLike + roomID 없는 room scope 하드 블록. UserDefaults JSON persistence
+- `MemoryConsolidator.swift`: 대화에서 candidate 추출. 원문 120자 잘라냄. credentialLike 경고 candidate 전용
+- `MemoryRetriever.swift`: priority-based retrieval (room→procedural→userProfile→domain). 최대 12개, 상한 20개
+
+### 기존 파일 수정
+
+- `RouterBurnInCase.swift`: `expectedMemoryScope: String?` 필드 추가
+- `RouterBurnInSuite.swift`: memory scope 6개 burn-in case 추가
+- `RuntimeDiagnosticsService.swift`: 11개 memory 상태 필드 추가
+- `ToolContractValidator.swift`: 6개 memory scope validator 추가
+
+### 문서 신규
+
+- `docs/MemoryArchitecturePolicy.md`
+- `docs/MemoryScopePolicy.md`
+- `docs/MemoryPrivacyPolicy.md`
+- `docs/OfficeReviewMemorySeeds.md`
+
+---
+
 ## 2026-05-20 (Round 241C-SURFACE — Team Composer Routing + Unread Badge + Overlay/Chrome Repair)
 
 ### 완료 (2026-05-20)
