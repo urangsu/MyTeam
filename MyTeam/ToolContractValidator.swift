@@ -147,6 +147,14 @@ enum ToolContractValidator {
         validateAgentMenuPresentationPolicy(issues: &issues)
         validateFooterChromeIntegrationPolicy(issues: &issues)
 
+        // Round 244A: Memory Scope Foundation
+        validateMemoryScopeSeparationPolicy(issues: &issues)
+        validateCredentialMemoryBlockedPolicy(issues: &issues)
+        validateSensitiveMemoryApprovalPolicy(issues: &issues)
+        validateRoomMemoryIsolationPolicy(issues: &issues)
+        validateProceduralMemoryPolicy(issues: &issues)
+        validateMemoryRetrievalBudgetPolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -1143,6 +1151,71 @@ enum ToolContractValidator {
         let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
         if let snap, !snap.footerChromeIntegratedWithPanel {
             issues.append(issue(.warning, "하단 control bar가 별도 detached RoundedRectangle로 렌더링되고 있습니다. safeAreaInset + Divider 방식으로 패널에 통합해야 합니다."))
+        }
+    }
+
+    // MARK: - Round 244A: Memory Scope Foundation
+
+    private static func validateMemoryScopeSeparationPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.memoryStoreAvailable {
+            issues.append(issue(.error, "MemoryStore를 사용할 수 없습니다. 스코프별 기억 저장소가 초기화되지 않았습니다."))
+        }
+        if !snap.roomMemorySeparated {
+            issues.append(issue(.error, "room memory가 roomID 없이 저장될 수 있습니다. roomID가 없는 room/agentInRoom scope 저장은 하드 블록되어야 합니다."))
+        }
+    }
+
+    private static func validateCredentialMemoryBlockedPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.credentialMemoryBlocked {
+            issues.append(issue(.error, "credentialLike 감지 후 MemoryStore 저장을 차단하지 않고 있습니다. API key / token / password 패턴은 isStorageBlocked = true로 하드 블록되어야 합니다."))
+        }
+    }
+
+    private static func validateSensitiveMemoryApprovalPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.sensitiveMemoryRequiresApproval {
+            issues.append(issue(.error, "businessConfidential / personalSensitive 항목이 사용자 승인 없이 자동 저장될 수 있습니다. 이 sensitivity class는 pendingReviewCandidates 경로를 통해 사용자 승인 후에만 저장되어야 합니다."))
+        }
+        if !snap.memoryReviewCandidateAvailable {
+            issues.append(issue(.warning, "MemoryReviewCandidate UX stub이 준비되지 않았습니다. 사용자 승인 UI 없이는 민감 정보를 안전하게 처리할 수 없습니다."))
+        }
+    }
+
+    private static func validateRoomMemoryIsolationPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.memoryRetrieverAvailable {
+            issues.append(issue(.error, "MemoryRetriever를 사용할 수 없습니다. room memory 격리 없이는 다른 방의 기억이 현재 방 컨텍스트에 유입될 수 있습니다."))
+        }
+        if !snap.roomMemorySeparated {
+            issues.append(issue(.error, "MemoryRetriever가 다른 방의 room memory를 현재 방 결과에 포함할 수 있습니다. roomID 필터링이 isRelevant() 내부에서 강제되어야 합니다."))
+        }
+    }
+
+    private static func validateProceduralMemoryPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.proceduralMemoryAvailable {
+            issues.append(issue(.warning, "procedural memory scope를 사용할 수 없습니다. 반복 업무 방식이 기억되지 않아 사용자 경험이 저하됩니다."))
+        }
+        if !snap.memoryConsolidatorAvailable {
+            issues.append(issue(.warning, "MemoryConsolidator를 사용할 수 없습니다. 대화에서 자동으로 procedural/userProfile candidate가 추출되지 않습니다."))
+        }
+    }
+
+    private static func validateMemoryRetrievalBudgetPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.memoryRetrieverAvailable {
+            issues.append(issue(.warning, "MemoryRetriever가 없습니다. memory budget(최대 12개, 상한 20개) 강제가 불가합니다."))
+        }
+        if !snap.memoryScopePolicyAvailable {
+            issues.append(issue(.warning, "MemoryScopePolicy를 사용할 수 없습니다. 텍스트에서 scope/sensitivity 자동 분류가 불가합니다."))
         }
     }
 }

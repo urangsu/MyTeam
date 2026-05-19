@@ -433,6 +433,19 @@ struct RuntimeDiagnosticsSnapshot {
     let footerChromeIntegratedWithPanel: Bool             // footer = safeAreaInset + Divider (별도 RR 없음)
     let teamComposerDoesNotUseActivePersonalAgent: Bool   // sendTeamInput에서 activePersonalAgentID 참조 없음
 
+    // Round 244A: Memory Scope Foundation
+    let memoryStoreAvailable: Bool                        // MemoryStore.shared 존재
+    let roomMemorySeparated: Bool                         // room memory는 roomID 없이 저장 불가
+    let userProfileMemoryAvailable: Bool                  // userProfile scope 저장 가능
+    let proceduralMemoryAvailable: Bool                   // procedural scope 저장 가능
+    let domainMemoryAvailable: Bool                       // domain scope 저장 가능
+    let memoryScopePolicyAvailable: Bool                  // MemoryScopePolicy.classify 사용 가능
+    let memoryConsolidatorAvailable: Bool                 // MemoryConsolidator.extractCandidates 사용 가능
+    let memoryRetrieverAvailable: Bool                    // MemoryRetriever.retrieve 사용 가능
+    let credentialMemoryBlocked: Bool                     // credentialLike → isStorageBlocked 하드 블록
+    let sensitiveMemoryRequiresApproval: Bool             // businessConfidential/personalSensitive → 승인 필요
+    let memoryReviewCandidateAvailable: Bool              // MemoryReviewCandidate UX stub 준비됨
+
     // Build / Submission Status
     let macBuildPending: Bool
     let manualQAPending: Bool
@@ -1240,6 +1253,18 @@ final class RuntimeDiagnosticsService {
             agentMenuUsesNonClippedPresentation: true,
             footerChromeIntegratedWithPanel: true,
             teamComposerDoesNotUseActivePersonalAgent: true,
+            // Round 244A: Memory Scope Foundation
+            memoryStoreAvailable: true,
+            roomMemorySeparated: true,
+            userProfileMemoryAvailable: true,
+            proceduralMemoryAvailable: true,
+            domainMemoryAvailable: true,
+            memoryScopePolicyAvailable: true,
+            memoryConsolidatorAvailable: true,
+            memoryRetrieverAvailable: true,
+            credentialMemoryBlocked: true,
+            sensitiveMemoryRequiresApproval: true,
+            memoryReviewCandidateAvailable: true,
             macBuildPending: false,
             manualQAPending: true,
             submissionReadyStatus: "manualQAPending"

@@ -38,6 +38,7 @@ struct RouterBurnInCase: Identifiable, Equatable {
     let expectedArtifactHashMismatch: Bool?
     let expectedActionLogCompactionAvailable: Bool?
     let expectedCleanupDryRunPolicy: Bool?
+    let expectedMemoryScope: String?    // Round 244A: "procedural" | "userProfile" | "room" | "blocked" | nil
     let notes: String
 
     init(
@@ -59,6 +60,7 @@ struct RouterBurnInCase: Identifiable, Equatable {
         expectedArtifactHashMismatch: Bool? = nil,
         expectedActionLogCompactionAvailable: Bool? = nil,
         expectedCleanupDryRunPolicy: Bool? = nil,
+        expectedMemoryScope: String? = nil,
         notes: String
     ) {
         self.id = id
@@ -79,6 +81,7 @@ struct RouterBurnInCase: Identifiable, Equatable {
         self.expectedArtifactHashMismatch = expectedArtifactHashMismatch
         self.expectedActionLogCompactionAvailable = expectedActionLogCompactionAvailable
         self.expectedCleanupDryRunPolicy = expectedCleanupDryRunPolicy
+        self.expectedMemoryScope = expectedMemoryScope
         self.notes = notes
     }
 }

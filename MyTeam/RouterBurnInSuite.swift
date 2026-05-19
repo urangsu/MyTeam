@@ -2244,6 +2244,75 @@ enum RouterBurnInSuite {
             expectedGoalType: nil,
             shouldRequireApproval: true,
             notes: "Policy: .sendEmail / .createCalendarEvent → CapabilityAwareRouter .blocked 또는 .requiresApproval. Connector write는 항상 사용자 확인 필요. FriendlyRecovery 버튼은 이 경로를 열지 않음."
+        ),
+
+        // Round 244A: Memory Scope Burn-in Cases
+        .init(
+            id: "memory-procedural-report-format",
+            message: "앞으로 보고서는 표로 먼저 정리해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            expectedMemoryScope: "procedural",
+            notes: "Round 244A: 반복 업무 방식 → MemoryConsolidator가 procedural candidate 생성. credentialLike 아님, 즉각 저장 가능."
+        ),
+        .init(
+            id: "memory-room-scope-budget",
+            message: "이 방에서는 예산 검토만 할 거야",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            expectedMemoryScope: "room",
+            notes: "Round 244A: 방 컨텍스트 → room memory. 다른 방으로 자동 공유 금지."
+        ),
+        .init(
+            id: "memory-userprofile-blog-style",
+            message: "내 블로그 글은 모바일 가독성 좋게 써줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            expectedMemoryScope: "userProfile",
+            notes: "Round 244A: 출력 스타일 선호 → userProfile memory. 전역 저장 가능."
+        ),
+        .init(
+            id: "memory-room-contract-party",
+            message: "이 계약서 갑은 A사야",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: true,
+            expectedMemoryScope: "room",
+            notes: "Round 244A: 계약 당사자 정보 → businessConfidential → room scope + 승인 필요. 다른 방 공유 절대 금지."
+        ),
+        .init(
+            id: "memory-blocked-api-key",
+            message: "내 API 키는 sk-abc123xxx야 기억해",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            expectedMemoryWriteBlocked: true,
+            expectedMemoryScope: "blocked",
+            notes: "Round 244A: API key 패턴 → credentialLike → 저장 금지 하드 블록. isStorageBlocked = true."
+        ),
+        .init(
+            id: "memory-approval-required-vendor",
+            message: "이 거래처 정보는 모든 방에서 기억해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: true,
+            expectedMemoryScope: "room",
+            notes: "Round 244A: 거래처 정보 → businessConfidential → 승인 없이 전역 저장 금지. pendingReviewCandidates에 추가 후 사용자 승인 대기."
         )
     ]
 
