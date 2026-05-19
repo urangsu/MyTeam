@@ -134,6 +134,12 @@ enum ToolContractValidator {
         validatePersonalChatSidebarPrivacyPolicy(issues: &issues)
         validateQuickSwitchNoRoomMutationPolicy(issues: &issues)
 
+        // Round 241B: Personal Conversation Map + GoalGate + BYOK
+        validateSelectedPersonalConversationMapPolicy(issues: &issues)
+        validateOpenPersonalConversationAPIPolicy(issues: &issues)
+        validateBYOKProviderButtonPolicy(issues: &issues)
+        validateGoalGateDirectChatFallbackPolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -1054,6 +1060,36 @@ enum ToolContractValidator {
         let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
         if let snap, !snap.quickSwitchDoesNotMutateRoomAgents {
             issues.append(issue(.error, "AgentQuickSwitchBar 클릭이 room.agentIDs를 변경하고 있습니다. Navigation 전용으로 제한해야 합니다."))
+        }
+    }
+
+    // MARK: - Round 241B: Personal Conversation Map + GoalGate + BYOK Validators
+
+    private static func validateSelectedPersonalConversationMapPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.selectedPersonalConversationMapAvailable {
+            issues.append(issue(.error, "selectedPersonalConversationIDByAgentID가 없습니다. 에이전트 전환 시 이전 대화를 복원할 수 없습니다."))
+        }
+    }
+
+    private static func validateOpenPersonalConversationAPIPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.openPersonalConversationAPIAvailable {
+            issues.append(issue(.error, "openPersonalConversation(for:) 공식 API가 없습니다. openPersonalChat wrapper만으로는 개인 대화 방 ID 매핑이 보장되지 않습니다."))
+        }
+    }
+
+    private static func validateBYOKProviderButtonPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.byokProviderButtonFunctional {
+            issues.append(issue(.warning, "BYOK 버튼이 no-op 상태입니다. Button(\"\") {} .disabled(true) 패턴을 제거하고 최소한 설명 tooltip을 제공해야 합니다."))
+        }
+    }
+
+    private static func validateGoalGateDirectChatFallbackPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.goalGateOffersDirectChatFallback {
+            issues.append(issue(.error, "GoalGate가 blocked capability에 대해 하드 블록을 반환합니다. directChat pivot으로 AI가 초안/도움말을 제공해야 합니다."))
         }
     }
 }

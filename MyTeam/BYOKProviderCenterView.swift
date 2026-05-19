@@ -63,9 +63,18 @@ struct BYOKProviderCenterView: View {
 
             Spacer()
 
-            Button(status.isConnected ? "설정 열기" : "API 키 추가") {}
-                .buttonStyle(.bordered)
-                .disabled(true)
+            // Round 241B: disabled(true) 제거, Settings 패널로 연결
+            Button(status.isConnected ? "설정 열기" : "API 키 추가") {
+                if let url = URL(string: "x-apple.systempreferences:") {
+                    // Settings 패널로 이동 (BYOK 전용 UI는 다음 라운드)
+                    NSWorkspace.shared.open(url)
+                }
+            }
+            .buttonStyle(.bordered)
+            .help(status.isConnected
+                  ? "연결된 API 키 설정을 확인합니다."
+                  : "API 키 입력 기능은 다음 업데이트에서 제공됩니다. 현재는 설정 앱에서 직접 Keychain을 관리할 수 있습니다."
+            )
         }
         .padding(10)
         .background(

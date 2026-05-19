@@ -115,7 +115,10 @@ final class WorkflowOrchestrator {
 
         var effectiveScopes: Set<ToolScope> = [.chatBasic]  // 항상 chatBasic 포함
 
+        // Round 241B: directChat pivot — kind == .blocked일 때만 early-return
+        // kind == .directChat이면 AI가 계속 응답 (초안/도움말 제공)
         if let blockedDecision = GoalGate.blockedDecision(goal: interpretedGoal, capability: capabilityDecision),
+           blockedDecision.kind == .blocked,
            !DelegatedWorkflowDetector.isDelegationRequest(userMessage) {
             await MainActor.run {
                 manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "blocked")

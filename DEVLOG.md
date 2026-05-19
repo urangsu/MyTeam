@@ -6,6 +6,59 @@
 
 ---
 
+## 2026-05-19 (Round 241B-COREVERIFY — Personal Conversation Map + GoalGate Pivot + BYOK Fix)
+
+### 완료 (2026-05-19)
+
+**배경**: 수석님의 질문 — "클로드코드처럼 실질적으로 업무를 도와주는 데스크탑 AI를 원해. 기능을 제한시키는 요소가 있다면 알려줘."
+
+탐색 결과 실제 제한 요소 3가지 발견 + 수정:
+
+### 1. GoalGate 하드 블록 → directChat pivot (최대 영향)
+
+**문제**: `.blocked` capability → AI가 아무 응답도 하지 않고 "정책상 실행 불가" 메시지만 반환.  
+"이메일 초안 써줘" → mailSend가 `.blocked`이므로 초안 텍스트도 없이 차단됨.
+
+**수정**:
+- `GoalGate.swift`: `kind: .blocked` → `kind: .directChat` (reason에 disclaimer 포함)
+- `WorkflowOrchestrator.swift`: early-return guard에 `blockedDecision.kind == .blocked` 조건 추가
+  → directChat decision은 AI가 계속 응답
+
+### 2. BYOK 버튼 no-op 수정
+
+**문제**: `Button("API 키 추가") {} .disabled(true)` — 완전 dead UI.  
+**수정**: action 추가 + `.help()` tooltip으로 "다음 업데이트에서 제공" 안내.
+
+### 3. selectedPersonalConversationIDByAgentID 추가 (Round 241A 보완)
+
+**문제**: Chiko → Luna → Chiko 전환 시 이전 대화 복원 불확실.  
+**수정**:
+- `@Published var selectedPersonalConversationIDByAgentID: [String: UUID] = [:]` 추가
+- `openPersonalConversation(for:)` 공식 API 추가 (기존 `openPersonalChat` → wrapper)
+- `personalConversation(for:)`, `currentPersonalConversation()` 헬퍼 추가
+- `returnToTeamWorkroom()` 시 map 초기화 안 함 (복귀 후 재진입 복원 보장)
+
+### 의도적으로 유지된 차단 목록
+
+| 기능 | 상태 | 이유 |
+|---|---|---|
+| 메일 자동 전송 | blocked (유지) | 실수 방지 정책 |
+| 캘린더 자동 생성 | blocked (유지) | 실수 방지 정책 |
+| 자동 로그인 | blocked (유지) | 보안 정책 |
+| 파일 자동 삭제 | blocked (유지) | destructive action 정책 |
+
+### 추가 파일
+
+- `RuntimeDiagnosticsService.swift`: 241B 4개 필드 (selectedPersonalConversationMapAvailable 등)
+- `ToolContractValidator.swift`: 241B 4개 validator
+- `scripts/preflight_round241b.sh`: 12/12 통과
+- `docs/SupertonicAssessment.md`: Supertonic-3 TTS PoC 대기 기록
+- `docs/RoomIdentitySeparationPolicy.md`: selectedPersonalConversationIDByAgentID 섹션 추가
+
+**Preflight 241B**: 12/12 통과 | Debug BUILD SUCCEEDED | Release BUILD SUCCEEDED
+
+---
+
 ## 2026-05-19 (Round 241A-CORE — Hard Separation of Team Workroom and Personal Agent Conversation)
 
 ### 완료 (2026-05-19)

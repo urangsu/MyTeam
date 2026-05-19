@@ -33,17 +33,33 @@
 
 | 속성 | 값 |
 |---|---|
-| 식별자 | `activePersonalAgentID: String?` |
-| 방 매핑 | `rooms.first { $0.agentIDs == [agentID] }` |
+| 현재 에이전트 | `activePersonalAgentID: String?` |
+| 방 ID 맵 | `selectedPersonalConversationIDByAgentID: [String: UUID]` |
+| 방 매핑 | `selectedPersonalConversationIDByAgentID[agentID]` → 없으면 `rooms.first { $0.agentIDs == [agentID] }` |
 | agentIDs | 정확히 1개 |
 | 콘텐츠 | 에이전트와의 1:1 대화 |
 | UI | AgentChatView |
-| 선택 API | `openPersonalChat(for agentID: String)` |
+| 공식 선택 API | `openPersonalConversation(for agentID: String)` |
+| 호환 래퍼 | `openPersonalChat(for agentID: String)` → `openPersonalConversation` 위임 |
 
 ### 불변 규칙
 - `selectedTeamWorkroomID`를 절대 변경하지 않음
 - `activePersonalAgentID`는 `selectedTeamWorkroomID`와 독립적으로 추적
 - 개인 대화 사이드바에 메시지 내용 preview 금지 (방 이름만 표시)
+- `selectedPersonalConversationIDByAgentID`는 `returnToTeamWorkroom()` 시 **초기화하지 않음** — 복귀 후 재진입 시 이전 방 복원
+
+### selectedPersonalConversationIDByAgentID
+
+Round 241B에서 추가. 에이전트별 마지막 대화 방 UUID를 저장하여, Chiko → Luna → Chiko 전환 시 Chiko의 이전 대화로 복원됨.
+
+```swift
+@Published var selectedPersonalConversationIDByAgentID: [String: UUID] = [:]
+```
+
+`openPersonalConversation(for:)` 내부에서:
+1. `selectedPersonalConversationIDByAgentID[agentID]`에 기존 방 ID가 있으면 그 방으로 이동
+2. 없으면 `rooms.first(where: { $0.agentIDs == [agentID] })`로 탐색 후 저장
+3. 방 없으면 새 방 생성 후 `selectedPersonalConversationIDByAgentID[agentID] = newRoom.id` 저장
 
 ---
 

@@ -417,6 +417,12 @@ struct RuntimeDiagnosticsSnapshot {
     let personalChatSidebarPreviewHidden: Bool              // 개인 대화 사이드바 message preview 제거
     let teamSidebarSystemPreviewFiltered: Bool              // 팀 워크룸 사이드바에서 system 메시지 제외
 
+    // Round 241B: Personal Conversation Map + GoalGate + BYOK
+    let selectedPersonalConversationMapAvailable: Bool   // selectedPersonalConversationIDByAgentID 존재
+    let openPersonalConversationAPIAvailable: Bool        // openPersonalConversation(for:) 공식 API
+    let byokProviderButtonFunctional: Bool                // BYOK 버튼 no-op 아님
+    let goalGateOffersDirectChatFallback: Bool            // blocked → directChat pivot
+
     // Build / Submission Status
     let macBuildPending: Bool
     let manualQAPending: Bool
@@ -1210,6 +1216,11 @@ final class RuntimeDiagnosticsService {
             quickSwitchDoesNotMutateRoomAgents: true,         // AgentQuickSwitchBar: agentIDs mutate 금지
             personalChatSidebarPreviewHidden: true,           // projectRoomRow: lastMsg preview 제거
             teamSidebarSystemPreviewFiltered: true,           // isSystem 필터 적용
+            // Round 241B
+            selectedPersonalConversationMapAvailable: true,   // selectedPersonalConversationIDByAgentID 구현
+            openPersonalConversationAPIAvailable: true,        // openPersonalConversation(for:) 구현
+            byokProviderButtonFunctional: true,                // BYOK 버튼 disabled(true) 제거
+            goalGateOffersDirectChatFallback: true,            // GoalGate: blocked → directChat pivot
             macBuildPending: false,
             manualQAPending: true,
             submissionReadyStatus: "manualQAPending"

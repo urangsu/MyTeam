@@ -57,6 +57,11 @@ class AgentWindowManager: ObservableObject {
     /// - selectedTeamWorkroomID와 완전히 독립
     @Published var activePersonalAgentID: String?
 
+    /// Round 241B: agentID → personalConversationRoomID 매핑
+    /// - 같은 에이전트로 돌아올 때 이전 대화 방을 복원
+    /// - returnToTeamWorkroom 시 초기화하지 않음 (복귀 후 재사용 가능)
+    @Published var selectedPersonalConversationIDByAgentID: [String: UUID] = [:]
+
     @Published var isSchedulePanelPresented: Bool = false
 
     // Round 241A: 팀 워크룸 메시지 — selectedTeamWorkroomID 기준 (개인 대화 오염 방지)
@@ -1499,18 +1504,34 @@ class AgentWindowManager: ObservableObject {
         activePersonalAgentID = nil
     }
 
-    /// 특정 에이전트의 개인 대화방 열기 (없으면 생성)
-    /// - Note: 현재 방의 agentIDs를 mutate하지 않음 (navigation 전용)
-    /// - Note: selectedTeamWorkroomID를 변경하지 않음 (Round 241A)
+    /// Round 241B: 에이전트별 개인 대화 조회
+    /// - selectedPersonalConversationIDByAgentID 매핑 우선, 없으면 agentIDs 기반 fallback
+    func personalConversation(for agentID: String) -> ChatRoom? {
+        if let roomID = selectedPersonalConversationIDByAgentID[agentID],
+           let room = rooms.first(where: { $0.id == roomID }) {
+            return room
+        }
+        return rooms.first(where: { $0.agentIDs == [agentID] })
+    }
+
+    /// Round 241B: 현재 열린 개인 대화방 조회
+    func currentPersonalConversation() -> ChatRoom? {
+        guard let agentID = activePersonalAgentID else { return nil }
+        return personalConversation(for: agentID)
+    }
+
+    /// Round 241B: 공식 개인 대화 열기 API
+    /// - selectedPersonalConversationIDByAgentID에 agentID → roomID 매핑 저장
+    /// - selectedTeamWorkroomID 불변
+    /// - team workroom의 agentIDs mutation 없음
     @MainActor
-    func openPersonalChat(for agentID: String) {
-        // Round 241A: activePersonalAgentID 추적 — selectedTeamWorkroomID는 불변
+    func openPersonalConversation(for agentID: String) {
         activePersonalAgentID = agentID
-        // 해당 에이전트의 개인 대화방 찾기
-        if let existing = rooms.first(where: { $0.agentIDs == [agentID] }) {
-            currentRoomID = existing.id
-            // AgentChatView.agentRoomID(local @State)는 currentRoomID를 직접 관찰하지 않으므로
-            // didSelectAgentForChat 알림으로 개인창에 방 전환을 명시적으로 전달한다
+
+        // 1. 매핑에 저장된 방 우선 탐색
+        if let existingRoomID = selectedPersonalConversationIDByAgentID[agentID],
+           rooms.first(where: { $0.id == existingRoomID }) != nil {
+            currentRoomID = existingRoomID
             NotificationCenter.default.post(
                 name: NSNotification.Name("didSelectAgentForChat"),
                 object: nil,
@@ -1519,7 +1540,19 @@ class AgentWindowManager: ObservableObject {
             return
         }
 
-        // 없으면 생성
+        // 2. agentIDs 기반 기존 방 탐색
+        if let existing = rooms.first(where: { $0.agentIDs == [agentID] }) {
+            currentRoomID = existing.id
+            selectedPersonalConversationIDByAgentID[agentID] = existing.id  // 매핑 등록
+            NotificationCenter.default.post(
+                name: NSNotification.Name("didSelectAgentForChat"),
+                object: nil,
+                userInfo: ["agentID": agentID]
+            )
+            return
+        }
+
+        // 3. 없으면 새 개인 대화방 생성
         let agentName = activeAgents.first(where: { $0.id == agentID })?.name ?? "팀원"
         var newRoom = ChatRoom(
             id: UUID(),
@@ -1531,11 +1564,20 @@ class AgentWindowManager: ObservableObject {
         newRoom.profile = inferredRoomProfile(for: newRoom.name)
         rooms.append(newRoom)
         currentRoomID = newRoom.id
+        selectedPersonalConversationIDByAgentID[agentID] = newRoom.id  // 매핑 등록
         NotificationCenter.default.post(
             name: NSNotification.Name("didSelectAgentForChat"),
             object: nil,
             userInfo: ["agentID": agentID]
         )
+    }
+
+    /// Round 241B 호환성 wrapper — openPersonalConversation 위임
+    /// - Note: 현재 방의 agentIDs를 mutate하지 않음 (navigation 전용)
+    /// - Note: selectedTeamWorkroomID를 변경하지 않음
+    @MainActor
+    func openPersonalChat(for agentID: String) {
+        openPersonalConversation(for: agentID)
     }
 
     /// 팀 워크룸으로 돌아가기
