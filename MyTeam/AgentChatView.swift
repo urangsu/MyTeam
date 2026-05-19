@@ -507,14 +507,16 @@ struct AgentChatView: View {
                         }
                         Spacer()
                         if !isRenaming {
-                            let count = room.messages.filter({ !$0.isSystem }).count
-                            if count > 0 {
-                                Text("\(count)")
+                            // Round 241C: unread badge — 상대가 보낸 미읽 메시지만
+                            // (내가 보낸 메시지 / system / progress 제외)
+                            let unread = manager.unreadCount(for: room.id)
+                            if unread > 0 {
+                                Text("\(unread)")
                                     .font(.system(size: 9, weight: .bold))
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 5)
                                     .padding(.vertical, 2)
-                                    .background(Capsule().fill(isSelected ? currentAgent.color : Color.gray.opacity(0.3)))
+                                    .background(Capsule().fill(isSelected ? currentAgent.color : Color.accentColor.opacity(0.7)))
                             }
                         }
                     }
@@ -531,6 +533,8 @@ struct AgentChatView: View {
             .onTapGesture(count: 1) {
                 guard !isEditingProjects else { return }
                 withAnimation(.easeInOut(duration: 0.15)) { agentRoomID = room.id }
+                // Round 241C: 방을 열 때 읽음 처리
+                manager.markRoomRead(room.id)
             }
             .padding(.horizontal, isSidebarCollapsed ? 8 : 10)
             .padding(.vertical, 8)

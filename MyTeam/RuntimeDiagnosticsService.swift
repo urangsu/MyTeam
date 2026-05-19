@@ -423,6 +423,16 @@ struct RuntimeDiagnosticsSnapshot {
     let byokProviderButtonFunctional: Bool                // BYOK 버튼 no-op 아님
     let goalGateOffersDirectChatFallback: Bool            // blocked → directChat pivot
 
+    // Round 241C: Surface Routing + Unread Badge + Overlay/Chrome
+    let teamComposerTargetsTeamWorkroom: Bool             // TeamTableView.sendTeamInput → selectedTeamWorkroomID
+    let personalComposerTargetsPersonalConversation: Bool // AgentChatView.sendMessage → agentRoomID (personal only)
+    let currentRoomIDDeprecatedForSendTargets: Bool       // send path에서 currentRoomID 직접 사용 금지
+    let unreadBadgeCountsIncomingOnly: Bool               // badge = 상대 메시지만 (isUser == false)
+    let unreadBadgeExcludesSystemMessages: Bool           // badge에서 isSystem 제외
+    let agentMenuUsesNonClippedPresentation: Bool         // contextMenu 또는 root overlay (클리핑 없음)
+    let footerChromeIntegratedWithPanel: Bool             // footer = safeAreaInset + Divider (별도 RR 없음)
+    let teamComposerDoesNotUseActivePersonalAgent: Bool   // sendTeamInput에서 activePersonalAgentID 참조 없음
+
     // Build / Submission Status
     let macBuildPending: Bool
     let manualQAPending: Bool
@@ -1217,10 +1227,19 @@ final class RuntimeDiagnosticsService {
             personalChatSidebarPreviewHidden: true,           // projectRoomRow: lastMsg preview 제거
             teamSidebarSystemPreviewFiltered: true,           // isSystem 필터 적용
             // Round 241B
-            selectedPersonalConversationMapAvailable: true,   // selectedPersonalConversationIDByAgentID 구현
-            openPersonalConversationAPIAvailable: true,        // openPersonalConversation(for:) 구현
-            byokProviderButtonFunctional: true,                // BYOK 버튼 disabled(true) 제거
-            goalGateOffersDirectChatFallback: true,            // GoalGate: blocked → directChat pivot
+            selectedPersonalConversationMapAvailable: true,
+            openPersonalConversationAPIAvailable: true,
+            byokProviderButtonFunctional: true,
+            goalGateOffersDirectChatFallback: true,
+            // Round 241C
+            teamComposerTargetsTeamWorkroom: true,
+            personalComposerTargetsPersonalConversation: true,
+            currentRoomIDDeprecatedForSendTargets: true,
+            unreadBadgeCountsIncomingOnly: true,
+            unreadBadgeExcludesSystemMessages: true,
+            agentMenuUsesNonClippedPresentation: true,
+            footerChromeIntegratedWithPanel: true,
+            teamComposerDoesNotUseActivePersonalAgent: true,
             macBuildPending: false,
             manualQAPending: true,
             submissionReadyStatus: "manualQAPending"

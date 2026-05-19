@@ -62,6 +62,9 @@ class AgentWindowManager: ObservableObject {
     /// - returnToTeamWorkroom 시 초기화하지 않음 (복귀 후 재사용 가능)
     @Published var selectedPersonalConversationIDByAgentID: [String: UUID] = [:]
 
+    /// Round 241C: 방별 마지막 읽은 시각 (unread badge 계산용)
+    @Published var lastReadAtByRoomID: [UUID: Date] = [:]
+
     @Published var isSchedulePanelPresented: Bool = false
 
     // Round 241A: 팀 워크룸 메시지 — selectedTeamWorkroomID 기준 (개인 대화 오염 방지)
@@ -1502,6 +1505,7 @@ class AgentWindowManager: ObservableObject {
         currentRoomID = roomID
         selectedTeamWorkroomID = roomID
         activePersonalAgentID = nil
+        markRoomRead(roomID)  // Round 241C: 팀 워크룸 선택 시 읽음 처리
     }
 
     /// Round 241B: 에이전트별 개인 대화 조회
@@ -1532,6 +1536,7 @@ class AgentWindowManager: ObservableObject {
         if let existingRoomID = selectedPersonalConversationIDByAgentID[agentID],
            rooms.first(where: { $0.id == existingRoomID }) != nil {
             currentRoomID = existingRoomID
+            markRoomRead(existingRoomID)  // Round 241C: 개인 대화 열 때 읽음 처리
             NotificationCenter.default.post(
                 name: NSNotification.Name("didSelectAgentForChat"),
                 object: nil,
@@ -1544,6 +1549,7 @@ class AgentWindowManager: ObservableObject {
         if let existing = rooms.first(where: { $0.agentIDs == [agentID] }) {
             currentRoomID = existing.id
             selectedPersonalConversationIDByAgentID[agentID] = existing.id  // 매핑 등록
+            markRoomRead(existing.id)  // Round 241C: 개인 대화 열 때 읽음 처리
             NotificationCenter.default.post(
                 name: NSNotification.Name("didSelectAgentForChat"),
                 object: nil,
@@ -1565,6 +1571,7 @@ class AgentWindowManager: ObservableObject {
         rooms.append(newRoom)
         currentRoomID = newRoom.id
         selectedPersonalConversationIDByAgentID[agentID] = newRoom.id  // 매핑 등록
+        markRoomRead(newRoom.id)  // Round 241C: 새 방 생성 직후 읽음 처리
         NotificationCenter.default.post(
             name: NSNotification.Name("didSelectAgentForChat"),
             object: nil,
@@ -1606,6 +1613,33 @@ class AgentWindowManager: ObservableObject {
         rooms.append(defaultTeamRoom)
         currentRoomID = defaultTeamRoom.id
         selectedTeamWorkroomID = defaultTeamRoom.id  // Round 241A
+    }
+
+    // MARK: - Round 241C: Unread Badge Tracking
+
+    /// 방을 읽음으로 표시 — 해당 방을 화면에 표시한 직후 호출
+    /// (메시지 전송만으로는 호출하지 않음)
+    @MainActor
+    func markRoomRead(_ roomID: UUID) {
+        lastReadAtByRoomID[roomID] = Date()
+    }
+
+    /// 상대방이 보낸 미읽 메시지 수 (system/progress 제외, 내가 보낸 메시지 제외)
+    func unreadCount(for roomID: UUID) -> Int {
+        let lastReadAt = lastReadAtByRoomID[roomID] ?? .distantPast
+        guard let room = rooms.first(where: { $0.id == roomID }) else { return 0 }
+        return room.messages.filter { msg in
+            msg.timestamp > lastReadAt
+            && !msg.isUser      // 내가 보낸 메시지 제외
+            && !msg.isSystem    // system/progress/artifact internal 제외
+        }.count
+    }
+
+    /// Round 241C: personal composer가 사용할 room ID 반환
+    @MainActor
+    func currentPersonalConversationRoomID() -> UUID? {
+        guard let agentID = activePersonalAgentID else { return nil }
+        return selectedPersonalConversationIDByAgentID[agentID]
     }
 
     func renameRoom(id: UUID, newName: String) {

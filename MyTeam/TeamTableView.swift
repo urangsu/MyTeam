@@ -98,7 +98,8 @@ struct TeamTableView: View {
                         isThinking: false,
                         speechText: manager.speakingAgentID == agent.id
                             ? manager.rooms
-                                .first(where: { $0.id == manager.currentRoomID })?
+                                // Round 241C: selectedTeamWorkroomID 기준 (currentRoomID 사용 금지)
+                                .first(where: { $0.id == (manager.selectedTeamWorkroomID ?? manager.currentRoomID) })?
                                 .messages
                                 .last(where: { $0.agentID == agent.id && !$0.isUser })?
                                 .text
@@ -121,40 +122,41 @@ struct TeamTableView: View {
                                 .offset(x: 8, y: -8)
                         }
                     }
-                    .overlay(
-                        AgentMenuPopupView(
-                            isShowing: selectedAgentIndex == index,
-                            popupOnLeft: index >= 3, // 4번째(index 3) 에이전트는 왼쪽에 표시
-                            isTeamLeader: manager.teamLeader()?.id == agent.id,
-                            onChat: {
-                                selectedAgentIndex = nil
-                                manager.showChat(for: agent)
-                            },
-                            onSettings: {
-                                selectedAgentIndex = nil
-                                manager.showAgentSettingsWindow(for: agent)
-                            },
-                            onSwap: {
-                                selectedAgentIndex = nil
-                                manager.showSwapWindow(replaceIndex: index)
-                            },
-                            onSetLeader: {
-                                selectedAgentIndex = nil
-                                if manager.teamLeader()?.id == agent.id {
-                                    // 팀장 해제: 첫 번째 다른 에이전트로 교체
-                                    if let other = manager.activeAgents.first(where: { $0.id != agent.id }) {
-                                        manager.setTeamLeader(agentID: other.id)
-                                    }
-                                } else {
-                                    manager.setTeamLeader(agentID: agent.id)
+                    // Round 241C: clipped custom overlay → SwiftUI contextMenu
+                    // 이전: .overlay(AgentMenuPopupView...) with .offset → 패널 경계에 잘림
+                    // 이제: 우클릭/길게 누르기 → 시스템 contextMenu (클리핑 없음)
+                    .contextMenu {
+                        Button {
+                            manager.showChat(for: agent)
+                        } label: {
+                            Label("대화", systemImage: "message")
+                        }
+                        Button {
+                            manager.showAgentSettingsWindow(for: agent)
+                        } label: {
+                            Label("추가 설정", systemImage: "slider.horizontal.3")
+                        }
+                        Button {
+                            manager.showSwapWindow(replaceIndex: index)
+                        } label: {
+                            Label("교체", systemImage: "arrow.triangle.2.circlepath")
+                        }
+                        Divider()
+                        Button {
+                            if manager.teamLeader()?.id == agent.id {
+                                if let other = manager.activeAgents.first(where: { $0.id != agent.id }) {
+                                    manager.setTeamLeader(agentID: other.id)
                                 }
+                            } else {
+                                manager.setTeamLeader(agentID: agent.id)
                             }
-                        )
-                        // 1~3번째는 캐릭터의 오른쪽 바깥에, 4번째는 왼쪽 바깥으로 완전히 빠져나오게 배치
-                        .offset(x: index >= 3 ? -100 : 100, y: -80)
-                        .zIndex(selectedAgentIndex == index ? 10 : 1),
-                        alignment: index >= 3 ? .bottomTrailing : .bottomLeading
-                    )
+                        } label: {
+                            Label(
+                                manager.teamLeader()?.id == agent.id ? "팀장 해제" : "팀장 설정",
+                                systemImage: manager.teamLeader()?.id == agent.id ? "crown.fill" : "crown"
+                            )
+                        }
+                    }
                     .zIndex(selectedAgentIndex == index ? 10 : 1)
                 }
             }
@@ -211,7 +213,8 @@ struct TeamTableView: View {
                     Button(action: {
                         let agent = manager.activeAgents.randomElement() ?? manager.activeAgents[0]
                         let text = "오늘 너무 고생하셨습니다. 앱을 곧 종료할게요!"
-                        if let rid = manager.currentRoomID {
+                        // Round 241C: selectedTeamWorkroomID 기준 (currentRoomID 사용 금지)
+                        if let rid = manager.selectedTeamWorkroomID ?? manager.currentRoomID {
                             manager.addChatLog(roomID: rid, agentID: agent.id, agentName: agent.name, text: text, isUser: false, isSystem: true)
                         }
                         if !manager.isSilentMode { SpeechManager.shared.speak(text: text) }
@@ -306,10 +309,14 @@ struct TeamTableView: View {
         let text = inputText
         inputText = ""
 
+        // Round 241C: selectedTeamWorkroomID 명시 — currentRoomID 사용 금지
+        // currentRoomID는 개인 대화로 바뀌어 있을 수 있으므로 team 전용 ID를 사용
+        guard let roomID = manager.selectedTeamWorkroomID else { return }
+
         Task {
             if await ConversationMemory.handleChatCommand(
                 text,
-                roomID: manager.currentRoomID,
+                roomID: roomID,  // selectedTeamWorkroomID 기준
                 manager: manager,
                 currentAgent: manager.fallbackTeamLeader()
             ) {
@@ -319,7 +326,6 @@ struct TeamTableView: View {
 
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("/") else { return }
 
-        guard let roomID = manager.currentRoomID else { return }
         manager.addChatLog(roomID: roomID, agentID: "user", agentName: "나", text: text, isUser: true)
 
         Task {

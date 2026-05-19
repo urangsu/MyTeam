@@ -140,6 +140,13 @@ enum ToolContractValidator {
         validateBYOKProviderButtonPolicy(issues: &issues)
         validateGoalGateDirectChatFallbackPolicy(issues: &issues)
 
+        // Round 241C: Surface Routing + Unread Badge + Overlay/Chrome
+        validateTeamComposerRoutingPolicy(issues: &issues)
+        validatePersonalComposerRoutingPolicy(issues: &issues)
+        validateUnreadBadgePolicy(issues: &issues)
+        validateAgentMenuPresentationPolicy(issues: &issues)
+        validateFooterChromeIntegrationPolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -1090,6 +1097,52 @@ enum ToolContractValidator {
         let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
         if let snap, !snap.goalGateOffersDirectChatFallback {
             issues.append(issue(.error, "GoalGate가 blocked capability에 대해 하드 블록을 반환합니다. directChat pivot으로 AI가 초안/도움말을 제공해야 합니다."))
+        }
+    }
+
+    // MARK: - Round 241C: Surface Routing + Unread Badge + Overlay/Chrome Validators
+
+    private static func validateTeamComposerRoutingPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.teamComposerTargetsTeamWorkroom {
+            issues.append(issue(.error, "팀 composer가 selectedTeamWorkroomID 대신 currentRoomID를 사용합니다. 개인 대화 전환 후 팀 메시지가 잘못된 방으로 전송될 수 있습니다."))
+        }
+        if let snap, !snap.teamComposerDoesNotUseActivePersonalAgent {
+            issues.append(issue(.error, "팀 composer가 activePersonalAgentID를 참조하고 있습니다. 팀 composer는 팀 워크룸 상태만 참조해야 합니다."))
+        }
+    }
+
+    private static func validatePersonalComposerRoutingPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.personalComposerTargetsPersonalConversation {
+            issues.append(issue(.error, "개인 대화 composer가 selectedTeamWorkroomID를 타겟으로 사용하고 있습니다. 개인 composer는 agentRoomID / selectedPersonalConversationIDByAgentID만 사용해야 합니다."))
+        }
+        if let snap, !snap.currentRoomIDDeprecatedForSendTargets {
+            issues.append(issue(.warning, "currentRoomID가 send target으로 사용되고 있습니다. currentRoomID는 legacy UI selection 용도로만 제한해야 합니다."))
+        }
+    }
+
+    private static func validateUnreadBadgePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.unreadBadgeCountsIncomingOnly {
+            issues.append(issue(.error, "unread badge가 내가 보낸 메시지를 포함하고 있습니다. badge는 상대방이 보낸 미읽 메시지(isUser == false)만 카운트해야 합니다."))
+        }
+        if let snap, !snap.unreadBadgeExcludesSystemMessages {
+            issues.append(issue(.error, "unread badge가 system/progress 메시지를 포함하고 있습니다. isSystem == true 메시지는 badge에서 제외해야 합니다."))
+        }
+    }
+
+    private static func validateAgentMenuPresentationPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.agentMenuUsesNonClippedPresentation {
+            issues.append(issue(.warning, "에이전트 액션 메뉴가 parent bounds에 clipped되는 커스텀 overlay 패턴을 사용합니다. SwiftUI contextMenu 또는 root-level presenter로 교체해야 합니다."))
+        }
+    }
+
+    private static func validateFooterChromeIntegrationPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.footerChromeIntegratedWithPanel {
+            issues.append(issue(.warning, "하단 control bar가 별도 detached RoundedRectangle로 렌더링되고 있습니다. safeAreaInset + Divider 방식으로 패널에 통합해야 합니다."))
         }
     }
 }
