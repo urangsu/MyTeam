@@ -502,12 +502,8 @@ struct AgentChatView: View {
                                         }
                                     }
                             }
-                            if let lastMsg = room.messages.last(where: { !$0.isSystem }), !isRenaming {
-                                Text(lastMsg.text)
-                                    .font(.system(size: 9))
-                                    .foregroundColor(subTextColor)
-                                    .lineLimit(1)
-                            }
+                            // Round 241A: 개인 대화 사이드바 message preview 금지
+                            // 내용 노출 없이 방 이름만 표시
                         }
                         Spacer()
                         if !isRenaming {

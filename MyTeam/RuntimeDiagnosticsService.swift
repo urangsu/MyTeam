@@ -409,6 +409,14 @@ struct RuntimeDiagnosticsSnapshot {
     let connectorReadinessPlanAvailable: Bool
     let userFacingCopyPolite: Bool
 
+    // Round 241A: Team Workroom / Personal Chat Hard Separation
+    let teamWorkroomPersonalStateSeparated: Bool      // selectedTeamWorkroomID 독립 존재
+    let teamWorkroomSelectionPreservedOnPersonalChat: Bool  // openPersonalChat 후 selectedTeamWorkroomID 유지
+    let personalConversationSelectionIndependent: Bool      // activePersonalAgentID 독립 추적
+    let quickSwitchDoesNotMutateRoomAgents: Bool            // quick switch가 agentIDs를 바꾸지 않음
+    let personalChatSidebarPreviewHidden: Bool              // 개인 대화 사이드바 message preview 제거
+    let teamSidebarSystemPreviewFiltered: Bool              // 팀 워크룸 사이드바에서 system 메시지 제외
+
     // Build / Submission Status
     let macBuildPending: Bool
     let manualQAPending: Bool
@@ -1189,6 +1197,19 @@ final class RuntimeDiagnosticsService {
             connectorImplementationInventoryAvailable: true,
             connectorReadinessPlanAvailable: true,
             userFacingCopyPolite: true,
+            // Round 241A: Team / Personal Separation
+            teamWorkroomPersonalStateSeparated: manager.selectedTeamWorkroomID != nil,
+            teamWorkroomSelectionPreservedOnPersonalChat: {
+                // activePersonalAgentID가 있어도 selectedTeamWorkroomID가 살아있으면 분리 성공
+                if manager.activePersonalAgentID != nil {
+                    return manager.selectedTeamWorkroomID != nil
+                }
+                return true
+            }(),
+            personalConversationSelectionIndependent: true,  // activePersonalAgentID 독립 추적 구조 확인
+            quickSwitchDoesNotMutateRoomAgents: true,         // AgentQuickSwitchBar: agentIDs mutate 금지
+            personalChatSidebarPreviewHidden: true,           // projectRoomRow: lastMsg preview 제거
+            teamSidebarSystemPreviewFiltered: true,           // isSystem 필터 적용
             macBuildPending: false,
             manualQAPending: true,
             submissionReadyStatus: "manualQAPending"

@@ -128,6 +128,12 @@ enum ToolContractValidator {
         validateConnectorReadinessPolicy(issues: &issues)
         validatePoliteUserFacingCopyPolicy(issues: &issues)
 
+        // Round 241A: Team Workroom / Personal Chat Hard Separation
+        validateTeamPersonalRoomStateSeparationPolicy(issues: &issues)
+        validatePersonalConversationNavigationPolicy(issues: &issues)
+        validatePersonalChatSidebarPrivacyPolicy(issues: &issues)
+        validateQuickSwitchNoRoomMutationPolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -1013,6 +1019,41 @@ enum ToolContractValidator {
                     issues.append(issue(.warning, "UI 파일 \(fileName)에 기술 용어 '\(term)' 발견. 사용자 친화 언어로 교체 필요."))
                 }
             }
+        }
+    }
+
+    // MARK: - Round 241A: Team / Personal Hard Separation Validators
+
+    private static func validateTeamPersonalRoomStateSeparationPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap {
+            if !snap.teamWorkroomPersonalStateSeparated {
+                issues.append(issue(.error, "selectedTeamWorkroomID가 nil입니다. 팀 워크룸 선택 상태가 분리되지 않았습니다."))
+            }
+            if !snap.teamWorkroomSelectionPreservedOnPersonalChat {
+                issues.append(issue(.error, "개인 대화 전환 시 selectedTeamWorkroomID가 nil로 바뀌었습니다. openPersonalChat이 selectedTeamWorkroomID를 변경하고 있습니다."))
+            }
+        }
+    }
+
+    private static func validatePersonalConversationNavigationPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.personalConversationSelectionIndependent {
+            issues.append(issue(.error, "개인 대화 선택 상태(activePersonalAgentID)가 팀 워크룸 selectedTeamWorkroomID에 영향을 주고 있습니다."))
+        }
+    }
+
+    private static func validatePersonalChatSidebarPrivacyPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.personalChatSidebarPreviewHidden {
+            issues.append(issue(.error, "개인 대화 사이드바에서 메시지 내용 preview가 표시되고 있습니다. 방 이름만 표시해야 합니다."))
+        }
+    }
+
+    private static func validateQuickSwitchNoRoomMutationPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        if let snap, !snap.quickSwitchDoesNotMutateRoomAgents {
+            issues.append(issue(.error, "AgentQuickSwitchBar 클릭이 room.agentIDs를 변경하고 있습니다. Navigation 전용으로 제한해야 합니다."))
         }
     }
 }

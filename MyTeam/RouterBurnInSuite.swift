@@ -1863,7 +1863,7 @@ enum RouterBurnInSuite {
             expectedRouteHint: "agentNav",
             expectedGoalType: "directAnswer",
             shouldRequireApproval: false,
-            notes: "하단 캐릭터/이름 탭 → openPersonalChat(for:) → currentRoomID 전환"
+            notes: "하단 캐릭터/이름 탭 → openPersonalChat(for:) → currentRoomID 전환. Round 241A: selectedTeamWorkroomID 유지 확인"
         ),
         .init(
             id: "gmail-send-blocked",

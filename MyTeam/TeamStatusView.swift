@@ -280,7 +280,7 @@ struct TeamStatusView: View {
                     ForEach(filteredRooms) { room in
                         RoomRowView(
                             room: room,
-                            isSelected: manager.currentRoomID == room.id,
+                            isSelected: manager.selectedTeamWorkroomID == room.id,
                             isDarkMode: manager.isDarkMode,
                             isDeleteMode: isDeleteMode,
                             onRename: {
@@ -299,8 +299,9 @@ struct TeamStatusView: View {
                             if isDeleteMode {
                                 roomToDelete = room
                             } else {
-                                let previousRoomID = manager.currentRoomID
-                                manager.currentRoomID = room.id
+                                // Round 241A: selectTeamWorkroom — selectedTeamWorkroomID 독립 유지
+                                let previousRoomID = manager.selectedTeamWorkroomID
+                                manager.selectTeamWorkroom(room.id)
                                 // Character reaction: room switched → .idle
                                 if let prev = previousRoomID, prev != room.id {
                                     CharacterReactionEventSink.shared.notifyRoomSwitched(
@@ -454,13 +455,14 @@ struct TeamStatusView: View {
 
                         // ── WorkroomHomeView: 대화가 없을 때만 표시 (isBeginnerMode와 무관) ──
                         if manager.teamChatLogs.isEmpty {
+                            // Round 241A: selectedTeamWorkroomID 기준 — 개인 대화 전환 시 오염 방지
                             let roomArtifactsForHome: [IndexedArtifact] = {
-                                if let rid = manager.currentRoomID { return manager.recentArtifacts(for: rid) }
+                                if let rid = manager.selectedTeamWorkroomID { return manager.recentArtifacts(for: rid) }
                                 return []
                             }()
                             let homeModel = WorkroomHomeModel.fromRuntime(
-                                roomID: manager.currentRoomID ?? UUID(),
-                                roomTitle: manager.rooms.first(where: { $0.id == manager.currentRoomID })?.name ?? "워크룸",
+                                roomID: manager.selectedTeamWorkroomID ?? UUID(),
+                                roomTitle: manager.rooms.first(where: { $0.id == manager.selectedTeamWorkroomID })?.name ?? "워크룸",
                                 recentArtifacts: roomArtifactsForHome
                             )
                             WorkroomHomeView(
@@ -474,7 +476,7 @@ struct TeamStatusView: View {
                                     handleWorkroomNextAction(action)
                                 },
                                 onPromptDispatched: { prompt in
-                                    guard let roomID = manager.currentRoomID else { return }
+                                    guard let roomID = manager.selectedTeamWorkroomID else { return }
                                     dispatchWorkroomPrompt(prompt, roomID: roomID)
                                 }
                             )
@@ -553,8 +555,9 @@ struct TeamStatusView: View {
                             .id(log.id)
                         }
                         // ── Artifact 카드 (ScrollView 내부 — 스크롤 가능) ──
+                        // Round 241A: selectedTeamWorkroomID 기준
                         let roomArtifacts: [IndexedArtifact] = {
-                            if let rid = manager.currentRoomID { return manager.recentArtifacts(for: rid) }
+                            if let rid = manager.selectedTeamWorkroomID { return manager.recentArtifacts(for: rid) }
                             return []
                         }()
                         if !roomArtifacts.isEmpty {
@@ -622,7 +625,8 @@ struct TeamStatusView: View {
                 // ── 중지 버튼 (workflow 실행 중일 때만 표시) ──
                 if manager.isWorkflowRunning {
                     Button(action: {
-                        guard let roomID = manager.currentRoomID else { return }
+                        // Round 241A: selectedTeamWorkroomID 기준
+                        guard let roomID = manager.selectedTeamWorkroomID else { return }
                         WorkflowOrchestrator.shared.cancelCurrentWorkflow(roomID: roomID, manager: manager)
                     }) {
                         Image(systemName: "stop.circle.fill")
@@ -840,7 +844,7 @@ struct TeamStatusView: View {
         manager.addAutomationTask(
             prompt: prompt,
             nextRunAt: nextRunAt,
-            roomID: manager.currentRoomID,
+            roomID: manager.selectedTeamWorkroomID,  // Round 241A
             assignedAgentID: assignedID
         )
         scheduleDraftPrompt = ""
@@ -884,7 +888,8 @@ struct TeamStatusView: View {
     }
 
     private func refreshCollaborationStatus() async {
-        let roomID = await MainActor.run { manager.currentRoomID }
+        // Round 241A: selectedTeamWorkroomID 기준 — 개인 대화 전환 시 오염 방지
+        let roomID = await MainActor.run { manager.selectedTeamWorkroomID }
         let workflowID = await MainActor.run { manager.currentWorkflowID }
         let recentEvents: [AgentEvent]
         if let roomID {
@@ -941,8 +946,8 @@ struct TeamStatusView: View {
 
     private func sendTeamMessage() {
         guard !inputText.isEmpty || !pendingAttachments.isEmpty else { return }
-        // roomID를 Task 진입 전에 캡처 — 비동기 중 방 전환으로 인한 오염 차단
-        guard let roomIDAtSend = manager.currentRoomID else { return }
+        // Round 241A: selectedTeamWorkroomID 기준 캡처 — 개인 대화 전환 시 오염 차단
+        guard let roomIDAtSend = manager.selectedTeamWorkroomID else { return }
 
         let text = inputText
         let attachments = pendingAttachments
@@ -1092,7 +1097,8 @@ struct TeamStatusView: View {
     }
 
     private func handleFileIntakeResult(_ result: FileIntakeResult) {
-        guard let roomID = manager.currentRoomID ?? manager.rooms.first?.id else { return }
+        // Round 241A: selectedTeamWorkroomID 기준
+        guard let roomID = manager.selectedTeamWorkroomID ?? manager.rooms.first?.id else { return }
 
         manager.recordFileIntakeResult(result, roomID: roomID)
 
@@ -1133,7 +1139,8 @@ struct TeamStatusView: View {
 
     @MainActor
     private func handleFileIntakePrompt(_ prompt: String) {
-        guard let roomID = manager.currentRoomID ?? manager.rooms.first?.id else { return }
+        // Round 241A: selectedTeamWorkroomID 기준
+        guard let roomID = manager.selectedTeamWorkroomID ?? manager.rooms.first?.id else { return }
 
         manager.addChatLog(
             roomID: roomID,
@@ -1156,7 +1163,8 @@ struct TeamStatusView: View {
 
     /// Workroom primary action dispatch
     private func handleWorkroomAction(_ action: WorkroomPrimaryAction) {
-        guard let roomID = manager.currentRoomID else { return }
+        // Round 241A: selectedTeamWorkroomID 기준
+        guard let roomID = manager.selectedTeamWorkroomID else { return }
 
         switch action {
         case .createDocument:
@@ -1178,7 +1186,8 @@ struct TeamStatusView: View {
 
     /// Workroom next action dispatch (reuse recent artifacts)
     private func handleWorkroomNextAction(_ action: WorkroomNextAction) {
-        guard let roomID = manager.currentRoomID else { return }
+        // Round 241A: selectedTeamWorkroomID 기준
+        guard let roomID = manager.selectedTeamWorkroomID else { return }
 
         // Character reaction: promptSubmitted → .thinking
         CharacterReactionEventSink.shared.notifyDocumentGenerationStarted(

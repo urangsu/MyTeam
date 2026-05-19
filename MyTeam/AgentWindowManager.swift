@@ -47,11 +47,21 @@ class AgentWindowManager: ObservableObject {
         didSet { saveRooms() }
     }
     @Published var currentRoomID: UUID?
+
+    /// Round 241A: 팀 워크룸 독립 선택 상태
+    /// - openPersonalChat이 절대 변경하지 않음
+    /// - TeamStatusView는 이 값만 기준으로 워크룸 콘텐츠를 표시
+    @Published var selectedTeamWorkroomID: UUID?
+
+    /// Round 241A: 현재 열려 있는 개인 대화 에이전트 ID
+    /// - selectedTeamWorkroomID와 완전히 독립
+    @Published var activePersonalAgentID: String?
+
     @Published var isSchedulePanelPresented: Bool = false
 
-    // 호환성: 현재 방의 메시지 접근
+    // Round 241A: 팀 워크룸 메시지 — selectedTeamWorkroomID 기준 (개인 대화 오염 방지)
     var teamChatLogs: [ChatLog] {
-        rooms.first(where: { $0.id == currentRoomID })?.messages.filter { !$0.isSystem } ?? []
+        rooms.first(where: { $0.id == selectedTeamWorkroomID })?.messages.filter { !$0.isSystem } ?? []
     }
 
     // 팀 전체 대화용 고정 config
@@ -518,8 +528,13 @@ class AgentWindowManager: ObservableObject {
                 messages: [], agentIDs: ["team_all"], createdAt: Date())
             rooms.append(defaultRoom)
             currentRoomID = defaultRoom.id
+            selectedTeamWorkroomID = defaultRoom.id  // Round 241A
         } else {
             currentRoomID = rooms.first?.id
+            // Round 241A: 복원 시 팀 워크룸을 우선 선택
+            selectedTeamWorkroomID = rooms.first(where: {
+                $0.agentIDs.contains("team_all") || $0.agentIDs.count > 1
+            })?.id ?? rooms.first?.id
         }
         
         loadMemoryStores()
@@ -1449,6 +1464,7 @@ class AgentWindowManager: ObservableObject {
         newRoom.profile = inferredRoomProfile(for: name)
         rooms.append(newRoom)
         currentRoomID = newRoom.id
+        selectedTeamWorkroomID = newRoom.id  // Round 241A: 팀 워크룸 선택 동기화
     }
 
     /// 특정 에이전트 전용 방 생성
@@ -1471,12 +1487,25 @@ class AgentWindowManager: ObservableObject {
         newRoom.profile = .blogWriting()
         rooms.append(newRoom)
         currentRoomID = newRoom.id
+        selectedTeamWorkroomID = newRoom.id  // Round 241A: 팀 워크룸 선택 동기화
+    }
+
+    /// Round 241A: 팀 워크룸 선택 — selectedTeamWorkroomID + currentRoomID 동기화
+    /// - TeamStatusView의 방 탭 이벤트에서만 호출
+    @MainActor
+    func selectTeamWorkroom(_ roomID: UUID) {
+        currentRoomID = roomID
+        selectedTeamWorkroomID = roomID
+        activePersonalAgentID = nil
     }
 
     /// 특정 에이전트의 개인 대화방 열기 (없으면 생성)
     /// - Note: 현재 방의 agentIDs를 mutate하지 않음 (navigation 전용)
+    /// - Note: selectedTeamWorkroomID를 변경하지 않음 (Round 241A)
     @MainActor
     func openPersonalChat(for agentID: String) {
+        // Round 241A: activePersonalAgentID 추적 — selectedTeamWorkroomID는 불변
+        activePersonalAgentID = agentID
         // 해당 에이전트의 개인 대화방 찾기
         if let existing = rooms.first(where: { $0.agentIDs == [agentID] }) {
             currentRoomID = existing.id
@@ -1513,11 +1542,13 @@ class AgentWindowManager: ObservableObject {
     /// - Note: 기존 team_all 워크룸 찾기, 없으면 생성
     @MainActor
     func returnToTeamWorkroom() {
+        activePersonalAgentID = nil  // Round 241A: 개인 대화 상태 해제
         // 팀 워크룸 찾기 (team_all이 포함되거나 agentIDs 2개 이상)
         if let teamRoom = rooms.first(where: {
             $0.agentIDs.contains("team_all") || $0.agentIDs.count > 1
         }) {
             currentRoomID = teamRoom.id
+            selectedTeamWorkroomID = teamRoom.id  // Round 241A
             return
         }
 
@@ -1532,6 +1563,7 @@ class AgentWindowManager: ObservableObject {
         defaultTeamRoom.profile = .general()
         rooms.append(defaultTeamRoom)
         currentRoomID = defaultTeamRoom.id
+        selectedTeamWorkroomID = defaultTeamRoom.id  // Round 241A
     }
 
     func renameRoom(id: UUID, newName: String) {
