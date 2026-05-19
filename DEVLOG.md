@@ -6,6 +6,56 @@
 
 ---
 
+## 2026-05-19 (Round 241A-CORE — Hard Separation of Team Workroom and Personal Agent Conversation)
+
+### 완료 (2026-05-19)
+
+**P0 구조 수정**: 팀 워크룸과 개인 에이전트 대화의 상태 완전 분리
+
+**근본 문제**:
+- `currentRoomID` 하나로 팀 워크룸 + 개인 대화를 모두 처리
+- `openPersonalChat(for:)` 호출 시 `currentRoomID`가 personal room으로 바뀌면서 TeamStatusView 콘텐츠(아티팩트, 메시지 전송 대상) 오염
+
+**수정 내역**:
+
+1. **`AgentWindowManager`** — 상태 분리
+   - `@Published var selectedTeamWorkroomID: UUID?` 추가
+   - `@Published var activePersonalAgentID: String?` 추가
+   - `selectTeamWorkroom(_ roomID: UUID)` 헬퍼 추가
+   - `openPersonalChat(for:)`: `selectedTeamWorkroomID` 절대 변경 않음, `activePersonalAgentID`만 추적
+   - `returnToTeamWorkroom()`: `activePersonalAgentID = nil` + `selectedTeamWorkroomID` 복원
+   - `createRoom/createBlogWritingRoom`: `selectedTeamWorkroomID` 동기화 추가
+   - `teamChatLogs`: `currentRoomID` → `selectedTeamWorkroomID` 기준으로 전환
+
+2. **`TeamStatusView`** — `selectedTeamWorkroomID` 전면 적용
+   - 방 선택 highlight: `currentRoomID == room.id` → `selectedTeamWorkroomID == room.id`
+   - 방 탭: `currentRoomID = room.id` → `manager.selectTeamWorkroom(room.id)`
+   - WorkroomHomeView context, artifact 카드, 워크플로 취소 버튼, 스케줄 태스크, 메시지 전송, 파일 intake, workroom action 핸들러 전부 `selectedTeamWorkroomID` 기준
+
+3. **`AgentChatView`** — 개인 대화 사이드바 preview 완전 제거
+   - `projectRoomRow`: `room.messages.last(where: { !$0.isSystem })` text 표시 제거
+   - 방 이름만 표시, unread badge 유지
+
+4. **`RuntimeDiagnosticsService`** — Round 241A 분리 진단 6개 필드 추가
+   - `teamWorkroomPersonalStateSeparated`, `teamWorkroomSelectionPreservedOnPersonalChat`
+   - `personalConversationSelectionIndependent`, `quickSwitchDoesNotMutateRoomAgents`
+   - `personalChatSidebarPreviewHidden`, `teamSidebarSystemPreviewFiltered`
+
+5. **`ToolContractValidator`** — 분리 정책 검증기 4개 추가
+   - `validateTeamPersonalRoomStateSeparationPolicy`
+   - `validatePersonalConversationNavigationPolicy`
+   - `validatePersonalChatSidebarPrivacyPolicy`
+   - `validateQuickSwitchNoRoomMutationPolicy`
+
+6. **`docs/RoomIdentitySeparationPolicy.md`** 작성
+   - 팀 워크룸/개인 대화 분리 정책 문서
+
+7. **`scripts/preflight_ux_round241a.sh`** — 12개 검증, 전체 통과
+
+**빌드 결과**: Debug ✅ / Release ✅ / Warning 0
+
+---
+
 ## 2026-05-19 (Round 240 — Runtime UX P0 수정)
 
 ### 완료 (2026-05-19)
