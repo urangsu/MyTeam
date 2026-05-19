@@ -502,7 +502,7 @@ struct AgentChatView: View {
                                         }
                                     }
                             }
-                            if let lastMsg = room.messages.last, !isRenaming {
+                            if let lastMsg = room.messages.last(where: { !$0.isSystem }), !isRenaming {
                                 Text(lastMsg.text)
                                     .font(.system(size: 9))
                                     .foregroundColor(subTextColor)
@@ -511,7 +511,7 @@ struct AgentChatView: View {
                         }
                         Spacer()
                         if !isRenaming {
-                            let count = room.messages.count
+                            let count = room.messages.filter({ !$0.isSystem }).count
                             if count > 0 {
                                 Text("\(count)")
                                     .font(.system(size: 9, weight: .bold))

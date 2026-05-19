@@ -552,6 +552,25 @@ struct TeamStatusView: View {
                             }
                             .id(log.id)
                         }
+                        // ── Artifact 카드 (ScrollView 내부 — 스크롤 가능) ──
+                        let roomArtifacts: [IndexedArtifact] = {
+                            if let rid = manager.currentRoomID { return manager.recentArtifacts(for: rid) }
+                            return []
+                        }()
+                        if !roomArtifacts.isEmpty {
+                            Divider().background(textColor.opacity(0.06))
+                                .padding(.vertical, 4)
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(roomArtifacts, id: \.id) { artifact in
+                                        ArtifactCardView(artifact: artifact)
+                                            .frame(width: 240)
+                                    }
+                                }
+                                .padding(.horizontal, 10).padding(.vertical, 6)
+                            }
+                            .frame(maxHeight: 110)
+                        }
                     }
                     .padding(12)
                 }
@@ -561,27 +580,6 @@ struct TeamStatusView: View {
                         withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
                     }
                 }
-            }
-
-            // ── Artifact 카드 (workflow 완료 후 생성 파일 빠른 열기, room-scoped) ──
-            let roomArtifacts: [IndexedArtifact] = {
-                if let rid = manager.currentRoomID { return manager.recentArtifacts(for: rid) }
-                return []
-            }()
-            if !roomArtifacts.isEmpty {
-                Divider().background(textColor.opacity(0.06))
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(roomArtifacts, id: \.id) { artifact in
-                            ArtifactCardView(artifact: artifact)
-                                .frame(width: 240)
-                        }
-                    }
-                    .padding(.horizontal, 10).padding(.vertical, 6)
-                }
-                .frame(maxHeight: 110)
-
-                // First Result Action Strip은 AgentChatView에서만 표시 (WP6 중복 제거)
             }
 
             // ── 하단: 입력창 (팀 채팅 + 첨부파일) ──
@@ -1045,57 +1043,52 @@ struct TeamStatusView: View {
         }
     }
 
-    // MARK: - 하위 뷰 (컴팩트 플로팅 컨트롤 바)
+    // MARK: - 하위 뷰 (패널 통합형 컨트롤 바)
     private var footerView: some View {
-        HStack(spacing: 10) {
-            // 음소거
-            Button(action: { manager.isSilentMode.toggle() }) {
-                Image(systemName: manager.isSilentMode ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                    .font(.system(size: 11))
-                    .foregroundColor(manager.isSilentMode ? .red.opacity(0.7) : .secondary.opacity(0.6))
-            }
-            .buttonStyle(PlainButtonStyle())
-            .help(manager.isSilentMode ? "무음 모드" : "소리 켜기")
+        VStack(spacing: 0) {
+            Divider().opacity(manager.isDarkMode ? 0.2 : 0.15)
+            HStack(spacing: 10) {
+                // 음소거
+                Button(action: { manager.isSilentMode.toggle() }) {
+                    Image(systemName: manager.isSilentMode ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                        .font(.system(size: 11))
+                        .foregroundColor(manager.isSilentMode ? .red.opacity(0.7) : textColor.opacity(0.35))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .help(manager.isSilentMode ? "무음 모드" : "소리 켜기")
 
-            // 음성 모드
-            Button(action: { manager.isVoiceMode.toggle() }) {
-                Image(systemName: "waveform")
-                    .font(.system(size: 11))
-                    .foregroundColor(manager.isVoiceMode ? .blue.opacity(0.8) : .secondary.opacity(0.4))
-            }
-            .buttonStyle(PlainButtonStyle())
-            .help(manager.isVoiceMode ? "음성 모드 켜짐" : "음성 모드 꺼짐")
+                // 음성 모드
+                Button(action: { manager.isVoiceMode.toggle() }) {
+                    Image(systemName: "waveform")
+                        .font(.system(size: 11))
+                        .foregroundColor(manager.isVoiceMode ? .blue.opacity(0.8) : textColor.opacity(0.25))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .help(manager.isVoiceMode ? "음성 모드 켜짐" : "음성 모드 꺼짐")
 
-            Spacer()
+                Spacer()
 
-            // 다크모드 토글
-            Button(action: { withAnimation(.easeInOut(duration: 0.2)) { manager.isDarkMode.toggle() } }) {
-                Image(systemName: manager.isDarkMode ? "moon.stars.fill" : "sun.max.fill")
-                    .font(.system(size: 11))
-                    .foregroundColor(manager.isDarkMode ? .yellow.opacity(0.8) : .orange.opacity(0.7))
-            }
-            .buttonStyle(PlainButtonStyle())
-            .help(manager.isDarkMode ? "라이트 모드로 전환" : "다크 모드로 전환")
+                // 다크모드 토글
+                Button(action: { withAnimation(.easeInOut(duration: 0.2)) { manager.isDarkMode.toggle() } }) {
+                    Image(systemName: manager.isDarkMode ? "moon.stars.fill" : "sun.max.fill")
+                        .font(.system(size: 11))
+                        .foregroundColor(manager.isDarkMode ? .yellow.opacity(0.8) : .orange.opacity(0.7))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .help(manager.isDarkMode ? "라이트 모드로 전환" : "다크 모드로 전환")
 
-            // 설정
-            Button(action: { manager.showSettingsWindow() }) {
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary.opacity(0.5))
+                // 설정
+                Button(action: { manager.showSettingsWindow() }) {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 11))
+                        .foregroundColor(textColor.opacity(0.3))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .help("설정")
             }
-            .buttonStyle(PlainButtonStyle())
-            .help("설정")
+            .padding(.horizontal, 20)
+            .padding(.vertical, 8)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(manager.isDarkMode
-                      ? Color.white.opacity(0.06)
-                      : Color.black.opacity(0.04))
-        )
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
     }
 
     private func handleFileIntakeResult(_ result: FileIntakeResult) {

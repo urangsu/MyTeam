@@ -25,7 +25,7 @@ struct AgentQuickSwitchBar: View {
                     .padding(.horizontal, 10)
 
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 6) {
                         ForEach(manager.activeAgents) { agent in
                             Button(action: {
                                 onSelectAgent(agent.id)
@@ -33,12 +33,12 @@ struct AgentQuickSwitchBar: View {
                                 ZStack {
                                     Circle()
                                         .fill(agent.color.opacity(isDarkMode ? 0.3 : 0.15))
-                                        .frame(width: 32, height: 32)
+                                        .frame(width: 28, height: 28)
 
                                     Image(agent.fallbackImageName)
                                         .resizable()
                                         .scaledToFill()
-                                        .frame(width: 24, height: 24)
+                                        .frame(width: 20, height: 20)
                                         .clipShape(Circle())
                                 }
                                 .overlay(
@@ -53,7 +53,7 @@ struct AgentQuickSwitchBar: View {
                             .help("\(agent.name)과의 대화")
                         }
                     }
-                    .padding(.horizontal, 10)
+                    .padding(.horizontal, 6)
                 }
             }
             .padding(.vertical, 6)

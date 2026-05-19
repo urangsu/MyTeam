@@ -1013,7 +1013,7 @@ class AgentWindowManager: ObservableObject {
         
         let screenRect = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 800, height: 600)
         let width: CGFloat = 300
-        let height: CGFloat = 450
+        let height: CGFloat = 550
         
         // 화면 중앙 오른쪽에 배치
         let panel = FloatingPanel(
@@ -1024,6 +1024,7 @@ class AgentWindowManager: ObservableObject {
             ),
             size: NSSize(width: width, height: height)
         )
+        panel.contentMinSize = NSSize(width: 300, height: 400)
         let view = TeamStatusView().environmentObject(self)
         panel.contentViewController = NSHostingController(rootView: view)
 

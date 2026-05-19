@@ -6,6 +6,49 @@
 
 ---
 
+## 2026-05-19 (Round 240 — Runtime UX P0 수정)
+
+### 완료 (2026-05-19)
+
+**스크린샷 기반 5가지 UX 수정** + Supertonic-3 TTS 조사
+
+**수정 내역**:
+1. **사이드바 미리보기 isSystem 필터** (`AgentChatView.swift`)
+   - `room.messages.last` → `room.messages.last(where: { !$0.isSystem })`
+   - 메시지 카운트: `room.messages.count` → `room.messages.filter({ !$0.isSystem }).count`
+   - 대화창에는 안 보이던 시스템 로그가 사이드바 미리보기에는 보이던 문제 완전 해결
+
+2. **4번째 캐릭터 초상화 잘림 해결** (`AgentQuickSwitchBar.swift`)
+   - 초상화 32→28px, 이미지 24→20px, spacing 8→6, padding 10→6
+   - 4개 에이전트 × 28px + 3 × 6px = 130px → 148px 가용 내 여유롭게 수용
+
+3. **Artifact 카드 ScrollView 안으로 이동** (`TeamStatusView.swift`)
+   - 기존: ScrollView 바깥에 배치 → 패널 높이 부족 시 접근 불가
+   - 수정: ScrollView 내부 VStack에 배치 → 스크롤로 접근 가능
+
+4. **하단 컨트롤 바 패널 통합 디자인** (`TeamStatusView.swift`)
+   - RoundedRectangle 배경 제거 → 패널 배경에 자연스럽게 녹아듦
+   - Divider 경계선 추가 + 수평 패딩 20px(패널과 일치)
+   - 아이콘 색상 textColor.opacity 기반으로 통일
+
+5. **statusPanel 크기 상향** (`AgentWindowManager.swift`)
+   - 초기 높이 450→550px
+   - `contentMinSize = NSSize(width: 300, height: 400)` 추가
+
+**Supertonic-3 TTS 조사 결과**:
+- 99M params, ONNX Runtime, CPU 동작, RTF 0.3x
+- 한국어 CER 3.26%, 44.1kHz 16-bit WAV 출력
+- **Swift/iOS 바인딩 공식 지원**
+- 10개 프리셋 음성(M1-M5, F1-F5) + speed 파라미터로 11캐릭터 커버 가능
+- Qwen3 대비 모든 면에서 우위 → PoC 라운드 별도 진행 예정
+
+**Preflight 240**: 10/10 전체 통과
+
+**신규 파일**:
+- `scripts/preflight_ux_round240.sh`
+
+---
+
 ## 2026-05-19 (Round 239 — Personal Chat Nav Fix + Connector UX Cleanup)
 
 ### 완료 (2026-05-19)
