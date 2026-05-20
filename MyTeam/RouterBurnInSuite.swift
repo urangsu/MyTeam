@@ -2313,6 +2313,118 @@ enum RouterBurnInSuite {
             shouldRequireApproval: true,
             expectedMemoryScope: "room",
             notes: "Round 244A: 거래처 정보 → businessConfidential → 승인 없이 전역 저장 금지. pendingReviewCandidates에 추가 후 사용자 승인 대기."
+        ),
+
+        // Round 243A: Local Observation Burn-in Cases
+        .init(
+            id: "observation-pdf-read",
+            message: "PDF 읽어줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: "fileIntake",
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Round 243A: PDF 읽기 요청 → fileIntake 경로. LocalObservation 생성 후 사용자 확인 요청. TODO: fileIntake route 추가 시 업데이트."
+        ),
+        .init(
+            id: "observation-downloads-analyze",
+            message: "방금 다운로드된 파일 분석해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: "fileIntake",
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Round 243A: 다운로드 파일 분석 → DownloadsFolderWatcher 감지 + 사용자 확인 요청. default OFF 상태 안내 포함."
+        ),
+        .init(
+            id: "observation-finder-selection",
+            message: "Finder에서 선택한 파일 읽어줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: "fileIntake",
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Round 243A: Finder 선택 파일 읽기 → FinderSelectionReader skeleton. 실패 시 '파일 끌어다 놓기' fallback."
+        ),
+        .init(
+            id: "observation-clipboard-read",
+            message: "클립보드 읽어줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: "fileIntake",
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Round 243A: 클립보드 읽기 → ClipboardContextReader.readExplicit(). credential 패턴이면 blocked."
+        ),
+        .init(
+            id: "observation-image-describe",
+            message: "이 사진 설명해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: nil,
+            expectedRouteHint: "fileIntake",
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Round 243A: 이미지 설명 → OfficeReviewInputPolicy.planned (image). 현재 '다음 업데이트 예정' 안내."
+        ),
+        .init(
+            id: "observation-accounting-review",
+            message: "계정과목 정합성 검토해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: "office-review.accounting-consistency",
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Round 243A: 계정과목 검토 → OfficeReviewInputPolicy skill 매핑. 파일 첨부 없으면 '파일을 첨부해 주세요' 안내."
+        ),
+        .init(
+            id: "observation-vendor-mismatch",
+            message: "거래처명 불일치 찾아줘",
+            expectedRoute: .directChat,
+            expectedSkillID: "office-review.vendor-name-mismatch",
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Round 243A: 거래처 불일치 검토 → OfficeReviewInputPolicy.vendorNameMismatch."
+        ),
+        .init(
+            id: "observation-budget-analysis",
+            message: "예산 실적 차이 분석해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: "office-review.budget-actual-analysis",
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Round 243A: 예산/실적 차이 분석 → OfficeReviewInputPolicy.budgetActualAnalysis."
+        ),
+        .init(
+            id: "observation-contract-checklist",
+            message: "계약서 체크리스트 만들어줘",
+            expectedRoute: .directChat,
+            expectedSkillID: "office-review.contract-checklist",
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Round 243A: 계약서 체크리스트 → OfficeReviewInputPolicy.contractChecklist."
+        ),
+        .init(
+            id: "observation-filename-organize",
+            message: "파일명 정리해줘",
+            expectedRoute: .directChat,
+            expectedSkillID: "office-review.filename-organization",
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Round 243A: 파일명 정리 → OfficeReviewInputPolicy.filenameOrganization."
+        ),
+        .init(
+            id: "observation-report-tone",
+            message: "보고서 말투 다듬어줘",
+            expectedRoute: .directChat,
+            expectedSkillID: "office-review.report-tone-polish",
+            expectedRouteHint: nil,
+            expectedGoalType: nil,
+            shouldRequireApproval: false,
+            notes: "Round 243A: 보고서 말투 정리 → OfficeReviewInputPolicy.reportTonePolish."
         )
     ]
 

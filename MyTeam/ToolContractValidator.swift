@@ -155,6 +155,14 @@ enum ToolContractValidator {
         validateProceduralMemoryPolicy(issues: &issues)
         validateMemoryRetrievalBudgetPolicy(issues: &issues)
 
+        // Round 243A: Local Observation Foundation
+        validateObservationRoomScopePolicy(issues: &issues)
+        validateDownloadsWatcherSafetyPolicy(issues: &issues)
+        validateClipboardPrivacyPolicy(issues: &issues)
+        validateScreenObservationPolicy(issues: &issues)
+        validateOfficeReviewInputPolicy(issues: &issues)
+        validateAutomaticExternalUploadBlockedPolicy(issues: &issues)
+
         // Round 245A-P0: Artifact Contract
         validateWriteTextFileArtifactPathPolicy(issues: &issues)
 
@@ -1230,6 +1238,68 @@ enum ToolContractValidator {
             }
         } catch {
             issues.append(issue(.warning, "WriteTextFileTool 소스 검증 불가"))
+        }
+    }
+
+    // MARK: - Round 243A: Local Observation Foundation
+
+    private static func validateObservationRoomScopePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.localObservationServiceAvailable {
+            issues.append(issue(.error, "LocalObservationService를 사용할 수 없습니다. room-scoped observation 저장소가 없으면 다른 방의 파일이 현재 방에 유입될 수 있습니다."))
+        }
+        if !snap.observationsRoomScoped {
+            issues.append(issue(.error, "observation이 roomID 기준으로 격리되지 않습니다. roomID 없는 observation은 pendingObservations 상태여야 하며 다른 방에 자동 노출되면 안 됩니다."))
+        }
+    }
+
+    private static func validateDownloadsWatcherSafetyPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.downloadsWatcherAvailable {
+            issues.append(issue(.warning, "DownloadsFolderWatcher를 사용할 수 없습니다."))
+        }
+        if !snap.downloadsWatcherDefaultOff {
+            issues.append(issue(.error, "DownloadsFolderWatcher가 기본값 ON으로 설정되어 있습니다. 사용자 명시 활성화 전까지 isEnabled = false여야 합니다."))
+        }
+        if !snap.pendingObservationAttachAvailable {
+            issues.append(issue(.warning, "Downloads에서 감지된 파일을 방에 첨부하는 경로(attachObservation)가 없습니다."))
+        }
+    }
+
+    private static func validateClipboardPrivacyPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.clipboardReaderExplicitOnly {
+            issues.append(issue(.error, "클립보드를 상시 감시하거나 timer로 polling하고 있습니다. ClipboardContextReader는 사용자 명시 요청 시에만 실행되어야 합니다."))
+        }
+    }
+
+    private static func validateScreenObservationPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.screenObservationPolicyAvailable {
+            issues.append(issue(.warning, "ScreenObservationPolicy가 없습니다. 화면 캡처 정책이 명문화되지 않으면 향후 구현 시 잘못된 동작이 추가될 수 있습니다."))
+        }
+        if !snap.screenContinuousCaptureBlocked {
+            issues.append(issue(.error, "화면 상시 캡처가 차단되지 않았습니다. ScreenObservationPolicy.continuousCaptureAllowed = false여야 합니다."))
+        }
+    }
+
+    private static func validateOfficeReviewInputPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.officeReviewInputPolicyAvailable {
+            issues.append(issue(.warning, "OfficeReviewInputPolicy가 없습니다. 사무 검토 skill 매핑과 결과 카드 구조가 정의되지 않으면 검토 기능 확장 시 일관성이 깨질 수 있습니다."))
+        }
+    }
+
+    private static func validateAutomaticExternalUploadBlockedPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.automaticExternalUploadBlocked {
+            issues.append(issue(.error, "자동 외부 업로드가 차단되지 않았습니다. ObservationPermissionPolicy.automaticExternalUploadAllowed = false여야 합니다. 사용자 파일을 자동으로 외부 서버에 업로드하면 심각한 개인정보 침해가 발생합니다."))
         }
     }
 }

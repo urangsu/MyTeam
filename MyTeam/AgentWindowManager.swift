@@ -174,6 +174,25 @@ class AgentWindowManager: ObservableObject {
     let roomRuntimeStore = RoomRuntimeStore()
     private var roomRuntimeStoreCancellable: AnyCancellable?
 
+    // Round 243A: Local observation service — room-scoped, pending attach
+    // observation이 전역 recent artifact로 자동 등록되지 않음
+    var observationService: LocalObservationService { .shared }
+
+    /// 현재 팀 워크룸에 pending observation 첨부 (사용자 확인 후 호출)
+    @MainActor
+    func attachPendingObservation(_ observationID: UUID) {
+        guard let roomID = selectedTeamWorkroomID else { return }
+        observationService.attachObservation(observationID, to: roomID)
+    }
+
+    /// 현재 개인 대화방에 pending observation 첨부 (사용자 확인 후 호출)
+    @MainActor
+    func attachPendingObservationToPersonalRoom(_ observationID: UUID) {
+        guard let agentID = activePersonalAgentID,
+              let roomID = selectedPersonalConversationIDByAgentID[agentID] else { return }
+        observationService.attachObservation(observationID, to: roomID)
+    }
+
     @MainActor
     func recordTurnProfile(_ profile: TurnProfile) {
         lastTurnProfileByRoom[profile.roomID] = profile

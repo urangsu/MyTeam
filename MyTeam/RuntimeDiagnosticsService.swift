@@ -446,6 +446,19 @@ struct RuntimeDiagnosticsSnapshot {
     let sensitiveMemoryRequiresApproval: Bool             // businessConfidential/personalSensitive → 승인 필요
     let memoryReviewCandidateAvailable: Bool              // MemoryReviewCandidate UX stub 준비됨
 
+    // Round 243A: Local Observation Foundation
+    let localObservationServiceAvailable: Bool            // LocalObservationService.shared 존재
+    let downloadsWatcherAvailable: Bool                   // DownloadsFolderWatcher 구현됨
+    let downloadsWatcherDefaultOff: Bool                  // isEnabled = false 기본값
+    let clipboardReaderExplicitOnly: Bool                 // ClipboardContextReader 상시 감시 없음
+    let finderSelectionReaderAvailable: Bool              // FinderSelectionReader skeleton 구현됨
+    let screenObservationPolicyAvailable: Bool            // ScreenObservationPolicy 존재
+    let screenContinuousCaptureBlocked: Bool              // continuousCaptureAllowed = false
+    let officeReviewInputPolicyAvailable: Bool            // OfficeReviewInputPolicy 존재
+    let observationsRoomScoped: Bool                      // observation roomID 기준 격리됨
+    let pendingObservationAttachAvailable: Bool           // pendingRoomSelection → attachObservation 경로
+    let automaticExternalUploadBlocked: Bool              // 자동 외부 업로드 하드 블록
+
     // Build / Submission Status
     let macBuildPending: Bool
     let manualQAPending: Bool
@@ -1265,6 +1278,18 @@ final class RuntimeDiagnosticsService {
             credentialMemoryBlocked: true,
             sensitiveMemoryRequiresApproval: true,
             memoryReviewCandidateAvailable: true,
+            // Round 243A: Local Observation Foundation
+            localObservationServiceAvailable: true,
+            downloadsWatcherAvailable: true,
+            downloadsWatcherDefaultOff: !DownloadsFolderWatcher.shared.isEnabled,
+            clipboardReaderExplicitOnly: true,
+            finderSelectionReaderAvailable: true,
+            screenObservationPolicyAvailable: true,
+            screenContinuousCaptureBlocked: !ScreenObservationPolicy.continuousCaptureAllowed,
+            officeReviewInputPolicyAvailable: true,
+            observationsRoomScoped: true,
+            pendingObservationAttachAvailable: true,
+            automaticExternalUploadBlocked: !ObservationPermissionPolicy.automaticExternalUploadAllowed,
             macBuildPending: false,
             manualQAPending: true,
             submissionReadyStatus: "manualQAPending"
