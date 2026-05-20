@@ -493,6 +493,19 @@ struct RuntimeDiagnosticsSnapshot {
     let officeReviewAssistOnlyUxAvailable: Bool           // OfficeReviewInputPolicy assistOnly UX 메시지
     let observationImplLevelUxAvailable: Bool             // ImplementationLevel.userFacingStatus 존재
 
+    // Round 247TTS: Supertonic3 PoC + TTS Policy
+    let appleSystemTTSBlocked: Bool                       // AVSpeechSynthesizer 완전 금지 (정책)
+    let qwen3TTSDefaultDisabled: Bool                     // Qwen3 기본 비활성화
+    let qwen3TTSDevLabOverrideOnly: Bool                  // Qwen3 DevLab override 전용
+    let supertonic3ProviderRegistered: Bool               // Supertonic3TTSProvider 파일 존재
+    let supertonic3DefaultDisabled: Bool                  // Supertonic3 기본 off
+    let supertonic3RequiresLocalModel: Bool               // 로컬 모델 필요
+    let supertonic3NoAutoDownload: Bool                   // 자동 다운로드 없음
+    let supertonic3LicenseMarkedUnverified: Bool          // App Store 라이선스 미검증 마킹
+    let supertonic3RuntimeProbeAvailable: Bool            // Supertonic3TTSProbe 존재
+    let ttsSilentFallbackAllowed: Bool                    // provider 없을 때 무음 허용
+    let ttsMissingModelNoRepeatLoop: Bool                 // 모델 없을 때 반복 루프 없음
+
     // MARK: - Human-readable summary
 
     var summary: String {
@@ -624,6 +637,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("room236: rename=\(roomRenameAvailable ? "✅" : "❌") scoped=\(roomScopedMessagesAvailable ? "✅" : "❌") purpose=\(roomPurposeInferenceAvailable ? "✅" : "❌") blogSrc=\(blogSourceCommandAvailable ? "✅" : "❌") blogProf=\(blogProfileCommandAvailable ? "✅" : "❌") profileScoped=\(blogStyleProfileRoomScoped ? "✅" : "❌") inventory=\(connectorImplementationInventoryAvailable ? "✅" : "❌") readiness=\(connectorReadinessPlanAvailable ? "✅" : "❌") polite=\(userFacingCopyPolite ? "✅" : "❌")")
         lines.append("unblock246a: goalGateFallback=\(goalGateFallbackFunctional) toolTyped=\(toolLayerTypedResultAvailable) approvalFoundation=\(approvalFoundationAvailable) delegationGate=\(delegationGateRespected) budgetTier=\(budgetTierInterfaceAvailable) dartAssistOnly=\(dartSkillAssistOnly) officeReviewStatus=\(officeReviewExecutionStatusAvailable) observeLevel=\(observationImplementationLevelAvailable) featureFile=\(featureAvailabilitySeparatedFileAvailable) skillResolver=\(skillAvailabilityResolverAvailable) fallbackSvc=\(capabilityFallbackServiceAvailable)")
         lines.append("action246b: approvalStore=\(approvalStoreAvailable) banner=\(approvalBannerViewAvailable) card=\(approvalCardViewAvailable) presentationPolicy=\(toolResultPresentationPolicyAvailable) assistOnly=\(assistOnlySkillDetectionWired) highRisk=\(highRiskSkillFallbackWired) disabled=\(disabledSkillFallbackWired) workflowTyped=\(workflowTypedStatusHandled) autoApproval=\(approvalRequiredAutoRegistered) planned=\(plannedStepFallbackWired) unavail=\(unavailableStepFallbackWired) officeUX=\(officeReviewAssistOnlyUxAvailable) observeUX=\(observationImplLevelUxAvailable)")
+        lines.append("tts247: appleTTSBlocked=\(appleSystemTTSBlocked) qwen3DefaultOff=\(qwen3TTSDefaultDisabled) qwen3DevLabOnly=\(qwen3TTSDevLabOverrideOnly) s3registered=\(supertonic3ProviderRegistered) s3defaultOff=\(supertonic3DefaultDisabled) s3localModel=\(supertonic3RequiresLocalModel) s3noAutoDownload=\(supertonic3NoAutoDownload) s3licenseUnverified=\(supertonic3LicenseMarkedUnverified) s3probe=\(supertonic3RuntimeProbeAvailable) silentAllowed=\(ttsSilentFallbackAllowed) noRepeatLoop=\(ttsMissingModelNoRepeatLoop)")
 
         return lines.joined(separator: "\n  ")
     }
@@ -1350,7 +1364,19 @@ final class RuntimeDiagnosticsService {
             plannedStepFallbackWired: true,
             unavailableStepFallbackWired: true,
             officeReviewAssistOnlyUxAvailable: true,
-            observationImplLevelUxAvailable: true
+            observationImplLevelUxAvailable: true,
+            // Round 247TTS: Supertonic3 PoC + TTS Policy
+            appleSystemTTSBlocked: true,
+            qwen3TTSDefaultDisabled: true,
+            qwen3TTSDevLabOverrideOnly: true,
+            supertonic3ProviderRegistered: true,
+            supertonic3DefaultDisabled: true,
+            supertonic3RequiresLocalModel: true,
+            supertonic3NoAutoDownload: true,
+            supertonic3LicenseMarkedUnverified: true,
+            supertonic3RuntimeProbeAvailable: true,
+            ttsSilentFallbackAllowed: true,
+            ttsMissingModelNoRepeatLoop: true
         )
         cachedSnapshot = snap
         return snap

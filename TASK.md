@@ -136,6 +136,29 @@ Team Composer Routing + Unread Badge + Overlay/Chrome Repair Pack
 - docs/PanelChromePolicy.md + docs/AgentMenuPresentationPolicy.md 신규
 - Preflight 12/12 통과, Debug ✅ / Release ✅
 
+#### Round 247TTS — MergeVerify + Supertonic3 PoC Skeleton (2026-05-21)
+
+origin/main fast-forward 업데이트 완료. Supertonic3 skeleton TTS provider 추가.
+preflight 15/15 통과. Cloud — xcodebuild 미실행. **Mac build pending**.
+
+**신규 파일 (7개):** TTSProviderModels, TTSRoutingPolicy, Supertonic3TTSConfig,
+Supertonic3ModelLocator, Supertonic3TTSProvider, Supertonic3TTSProbe, TTSLabView
+
+**SpeechManager 수정:** TTSRoutingPolicy 연결, Qwen3 DevLab 격리
+**RuntimeDiagnostics:** TTS 247 필드 11개 + ToolContractValidator TTS validators 7개
+**docs:** TTSProviderPolicy.md, Supertonic3PoCPolicy.md, SupertonicAssessment.md 업데이트
+
+**Apple TTS (AVSpeechSynthesizer): 완전 금지 재확인 — 코드 어디에도 없음**
+
+**다음 (248TTS — Mac 로컬 라운드):**
+- SPM 의존성: `onnxruntime-swift-package-manager` Package.swift 추가
+- 실제 4-stage ONNX inference (text_encoder → duration_predictor → vector_estimator → vocoder)
+- 44.1kHz WAV → 24kHz PCM 변환 (AudioPlaybackService 연결)
+- App Store 라이선스 법무 검토 (MIT + OpenRAIL-M)
+- xcodebuild Debug/Release 통과 확인
+
+---
+
 #### Round 246B-ACTION — Approval Banner + Fallback Execution Wiring (2026-05-20)
 
 기능을 막지 말고 위험한 실행만 막는다. preflight 40/40 통과. Cloud — **Mac build pending**.

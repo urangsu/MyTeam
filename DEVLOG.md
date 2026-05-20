@@ -6,6 +6,75 @@
 
 ---
 
+## 2026-05-21 (Round 247TTS — MergeVerify + Supertonic3 PoC Skeleton)
+
+### 완료 (2026-05-21)
+
+Part A: 246B 변경(dbbe59f)을 origin/main에 fast-forward 병합.
+Part B: Supertonic3 실험용 skeleton TTS provider 추가. preflight 15/15 통과.
+Cloud 환경 — xcodebuild 미실행. ONNX Runtime SPM 미추가 (248TTS에서). **Mac build pending**.
+
+**Apple TTS 정책 재확인:** AVSpeechSynthesizer 완전 금지, 폴백 포함. 코드 어디에도 없음.
+
+**TTSProviderModels.swift** (신규)
+- `TTSProviderKind` enum: `.qwen3MLX`, `.supertonic3` — appleSystem 없음 (정책)
+- `TTSProviderAvailability`: available / experimental / disabledByPolicy / missingModel / licenseUnverified / runtimeUnavailable
+- `TTSOutput`, `TTSProviderError`, `TTSProviderStatus` 타입 정의
+
+**TTSRoutingPolicy.swift** (신규)
+- `selectedProvider()` → Supertonic3 (isEnabled+model) → Qwen3 (DevLab override) → nil(무음)
+- Apple TTS 절대 반환 안 함. 무음 허용.
+- `appleSystemTTSIsPermanentlyForbidden() -> true` (정책 마커)
+
+**Supertonic3TTSConfig.swift** (신규)
+- 모델 경로: `~/.cache/supertonic3/onnx/`
+- requiredModelFiles: 4개 ONNX (~398 MB 총)
+- `isEnabled`: UserDefaults bool 기본 false
+- outputSampleRate: 44100 Hz
+- licenseStatus: MIT + OpenRAIL-M (App Store 미검증)
+
+**Supertonic3ModelLocator.swift** (신규)
+- `checkModel()` → 4개 파일 존재 + 크기>0 확인
+- `downloadGuideMessage()` — pip install + huggingface-cli 안내
+
+**Supertonic3TTSProvider.swift** (신규, skeleton)
+- `actor`, `synthesize()` 항상 `.missingRuntime` (Cloud)
+- 248TTS TODO: OrtEnvironment, OrtSession, 4-stage inference
+
+**Supertonic3TTSProbe.swift** (신규)
+- Cloud probe: 모델 탐색 + 설정 요약 (inference 없음)
+- `Supertonic3ProbeRunResult.detailedSummary`
+
+**TTSLabView.swift** (신규, Developer Lab 전용)
+- Supertonic3 enable 토글, 모델 파일 상태, voice preset 선택, probe 버튼
+- Qwen3 DevLab override 토글 (별도 섹션)
+- Apple TTS 선택지 없음 (정책)
+
+**SpeechManager.swift** (수정)
+- `qwenEnabled`: `TTSRoutingPolicy.selectedProvider() == .qwen3MLX` 로 교체
+- `dispatchToInferencePipeline()`: switch on `TTSRoutingPolicy.selectedProvider()` 
+  - `.supertonic3` → Supertonic3TTSProvider.shared.synthesize() (Cloud: silent)
+  - `.qwen3MLX` → 기존 Qwen3 경로 (DevLab override 전용)
+  - `.none` → 무음 (Apple TTS 폴백 없음)
+
+**RuntimeDiagnosticsSnapshot** — TTS 247 필드 11개 추가
+**ToolContractValidator** — TTS validators 7개 추가
+
+**docs 신규:** TTSProviderPolicy.md, Supertonic3PoCPolicy.md
+**docs 업데이트:** SupertonicAssessment.md (RTF 0.012-0.015× M4 Pro 확인, iOS 배포 사례, 4 ONNX 파일 목록)
+
+**pbxproj 등록:** TTSProviderModels, TTSRoutingPolicy, Supertonic3TTSConfig, Supertonic3ModelLocator, Supertonic3TTSProvider, Supertonic3TTSProbe, TTSLabView (총 7개)
+
+**scripts/preflight_round247tts.sh** (신규, 15개 체크, 15/15 PASS)
+
+### 다음 라운드 (248TTS)
+- SPM: `onnxruntime-swift-package-manager` Package.swift 추가
+- 실제 4-stage ONNX inference 연결
+- 44.1kHz WAV → 24kHz PCM 변환 (AudioPlaybackService 연결)
+- App Store 라이선스 법무 검토
+
+---
+
 ## 2026-05-20 (Round 246B-ACTION — Approval Banner + Fallback Execution Wiring)
 
 ### 완료 (2026-05-20)

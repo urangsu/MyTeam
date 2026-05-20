@@ -193,6 +193,14 @@ enum ToolContractValidator {
         validateUnavailableStepFallbackWiredPolicy(issues: &issues)
         validateOfficeReviewAssistOnlyUxPolicy(issues: &issues)
         validateObservationImplLevelUxPolicy(issues: &issues)
+        // Round 247TTS validators
+        validateAppleSystemTTSBlocked(issues: &issues)
+        validateQwen3DefaultDisabledPolicy(issues: &issues)
+        validateSupertonic3ExperimentalPolicy(issues: &issues)
+        validateSupertonic3NoAutoDownloadPolicy(issues: &issues)
+        validateTTSSilentFallbackPolicy(issues: &issues)
+        validateTTSProviderModelsFileExists(issues: &issues)
+        validateTTSRoutingPolicyExists(issues: &issues)
 
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
@@ -1515,6 +1523,67 @@ enum ToolContractValidator {
         guard let snap else { return }
         if !snap.observationImplLevelUxAvailable {
             issues.append(issue(.warning, "ImplementationLevel.userFacingStatus가 없습니다. 관찰 컴포넌트 상태를 사용자에게 정직하게 보여줄 수 없습니다."))
+        }
+    }
+
+    // MARK: - Round 247TTS Validators
+
+    private static func validateAppleSystemTTSBlocked(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.appleSystemTTSBlocked {
+            issues.append(issue(.error, "Apple TTS (AVSpeechSynthesizer) 차단 정책이 등록되지 않았습니다. 프로젝트 정책: 폴백 포함 절대 금지."))
+        }
+    }
+
+    private static func validateQwen3DefaultDisabledPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.qwen3TTSDefaultDisabled {
+            issues.append(issue(.error, "Qwen3 TTS 기본 비활성화 정책이 등록되지 않았습니다. Qwen3는 기본 off여야 합니다."))
+        }
+    }
+
+    private static func validateSupertonic3ExperimentalPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonic3ProviderRegistered {
+            issues.append(issue(.warning, "Supertonic3TTSProvider가 등록되지 않았습니다. Round 247TTS PoC skeleton이 없습니다."))
+        }
+        if !snap.supertonic3DefaultDisabled {
+            issues.append(issue(.error, "Supertonic3 TTS가 기본 활성화되어 있습니다. 기본값은 반드시 off여야 합니다."))
+        }
+    }
+
+    private static func validateSupertonic3NoAutoDownloadPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonic3NoAutoDownload {
+            issues.append(issue(.error, "Supertonic3 자동 다운로드 금지 정책이 등록되지 않았습니다. 모델 자동 다운로드 코드가 없어야 합니다."))
+        }
+    }
+
+    private static func validateTTSSilentFallbackPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.ttsSilentFallbackAllowed {
+            issues.append(issue(.error, "TTS 무음 폴백 정책이 등록되지 않았습니다. provider 없을 때 무음 허용(Apple TTS 폴백 절대 금지)이어야 합니다."))
+        }
+    }
+
+    private static func validateTTSProviderModelsFileExists(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonic3ProviderRegistered {
+            issues.append(issue(.warning, "TTSProviderModels.swift 관련 상태가 등록되지 않았습니다. TTSProviderKind enum 정의가 필요합니다."))
+        }
+    }
+
+    private static func validateTTSRoutingPolicyExists(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.ttsSilentFallbackAllowed {
+            issues.append(issue(.warning, "TTSRoutingPolicy 관련 상태가 등록되지 않았습니다. provider 선택 정책이 필요합니다."))
         }
     }
 }
