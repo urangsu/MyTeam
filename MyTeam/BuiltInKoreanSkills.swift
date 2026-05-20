@@ -1,17 +1,7 @@
 import Foundation
 
-// MARK: - FeatureAvailability (Round 246A: P1-3)
-// 스킬/기능이 실제로 어느 수준까지 동작하는지 명시.
-// fake available(❌) / 완전 숨김(❌) / assistOnly(✅ — LLM 보조, 외부 API 없음)
-
-enum FeatureAvailability {
-    case available     // 실제 동작 (외부 API 연결됨)
-    case assistOnly    // LLM 보조만 가능, 외부 API 미연결
-    case planned       // 개발 예정, 숨김
-    case blocked       // 정책상 차단
-}
-
 // MARK: - BuiltInKoreanSkills
+// FeatureAvailability → FeatureAvailability.swift 분리 (Round 246A-HOTFIX)
 // caseless enum 네임스페이스 (AutomationPolicy 패턴과 동일)
 // BuiltInKoreanSkills.all → SkillRegistry에서 로드
 

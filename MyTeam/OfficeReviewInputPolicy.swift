@@ -106,7 +106,7 @@ enum OfficeReviewInputPolicy {
                 return .reviewGenerated
             case .accountingConsistency, .vendorNameMismatch,
                  .budgetActualAnalysis, .invoiceDescriptionAnomaly,
-                 .taxInvoiceComparison, .taxInvoiceComparison, .contractChecklist:
+                 .taxInvoiceComparison, .contractChecklist:
                 // 표 파싱·근거 위치 추적 미구현 → inputDetected 단계
                 return .inputDetected
             }

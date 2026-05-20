@@ -94,9 +94,9 @@ grep -q "rollingWindowLimit.*10\|10.*rollingWindowLimit" "$MT/AICallBudgetManage
   && ok "rolling limit 완화 (10회)" \
   || fail "rolling limit 미완화 (여전히 5회)"
 
-# P1-3: FeatureAvailability enum 존재
-grep -q "enum FeatureAvailability" "$MT/BuiltInKoreanSkills.swift" \
-  && ok "FeatureAvailability enum 존재" \
+# P1-3: FeatureAvailability enum 존재 (HOTFIX 후: FeatureAvailability.swift로 분리)
+grep -q "enum FeatureAvailability" "$MT/FeatureAvailability.swift" 2>/dev/null \
+  && ok "FeatureAvailability enum 존재 (FeatureAvailability.swift)" \
   || fail "FeatureAvailability enum 없음"
 
 # P1-3: DART assistOnly 명시
@@ -143,6 +143,58 @@ grep -q "goalGateFallbackFunctional\|toolLayerTypedResultAvailable" "$MT/Runtime
 grep -q "validateGoalGateFallbackPolicy\|validateToolLayerTypedResultPolicy" "$MT/ToolContractValidator.swift" \
   && ok "ToolContractValidator 246A validators 존재" \
   || fail "ToolContractValidator 246A validators 없음"
+
+# 246A-HOTFIX: FeatureAvailability.swift 분리 확인
+[ -f "$MT/FeatureAvailability.swift" ] \
+  && ok "FeatureAvailability.swift 존재 (분리 완료)" \
+  || fail "FeatureAvailability.swift 없음"
+
+# 246A-HOTFIX: BuiltInKoreanSkills 내부 enum FeatureAvailability 없음
+grep -q "^enum FeatureAvailability" "$MT/BuiltInKoreanSkills.swift" 2>/dev/null \
+  && fail "BuiltInKoreanSkills.swift에 enum FeatureAvailability 잔존 — 분리 필요" \
+  || ok "BuiltInKoreanSkills 내부 FeatureAvailability 제거 완료"
+
+# 246A-HOTFIX: SkillAvailabilityResolver.swift 존재
+[ -f "$MT/SkillAvailabilityResolver.swift" ] \
+  && ok "SkillAvailabilityResolver.swift 존재" \
+  || fail "SkillAvailabilityResolver.swift 없음"
+
+# 246A-HOTFIX: SkillAvailabilityResolver가 korean.dart를 assistOnly로 처리
+grep -q "korean.dart" "$MT/SkillAvailabilityResolver.swift" \
+  && ok "SkillAvailabilityResolver에 korean.dart assistOnly 처리 존재" \
+  || fail "SkillAvailabilityResolver korean.dart 처리 없음"
+
+# 246A-HOTFIX: CapabilityFallbackService.swift 존재
+[ -f "$MT/CapabilityFallbackService.swift" ] \
+  && ok "CapabilityFallbackService.swift 존재" \
+  || fail "CapabilityFallbackService.swift 없음"
+
+# 246A-HOTFIX: FallbackAction enum 존재
+grep -q "enum FallbackAction" "$MT/CapabilityFallbackService.swift" \
+  && ok "FallbackAction enum 존재" \
+  || fail "FallbackAction enum 없음"
+
+# 246A-HOTFIX: OfficeReviewInputPolicy 중복 case 없음
+grep -q "taxInvoiceComparison, .taxInvoiceComparison" "$MT/OfficeReviewInputPolicy.swift" \
+  && fail "OfficeReviewInputPolicy에 .taxInvoiceComparison 중복 case 잔존" \
+  || ok "OfficeReviewInputPolicy 중복 case 제거 완료"
+
+# 246A-HOTFIX: RuntimeDiagnostics HOTFIX 필드 존재
+grep -q "featureAvailabilitySeparatedFileAvailable\|skillAvailabilityResolverAvailable\|capabilityFallbackServiceAvailable" "$MT/RuntimeDiagnosticsService.swift" \
+  && ok "RuntimeDiagnosticsService HOTFIX 필드 존재" \
+  || fail "RuntimeDiagnosticsService HOTFIX 필드 없음"
+
+# 246A-HOTFIX: ToolContractValidator HOTFIX validators 존재
+grep -q "validateFeatureAvailabilitySeparatedPolicy\|validateCapabilityFallbackServicePolicy" "$MT/ToolContractValidator.swift" \
+  && ok "ToolContractValidator HOTFIX validators 존재" \
+  || fail "ToolContractValidator HOTFIX validators 없음"
+
+# pbxproj 등록 확인
+if grep -q "FeatureAvailability\|SkillAvailabilityResolver\|CapabilityFallbackService" "$MT/MyTeam.xcodeproj/project.pbxproj" 2>/dev/null; then
+  ok "pbxproj에 신규 파일 등록됨"
+else
+  fail "pbxproj 신규 파일 미등록 — Mac build 후 등록 필요"
+fi
 
 # git diff whitespace check
 cd "$ROOT"

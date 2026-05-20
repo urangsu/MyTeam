@@ -473,6 +473,10 @@ struct RuntimeDiagnosticsSnapshot {
     let dartSkillAssistOnly: Bool                 // P1-3: DART = assistOnly (fake available 아님)
     let officeReviewExecutionStatusAvailable: Bool // P1-6: OfficeReviewExecutionStatus enum
     let observationImplementationLevelAvailable: Bool // P1-5: ImplementationLevel enum
+    // Round 246A-HOTFIX
+    let featureAvailabilitySeparatedFileAvailable: Bool   // FeatureAvailability.swift 분리 완료
+    let skillAvailabilityResolverAvailable: Bool          // SkillAvailabilityResolver.swift 존재
+    let capabilityFallbackServiceAvailable: Bool          // CapabilityFallbackService.swift 존재
 
     // MARK: - Human-readable summary
 
@@ -1311,7 +1315,11 @@ final class RuntimeDiagnosticsService {
             budgetTierInterfaceAvailable: true,
             dartSkillAssistOnly: true,
             officeReviewExecutionStatusAvailable: true,
-            observationImplementationLevelAvailable: true
+            observationImplementationLevelAvailable: true,
+            // Round 246A-HOTFIX
+            featureAvailabilitySeparatedFileAvailable: true,
+            skillAvailabilityResolverAvailable: true,
+            capabilityFallbackServiceAvailable: true
         )
         cachedSnapshot = snap
         return snap

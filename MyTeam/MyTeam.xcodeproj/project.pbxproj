@@ -9460,6 +9460,9 @@
 				<string>EC9150A4D52243D3ABE798AB</string>
 				<string>4D7992A2413841139FF791E2</string>
 				<string>0B43A6F6A2C54E21906B186D</string>
+				<string>4C9AC2223ED4411584D07FAE</string>
+				<string>F0CF446E43DA484B8A079D1C</string>
+				<string>2D5A427D5D1346C7B9E8E66F</string>
 			</array>
 			<key>isa</key>
 			<string>PBXGroup</string>
@@ -11082,6 +11085,9 @@
 				<string>59AB6F2E89E74F90851A6B72</string>
 				<string>483421620D364456B4A17BC0</string>
 				<string>AAD9BC3A1C5E43E6BA668615</string>
+				<string>B063F2E1E88046EA9D922B21</string>
+				<string>03BC352B76A546E7BADF3EC2</string>
+				<string>49A4830F1780480E986B3CB1</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -22479,6 +22485,60 @@
 			<string>GHM3FIWYA993WVU9SYCOOGFR</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
+		</dict>
+		<key>4C9AC2223ED4411584D07FAE</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>FeatureAvailability.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>B063F2E1E88046EA9D922B21</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>4C9AC2223ED4411584D07FAE</string>
+		</dict>
+		<key>F0CF446E43DA484B8A079D1C</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>SkillAvailabilityResolver.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>03BC352B76A546E7BADF3EC2</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>F0CF446E43DA484B8A079D1C</string>
+		</dict>
+		<key>2D5A427D5D1346C7B9E8E66F</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>CapabilityFallbackService.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>49A4830F1780480E986B3CB1</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>2D5A427D5D1346C7B9E8E66F</string>
 		</dict>
 	</dict>
 	<key>rootObject</key>

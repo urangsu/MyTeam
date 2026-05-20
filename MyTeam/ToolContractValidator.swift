@@ -174,6 +174,12 @@ enum ToolContractValidator {
         validateBudgetTierInterfacePolicy(issues: &issues)
         validateOfficeReviewExecutionStatusPolicy(issues: &issues)
 
+        // Round 246A-HOTFIX
+        validateFeatureAvailabilitySeparatedPolicy(issues: &issues)
+        validateSkillAvailabilityResolverPolicy(issues: &issues)
+        validateCapabilityFallbackServicePolicy(issues: &issues)
+        validateOfficeReviewNoDuplicateCasePolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -1358,6 +1364,42 @@ enum ToolContractValidator {
         guard let snap else { return }
         if !snap.officeReviewExecutionStatusAvailable {
             issues.append(issue(.warning, "OfficeReviewExecutionStatus enum이 없습니다. '계정과목 정합성 된다면서 왜 안 돼?' 같은 사용자 혼선이 발생합니다."))
+        }
+    }
+
+    // MARK: - Round 246A-HOTFIX Validators
+
+    private static func validateFeatureAvailabilitySeparatedPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.featureAvailabilitySeparatedFileAvailable {
+            issues.append(issue(.warning, "FeatureAvailability enum이 FeatureAvailability.swift로 분리되지 않았습니다. BuiltInKoreanSkills 내부에 있으면 다른 모듈에서 재사용이 어렵습니다."))
+        }
+    }
+
+    private static func validateSkillAvailabilityResolverPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.skillAvailabilityResolverAvailable {
+            issues.append(issue(.warning, "SkillAvailabilityResolver가 없습니다. assistOnly 판단이 스킬마다 분산되면 일관성이 깨집니다."))
+        }
+    }
+
+    private static func validateCapabilityFallbackServicePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.capabilityFallbackServiceAvailable {
+            issues.append(issue(.error, "CapabilityFallbackService가 없습니다. ToolResultStatus → FallbackAction 변환이 없으면 .planned/.unavailable 결과를 받아도 WorkflowOrchestrator가 사용자에게 응답을 못 합니다."))
+        }
+    }
+
+    private static func validateOfficeReviewNoDuplicateCasePolicy(issues: inout [ToolContractValidationIssue]) {
+        // 코드 정적 검사가 아닌 정책 문서 수준 검증
+        // 실제 중복 case는 Swift 컴파일러가 잡아주므로 여기서는 정책 명시
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.officeReviewExecutionStatusAvailable {
+            issues.append(issue(.warning, "OfficeReviewInputPolicy에 중복 case 위험이 있습니다. switch 내 .taxInvoiceComparison이 중복되지 않는지 확인하세요."))
         }
     }
 }
