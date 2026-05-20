@@ -136,6 +136,18 @@ Team Composer Routing + Unread Badge + Overlay/Chrome Repair Pack
 - docs/PanelChromePolicy.md + docs/AgentMenuPresentationPolicy.md 신규
 - Preflight 12/12 통과, Debug ✅ / Release ✅
 
+#### Round 246A-HOTFIX — Implementation Cleanup (2026-05-20)
+
+main 병합 전 컴파일 위험 정리. preflight 36/36 통과.
+
+- OfficeReviewInputPolicy 중복 case 제거
+- FeatureAvailability → 독립 파일 분리 (.assistOnly/.draftOnly/.approvalBound/.hidden 추가)
+- SkillAvailabilityResolver.swift 신규 (notes "미구현" → assistOnly 자동 판단)
+- CapabilityFallbackService.swift 신규 (FallbackAction enum, ToolResultStatus → FallbackAction)
+- pbxproj 3개 신규 파일 등록
+
+---
+
 #### Round 246A-UNBLOCK — 기능 막는 요소 감사 및 해소 (2026-05-20)
 
 P0 4개, P1 6개 수정. preflight 26/26 통과. Cloud 환경 — **Mac build pending**.

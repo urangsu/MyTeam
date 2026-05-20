@@ -6,6 +6,34 @@
 
 ---
 
+## 2026-05-20 (Round 246A-HOTFIX — Implementation Cleanup Before Main Merge)
+
+### 완료 (2026-05-20)
+
+246A 병합 전 컴파일 위험 및 정책 미연결 정리. preflight 36/36 통과.
+Cloud 환경 — xcodebuild 미실행. **Mac build pending**.
+
+**OfficeReviewInputPolicy 중복 case 제거**
+`.taxInvoiceComparison, .taxInvoiceComparison` → `.taxInvoiceComparison` (중복 제거).
+
+**FeatureAvailability 분리**
+BuiltInKoreanSkills 내부 enum → `FeatureAvailability.swift` 독립 파일.
+`.assistOnly/.draftOnly/.approvalBound/.hidden` 케이스 추가.
+
+**SkillAvailabilityResolver.swift 신규**
+- notes에 "미구현" 있으면 자동으로 assistOnly
+- korean.dart / law-search / naver-* → assistOnly 명시
+- `assistOnlyMessage(for:)` 스킬별 안내 메시지
+
+**CapabilityFallbackService.swift 신규**
+- `FallbackAction` enum: directChat / draftOnly / askForFile / askForConfirmation / plannedNotice / hardBlock
+- `fallbackAction(availability:)` — FeatureAvailability → FallbackAction
+- `fallbackAction(toolResultStatus:)` — ToolResultStatus → FallbackAction (Orchestrator용)
+
+**pbxproj 등록**: FeatureAvailability, SkillAvailabilityResolver, CapabilityFallbackService
+
+---
+
 ## 2026-05-20 (Round 246A-UNBLOCK — 기능 막는 요소 감사 및 해소)
 
 ### 완료 (2026-05-20)
