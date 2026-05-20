@@ -15,10 +15,23 @@ enum AICallType: String {
     case universalDocumentRepair = "universal_document_repair"
 }
 
+// MARK: - AICallBudgetTier (Round 246A)
+// 작업 모드별 호출 예산 등급. beginSession(tier:)으로 선택.
+// 전면 라우터 연결은 246B/C — 246A는 인터페이스 추가 + 일부 limit 완화만.
+
+enum AICallBudgetTier {
+    case chatLight      // chitchat: 3회
+    case quickTask      // 빠른 workflow: 6회
+    case documentTask   // 문서 생성: 10회
+    case officeReview   // 사무 검토: 12회
+    case codeLite       // 코드 보조: 20회
+    case deepWork       // 복합 분석: 30회
+}
+
 // MARK: - AICallBudgetManager
 // 세션(사용자 요청 1건) 단위로 LLM 호출 횟수를 추적하고
 // 정책을 초과한 호출을 차단한다.
-// + Rolling window: 전체 LLM 호출 1분당 5회 초과 시 차단 (TTS 제외)
+// + Rolling window: 전체 LLM 호출 1분당 10회 초과 시 차단 (TTS 제외) [246A: 5→10 완화]
 
 @MainActor
 final class AICallBudgetManager {
@@ -29,15 +42,15 @@ final class AICallBudgetManager {
     private var counts: [AICallType: Int] = [:]
     private var sessionID: String = ""
 
-    // MARK: - 정책 (요청당 최대 허용 횟수)
+    // MARK: - 정책 (요청당 최대 허용 횟수) [246A: chitchat 2→3 완화]
     private let limits: [AICallType: Int] = [
         .intentClassify:  1,   // 파일 생성 요청에서는 0 (dispatch에서 스킵됨)
         .workflowPlan:    1,
         .workflowRepair:  1,
-        .chitchat:        2,
+        .chitchat:        3,   // 246A: 2→3 완화 (directChat fallback 경로 추가로 필요량 증가)
         .selector:        3,
         .tts:             .max,  // TTS는 횟수 제한 없음
-        .privacyTermsGen: 1,     // 개인정보처리방침·약관 생성은 요청당 1회
+        .privacyTermsGen: 1,
         .appLaunchPack:   1,
         .universalDocumentGen: 1,
         .universalDocumentRepair: 1
@@ -46,7 +59,7 @@ final class AICallBudgetManager {
     // MARK: - Rolling window (전체 LLM 호출량 분당 제한)
     private var rollingCallLog: [Date] = []
     private let rollingWindowSeconds: TimeInterval = 60
-    private let rollingWindowLimit: Int = 5  // 1분당 최대 5회 (TTS 제외)
+    private let rollingWindowLimit: Int = 10  // 246A: 5→10 완화 (실무 사무 검토 1건 = 5~7 호출)
 
     /// 마지막 차단이 rolling limit 때문이었는지 여부 (blockedMessage 분기용)
     private var lastBlockWasRolling = false
@@ -57,10 +70,15 @@ final class AICallBudgetManager {
     //    초기화하면 사용자가 연속 요청할 때마다 카운터가 리셋되어 rate limit이 무력화된다.
 
     func beginSession(id: String = UUID().uuidString) {
+        beginSession(id: id, tier: .chatLight)
+    }
+
+    // Round 246A: tier 파라미터 추가. 라우터 전면 연결은 246B/C.
+    func beginSession(id: String = UUID().uuidString, tier: AICallBudgetTier) {
         sessionID = id
         counts = [:]
         // rollingCallLog — 초기화 금지 (rolling window는 세션 경계와 독립)
-        AppLog.info("[Budget] 세션 시작: \(id)")
+        AppLog.info("[Budget] 세션 시작: \(id) tier=\(tier)")
     }
 
     // MARK: - Rolling window 체크

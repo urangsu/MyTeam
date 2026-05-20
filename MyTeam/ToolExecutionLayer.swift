@@ -89,24 +89,32 @@ enum ToolExecutionLayer {
             return ToolResult(status: .blocked, output: "", artifactPath: nil, error: msg)
         }
 
+        // Round 246A: P0-2 — typed result 반환, .blocked로 뭉개지 않음
+        // WorkflowOrchestrator가 .planned/.unavailable → directChat pivot,
+        // .approvalRequired → approval banner로 전환.
         if tool.availability != .available {
-            let (message, failureCode): (String, String)
+            let (message, failureCode, resultStatus): (String, String, ToolResultStatus)
             switch tool.availability {
             case .future:
                 message = "아직 준비 중인 도구입니다: \(toolName)"
-                failureCode = "tool_future_unavailable"
+                failureCode = "tool_future_planned"
+                resultStatus = .planned
             case .requiresApproval:
                 message = "이 도구는 승인이 필요합니다: \(toolName)"
                 failureCode = "tool_requires_approval"
+                resultStatus = .approvalRequired
             case .unavailable:
                 message = "현재 사용할 수 없는 도구입니다: \(toolName)"
                 failureCode = "tool_unavailable"
+                resultStatus = .unavailable
             case .blocked:
                 message = "이 도구는 정책상 차단되어 있습니다: \(toolName)"
                 failureCode = "tool_blocked"
+                resultStatus = .blocked
             case .available:
                 message = "실행 가능합니다."
-                failureCode = "tool_blocked"
+                failureCode = "tool_available_passthrough"
+                resultStatus = .blocked
             }
             await appendBlockedLog(
                 baseEntry: baseEntry,
@@ -115,7 +123,7 @@ enum ToolExecutionLayer {
                 effectiveRisk: effectiveRisk.rawValue,
                 failureCode: failureCode
             )
-            return ToolResult(status: .blocked, output: "", artifactPath: nil, error: message)
+            return ToolResult(status: resultStatus, output: "", artifactPath: nil, error: message)
         }
 
         let declaredRank = riskRank(declaredRisk)
@@ -134,18 +142,31 @@ enum ToolExecutionLayer {
             return ToolResult(status: .blocked, output: "", artifactPath: nil, error: message)
         }
 
-        if registryRisk == .high || registryRisk == .destructive {
-            let message = "이 작업은 안전 정책상 자동 실행하지 않습니다."
-            let failureCode = registryRisk == .destructive ? "tool_destructive_blocked" : "tool_high_risk_blocked"
+        // Round 246A: destructive → .blocked(하드), high → .approvalRequired(승인 후 재실행 가능)
+        if registryRisk == .destructive {
+            let message = "이 작업은 안전 정책상 자동 실행하지 않습니다. (삭제/파괴적 작업)"
             await appendBlockedLog(
                 baseEntry: baseEntry,
                 message: message,
                 registryRisk: registryRisk.rawValue,
                 effectiveRisk: effectiveRisk.rawValue,
-                failureCode: failureCode
+                failureCode: "tool_destructive_blocked"
             )
-            AppLog.warning("[ToolExecutionLayer] risk 차단: \(toolName) declared=\(declaredRisk.rawValue) registry=\(registryRisk.rawValue)")
+            AppLog.warning("[ToolExecutionLayer] destructive 차단: \(toolName)")
             return ToolResult(status: .blocked, output: "", artifactPath: nil, error: message)
+        }
+
+        if registryRisk == .high {
+            let message = "이 작업은 실행 전 확인이 필요합니다: \(toolName)"
+            await appendBlockedLog(
+                baseEntry: baseEntry,
+                message: message,
+                registryRisk: registryRisk.rawValue,
+                effectiveRisk: effectiveRisk.rawValue,
+                failureCode: "tool_high_risk_approval_required"
+            )
+            AppLog.warning("[ToolExecutionLayer] high-risk → approvalRequired: \(toolName)")
+            return ToolResult(status: .approvalRequired, output: "", artifactPath: nil, error: message)
         }
 
         if context.isDryRun {

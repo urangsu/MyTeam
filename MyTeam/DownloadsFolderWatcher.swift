@@ -21,6 +21,10 @@ final class DownloadsFolderWatcher: ObservableObject {
     static let shared = DownloadsFolderWatcher()
     private init() {}
 
+    // MARK: - Implementation Level (Round 246A: P1-5)
+    // FSEvents 미구현 → metadataOnly. 파일명/크기 감지만 가능.
+    let implementationLevel: ImplementationLevel = .metadataOnly
+
     // MARK: - State
 
     /// 기본 OFF — 사용자가 명시적으로 켜야 동작

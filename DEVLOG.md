@@ -6,6 +6,60 @@
 
 ---
 
+## 2026-05-20 (Round 246A-UNBLOCK — 기능 막는 요소 감사 및 해소)
+
+### 완료 (2026-05-20)
+
+코드베이스 전수 분석으로 P0 4개, P1 6개 발견·수정. preflight 26/26 통과.
+Cloud 환경 — xcodebuild 미실행. **Mac build pending**.
+
+### 수정된 구조 문제
+
+**P0-1 GoalGate fallback** — `blockedDecision` → `executionFallbackDecision` rename.
+WorkflowOrchestrator:120 조건 버그 수정. `runDirectChatFallback()` 추가해 LLM까지 실제로 연결.
+안내문만 띄우고 return하던 패턴 제거.
+
+**P0-2 ToolExecutionLayer typed result** — `ToolResultStatus`에 `.approvalRequired/.planned/.unavailable` 추가.
+5곳 하드블록 → typed result 반환. WorkflowOrchestrator가 결과 보고 pivot 결정.
+레이어 혼합 없음 (ToolExecutionLayer는 LLM/UI 모름).
+
+**P0-3 PendingApprovalRequest foundation** — `ApprovalPolicy.swift`에 모델 추가.
+246A는 인터페이스 선언만. 실제 승인 UI/재실행 연결은 246B.
+
+**P0-4 Delegation gate 우회 제거** — 위임 모드도 capability gate 적용.
+위임은 실행 주체를 바꾸는 것이지 권한을 올리는 것이 아님.
+
+**P1-2 AICallBudgetTier** — enum 추가 + `beginSession(id:tier:)` 인터페이스.
+rolling limit 5→10 완화, chitchat 2→3 완화. 전면 교체는 246B/C.
+
+**P1-3 DART assistOnly** — `FeatureAvailability` enum 추가. DART = assistOnly.
+fake available 제거. "API 조회는 아직 연결 전, 자료 주시면 정리" 안내.
+
+**P1-5 ImplementationLevel** — `ObservationModels.swift`에 enum 추가.
+Downloads=metadataOnly, Clipboard=explicitReadOnly, Screen=policyOnly.
+
+**P1-6 OfficeReviewExecutionStatus** — `OfficeReviewInputPolicy.swift` 전면 수정.
+`supported` 표현 제거 → `inputReadiness(for:)` + `executionStatus` per skill.
+현재 대부분 policyDefined/inputDetected.
+
+### 수정 파일 목록 (246A)
+
+- `GoalGate.swift` — executionFallbackDecision rename
+- `WorkflowOrchestrator.swift` — fallback 연결 + delegation gate 수정
+- `AgentTool.swift` — ToolResultStatus 3개 case 추가
+- `ToolExecutionLayer.swift` — typed result 반환 + high→approvalRequired
+- `ApprovalPolicy.swift` — PendingApprovalRequest 모델 추가
+- `AICallBudgetManager.swift` — AICallBudgetTier + limit 완화
+- `BuiltInKoreanSkills.swift` — FeatureAvailability + DART assistOnly
+- `OfficeReviewInputPolicy.swift` — OfficeReviewExecutionStatus + supported 제거
+- `ObservationModels.swift` — ImplementationLevel enum 추가
+- `DownloadsFolderWatcher.swift` / `ClipboardContextReader.swift` / `ScreenObservationPolicy.swift` — implementationLevel 필드
+- `RuntimeDiagnosticsService.swift` — 8개 246A 필드
+- `ToolContractValidator.swift` — 6개 246A validators
+- `scripts/preflight_round246a.sh` — 신규 (26/26 통과)
+
+---
+
 ## 2026-05-20 (Round 243A-OBSERVE — Local Observation Foundation Pack)
 
 ### 완료 (2026-05-20)

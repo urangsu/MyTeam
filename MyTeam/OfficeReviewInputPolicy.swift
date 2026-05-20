@@ -4,32 +4,48 @@ import Foundation
 // Round 243A-OBSERVE: 사무 검토 입력 정책 및 지원 skill 목록.
 //
 // 정책:
-// - 지원 입력: PDF, CSV, text/markdown, pasted table
+// - 입력 감지: PDF, CSV, text/markdown, pasted table
 // - 계획 입력: image, xlsx/docx/pptx (다음 라운드)
 // - 외부 write 없음
 // - 검토 결과는 artifact로 생성
+//
+// Round 246A (P1-6): "supported" 표현 제거 → OfficeReviewExecutionStatus로 단계 명시.
+// "계정과목 정합성 된다면서 왜 안 돼?" 방지.
 
 enum OfficeReviewInputPolicy {
 
-    // MARK: - Supported Inputs
+    // MARK: - Execution Status (Round 246A)
+    // 각 스킬이 현재 어느 단계까지 구현되었는지 명시.
 
-    enum InputSupport {
-        case supported     // 현재 지원
-        case planned       // 다음 라운드 예정
-        case notSupported  // 지원 안 함
+    enum OfficeReviewExecutionStatus {
+        case policyDefined     // 정책 선언·스킬 등록만, 실행 없음
+        case inputDetected     // 파일 감지 가능
+        case textExtracted     // 텍스트 추출 가능
+        case tableParsed       // 표 파싱 가능
+        case reviewGenerated   // 검토 결과 생성 가능 (LLM 기반)
+        case evidenceLinked    // 근거 위치 추적 가능
+        case exportReady       // 결과물 내보내기 가능
     }
 
-    static func inputSupport(for kind: ObservationContentKind) -> InputSupport {
+    // MARK: - Input Readiness (supported → inputReadiness로 rename)
+
+    enum InputReadiness {
+        case inputDetected   // 파일 감지·텍스트 읽기 가능 (이전 "supported")
+        case planned         // 다음 라운드 예정
+        case notSupported    // 지원 안 함
+    }
+
+    static func inputReadiness(for kind: ObservationContentKind) -> InputReadiness {
         switch kind {
-        case .pdf, .text, .markdown, .spreadsheet: return .supported
+        case .pdf, .text, .markdown, .spreadsheet: return .inputDetected
         case .image, .word, .presentation:          return .planned
-        case .code:                                 return .supported
+        case .code:                                 return .inputDetected
         case .archive, .unknown:                    return .notSupported
         }
     }
 
-    /// 현재 지원하는 입력 타입
-    static let supportedInputKinds: [ObservationContentKind] = [
+    /// 현재 inputDetected 단계인 입력 타입
+    static let detectedInputKinds: [ObservationContentKind] = [
         .pdf, .csv, .text, .markdown, .spreadsheet, .code
     ]
 
@@ -79,6 +95,20 @@ enum OfficeReviewInputPolicy {
                 return [.text, .markdown]
             case .reportTonePolish:
                 return [.text, .markdown, .word]
+            }
+        }
+
+        // Round 246A: 현재 구현 단계. 표 파싱·근거 추적 없으므로 대부분 policyDefined.
+        var executionStatus: OfficeReviewExecutionStatus {
+            switch self {
+            case .meetingActionItems, .filenameOrganization, .reportTonePolish:
+                // text-based → 텍스트 읽기 가능, LLM으로 결과 생성 가능
+                return .reviewGenerated
+            case .accountingConsistency, .vendorNameMismatch,
+                 .budgetActualAnalysis, .invoiceDescriptionAnomaly,
+                 .taxInvoiceComparison, .taxInvoiceComparison, .contractChecklist:
+                // 표 파싱·근거 위치 추적 미구현 → inputDetected 단계
+                return .inputDetected
             }
         }
     }

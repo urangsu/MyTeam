@@ -11,6 +11,18 @@ import Foundation
 // - 자동 외부 업로드 금지
 // - 자동 파일 수정/삭제 금지
 
+// MARK: - ImplementationLevel (Round 246A: P1-5)
+// 각 관찰 컴포넌트가 현재 어느 수준까지 구현되었는지 명시.
+// "기능 완료"처럼 보이는 오해 방지.
+
+enum ImplementationLevel {
+    case policyOnly        // 정책 선언만, 동작 없음
+    case skeleton          // 기초 구조, 핵심 미구현
+    case metadataOnly      // 파일명/크기만, 내용 분석 없음
+    case explicitReadOnly  // 명시 요청 시 읽기 가능
+    case runtimeAvailable  // 실제 완전 동작
+}
+
 // MARK: - ObservationSource
 
 enum ObservationSource: String, Codable, CaseIterable, Sendable {

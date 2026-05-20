@@ -115,40 +115,19 @@ final class WorkflowOrchestrator {
 
         var effectiveScopes: Set<ToolScope> = [.chatBasic]  // 항상 chatBasic 포함
 
-        // Round 241B: directChat pivot — kind == .blocked일 때만 early-return
-        // kind == .directChat이면 AI가 계속 응답 (초안/도움말 제공)
-        if let blockedDecision = GoalGate.blockedDecision(goal: interpretedGoal, capability: capabilityDecision),
-           blockedDecision.kind == .blocked,
-           !DelegatedWorkflowDetector.isDelegationRequest(userMessage) {
-            await MainActor.run {
-                manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "blocked")
-                self.recordRouteTrace(
-                    manager: manager,
-                    roomID: roomID,
-                    step: .blocked,
-                    message: blockedDecision.reason
-                )
-                self.recordTurnProfile(
-                    manager: manager,
-                    roomID: roomID,
-                    userMessage: userMessage,
-                    route: .blockedHighRiskSkill,
-                    reason: blockedDecision.reason,
-                    matchedSkills: [],
-                    effectiveScopes: effectiveScopes,
-                    expectedOutput: blockedDecision.expectedOutput,
-                    requiresApproval: true,
-                    blockedTools: capabilityDecision.blockedCapabilities.map(\.rawValue)
-                )
-                manager.addChatLog(
-                    roomID: roomID,
-                    agentID: "system",
-                    agentName: "시스템",
-                    text: blockedDecision.reason,
-                    isUser: false,
-                    isSystem: true
-                )
-            }
+        // Round 246A: P0-1 GoalGate fallback fix
+        // capability.blocked → executionFallbackDecision(.directChat) → 실제 LLM 호출
+        // 위임 모드도 capability gate 적용 (P0-4: delegation은 권한 우회 아님)
+        if let fallbackDecision = GoalGate.executionFallbackDecision(goal: interpretedGoal, capability: capabilityDecision),
+           fallbackDecision.kind == .directChat {
+            await runDirectChatFallback(
+                userMessage: userMessage,
+                roomID: roomID,
+                manager: manager,
+                reason: fallbackDecision.reason,
+                effectiveScopes: effectiveScopes,
+                blockedCapabilities: capabilityDecision.blockedCapabilities.map(\.rawValue)
+            )
             return
         }
 
@@ -1355,6 +1334,45 @@ final class WorkflowOrchestrator {
         위임모드를 종료했습니다.
         이후 작업은 다시 확인하면서 진행합니다.
         """
+    }
+
+    // Round 246A: P0-1 — capability blocked 시 LLM 응답까지 실제로 가는 fallback
+    // 안내문만 띄우고 return하면 안 됨 — TeamOrchestrator.runChitchatOnly로 LLM 호출.
+    private func runDirectChatFallback(
+        userMessage: String,
+        roomID: UUID,
+        manager: AgentWindowManager,
+        reason: String,
+        effectiveScopes: Set<ToolScope>,
+        blockedCapabilities: [String]
+    ) async {
+        await MainActor.run {
+            manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "directChatFallback")
+            self.recordRouteTrace(
+                manager: manager,
+                roomID: roomID,
+                step: .blocked,
+                message: "capability blocked → directChat fallback: \(reason)"
+            )
+            self.recordTurnProfile(
+                manager: manager,
+                roomID: roomID,
+                userMessage: userMessage,
+                route: .directChat,
+                reason: "capability_blocked_directchat_fallback",
+                matchedSkills: [],
+                effectiveScopes: effectiveScopes,
+                expectedOutput: "direct chat response with capability notice",
+                requiresApproval: false,
+                blockedTools: blockedCapabilities
+            )
+        }
+        // 실제 LLM 호출 — 초안/도움말 제공
+        await TeamOrchestrator.shared.runChitchatOnly(
+            userMessage: userMessage,
+            roomID: roomID,
+            manager: manager
+        )
     }
 
     private func handleDelegationMode(

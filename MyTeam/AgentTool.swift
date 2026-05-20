@@ -85,9 +85,13 @@ struct ToolResult: Sendable {
 enum ToolResultStatus: String, Codable, Equatable {
     case succeeded
     case failed
-    case blocked
+    case blocked         // payment/login/delete — 하드 블록 유지
     case dryRun
     case cancelled
+    // Round 246A: 세분화된 non-block 상태 — WorkflowOrchestrator가 pivot 결정
+    case approvalRequired  // 사용자 승인 후 재실행 가능
+    case planned           // availability = .future, directChat pivot
+    case unavailable       // availability = .unavailable, directChat pivot
 }
 
 // MARK: - Tool Errors

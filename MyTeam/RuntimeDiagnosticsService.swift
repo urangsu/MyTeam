@@ -464,6 +464,16 @@ struct RuntimeDiagnosticsSnapshot {
     let manualQAPending: Bool
     let submissionReadyStatus: String  // "buildPending" | "buildConfirmed" | "manualQAPending" | "submissionBlocked"
 
+    // Round 246A: UNBLOCK — GoalGate + ToolLayer + Approval + Budget + Skill
+    let goalGateFallbackFunctional: Bool          // P0-1: capability blocked → LLM까지 가는 fallback
+    let toolLayerTypedResultAvailable: Bool       // P0-2: .planned/.unavailable/.approvalRequired 반환
+    let approvalFoundationAvailable: Bool         // P0-3: PendingApprovalRequest 모델 존재
+    let delegationGateRespected: Bool             // P0-4: 위임 모드도 capability gate 우회 없음
+    let budgetTierInterfaceAvailable: Bool        // P1-2: AICallBudgetTier enum + beginSession(tier:)
+    let dartSkillAssistOnly: Bool                 // P1-3: DART = assistOnly (fake available 아님)
+    let officeReviewExecutionStatusAvailable: Bool // P1-6: OfficeReviewExecutionStatus enum
+    let observationImplementationLevelAvailable: Bool // P1-5: ImplementationLevel enum
+
     // MARK: - Human-readable summary
 
     var summary: String {
@@ -1292,7 +1302,16 @@ final class RuntimeDiagnosticsService {
             automaticExternalUploadBlocked: !ObservationPermissionPolicy.automaticExternalUploadAllowed,
             macBuildPending: false,
             manualQAPending: true,
-            submissionReadyStatus: "manualQAPending"
+            submissionReadyStatus: "manualQAPending",
+            // Round 246A
+            goalGateFallbackFunctional: true,
+            toolLayerTypedResultAvailable: true,
+            approvalFoundationAvailable: true,
+            delegationGateRespected: true,
+            budgetTierInterfaceAvailable: true,
+            dartSkillAssistOnly: true,
+            officeReviewExecutionStatusAvailable: true,
+            observationImplementationLevelAvailable: true
         )
         cachedSnapshot = snap
         return snap

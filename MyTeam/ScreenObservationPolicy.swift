@@ -12,6 +12,10 @@ import Foundation
 
 enum ScreenObservationPolicy {
 
+    // MARK: - Implementation Level (Round 246A: P1-5)
+    // 정책 선언 + stub만. 실제 캡처 구현 없음.
+    static let implementationLevel: ImplementationLevel = .policyOnly
+
     // MARK: - Hard Blocks
 
     /// 상시 화면 캡처: 절대 금지

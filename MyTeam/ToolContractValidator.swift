@@ -166,6 +166,14 @@ enum ToolContractValidator {
         // Round 245A-P0: Artifact Contract
         validateWriteTextFileArtifactPathPolicy(issues: &issues)
 
+        // Round 246A: UNBLOCK
+        validateGoalGateFallbackPolicy(issues: &issues)
+        validateToolLayerTypedResultPolicy(issues: &issues)
+        validateApprovalFoundationPolicy(issues: &issues)
+        validateDelegationGatePolicy(issues: &issues)
+        validateBudgetTierInterfacePolicy(issues: &issues)
+        validateOfficeReviewExecutionStatusPolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -1300,6 +1308,56 @@ enum ToolContractValidator {
         guard let snap else { return }
         if !snap.automaticExternalUploadBlocked {
             issues.append(issue(.error, "자동 외부 업로드가 차단되지 않았습니다. ObservationPermissionPolicy.automaticExternalUploadAllowed = false여야 합니다. 사용자 파일을 자동으로 외부 서버에 업로드하면 심각한 개인정보 침해가 발생합니다."))
+        }
+    }
+
+    // MARK: - Round 246A: UNBLOCK Validators
+
+    private static func validateGoalGateFallbackPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.goalGateFallbackFunctional {
+            issues.append(issue(.error, "GoalGate fallback이 LLM까지 연결되지 않습니다. capability blocked → runDirectChatFallback() 경로가 없으면 사용자에게 아무 응답도 없이 막히게 됩니다."))
+        }
+    }
+
+    private static func validateToolLayerTypedResultPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.toolLayerTypedResultAvailable {
+            issues.append(issue(.warning, "ToolExecutionLayer가 모든 비-성공 결과를 .blocked로 뭉개고 있습니다. .planned/.unavailable/.approvalRequired를 구분해야 WorkflowOrchestrator가 적절한 pivot을 할 수 있습니다."))
+        }
+    }
+
+    private static func validateApprovalFoundationPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.approvalFoundationAvailable {
+            issues.append(issue(.warning, "PendingApprovalRequest 모델이 없습니다. .requiresApproval 상태가 있어도 무엇을 승인하는지 불명확한 상태가 됩니다."))
+        }
+    }
+
+    private static func validateDelegationGatePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.delegationGateRespected {
+            issues.append(issue(.error, "위임 모드가 capability gate를 우회합니다. 위임은 실행 주체를 바꾸는 것이지 권한을 올리는 것이 아닙니다. blocked 작업이 '팀원한테 시켜' 패턴으로 실행될 수 있습니다."))
+        }
+    }
+
+    private static func validateBudgetTierInterfacePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.budgetTierInterfaceAvailable {
+            issues.append(issue(.warning, "AICallBudgetTier 인터페이스가 없습니다. 실무 사무 검토 1건도 rolling limit에 막힐 수 있습니다."))
+        }
+    }
+
+    private static func validateOfficeReviewExecutionStatusPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.officeReviewExecutionStatusAvailable {
+            issues.append(issue(.warning, "OfficeReviewExecutionStatus enum이 없습니다. '계정과목 정합성 된다면서 왜 안 돼?' 같은 사용자 혼선이 발생합니다."))
         }
     }
 }

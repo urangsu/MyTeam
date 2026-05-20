@@ -136,6 +136,28 @@ Team Composer Routing + Unread Badge + Overlay/Chrome Repair Pack
 - docs/PanelChromePolicy.md + docs/AgentMenuPresentationPolicy.md 신규
 - Preflight 12/12 통과, Debug ✅ / Release ✅
 
+#### Round 246A-UNBLOCK — 기능 막는 요소 감사 및 해소 (2026-05-20)
+
+P0 4개, P1 6개 수정. preflight 26/26 통과. Cloud 환경 — **Mac build pending**.
+
+**수정:**
+- GoalGate.executionFallbackDecision + WorkflowOrchestrator.runDirectChatFallback (P0-1)
+- ToolResultStatus.approvalRequired/.planned/.unavailable 추가 (P0-2)
+- PendingApprovalRequest foundation (P0-3)
+- Delegation gate 우회 제거 (P0-4)
+- AICallBudgetTier enum + rolling 5→10 완화 (P1-2)
+- FeatureAvailability + DART assistOnly (P1-3)
+- ImplementationLevel enum + observation 컴포넌트 (P1-5)
+- OfficeReviewExecutionStatus + supported 제거 (P1-6)
+
+**다음 (246B):**
+- WorkflowOrchestrator .planned/.unavailable → directChat pivot 처리
+- 실제 승인 버튼 UI + 재실행 연결
+- high-risk/disabled skill early return → directChat pivot
+- CreateGoogleSheets/Slides 중복 메시지 제거
+
+---
+
 #### Round 245A-P0 — Artifact Contract Hotfix (2026-05-20)
 
 WriteTextFileTool P0: artifactPath must return actual saved filename, not input filename

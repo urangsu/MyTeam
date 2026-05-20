@@ -21,6 +21,10 @@ struct ClipboardContextPreview: Sendable {
 
 enum ClipboardContextReader {
 
+    // MARK: - Implementation Level (Round 246A: P1-5)
+    // 명시 요청 시 텍스트 읽기 가능. 상시 감시 하드블록.
+    static let implementationLevel: ImplementationLevel = .explicitReadOnly
+
     // MARK: - Hard Block Guard
 
     /// 타이머/폴링으로 자동 읽기: 절대 금지

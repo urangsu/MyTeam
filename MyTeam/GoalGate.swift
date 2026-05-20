@@ -1,11 +1,11 @@
 import Foundation
 
 enum GoalGate {
-    // Round 241B: .blocked → .directChat pivot
-    // 외부 쓰기(메일 전송, 캘린더 생성 등)는 실행하지 않지만
-    // AI는 초안 작성·관련 도움말을 제공한다.
-    // WorkflowOrchestrator의 early-return은 kind == .blocked일 때만 동작.
-    static func blockedDecision(
+    // Round 246A: blockedDecision → executionFallbackDecision (rename)
+    // capability가 blocked일 때 .directChat을 반환해 LLM이 초안/도움말을 제공하게 한다.
+    // WorkflowOrchestrator는 이 결과를 받아 runDirectChatFallback()으로 실제 LLM을 호출해야 한다.
+    // 안내문만 띄우고 return하면 안 됨 — LLM까지 가야 함.
+    static func executionFallbackDecision(
         goal: GoalInterpretation,
         capability: CapabilityRouteDecision
     ) -> RouteDecision? {

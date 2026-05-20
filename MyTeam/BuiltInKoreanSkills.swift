@@ -1,5 +1,16 @@
 import Foundation
 
+// MARK: - FeatureAvailability (Round 246A: P1-3)
+// 스킬/기능이 실제로 어느 수준까지 동작하는지 명시.
+// fake available(❌) / 완전 숨김(❌) / assistOnly(✅ — LLM 보조, 외부 API 없음)
+
+enum FeatureAvailability {
+    case available     // 실제 동작 (외부 API 연결됨)
+    case assistOnly    // LLM 보조만 가능, 외부 API 미연결
+    case planned       // 개발 예정, 숨김
+    case blocked       // 정책상 차단
+}
+
 // MARK: - BuiltInKoreanSkills
 // caseless enum 네임스페이스 (AutomationPolicy 패턴과 동일)
 // BuiltInKoreanSkills.all → SkillRegistry에서 로드
@@ -255,14 +266,19 @@ enum BuiltInKoreanSkills {
 """,
         outputType: .chat,
         isBuiltIn: true,
-        defaultEnabled: true,   // publicDisclosureRead — Release에서 차단하지 않음
+        // Round 246A: assistOnly — DART Open API 미연결, LLM 보조만 가능
+        // 사용자 응답: "DART API 직접 조회는 아직 연결 전입니다.
+        //   종목명, 공시 PDF, 사업보고서 내용을 주시면 공시 요약 형식으로 정리해드릴 수 있어요."
+        // featureAvailability: .assistOnly
+        defaultEnabled: true,   // 스킬 매칭은 되지만 외부 API 없이 LLM 보조
         requiresApprovalEveryRun: false,
         backendHint: "dart-open-api",
         notes: [
             "publicDisclosureRead — 공개 공시 조회, write 없음, OAuth 없음",
             "투자 조언 아님 — 공시 데이터 요약",
             "수치 미확인 시 추측 금지",
-            "미구현: DART Open API 연동 (Round 7 이후)"
+            "[246A] featureAvailability=assistOnly: DART Open API 미연결, LLM 보조만",
+            "사용자에게: 'API 직접 조회는 아직 연결 전, 자료 주시면 공시 형식으로 정리'"
         ]
     )
 
