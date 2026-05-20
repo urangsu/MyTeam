@@ -113,6 +113,23 @@ Team Composer Routing + Unread Badge + Overlay/Chrome Repair Pack
 - docs/PanelChromePolicy.md + docs/AgentMenuPresentationPolicy.md 신규
 - Preflight 12/12 통과, Debug ✅ / Release ✅
 
+#### Round 245A-P0 — Artifact Contract Hotfix (2026-05-20)
+
+WriteTextFileTool P0: artifactPath must return actual saved filename, not input filename
+
+**수정:**
+- `WriteTextFileTool.swift`: `artifactPath: filename` → `artifactPath: url.lastPathComponent`
+- Summary도 실제 저장된 파일명 기준으로 수정
+
+**검증:**
+- `ToolContractValidator.swift`: `validateWriteTextFileArtifactPathPolicy()` 추가
+- `scripts/preflight_artifact_contract_round245a.sh` 신규 (6/6 통과)
+- `docs/ArtifactContractPolicy.md` 신규
+
+**문제:** 입력 filename = "document.md" → 실제 저장 = "document-20260520-0012.md"일 때, artifactPath가 "document.md"를 반환하면 RecentArtifactResolver, ArtifactCardView가 잘못된 파일 참고.
+
+**결과:** Preflight ✅ — P0 즉시 수정 완료.
+
 #### Round 241B-COREVERIFY — 완료 (2026-05-19)
 
 Personal Conversation Map + GoalGate Pivot + BYOK Fix

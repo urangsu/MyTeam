@@ -6,6 +6,48 @@
 
 ---
 
+## 2026-05-20 (Round 245A-P0 — Artifact Contract Hotfix)
+
+### 발견 이슈 (GitHub 직접 확인)
+
+WriteTextFileTool에 P0 버그 발견:
+- artifactPath에 입력 filename을 반환
+- 실제 저장된 파일명(safeWritableWorkspaceURL로 rename된 이름)을 무시
+- 예: 입력 "report.md" → 실제 저장 "report-20260520-0012.md" → artifactPath는 여전히 "report.md"
+- 결과: RecentArtifactResolver, ArtifactCardView가 wrong file 참고 가능
+
+### 수정 (2026-05-20)
+
+**WriteTextFileTool.swift:**
+```swift
+let url = try safeWritableWorkspaceURL(filename: filename, context: context)
+try content.write(to: url, atomically: true, encoding: .utf8)
+let savedFilename = url.lastPathComponent  // Extract actual saved filename
+let summary = "\(savedFilename) 저장 완료 (\(content.count)자)"
+return ToolResult(status: .succeeded, output: summary, artifactPath: savedFilename, error: nil)
+```
+
+**ToolContractValidator.swift:**
+- `validateWriteTextFileArtifactPathPolicy()` 추가
+- `artifactPath: filename` 패턴 검사 → error if found
+- `savedFilename` 패턴 존재 확인
+
+**신규 문서:**
+- `docs/ArtifactContractPolicy.md`: artifact path contract 정책 문서
+
+**Preflight:**
+- `scripts/preflight_artifact_contract_round245a.sh` 신규
+- 6/6 체크 통과
+
+### 원칙 정립
+
+ToolResult.artifactPath는 **입력 filename 추정값이 아니라 실제 저장된 파일명**이어야 함:
+- filename collision 시 safeWritableWorkspaceURL가 rename → artifactPath는 실제 파일명 반영
+- 다운스트림 컨슈머(RecentArtifactResolver, ArtifactCardView, FirstResultActivation)가 올바른 파일 참고
+- summary도 실제 저장된 파일명 기준
+
+---
+
 ## 2026-05-20 (Round 244A-MEMORY — Memory Scope + User Preference + Procedural Learning Foundation)
 
 ### 완료 (2026-05-20)
