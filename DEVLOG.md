@@ -6,6 +6,51 @@
 
 ---
 
+## 2026-05-20 (Round 243A-OBSERVE — Local Observation Foundation Pack)
+
+### 완료 (2026-05-20)
+
+사용자 실제 업무 자료를 읽어오는 관찰 계층 구축.
+파일 드롭, 다운로드 폴더 감지, 클립보드, Finder 선택, 화면 정책, 사무 검토 입력 지원.
+Cloud 환경 — xcodebuild 미실행. **Mac build pending**.
+
+### 신규 Swift 파일 (9개)
+
+- `ObservationModels.swift` — LocalObservation, ObservationSource, ObservationStatus, ObservationContentKind
+- `ObservationPermissionPolicy.swift` — source별 정책, hard blocks (클립보드 상시감시/화면상시캡처/자동업로드 금지)
+- `LocalObservationService.swift` — room-scoped observation 저장소, pending attach 경로
+- `DownloadsFolderWatcher.swift` — 기본 OFF, 메타데이터만, FSEvents skeleton
+- `ClipboardContextReader.swift` — 명시 요청만, credentialLike 차단
+- `FinderSelectionReader.swift` — skeleton, 실패 시 "끌어다 놓기" fallback
+- `ScreenObservationPolicy.swift` — 상시 캡처 하드블록, planned stub
+- `FileIntakeEventCardView.swift` — observation 카드 UI (이 방에서 분석/무시)
+- `OfficeReviewInputPolicy.swift` — 9개 사무 검토 skill 정의, 결과 카드 구조
+
+### 기존 파일 수정
+
+- `AgentWindowManager.swift` — observationService 참조, attachPendingObservation 헬퍼
+- `RouterBurnInSuite.swift` — 11개 observation burn-in case
+- `RuntimeDiagnosticsService.swift` — 11개 observation 상태 필드
+- `ToolContractValidator.swift` — 6개 observation validator
+
+### 문서 신규
+
+- `docs/ObservationLayerPolicy.md`, `docs/DownloadsWatcherPolicy.md`
+- `docs/ScreenObservationPolicy.md`, `docs/OfficeReviewInputPolicy.md`
+- `docs/ProductDirection.md`
+
+### pbxproj
+
+Python plistlib으로 14개 파일(244A 5개 + 243A 9개) 직접 등록.
+xcodeproj gem은 fileEncoding Integer 버그로 사용 불가. `scripts/mac_register_round243a_files.rb` (Mac 로컬에서 실행 가능).
+
+### 검증
+
+preflight_observation_round243a.sh: **14/14 ✅**
+xcodebuild: Cloud 환경 미실행 — **Mac build pending**
+
+---
+
 ## 2026-05-20 (Round 245A-P0 — Artifact Contract Hotfix)
 
 ### 발견 이슈 (GitHub 직접 확인)
