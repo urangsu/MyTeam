@@ -21,6 +21,22 @@ enum ImplementationLevel {
     case metadataOnly      // 파일명/크기만, 내용 분석 없음
     case explicitReadOnly  // 명시 요청 시 읽기 가능
     case runtimeAvailable  // 실제 완전 동작
+
+    // Round 246B: 사용자에게 정직하게 보여줄 상태 문자열
+    var userFacingStatus: String {
+        switch self {
+        case .policyOnly:
+            return "이 기능은 정책이 정의되어 있지만 아직 동작하지 않습니다."
+        case .skeleton:
+            return "이 기능은 기초 구조만 있고 핵심 동작은 아직 구현되지 않았습니다."
+        case .metadataOnly:
+            return "이 기능은 파일명과 크기 정보만 확인할 수 있습니다. 파일 내용 분석은 아직 지원하지 않습니다."
+        case .explicitReadOnly:
+            return "명시적으로 요청하신 경우에만 내용을 읽을 수 있습니다. 상시 감시는 하지 않습니다."
+        case .runtimeAvailable:
+            return "사용 가능합니다."
+        }
+    }
 }
 
 // MARK: - ObservationSource

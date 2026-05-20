@@ -478,6 +478,21 @@ struct RuntimeDiagnosticsSnapshot {
     let skillAvailabilityResolverAvailable: Bool          // SkillAvailabilityResolver.swift 존재
     let capabilityFallbackServiceAvailable: Bool          // CapabilityFallbackService.swift 존재
 
+    // Round 246B: ACTION — Approval Banner + Fallback Execution Wiring
+    let approvalStoreAvailable: Bool                      // PendingApprovalStore.shared 존재
+    let approvalBannerViewAvailable: Bool                 // PendingApprovalBannerView 정의 존재
+    let approvalCardViewAvailable: Bool                   // ApprovalRequiredCardView 정의 존재
+    let toolResultPresentationPolicyAvailable: Bool       // ToolResultPresentationPolicy 정의 존재
+    let assistOnlySkillDetectionWired: Bool               // Orchestrator에서 assistOnly 스킬 감지 후 directChat
+    let highRiskSkillFallbackWired: Bool                  // Orchestrator에서 high-risk → directChat fallback
+    let disabledSkillFallbackWired: Bool                  // Orchestrator에서 disabled skill → CapabilityFallbackService
+    let workflowTypedStatusHandled: Bool                  // WorkflowEngine → WorkflowResult typed 상태 전파
+    let approvalRequiredAutoRegistered: Bool              // WorkflowResult.approvalRequired → addPendingApproval 연결
+    let plannedStepFallbackWired: Bool                    // WorkflowResult.plannedMessages → directChat fallback
+    let unavailableStepFallbackWired: Bool                // WorkflowResult.unavailableMessages → directChat fallback
+    let officeReviewAssistOnlyUxAvailable: Bool           // OfficeReviewInputPolicy assistOnly UX 메시지
+    let observationImplLevelUxAvailable: Bool             // ImplementationLevel.userFacingStatus 존재
+
     // MARK: - Human-readable summary
 
     var summary: String {
@@ -607,6 +622,8 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("sprite234: intakeFolder=\(spriteAssetFolderAvailable) chikoRuntime=\(chikoSpriteFolderAvailable) readme=\(chikoSpriteReadmeAvailable) validator=\(spriteValidatorAvailable) manifest=\(characterSpriteManifestAvailable) states=\(chikoRequiredSpriteStatesDocumented) nextAction=\(beginnerExampleNextActionsAvailable) recovery=\(friendlyRecoveryActionsAvailable)")
         lines.append("ui235: tokens=\(chatReadabilityTokensAvailable ? "✅" : "❌") placeholder=\(inputPlaceholderReadable ? "✅" : "❌") agentSwitch=\(agentChatSwitchingAvailable ? "✅" : "❌") overlays=\(decorativeOverlaysNonBlocking ? "✅" : "❌") cards=\(beginnerCardsReadable ? "✅" : "❌")")
         lines.append("room236: rename=\(roomRenameAvailable ? "✅" : "❌") scoped=\(roomScopedMessagesAvailable ? "✅" : "❌") purpose=\(roomPurposeInferenceAvailable ? "✅" : "❌") blogSrc=\(blogSourceCommandAvailable ? "✅" : "❌") blogProf=\(blogProfileCommandAvailable ? "✅" : "❌") profileScoped=\(blogStyleProfileRoomScoped ? "✅" : "❌") inventory=\(connectorImplementationInventoryAvailable ? "✅" : "❌") readiness=\(connectorReadinessPlanAvailable ? "✅" : "❌") polite=\(userFacingCopyPolite ? "✅" : "❌")")
+        lines.append("unblock246a: goalGateFallback=\(goalGateFallbackFunctional) toolTyped=\(toolLayerTypedResultAvailable) approvalFoundation=\(approvalFoundationAvailable) delegationGate=\(delegationGateRespected) budgetTier=\(budgetTierInterfaceAvailable) dartAssistOnly=\(dartSkillAssistOnly) officeReviewStatus=\(officeReviewExecutionStatusAvailable) observeLevel=\(observationImplementationLevelAvailable) featureFile=\(featureAvailabilitySeparatedFileAvailable) skillResolver=\(skillAvailabilityResolverAvailable) fallbackSvc=\(capabilityFallbackServiceAvailable)")
+        lines.append("action246b: approvalStore=\(approvalStoreAvailable) banner=\(approvalBannerViewAvailable) card=\(approvalCardViewAvailable) presentationPolicy=\(toolResultPresentationPolicyAvailable) assistOnly=\(assistOnlySkillDetectionWired) highRisk=\(highRiskSkillFallbackWired) disabled=\(disabledSkillFallbackWired) workflowTyped=\(workflowTypedStatusHandled) autoApproval=\(approvalRequiredAutoRegistered) planned=\(plannedStepFallbackWired) unavail=\(unavailableStepFallbackWired) officeUX=\(officeReviewAssistOnlyUxAvailable) observeUX=\(observationImplLevelUxAvailable)")
 
         return lines.joined(separator: "\n  ")
     }
@@ -1319,7 +1336,21 @@ final class RuntimeDiagnosticsService {
             // Round 246A-HOTFIX
             featureAvailabilitySeparatedFileAvailable: true,
             skillAvailabilityResolverAvailable: true,
-            capabilityFallbackServiceAvailable: true
+            capabilityFallbackServiceAvailable: true,
+            // Round 246B: ACTION
+            approvalStoreAvailable: true,
+            approvalBannerViewAvailable: true,
+            approvalCardViewAvailable: true,
+            toolResultPresentationPolicyAvailable: true,
+            assistOnlySkillDetectionWired: true,
+            highRiskSkillFallbackWired: true,
+            disabledSkillFallbackWired: true,
+            workflowTypedStatusHandled: true,
+            approvalRequiredAutoRegistered: true,
+            plannedStepFallbackWired: true,
+            unavailableStepFallbackWired: true,
+            officeReviewAssistOnlyUxAvailable: true,
+            observationImplLevelUxAvailable: true
         )
         cachedSnapshot = snap
         return snap

@@ -136,6 +136,28 @@ Team Composer Routing + Unread Badge + Overlay/Chrome Repair Pack
 - docs/PanelChromePolicy.md + docs/AgentMenuPresentationPolicy.md 신규
 - Preflight 12/12 통과, Debug ✅ / Release ✅
 
+#### Round 246B-ACTION — Approval Banner + Fallback Execution Wiring (2026-05-20)
+
+기능을 막지 말고 위험한 실행만 막는다. preflight 40/40 통과. Cloud — **Mac build pending**.
+
+**신규 파일:** PendingApprovalStore, ApprovalRequiredCardView, PendingApprovalBannerView, ToolResultPresentationPolicy
+
+**WorkflowResult 타입 전파:** approvalRequiredRequests / plannedStepMessages / unavailableStepMessages
+**WorkflowEngine:** .approvalRequired → PendingApprovalRequest 생성; .planned/.unavailable → 메시지 수집
+**WorkflowOrchestrator:** approval 자동 등록 + planned/unavailable → directChat fallback
+**OfficeReview UX:** noFileProvidedMessage + executionStatusMessage
+**ObservationModels:** ImplementationLevel.userFacingStatus
+**RuntimeDiagnostics:** 246B 필드 13개 + ToolContractValidator 12개 validator
+**docs:** ApprovalUXPolicy.md, FallbackExecutionPolicy.md, AssistOnlySkillUXPolicy.md
+
+**다음 (246C):**
+- ApprovalRequiredCardView "승인 대기 등록" → 실제 재실행 (`executeApproved(requestID:)`)
+- CreateGoogleSheets/Slides 중복 메시지 제거 (P1-4)
+- AICallBudgetTier 라우터 전면 연결
+- WorkflowOrchestrator P1-1 high-risk/disabled → directChat (추가 개선)
+
+---
+
 #### Round 246A-HOTFIX — Implementation Cleanup (2026-05-20)
 
 main 병합 전 컴파일 위험 정리. preflight 36/36 통과.

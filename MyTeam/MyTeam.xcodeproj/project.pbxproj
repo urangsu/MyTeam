@@ -10695,6 +10695,10 @@
 				<string>48B144A424C877845BBC64E0</string>
 				<string>4871CFE46DE776DB8F43BF58</string>
 				<string>15C01F4F58E2583AAA68C86E</string>
+				<string>23DDC86B82E24630AC9AA935</string>
+				<string>B47FE984B47448C9A0EDB20F</string>
+				<string>6A7931BA910543EDB4D19B1E</string>
+				<string>32AD2A13B57647AA8DE70A36</string>
 			</array>
 			<key>isa</key>
 			<string>PBXGroup</string>
@@ -11088,6 +11092,10 @@
 				<string>B063F2E1E88046EA9D922B21</string>
 				<string>03BC352B76A546E7BADF3EC2</string>
 				<string>49A4830F1780480E986B3CB1</string>
+				<string>B4E4E73A5C6640138641702A</string>
+				<string>1BEDC55EF4A84771B5C3F389</string>
+				<string>574DD44716B24254B87592F2</string>
+				<string>477F5B62D3B74227A45DE447</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -22539,6 +22547,78 @@
 			<string>PBXBuildFile</string>
 			<key>fileRef</key>
 			<string>2D5A427D5D1346C7B9E8E66F</string>
+		</dict>
+		<key>23DDC86B82E24630AC9AA935</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>PendingApprovalStore.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>B4E4E73A5C6640138641702A</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>23DDC86B82E24630AC9AA935</string>
+		</dict>
+		<key>B47FE984B47448C9A0EDB20F</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>ApprovalRequiredCardView.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>1BEDC55EF4A84771B5C3F389</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>B47FE984B47448C9A0EDB20F</string>
+		</dict>
+		<key>6A7931BA910543EDB4D19B1E</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>PendingApprovalBannerView.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>574DD44716B24254B87592F2</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>6A7931BA910543EDB4D19B1E</string>
+		</dict>
+		<key>32AD2A13B57647AA8DE70A36</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>ToolResultPresentationPolicy.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>477F5B62D3B74227A45DE447</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>32AD2A13B57647AA8DE70A36</string>
 		</dict>
 	</dict>
 	<key>rootObject</key>

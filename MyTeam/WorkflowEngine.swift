@@ -13,6 +13,10 @@ final class WorkflowEngine {
     func run(plan: WorkflowPlan, context: ToolExecutionContext, allowedScopes: Set<ToolScope> = [.chatBasic, .artifactGeneration]) async -> WorkflowResult {
         var artifacts: [Artifact] = []
         var failedSteps: [(step: WorkflowStep, error: String)] = []
+        // Round 246B: typed ToolResult 상태 수집
+        var approvalRequiredRequests: [PendingApprovalRequest] = []
+        var plannedStepMessages: [String] = []
+        var unavailableStepMessages: [String] = []
         let sessionID = context.sessionID
         let workflowID = context.workflowID
         let roomID = context.roomID
@@ -95,26 +99,77 @@ final class WorkflowEngine {
                 }
             } else {
                 let rawErr = result.error ?? "알 수 없는 오류"
-                let friendlyErr = friendlyError(rawErr, step: executedStep)
-                failedSteps.append((step: executedStep, error: friendlyErr))
 
-                // ── step 실패 기록 ──
-                await MainActor.run {
-                    WorkflowRunStore.shared.updateStep(workflowID: workflowID, stepID: executedStep.id) { rec in
-                        rec.status = .failed
-                        rec.endedAt = Date()
-                        rec.errorMessage = rawErr
+                // Round 246B: .approvalRequired / .planned / .unavailable → typed 수집 (failedSteps에 넣지 않음)
+                switch result.status {
+                case .approvalRequired:
+                    let approvalRequest = PendingApprovalRequest(
+                        id: UUID(),
+                        roomID: roomID,
+                        toolName: executedStep.toolName,
+                        input: executedStep.input,
+                        riskLevel: executedStep.riskLevel,
+                        reason: rawErr.isEmpty
+                            ? "이 작업은 실행 전 확인이 필요합니다: \(executedStep.toolName)"
+                            : rawErr,
+                        createdAt: Date(),
+                        expiresAt: Calendar.current.date(byAdding: .hour, value: 24, to: Date()),
+                        status: .pending
+                    )
+                    approvalRequiredRequests.append(approvalRequest)
+                    AppLog.info("[WorkflowEngine] approvalRequired: '\(executedStep.title)'")
+                    await AgentEventBus.shared.publish(.toolCallFinished(workflowID: workflowID, stepID: executedStep.id,
+                                                                         toolName: executedStep.toolName, durationMs: durationMs, success: false))
+                    // isRequired step이면 후속 step 실행 중단 (승인 대기)
+                    if executedStep.isRequired {
+                        AppLog.info("[WorkflowEngine] 필수 단계 승인 필요 → 중단: '\(executedStep.title)'")
+                        break
                     }
-                    WorkflowRunStore.shared.recordError(workflowID: workflowID, stepID: executedStep.id, message: rawErr)
-                }
-                await AgentEventBus.shared.publish(.toolCallFinished(workflowID: workflowID, stepID: executedStep.id,
-                                                                     toolName: executedStep.toolName, durationMs: durationMs, success: false))
+                    continue
 
-                if executedStep.isRequired {
-                    AppLog.error("[WorkflowEngine] 필수 단계 실패 → 중단: '\(executedStep.title)' — \(rawErr)")
-                    break
-                } else {
-                    AppLog.warning("[WorkflowEngine] 선택 단계 실패 → 계속: '\(executedStep.title)' — \(rawErr)")
+                case .planned:
+                    let msg = rawErr.isEmpty
+                        ? "'\(executedStep.title)' 기능은 아직 준비 중입니다."
+                        : rawErr
+                    plannedStepMessages.append(msg)
+                    AppLog.info("[WorkflowEngine] planned: '\(executedStep.title)'")
+                    await AgentEventBus.shared.publish(.toolCallFinished(workflowID: workflowID, stepID: executedStep.id,
+                                                                         toolName: executedStep.toolName, durationMs: durationMs, success: false))
+                    if executedStep.isRequired { break } else { continue }
+
+                case .unavailable:
+                    let msg = rawErr.isEmpty
+                        ? "'\(executedStep.title)' 기능은 현재 사용할 수 없습니다."
+                        : rawErr
+                    unavailableStepMessages.append(msg)
+                    AppLog.info("[WorkflowEngine] unavailable: '\(executedStep.title)'")
+                    await AgentEventBus.shared.publish(.toolCallFinished(workflowID: workflowID, stepID: executedStep.id,
+                                                                         toolName: executedStep.toolName, durationMs: durationMs, success: false))
+                    if executedStep.isRequired { break } else { continue }
+
+                default:
+                    // .failed / .blocked / .cancelled → 기존 failedSteps 처리
+                    let friendlyErr = friendlyError(rawErr, step: executedStep)
+                    failedSteps.append((step: executedStep, error: friendlyErr))
+
+                    // ── step 실패 기록 ──
+                    await MainActor.run {
+                        WorkflowRunStore.shared.updateStep(workflowID: workflowID, stepID: executedStep.id) { rec in
+                            rec.status = .failed
+                            rec.endedAt = Date()
+                            rec.errorMessage = rawErr
+                        }
+                        WorkflowRunStore.shared.recordError(workflowID: workflowID, stepID: executedStep.id, message: rawErr)
+                    }
+                    await AgentEventBus.shared.publish(.toolCallFinished(workflowID: workflowID, stepID: executedStep.id,
+                                                                         toolName: executedStep.toolName, durationMs: durationMs, success: false))
+
+                    if executedStep.isRequired {
+                        AppLog.error("[WorkflowEngine] 필수 단계 실패 → 중단: '\(executedStep.title)' — \(rawErr)")
+                        break
+                    } else {
+                        AppLog.warning("[WorkflowEngine] 선택 단계 실패 → 계속: '\(executedStep.title)' — \(rawErr)")
+                    }
                 }
             }
         }
@@ -138,8 +193,16 @@ final class WorkflowEngine {
 
         let summary = buildSummary(plan: plan, artifacts: artifacts,
                                    failedSteps: failedSteps, workspaceURL: workspaceURL)
-        AppLog.info("[WorkflowEngine] 완료: \(artifacts.count)개 artifact, \(failedSteps.count)개 실패")
-        return WorkflowResult(plan: plan, artifacts: artifacts, failedSteps: failedSteps, summary: summary)
+        AppLog.info("[WorkflowEngine] 완료: \(artifacts.count)개 artifact, \(failedSteps.count)개 실패, \(approvalRequiredRequests.count)개 승인대기")
+        return WorkflowResult(
+            plan: plan,
+            artifacts: artifacts,
+            failedSteps: failedSteps,
+            summary: summary,
+            approvalRequiredRequests: approvalRequiredRequests,
+            plannedStepMessages: plannedStepMessages,
+            unavailableStepMessages: unavailableStepMessages
+        )
     }
 
     // MARK: - Summary builder

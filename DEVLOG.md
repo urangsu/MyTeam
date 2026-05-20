@@ -6,6 +6,59 @@
 
 ---
 
+## 2026-05-20 (Round 246B-ACTION — Approval Banner + Fallback Execution Wiring)
+
+### 완료 (2026-05-20)
+
+기능을 막지 말고 위험한 실행만 막는다. 246A 기반 위에 사용자 경험 연결.
+preflight 40/40 통과. Cloud 환경 — xcodebuild 미실행. **Mac build pending**.
+
+**PendingApprovalStore.swift** (신규)
+- room-scoped approval 관리. `add / pendingRequests / approve / reject / expireOldRequests`
+- `AgentWindowManager`에 `addPendingApproval / pendingApprovals / approvePendingApproval / rejectPendingApproval` 위임
+
+**ApprovalRequiredCardView.swift** (신규)
+- 승인 필요 작업 표시 카드. `riskLevel` 별 색상/아이콘
+- 버튼: "초안만 보기"(draft-only) / "취소" / "승인 대기 등록"
+- 246B 제약: 상태 변경만, 실제 재실행은 246C에서 연결
+
+**PendingApprovalBannerView.swift** (신규)
+- composer 위 배너, pending 건수 표시, 클릭 시 카드 펼침
+- `approvalDraftOnlyRequested` Notification으로 draft-only 요청 전파
+
+**ToolResultPresentationPolicy.swift** (신규)
+- `ToolResultPresentation` enum: normalMessage / approvalRequired / plannedNotice / unavailableNotice / hardBlock / fallbackDirectChat
+- `ToolResultPresentationPolicy.presentation(for:)` — status → 사용자 UX 매핑
+- `plannedFallbackMessage`, `unavailableFallbackMessage` 등 표준 문자열
+
+**WorkflowResult typed status 전파** (WorkflowModels.swift + WorkflowEngine.swift)
+- `approvalRequiredRequests: [PendingApprovalRequest]` 필드 추가
+- `plannedStepMessages: [String]`, `unavailableStepMessages: [String]` 필드 추가
+- WorkflowEngine: `.approvalRequired` → PendingApprovalRequest 생성; `.planned`/`.unavailable` → 메시지 수집
+
+**WorkflowOrchestrator 후처리 연결**
+- `approvalRequiredRequests` → `manager.addPendingApproval()` 자동 등록
+- `plannedStepMessages` → `runDirectChatFallback()` (초안 제공)
+- `unavailableStepMessages` → `runDirectChatFallback()` (자료 받아 도움)
+- capabilityGateNotice 메시지 → `ToolResultPresentationPolicy` 표준 문자열로 통일
+
+**OfficeReview assistOnly UX** (OfficeReviewInputPolicy.swift)
+- `noFileProvidedMessage`: "검토할 파일을 올려주세요..."
+- `executionStatusMessage(for:)`: executionStatus 단계별 정직한 안내
+
+**ImplementationLevel UX** (ObservationModels.swift)
+- `userFacingStatus: String` 계산 프로퍼티 추가
+
+**RuntimeDiagnosticsSnapshot 246B 필드 13개** + **ToolContractValidator 12개 validator** 추가
+
+**docs 신규:** ApprovalUXPolicy.md, FallbackExecutionPolicy.md, AssistOnlySkillUXPolicy.md
+
+**pbxproj 등록:** PendingApprovalStore, ApprovalRequiredCardView, PendingApprovalBannerView, ToolResultPresentationPolicy
+
+**scripts/preflight_round246b.sh** (신규, 40개 체크)
+
+---
+
 ## 2026-05-20 (Round 246A-HOTFIX — Implementation Cleanup Before Main Merge)
 
 ### 완료 (2026-05-20)

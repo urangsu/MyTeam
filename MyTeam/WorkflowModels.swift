@@ -73,4 +73,26 @@ struct WorkflowResult {
     let artifacts: [Artifact]
     let failedSteps: [(step: WorkflowStep, error: String)]
     let summary: String
+    // Round 246B: typed ToolResult 상태 전파
+    let approvalRequiredRequests: [PendingApprovalRequest]  // .approvalRequired step → PendingApprovalRequest 목록
+    let plannedStepMessages: [String]                       // .planned step → 사용자 안내 문자열 목록
+    let unavailableStepMessages: [String]                   // .unavailable step → 사용자 안내 문자열 목록
+
+    init(
+        plan: WorkflowPlan,
+        artifacts: [Artifact],
+        failedSteps: [(step: WorkflowStep, error: String)],
+        summary: String,
+        approvalRequiredRequests: [PendingApprovalRequest] = [],
+        plannedStepMessages: [String] = [],
+        unavailableStepMessages: [String] = []
+    ) {
+        self.plan = plan
+        self.artifacts = artifacts
+        self.failedSteps = failedSteps
+        self.summary = summary
+        self.approvalRequiredRequests = approvalRequiredRequests
+        self.plannedStepMessages = plannedStepMessages
+        self.unavailableStepMessages = unavailableStepMessages
+    }
 }

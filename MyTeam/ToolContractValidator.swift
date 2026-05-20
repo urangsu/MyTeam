@@ -180,6 +180,20 @@ enum ToolContractValidator {
         validateCapabilityFallbackServicePolicy(issues: &issues)
         validateOfficeReviewNoDuplicateCasePolicy(issues: &issues)
 
+        // Round 246B: ACTION
+        validateApprovalStoreAvailablePolicy(issues: &issues)
+        validateApprovalBannerViewPolicy(issues: &issues)
+        validateToolResultPresentationPolicyAvailable(issues: &issues)
+        validateAssistOnlySkillDetectionWiredPolicy(issues: &issues)
+        validateHighRiskSkillFallbackWiredPolicy(issues: &issues)
+        validateDisabledSkillFallbackWiredPolicy(issues: &issues)
+        validateWorkflowTypedStatusHandledPolicy(issues: &issues)
+        validateApprovalRequiredAutoRegisteredPolicy(issues: &issues)
+        validatePlannedStepFallbackWiredPolicy(issues: &issues)
+        validateUnavailableStepFallbackWiredPolicy(issues: &issues)
+        validateOfficeReviewAssistOnlyUxPolicy(issues: &issues)
+        validateObservationImplLevelUxPolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -1400,6 +1414,107 @@ enum ToolContractValidator {
         guard let snap else { return }
         if !snap.officeReviewExecutionStatusAvailable {
             issues.append(issue(.warning, "OfficeReviewInputPolicy에 중복 case 위험이 있습니다. switch 내 .taxInvoiceComparison이 중복되지 않는지 확인하세요."))
+        }
+    }
+
+    // MARK: - Round 246B: ACTION Validators
+
+    private static func validateApprovalStoreAvailablePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.approvalStoreAvailable {
+            issues.append(issue(.error, "PendingApprovalStore가 없습니다. approvalRequired ToolResult를 처리하려면 room-scoped approval store가 필요합니다."))
+        }
+    }
+
+    private static func validateApprovalBannerViewPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.approvalBannerViewAvailable {
+            issues.append(issue(.warning, "PendingApprovalBannerView가 없습니다. 사용자가 pending approval을 확인할 UI 진입점이 없습니다."))
+        }
+        if !snap.approvalCardViewAvailable {
+            issues.append(issue(.warning, "ApprovalRequiredCardView가 없습니다. 승인 요청 상세 카드를 표시할 수 없습니다."))
+        }
+    }
+
+    private static func validateToolResultPresentationPolicyAvailable(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.toolResultPresentationPolicyAvailable {
+            issues.append(issue(.error, "ToolResultPresentationPolicy가 없습니다. ToolResult.status → 사용자 경험 매핑이 없으면 상태별 UX가 일관되지 않습니다."))
+        }
+    }
+
+    private static func validateAssistOnlySkillDetectionWiredPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.assistOnlySkillDetectionWired {
+            issues.append(issue(.error, "Orchestrator에서 assistOnly 스킬 감지가 연결되지 않았습니다. DART 등 API 미구현 스킬이 실제 실행을 시도할 수 있습니다."))
+        }
+    }
+
+    private static func validateHighRiskSkillFallbackWiredPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.highRiskSkillFallbackWired {
+            issues.append(issue(.error, "High-risk 스킬 → directChat fallback이 연결되지 않았습니다. 위험 작업이 아무 안내 없이 실행될 수 있습니다."))
+        }
+    }
+
+    private static func validateDisabledSkillFallbackWiredPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.disabledSkillFallbackWired {
+            issues.append(issue(.error, "Disabled 스킬 → CapabilityFallbackService 연결이 없습니다. 비활성 스킬 요청 시 사용자가 아무 응답도 받지 못합니다."))
+        }
+    }
+
+    private static func validateWorkflowTypedStatusHandledPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.workflowTypedStatusHandled {
+            issues.append(issue(.error, "WorkflowEngine → WorkflowResult typed 상태 전파가 없습니다. .approvalRequired/.planned/.unavailable 결과가 Orchestrator에 전달되지 않습니다."))
+        }
+    }
+
+    private static func validateApprovalRequiredAutoRegisteredPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.approvalRequiredAutoRegistered {
+            issues.append(issue(.error, "WorkflowResult.approvalRequiredRequests → addPendingApproval 연결이 없습니다. 승인 대기 작업이 approval store에 등록되지 않습니다."))
+        }
+    }
+
+    private static func validatePlannedStepFallbackWiredPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.plannedStepFallbackWired {
+            issues.append(issue(.warning, "WorkflowResult.plannedStepMessages → directChat fallback 연결이 없습니다. 준비 중 기능 요청 시 사용자에게 안내가 없습니다."))
+        }
+    }
+
+    private static func validateUnavailableStepFallbackWiredPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.unavailableStepFallbackWired {
+            issues.append(issue(.warning, "WorkflowResult.unavailableStepMessages → directChat fallback 연결이 없습니다. 사용 불가 기능 요청 시 대체 도움이 없습니다."))
+        }
+    }
+
+    private static func validateOfficeReviewAssistOnlyUxPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.officeReviewAssistOnlyUxAvailable {
+            issues.append(issue(.warning, "OfficeReviewInputPolicy에 assistOnly UX 메시지가 없습니다. 사용자에게 '파일 올려주세요' 안내가 표시되지 않습니다."))
+        }
+    }
+
+    private static func validateObservationImplLevelUxPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.observationImplLevelUxAvailable {
+            issues.append(issue(.warning, "ImplementationLevel.userFacingStatus가 없습니다. 관찰 컴포넌트 상태를 사용자에게 정직하게 보여줄 수 없습니다."))
         }
     }
 }

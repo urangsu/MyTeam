@@ -57,11 +57,11 @@ final class WorkflowOrchestrator {
     private func capabilityGateNotice(for routeDecision: RouteDecision) -> String? {
         switch routeDecision.kind {
         case .capabilityFuture:
-            return "이 기능은 아직 준비 중입니다. 현재는 로컬 스케줄/파일/문서 기능만 사용할 수 있습니다."
+            return ToolResultPresentationPolicy.plannedFallbackMessage
         case .capabilityRequiresApproval:
-            return "이 작업은 승인이 필요합니다. 자동 실행하지 않고 승인 요청으로 전환합니다."
+            return ToolResultPresentationPolicy.approvalRequiredFallbackMessage
         case .capabilityUnavailable:
-            return "이 capability는 현재 연결되어 있지 않습니다. 연결 또는 설정이 필요합니다."
+            return ToolResultPresentationPolicy.unavailableFallbackMessage
         default:
             return nil
         }
@@ -148,6 +148,23 @@ final class WorkflowOrchestrator {
         let disabledSkills = SkillRegistry.shared.matchAllSkills(for: userMessage)
             .filter { !SkillRegistry.shared.isSkillEnabled(id: $0.id) }
 
+        // Round 246B: SkillAvailabilityResolver 연결 — assistOnly 스킬 감지
+        // assistOnly이면 fake API 실행 없이 directChat fallback
+        if let assistOnlySkill = enabledSkills.first(where: {
+            SkillAvailabilityResolver.availability(for: $0) == .assistOnly
+        }) {
+            let notice = SkillAvailabilityResolver.assistOnlyMessage(for: assistOnlySkill.id)
+            await runDirectChatFallback(
+                userMessage: "\(notice)\n\n사용자 원래 요청: \(userMessage)",
+                roomID: roomID,
+                manager: manager,
+                reason: "assistOnly skill: \(assistOnlySkill.id)",
+                effectiveScopes: effectiveScopes,
+                blockedCapabilities: []
+            )
+            return
+        }
+
         if !enabledSkills.isEmpty {
             let names = enabledSkills.map { $0.id }.joined(separator: ", ")
             let scopeStr = enabledSkills.flatMap { $0.allowedScopes.map { $0.rawValue } }.joined(separator: ",")
@@ -164,51 +181,62 @@ final class WorkflowOrchestrator {
             // effectiveScopes에 enabled skills의 scopes 추가
             effectiveScopes.formUnion(enabledSkills.flatMap { $0.allowedScopes })
 
-            // High-risk 스킬 match → 안내 메시지 후 early return
+            // Round 246B: High-risk 스킬 → directChat fallback (안내문만 띄우고 return 제거)
+            // 실행은 막지만 초안/정리/체크리스트는 제공한다.
             if let highRiskSkill = enabledSkills.first(where: { SkillRegistry.isHighRiskSkill($0) }) {
                 await MainActor.run {
                     self.recordRouteTrace(
                         manager: manager,
                         roomID: roomID,
                         step: .blocked,
-                        message: "high-risk skill blocked: \(highRiskSkill.id)"
+                        message: "high-risk skill → directChat fallback: \(highRiskSkill.id)"
                     )
                     self.recordTurnProfile(
                         manager: manager,
                         roomID: roomID,
                         userMessage: userMessage,
                         route: .blockedHighRiskSkill,
-                        reason: "high-risk skill blocked: \(highRiskSkill.id)",
+                        reason: "high-risk skill blocked, directChat fallback: \(highRiskSkill.id)",
                         matchedSkills: enabledSkills,
                         effectiveScopes: effectiveScopes,
-                        expectedOutput: "block notice",
+                        expectedOutput: "direct chat fallback response",
                         requiresApproval: true,
                         blockedTools: []
                     )
                 }
-                await MainActor.run {
-                    manager.addChatLog(
-                        roomID: roomID, agentID: "system", agentName: "시스템",
-                        text: "이 기능은 아직 사용할 수 없습니다. 현재는 로컬 파일/문서 기능을 사용할 수 있습니다.",
-                        isUser: false, isSystem: true
-                    )
+                let fallbackAction = CapabilityFallbackService.fallbackAction(
+                    availability: .approvalBound,
+                    userMessage: userMessage,
+                    skillID: highRiskSkill.id
+                )
+                let fallbackMessage: String
+                switch fallbackAction {
+                case .plannedNotice(let msg): fallbackMessage = msg
+                case .directChat(let msg): fallbackMessage = msg
+                default: fallbackMessage = ToolResultPresentationPolicy.approvalRequiredFallbackMessage
                 }
+                await runDirectChatFallback(
+                    userMessage: "\(fallbackMessage)\n\n원래 요청: \(userMessage)",
+                    roomID: roomID,
+                    manager: manager,
+                    reason: "high-risk skill directChat fallback: \(highRiskSkill.id)",
+                    effectiveScopes: effectiveScopes,
+                    blockedCapabilities: [highRiskSkill.id]
+                )
                 return
             }
         } else {
-            // Enabled 스킬 없음 → Disabled 스킬 확인
+            // Round 246B: Enabled 스킬 없음 → Disabled 스킬 확인
+            // disabled skill도 assistOnly이면 directChat fallback 제공 (안내문만 띄우고 return 제거)
             if let disabledSkill = disabledSkills.first {
                 AppLog.info("[Skill] matched disabled '\(disabledSkill.id)'")
-                let isHighRisk = SkillRegistry.isHighRiskSkill(disabledSkill)
-                let message = isHighRisk
-                    ? "이 기능은 아직 사용할 수 없습니다. 현재는 로컬 파일/문서 기능을 사용할 수 있습니다."
-                    : "이 기능은 준비 중입니다. 현재 지원되는 기능으로 먼저 도와드릴게요."
+                let skillAvailability = SkillAvailabilityResolver.availability(for: disabledSkill)
                 await MainActor.run {
                     self.recordRouteTrace(
                         manager: manager,
                         roomID: roomID,
                         step: .disabledSkillMatched,
-                        message: "disabled skill: \(disabledSkill.id)"
+                        message: "disabled skill → availability=\(skillAvailability): \(disabledSkill.id)"
                     )
                     self.recordTurnProfile(
                         manager: manager,
@@ -219,18 +247,49 @@ final class WorkflowOrchestrator {
                         matchedSkills: [],
                         disabledSkills: [disabledSkill],
                         effectiveScopes: effectiveScopes,
-                        expectedOutput: "disable notice",
+                        expectedOutput: "directChat fallback or notice",
                         requiresApproval: false,
                         blockedTools: []
                     )
                 }
-                await MainActor.run {
-                    manager.addChatLog(
-                        roomID: roomID, agentID: "system", agentName: "시스템",
-                        text: message, isUser: false, isSystem: true
+                let fallbackAction = CapabilityFallbackService.fallbackAction(
+                    availability: skillAvailability,
+                    userMessage: userMessage,
+                    skillID: disabledSkill.id
+                )
+                switch fallbackAction {
+                case .hardBlock(let msg):
+                    await MainActor.run {
+                        manager.addChatLog(
+                            roomID: roomID, agentID: "system", agentName: "시스템",
+                            text: msg, isUser: false, isSystem: true
+                        )
+                    }
+                    return
+                case .directChat(let msg):
+                    await runDirectChatFallback(
+                        userMessage: "\(msg)\n\n원래 요청: \(userMessage)",
+                        roomID: roomID, manager: manager,
+                        reason: "disabled skill directChat fallback: \(disabledSkill.id)",
+                        effectiveScopes: effectiveScopes, blockedCapabilities: []
                     )
+                    return
+                case .plannedNotice(let msg):
+                    await runDirectChatFallback(
+                        userMessage: "\(msg)\n\n원래 요청: \(userMessage)",
+                        roomID: roomID, manager: manager,
+                        reason: "disabled skill planned fallback: \(disabledSkill.id)",
+                        effectiveScopes: effectiveScopes, blockedCapabilities: []
+                    )
+                    return
+                default:
+                    await runDirectChatFallback(
+                        userMessage: userMessage, roomID: roomID, manager: manager,
+                        reason: "disabled skill fallback: \(disabledSkill.id)",
+                        effectiveScopes: effectiveScopes, blockedCapabilities: []
+                    )
+                    return
                 }
-                return
             }
         }
 
@@ -537,7 +596,7 @@ final class WorkflowOrchestrator {
                         roomID: roomID,
                         agentID: "system",
                         agentName: "스킬",
-                        text: "해당 문서 유형은 아직 사용할 수 없습니다.",
+                        text: ToolResultPresentationPolicy.plannedFallbackMessage,
                         isUser: false,
                         isSystem: true
                     )
@@ -743,7 +802,7 @@ final class WorkflowOrchestrator {
                         roomID: roomID,
                         agentID: "system",
                         agentName: "스킬",
-                        text: "해당 문서 유형은 아직 사용할 수 없습니다.",
+                        text: ToolResultPresentationPolicy.plannedFallbackMessage,
                         isUser: false,
                         isSystem: true
                     )
@@ -834,7 +893,7 @@ final class WorkflowOrchestrator {
                         roomID: roomID,
                         agentID: "system",
                         agentName: "스킬",
-                        text: "해당 문서 유형은 아직 사용할 수 없습니다.",
+                        text: ToolResultPresentationPolicy.plannedFallbackMessage,
                         isUser: false,
                         isSystem: true
                     )
@@ -1682,6 +1741,39 @@ final class WorkflowOrchestrator {
             finalEvent = .workflowCompleted(workflowID: workflowID, roomID: roomID, artifactCount: result.artifacts.count)
             await MainActor.run {
                 removeProgressAndPost(manager: manager, roomID: roomID, progressID: progressMsgID, text: result.summary, isSystem: false)
+            }
+
+            // Round 246B Step 8: typed ToolResult 상태별 후처리
+            // .approvalRequired → PendingApprovalStore 등록 (banner에서 사용자가 확인)
+            await MainActor.run {
+                for request in result.approvalRequiredRequests {
+                    manager.addPendingApproval(request)
+                    AppLog.info("[WorkflowOrchestrator] approvalRequired 등록: \(request.toolName) id=\(request.id)")
+                }
+            }
+            // .planned → directChat fallback (기능 준비 중 안내 + 초안 제공)
+            if !result.plannedStepMessages.isEmpty {
+                let combinedMsg = result.plannedStepMessages.joined(separator: "\n")
+                await runDirectChatFallback(
+                    userMessage: "\(ToolResultPresentationPolicy.plannedFallbackMessage)\n\n\(combinedMsg)\n\n원래 요청: \(userMessage)",
+                    roomID: roomID,
+                    manager: manager,
+                    reason: "workflow planned step fallback",
+                    effectiveScopes: allowedScopes,
+                    blockedCapabilities: []
+                )
+            }
+            // .unavailable → directChat fallback (자료 올려주시면 초안 형태 도움)
+            if !result.unavailableStepMessages.isEmpty {
+                let combinedMsg = result.unavailableStepMessages.joined(separator: "\n")
+                await runDirectChatFallback(
+                    userMessage: "\(ToolResultPresentationPolicy.unavailableFallbackMessage)\n\n\(combinedMsg)\n\n원래 요청: \(userMessage)",
+                    roomID: roomID,
+                    manager: manager,
+                    reason: "workflow unavailable step fallback",
+                    effectiveScopes: allowedScopes,
+                    blockedCapabilities: []
+                )
             }
         }
     }

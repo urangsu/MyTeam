@@ -135,6 +135,32 @@ enum OfficeReviewInputPolicy {
         case info     = "참고"
     }
 
+    // MARK: - Round 246B: AssistOnly UX
+
+    /// 파일 없이 office-review 요청 시 사용자에게 돌려주는 안내 메시지
+    static let noFileProvidedMessage =
+        "검토할 파일을 올려주세요. PDF, CSV, 텍스트, 스프레드시트 파일을 드롭하거나 텍스트를 붙여넣으시면 바로 시작할 수 있습니다."
+
+    /// executionStatus에 따른 정직한 기능 상태 안내
+    static func executionStatusMessage(for skill: OfficeReviewSkill) -> String {
+        switch skill.executionStatus {
+        case .policyDefined:
+            return "\(skill.displayName) 기능은 정책이 정의되어 있으나 아직 실행 로직이 구현되지 않았습니다. 파일을 주시면 초안 형태로 도와드릴 수 있습니다."
+        case .inputDetected:
+            return "\(skill.displayName)은(는) 파일을 읽어 내용을 분석하는 기능입니다. 단, 표 파싱 및 근거 위치 추적은 아직 미구현 상태입니다. 텍스트 기반 초안 검토는 가능합니다."
+        case .textExtracted:
+            return "\(skill.displayName)은(는) 텍스트 추출까지 가능합니다. 세부 표 파싱·근거 링크는 준비 중입니다."
+        case .tableParsed:
+            return "\(skill.displayName)은(는) 표 파싱이 가능하여 수치 분석을 할 수 있습니다. 근거 위치 추적(evidenceLinked)은 준비 중입니다."
+        case .reviewGenerated:
+            return "\(skill.displayName) 기능을 사용할 수 있습니다. 검토할 내용을 붙여넣어 주세요."
+        case .evidenceLinked:
+            return "\(skill.displayName) 검토 결과에 근거 위치가 포함됩니다."
+        case .exportReady:
+            return "\(skill.displayName) 검토 결과를 내보낼 수 있습니다."
+        }
+    }
+
     // MARK: - Skill Suggestion
 
     /// 파일 종류 + 사용자 메시지로 적합한 skill 추천

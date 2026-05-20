@@ -178,6 +178,28 @@ class AgentWindowManager: ObservableObject {
     // observation이 전역 recent artifact로 자동 등록되지 않음
     var observationService: LocalObservationService { .shared }
 
+    // Round 246B: Pending approval store — room-scoped, 승인 대기 관리
+    var pendingApprovalStore: PendingApprovalStore { .shared }
+
+    @MainActor
+    func addPendingApproval(_ request: PendingApprovalRequest) {
+        pendingApprovalStore.add(request)
+    }
+
+    func pendingApprovals(for roomID: UUID) -> [PendingApprovalRequest] {
+        pendingApprovalStore.pendingRequests(for: roomID)
+    }
+
+    @MainActor
+    func approvePendingApproval(_ requestID: UUID, roomID: UUID) {
+        pendingApprovalStore.approve(requestID, roomID: roomID)
+    }
+
+    @MainActor
+    func rejectPendingApproval(_ requestID: UUID, roomID: UUID) {
+        pendingApprovalStore.reject(requestID, roomID: roomID)
+    }
+
     /// 현재 팀 워크룸에 pending observation 첨부 (사용자 확인 후 호출)
     @MainActor
     func attachPendingObservation(_ observationID: UUID) {
