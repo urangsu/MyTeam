@@ -1,12 +1,44 @@
 import Foundation
 
-// MARK: - Supertonic3TTSProbe
-// Round 247TTS-SUPERTONIC3-POC: 런타임 probe (Cloud: info-only, Mac: model 검사).
-//
-// Cloud 환경: ONNX Runtime 없음 → runtimeAvailable = false
-// Mac 환경(248TTS): ONNX Runtime 존재 여부 실제 검사로 교체 예정
+// MARK: - Supertonic3 Readiness Enum
 
-// MARK: - Supertonic3ProbeRunResult
+enum Supertonic3Readiness: String, Codable, Sendable {
+    case disabled
+    case missingModel
+    case runtimeUnavailable
+    case readyForInference
+}
+
+// MARK: - Supertonic3 Probe Result
+
+struct Supertonic3ProbeResult: Sendable {
+    let enabled: Bool
+    let modelCheck: Supertonic3ModelLocator.ModelCheckResult
+    let runtimeAvailability: ONNXRuntimeAvailability
+    let selectedPreset: String
+    let selectedLanguage: String
+    let readiness: Supertonic3Readiness
+    let redactedModelPath: String
+
+    var canSynthesize: Bool {
+        readiness == .readyForInference
+    }
+
+    var statusMessage: String {
+        switch readiness {
+        case .disabled:
+            return "Supertonic3 비활성화"
+        case .missingModel:
+            return "모델 파일 누락: \(modelCheck.missingFiles.joined(separator: ", "))"
+        case .runtimeUnavailable:
+            return "ONNX Runtime 미탑재 (Mac local에서 필요)"
+        case .readyForInference:
+            return "사용 가능 (\(redactedModelPath))"
+        }
+    }
+}
+
+// MARK: - Supertonic3ProbeRunResult (legacy, for compatibility)
 
 struct Supertonic3ProbeRunResult: Sendable {
     let timestamp: Date
@@ -58,6 +90,37 @@ struct Supertonic3ProbeRunResult: Sendable {
 // MARK: - Supertonic3TTSProbe
 
 enum Supertonic3TTSProbe {
+
+    /// Round 248TTS-A: 런타임 readiness probe (inference 없음)
+    /// 모델 파일, 런타임 상태, 설정을 점검하고 readiness enum 반환
+    static func probe() -> Supertonic3ProbeResult {
+        let modelCheck = Supertonic3ModelLocator.checkModel()
+        let adapter = ONNXRuntimeUnavailableAdapter()
+        let runtimeAvailability = adapter.availability()
+
+        // Determine readiness state
+        let enabled = Supertonic3TTSConfig.isEnabled
+        let readiness: Supertonic3Readiness
+        if !enabled {
+            readiness = .disabled
+        } else if !modelCheck.isAvailable {
+            readiness = .missingModel
+        } else if runtimeAvailability == .unavailable {
+            readiness = .runtimeUnavailable
+        } else {
+            readiness = .readyForInference
+        }
+
+        return Supertonic3ProbeResult(
+            enabled: enabled,
+            modelCheck: modelCheck,
+            runtimeAvailability: runtimeAvailability,
+            selectedPreset: Supertonic3TTSConfig.selectedVoicePreset,
+            selectedLanguage: Supertonic3TTSConfig.selectedLanguage,
+            readiness: readiness,
+            redactedModelPath: modelCheck.redactedDirectory
+        )
+    }
 
     /// Cloud 환경 probe: 모델 파일 상태 + 설정 정보 수집 (inference 없음)
     /// Mac 248TTS에서: runtimeAvailable을 실제 OrtEnvironment 검사로 교체

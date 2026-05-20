@@ -49,36 +49,47 @@ actor Supertonic3TTSProvider {
         isConfigEnabled() && isModelAvailable()
     }
 
-    // MARK: - Synthesis (skeleton)
+    // MARK: - Synthesis
 
-    /// TTS 합성. Cloud 환경에서는 항상 .missingRuntime을 throw.
-    /// Mac 환경에서도 248TTS 전까지는 동일하게 동작.
+    /// TTS 합성 (pipeline 기반).
+    /// - Checks config enabled
+    /// - Validates model availability
+    /// - Validates voice preset
+    /// - Delegates to Supertonic3InferencePipeline
     ///
     /// - Parameters:
     ///   - text: 합성할 텍스트
     ///   - voicePreset: 음성 프리셋 ID (M1–M5, F1–F5)
-    /// - Returns: TTSOutput (Mac 구현 후 실제 WAV 경로 포함)
+    /// - Returns: TTSOutput
+    /// - Throws: TTSProviderError for various failure modes
     func synthesize(text: String, voicePreset: String? = nil) async throws -> TTSOutput {
+        // Step 1: Check provider is enabled
         guard Supertonic3TTSConfig.isEnabled else {
-            throw Supertonic3TTSError.notEnabled
+            throw TTSProviderError.notEnabled
         }
 
+        // Step 2: Check model files exist
         let modelCheck = Supertonic3ModelLocator.checkModel()
         guard modelCheck.isAvailable else {
-            throw Supertonic3TTSError.missingModel(files: modelCheck.missingFiles)
+            throw TTSProviderError.missingModel
         }
 
+        // Step 3: Validate voice preset
         let preset = voicePreset ?? Supertonic3TTSConfig.selectedVoicePreset
         guard Supertonic3TTSConfig.availableVoicePresets.contains(preset) else {
-            throw Supertonic3TTSError.invalidVoicePreset(preset)
+            throw TTSProviderError.invalidVoicePreset(preset)
         }
 
-        // Cloud / 248TTS 전: ONNX Runtime 없음
-        // Mac 구현 TODO:
-        //   let env = try OrtEnvironment.shared()
-        //   let session = try OrtSession(env: env, modelPath: modelPath, sessionOptions: nil)
-        //   ... 4-stage inference (text_encoder → duration_predictor → vector_estimator → vocoder)
-        throw Supertonic3TTSError.missingRuntime
+        // Step 4: Delegate to inference pipeline
+        let pipeline = Supertonic3InferencePipeline()
+        let result = try await pipeline.synthesize(
+            text: text,
+            preset: preset,
+            languageCode: Supertonic3TTSConfig.selectedLanguage,
+            modelDirectory: modelCheck.directoryURL
+        )
+
+        return result
     }
 
     // MARK: - Probe
