@@ -18,7 +18,8 @@ struct WriteTextFileTool: WorkflowTool {
         }
         let url = try safeWritableWorkspaceURL(filename: filename, context: context)
         try content.write(to: url, atomically: true, encoding: .utf8)
-        let summary = "\(filename) 저장 완료 (\(content.count)자)"
-        return ToolResult(status: .succeeded, output: summary, artifactPath: filename, error: nil)
+        let savedFilename = url.lastPathComponent
+        let summary = "\(savedFilename) 저장 완료 (\(content.count)자)"
+        return ToolResult(status: .succeeded, output: summary, artifactPath: savedFilename, error: nil)
     }
 }

@@ -155,6 +155,9 @@ enum ToolContractValidator {
         validateProceduralMemoryPolicy(issues: &issues)
         validateMemoryRetrievalBudgetPolicy(issues: &issues)
 
+        // Round 245A-P0: Artifact Contract
+        validateWriteTextFileArtifactPathPolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -1216,6 +1219,17 @@ enum ToolContractValidator {
         }
         if !snap.memoryScopePolicyAvailable {
             issues.append(issue(.warning, "MemoryScopePolicy를 사용할 수 없습니다. 텍스트에서 scope/sensitivity 자동 분류가 불가합니다."))
+        }
+    }
+
+    private static func validateWriteTextFileArtifactPathPolicy(issues: inout [ToolContractValidationIssue]) {
+        do {
+            let sourceFile = try String(contentsOfFile: "MyTeam/WriteTextFileTool.swift", encoding: .utf8)
+            if sourceFile.contains("artifactPath: filename") && !sourceFile.contains("let savedFilename = url.lastPathComponent") {
+                issues.append(issue(.error, "WriteTextFileTool: artifactPath가 입력 filename을 그대로 반환합니다. 실제 저장된 파일명(url.lastPathComponent)으로 반환해야 합니다."))
+            }
+        } catch {
+            issues.append(issue(.warning, "WriteTextFileTool 소스 검증 불가"))
         }
     }
 }
