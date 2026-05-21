@@ -1,69 +1,88 @@
 import Foundation
 
-// MARK: - Supertonic3 Model Manifest
+// Round 248TTS-A: Manifest-driven model discovery for distribution flexibility
+// Supports multiple candidate filenames per logical component
+// No hardcoded paths in code
 
-struct Supertonic3ModelManifest: Sendable {
-    /// Represents a required or optional model file with candidate filenames.
+struct Supertonic3ModelManifest {
+
     struct RequiredModelFile: Sendable {
-        /// Logical name of the model component (e.g., "text_encoder", "vocoder")
         let logicalName: String
-
-        /// Candidate filenames for this component (e.g., ["text_encoder.onnx", "encoder.onnx"])
-        /// Multiple candidates allow flexibility in model naming conventions.
         let candidateFilenames: [String]
-
-        /// Whether this file must be present for inference to proceed
         let required: Bool
-
-        init(logicalName: String, candidateFilenames: [String], required: Bool) {
-            self.logicalName = logicalName
-            self.candidateFilenames = candidateFilenames
-            self.required = required
-        }
     }
 
-    /// Required ONNX model files for Supertonic3 inference pipeline.
-    /// NOTE: These filenames are candidates and may change based on actual model distribution in Round 249TTS.
+    // Primary required ONNX models (4 files ~398 MB total)
     static let requiredFiles: [RequiredModelFile] = [
         RequiredModelFile(
             logicalName: "text_encoder",
-            candidateFilenames: ["text_encoder.onnx", "encoder.onnx"],
+            candidateFilenames: ["text_encoder.onnx", "encoder.onnx", "text_encoder_model.onnx"],
             required: true
         ),
         RequiredModelFile(
             logicalName: "duration_predictor",
-            candidateFilenames: ["duration_predictor.onnx", "duration.onnx"],
+            candidateFilenames: ["duration_predictor.onnx", "duration.onnx", "duration_model.onnx"],
             required: true
         ),
         RequiredModelFile(
             logicalName: "vector_estimator",
-            candidateFilenames: ["vector_estimator.onnx", "estimator.onnx"],
+            candidateFilenames: ["vector_estimator.onnx", "estimator.onnx", "vector_model.onnx"],
             required: true
         ),
         RequiredModelFile(
             logicalName: "vocoder",
-            candidateFilenames: ["vocoder.onnx"],
+            candidateFilenames: ["vocoder.onnx", "vocoder_model.onnx"],
             required: true
         )
     ]
 
-    /// Optional configuration/metadata files for Supertonic3.
-    /// These files may enhance functionality but are not required for basic inference.
+    // Optional support files
     static let optionalFiles: [RequiredModelFile] = [
         RequiredModelFile(
             logicalName: "voice_styles",
-            candidateFilenames: ["voice_styles.json", "styles.json"],
+            candidateFilenames: ["voice_styles.json", "styles.json", "voice_presets.json"],
             required: false
         ),
         RequiredModelFile(
             logicalName: "config",
-            candidateFilenames: ["config.json"],
+            candidateFilenames: ["config.json", "model_config.json"],
             required: false
         ),
         RequiredModelFile(
             logicalName: "tokenizer",
-            candidateFilenames: ["tokenizer.json"],
+            candidateFilenames: ["tokenizer.json", "vocab.json"],
             required: false
         )
     ]
+
+    // Model metadata (informational, not enforced in Cloud)
+    static let metadata = [
+        "source": "Hugging Face / MIT Sample Implementation",
+        "framework": "ONNX",
+        "languages": 31,
+        "license": "OpenRAIL-M + MIT",
+        "sampleRate": 24000,
+        "architectureSize": "99M",
+        "note": "Cloud: skeleton only. Mac local: ONNX Runtime inference in 249TTS."
+    ]
+
+    /// Locates model file by trying candidates in order
+    static func findModelFile(
+        logicalName: String,
+        in directory: URL
+    ) -> URL? {
+        let allFiles = requiredFiles + optionalFiles
+        guard let definition = allFiles.first(where: { $0.logicalName == logicalName }) else {
+            return nil
+        }
+
+        for candidate in definition.candidateFilenames {
+            let path = directory.appendingPathComponent(candidate)
+            if FileManager.default.fileExists(atPath: path.path) {
+                return path
+            }
+        }
+
+        return nil
+    }
 }

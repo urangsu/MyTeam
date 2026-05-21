@@ -1,15 +1,15 @@
 import Foundation
 
-// MARK: - ONNX Runtime Boundary Protocol
+// Round 248TTS-A: Runtime boundary for ONNX integration
+// Cloud: unavailable, throws missingRuntime
+// Mac local (249TTS): OrtEnvironment + OrtSession + OrtValue 연결
 
 enum ONNXRuntimeAvailability: String, Codable, Sendable {
-    case unavailable
-    case packageMissing
-    case packagePresent
-    case runtimeReady
+    case unavailable       // No ONNX package
+    case packageMissing    // onnxruntime-swift not in SPM
+    case packagePresent    // SPM registered but runtime unavailable
+    case runtimeReady      // OrtEnvironment initialized, can create sessions
 }
-
-// MARK: - ONNX Runtime Session Protocol
 
 protocol ONNXRuntimeSessionProtocol: Sendable {
     var modelName: String { get }
@@ -19,15 +19,11 @@ struct UnavailableONNXRuntimeSession: ONNXRuntimeSessionProtocol {
     let modelName: String
 }
 
-// MARK: - ONNX Runtime Adapter Protocol
-
 protocol ONNXRuntimeAdapterProtocol: Sendable {
     func availability() -> ONNXRuntimeAvailability
     func loadSession(modelURL: URL, name: String) async throws -> ONNXRuntimeSessionProtocol
     func run(session: ONNXRuntimeSessionProtocol, inputs: Supertonic3TensorInputs) async throws -> Supertonic3TensorOutputs
 }
-
-// MARK: - Unavailable Adapter (Cloud/No Runtime)
 
 struct ONNXRuntimeUnavailableAdapter: ONNXRuntimeAdapterProtocol {
     func availability() -> ONNXRuntimeAvailability {
@@ -43,30 +39,8 @@ struct ONNXRuntimeUnavailableAdapter: ONNXRuntimeAdapterProtocol {
     }
 }
 
-// MARK: - Error Types
-
-enum TTSProviderError: LocalizedError {
-    case missingRuntime
-    case notEnabled
-    case missingModel
-    case invalidVoicePreset(String)
-    case inferenceFailure(String)
-    case audioConversionFailure(String)
-
-    var errorDescription: String? {
-        switch self {
-        case .missingRuntime:
-            return "ONNX Runtime not available on this system"
-        case .notEnabled:
-            return "TTS provider not enabled"
-        case .missingModel:
-            return "Required model files not found"
-        case .invalidVoicePreset(let preset):
-            return "Invalid voice preset: \(preset)"
-        case .inferenceFailure(let msg):
-            return "Inference failed: \(msg)"
-        case .audioConversionFailure(let msg):
-            return "Audio conversion failed: \(msg)"
-        }
-    }
-}
+// Round 249TTS: Mac local implementation
+// struct ONNXRuntimeLiveAdapter: ONNXRuntimeAdapterProtocol {
+//     private let ortEnvironment: OrtEnvironment // import onnxruntime_objc
+//     ...
+// }
