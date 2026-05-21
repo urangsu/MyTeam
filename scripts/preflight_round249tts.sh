@@ -62,11 +62,11 @@ else
     fail "Supertonic3ONNXSpike.swift 없음"
 fi
 
-# ── 6. onnxruntime_objc import 확인 ──────────────────────────────────────────
-if grep -q "import onnxruntime_objc" "$SWIFT_DIR/Supertonic3ONNXRunner.swift" 2>/dev/null; then
-    ok "Supertonic3ONNXRunner: onnxruntime_objc import 존재"
+# ── 6. OnnxRuntimeBindings import 확인 (SPM target name, ObjC API) ──────────
+if grep -q "import OnnxRuntimeBindings" "$SWIFT_DIR/Supertonic3ONNXRunner.swift" 2>/dev/null; then
+    ok "Supertonic3ONNXRunner: OnnxRuntimeBindings import 존재"
 else
-    fail "Supertonic3ONNXRunner.swift에 'import onnxruntime_objc' 없음"
+    fail "Supertonic3ONNXRunner.swift에 'import OnnxRuntimeBindings' 없음"
 fi
 
 # ── 7. Apple TTS 코드 없음 (실제 import/type usage만 — 주석/문자열 내 언급 제외) ─

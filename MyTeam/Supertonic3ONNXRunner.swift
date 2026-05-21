@@ -1,5 +1,5 @@
 import Foundation
-import onnxruntime_objc
+import OnnxRuntimeBindings
 
 // MARK: - Supertonic3ONNXRunner
 // Round 249TTS-SPIKE: Full Supertonic3 ONNX inference pipeline in Swift.
@@ -13,6 +13,9 @@ import onnxruntime_objc
 // Configuration from tts.json:
 //   sample_rate=44100, base_chunk_size=512, chunk_compress_factor=6, ldim=24
 //
+// Uses OnnxRuntimeBindings (ObjC API from onnxruntime-swift-package-manager).
+// Import: `import OnnxRuntimeBindings` — module name from the SPM target.
+//
 // Policy:
 //   - Spike scope only — not exposed on production surfaces
 //   - No auto-init on launch — user triggers synthesis explicitly from TTSLabView
@@ -22,30 +25,33 @@ import onnxruntime_objc
 // MARK: - Config Constants
 
 private enum S3Config {
-    static let sampleRate: Int = 44100
-    static let baseChunkSize: Int = 512          // AE latent frames per audio chunk
-    static let chunkCompressFactor: Int = 6       // TTS latent frames compression
-    static let latentDim: Int = 24                // ldim
-    static let totalStepDefault: Int = 8          // flow-matching ODE steps
+    static let sampleRate: Int          = 44100
+    static let baseChunkSize: Int       = 512
+    static let chunkCompressFactor: Int = 6
+    static let ldim: Int                = 24
+    static let totalStepDefault: Int    = 8
+    // Derived:
+    static let chunkSize: Int  = baseChunkSize * chunkCompressFactor  // 3072
+    static let latentDim: Int  = ldim * chunkCompressFactor           // 144
 }
 
 // MARK: - Result Types
 
 struct Supertonic3SynthesisResult: Sendable {
-    let wavSamples: [Float]       // raw PCM Float32, shape [N]
-    let sampleRate: Int           // always 44100
-    let durationSec: Double       // total audio duration in seconds
-    let elapsedMs: Double         // wall-clock inference time in milliseconds
-    let realtimeFactor: Double    // elapsedMs / (durationSec * 1000) — lower is faster
+    let wavSamples: [Float]
+    let sampleRate: Int
+    let durationSec: Double
+    let elapsedMs: Double
+    let realtimeFactor: Double
     let presetUsed: String
-    let textLength: Int           // token count after tokenization
-    let latentFrameCount: Int     // L — total latent frames
+    let textLength: Int
+    let latentFrameCount: Int
 }
 
 // MARK: - Runner
 
 /// Runs a full Supertonic3 synthesis pass using on-disk ONNX models.
-/// Stateless — creates new OrtSessions per call.
+/// Stateless — creates new ORTSessions per call.
 /// Spike-only: this actor is intentionally NOT registered in SpeechManager or any production surface.
 actor Supertonic3ONNXRunner {
 
@@ -54,14 +60,6 @@ actor Supertonic3ONNXRunner {
 
     // MARK: - Main Synthesis
 
-    /// Full synthesis pipeline.
-    /// - Parameters:
-    ///   - text: Input text
-    ///   - preset: Voice preset ("F1".."M5")
-    ///   - lang: Language code ("ko", "en", "ja", "na", etc.) or nil for v1
-    ///   - totalSteps: Flow-matching ODE steps (default 8; range 4–12)
-    ///   - paths: Resolved model paths
-    /// - Returns: `Supertonic3SynthesisResult` with PCM samples at 44100 Hz
     func synthesize(
         text: String,
         preset: String,
@@ -69,210 +67,187 @@ actor Supertonic3ONNXRunner {
         totalSteps: Int = S3Config.totalStepDefault,
         paths: Supertonic3ONNXModelPaths
     ) async throws -> Supertonic3SynthesisResult {
-        let startTime = CFAbsoluteTimeGetCurrent()
+        let t0 = CFAbsoluteTimeGetCurrent()
 
-        // --- 1. Validate paths ---
+        // 1. Validate paths
         let missing = paths.missingModelNames
-        if !missing.isEmpty {
-            throw Supertonic3ONNXRunnerError.missingModelFiles(missing)
-        }
+        guard missing.isEmpty else { throw Supertonic3ONNXRunnerError.missingModelFiles(missing) }
 
-        // --- 2. Load unicode indexer ---
+        // 2. Tokenize
         let indexer = try Supertonic3UnicodeIndexer.load(from: paths.unicodeIndexerURL)
-
-        // --- 3. Tokenize text ---
         let (textIds, _, seqLen) = try indexer.encode(text: text, lang: lang)
-        guard seqLen > 0 else {
-            throw Supertonic3ONNXRunnerError.emptyTokenSequence
-        }
+        guard seqLen > 0 else { throw Supertonic3ONNXRunnerError.emptyTokenSequence }
 
-        // --- 4. Load voice style ---
-        let styleURL = paths.voiceStyleURL(preset: preset)
-        let style = try Supertonic3VoiceStyle.load(from: styleURL, preset: preset)
+        // 3. Voice style
+        let style = try Supertonic3VoiceStyle.load(
+            from: paths.voiceStyleURL(preset: preset), preset: preset)
 
-        // --- 5. Create ONNX environment ---
-        let env = try ORTEnvironment(loggingLevel: .warning)
+        // 4. ORTEnv — shared across all sessions in this synthesis call
+        let env = try ORTEnv(loggingLevel: .warning)
 
-        // --- 6. Stage 1: Duration predictor ---
-        // text_ids: [1, T] int64
-        // style_dp: [1, 8, 16] float32
-        // text_mask: [1, 1, T] float32
-        // → dur_onnx: [1, T] float32
+        let textMask1T = [Float](repeating: 1.0, count: seqLen)
+
+        // Stage 1: Duration predictor
+        // text_ids:[1,T] int64, style_dp:[1,8,16] f32, text_mask:[1,1,T] f32 → dur_onnx:[1,T] f32
         let durOnnx: [Float]
-        let textEmbOnnx: [Float]
-        let textEmbShape: [Int]
-        let latentL: Int
-        let latentDim = S3Config.latentDim * S3Config.chunkCompressFactor  // 144
-
         do {
-            let dpSession = try ORTSession(env: env, modelPath: paths.durationPredictorURL.path, sessionOptions: nil)
-
-            let textIdsTensor    = try makeTensor(int64: textIds, shape: [1, seqLen])
-            let textMaskTensor1T = try makeTensor(float32: [Float](repeating: 1.0, count: seqLen), shape: [1, 1, seqLen])
-            let styleDPTensor    = try makeTensor(float32: style.styleDP, shape: style.styleDPShape)
-
-            let dpInputs: [String: ORTValue] = [
-                "text_ids":  textIdsTensor,
-                "style_dp":  styleDPTensor,
-                "text_mask": textMaskTensor1T
+            let sess = try ortSession(env: env, modelPath: paths.durationPredictorURL.path)
+            let inputs: [String: ORTValue] = [
+                "text_ids":  try makeTensorI64(textIds, shape: [1, seqLen]),
+                "style_dp":  try makeTensorF32(style.styleDP, shape: style.styleDPShape),
+                "text_mask": try makeTensorF32(textMask1T, shape: [1, 1, seqLen])
             ]
-            let dpOutputs = try dpSession.run(withInputs: dpInputs, outputNames: ["dur_onnx"], runOptions: nil)
-            guard let durValue = dpOutputs["dur_onnx"] else {
-                throw Supertonic3ONNXRunnerError.missingOutput("dur_onnx")
-            }
-            durOnnx = try floatArray(from: durValue)
+            let outs = try ortRun(sess, inputs: inputs, outputNames: ["dur_onnx"])
+            durOnnx = try floatArray(from: outs["dur_onnx"])
         }
 
-        // --- 7. Compute latent length from durations ---
-        // Python: wav_len_max = duration.max() * sample_rate
-        //         wav_lengths = (duration * sample_rate).astype(int64)
-        //         chunk_size = base_chunk_size * chunk_compress_factor
-        //         latent_len = ceil(wav_len_max + chunk_size - 1) / chunk_size)
+        // Compute latent length from durations
         let wavLengths = durOnnx.map { Int64(Double($0) * Double(S3Config.sampleRate)) }
-        let chunkSize = S3Config.baseChunkSize * S3Config.chunkCompressFactor  // 3072
-        let wavLenMax = wavLengths.max() ?? 1
-        latentL = Int((Double(wavLenMax) + Double(chunkSize) - 1.0) / Double(chunkSize))
-        let latentMaskFlat = makeLatentMask(wavLengths: wavLengths, chunkSize: chunkSize, latentLen: latentL)
+        let wavLenMax  = wavLengths.max() ?? 1
+        let latentL    = Int((Double(wavLenMax) + Double(S3Config.chunkSize) - 1.0) /
+                             Double(S3Config.chunkSize))
+        let latentMask = makeLatentMask(wavLengths: wavLengths, latentLen: latentL)
 
-        // --- 8. Stage 2: Text encoder ---
-        // text_ids: [1, T] int64
-        // style_ttl: [1, 50, 256] float32
-        // text_mask: [1, 1, T] float32
-        // → text_emb: [1, T, 256] float32
+        // Stage 2: Text encoder
+        // text_ids:[1,T], style_ttl:[1,50,256], text_mask:[1,1,T] → text_emb:[1,T,256]
+        let textEmb: [Float]
+        let textEmbShape: [Int]
         do {
-            let encSession = try ORTSession(env: env, modelPath: paths.textEncoderURL.path, sessionOptions: nil)
-
-            let textIdsTensor    = try makeTensor(int64: textIds, shape: [1, seqLen])
-            let textMaskTensor1T = try makeTensor(float32: [Float](repeating: 1.0, count: seqLen), shape: [1, 1, seqLen])
-            let styleTTLTensor   = try makeTensor(float32: style.styleTTL, shape: style.styleTTLShape)
-
-            let encInputs: [String: ORTValue] = [
-                "text_ids":  textIdsTensor,
-                "style_ttl": styleTTLTensor,
-                "text_mask": textMaskTensor1T
+            let sess = try ortSession(env: env, modelPath: paths.textEncoderURL.path)
+            let inputs: [String: ORTValue] = [
+                "text_ids":  try makeTensorI64(textIds, shape: [1, seqLen]),
+                "style_ttl": try makeTensorF32(style.styleTTL, shape: style.styleTTLShape),
+                "text_mask": try makeTensorF32(textMask1T, shape: [1, 1, seqLen])
             ]
-            let encOutputs = try encSession.run(withInputs: encInputs, outputNames: ["text_emb"], runOptions: nil)
-            guard let embValue = encOutputs["text_emb"] else {
-                throw Supertonic3ONNXRunnerError.missingOutput("text_emb")
-            }
-            textEmbOnnx = try floatArray(from: embValue)
-            let embInfo = try embValue.tensorTypeAndShapeInfo()
-            textEmbShape = embInfo.shape as! [Int]
+            let outs = try ortRun(sess, inputs: inputs, outputNames: ["text_emb"])
+            let embVal = outs["text_emb"]!
+            textEmb = try floatArray(from: embVal)
+            // tensorTypeAndShapeInfo() is a throwing method bridged from ObjC
+            let shapeInfo = try embVal.tensorTypeAndShapeInfo()
+            textEmbShape = shapeInfo.shape.map { $0.intValue }
         }
 
-        // --- 9. Stage 3: Vector estimator (flow matching) ---
-        // Initial noisy latent: [1, latentDim, L] Gaussian noise, masked
-        var xt = gaussianNoise(count: 1 * latentDim * latentL)
-
-        // Apply latent mask to initial noise
-        // latent_mask: [1, 1, L] → replicate to [1, latentDim, L]
+        // Stage 3: Vector estimator (flow matching, N steps)
+        var xt = gaussianNoise(count: S3Config.latentDim * latentL)
+        // Apply latent mask to initial noise: xt[b, dim, frame] *= mask[frame]
         for frameIdx in 0..<latentL {
-            let maskVal = latentMaskFlat[frameIdx]
-            for dimIdx in 0..<latentDim {
-                let idx = dimIdx * latentL + frameIdx
-                xt[idx] *= maskVal
+            let m = latentMask[frameIdx]
+            for dimIdx in 0..<S3Config.latentDim {
+                xt[dimIdx * latentL + frameIdx] *= m
             }
         }
 
-        let veSession = try ORTSession(env: env, modelPath: paths.vectorEstimatorURL.path, sessionOptions: nil)
-        let totalStepF = Float(totalSteps)
-        let styleTTLTensor = try makeTensor(float32: style.styleTTL, shape: style.styleTTLShape)
-        let textMaskTensor1T = try makeTensor(float32: [Float](repeating: 1.0, count: seqLen), shape: [1, 1, seqLen])
-        let latentMaskTensor = try makeTensor(float32: latentMaskFlat, shape: [1, 1, latentL])
-        let textEmbTensor = try makeTensor(float32: textEmbOnnx, shape: textEmbShape)
-        let totalStepTensor = try makeTensor(float32: [totalStepF], shape: [1])
-
+        let veSess = try ortSession(env: env, modelPath: paths.vectorEstimatorURL.path)
         for step in 0..<totalSteps {
-            let currentStepTensor = try makeTensor(float32: [Float(step)], shape: [1])
-            let xtTensor = try makeTensor(float32: xt, shape: [1, latentDim, latentL])
-
-            let veInputs: [String: ORTValue] = [
-                "noisy_latent":  xtTensor,
-                "text_emb":      textEmbTensor,
-                "style_ttl":     styleTTLTensor,
-                "text_mask":     textMaskTensor1T,
-                "latent_mask":   latentMaskTensor,
-                "current_step":  currentStepTensor,
-                "total_step":    totalStepTensor
+            let inputs: [String: ORTValue] = [
+                "noisy_latent": try makeTensorF32(xt,             shape: [1, S3Config.latentDim, latentL]),
+                "text_emb":     try makeTensorF32(textEmb,        shape: textEmbShape),
+                "style_ttl":    try makeTensorF32(style.styleTTL, shape: style.styleTTLShape),
+                "text_mask":    try makeTensorF32(textMask1T,     shape: [1, 1, seqLen]),
+                "latent_mask":  try makeTensorF32(latentMask,     shape: [1, 1, latentL]),
+                "current_step": try makeTensorF32([Float(step)],  shape: [1]),
+                "total_step":   try makeTensorF32([Float(totalSteps)], shape: [1])
             ]
-            let veOutputs = try veSession.run(withInputs: veInputs, outputNames: ["xt"], runOptions: nil)
-            guard let xtValue = veOutputs["xt"] else {
-                throw Supertonic3ONNXRunnerError.missingOutput("xt (step \(step))")
-            }
-            xt = try floatArray(from: xtValue)
+            let outs = try ortRun(veSess, inputs: inputs, outputNames: ["xt"])
+            xt = try floatArray(from: outs["xt"])
         }
 
-        // --- 10. Stage 4: Vocoder ---
-        // latent: [1, latentDim, L] float32 → wav: [1, N] float32
-        let vocSession = try ORTSession(env: env, modelPath: paths.vocoderURL.path, sessionOptions: nil)
-        let latentTensor = try makeTensor(float32: xt, shape: [1, latentDim, latentL])
-        let vocOutputs = try vocSession.run(withInputs: ["latent": latentTensor], outputNames: ["wav"], runOptions: nil)
-        guard let wavValue = vocOutputs["wav"] else {
-            throw Supertonic3ONNXRunnerError.missingOutput("wav")
+        // Stage 4: Vocoder — latent:[1,144,L] → wav:[1,N]
+        let wavSamples: [Float]
+        do {
+            let sess = try ortSession(env: env, modelPath: paths.vocoderURL.path)
+            let inputs: [String: ORTValue] = [
+                "latent": try makeTensorF32(xt, shape: [1, S3Config.latentDim, latentL])
+            ]
+            let outs = try ortRun(sess, inputs: inputs, outputNames: ["wav"])
+            wavSamples = try floatArray(from: outs["wav"])
         }
-        let wavSamples = try floatArray(from: wavValue)
 
-        // --- 11. Compute metrics ---
-        let elapsedMs = (CFAbsoluteTimeGetCurrent() - startTime) * 1000.0
+        // Metrics
+        let elapsedMs   = (CFAbsoluteTimeGetCurrent() - t0) * 1000.0
         let durationSec = Double(wavSamples.count) / Double(S3Config.sampleRate)
-        let rtf = durationSec > 0 ? elapsedMs / (durationSec * 1000.0) : 0.0
+        let rtf         = durationSec > 0 ? elapsedMs / (durationSec * 1000.0) : 0.0
 
         return Supertonic3SynthesisResult(
-            wavSamples: wavSamples,
-            sampleRate: S3Config.sampleRate,
-            durationSec: durationSec,
-            elapsedMs: elapsedMs,
-            realtimeFactor: rtf,
-            presetUsed: preset,
-            textLength: seqLen,
+            wavSamples:       wavSamples,
+            sampleRate:       S3Config.sampleRate,
+            durationSec:      durationSec,
+            elapsedMs:        elapsedMs,
+            realtimeFactor:   rtf,
+            presetUsed:       preset,
+            textLength:       seqLen,
             latentFrameCount: latentL
         )
     }
 
-    // MARK: - Private: Tensor helpers
+    // MARK: - ORT Helpers
 
-    /// Create an Int64 ONNX tensor.
-    private func makeTensor(int64: [Int64], shape: [Int]) throws -> ORTValue {
-        var mutable = int64
-        let data = NSMutableData(bytes: &mutable, length: mutable.count * MemoryLayout<Int64>.stride)
-        let nsShape = shape.map { NSNumber(value: $0) }
-        return try ORTValue(tensorData: data, elementType: .int64, shape: nsShape)
+    private func ortSession(env: ORTEnv, modelPath: String) throws -> ORTSession {
+        guard let sess = try? ORTSession(env: env, modelPath: modelPath, sessionOptions: nil) else {
+            throw Supertonic3ONNXRunnerError.inferenceFailure("ORTSession init failed: \(modelPath)")
+        }
+        return sess
     }
 
-    /// Create a Float32 ONNX tensor.
-    private func makeTensor(float32: [Float], shape: [Int]) throws -> ORTValue {
-        var mutable = float32
-        let data = NSMutableData(bytes: &mutable, length: mutable.count * MemoryLayout<Float>.stride)
+    private func ortRun(
+        _ session: ORTSession,
+        inputs: [String: ORTValue],
+        outputNames: [String]
+    ) throws -> [String: ORTValue] {
+        let names = Set(outputNames)
+        guard let result = try? session.run(withInputs: inputs, outputNames: names, runOptions: nil) else {
+            throw Supertonic3ONNXRunnerError.inferenceFailure("ORTSession.run failed")
+        }
+        return result
+    }
+
+    // MARK: - Tensor Helpers
+
+    /// Create Float32 ORTValue tensor. NSMutableData copies the array bytes.
+    private func makeTensorF32(_ data: [Float], shape: [Int]) throws -> ORTValue {
+        var mutable = data
+        let nsData = NSMutableData(bytes: &mutable, length: mutable.count * MemoryLayout<Float>.stride)
         let nsShape = shape.map { NSNumber(value: $0) }
-        return try ORTValue(tensorData: data, elementType: .float, shape: nsShape)
+        guard let tensor = try? ORTValue(tensorData: nsData, elementType: .float, shape: nsShape) else {
+            throw Supertonic3ONNXRunnerError.inferenceFailure("ORTValue(Float32) init failed")
+        }
+        return tensor
+    }
+
+    /// Create Int64 ORTValue tensor. NSMutableData copies the array bytes.
+    private func makeTensorI64(_ data: [Int64], shape: [Int]) throws -> ORTValue {
+        var mutable = data
+        let nsData = NSMutableData(bytes: &mutable, length: mutable.count * MemoryLayout<Int64>.stride)
+        let nsShape = shape.map { NSNumber(value: $0) }
+        guard let tensor = try? ORTValue(tensorData: nsData, elementType: .int64, shape: nsShape) else {
+            throw Supertonic3ONNXRunnerError.inferenceFailure("ORTValue(Int64) init failed")
+        }
+        return tensor
     }
 
     /// Extract [Float] from an ORTValue tensor.
-    private func floatArray(from value: ORTValue) throws -> [Float] {
-        let data = try value.tensorData() as Data
-        return data.withUnsafeBytes { ptr -> [Float] in
-            let buffer = ptr.bindMemory(to: Float.self)
-            return Array(buffer)
+    private func floatArray(from value: ORTValue?) throws -> [Float] {
+        guard let value else {
+            throw Supertonic3ONNXRunnerError.missingOutput("nil ORTValue")
+        }
+        guard let data = try? value.tensorData() as Data else {
+            throw Supertonic3ONNXRunnerError.inferenceFailure("ORTValue.tensorData() failed")
+        }
+        return data.withUnsafeBytes { ptr in
+            Array(ptr.bindMemory(to: Float.self))
         }
     }
 
-    // MARK: - Private: Latent mask
+    // MARK: - Latent Mask
 
-    /// Python equivalent of get_latent_mask → length_to_mask.
-    /// Returns flat [Float] of shape [1, L] (flattened from [1, 1, L]).
-    /// Value = 1.0 if frameIdx < latent_length_for_sequence, else 0.0.
-    private func makeLatentMask(wavLengths: [Int64], chunkSize: Int, latentLen: Int) -> [Float] {
-        // Python: latent_lengths = (wav_lengths + latent_size - 1) // latent_size
-        // length_to_mask returns [B, 1, maxLen]
-        // For batch_size=1, we flatten to [latentLen]
+    /// Python equivalent of get_latent_mask → length_to_mask. Returns [Float] shape [L].
+    private func makeLatentMask(wavLengths: [Int64], latentLen: Int) -> [Float] {
         let wavLen = wavLengths.first ?? 0
-        let latentLengthForSeq = (Int(wavLen) + chunkSize - 1) / chunkSize
-        return (0..<latentLen).map { frameIdx in
-            frameIdx < latentLengthForSeq ? 1.0 : 0.0
-        }
+        let latentLenForSeq = (Int(wavLen) + S3Config.chunkSize - 1) / S3Config.chunkSize
+        return (0..<latentLen).map { $0 < latentLenForSeq ? 1.0 : 0.0 }
     }
 
-    // MARK: - Private: Gaussian noise (Box-Muller transform)
+    // MARK: - Gaussian Noise (Box-Muller Transform)
 
     /// Generate Gaussian noise using Box-Muller transform.
     /// Swift's Float.random() is uniform [0,1) — Box-Muller converts to N(0,1).
@@ -280,16 +255,13 @@ actor Supertonic3ONNXRunner {
         var result = [Float](repeating: 0.0, count: count)
         var i = 0
         while i < count {
-            // Box-Muller: two uniform samples → two Gaussian samples
             let u1 = Float.random(in: Float.leastNormalMagnitude...1.0)
             let u2 = Float.random(in: 0.0...1.0)
             let mag = Foundation.sqrt(-2.0 * Foundation.log(u1))
-            let z0 = mag * Foundation.cos(2.0 * Float.pi * u2)
-            let z1 = mag * Foundation.sin(2.0 * Float.pi * u2)
+            let z0  = mag * Foundation.cos(2.0 * Float.pi * u2)
+            let z1  = mag * Foundation.sin(2.0 * Float.pi * u2)
             result[i] = z0
-            if i + 1 < count {
-                result[i + 1] = z1
-            }
+            if i + 1 < count { result[i + 1] = z1 }
             i += 2
         }
         return result
