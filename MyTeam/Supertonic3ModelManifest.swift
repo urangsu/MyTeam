@@ -56,7 +56,7 @@ struct Supertonic3ModelManifest {
     ]
 
     // Model metadata (informational, not enforced in Cloud)
-    static let metadata = [
+    static let metadata: [String: Any] = [
         "source": "Hugging Face / MIT Sample Implementation",
         "framework": "ONNX",
         "languages": 31,

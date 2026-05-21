@@ -18,7 +18,8 @@ enum ArtifactPersistencePolicy {
         switch status {
         case .succeeded:
             return true
-        case .dryRun, .blocked, .failed, .cancelled:
+        case .dryRun, .blocked, .failed, .cancelled,
+             .approvalRequired, .planned, .unavailable:
             return false
         }
     }
@@ -29,7 +30,7 @@ enum ArtifactPersistencePolicy {
         var issues: [String] = []
 
         // Check: only .succeeded should allow persistence
-        let persistenceStatuses: [ToolResultStatus] = [.succeeded, .dryRun, .blocked, .failed, .cancelled]
+        let persistenceStatuses: [ToolResultStatus] = [.succeeded, .dryRun, .blocked, .failed, .cancelled, .approvalRequired, .planned, .unavailable]
         for status in persistenceStatuses {
             let shouldPersist = Self.shouldPersist(resultStatus: status)
             let isSucceeded = (status == .succeeded)

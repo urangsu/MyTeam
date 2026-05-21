@@ -4030,3 +4030,54 @@ Observation foundation을 실제 사용자 흐름에 연결. QA 없음. UI 연�
 ### Build
 - Cloud 환경 — xcodebuild 미실행.
 - Mac 빌드: Round 249TTS 이후 예정.
+
+---
+
+## 2026-05-21 Round 267A — Mac Merge + Build Verification
+
+### 목표
+Cloud branch `claude/myteam-product-completion-H97FZ`를 main에 병합하고 Mac에서 Debug/Release build 성공 확인.
+
+### Merge
+- Merged: `origin/claude/myteam-product-completion-H97FZ` → `main` (--no-ff)
+- Commits from branch: e5c29b2 (harden assist-only), 63627a9 (mac handoff docs)
+- Total new files from merge: 39 files changed, 4,866+ insertions
+
+### Build 수정 (병합 후 컴파일 에러 해소)
+- `RouteResolver.swift`: `GoalGate.blockedDecision` → `GoalGate.executionFallbackDecision` (246A rename 재적용)
+- `ArtifactPersistencePolicy.swift`: switch exhaustive — approvalRequired/planned/unavailable case 추가
+- `DownloadsFolderWatcher.swift` / `PendingApprovalStore.swift`: `import Combine` 누락 추가
+- `SkillAvailabilityResolver.swift`: `notes?.contains` optional unwrap 수정
+- `ToolExecutor.swift`: switch exhaustive — approvalRequired/planned/unavailable case 추가
+- `RuntimeDiagnosticsService.swift`: `enabledSkills` 변수 선언 추가, SkillPermission qualified name 수정
+- `ClipboardContextReader.swift`: `continuousMonitoringAllowed` private → internal
+- `Supertonic3TTSConfig.swift`: `selectedLanguage` property 추가 (TTSLabView에서 참조)
+- `Supertonic3ModelManifest.swift`: heterogeneous collection `[String: Any]` 타입 명시
+- `TTSProviderModels.swift`: `notEnabled`, `invalidVoicePreset`, `inferenceFailure` case 추가
+- `Supertonic3TTSProvider.swift` / `Supertonic3InferencePipeline.swift`: `.missingModel` → `.missingModel(files: [])` 수정
+- `pbxproj`: KSkillAssistRuntime.swift, WorkspacePath.swift build phase 누락 수정; 중복 build file 제거
+
+### Build Results
+- Debug: **BUILD SUCCEEDED**
+- Release: **BUILD SUCCEEDED**
+- App code warnings (Debug): 16 (Swift 6 concurrency, actor isolation — non-blocking)
+- App code warnings (Release): 14
+- Duplicate build file warnings: 0
+- Package resolve: resolved 35 packages
+
+### preflight_round266a_cloud_verify.sh
+- Result: **13/13 PASSED**
+
+### Policy 확인
+- Supertonic3 isEnabled: UserDefaults bool default false ✅
+- Supertonic3 auto-init: 없음 ✅
+- Model bundled: Resources/onnx_models에 stub 파일 2개 기존 존재 (git tracked, 1.5KB/854B placeholder); 대용량 .onnx는 .gitignore로 차단
+- AVSpeechSynthesizer: 실제 코드 사용 없음 ✅
+- KSkillAssistRuntime hardBlockedActions: 실행 함수 미연결 ✅
+- accounting-tax disclaimer: non-collapsible 유지 ✅
+- Gmail API: 미구현 ✅
+- Calendar write: 미구현 ✅
+- StoreKit/entitlement: 변경 없음 ✅
+
+### Manual QA
+- Pending (Mac에서 앱 실행 후 확인 필요)

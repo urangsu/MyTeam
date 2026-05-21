@@ -114,7 +114,7 @@ actor Supertonic3InferencePipeline: Sendable {
         }
 
         // If no candidate found, throw error
-        throw TTSProviderError.missingModel
+        throw TTSProviderError.missingModel(files: [])
     }
 }
 

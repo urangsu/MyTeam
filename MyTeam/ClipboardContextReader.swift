@@ -28,7 +28,7 @@ enum ClipboardContextReader {
     // MARK: - Hard Block Guard
 
     /// 타이머/폴링으로 자동 읽기: 절대 금지
-    private static let continuousMonitoringAllowed = false   // compile-time constant
+    static let continuousMonitoringAllowed = false   // compile-time constant
 
     // MARK: - Explicit Read
 

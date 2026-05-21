@@ -49,6 +49,11 @@ enum Supertonic3TTSConfig {
         UserDefaults.standard.string(forKey: "supertonic3VoicePreset") ?? "F1"
     }
 
+    /// 언어 선택 (auto / ko / en / ja). 기본 auto.
+    static var selectedLanguage: String {
+        UserDefaults.standard.string(forKey: "supertonic3Language") ?? "auto"
+    }
+
     // MARK: - Feature Flag
 
     /// 기본값 false — UserDefaults bool의 기본 반환값이 false이므로 자동으로 off.

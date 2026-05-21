@@ -83,6 +83,9 @@ enum TTSProviderError: Error, Sendable {
     case missingRuntime              // ONNX Runtime 없음 (Cloud 환경)
     case missingModel(files: [String])
     case inferenceError(String)
+    case inferenceFailure(String)    // Supertonic3InferencePipeline 런타임 실패
     case audioConversionError
     case disabledByPolicy            // Qwen3 등 정책상 차단된 provider 호출
+    case notEnabled                  // Supertonic3TTSConfig.isEnabled == false
+    case invalidVoicePreset(String)  // availableVoicePresets에 없는 preset
 }

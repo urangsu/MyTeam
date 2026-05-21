@@ -1105,3 +1105,29 @@ ONNX, Chatterbox Multilingual Python 서버, VITS2/Piper/Kokoro 비교, TTSEngin
 - [ ] 4단계 inference pipeline 구현 (text_encoder → duration_predictor → vector_estimator → vocoder)
 - [ ] 텍스트 토크나이저 (사전 학습 모델 기반)
 - [ ] 샘플레이트 변환 (44.1kHz → 24kHz, AudioPlaybackService 연동)
+
+---
+
+## Round 267A — Mac Merge + Build Verification (완료)
+
+**날짜:** 2026-05-21
+
+| 항목 | 결과 |
+|---|---|
+| Branch merged | claude/myteam-product-completion-H97FZ |
+| Debug build | BUILD SUCCEEDED |
+| Release build | BUILD SUCCEEDED |
+| App code warnings | 16 Debug / 14 Release (Swift 6 concurrency, non-blocking) |
+| Duplicate build file warnings | 0 |
+| Package resolve | 35 packages resolved |
+| preflight_round266a | 13/13 PASSED |
+| TTS isolation | ✅ Supertonic3 default off, no auto-init |
+| Model bundled | ⚠️ stub 2파일 기존 존재 (.gitignore로 대용량 차단) |
+| KSkill assistOnly hard-block | ✅ 실행 함수 미연결 |
+| accounting-tax disclaimer | ✅ non-collapsible |
+| Gmail API | ✅ 미구현 |
+| Calendar write | ✅ 미구현 |
+| StoreKit | ✅ 변경 없음 |
+| Manual QA | ⏳ Pending |
+
+**다음:** Manual QA 수행 후 App Store submission 검토

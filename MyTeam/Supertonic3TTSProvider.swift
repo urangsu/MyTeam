@@ -71,7 +71,7 @@ actor Supertonic3TTSProvider {
         // Step 2: Check model files exist
         let modelCheck = Supertonic3ModelLocator.checkModel()
         guard modelCheck.isAvailable else {
-            throw TTSProviderError.missingModel
+            throw TTSProviderError.missingModel(files: [])
         }
 
         // Step 3: Validate voice preset

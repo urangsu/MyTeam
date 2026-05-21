@@ -14,7 +14,7 @@ enum SkillAvailabilityResolver {
 
     static func availability(for skill: SkillManifest) -> FeatureAvailability {
         // notes에 "미구현"이 있으면 assistOnly (모든 스킬 공통 규칙)
-        if skill.notes.contains(where: { $0.contains("미구현") }) {
+        if skill.notes?.contains(where: { $0.contains("미구현") }) == true {
             return .assistOnly
         }
 
@@ -61,7 +61,7 @@ enum SkillAvailabilityResolver {
         ]
         let allSkills = BuiltInKoreanSkills.all
         let notesBasedIDs = Set(allSkills
-            .filter { skill in skill.notes.contains(where: { $0.contains("미구현") }) }
+            .filter { skill in skill.notes?.contains(where: { $0.contains("미구현") }) == true }
             .map { $0.id })
         return baseIDs.union(notesBasedIDs)
     }

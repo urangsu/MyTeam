@@ -64,6 +64,12 @@ actor ToolExecutor {
                 failureCode = "tool_execution_cancelled"
             case .failed:
                 failureCode = "tool_execution_failed"
+            case .approvalRequired:
+                failureCode = "tool_execution_approval_required"
+            case .planned:
+                failureCode = "tool_execution_planned"
+            case .unavailable:
+                failureCode = "tool_execution_unavailable"
             }
 
             await ArtifactStore.shared.appendActionLog(executionEntry.with(
@@ -98,6 +104,9 @@ actor ToolExecutor {
         case .blocked: return "blocked"
         case .dryRun: return "dry_run"
         case .cancelled: return "cancelled"
+        case .approvalRequired: return "approval_required"
+        case .planned: return "planned"
+        case .unavailable: return "unavailable"
         }
     }
 }

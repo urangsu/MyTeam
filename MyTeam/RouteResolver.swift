@@ -13,7 +13,7 @@ enum RouteResolver {
 
     static func resolveInitialRoute(_ input: RouteResolutionInput) -> RouteDecision {
         // RouteResolver must stay side-effect free.
-        if let blocked = GoalGate.blockedDecision(goal: input.goal, capability: input.capabilityDecision) {
+        if let blocked = GoalGate.executionFallbackDecision(goal: input.goal, capability: input.capabilityDecision) {
             return blocked
         }
 

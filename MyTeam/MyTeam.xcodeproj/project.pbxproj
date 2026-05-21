@@ -11469,46 +11469,16 @@
 				<string>E4F83EAC5D2B9F671E8C4A2B</string>
 				<string>A5E94FBD6B168A4D2C763EF5</string>
 				<string>B6FA5ACE7C27AB6E4E985D07</string>
-				<dict>
-					<key>object</key>
-					<string>F8DA8113F1CA43BBB254F81A</string>
-				</dict>
-				<dict>
-					<key>object</key>
-					<string>5CE2FAE0791445C2938CD9D7</string>
-				</dict>
-				<dict>
-					<key>object</key>
-					<string>F877548722AD4B05AA441984</string>
-				</dict>
-				<dict>
-					<key>object</key>
-					<string>1156B5C2D79D4346B85DE472</string>
-				</dict>
-				<dict>
-					<key>object</key>
-					<string>67E9B03EC4BD467E82D256C3</string>
-				</dict>
-				<dict>
-					<key>object</key>
-					<string>C02FCAF0405343188DEBA466</string>
-				</dict>
-				<dict>
-					<key>object</key>
-					<string>4A3FE878F15745389FAC1C5E</string>
-				</dict>
-				<dict>
-					<key>object</key>
-					<string>9B1D1978530B45C2B5AFB35B</string>
-				</dict>
-				<dict>
-					<key>object</key>
-					<string>403DC576945A4E11BD51AA20</string>
-				</dict>
-				<dict>
-					<key>object</key>
-					<string>3637557E5EFA481785C23502</string>
-				</dict>
+				<string>F8DA8113F1CA43BBB254F81A</string>
+				<string>5CE2FAE0791445C2938CD9D7</string>
+				<string>F877548722AD4B05AA441984</string>
+				<string>1156B5C2D79D4346B85DE472</string>
+				<string>67E9B03EC4BD467E82D256C3</string>
+				<string>9B1D1978530B45C2B5AFB35B</string>
+				<string>403DC576945A4E11BD51AA20</string>
+				<string>3637557E5EFA481785C23502</string>
+				<string>BAA862969F3F48E089A044F2</string>
+				<string>AAB864758FE74D7A9EF6B7A3</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -11526,8 +11496,8 @@
 				<string>A211C82ACA31A4AC2C64C248</string>
 				<string>69E812CEC45FBF7724577CC1</string>
 				<string>7F36831F7C78808E4E3D74AD</string>
-							<string>4DB960E0107CA5235607ED11</string>
-</array>
+				<string>4DB960E0107CA5235607ED11</string>
+			</array>
 			<key>isa</key>
 			<string>PBXFrameworksBuildPhase</string>
 			<key>runOnlyForDeploymentPostprocessing</key>
@@ -23169,6 +23139,20 @@
 		<dict>
 			<key>fileRef</key>
 			<string>GHM3FIWYA993WVU9SYCOOGFR</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>BAA862969F3F48E089A044F2</key>
+		<dict>
+			<key>fileRef</key>
+			<string>CC9174B53E4F0FAFCF993983</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>AAB864758FE74D7A9EF6B7A3</key>
+		<dict>
+			<key>fileRef</key>
+			<string>B19D61E3A0014AAAB000001E</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>

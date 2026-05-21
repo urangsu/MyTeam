@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 // MARK: - PendingApprovalStore
 // Round 246B-ACTION: 승인 필요 작업을 room-scoped로 보관.

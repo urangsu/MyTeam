@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 // MARK: - DownloadsFolderWatcher
 // Round 243A-OBSERVE: 다운로드 폴더 감시 (기본 OFF).

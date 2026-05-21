@@ -1082,6 +1082,7 @@ final class RuntimeDiagnosticsService {
         let supertonic3StrictlyDevLabGated = !UserDefaults.standard.bool(forKey: "supertonic3ExperimentalEnabled")
 
         // Round 266A-275Z: Skill Workflow Governance
+        let enabledSkills = SkillRegistry.shared.allEnabledSkills()
         let assistOnlySkillIDs = SkillAvailabilityResolver.assistOnlySkillIDs
         let assistOnlyGovernanceEnabled = assistOnlySkillIDs.count >= 11
         let dedicatedCardSkillIDs = ["korean.spell-check", "korean.privacy-terms", "runtime.diagnostics", "korean.accounting-tax"]
@@ -1105,9 +1106,9 @@ final class RuntimeDiagnosticsService {
         // noExternalExecutionFromAssistSkills: all assistOnly-classified skills must not have execution permissions.
         let assistOnlyClassifiedSkills = enabledSkills.filter { assistOnlySkillIDs.contains($0.id) }
         let noExternalExecutionFromAssistSkills = assistOnlyClassifiedSkills.allSatisfy { skill in
-            !skill.requiredPermissions.contains(.sendsMessage)
-            && !skill.requiredPermissions.contains(.makesReservation)
-            && !skill.requiredPermissions.contains(.handlesPayment)
+            !skill.requiredPermissions.contains(SkillPermission.sendsMessage)
+            && !skill.requiredPermissions.contains(SkillPermission.makesReservation)
+            && !skill.requiredPermissions.contains(SkillPermission.handlesPayment)
         }
 
         let snap = RuntimeDiagnosticsSnapshot(
