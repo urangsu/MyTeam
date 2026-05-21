@@ -442,7 +442,7 @@ struct TTSLabView: View {
                 Label("정책 고지", systemImage: "info.circle")
                     .font(.caption.bold())
                     .foregroundStyle(.secondary)
-                Text("• Apple TTS (AVSpeechSynthesizer): 영원히 금지 (폴백 포함)\n• 모델 자동 다운로드: 금지\n• 라이선스: MIT (code) + OpenRAIL-M (model) — App Store 배포 미검증\n• 모델 파일은 repo에 포함하지 않음")
+                Text("• Supertonic은 유일한 TTS 후보입니다\n• 모델 자동 다운로드: 금지\n• 상업 사용/모델 재배포/App Store 번들 정책: 제품 gate에서 별도 검토\n• 모델 파일은 repo와 앱 번들에 포함하지 않음\n• gate 실패 시 MyTeam v1은 TTS 없이 출시")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
