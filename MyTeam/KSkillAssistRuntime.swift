@@ -85,29 +85,32 @@ enum KSkillAssistRuntime {
             if line.hasPrefix("## ") {
                 title = String(line.dropFirst(3))
                 currentSection = .message
-            } else if line == "### 확인 체크리스트" {
+            } else if line == "### 준비 체크리스트" || line == "### 확인 체크리스트" {
                 currentSection = .checklist
-            } else if line == "### 필요한 정보" {
+            } else if line == "### 필요한 입력" || line == "### 필요한 정보" {
                 currentSection = .required
-            } else if line == "### 다음 단계" {
+            } else if line == "### 다음에 할 일" || line == "### 다음 단계" {
                 currentSection = .next
-            } else if line == "### 직접 대신하지 않는 항목" {
+            } else if line == "### 직접 진행이 필요한 작업" || line == "### 직접 대신하지 않는 항목" {
                 currentSection = .blocked
             } else {
                 switch currentSection {
                 case .message:
                     if !line.isEmpty || !messageLines.isEmpty { messageLines.append(line) }
                 case .checklist:
-                    if line.hasPrefix("- [ ] ") { checklist.append(String(line.dropFirst(6))) }
+                    if line.hasPrefix("☐ ") { checklist.append(String(line.dropFirst(2))) }
+                    else if line.hasPrefix("- [ ] ") { checklist.append(String(line.dropFirst(6))) }
                     else if line.hasPrefix("- ✅ ") { checklist.append(String(line.dropFirst(5))) }
                 case .required:
-                    if line.hasPrefix("- ") { requiredInputs.append(String(line.dropFirst(2))) }
+                    if line.hasPrefix("▸ ") { requiredInputs.append(String(line.dropFirst(2))) }
+                    else if line.hasPrefix("- ") { requiredInputs.append(String(line.dropFirst(2))) }
                 case .next:
                     if let dotRange = line.range(of: ". "), line.first?.isNumber == true {
                         nextActions.append(String(line[dotRange.upperBound...]))
                     }
                 case .blocked:
-                    if line.hasPrefix("- 🚫 ") { hardBlockedActions.append(String(line.dropFirst(6))) }
+                    if line.hasPrefix("⚠️ ") { hardBlockedActions.append(String(line.dropFirst(3))) }
+                    else if line.hasPrefix("- 🚫 ") { hardBlockedActions.append(String(line.dropFirst(6))) }
                     else if line.hasPrefix("- ") { hardBlockedActions.append(String(line.dropFirst(2))) }
                 case .none: break
                 }
@@ -431,25 +434,25 @@ enum KSkillAssistRuntime {
         lines.append("")
         lines.append(response.message)
 
-        if !response.checklist.isEmpty {
+        if !response.requiredUserInputs.isEmpty {
             lines.append("")
-            lines.append("### 확인 체크리스트")
-            for item in response.checklist {
-                lines.append("- [ ] \(item)")
+            lines.append("### 필요한 입력")
+            for input in response.requiredUserInputs {
+                lines.append("▸ \(input)")
             }
         }
 
-        if !response.requiredUserInputs.isEmpty {
+        if !response.checklist.isEmpty {
             lines.append("")
-            lines.append("### 필요한 정보")
-            for input in response.requiredUserInputs {
-                lines.append("- \(input)")
+            lines.append("### 준비 체크리스트")
+            for item in response.checklist {
+                lines.append("☐ \(item)")
             }
         }
 
         if !response.nextActions.isEmpty {
             lines.append("")
-            lines.append("### 다음 단계")
+            lines.append("### 다음에 할 일")
             for (idx, action) in response.nextActions.enumerated() {
                 lines.append("\(idx + 1). \(action)")
             }
@@ -457,9 +460,9 @@ enum KSkillAssistRuntime {
 
         if !response.hardBlockedActions.isEmpty {
             lines.append("")
-            lines.append("### 직접 대신하지 않는 항목")
+            lines.append("### 직접 진행이 필요한 작업")
             for action in response.hardBlockedActions {
-                lines.append("- 🚫 \(action)")
+                lines.append("⚠️ \(action)")
             }
         }
 

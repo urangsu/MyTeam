@@ -36,9 +36,34 @@ enum SkillAvailabilityResolver {
             return .assistOnly
         case "korean.office-review-assist", "korean.file-image-assist":
             return .assistOnly
+        case "korean.accounting-tax":
+            return .assistOnly
         default:
             return .available
         }
+    }
+
+    /// assistOnly로 분류되는 스킬 ID 목록 (거버넌스 검증용)
+    static var assistOnlySkillIDs: Set<String> {
+        let baseIDs: Set<String> = [
+            "korean.dart",
+            "korean.law-search",
+            "korean.naver-news",
+            "korean.naver-blog-research",
+            "korean.ktx-booking",
+            "korean.map-place",
+            "korean.reservation-preparation",
+            "korean.stock-info",
+            "korean.scholarship",
+            "korean.office-review-assist",
+            "korean.file-image-assist",
+            "korean.accounting-tax"
+        ]
+        let allSkills = BuiltInKoreanSkills.all
+        let notesBasedIDs = Set(allSkills
+            .filter { skill in skill.notes.contains(where: { $0.contains("미구현") }) }
+            .map { $0.id })
+        return baseIDs.union(notesBasedIDs)
     }
 
     /// assistOnly 스킬에 표시할 사용자 안내 메시지

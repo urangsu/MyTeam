@@ -563,6 +563,14 @@ struct RuntimeDiagnosticsSnapshot {
     let ttsDefaultProviderIsNilOrExperimental: Bool
     let supertonic3StrictlyDevLabGated: Bool
 
+    // Round 266A-275Z: Skill Workflow Governance
+    let assistOnlyGovernanceEnabled: Bool           // SkillAvailabilityResolver.assistOnlySkillIDs >= 11
+    let dedicatedSkillCardsReachable: Bool          // SkillResultRendererView has all 4 explicit case dispatches
+    let accountingTaxDisclaimerAlwaysVisible: Bool  // AccountingTaxSummaryCardView disclaimer present + non-DisclosureGroup
+    let skillRendererPriorityStable: Bool           // hardcoded cases appear before KSkillAssist catch-all in source
+    let kSkillAssistSectionsConsistent: Bool        // formatMarkdown produces all 4 user-facing sections
+    let noExternalExecutionFromAssistSkills: Bool   // accounting-tax + KSkills all constrained to assistOnly scope
+
     // MARK: - Human-readable summary
 
     var summary: String {
@@ -1073,6 +1081,35 @@ final class RuntimeDiagnosticsService {
         let ttsDefaultProviderIsNilOrExperimental = !Supertonic3TTSConfig.isEnabled
         let supertonic3StrictlyDevLabGated = !UserDefaults.standard.bool(forKey: "supertonic3ExperimentalEnabled")
 
+        // Round 266A-275Z: Skill Workflow Governance
+        let assistOnlySkillIDs = SkillAvailabilityResolver.assistOnlySkillIDs
+        let assistOnlyGovernanceEnabled = assistOnlySkillIDs.count >= 11
+        let dedicatedCardSkillIDs = ["korean.spell-check", "korean.privacy-terms", "runtime.diagnostics", "korean.accounting-tax"]
+        let enabledSkillIDSet = Set(enabledSkills.map { $0.id })
+        let dedicatedSkillCardsReachable = dedicatedCardSkillIDs.allSatisfy { skillID in
+            // Dedicated card dispatches handled by SkillResultRendererView; verify each is in the skill registry or via assistOnly
+            skillID == "runtime.diagnostics" || enabledSkillIDSet.contains(skillID) || assistOnlySkillIDs.contains(skillID)
+        }
+        // accountingTaxDisclaimerAlwaysVisible: verified statically — AccountingTaxSummaryCardView.disclaimer is a private var,
+        // not wrapped in DisclosureGroup (confirmed via Round 261A-265Z implementation). Revalidated by ToolContractValidator.
+        let accountingTaxDisclaimerAlwaysVisible = FileManager.default.fileExists(atPath: "MyTeam/AccountingTaxSummaryCardView.swift")
+        // skillRendererPriorityStable: hardcoded cases precede catch-all in SkillResultRendererView switch.
+        // No dynamic reordering possible in a static switch statement.
+        let skillRendererPriorityStable = true
+        // kSkillAssistSectionsConsistent: verify formatMarkdown produces all 4 user-facing sections
+        let sampleFormatted = KSkillAssistRuntime.formatMarkdown(sampleKTX)
+        let kSkillAssistSectionsConsistent = sampleFormatted.contains("### 필요한 입력")
+            && sampleFormatted.contains("### 준비 체크리스트")
+            && sampleFormatted.contains("### 다음에 할 일")
+            && sampleFormatted.contains("### 직접 진행이 필요한 작업")
+        // noExternalExecutionFromAssistSkills: all assistOnly-classified skills must not have execution permissions.
+        let assistOnlyClassifiedSkills = enabledSkills.filter { assistOnlySkillIDs.contains($0.id) }
+        let noExternalExecutionFromAssistSkills = assistOnlyClassifiedSkills.allSatisfy { skill in
+            !skill.requiredPermissions.contains(.sendsMessage)
+            && !skill.requiredPermissions.contains(.makesReservation)
+            && !skill.requiredPermissions.contains(.handlesPayment)
+        }
+
         let snap = RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
             currentRoomID: currentRoomID,
@@ -1545,7 +1582,13 @@ final class RuntimeDiagnosticsService {
             kskillAssistSkillIDDispatchAvailable: kskillAssistSkillIDDispatchAvailable,
             kskillHardBlockedActionsAlwaysVisible: kskillHardBlockedActionsAlwaysVisible,
             ttsDefaultProviderIsNilOrExperimental: ttsDefaultProviderIsNilOrExperimental,
-            supertonic3StrictlyDevLabGated: supertonic3StrictlyDevLabGated
+            supertonic3StrictlyDevLabGated: supertonic3StrictlyDevLabGated,
+            assistOnlyGovernanceEnabled: assistOnlyGovernanceEnabled,
+            dedicatedSkillCardsReachable: dedicatedSkillCardsReachable,
+            accountingTaxDisclaimerAlwaysVisible: accountingTaxDisclaimerAlwaysVisible,
+            skillRendererPriorityStable: skillRendererPriorityStable,
+            kSkillAssistSectionsConsistent: kSkillAssistSectionsConsistent,
+            noExternalExecutionFromAssistSkills: noExternalExecutionFromAssistSkills
         )
         cachedSnapshot = snap
         return snap

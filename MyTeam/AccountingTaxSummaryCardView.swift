@@ -117,13 +117,13 @@ struct AccountingTaxSummaryCardView: View {
         }
     }
 
-    // Always visible — legal disclaimer (non-collapsible by policy)
+    // Always visible — legal disclaimer (non-collapsible; removing or wrapping in DisclosureGroup is prohibited)
     private var disclaimer: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 11))
                 .foregroundColor(.orange)
-            Text("이 계산은 참고용이며 실제 세무·법률 조언이 아닙니다. 정확한 세금 계산은 세무사 또는 국세청 홈택스를 이용해 주세요.")
+            Text("세무·회계 판단은 실제 증빙과 계약 구조에 따라 달라질 수 있으므로 전문가 확인이 필요합니다.")
                 .font(.system(size: 11))
                 .foregroundColor(.orange.opacity(0.85))
                 .fixedSize(horizontal: false, vertical: true)
