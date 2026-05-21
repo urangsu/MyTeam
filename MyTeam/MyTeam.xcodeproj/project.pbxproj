@@ -2543,6 +2543,21 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>27736881CF9247D1A2F1ADC1</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>OfficeReviewLiteExecutor.swift</string>
+			<key>path</key>
+			<string>OfficeReviewLiteExecutor.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
 		<key>277C5ED7F75DDE16982A7DCE</key>
 		<dict>
 			<key>fileRef</key>
@@ -3575,6 +3590,13 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>3637557E5EFA481785C23502</key>
+		<dict>
+			<key>fileRef</key>
+			<string>C62044DDBA2D45DD9F820BF0</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
 		<key>3651D4DCB28F4428A071C695</key>
 		<dict>
 			<key>fileRef</key>
@@ -4340,6 +4362,13 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>403DC576945A4E11BD51AA20</key>
+		<dict>
+			<key>fileRef</key>
+			<string>27736881CF9247D1A2F1ADC1</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
 		<key>405009EE2CA267B97B763761</key>
 		<dict>
 			<key>fileRef</key>
@@ -4938,6 +4967,13 @@
 		<dict>
 			<key>fileRef</key>
 			<string>84802B26FC19C1A6311D37D0</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>4A3FE878F15745389FAC1C5E</key>
+		<dict>
+			<key>fileRef</key>
+			<string>8B95686B67C44D2E8AD5E7F1</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
@@ -6434,6 +6470,21 @@
 			<string>Resources/Sprites/치코/치코_agree_024.png</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
+		</dict>
+		<key>62C13588EDF04539B322C0AE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>ObservationPresentationPolicy.swift</string>
+			<key>path</key>
+			<string>ObservationPresentationPolicy.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
 		</dict>
 		<key>6355D51413FA4CCF6214159E</key>
 		<dict>
@@ -9390,6 +9441,21 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>8B95686B67C44D2E8AD5E7F1</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>ObservationInboxView.swift</string>
+			<key>path</key>
+			<string>ObservationInboxView.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
 		<key>8BCE47AB9F81EFF97CF953F6</key>
 		<dict>
 			<key>fileRef</key>
@@ -11380,6 +11446,22 @@
 					<key>object</key>
 					<string>C02FCAF0405343188DEBA466</string>
 				</dict>
+				<dict>
+					<key>object</key>
+					<string>4A3FE878F15745389FAC1C5E</string>
+				</dict>
+				<dict>
+					<key>object</key>
+					<string>9B1D1978530B45C2B5AFB35B</string>
+				</dict>
+				<dict>
+					<key>object</key>
+					<string>403DC576945A4E11BD51AA20</string>
+				</dict>
+				<dict>
+					<key>object</key>
+					<string>3637557E5EFA481785C23502</string>
+				</dict>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -12968,6 +13050,13 @@
 			<string>Resources/Sprites/치코/치코_clockin_008.png</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
+		</dict>
+		<key>9B1D1978530B45C2B5AFB35B</key>
+		<dict>
+			<key>fileRef</key>
+			<string>62C13588EDF04539B322C0AE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
 		</dict>
 		<key>9B58E10130BAE366B1756CA2</key>
 		<dict>
@@ -17068,6 +17157,21 @@
 			<string>Resources/Sprites/치코/치코_greeting_028.png</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
+		</dict>
+		<key>C62044DDBA2D45DD9F820BF0</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>OfficeReviewResultCardView.swift</string>
+			<key>path</key>
+			<string>OfficeReviewResultCardView.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
 		</dict>
 		<key>C64E673A22ED0F6E600F1CE6</key>
 		<dict>
