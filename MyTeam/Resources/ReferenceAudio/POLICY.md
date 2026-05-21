@@ -9,7 +9,7 @@
 | 항목 | 기준 | 이유 |
 |------|------|------|
 | 길이 | 4~7초 | 짧으면 화자 특성 부족, 길면 clipping 후 무음 구간 위험 |
-| 샘플레이트 | 24kHz | Qwen3TTS 내부 처리 샘플레이트와 일치 |
+| 샘플레이트 | 24kHz | 표준 레퍼런스 포맷 |
 | 채널 | mono (1ch) | voice clone 입력 스펙 |
 | 비트 깊이 | 16-bit | 표준 오디오 품질 |
 | 음량 | -20 LUFS (±2) | 너무 조용하면 feature 추출 실패, 너무 크면 클리핑 |
@@ -41,6 +41,6 @@ ffmpeg -i 입력.mp3 -filter:a "loudnorm=i=-20:lra=7:tp=-1.5" -ar 24000 -ac 1 �
 
 ## 현재 적용 상태
 
-- `Qwen3TTSService.clippedReferenceAudio()`: 144,000 샘플(6초@24kHz)으로 앞부분 자동 클리핑
-- voice clone 기본 OFF: `UserDefaults["MyTeam.TTS.useQwenVoiceClone"] = true` 시 개발 검증 모드로만 활성화
-- fallback 정책: `CharacterTTSPolicy` in `ModelCatalog.swift` (maxConsecutiveFailures=3, .baseVoice)
+- 레퍼런스 오디오 미사용 (voice clone 제거됨)
+- Supertonic3는 preset 기반 (M1-M5, F1-F5), clipping 불필요
+- `CharacterTTSPolicy` in `ModelCatalog.swift` 구조 유지 (향후 preset 매핑용)

@@ -286,7 +286,7 @@ NOT shown:
 - [x] no force unwrap, try!, fatalError
 
 ### App Termination
-- [x] TTS task cancellation (Qwen3TTSService)
+- [x] TTS task cancellation (Supertonic3 — TTSLab scope only)
 - [x] audio playback stop (AudioPlaybackService)
 - [x] active workflow task cancellation
 - [x] pending network requests abort

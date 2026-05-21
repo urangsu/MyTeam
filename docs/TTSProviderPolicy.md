@@ -1,318 +1,65 @@
 # TTS Provider Policy
 
-**Date:** Round 266A-275Z  
-**Status:** Active Governance Policy  
-**Scope:** Text-to-Speech provider selection and gating
+**Round 251TTS** — Supertonic3 단독 후보. 이전 후보 모두 제거.
 
-## Overview
+---
 
-The app supports multiple TTS providers with strict scope gating:
+## Product Decision
 
-| Provider | Status | Scope | Enabled By Default |
-|----------|--------|-------|-------------------|
-| **Qwen3MLX** | ✅ Stable | Production | NO (DevLab gate only) |
-| **Supertonic3** | 🧪 Experimental | Dev Lab only | NO (UserDefaults gate) |
-| **Silent** (nil) | ✅ Stable | All users | YES (default) |
+MyTeam은 기본 TTS를 제공하지 않는다.
 
-**Policy:** No TTS provider is enabled by default. Users must explicitly opt-in via UserDefaults or internal developer flags.
+Supertonic3가 유일한 TTS 후보다.
 
-## Provider Selection (TTSRoutingPolicy.selectedProvider)
+Supertonic3가 품질/라이선스/런타임/번들/릴리즈 gate를 통과하지 못하면
+**MyTeam v1은 TTS 없이 출시한다.**
 
-```swift
-func selectedProvider() -> TTSProvider? {
-    // Priority: Supertonic3 > Qwen3MLX > nil (silent)
-    
-    // 1. Supertonic3 (experimental, dev lab gate)
-    if Supertonic3TTSConfig.isEnabled && isModelAvailable(.supertonic3) {
-        return .supertonic3
-    }
-    
-    // 2. Qwen3MLX (stable but dev lab gate)
-    if isQwen3MLXEnabled() && isModelAvailable(.qwen3MLX) {
-        return .qwen3MLX
-    }
-    
-    // 3. Default: silent (nil)
-    return nil
-}
-```
+---
 
-**Guarantee:** At least one of the following is true:
-1. No TTS is active (returns `nil`)
-2. User explicitly enabled TTS via developer settings
-3. Build is in development/testing mode with internal gates set
+## Candidate
 
-## Supertonic3 (Experimental, Dev Lab Gated)
+| 항목 | 값 |
+|---|---|
+| Provider | Supertonic3 |
+| Scope | TTS Lab / experimental 전용 |
+| Release 기본값 | 비활성 |
+| 모델 번들 | 금지 |
+| launch 자동 init | 금지 |
+| 상업 라이선스 | pending |
+| 모델 재배포 | pending |
 
-**File:** `MyTeam/Supertonic3TTSConfig.swift`
+---
 
-**Configuration:**
-```swift
-struct Supertonic3TTSConfig {
-    static var isEnabled: Bool {
-        get {
-            // Read from UserDefaults, default false
-            UserDefaults.standard.bool(forKey: "supertonic3ExperimentalEnabled")
-        }
-        set {
-            UserDefaults.standard.set(newValue, forKey: "supertonic3ExperimentalEnabled")
-        }
-    }
-}
-```
+## Gate (canShipAsProductFeature)
 
-**Enforcement:**
-- `isEnabled` defaults to `false` (no hardcoded `true`)
-- Only reads from `UserDefaults.standard`
-- No environment variable overrides
-- No compile-time conditionals like `#if DEBUG`
+다음 5개가 모두 true여야 제품 기능으로 제공 가능:
 
-**When Used:**
-- Only when user explicitly sets `supertonic3ExperimentalEnabled = true` in UserDefaults
-- Only in Dev Lab or testing scenarios
-- Never in production release builds
+1. `koreanQualityAccepted` — 한국어 품질 검증 통과
+2. `licenseVerified` — 공식 LICENSE / model card 확인
+3. `localRuntimeVerified` — 로컬 Mac 런타임 검증
+4. `bundlePolicyAccepted` — 모델 번들 재배포 정책 확인
+5. `releaseIntegrationApproved` — 릴리즈 통합 승인
 
-**Validation:** 
-```swift
-assert(Supertonic3TTSConfig.isEnabled == false) // Default
-assert(UserDefaults.standard.bool(forKey: "supertonic3ExperimentalEnabled") == false)
-```
+현재: 모두 `false`. 제품 기능 제공 불가.
 
-## Qwen3MLX (Stable, Dev Lab Gated)
+---
 
-**File:** `MyTeam/TTSLabView.swift` or relevant TTS routing logic
-
-**Enablement:**
-```swift
-func isQwen3MLXEnabled() -> Bool {
-    // Only true if both internal dev lab gates are set
-    let hasQwen3Gate = UserDefaults.standard.bool(forKey: "qwen3MLXTTSEnabled")
-    let hasDevLabMode = UserDefaults.standard.bool(forKey: "devLabMode")
-    return hasQwen3Gate && hasDevLabMode
-}
-```
-
-**Enforcement:**
-- Both gates must be explicitly `true` to enable
-- Default behavior: both are `false`
-- No default enablement in release builds
-
-**When Used:**
-- Internal testing/dev lab scenarios only
-- User must explicitly enable in developer settings
-- Never automatically enabled based on build variant
-
-## Silent Mode (Default)
-
-**File:** `MyTeam/TTSRoutingPolicy.swift`
-
-**Behavior:**
-```swift
-func synthesizeAndSpeak(_ text: String) -> Void {
-    guard let provider = selectedProvider() else {
-        // Silent mode: do nothing
-        return
-    }
-    // ... speak using selected provider
-}
-```
-
-**Default State:**
-- `selectedProvider()` returns `nil`
-- `synthesizeAndSpeak(_:)` does nothing (no audio output)
-- User hears silence by default
-- Matches user requirement: "No Apple TTS, silence by default"
-
-## Validation Gates
-
-### 1. ToolContractValidator.validateTTSDefaultSilentPolicy()
-
-**Purpose:** Confirm no TTS provider is enabled by default in shipping builds.
-
-**Enforcement:**
-```swift
-assert(Supertonic3TTSConfig.isEnabled == false)
-assert(!isQwen3MLXEnabled()) // Both gates must be false
-```
-
-**Failure Mode:** Build fails if either provider is hardcoded enabled.
-
-### 2. RuntimeDiagnosticsService.ttsDefaultProviderIsNilOrExperimental
-
-**Check:** Default provider selection returns `nil` or experimental-only.
+## Routing
 
 ```swift
-let defaultProvider = TTSRoutingPolicy.selectedProvider()
-assert(defaultProvider == nil || 
-       defaultProvider == .supertonic3) // Experimental
+// TTSRoutingPolicy.selectedProvider()
+// Supertonic3(isEnabled && modelAvailable) → .supertonic3
+// nil → 무음
+// Apple TTS: 영원히 금지
 ```
 
-**Failure Mode:** If production provider is selected by default, diagnostics flag as unsafe.
+---
 
-### 3. RuntimeDiagnosticsService.supertonic3StrictlyDevLabGated
+## Not Allowed
 
-**Check:** Supertonic3 only enabled via UserDefaults, not compile-time constants.
-
-```swift
-let isSupertonic3UserGated = 
-  Supertonic3TTSConfig.isEnabled == 
-  UserDefaults.standard.bool(forKey: "supertonic3ExperimentalEnabled")
-
-assert(isSupertonic3UserGated)
-```
-
-**Failure Mode:** If Supertonic3 has hardcoded `true` or compile-time gate, flag as policy violation.
-
-## Code Patterns (Safe)
-
-### ✅ Safe: UserDefaults-based gate
-
-```swift
-struct Supertonic3TTSConfig {
-    static var isEnabled: Bool {
-        UserDefaults.standard.bool(forKey: "supertonic3ExperimentalEnabled") // Defaults false
-    }
-}
-```
-
-### ✅ Safe: Explicit false default
-
-```swift
-func selectedProvider() -> TTSProvider? {
-    if Supertonic3TTSConfig.isEnabled { // Must check runtime state
-        return .supertonic3
-    }
-    return nil // Safe: silent by default
-}
-```
-
-### ✅ Safe: Multiple gates required
-
-```swift
-func isQwen3MLXEnabled() -> Bool {
-    let gate1 = UserDefaults.standard.bool(forKey: "qwen3MLXEnabled")
-    let gate2 = UserDefaults.standard.bool(forKey: "devLabMode")
-    return gate1 && gate2 // Both required
-}
-```
-
-## Code Patterns (Unsafe — Violations)
-
-### ❌ Unsafe: Hardcoded true
-
-```swift
-struct Supertonic3TTSConfig {
-    static var isEnabled: Bool { true } // VIOLATION: always enabled
-}
-```
-
-**Fix:** Use `UserDefaults.standard.bool(...)` with false default.
-
-### ❌ Unsafe: Compile-time condition as default
-
-```swift
-func selectedProvider() -> TTSProvider? {
-    #if DEBUG
-        return .supertonic3 // VIOLATION: enabled in debug builds
-    #else
-        return nil
-    #endif
-}
-```
-
-**Fix:** Use runtime UserDefaults gates, not compile-time conditionals.
-
-### ❌ Unsafe: Single gate insufficient
-
-```swift
-func isQwen3MLXEnabled() -> Bool {
-    UserDefaults.standard.bool(forKey: "qwen3MLXEnabled") // Only one gate
-}
-```
-
-**Fix:** Require both `qwen3MLXEnabled` AND `devLabMode` flags.
-
-### ❌ Unsafe: No explicit default
-
-```swift
-struct Supertonic3TTSConfig {
-    static var isEnabled: Bool {
-        UserDefaults.standard.string(forKey: "supertonic3State") == "on" // Unsafe parsing
-    }
-}
-```
-
-**Fix:** Use `.bool(...)` which defaults false, not string parsing.
-
-## Future Changes
-
-### Allowed
-- ✅ Add new experimental providers (with UserDefaults gates)
-- ✅ Promote Qwen3MLX from dev lab to stable (add shipping gate)
-- ✅ Add localization/language selection to TTS
-- ✅ Allow user opt-in via settings UI
-
-### Restricted (Require Governance Review)
-- ❌ Enable any TTS provider by default (must stay silent)
-- ❌ Remove UserDefaults gates (must keep runtime control)
-- ❌ Hardcode `true` for any provider
-- ❌ Use compile-time conditionals for shipping provider selection
-- ❌ Add environment variable overrides for production builds
-
-## Testing & Verification
-
-### Unit Test: Default is Silent
-
-```swift
-func testDefaultTTSProviderIsSilent() {
-    UserDefaults.standard.removeObject(forKey: "supertonic3ExperimentalEnabled")
-    UserDefaults.standard.removeObject(forKey: "qwen3MLXTTSEnabled")
-    UserDefaults.standard.removeObject(forKey: "devLabMode")
-    
-    let provider = TTSRoutingPolicy.selectedProvider()
-    XCTAssertNil(provider, "Default provider must be nil (silent)")
-}
-```
-
-### Unit Test: Supertonic3 Gate Works
-
-```swift
-func testSupertonic3RequiresExplicitEnable() {
-    Supertonic3TTSConfig.isEnabled = true
-    let provider = TTSRoutingPolicy.selectedProvider()
-    XCTAssertEqual(provider, .supertonic3, "Should select Supertonic3 when enabled")
-    
-    Supertonic3TTSConfig.isEnabled = false
-    let providerDisabled = TTSRoutingPolicy.selectedProvider()
-    XCTAssertNil(providerDisabled, "Should revert to silent when disabled")
-}
-```
-
-### Manual Test: Verify No Default Audio
-
-1. Fresh app install (all UserDefaults cleared)
-2. Open app, navigate to chat
-3. Trigger any speech synthesis trigger (if exposed in UI)
-4. **Expected:** No audio output (silent mode)
-5. **Failure:** Any audio heard without explicit user opt-in
-
-### Manual Test: Verify Qwen3 Gate Requires Both Flags
-
-1. Set only `qwen3MLXTTSEnabled = true` in UserDefaults
-2. Trigger TTS
-3. **Expected:** Silent (both gates required)
-4. Set also `devLabMode = true`
-5. **Expected:** TTS audio (Qwen3 now enabled)
-
-## Compliance Checklist
-
-- [ ] `Supertonic3TTSConfig.isEnabled` reads from UserDefaults, defaults false
-- [ ] No hardcoded `true` for any TTS provider
-- [ ] `TTSRoutingPolicy.selectedProvider()` returns `nil` by default
-- [ ] Qwen3MLX requires both `qwen3MLXTTSEnabled` AND `devLabMode`
-- [ ] ToolContractValidator includes `validateTTSDefaultSilentPolicy()`
-- [ ] RuntimeDiagnosticsService includes `ttsDefaultProviderIsNilOrExperimental`
-- [ ] RuntimeDiagnosticsService includes `supertonic3StrictlyDevLabGated`
-- [ ] Unit tests confirm default provider is `nil`
-- [ ] No `#if DEBUG` conditionals for TTS provider selection
-- [ ] Code review confirms no compile-time TTS defaults
+- fallback TTS
+- Apple TTS / AVSpeechSynthesizer (폴백 포함 영원히 금지)
+- 라이선스 검증 전 제품 TTS 노출
+- 모델 번들 (재배포 정책 확인 전)
+- ONNX 파일 git commit
+- Supertonic launch 자동 init
+- 상업 출시 준비 완료 / 런타임 검증 완료 표현 (제품 준비 완료 주장 금지)

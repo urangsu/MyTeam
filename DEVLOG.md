@@ -6,6 +6,29 @@
 
 ---
 
+## 2026-05-22 (Round 251TTS-QWEN-PURGE — Supertonic3 단독 후보 확정)
+
+### 완료 (2026-05-22)
+
+이전 TTS 후보 제거. Supertonic3를 유일한 실험용 TTS 후보로 확정.
+
+**핵심 변경:**
+- `Qwen3TTSService.swift` 삭제 (`git rm`)
+- `TTSProviderKind` enum: `.supertonic3` 단일 case (이전 후보 case 제거)
+- `TTSProductPolicy.canShipAsProductFeature` 항상 `false` — 5개 gate 모두 미충족
+- `SpeechManager.speak()` → Supertonic3 미활성 시 무음 (폴백 없음)
+- 모든 활성 정책 파일에서 이전 TTS 참조 제거
+- ONNX 모델 파일 5개 Resources 디렉토리에서 제거
+- `scripts/preflight_round251tts_qwen_purge.sh` 14/14 PASSED
+- Debug + Release BUILD SUCCEEDED (기존 warnings 유지, 신규 error 없음)
+
+**TTS 현황:**
+- Supertonic3: TTSLab 전용. licenseVerified=false. 제품 기능 미출시.
+- Apple TTS (AVSpeechSynthesizer): 영원히 금지 (폴백 포함)
+- MyTeam v1 기본 TTS: 없음 (무음)
+
+---
+
 ## 2026-05-21 (Round 267B — Swift Warning Burn-Down + ONNX Stub Policy)
 
 ### 완료 (2026-05-21)

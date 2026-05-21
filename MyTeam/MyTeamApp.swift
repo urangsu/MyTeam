@@ -71,11 +71,6 @@ enum AppPaths {
         applicationSupportDirectory.appendingPathComponent("TTSBench", isDirectory: true)
     }
 
-    nonisolated static var qwenSpeechCacheDirectory: URL {
-        let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
-            ?? FileManager.default.temporaryDirectory
-        return base.appendingPathComponent("qwen3-speech", isDirectory: true)
-    }
 }
 
 // MARK: - App Entry Point
@@ -97,21 +92,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if ProcessInfo.processInfo.environment["MYTEAM_TTS_PROBE"] == "1" {
-            print("[TTSProbe] launch requested")
+            // TTS probe: Supertonic3 only candidate.
+            print("[TTSProbe] Supertonic3-only probe — no-op in this build")
             fflush(stdout)
             NSApp.setActivationPolicy(.prohibited)
-            Task.detached(priority: .userInitiated) {
-                print("[TTSProbe] task started")
-                fflush(stdout)
-                await Qwen3TTSService.shared.runRuntimeProbe()
-                await MainActor.run { NSApp.terminate(nil) }
-            }
-            Task {
-                try? await Task.sleep(nanoseconds: 600_000_000_000)
-                print("[TTSProbe] timeout after 600s")
-                fflush(stdout)
-                exit(2)
-            }
+            Task { await MainActor.run { NSApp.terminate(nil) } }
             return
         }
 
@@ -150,16 +135,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Task 디스패치 반영 대기 (AVAudio actor 큐 flush)
         Thread.sleep(forTimeInterval: 0.05)
 
-        // Step 2: TTS 추론 취소 후 actor 완료 신호 대기
-        let sem = DispatchSemaphore(value: 0)
-        Task.detached(priority: .high) { @Qwen3TTSActor in
-            Qwen3TTSService.shared.cancelCurrentInference()
-            sem.signal()
-        }
-        _ = sem.wait(timeout: .now() + 5.0)  // 최대 5초 (voice clone 합성 1 step ≈ 140ms)
-
-        // Step 3: Metal command queue + MLX eval drain
-        Thread.sleep(forTimeInterval: 0.5)
+        // Step 2: Metal command queue drain
+        Thread.sleep(forTimeInterval: 0.1)
     }
 
     // MARK: - 메뉴바

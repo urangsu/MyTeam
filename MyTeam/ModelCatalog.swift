@@ -1,13 +1,8 @@
 import Foundation
 
 enum ModelCatalog {
-    nonisolated static let defaultTTSModelId = "aufklarer/Qwen3-TTS-12Hz-1.7B-Base-MLX-4bit"
-    nonisolated static let ttsModelUserDefaultsKey = "ttsModelId"
-
-    nonisolated static func resolvedTTSModelId() -> String {
-        let stored = UserDefaults.standard.string(forKey: ttsModelUserDefaultsKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
-        return stored?.isEmpty == false ? stored! : defaultTTSModelId
-    }
+    // TTS: Supertonic3 only candidate. No default TTS.
+    // License/bundle/release gate not verified — TTSLab scope only.
 
     // MARK: - Character TTS Policy
 

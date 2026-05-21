@@ -20,10 +20,6 @@ struct RuntimeDiagnosticsSnapshot {
     // AICallBudget
     let budgetUsageDescription: String
 
-    // Qwen TTS
-    let qwenEnabled: Bool
-    let qwenUnavailable: Bool
-
     // STT
     let sttInitialized: Bool
     let sttRecording: Bool
@@ -495,8 +491,6 @@ struct RuntimeDiagnosticsSnapshot {
 
     // Round 247TTS: Supertonic3 PoC + TTS Policy
     let appleSystemTTSBlocked: Bool                       // AVSpeechSynthesizer 완전 금지 (정책)
-    let qwen3TTSDefaultDisabled: Bool                     // Qwen3 기본 비활성화
-    let qwen3TTSDevLabOverrideOnly: Bool                  // Qwen3 DevLab override 전용
     let supertonic3ProviderRegistered: Bool               // Supertonic3TTSProvider 파일 존재
     let supertonic3DefaultDisabled: Bool                  // Supertonic3 기본 off
     let supertonic3RequiresLocalModel: Bool               // 로컬 모델 필요
@@ -611,7 +605,6 @@ struct RuntimeDiagnosticsSnapshot {
         }
 
         lines.append("budget: \(budgetUsageDescription)")
-        lines.append("qwen: enabled=\(qwenEnabled) unavailable=\(qwenUnavailable)")
         lines.append("stt: initialized=\(sttInitialized) recording=\(sttRecording) starting=\(sttStarting)")
         lines.append("recentArtifacts: \(recentArtifactsCount)")
         lines.append("artifactStore: total=\(artifactTotalCount) valid=\(artifactValidCount) missing=\(artifactMissingFileCount) invalid=\(artifactInvalidPathCount) hashMismatch=\(artifactHashMismatchCount) staleRecent=\(recentIndexStaleCount)")
@@ -710,7 +703,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("room236: rename=\(roomRenameAvailable ? "✅" : "❌") scoped=\(roomScopedMessagesAvailable ? "✅" : "❌") purpose=\(roomPurposeInferenceAvailable ? "✅" : "❌") blogSrc=\(blogSourceCommandAvailable ? "✅" : "❌") blogProf=\(blogProfileCommandAvailable ? "✅" : "❌") profileScoped=\(blogStyleProfileRoomScoped ? "✅" : "❌") inventory=\(connectorImplementationInventoryAvailable ? "✅" : "❌") readiness=\(connectorReadinessPlanAvailable ? "✅" : "❌") polite=\(userFacingCopyPolite ? "✅" : "❌")")
         lines.append("unblock246a: goalGateFallback=\(goalGateFallbackFunctional) toolTyped=\(toolLayerTypedResultAvailable) approvalFoundation=\(approvalFoundationAvailable) delegationGate=\(delegationGateRespected) budgetTier=\(budgetTierInterfaceAvailable) dartAssistOnly=\(dartSkillAssistOnly) officeReviewStatus=\(officeReviewExecutionStatusAvailable) observeLevel=\(observationImplementationLevelAvailable) featureFile=\(featureAvailabilitySeparatedFileAvailable) skillResolver=\(skillAvailabilityResolverAvailable) fallbackSvc=\(capabilityFallbackServiceAvailable)")
         lines.append("action246b: approvalStore=\(approvalStoreAvailable) banner=\(approvalBannerViewAvailable) card=\(approvalCardViewAvailable) presentationPolicy=\(toolResultPresentationPolicyAvailable) assistOnly=\(assistOnlySkillDetectionWired) highRisk=\(highRiskSkillFallbackWired) disabled=\(disabledSkillFallbackWired) workflowTyped=\(workflowTypedStatusHandled) autoApproval=\(approvalRequiredAutoRegistered) planned=\(plannedStepFallbackWired) unavail=\(unavailableStepFallbackWired) officeUX=\(officeReviewAssistOnlyUxAvailable) observeUX=\(observationImplLevelUxAvailable)")
-        lines.append("tts247: appleTTSBlocked=\(appleSystemTTSBlocked) qwen3DefaultOff=\(qwen3TTSDefaultDisabled) qwen3DevLabOnly=\(qwen3TTSDevLabOverrideOnly) s3registered=\(supertonic3ProviderRegistered) s3defaultOff=\(supertonic3DefaultDisabled) s3localModel=\(supertonic3RequiresLocalModel) s3noAutoDownload=\(supertonic3NoAutoDownload) s3licenseUnverified=\(supertonic3LicenseMarkedUnverified) s3probe=\(supertonic3RuntimeProbeAvailable) silentAllowed=\(ttsSilentFallbackAllowed) noRepeatLoop=\(ttsMissingModelNoRepeatLoop)")
+        lines.append("tts251: appleTTSBlocked=\(appleSystemTTSBlocked) s3only=true s3registered=\(supertonic3ProviderRegistered) s3defaultOff=\(supertonic3DefaultDisabled) s3localModel=\(supertonic3RequiresLocalModel) s3noAutoDownload=\(supertonic3NoAutoDownload) s3licenseUnverified=\(supertonic3LicenseMarkedUnverified) s3probe=\(supertonic3RuntimeProbeAvailable) silentAllowed=\(ttsSilentFallbackAllowed) noRepeatLoop=\(ttsMissingModelNoRepeatLoop)")
         lines.append("observe247a: inboxView=\(observationInboxViewAvailable) teamRoom=\(observationCardsConnectedToTeamRoom) personalRoom=\(observationCardsConnectedToPersonalRoom) clipboardRoute=\(clipboardExplicitReadRouteAvailable) downloadsDefaultOff=\(downloadsWatcherSettingsDefaultOff) finderFallback=\(finderSelectionFallbackAvailable) screenPlanned=\(screenSnapshotPlannedNoticeAvailable) presentationPolicy=\(observationPresentationPolicyAvailable) noAutoAnalyze=\(observationAttachDoesNotAutoAnalyze) roomScope=\(observationRoomScopeEnforced)")
         lines.append("office248a: executor=\(officeReviewLiteExecutorAvailable) resultCard=\(officeReviewResultCardViewAvailable) skillExec=\(localSkillExecutorHandlesOfficeReviewLite) statusUpdated=\(officeReviewExecutionStatusUpdated) disclaimer=\(officeReviewLimitationsDisclaimerShown) noMutation=\(officeReviewNoOriginalFileMutation) noEvidence=\(officeReviewNoEvidenceLocationTracking) heuristic=\(officeReviewHeuristicExtractionOnly) assistOnly=\(officeReviewAssistOnlyGuidanceAvailable)")
         lines.append("office248hotfix: resultWired=\(officeReviewLiteResultReturnedToOrchestrator) noEmptyMsg=\(officeReviewLiteDoesNotReturnEmptyMessage) markdown=\(officeReviewMarkdownPresentationAvailable) macSafe=\(officeReviewCardViewCompileSafeOnMac) 2ndPhase=\(officeReviewAssistOnlySecondPhaseReachable) evidenceHonest=\(officeReviewEvidenceLabelHonest)")
@@ -736,7 +729,6 @@ final class RuntimeDiagnosticsService {
         let ai = AIService.shared
         let capture = AudioCaptureService.shared
 
-        let qwen = speech.qwenDiagnostics
         let workspacePath = ToolExecutionContext.workspaceURL.path
 
         let recentEvents = await AgentEventBus.shared.allRecentEvents(limit: 100)
@@ -1139,8 +1131,6 @@ final class RuntimeDiagnosticsService {
             geminiCooldownRemainingSeconds: ai.geminiCooldownRemainingSeconds,
             geminiConsecutive429Count: ai.consecutive429Count,
             budgetUsageDescription: budgetUsageDescription,
-            qwenEnabled: qwen.enabled,
-            qwenUnavailable: qwen.unavailable,
             sttInitialized: capture.audioEngineInitialized,
             sttRecording: capture.isRecording,
             sttStarting: capture.isStarting,
@@ -1548,8 +1538,6 @@ final class RuntimeDiagnosticsService {
             observationImplLevelUxAvailable: true,
             // Round 247TTS: Supertonic3 PoC + TTS Policy
             appleSystemTTSBlocked: true,
-            qwen3TTSDefaultDisabled: true,
-            qwen3TTSDevLabOverrideOnly: true,
             supertonic3ProviderRegistered: true,
             supertonic3DefaultDisabled: true,
             supertonic3RequiresLocalModel: true,

@@ -11,13 +11,12 @@
 ### 포함 (247TTS)
 
 - TTSProviderKind, TTSProviderAvailability, TTSOutput, TTSProviderError 타입 정의
-- TTSRoutingPolicy — provider 선택 정책 (Supertonic3 → Qwen3DevLab → nil/무음)
+- TTSRoutingPolicy — provider 선택 정책 (Supertonic3 → nil/무음)
 - Supertonic3TTSConfig — 모델 경로, voice preset, isEnabled=false 기본값
 - Supertonic3ModelLocator — `~/.cache/supertonic3/onnx/` 파일 존재 여부 확인
 - Supertonic3TTSProvider (skeleton) — synthesize() 항상 .missingRuntime
 - Supertonic3TTSProbe — Cloud probe (모델 탐색 + 설정 요약, inference 없음)
 - TTSLabView — Developer Lab 전용 UI (enable 토글, 모델 상태, preset 선택)
-- SpeechManager 수정 — TTSRoutingPolicy 연결, Qwen3 DevLab 격리
 - RuntimeDiagnosticsSnapshot — TTS 정책 필드 11개 추가
 - ToolContractValidator — TTS validators 7개 추가
 

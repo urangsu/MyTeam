@@ -59,7 +59,7 @@
 프로젝트 정책상 Apple TTS(AVSpeechSynthesizer)는 기계음으로 사용자가 강력 거부.  
 폴백으로도 포함 금지. (`docs/character/` + `MEMORY.md` 참고)
 
-현재 대안: Qwen3TTSService (별도 로컬 서버) 또는 무음.
+현재 대안: 무음 (Supertonic gate 미통과 시 TTS 없음).
 
 ---
 

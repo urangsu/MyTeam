@@ -195,7 +195,6 @@ enum ToolContractValidator {
         validateObservationImplLevelUxPolicy(issues: &issues)
         // Round 247TTS validators
         validateAppleSystemTTSBlocked(issues: &issues)
-        validateQwen3DefaultDisabledPolicy(issues: &issues)
         validateSupertonic3ExperimentalPolicy(issues: &issues)
         validateSupertonic3NoAutoDownloadPolicy(issues: &issues)
         validateTTSSilentFallbackPolicy(issues: &issues)
@@ -1595,14 +1594,6 @@ enum ToolContractValidator {
         guard let snap else { return }
         if !snap.appleSystemTTSBlocked {
             issues.append(issue(.error, "Apple TTS (AVSpeechSynthesizer) 차단 정책이 등록되지 않았습니다. 프로젝트 정책: 폴백 포함 절대 금지."))
-        }
-    }
-
-    private static func validateQwen3DefaultDisabledPolicy(issues: inout [ToolContractValidationIssue]) {
-        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
-        guard let snap else { return }
-        if !snap.qwen3TTSDefaultDisabled {
-            issues.append(issue(.error, "Qwen3 TTS 기본 비활성화 정책이 등록되지 않았습니다. Qwen3는 기본 off여야 합니다."))
         }
     }
 

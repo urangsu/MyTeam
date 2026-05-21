@@ -81,8 +81,8 @@ grep -q "KSkillAssistRuntime" "$REPO_ROOT/MyTeam/MyTeam.xcodeproj/project.pbxpro
 # 15. ONNXRuntimeAvailability enum defined
 grep -q "ONNXRuntimeAvailability" "$MYTEAM/ONNXRuntimeAdapter.swift" && check "ONNXRuntimeAvailability enum defined" "pass" || check "ONNXRuntimeAvailability enum defined" "fail"
 
-# 16. Qwen3 default disabled
-grep -q "enableExperimentalQwenTTS" "$MYTEAM/TTSLabView.swift" && check "Qwen3 dev-lab-only flag exists" "pass" || check "Qwen3 dev-lab-only flag exists" "fail"
+# 16. Qwen3 코드 없음 (251TTS-QWEN-PURGE)
+grep -rq "Qwen\|qwen" "$MYTEAM"/*.swift 2>/dev/null && check "No Qwen references in Swift code" "fail" || check "No Qwen references in Swift code" "pass"
 
 # 17. No large model files in repo (stubs < 10KB are allowed)
 LARGE_ONNX=$(find "$REPO_ROOT" -name "*.onnx" -size +10k 2>/dev/null)

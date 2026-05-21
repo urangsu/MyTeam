@@ -25,20 +25,6 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
     private var currentStreamTask: Task<Void, Never>? = nil
     private var currentSpeakingAgentID: String? = nil
 
-    /// Qwen3 TTS — Developer Lab override + 실험 플래그 두 가지 모두 켜져야 활성.
-    /// Round 247TTS: ttsDevLabQwen3Override 없이는 enableExperimentalQwenTTS만으로 활성화 불가.
-    /// TTSRoutingPolicy.selectedProvider()와 동일 로직 유지.
-    private var qwenEnabled: Bool {
-        TTSRoutingPolicy.selectedProvider() == .qwen3MLX
-    }
-    /// 세션 내 Qwen3 불가 캐시 — 한 번 실패하면 세션 내 재시도 없음
-    private var qwenUnavailable: Bool = false
-
-    /// 진단: Qwen TTS 활성화 여부 및 세션 내 비가용 캐시 상태
-    var qwenDiagnostics: (enabled: Bool, unavailable: Bool) {
-        (qwenEnabled, qwenUnavailable)
-    }
-
     private init() {
         capture.$isRecording.assign(to: &$isRecording)
         capture.$isStarting.assign(to: &$isStarting)
@@ -145,27 +131,6 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
             }
             onPlaybackStarted()
 
-        case .qwen3MLX:
-            // Developer Lab override 전용. 세션 내 불가 캐시 확인.
-            guard !qwenUnavailable else {
-                AppLog.info("[AICall] callType=tts skipped (qwen3Unavailable)")
-                onPlaybackStarted()
-                return
-            }
-            let streamId = "mlx_\(UUID().uuidString)"
-            AppLog.info("[AICall] callType=tts provider=qwen3MLX characterName=\(characterName)")
-            let pcmStream = Qwen3TTSService.shared.generateTTSStream(text: text, characterName: characterName)
-            let style = VoiceStyleCatalog.playbackStyle(for: characterName)
-            await playback.playStream(
-                streamId: streamId,
-                stream: pcmStream,
-                characterName: characterName,
-                pitch: style.pitch,
-                rate: style.rate,
-                textPayload: text,
-                onPlaybackStarted: onPlaybackStarted
-            )
-
         case .none:
             // 무음 — provider 없음. Apple TTS 폴백 없음.
             AppLog.info("[AICall] callType=tts skipped (noProvider → silent)")
@@ -231,28 +196,9 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         DispatchQueue.main.async { self.isSpeaking = true }
 
         currentStreamTask = Task {
-            let provider = TTSRoutingPolicy.selectedProvider()
-            // 무음 처리 (Apple TTS 폴백 없음)
-            guard provider == .qwen3MLX else {
-                AppLog.info("[AICall] callType=tts skipped speak() (provider=\(String(describing: provider)) → silent)")
-                await MainActor.run { self.isSpeaking = false }
-                return
-            }
-            guard !self.qwenUnavailable else {
-                AppLog.info("[AICall] callType=tts skipped speak() (qwen3Unavailable)")
-                await MainActor.run { self.isSpeaking = false }
-                return
-            }
-            let sentences = self.chunkText(text)
-            for sentence in sentences {
-                if Task.isCancelled { break }
-                let streamId = "mlx_\(UUID().uuidString)"
-                AppLog.info("[AICall] callType=tts provider=qwen3MLX characterName=\(character)")
-                let pcmStream = Qwen3TTSService.shared.generateTTSStream(text: sentence, characterName: character)
-                let style = VoiceStyleCatalog.playbackStyle(for: character)
-                await playback.playStream(streamId: streamId, stream: pcmStream,
-                                          characterName: character, pitch: style.pitch, rate: style.rate)
-            }
+            // TTS 없음 — Supertonic3 gate 미통과 시 무음.
+            // Apple TTS 폴백 없음.
+            AppLog.info("[AICall] callType=tts speak() → silent (no provider)")
             await MainActor.run { self.isSpeaking = false }
         }
     }
@@ -261,11 +207,6 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
     func abortPipelinedStream() {
         currentStreamTask?.cancel()
         currentStreamTask = nil
-
-        // MLX 추론 루프 취소 — qwen3MLX provider일 때만 (다른 provider 상태에서 cancel 로그 방지)
-        if TTSRoutingPolicy.selectedProvider() == .qwen3MLX {
-            Task { await Qwen3TTSService.shared.cancelCurrentInference() }
-        }
 
         // 오디오 엔진 즉각 정지
         Task { await playback.stopAll() }

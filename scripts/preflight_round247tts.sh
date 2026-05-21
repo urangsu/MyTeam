@@ -95,11 +95,11 @@ else
     fail "Supertonic3TTSConfig.swift에 supertonic3ExperimentalEnabled 키 없음"
 fi
 
-# ── 10. Qwen3 Developer Lab override 전용 ────────────────────────────────────
-if grep -q "ttsDevLabQwen3Override" "$SWIFT_DIR/TTSRoutingPolicy.swift" 2>/dev/null; then
-    ok "Qwen3 DevLab override guard 존재 (TTSRoutingPolicy)"
+# ── 10. Qwen3 코드 없음 (251TTS-QWEN-PURGE) ──────────────────────────────────
+if grep -rq "Qwen\|qwen" "$SWIFT_DIR"/*.swift 2>/dev/null; then
+    fail "Qwen 참조가 Swift 코드에 남아 있음"
 else
-    fail "TTSRoutingPolicy에 ttsDevLabQwen3Override guard 없음"
+    ok "Qwen 참조 없음 (Swift code clean)"
 fi
 
 # ── 11. Supertonic3 자동 다운로드 없음 ───────────────────────────────────────

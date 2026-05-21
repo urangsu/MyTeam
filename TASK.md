@@ -94,6 +94,25 @@ AssistOnly Governance Hardening Pack
 - BuiltInKoreanSkills: accounting-tax skill manifest
 - 4 policy docs: KSkillAssistPolicy.md, SkillResultRenderingPolicy.md, AccountingTaxSkillPolicy.md, TTSProviderPolicy.md
 
+#### Round 251TTS-QWEN-PURGE — 완료 (2026-05-22)
+
+이전 TTS 후보(Qwen3) 완전 제거. Supertonic3 단독 후보 정책 확정.
+
+- `Qwen3TTSService.swift` git rm 완료
+- `SpeechManager.swift`: Qwen 라우팅 경로 제거, speak() → 무음
+- `TTSProviderModels.swift`: TTSProviderKind를 `.supertonic3` 단일 case로 축소
+- `TTSRoutingPolicy.swift`: Qwen3 분기 제거 (Supertonic3 → nil/무음)
+- `ModelCatalog.swift`: defaultTTSModelId / resolvedTTSModelId() 제거
+- `RuntimeDiagnosticsService.swift`: Qwen 진단 필드 제거, tts251 형식 업데이트
+- `ToolContractValidator.swift`: validateQwen3DefaultDisabledPolicy() 제거
+- `TTSLabView.swift`: Qwen3 섹션/토글 제거
+- `MyTeamApp.swift`: Qwen TTS actor drain 제거
+- `docs/TTSProviderPolicy.md`: Supertonic3 단독 후보 정책으로 전면 재작성
+- ONNX 파일 Resources 디렉토리에서 제거 (untracked 5개)
+- `scripts/preflight_round251tts_qwen_purge.sh` — **14/14 PASSED** ✅
+- Debug + Release BUILD SUCCEEDED ✅
+- TTS 정책: licenseVerified=false, canShipAsProductFeature=false, Supertonic TTSLab-only
+
 #### Next — Mac Build (Round 267A)
 
 - Mac xcodebuild Debug/Release (0 errors, 0 warnings)

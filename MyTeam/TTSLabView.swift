@@ -9,7 +9,6 @@ import SwiftUI
 //   - 모델 파일 상태 표시 (checkModel() 결과)
 //   - Voice preset 선택 (M1-M5, F1-F5)
 //   - Probe 결과 표시 (Cloud: 모델 탐색 + 설정 요약)
-//   - Qwen3 Developer Lab override 토글 (별도 섹션)
 // 금지:
 //   - NSOpenPanel 열기 (Mac build에서만 허용 — 248TTS에서 구현)
 //   - Apple TTS 선택지 없음 (정책: 영원히 금지)
@@ -25,8 +24,6 @@ struct TTSLabView: View {
     @State private var supertonic3Enabled: Bool = false
     @State private var selectedPreset: String = "F1"
     @State private var selectedLanguage: String = "auto"
-    @State private var qwen3DevLabOverride: Bool = false
-    @State private var qwen3Enabled: Bool = false
     @State private var probeResult: Supertonic3ProbeRunResult? = nil
     @State private var readinessResult: Supertonic3ProbeResult? = nil
     @State private var modelCheck: Supertonic3ModelLocator.ModelCheckResult = .checking
@@ -49,7 +46,6 @@ struct TTSLabView: View {
                 headerSection
                 supertonic3Section
                 onnxSpikeSection
-                qwen3Section
                 policyNoticeSection
             }
             .padding()
@@ -60,8 +56,6 @@ struct TTSLabView: View {
             supertonic3Enabled = UserDefaults.standard.bool(forKey: "supertonic3ExperimentalEnabled")
             selectedPreset = UserDefaults.standard.string(forKey: "supertonic3VoicePreset") ?? "F1"
             selectedLanguage = UserDefaults.standard.string(forKey: "supertonic3Language") ?? "auto"
-            qwen3DevLabOverride = UserDefaults.standard.bool(forKey: "ttsDevLabQwen3Override")
-            qwen3Enabled = UserDefaults.standard.bool(forKey: "enableExperimentalQwenTTS")
             refreshModelCheck()
         }
     }
@@ -439,66 +433,6 @@ struct TTSLabView: View {
                     spikeIsSynthesizing = false
                 }
             }
-        }
-    }
-
-    private var qwen3Section: some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Qwen3-TTS (MLX 4bit)")
-                            .font(.headline)
-                        Text("기본 비활성화. Developer Lab override가 켜져 있어야만 활성화 가능.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Image(systemName: "lock.fill")
-                        .foregroundStyle(.secondary)
-                }
-
-                Divider()
-
-                // Dev Lab override toggle
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Developer Lab Override")
-                            .font(.subheadline)
-                        Text("이 스위치를 켠 뒤 아래 실험 플래그도 켜야 Qwen3 활성화됨")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Toggle("", isOn: $qwen3DevLabOverride)
-                        .toggleStyle(.switch)
-                        .onChange(of: qwen3DevLabOverride) { _, newValue in
-                            UserDefaults.standard.set(newValue, forKey: "ttsDevLabQwen3Override")
-                        }
-                }
-
-                if qwen3DevLabOverride {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("실험용 Qwen3 TTS 활성화")
-                                .font(.subheadline)
-                            Text("enableExperimentalQwenTTS — DevLab override ON 상태에서만 유효")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        Toggle("", isOn: $qwen3Enabled)
-                            .toggleStyle(.switch)
-                            .onChange(of: qwen3Enabled) { _, newValue in
-                                UserDefaults.standard.set(newValue, forKey: "enableExperimentalQwenTTS")
-                            }
-                    }
-                    .padding(.leading, 16)
-                }
-            }
-            .padding(8)
-        } label: {
-            Label("Qwen3-TTS", systemImage: "cpu")
         }
     }
 

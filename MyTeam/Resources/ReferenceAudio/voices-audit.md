@@ -25,9 +25,8 @@
 
 ## 현재 로드 동작
 
-- `Qwen3TTSService.clippedReferenceAudio()` 에서 24000 * 6 = 144,000 샘플(6초)로 자동 클리핑
-- 파일이 길어도 앞 6초만 사용됨 → 긴 reference가 즉시 문제는 아님
-- voice clone 기본값 OFF (`MyTeam.TTS.useQwenVoiceClone` 키 필요)
+- 레퍼런스 오디오는 현재 미사용 (TTS voice clone 제거됨)
+- Supertonic3는 preset 기반 (M1-M5, F1-F5), voice clone 미지원
 
 ---
 

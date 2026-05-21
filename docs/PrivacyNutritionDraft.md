@@ -44,7 +44,7 @@ MyTeam collects minimal data and prioritizes user privacy through local-first pr
 
 ### File Locations
 - All data: `~/Library/Application Support/MyTeam/`
-- TTS cache: `~/Library/Caches/qwen3-speech/` (app-controlled)
+- TTS cache: 없음 (Supertonic3 로컬 모델만 사용, 앱 캐시 없음)
 - UserDefaults: App sandbox container only
 
 ## Network Activity

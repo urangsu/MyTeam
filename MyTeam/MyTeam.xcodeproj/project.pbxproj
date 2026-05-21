@@ -10033,7 +10033,6 @@
 				<string>A3F8C6D27B1E4509D2C835FA</string>
 				<string>AABBCC1100000000000A0002</string>
 				<string>A1B2C3D4E5F6012345678902</string>
-				<string>CAFE0001DEAD1111BEEF0002</string>
 				<string>5E6EEB16BFFDC4C88B1A9577</string>
 				<string>3E71A115B6C19F218850AE09</string>
 				<string>F05784DE6CFD4E514B23FE4D</string>
@@ -11119,7 +11118,6 @@
 				<string>AAAA0001BBBB2222CCCC0003</string>
 				<string>B82E0410E8DA0C1ED3DD6B94</string>
 				<string>C0DE0001FEED1111CAFE0003</string>
-				<string>C0DE0001FEED1111CAFE0001</string>
 			</array>
 			<key>preferredProjectObjectVersion</key>
 			<string>77</string>
@@ -11215,7 +11213,6 @@
 				<string>B7D4E2A1C93F5018E46A7B3D</string>
 				<string>AABBCC1100000000000A0001</string>
 				<string>A1B2C3D4E5F6012345678901</string>
-				<string>CAFE0001DEAD1111BEEF0001</string>
 				<string>CB661F8E34B37A83BD132210</string>
 				<string>A11B22C33D44E55F66010011</string>
 				<string>A11B22C33D44E55F66010012</string>
@@ -11760,7 +11757,6 @@
 				<string>AAAA0001BBBB2222CCCC0002</string>
 				<string>9BCEB15ED70DC75AB67DA76A</string>
 				<string>5B9D55BA2C66AEF21781A6F7</string>
-				<string>C0DE0001FEED1111CAFE0002</string>
 			</array>
 			<key>productName</key>
 			<string>MyTeam</string>
@@ -16751,29 +16747,6 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
-		<key>C0DE0001FEED1111CAFE0001</key>
-		<dict>
-			<key>isa</key>
-			<string>XCRemoteSwiftPackageReference</string>
-			<key>repositoryURL</key>
-			<string>https://github.com/soniqo/speech-swift</string>
-			<key>requirement</key>
-			<dict>
-				<key>kind</key>
-				<string>upToNextMajorVersion</string>
-				<key>minimumVersion</key>
-				<string>0.0.1</string>
-			</dict>
-		</dict>
-		<key>C0DE0001FEED1111CAFE0002</key>
-		<dict>
-			<key>isa</key>
-			<string>XCSwiftPackageProductDependency</string>
-			<key>package</key>
-			<string>C0DE0001FEED1111CAFE0001</string>
-			<key>productName</key>
-			<string>Qwen3TTS</string>
-		</dict>
 		<key>C0DE0001FEED1111CAFE0003</key>
 		<dict>
 			<key>isa</key>
@@ -17637,26 +17610,6 @@
 			<string>치코_sleeping_002.png</string>
 			<key>path</key>
 			<string>Resources/Sprites/치코/치코_sleeping_002.png</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
-		<key>CAFE0001DEAD1111BEEF0001</key>
-		<dict>
-			<key>fileRef</key>
-			<string>CAFE0001DEAD1111BEEF0002</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>CAFE0001DEAD1111BEEF0002</key>
-		<dict>
-			<key>includeInIndex</key>
-			<string>1</string>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>sourcecode.swift</string>
-			<key>path</key>
-			<string>Qwen3TTSService.swift</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
