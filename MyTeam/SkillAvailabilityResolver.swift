@@ -21,13 +21,20 @@ enum SkillAvailabilityResolver {
         // 스킬 ID별 명시적 override
         switch skill.id {
         case "korean.dart":
-            // DART Open API 미연결 — 자료 주면 공시 형식으로 정리 가능
             return .assistOnly
         case "korean.law-search":
-            // 법령 검색 API 미연결
             return .assistOnly
         case "korean.naver-news", "korean.naver-blog-research":
-            // Naver Search API 미연결
+            return .assistOnly
+        case "korean.ktx-booking":
+            return .assistOnly
+        case "korean.map-place", "korean.reservation-preparation":
+            return .assistOnly
+        case "korean.stock-info":
+            return .assistOnly
+        case "korean.scholarship":
+            return .assistOnly
+        case "korean.office-review-assist", "korean.file-image-assist":
             return .assistOnly
         default:
             return .available
@@ -43,6 +50,14 @@ enum SkillAvailabilityResolver {
             return "법령 검색 API는 아직 연결 전입니다. 법령명이나 조항 내용을 주시면 분석·정리해드릴 수 있어요."
         case "korean.naver-news", "korean.naver-blog-research":
             return "뉴스/블로그 API는 아직 연결 전입니다. 기사 내용을 붙여 주시면 요약·분석해드릴 수 있어요."
+        case "korean.ktx-booking":
+            return "KTX/SRT 자동 예매는 지원하지 않습니다. 조건을 알려주시면 예매 전 체크리스트를 만들어드릴게요."
+        case "korean.map-place", "korean.reservation-preparation":
+            return "지도 직접 검색은 아직 연결 전입니다. 장소명이나 링크를 주시면 비교 기준과 예약 체크리스트를 정리해드릴게요."
+        case "korean.stock-info":
+            return "실시간 시세 조회는 아직 연결 전입니다. 종목명과 자료를 주시면 지표 체크리스트를 정리해드릴게요."
+        case "korean.scholarship":
+            return "복지로/장학금나라 직접 조회는 아직 연결 전입니다. 자격 조건과 서류 체크리스트를 정리해드릴 수 있어요."
         default:
             return "직접 실행은 아직 연결 전입니다. 자료를 주시면 정리·초안·검토 형태로 도와드릴게요."
         }

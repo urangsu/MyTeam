@@ -94,34 +94,8 @@ actor Supertonic3TTSProvider {
 
     // MARK: - Probe
 
-    /// 모델 파일 상태 점검 (inference 없이)
+    /// 모델 파일 상태 점검 (inference 없음). Supertonic3TTSProbe에 위임.
     func probe() -> Supertonic3ProbeResult {
-        let modelCheck = Supertonic3ModelLocator.checkModel()
-        return Supertonic3ProbeResult(
-            modelCheck: modelCheck,
-            isEnabled: Supertonic3TTSConfig.isEnabled,
-            selectedPreset: Supertonic3TTSConfig.selectedVoicePreset,
-            runtimeAvailable: false,  // Cloud: false. Mac 248TTS: ONNX Runtime 검사로 교체
-            runtimeNote: "ONNX Runtime 미탑재 (248TTS에서 SPM 추가 예정)"
-        )
-    }
-}
-
-// MARK: - Supertonic3ProbeResult
-
-struct Supertonic3ProbeResult: Sendable {
-    let modelCheck: Supertonic3ModelLocator.ModelCheckResult
-    let isEnabled: Bool
-    let selectedPreset: String
-    let runtimeAvailable: Bool
-    let runtimeNote: String
-
-    var summary: String {
-        var lines: [String] = ["[Supertonic3 Probe]"]
-        lines.append("enabled: \(isEnabled)")
-        lines.append("model: \(modelCheck.isAvailable ? "available" : "missing (\(modelCheck.missingFiles.joined(separator: ", ")))")")
-        lines.append("runtime: \(runtimeAvailable ? "available" : "unavailable — \(runtimeNote)")")
-        lines.append("preset: \(selectedPreset)")
-        return lines.joined(separator: "\n  ")
+        Supertonic3TTSProbe.probe()
     }
 }

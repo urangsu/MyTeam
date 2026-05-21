@@ -537,6 +537,25 @@ struct RuntimeDiagnosticsSnapshot {
     let officeReviewAssistOnlySecondPhaseReachable: Bool
     let officeReviewEvidenceLabelHonest: Bool
 
+    // Round 248TTS-A-CONTINUE: ONNX Runtime boundary + manifest
+    let supertonic3ModelManifestAvailable: Bool
+    let onnxRuntimeAdapterBoundaryAvailable: Bool
+    let supertonic3PipelineSkeletonAvailable: Bool
+    let supertonic3ProbeReadinessAvailable: Bool
+    let supertonic3ModelPathRedacted: Bool
+    let supertonic3NoDummyAudio: Bool
+
+    // Round 249A-KSKILLS-ASSIST: K-Skills assist runtime
+    let kskillAssistRuntimeAvailable: Bool
+    let ktxAssistNoAutoBooking: Bool
+    let mapAssistNoFakeSearch: Bool
+    let stockAssistNoFakeQuote: Bool
+    let dartAssistNoFakeDisclosureLookup: Bool
+    let naverAssistNoFakeSearch: Bool
+    let reservationPaymentHardBlocked: Bool
+    let kskillAssistChecklistAvailable: Bool
+    let kskillRequiredInputsAvailable: Bool
+
     // MARK: - Human-readable summary
 
     var summary: String {
@@ -1014,6 +1033,30 @@ final class RuntimeDiagnosticsService {
         let officeReviewAssistOnlySecondPhaseReachable = true
         let officeReviewEvidenceLabelHonest = true
 
+        // Round 248TTS-A-CONTINUE: ONNX Runtime boundary + manifest
+        let supertonic3ModelManifestAvailable = FileManager.default.fileExists(atPath: "MyTeam/Supertonic3ModelManifest.swift")
+        let onnxRuntimeAdapterBoundaryAvailable = FileManager.default.fileExists(atPath: "MyTeam/ONNXRuntimeAdapter.swift")
+        let supertonic3PipelineSkeletonAvailable = FileManager.default.fileExists(atPath: "MyTeam/Supertonic3InferencePipeline.swift")
+        let supertonic3ProbeReadinessAvailable = FileManager.default.fileExists(atPath: "MyTeam/Supertonic3TTSProbe.swift")
+        let supertonic3ModelPathRedacted = true
+        let supertonic3NoDummyAudio = true
+
+        // Round 249A-KSKILLS-ASSIST: K-Skills assist runtime
+        let kskillAssistRuntimeAvailable = FileManager.default.fileExists(atPath: "MyTeam/KSkillAssistRuntime.swift")
+        let sampleKTX = KSkillAssistRuntime.buildAssistResponse(intent: .ktxBookingAssist, userMessage: "ktx")
+        let sampleMap = KSkillAssistRuntime.buildAssistResponse(intent: .mapPlaceAssist, userMessage: "맛집")
+        let sampleStock = KSkillAssistRuntime.buildAssistResponse(intent: .stockInfoAssist, userMessage: "주가")
+        let sampleDart = KSkillAssistRuntime.buildAssistResponse(intent: .dartDisclosureAssist, userMessage: "공시")
+        let sampleNaver = KSkillAssistRuntime.buildAssistResponse(intent: .naverNewsAssist, userMessage: "뉴스")
+        let ktxAssistNoAutoBooking = sampleKTX.hardBlockedActions.contains { $0.contains("자동") || $0.contains("예매") }
+        let mapAssistNoFakeSearch = sampleMap.hardBlockedActions.contains { $0.contains("예약") || $0.contains("결제") }
+        let stockAssistNoFakeQuote = sampleStock.hardBlockedActions.contains { $0.contains("매수") || $0.contains("수익") }
+        let dartAssistNoFakeDisclosureLookup = sampleDart.hardBlockedActions.contains { $0.contains("DART") || $0.contains("조회") }
+        let naverAssistNoFakeSearch = !sampleNaver.checklist.isEmpty
+        let reservationPaymentHardBlocked = sampleMap.hardBlockedActions.contains { $0.contains("결제") }
+        let kskillAssistChecklistAvailable = !sampleKTX.checklist.isEmpty && !sampleStock.checklist.isEmpty
+        let kskillRequiredInputsAvailable = !sampleKTX.requiredUserInputs.isEmpty && !sampleDart.requiredUserInputs.isEmpty
+
         let snap = RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
             currentRoomID: currentRoomID,
@@ -1466,7 +1509,22 @@ final class RuntimeDiagnosticsService {
             officeReviewMarkdownPresentationAvailable: officeReviewMarkdownPresentationAvailable,
             officeReviewCardViewCompileSafeOnMac: officeReviewCardViewCompileSafeOnMac,
             officeReviewAssistOnlySecondPhaseReachable: officeReviewAssistOnlySecondPhaseReachable,
-            officeReviewEvidenceLabelHonest: officeReviewEvidenceLabelHonest
+            officeReviewEvidenceLabelHonest: officeReviewEvidenceLabelHonest,
+            supertonic3ModelManifestAvailable: supertonic3ModelManifestAvailable,
+            onnxRuntimeAdapterBoundaryAvailable: onnxRuntimeAdapterBoundaryAvailable,
+            supertonic3PipelineSkeletonAvailable: supertonic3PipelineSkeletonAvailable,
+            supertonic3ProbeReadinessAvailable: supertonic3ProbeReadinessAvailable,
+            supertonic3ModelPathRedacted: supertonic3ModelPathRedacted,
+            supertonic3NoDummyAudio: supertonic3NoDummyAudio,
+            kskillAssistRuntimeAvailable: kskillAssistRuntimeAvailable,
+            ktxAssistNoAutoBooking: ktxAssistNoAutoBooking,
+            mapAssistNoFakeSearch: mapAssistNoFakeSearch,
+            stockAssistNoFakeQuote: stockAssistNoFakeQuote,
+            dartAssistNoFakeDisclosureLookup: dartAssistNoFakeDisclosureLookup,
+            naverAssistNoFakeSearch: naverAssistNoFakeSearch,
+            reservationPaymentHardBlocked: reservationPaymentHardBlocked,
+            kskillAssistChecklistAvailable: kskillAssistChecklistAvailable,
+            kskillRequiredInputsAvailable: kskillRequiredInputsAvailable
         )
         cachedSnapshot = snap
         return snap

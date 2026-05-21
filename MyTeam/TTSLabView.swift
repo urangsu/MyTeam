@@ -21,11 +21,15 @@ struct TTSLabView: View {
 
     @State private var supertonic3Enabled: Bool = Supertonic3TTSConfig.isEnabled
     @State private var selectedPreset: String = Supertonic3TTSConfig.selectedVoicePreset
+    @State private var selectedLanguage: String = Supertonic3TTSConfig.selectedLanguage
     @State private var qwen3DevLabOverride: Bool = UserDefaults.standard.bool(forKey: "ttsDevLabQwen3Override")
     @State private var qwen3Enabled: Bool = UserDefaults.standard.bool(forKey: "enableExperimentalQwenTTS")
     @State private var probeResult: Supertonic3ProbeRunResult? = nil
+    @State private var readinessResult: Supertonic3ProbeResult? = nil
     @State private var modelCheck: Supertonic3ModelLocator.ModelCheckResult = Supertonic3ModelLocator.checkModel()
     @State private var showProbeDetail: Bool = false
+
+    private let availableLanguages = ["auto", "ko", "en", "ja"]
 
     // MARK: - Body
 
@@ -80,18 +84,21 @@ struct TTSLabView: View {
 
                 Divider()
 
-                // Model directory path
+                // Model directory path (redacted — no full path shown)
                 VStack(alignment: .leading, spacing: 4) {
                     Text("모델 디렉토리")
                         .font(.caption.bold())
                         .foregroundStyle(.secondary)
-                    Text(Supertonic3TTSConfig.modelDirectoryURL.path)
+                    Text(modelCheck.redactedDirectory)
                         .font(.system(.caption, design: .monospaced))
                         .lineLimit(2)
                         .truncationMode(.middle)
                         .padding(6)
                         .background(Color.secondary.opacity(0.1))
                         .cornerRadius(4)
+                    Text("※ 전체 경로는 보안을 위해 표시하지 않습니다.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
 
                 // Model check result
@@ -113,6 +120,23 @@ struct TTSLabView: View {
                     .frame(width: 100)
                     .onChange(of: selectedPreset) { _, newValue in
                         UserDefaults.standard.set(newValue, forKey: "supertonic3VoicePreset")
+                    }
+                }
+
+                // Language picker
+                HStack {
+                    Text("언어")
+                        .font(.subheadline)
+                    Spacer()
+                    Picker("", selection: $selectedLanguage) {
+                        ForEach(availableLanguages, id: \.self) { lang in
+                            Text(lang == "auto" ? "자동" : lang.uppercased()).tag(lang)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(width: 100)
+                    .onChange(of: selectedLanguage) { _, newValue in
+                        UserDefaults.standard.set(newValue, forKey: "supertonic3Language")
                     }
                 }
 
@@ -185,6 +209,7 @@ struct TTSLabView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Button {
+                    readinessResult = Supertonic3TTSProbe.probe()
                     probeResult = Supertonic3TTSProbe.run()
                     showProbeDetail = true
                 } label: {
@@ -193,10 +218,10 @@ struct TTSLabView: View {
                 .buttonStyle(.bordered)
                 .font(.caption)
 
-                if let result = probeResult {
-                    Text(result.canSynthesize ? "✅ 사용 가능" : "⚠️ 사용 불가")
+                if let result = readinessResult {
+                    Text(readinessBadge(result.readiness))
                         .font(.caption)
-                        .foregroundStyle(result.canSynthesize ? .green : .orange)
+                        .foregroundStyle(result.readiness == .readyForInference ? .green : .orange)
                 }
             }
 
@@ -285,6 +310,15 @@ struct TTSLabView: View {
     }
 
     // MARK: - Helpers
+
+    private func readinessBadge(_ readiness: Supertonic3Readiness) -> String {
+        switch readiness {
+        case .disabled: return "⏸ 비활성화"
+        case .missingModel: return "⚠️ 모델 없음"
+        case .runtimeUnavailable: return "⚠️ Runtime 없음 (Mac 필요)"
+        case .readyForInference: return "✅ 사용 가능"
+        }
+    }
 
     private func refreshModelCheck() {
         modelCheck = Supertonic3ModelLocator.checkModel()

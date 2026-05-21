@@ -228,6 +228,23 @@ enum ToolContractValidator {
         validateOfficeReviewAssistOnlyReachablePolicy(issues: &issues)
         validateOfficeReviewEvidenceLabelHonestyPolicy(issues: &issues)
 
+        // Round 248TTS-A-CONTINUE validators
+        validateONNXRuntimeAdapterBoundaryPolicy(issues: &issues)
+        validateSupertonic3ModelManifestPolicy(issues: &issues)
+        validateSupertonic3PipelineSkeletonPolicy(issues: &issues)
+        validateSupertonic3NoDummyAudioPolicy(issues: &issues)
+        validateSupertonic3ModelPathRedactionPolicy(issues: &issues)
+
+        // Round 249A-KSKILLS-ASSIST validators
+        validateKSkillAssistRuntimePolicy(issues: &issues)
+        validateKTXNoAutoBookingPolicy(issues: &issues)
+        validateStockAssistNoFakeQuotePolicy(issues: &issues)
+        validateDARTAssistNoFakePolicy(issues: &issues)
+        validateNaverAssistNoFakeSearchPolicy(issues: &issues)
+        validateKSkillsChecklistAvailablePolicy(issues: &issues)
+        validateKSkillsRequiredInputsAvailablePolicy(issues: &issues)
+        validateKSkillsHardBlockedActionsPolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -1792,6 +1809,114 @@ enum ToolContractValidator {
         guard let snap else { return }
         if !snap.officeReviewEvidenceLabelHonest {
             issues.append(issue(.error, "OfficeReviewResultCardView에서 '위치:'라고 표시하고 있습니다. 근거 위치 추적 미지원 정책에 위반됩니다. '휴리스틱 참고:'로 변경하세요."))
+        }
+    }
+
+    // MARK: - Round 248TTS-A-CONTINUE Validators
+
+    private static func validateONNXRuntimeAdapterBoundaryPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.onnxRuntimeAdapterBoundaryAvailable {
+            issues.append(issue(.error, "ONNXRuntimeAdapter.swift가 없습니다. Cloud/Mac 런타임 경계를 protocol로 분리해야 합니다."))
+        }
+    }
+
+    private static func validateSupertonic3ModelManifestPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonic3ModelManifestAvailable {
+            issues.append(issue(.error, "Supertonic3ModelManifest.swift가 없습니다. candidateFilenames 기반 manifest 탐색이 필요합니다."))
+        }
+    }
+
+    private static func validateSupertonic3PipelineSkeletonPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonic3PipelineSkeletonAvailable {
+            issues.append(issue(.error, "Supertonic3InferencePipeline.swift가 없습니다. Cloud에서는 missingRuntime을 throw해야 합니다."))
+        }
+    }
+
+    private static func validateSupertonic3NoDummyAudioPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonic3NoDummyAudio {
+            issues.append(issue(.error, "Supertonic3 pipeline에 dummy WAV 또는 fake inference가 포함되어 있습니다."))
+        }
+    }
+
+    private static func validateSupertonic3ModelPathRedactionPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonic3ModelPathRedacted {
+            issues.append(issue(.warning, "TTSLabView가 모델 전체 경로를 노출하고 있습니다. redactedDirectory를 사용해야 합니다."))
+        }
+    }
+
+    // MARK: - Round 249A-KSKILLS-ASSIST Validators
+
+    private static func validateKSkillAssistRuntimePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.kskillAssistRuntimeAvailable {
+            issues.append(issue(.error, "KSkillAssistRuntime.swift가 없습니다. Korean lifestyle 스킬 assistOnly 응답 생성기가 필요합니다."))
+        }
+    }
+
+    private static func validateKTXNoAutoBookingPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.ktxAssistNoAutoBooking {
+            issues.append(issue(.error, "KTX 예매 도우미가 자동 예매를 hardBlockedActions에 포함하지 않습니다."))
+        }
+    }
+
+    private static func validateStockAssistNoFakeQuotePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.stockAssistNoFakeQuote {
+            issues.append(issue(.error, "주가 도우미가 '매수/매도 확정 추천'을 hardBlockedActions에 포함하지 않습니다."))
+        }
+    }
+
+    private static func validateDARTAssistNoFakePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.dartAssistNoFakeDisclosureLookup {
+            issues.append(issue(.error, "DART 도우미가 'DART API 조회한 척하기'를 hardBlockedActions에 포함하지 않습니다."))
+        }
+    }
+
+    private static func validateNaverAssistNoFakeSearchPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.naverAssistNoFakeSearch {
+            issues.append(issue(.error, "네이버 뉴스 도우미가 체크리스트를 제공하지 않습니다."))
+        }
+    }
+
+    private static func validateKSkillsChecklistAvailablePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.kskillAssistChecklistAvailable {
+            issues.append(issue(.error, "KSkillAssistResponse.checklist가 비어있습니다. 모든 K-skills 응답에 체크리스트가 포함되어야 합니다."))
+        }
+    }
+
+    private static func validateKSkillsRequiredInputsAvailablePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.kskillRequiredInputsAvailable {
+            issues.append(issue(.error, "KSkillAssistResponse.requiredUserInputs가 비어있습니다. 모든 K-skills 응답에 필수 입력값이 명시되어야 합니다."))
+        }
+    }
+
+    private static func validateKSkillsHardBlockedActionsPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.reservationPaymentHardBlocked {
+            issues.append(issue(.error, "예약·결제 처리가 hardBlockedActions에 포함되지 않았습니다. 자동 결제는 영원히 금지입니다."))
         }
     }
 }

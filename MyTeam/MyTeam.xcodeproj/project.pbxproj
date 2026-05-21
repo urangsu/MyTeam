@@ -1147,6 +1147,13 @@
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
+		<key>4DB960E0107CA5235607ED11</key>
+		<dict>
+			<key>fileRef</key>
+			<string>CC9174B53E4F0FAFCF993983</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
 		<key>1169827A3DD6EC8CE4DC8CC9</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -11479,7 +11486,8 @@
 				<string>A211C82ACA31A4AC2C64C248</string>
 				<string>69E812CEC45FBF7724577CC1</string>
 				<string>7F36831F7C78808E4E3D74AD</string>
-			</array>
+							<string>4DB960E0107CA5235607ED11</string>
+</array>
 			<key>isa</key>
 			<string>PBXFrameworksBuildPhase</string>
 			<key>runOnlyForDeploymentPostprocessing</key>
@@ -14653,6 +14661,21 @@
 			<string>Supertonic3InferencePipeline.swift</string>
 			<key>path</key>
 			<string>Supertonic3InferencePipeline.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>CC9174B53E4F0FAFCF993983</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>KSkillAssistRuntime.swift</string>
+			<key>path</key>
+			<string>KSkillAssistRuntime.swift</string>
 			<key>sourceTree</key>
 			<string>SOURCE_ROOT</string>
 		</dict>

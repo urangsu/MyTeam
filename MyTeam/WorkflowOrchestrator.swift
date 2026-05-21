@@ -218,11 +218,28 @@ final class WorkflowOrchestrator {
         let disabledSkills = SkillRegistry.shared.matchAllSkills(for: userMessage)
             .filter { !SkillRegistry.shared.isSkillEnabled(id: $0.id) }
 
-        // Round 246B: SkillAvailabilityResolver 연결 — assistOnly 스킬 감지
-        // assistOnly이면 fake API 실행 없이 directChat fallback
+        // Round 246B / 249A: SkillAvailabilityResolver 연결 — assistOnly 스킬 감지
+        // KSkillAssistRuntime이 intent를 감지하면 구조화된 체크리스트 응답 생성
+        // 그 외 assistOnly는 기존 directChat fallback
         if let assistOnlySkill = enabledSkills.first(where: {
             SkillAvailabilityResolver.availability(for: $0) == .assistOnly
         }) {
+            if let intent = KSkillAssistRuntime.detectIntent(userMessage: userMessage, skillID: assistOnlySkill.id) {
+                let response = KSkillAssistRuntime.buildAssistResponse(intent: intent, userMessage: userMessage)
+                let markdown = KSkillAssistRuntime.formatMarkdown(response)
+                await MainActor.run {
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: response.title,
+                        text: markdown,
+                        isUser: false,
+                        isSystem: false,
+                        skillID: assistOnlySkill.id
+                    )
+                }
+                return
+            }
             let notice = SkillAvailabilityResolver.assistOnlyMessage(for: assistOnlySkill.id)
             await runDirectChatFallback(
                 userMessage: "\(notice)\n\n사용자 원래 요청: \(userMessage)",
