@@ -88,7 +88,7 @@ actor Supertonic3ONNXRunner {
         let textMask1T = [Float](repeating: 1.0, count: seqLen)
 
         // Stage 1: Duration predictor
-        // text_ids:[1,T] int64, style_dp:[1,8,16] f32, text_mask:[1,1,T] f32 → dur_onnx:[1,T] f32
+        // text_ids:[1,T] int64, style_dp:[1,8,16] f32, text_mask:[1,1,T] f32 → duration:[1,T] f32
         let durOnnx: [Float]
         do {
             let sess = try ortSession(env: env, modelPath: paths.durationPredictorURL.path)
@@ -97,12 +97,15 @@ actor Supertonic3ONNXRunner {
                 "style_dp":  try makeTensorF32(style.styleDP, shape: style.styleDPShape),
                 "text_mask": try makeTensorF32(textMask1T, shape: [1, 1, seqLen])
             ]
-            let outs = try ortRun(sess, inputs: inputs, outputNames: ["dur_onnx"])
-            durOnnx = try floatArray(from: outs["dur_onnx"])
+            let outs = try ortRun(sess, inputs: inputs, outputNames: ["duration"])
+            durOnnx = try floatArray(from: outs["duration"])
         }
 
         // Compute latent length from durations
-        let wavLengths = durOnnx.map { Int64(Double($0) * Double(S3Config.sampleRate)) }
+        // Python applies speed=1.05 default: dur_onnx / speed (higher speed → shorter duration)
+        let speed: Float = 1.05
+        let durScaled = durOnnx.map { $0 / speed }
+        let wavLengths = durScaled.map { Int64(Double($0) * Double(S3Config.sampleRate)) }
         let wavLenMax  = wavLengths.max() ?? 1
         let latentL    = Int((Double(wavLenMax) + Double(S3Config.chunkSize) - 1.0) /
                              Double(S3Config.chunkSize))
@@ -137,6 +140,9 @@ actor Supertonic3ONNXRunner {
             }
         }
 
+        // Stage 3: Vector estimator (flow matching, N steps)
+        // Python: xt, *_ = vector_est_ort.run(None, {...})
+        // 모델이 ODE step을 내부에서 처리하고 새 xt를 직접 반환한다 — Euler step 불필요.
         let veSess = try ortSession(env: env, modelPath: paths.vectorEstimatorURL.path)
         for step in 0..<totalSteps {
             let inputs: [String: ORTValue] = [
@@ -148,19 +154,19 @@ actor Supertonic3ONNXRunner {
                 "current_step": try makeTensorF32([Float(step)],  shape: [1]),
                 "total_step":   try makeTensorF32([Float(totalSteps)], shape: [1])
             ]
-            let outs = try ortRun(veSess, inputs: inputs, outputNames: ["xt"])
-            xt = try floatArray(from: outs["xt"])
+            let outs = try ortRun(veSess, inputs: inputs, outputNames: ["denoised_latent"])
+            xt = try floatArray(from: outs["denoised_latent"])
         }
 
-        // Stage 4: Vocoder — latent:[1,144,L] → wav:[1,N]
+        // Stage 4: Vocoder — latent:[1,144,L] → wav_tts:[1,N]
         let wavSamples: [Float]
         do {
             let sess = try ortSession(env: env, modelPath: paths.vocoderURL.path)
             let inputs: [String: ORTValue] = [
                 "latent": try makeTensorF32(xt, shape: [1, S3Config.latentDim, latentL])
             ]
-            let outs = try ortRun(sess, inputs: inputs, outputNames: ["wav"])
-            wavSamples = try floatArray(from: outs["wav"])
+            let outs = try ortRun(sess, inputs: inputs, outputNames: ["wav_tts"])
+            wavSamples = try floatArray(from: outs["wav_tts"])
         }
 
         // Metrics
