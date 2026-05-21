@@ -1157,3 +1157,49 @@ ONNX, Chatterbox Multilingual Python 서버, VITS2/Piper/Kokoro 비교, TTSEngin
 - `MemoryRetriever.swift`: default param @MainActor 해결 (Optional + 내부 resolve)
 
 **다음:** Mac Debug/Release 빌드로 경고 0 확인 후 Manual QA 수행
+
+---
+
+## Round 249TTS-SPIKE — Supertonic3 ONNX Swift 스파이크 (완료)
+
+**날짜:** 2026-05-21  
+**Branch:** `spike/supertonic3-onnx-swift`
+
+### 신규 파일
+
+| 파일 | 역할 |
+|---|---|
+| `Supertonic3ONNXModelPaths.swift` | 4개 ONNX 파일 경로 해석 |
+| `Supertonic3UnicodeIndexer.swift` | unicode_indexer.json 로드, 텍스트 토큰화 |
+| `Supertonic3VoiceStyle.swift` | voice preset JSON (style_ttl/style_dp 텐서) |
+| `Supertonic3ONNXRunner.swift` | 4단계 ONNX 파이프라인 (onnxruntime_objc) |
+| `Supertonic3ONNXSpike.swift` | 프로덕션 준비 게이트 (모든 플래그 false) |
+| `docs/SupertonicONNXSpike.md` | 스파이크 문서 |
+| `scripts/preflight_round249tts.sh` | 17개 검사 |
+
+### 수정 파일
+
+| 파일 | 수정 내용 |
+|---|---|
+| `TTSLabView.swift` | ONNX Spike 섹션 추가 (합성 버튼, RTF 표시) |
+| `RuntimeDiagnosticsService.swift` | 6개 ONNX spike 필드 추가 |
+| `ToolContractValidator.swift` | 4개 spike validators 추가 |
+| `MyTeam.xcodeproj/project.pbxproj` | 5개 신규 파일 등록 |
+
+### preflight 결과
+
+| 항목 | 결과 |
+|---|---|
+| preflight_round249tts | 17/17 PASSED ✅ |
+| Apple TTS 금지 | ✅ |
+| auto-init 없음 | ✅ |
+| model bundle 없음 | ✅ |
+| git-tracked .onnx | 0 ✅ |
+
+### 미완료 (Mac 로컬 필요)
+
+- Mac xcodebuild Debug/Release (onnxruntime_objc import 실제 빌드 검증)
+- TTSLabView ONNX Spike 버튼 → 실제 합성 실행 + RTF 측정
+- `SupertonicProductReadiness` 플래그 업데이트 (Mac 검증 후)
+
+**다음:** Mac 로컬에서 spike 브랜치 빌드 + 합성 실행 → RTF 측정

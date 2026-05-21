@@ -1,0 +1,2 @@
+# Round 249TTS-RUNTIME: SIGTERM을 디버거에서 무시 (pkill로 종료된 이전 인스턴스가 debugger를 막는 문제 해결)
+process handle SIGTERM -n true -p true -s false

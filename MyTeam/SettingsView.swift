@@ -172,6 +172,7 @@ struct SettingsView: View {
                     Text("데스크 라우팅").tag(2)
                     Text("스킬").tag(3)
                     Text("캐릭터").tag(4)
+                    Text("TTS Lab").tag(5)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
@@ -198,12 +199,13 @@ struct SettingsView: View {
                 case 2: deskRoutingTab
                 case 3: skillsTab
                 case 4: charactersTab
+                case 5: TTSLabView()
                 default: deskRoutingTab
                 }
             }
         }
         .preferredColorScheme(manager.isDarkMode ? .dark : .light)
-        .frame(width: 500, height: 600)
+        .frame(width: 500, height: currentTab == 5 ? 780 : 600)
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear {
             TeamNameplateAppearanceSettings.migrateLegacyValuesIfNeeded()

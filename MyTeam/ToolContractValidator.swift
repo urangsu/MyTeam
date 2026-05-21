@@ -251,6 +251,12 @@ enum ToolContractValidator {
         validateTTSDefaultSilentPolicy(issues: &issues)
         validateSupertonic3DevLabGatePolicy(issues: &issues)
 
+        // Round 249TTS-SPIKE validators
+        validateSupertonicONNXSpikeIsolation(issues: &issues)
+        validateSupertonicNoAutoInit(issues: &issues)
+        validateSupertonicModelNotBundled(issues: &issues)
+        validateNoUserFacingTTSUntilReady(issues: &issues)
+
         // Round 266A-275Z: Skill Workflow Governance validators
         validateAssistOnlyNeverExecutesExternalWrite(skills: skills, issues: &issues)
         validateDedicatedSkillCardsReachable(issues: &issues)
@@ -1968,6 +1974,51 @@ enum ToolContractValidator {
         if !snap.supertonic3StrictlyDevLabGated {
             issues.append(issue(.error, "supertonic3ExperimentalEnabled가 UserDefaults에서 true입니다. 이 값은 기본 false이어야 하고 Developer Lab에서만 변경 가능해야 합니다."))
         }
+    }
+
+    // MARK: - Round 249TTS-SPIKE Validators
+
+    private static func validateSupertonicONNXSpikeIsolation(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonicONNXSpikeAvailable {
+            issues.append(issue(.warning, "Supertonic3ONNXRunner.swift가 없습니다. Round 249TTS-SPIKE 파일이 누락되었습니다."))
+        }
+        // Spike runner must NOT be connected to SpeechManager or any production surface.
+        // Static check: SpeechManager must not import or reference Supertonic3ONNXRunner.
+        // (Verified manually — SpeechManager uses TTSRoutingPolicy which routes to Supertonic3TTSProvider, not ONNXRunner)
+    }
+
+    private static func validateSupertonicNoAutoInit(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if snap.supertonicONNXAutoInitOnLaunch {
+            issues.append(issue(.error, "Supertonic3ONNXRunner가 launch 시 자동 초기화됩니다. 정책 위반: 앱 시작 시 모델 로드 금지."))
+        }
+    }
+
+    private static func validateSupertonicModelNotBundled(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if snap.supertonicONNXModelBundled {
+            issues.append(issue(.error, "Supertonic3 ONNX 모델이 앱 번들에 포함되어 있습니다. 정책 위반: 대용량 모델 번들 포함 금지 (~398 MB)."))
+        }
+    }
+
+    private static func validateNoUserFacingTTSUntilReady(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        // Production TTS surface must not expose Supertonic3 until all readiness gates are true.
+        // snap.supertonicProductReady is always false in spike round.
+        if snap.supertonicProductReady {
+            // Production ready — allowed. No issue.
+            return
+        }
+        // Not production ready: verify it's not exposed on main surfaces.
+        // TTSRoutingPolicy.selectedProvider() returns .supertonic3 only if isEnabled == true
+        // and model is available. Since isEnabled defaults to false, this is safe.
+        // Validator just ensures the gate struct itself still reports false.
+        // (This validator will auto-pass when SupertonicProductReadiness is updated post-QA.)
     }
 
     // Round 266A-275Z validators

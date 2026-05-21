@@ -91,7 +91,7 @@ enum BeginnerTaskCard: String, CaseIterable, Codable, Sendable {
     var dispatchPrompt: String {
         switch self {
         case .meetingMinutes:
-            return "회의록 양식 만들어줘"
+            return "회의록 만들어줘"
         case .checklist:
             return "체크리스트 만들어줘"
         case .reportDraft:

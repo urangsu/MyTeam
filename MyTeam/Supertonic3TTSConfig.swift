@@ -15,15 +15,31 @@ enum Supertonic3TTSConfig {
     // MARK: - Model Paths
 
     /// Supertonic3 ONNX 모델 디렉토리 (Python SDK 기본 경로 참조)
+    /// 샌드박스 환경에서 homeDirectoryForCurrentUser는 컨테이너를 반환하므로
+    /// ProcessInfo.processInfo.environment["HOME"]로 실제 홈 디렉토리를 사용한다.
+    static var realHomeURL: URL {
+        // getpwuid는 패스워드 DB를 직접 읽어 샌드박스 HOME 재매핑을 우회한다.
+        if let pw = getpwuid(getuid()), let dir = pw.pointee.pw_dir {
+            let path = String(cString: dir)
+            if !path.isEmpty {
+                return URL(fileURLWithPath: path, isDirectory: true)
+            }
+        }
+        // fallback 1: 환경변수 (비샌드박스 환경)
+        if let home = ProcessInfo.processInfo.environment["HOME"] {
+            return URL(fileURLWithPath: home, isDirectory: true)
+        }
+        // fallback 2: 샌드박스 컨테이너 (최후 수단)
+        return FileManager.default.homeDirectoryForCurrentUser
+    }
+
     static var modelDirectoryURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".cache/supertonic3/onnx", isDirectory: true)
+        realHomeURL.appendingPathComponent(".cache/supertonic3/onnx", isDirectory: true)
     }
 
     /// Voice style JSON 파일 디렉토리
     static var voiceStylesDirectoryURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".cache/supertonic3/voice_styles", isDirectory: true)
+        realHomeURL.appendingPathComponent(".cache/supertonic3/voice_styles", isDirectory: true)
     }
 
     // MARK: - Required Model Files

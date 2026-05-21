@@ -563,6 +563,14 @@ struct RuntimeDiagnosticsSnapshot {
     let ttsDefaultProviderIsNilOrExperimental: Bool
     let supertonic3StrictlyDevLabGated: Bool
 
+    // Round 249TTS-SPIKE: Supertonic3 ONNX Swift feasibility
+    let supertonicONNXSpikeAvailable: Bool          // Supertonic3ONNXRunner.swift exists
+    let supertonicONNXAutoInitOnLaunch: Bool         // must be false (no init on launch)
+    let supertonicONNXModelBundled: Bool             // must be false (models not in app bundle)
+    let supertonicONNXRuntimeMeasured: Bool          // true when RTF has been measured on Mac
+    let supertonicONNXRealtimeFactor: Double?        // RTF (nil until measured)
+    let supertonicProductReady: Bool                 // all readiness gates passed (false in spike)
+
     // Round 266A-275Z: Skill Workflow Governance
     let assistOnlyGovernanceEnabled: Bool           // SkillAvailabilityResolver.assistOnlySkillIDs >= 11
     let dedicatedSkillCardsReachable: Bool          // SkillResultRendererView has all 4 explicit case dispatches
@@ -706,6 +714,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("observe247a: inboxView=\(observationInboxViewAvailable) teamRoom=\(observationCardsConnectedToTeamRoom) personalRoom=\(observationCardsConnectedToPersonalRoom) clipboardRoute=\(clipboardExplicitReadRouteAvailable) downloadsDefaultOff=\(downloadsWatcherSettingsDefaultOff) finderFallback=\(finderSelectionFallbackAvailable) screenPlanned=\(screenSnapshotPlannedNoticeAvailable) presentationPolicy=\(observationPresentationPolicyAvailable) noAutoAnalyze=\(observationAttachDoesNotAutoAnalyze) roomScope=\(observationRoomScopeEnforced)")
         lines.append("office248a: executor=\(officeReviewLiteExecutorAvailable) resultCard=\(officeReviewResultCardViewAvailable) skillExec=\(localSkillExecutorHandlesOfficeReviewLite) statusUpdated=\(officeReviewExecutionStatusUpdated) disclaimer=\(officeReviewLimitationsDisclaimerShown) noMutation=\(officeReviewNoOriginalFileMutation) noEvidence=\(officeReviewNoEvidenceLocationTracking) heuristic=\(officeReviewHeuristicExtractionOnly) assistOnly=\(officeReviewAssistOnlyGuidanceAvailable)")
         lines.append("office248hotfix: resultWired=\(officeReviewLiteResultReturnedToOrchestrator) noEmptyMsg=\(officeReviewLiteDoesNotReturnEmptyMessage) markdown=\(officeReviewMarkdownPresentationAvailable) macSafe=\(officeReviewCardViewCompileSafeOnMac) 2ndPhase=\(officeReviewAssistOnlySecondPhaseReachable) evidenceHonest=\(officeReviewEvidenceLabelHonest)")
+        lines.append("onnxSpike249: runner=\(supertonicONNXSpikeAvailable ? "✅" : "❌") noAutoInit=\(!supertonicONNXAutoInitOnLaunch ? "✅" : "❌") noBundle=\(!supertonicONNXModelBundled ? "✅" : "❌") rtfMeasured=\(supertonicONNXRuntimeMeasured ? "✅" : "⬜") rtf=\(supertonicONNXRealtimeFactor.map { String(format: "%.4fx", $0) } ?? "nil") prodReady=\(supertonicProductReady ? "✅" : "❌")")
 
         return lines.joined(separator: "\n  ")
     }
@@ -1080,6 +1089,16 @@ final class RuntimeDiagnosticsService {
             && !sampleDart.hardBlockedActions.isEmpty
         let ttsDefaultProviderIsNilOrExperimental = !Supertonic3TTSConfig.isEnabled
         let supertonic3StrictlyDevLabGated = !UserDefaults.standard.bool(forKey: "supertonic3ExperimentalEnabled")
+
+        // Round 249TTS-SPIKE: Supertonic3 ONNX Swift feasibility
+        let supertonicONNXSpikeAvailable = FileManager.default.fileExists(
+            atPath: "MyTeam/Supertonic3ONNXRunner.swift"
+        )
+        let supertonicONNXAutoInitOnLaunch = Supertonic3SpikeMeta.autoInitOnLaunch  // always false
+        let supertonicONNXModelBundled = Supertonic3SpikeMeta.modelBundled          // always false
+        let supertonicONNXRuntimeMeasured = false   // updated to true after Mac synthesis run
+        let supertonicONNXRealtimeFactor: Double? = nil   // nil until Mac synthesis run
+        let supertonicProductReady = SupertonicProductReadiness().isProductionReady  // always false in spike
 
         // Round 266A-275Z: Skill Workflow Governance
         let enabledSkills = SkillRegistry.shared.allEnabledSkills()
@@ -1584,6 +1603,12 @@ final class RuntimeDiagnosticsService {
             kskillHardBlockedActionsAlwaysVisible: kskillHardBlockedActionsAlwaysVisible,
             ttsDefaultProviderIsNilOrExperimental: ttsDefaultProviderIsNilOrExperimental,
             supertonic3StrictlyDevLabGated: supertonic3StrictlyDevLabGated,
+            supertonicONNXSpikeAvailable: supertonicONNXSpikeAvailable,
+            supertonicONNXAutoInitOnLaunch: supertonicONNXAutoInitOnLaunch,
+            supertonicONNXModelBundled: supertonicONNXModelBundled,
+            supertonicONNXRuntimeMeasured: supertonicONNXRuntimeMeasured,
+            supertonicONNXRealtimeFactor: supertonicONNXRealtimeFactor,
+            supertonicProductReady: supertonicProductReady,
             assistOnlyGovernanceEnabled: assistOnlyGovernanceEnabled,
             dedicatedSkillCardsReachable: dedicatedSkillCardsReachable,
             accountingTaxDisclaimerAlwaysVisible: accountingTaxDisclaimerAlwaysVisible,
