@@ -4109,3 +4109,48 @@ Cloud branch `claude/myteam-product-completion-H97FZ`를 main에 병합하고 Ma
 
 ### Manual QA
 - Pending (Mac에서 앱 실행 후 확인 필요)
+
+---
+
+## Round 249TTS-SPIKE — Supertonic3 ONNX Swift 스파이크 (2026-05-21)
+
+**Branch:** `spike/supertonic3-onnx-swift`
+
+### 구현 요약
+
+Python SDK(`supertonic/core.py`) 소스 분석 후 Swift로 4단계 ONNX 파이프라인 구현:
+1. Duration predictor (text_ids + style_dp + text_mask → dur_onnx)
+2. Text encoder (text_ids + style_ttl + text_mask → text_emb)
+3. Vector estimator × 8 steps (Box-Muller Gaussian noise 초기화, flow matching ODE)
+4. Vocoder (latent → wav, 44100Hz PCM)
+
+`onnxruntime_objc` (Microsoft onnxruntime-swift-package-manager v1.20.0+) 직접 호출.
+ONNX 패키지는 이미 pbxproj에 등록됨 (Round 248TTS에서 추가).
+
+### 텍스트 전처리 (Swift UnicodeIndexer)
+- NFKD 정규화 (`decomposedStringWithCompatibilityMapping`)
+- 마침표 추가 (없을 경우)
+- 언어 토큰 래핑: `<ko>안녕하세요.</ko>`
+- unicode_indexer.json 룩업 (65536 엔트리, -1 = 스킵)
+
+### latent 계산 공식 (Python → Swift 포팅)
+- chunk_size = base_chunk_size(512) × chunk_compress_factor(6) = 3072
+- wav_lengths = dur_onnx × sample_rate(44100)
+- latent_len = ceil((wav_len_max + chunk_size - 1) / chunk_size)
+- latent_dim = ldim(24) × chunk_compress_factor(6) = 144
+
+### 결과
+- preflight_round249tts.sh: **17/17 PASSED** ✅
+- Mac 로컬 빌드: ⬜ 미수행 (spike 브랜치에서 수행 필요)
+
+### 정책 준수
+- main product surface TTS 노출: ❌ 없음 ✅
+- SpeechManager 연결: 격리됨 ✅
+- 자동 초기화: ❌ 없음 ✅
+- 모델 bundle 포함: ❌ 없음 ✅
+- git-tracked .onnx: 0 ✅
+- Apple TTS: ❌ 없음 ✅
+
+### BeginnerMode 수정 (별도 피드백)
+- `BeginnerMode.swift` line 94: "회의록 양식 만들어줘" → "회의록 만들어줘"
+  - 이유: 양식(템플릿) 생성이 아닌, 내용을 입력받아 정리하는 기능임을 명확히 함

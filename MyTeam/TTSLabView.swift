@@ -32,6 +32,12 @@ struct TTSLabView: View {
     @State private var modelCheck: Supertonic3ModelLocator.ModelCheckResult = .checking
     @State private var showProbeDetail: Bool = false
 
+    // MARK: - ONNX Spike State (Round 249TTS)
+    @State private var spikeInputText: String = "안녕하세요. 테스트입니다."
+    @State private var spikeSynthesisResult: Supertonic3SynthesisResult? = nil
+    @State private var spikeSynthesisError: String? = nil
+    @State private var spikeIsSynthesizing: Bool = false
+
     private let availableLanguages = ["auto", "ko", "en", "ja"]
 
     // MARK: - Body
@@ -41,6 +47,7 @@ struct TTSLabView: View {
             VStack(alignment: .leading, spacing: 20) {
                 headerSection
                 supertonic3Section
+                onnxSpikeSection
                 qwen3Section
                 policyNoticeSection
             }
@@ -242,6 +249,173 @@ struct TTSLabView: View {
                     .padding(6)
                     .background(Color.secondary.opacity(0.08))
                     .cornerRadius(4)
+            }
+        }
+    }
+
+    // MARK: - ONNX Spike Section (Round 249TTS)
+
+    private var onnxSpikeSection: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Supertonic3 ONNX Spike")
+                            .font(.headline)
+                        Text("[실험용] Swift ONNX Runtime 직접 호출 · Developer Lab 전용")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Label("SPIKE", systemImage: "flask.fill")
+                        .font(.caption.bold())
+                        .foregroundStyle(.orange)
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .background(Color.orange.opacity(0.15))
+                        .cornerRadius(6)
+                }
+
+                Divider()
+
+                // Model availability
+                HStack(spacing: 6) {
+                    Image(systemName: modelCheck.isAvailable ? "checkmark.circle.fill" : "xmark.circle.fill")
+                        .foregroundStyle(modelCheck.isAvailable ? Color.green : Color.red)
+                    Text(modelCheck.isAvailable
+                         ? "모델 준비됨 (\(modelCheck.totalFoundSizeBytes / 1_048_576) MB)"
+                         : "모델 없음 — ~/.cache/supertonic3/onnx/ 필요")
+                        .font(.caption)
+                }
+
+                // RTF gauge (if measured)
+                if let result = spikeSynthesisResult {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Divider()
+                        HStack {
+                            Text("RTF")
+                                .font(.caption.bold())
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text(String(format: "%.4fx", result.realtimeFactor))
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(result.realtimeFactor < 0.5 ? .green : .orange)
+                        }
+                        HStack {
+                            Text("시간")
+                                .font(.caption.bold())
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text(String(format: "%.1f ms → %.2f s 오디오", result.elapsedMs, result.durationSec))
+                                .font(.system(.caption, design: .monospaced))
+                        }
+                        HStack {
+                            Text("텍스트")
+                                .font(.caption.bold())
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text("\(result.textLength) 토큰 · L=\(result.latentFrameCount) 프레임 · \(result.presetUsed)")
+                                .font(.system(.caption, design: .monospaced))
+                        }
+                        HStack {
+                            Text("샘플")
+                                .font(.caption.bold())
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text("\(result.wavSamples.count) samples @ \(result.sampleRate) Hz")
+                                .font(.system(.caption, design: .monospaced))
+                        }
+                    }
+                }
+
+                if let err = spikeSynthesisError {
+                    Text("오류: \(err)")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .padding(6)
+                        .background(Color.red.opacity(0.08))
+                        .cornerRadius(4)
+                }
+
+                Divider()
+
+                // Text input
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("합성 텍스트")
+                        .font(.caption.bold())
+                        .foregroundStyle(.secondary)
+                    TextField("텍스트 입력...", text: $spikeInputText, axis: .vertical)
+                        .font(.system(.caption, design: .monospaced))
+                        .textFieldStyle(.roundedBorder)
+                        .lineLimit(3)
+                }
+
+                // Synthesize button
+                HStack {
+                    Button {
+                        runONNXSpike()
+                    } label: {
+                        if spikeIsSynthesizing {
+                            ProgressView().scaleEffect(0.7)
+                            Text("합성 중...")
+                        } else {
+                            Label("ONNX 합성 실행", systemImage: "waveform.badge.plus")
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
+                    .disabled(spikeIsSynthesizing || !modelCheck.isAvailable || spikeInputText.isEmpty)
+                    .font(.caption)
+
+                    Spacer()
+
+                    // Readiness summary
+                    let readiness = SupertonicProductReadiness()
+                    Text(readiness.isProductionReady ? "✅ 프로덕션 준비됨" : "⬜ 스파이크 단계")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
+                // Policy reminder
+                Text("※ 이 기능은 스파이크 전용입니다. 프로덕션 TTS 경로(SpeechManager)에 연결되어 있지 않습니다.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(8)
+        } label: {
+            Label("ONNX Spike (249TTS)", systemImage: "cpu.fill")
+                .foregroundStyle(.orange)
+        }
+    }
+
+    private func runONNXSpike() {
+        guard !spikeInputText.isEmpty else { return }
+        let text = spikeInputText
+        let preset = selectedPreset
+        let lang: String? = selectedLanguage == "auto" ? "ko" : selectedLanguage
+        let paths = Supertonic3ONNXModelPaths.defaultPaths()
+
+        spikeSynthesisError = nil
+        spikeSynthesisResult = nil
+        spikeIsSynthesizing = true
+
+        Task {
+            do {
+                let result = try await Supertonic3ONNXRunner.shared.synthesize(
+                    text: text,
+                    preset: preset,
+                    lang: lang,
+                    totalSteps: 8,
+                    paths: paths
+                )
+                await MainActor.run {
+                    spikeSynthesisResult = result
+                    spikeIsSynthesizing = false
+                }
+            } catch {
+                await MainActor.run {
+                    spikeSynthesisError = error.localizedDescription
+                    spikeIsSynthesizing = false
+                }
             }
         }
     }
