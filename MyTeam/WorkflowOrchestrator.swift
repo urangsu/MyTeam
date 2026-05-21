@@ -82,6 +82,71 @@ final class WorkflowOrchestrator {
         }
     }
 
+    // MARK: - Round 247A: Explicit Context Routes
+
+    /// 클립보드 / Finder / 화면 명시적 읽기 요청을 감지하고 처리한다.
+    /// 자동 감시·자동 분석 없음 — 사용자 명시 요청 시에만 동작.
+    /// 처리했으면 true, 아니면 false 반환.
+    private func handleExplicitContextRoute(
+        userMessage: String,
+        roomID: UUID,
+        manager: AgentWindowManager
+    ) async -> Bool {
+        let lower = userMessage.lowercased()
+
+        // ── 클립보드 명시 읽기 ──
+        let clipboardKeywords = ["클립보드", "복사한 내용", "붙여넣은 내용"]
+        if clipboardKeywords.contains(where: { lower.contains($0) }) {
+            let obs = await MainActor.run { ClipboardContextReader.readAsObservation(roomID: roomID) }
+            await MainActor.run {
+                if let obs = obs {
+                    manager.observationService.addDetectedObservation(obs)
+                    let msg = ObservationPresentationPolicy.attachMessage(for: obs)
+                    manager.addChatLog(roomID: roomID, agentID: "system", agentName: "클립보드",
+                                       text: msg, isUser: false, isSystem: true)
+                } else {
+                    manager.addChatLog(roomID: roomID, agentID: "system", agentName: "클립보드",
+                                       text: ObservationPresentationPolicy.clipboardBlockedMessage(),
+                                       isUser: false, isSystem: true)
+                }
+            }
+            return true
+        }
+
+        // ── Finder 선택 파일 명시 읽기 ──
+        // Cloud: FinderSelectionReader.readCurrentFinderSelection()이 throws → fallback 메시지
+        let finderKeywords = ["finder에서 선택한 파일", "선택한 파일 가져와", "지금 선택한 파일"]
+        if finderKeywords.contains(where: { lower.contains($0) }) {
+            let observations = try? await FinderSelectionReader.readCurrentFinderSelection()
+            await MainActor.run {
+                if let obs = observations?.first {
+                    manager.observationService.addDetectedObservation(obs)
+                    let msg = ObservationPresentationPolicy.attachMessage(for: obs)
+                    manager.addChatLog(roomID: roomID, agentID: "system", agentName: "Finder",
+                                       text: msg, isUser: false, isSystem: true)
+                } else {
+                    manager.addChatLog(roomID: roomID, agentID: "system", agentName: "Finder",
+                                       text: ObservationPresentationPolicy.finderFallbackMessage(),
+                                       isUser: false, isSystem: true)
+                }
+            }
+            return true
+        }
+
+        // ── 화면 캡처 계획 안내 (상시 감시/자동 OCR 절대 없음) ──
+        let screenKeywords = ["현재 화면 설명", "화면 읽어줘", "지금 보고 있는 거 분석"]
+        if screenKeywords.contains(where: { lower.contains($0) }) {
+            await MainActor.run {
+                manager.addChatLog(roomID: roomID, agentID: "system", agentName: "화면",
+                                   text: ObservationPresentationPolicy.screenSnapshotPlannedMessage(),
+                                   isUser: false, isSystem: true)
+            }
+            return true
+        }
+
+        return false
+    }
+
     // isWorkflowRunning은 AgentWindowManager.isWorkflowRunning(@Published)으로 관리
 
     // MARK: - Public entry point
@@ -140,6 +205,11 @@ final class WorkflowOrchestrator {
             ) {
                 return
             }
+        }
+
+        // Round 247A: Explicit context routes (클립보드·Finder·화면) — 자동 감시 없음
+        if await handleExplicitContextRoute(userMessage: userMessage, roomID: roomID, manager: manager) {
+            return
         }
 
         // ── Skill match (Korean Skills 등) + allowedScopes 계산 ──

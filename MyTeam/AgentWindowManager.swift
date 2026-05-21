@@ -215,6 +215,39 @@ class AgentWindowManager: ObservableObject {
         observationService.attachObservation(observationID, to: roomID)
     }
 
+    // MARK: - Round 247A: Observation Surface Helpers
+
+    /// 현재 surface의 pending observations (roomID nil인 것만)
+    func pendingObservationsForCurrentSurface() -> [LocalObservation] {
+        observationService.pendingObservations.filter { $0.roomID == nil && $0.isPending }
+    }
+
+    /// 특정 방에 배정 가능한 pending observations (roomID nil인 것만)
+    func pendingObservations(for roomID: UUID) -> [LocalObservation] {
+        observationService.pendingObservations.filter { $0.roomID == nil && $0.isPending }
+    }
+
+    /// observation을 방에 붙임 — 자동 분석 없음
+    @MainActor
+    func attachObservation(_ observation: LocalObservation, to roomID: UUID) {
+        observationService.attachObservation(observation.id, to: roomID)
+    }
+
+    /// observation을 방에 붙이고 "분석 준비" 메시지 추가 — 실제 LLM 분석 없음
+    @MainActor
+    func analyzeObservation(_ observation: LocalObservation, in roomID: UUID) {
+        observationService.attachObservation(observation.id, to: roomID)
+        let msg = ObservationPresentationPolicy.analyzeMessage(for: observation)
+        addChatLog(roomID: roomID, agentID: "system", agentName: "자료",
+                   text: msg, isUser: false, isSystem: true)
+    }
+
+    /// pending observation 무시
+    @MainActor
+    func ignoreObservation(_ observation: LocalObservation) {
+        observationService.ignorePendingObservation(observation.id)
+    }
+
     @MainActor
     func recordTurnProfile(_ profile: TurnProfile) {
         lastTurnProfileByRoom[profile.roomID] = profile

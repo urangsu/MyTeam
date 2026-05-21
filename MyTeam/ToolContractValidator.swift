@@ -202,6 +202,16 @@ enum ToolContractValidator {
         validateTTSProviderModelsFileExists(issues: &issues)
         validateTTSRoutingPolicyExists(issues: &issues)
 
+        // Round 247A-OBSERVE-RUNTIME validators
+        validateObservationInboxViewPolicy(issues: &issues)
+        validateObservationTeamPersonalRoomScopePolicy(issues: &issues)
+        validateClipboardExplicitReadRoutePolicy(issues: &issues)
+        validateDownloadsWatcherDefaultOffUIPolicy(issues: &issues)
+        validateFinderSelectionFallbackPolicy(issues: &issues)
+        validateScreenSnapshotPlannedNoticePolicy(issues: &issues)
+        validateObservationPresentationPolicy(issues: &issues)
+        validateObservationNoAutoAnalyzePolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -1584,6 +1594,85 @@ enum ToolContractValidator {
         guard let snap else { return }
         if !snap.ttsSilentFallbackAllowed {
             issues.append(issue(.warning, "TTSRoutingPolicy 관련 상태가 등록되지 않았습니다. provider 선택 정책이 필요합니다."))
+        }
+    }
+
+    // MARK: - Round 247A-OBSERVE-RUNTIME Validators
+
+    private static func validateObservationInboxViewPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.observationInboxViewAvailable {
+            issues.append(issue(.error, "ObservationInboxView.swift가 없습니다. pending observation을 방별로 표시하는 UI가 필요합니다."))
+        }
+        if !snap.observationCardsConnectedToTeamRoom {
+            issues.append(issue(.error, "TeamStatusView에 ObservationInboxView가 연결되지 않았습니다."))
+        }
+    }
+
+    private static func validateObservationTeamPersonalRoomScopePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.observationCardsConnectedToPersonalRoom {
+            issues.append(issue(.error, "AgentChatView에 ObservationInboxView가 연결되지 않았습니다."))
+        }
+        if !snap.observationRoomScopeEnforced {
+            issues.append(issue(.error, "Observation room scope가 적용되지 않았습니다. pending observation이 모든 방에 표시되면 안 됩니다."))
+        }
+    }
+
+    private static func validateClipboardExplicitReadRoutePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.clipboardExplicitReadRouteAvailable {
+            issues.append(issue(.error, "클립보드 명시 읽기 경로가 WorkflowOrchestrator에 연결되지 않았습니다."))
+        }
+        // timer polling이 있으면 error — ClipboardContextReader.continuousMonitoringAllowed 확인
+        if ClipboardContextReader.continuousMonitoringAllowed {
+            issues.append(issue(.error, "ClipboardContextReader.continuousMonitoringAllowed = true — 상시 클립보드 감시는 절대 금지입니다."))
+        }
+    }
+
+    private static func validateDownloadsWatcherDefaultOffUIPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.downloadsWatcherSettingsDefaultOff {
+            issues.append(issue(.error, "Downloads watcher가 기본 ON 상태입니다. 사용자 명시 활성화 없이 자동 감시 금지입니다."))
+        }
+    }
+
+    private static func validateFinderSelectionFallbackPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.finderSelectionFallbackAvailable {
+            issues.append(issue(.warning, "Finder 선택 파일 fallback 메시지가 등록되지 않았습니다."))
+        }
+    }
+
+    private static func validateScreenSnapshotPlannedNoticePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.screenSnapshotPlannedNoticeAvailable {
+            issues.append(issue(.error, "화면 캡처 planned notice가 없습니다. 화면 읽기가 마치 available한 것처럼 표시되면 안 됩니다."))
+        }
+        if ScreenObservationPolicy.continuousCaptureAllowed {
+            issues.append(issue(.error, "ScreenObservationPolicy.continuousCaptureAllowed = true — 상시 화면 감시는 절대 금지입니다."))
+        }
+    }
+
+    private static func validateObservationPresentationPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.observationPresentationPolicyAvailable {
+            issues.append(issue(.error, "ObservationPresentationPolicy.swift가 없습니다. observation 관련 사용자 메시지 정책 파일이 필요합니다."))
+        }
+    }
+
+    private static func validateObservationNoAutoAnalyzePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.observationAttachDoesNotAutoAnalyze {
+            issues.append(issue(.error, "observation attach가 자동으로 LLM 분석을 트리거합니다. attach는 분석이 아닙니다."))
         }
     }
 }

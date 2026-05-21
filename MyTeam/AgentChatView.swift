@@ -709,6 +709,16 @@ struct AgentChatView: View {
             .background(bgColor)
 
             Divider().background(dividerColor)
+            // Round 247A: Pending observation inbox (개인 대화, agentRoomID 기준)
+            // selectedTeamWorkroomID 사용 금지, 팀 워크룸 observation 표시 금지
+            if let personalRoomID = agentRoomID {
+                ObservationInboxView(
+                    roomID: personalRoomID,
+                    observationService: manager.observationService,
+                    onAnalyze: { obs in manager.analyzeObservation(obs, in: personalRoomID) },
+                    onIgnore: { obs in manager.ignoreObservation(obs) }
+                )
+            }
             inputFieldView
         }
     }

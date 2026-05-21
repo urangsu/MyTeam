@@ -585,6 +585,17 @@ struct TeamStatusView: View {
                 }
             }
 
+            // Round 247A: Pending observation inbox (selectedTeamWorkroomID 기준)
+            // currentRoomID fallback 금지, 개인방 observation 표시 금지
+            if let teamRoomID = manager.selectedTeamWorkroomID {
+                ObservationInboxView(
+                    roomID: teamRoomID,
+                    observationService: manager.observationService,
+                    onAnalyze: { obs in manager.analyzeObservation(obs, in: teamRoomID) },
+                    onIgnore: { obs in manager.ignoreObservation(obs) }
+                )
+            }
+
             // ── 하단: 입력창 (팀 채팅 + 첨부파일) ──
             Divider().background(textColor.opacity(0.08))
 

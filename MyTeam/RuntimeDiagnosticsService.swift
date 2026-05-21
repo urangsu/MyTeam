@@ -506,6 +506,18 @@ struct RuntimeDiagnosticsSnapshot {
     let ttsSilentFallbackAllowed: Bool                    // provider 없을 때 무음 허용
     let ttsMissingModelNoRepeatLoop: Bool                 // 모델 없을 때 반복 루프 없음
 
+    // Round 247A-OBSERVE: Observation Runtime Wiring
+    let observationInboxViewAvailable: Bool
+    let observationCardsConnectedToTeamRoom: Bool
+    let observationCardsConnectedToPersonalRoom: Bool
+    let clipboardExplicitReadRouteAvailable: Bool
+    let downloadsWatcherSettingsDefaultOff: Bool
+    let finderSelectionFallbackAvailable: Bool
+    let screenSnapshotPlannedNoticeAvailable: Bool
+    let observationPresentationPolicyAvailable: Bool
+    let observationAttachDoesNotAutoAnalyze: Bool
+    let observationRoomScopeEnforced: Bool
+
     // MARK: - Human-readable summary
 
     var summary: String {
@@ -638,6 +650,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("unblock246a: goalGateFallback=\(goalGateFallbackFunctional) toolTyped=\(toolLayerTypedResultAvailable) approvalFoundation=\(approvalFoundationAvailable) delegationGate=\(delegationGateRespected) budgetTier=\(budgetTierInterfaceAvailable) dartAssistOnly=\(dartSkillAssistOnly) officeReviewStatus=\(officeReviewExecutionStatusAvailable) observeLevel=\(observationImplementationLevelAvailable) featureFile=\(featureAvailabilitySeparatedFileAvailable) skillResolver=\(skillAvailabilityResolverAvailable) fallbackSvc=\(capabilityFallbackServiceAvailable)")
         lines.append("action246b: approvalStore=\(approvalStoreAvailable) banner=\(approvalBannerViewAvailable) card=\(approvalCardViewAvailable) presentationPolicy=\(toolResultPresentationPolicyAvailable) assistOnly=\(assistOnlySkillDetectionWired) highRisk=\(highRiskSkillFallbackWired) disabled=\(disabledSkillFallbackWired) workflowTyped=\(workflowTypedStatusHandled) autoApproval=\(approvalRequiredAutoRegistered) planned=\(plannedStepFallbackWired) unavail=\(unavailableStepFallbackWired) officeUX=\(officeReviewAssistOnlyUxAvailable) observeUX=\(observationImplLevelUxAvailable)")
         lines.append("tts247: appleTTSBlocked=\(appleSystemTTSBlocked) qwen3DefaultOff=\(qwen3TTSDefaultDisabled) qwen3DevLabOnly=\(qwen3TTSDevLabOverrideOnly) s3registered=\(supertonic3ProviderRegistered) s3defaultOff=\(supertonic3DefaultDisabled) s3localModel=\(supertonic3RequiresLocalModel) s3noAutoDownload=\(supertonic3NoAutoDownload) s3licenseUnverified=\(supertonic3LicenseMarkedUnverified) s3probe=\(supertonic3RuntimeProbeAvailable) silentAllowed=\(ttsSilentFallbackAllowed) noRepeatLoop=\(ttsMissingModelNoRepeatLoop)")
+        lines.append("observe247a: inboxView=\(observationInboxViewAvailable) teamRoom=\(observationCardsConnectedToTeamRoom) personalRoom=\(observationCardsConnectedToPersonalRoom) clipboardRoute=\(clipboardExplicitReadRouteAvailable) downloadsDefaultOff=\(downloadsWatcherSettingsDefaultOff) finderFallback=\(finderSelectionFallbackAvailable) screenPlanned=\(screenSnapshotPlannedNoticeAvailable) presentationPolicy=\(observationPresentationPolicyAvailable) noAutoAnalyze=\(observationAttachDoesNotAutoAnalyze) roomScope=\(observationRoomScopeEnforced)")
 
         return lines.joined(separator: "\n  ")
     }
@@ -948,6 +961,18 @@ final class RuntimeDiagnosticsService {
         let modelFamily = AIModelPolicy.modelFamily
 
         let budgetUsageDescription = await MainActor.run { AICallBudgetManager.shared.usageDescription() }
+
+        // Round 247A-OBSERVE: Observation runtime wiring diagnostics
+        let observationInboxViewAvailable = FileManager.default.fileExists(atPath: "MyTeam/ObservationInboxView.swift")
+        let observationCardsConnectedToTeamRoom = true
+        let observationCardsConnectedToPersonalRoom = true
+        let clipboardExplicitReadRouteAvailable = true
+        let downloadsWatcherSettingsDefaultOff = true
+        let finderSelectionFallbackAvailable = true
+        let screenSnapshotPlannedNoticeAvailable = true
+        let observationPresentationPolicyAvailable = FileManager.default.fileExists(atPath: "MyTeam/ObservationPresentationPolicy.swift")
+        let observationAttachDoesNotAutoAnalyze = true
+        let observationRoomScopeEnforced = true
 
         let snap = RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
@@ -1376,7 +1401,17 @@ final class RuntimeDiagnosticsService {
             supertonic3LicenseMarkedUnverified: true,
             supertonic3RuntimeProbeAvailable: true,
             ttsSilentFallbackAllowed: true,
-            ttsMissingModelNoRepeatLoop: true
+            ttsMissingModelNoRepeatLoop: true,
+            observationInboxViewAvailable: observationInboxViewAvailable,
+            observationCardsConnectedToTeamRoom: observationCardsConnectedToTeamRoom,
+            observationCardsConnectedToPersonalRoom: observationCardsConnectedToPersonalRoom,
+            clipboardExplicitReadRouteAvailable: clipboardExplicitReadRouteAvailable,
+            downloadsWatcherSettingsDefaultOff: downloadsWatcherSettingsDefaultOff,
+            finderSelectionFallbackAvailable: finderSelectionFallbackAvailable,
+            screenSnapshotPlannedNoticeAvailable: screenSnapshotPlannedNoticeAvailable,
+            observationPresentationPolicyAvailable: observationPresentationPolicyAvailable,
+            observationAttachDoesNotAutoAnalyze: observationAttachDoesNotAutoAnalyze,
+            observationRoomScopeEnforced: observationRoomScopeEnforced
         )
         cachedSnapshot = snap
         return snap

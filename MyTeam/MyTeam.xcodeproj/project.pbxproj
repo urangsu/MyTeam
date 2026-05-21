@@ -4699,6 +4699,21 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>4749F09E31524768BB9320B6</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>ObservationInboxView.swift</string>
+			<key>path</key>
+			<string>ObservationInboxView.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
 		<key>475455D1F38F4C0394D9D0C51AC0252F</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -6913,6 +6928,13 @@
 			<string>Resources/Sprites/치코/치코_joy_016.png</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
+		</dict>
+		<key>67E9B03EC4BD467E82D256C3</key>
+		<dict>
+			<key>fileRef</key>
+			<string>4749F09E31524768BB9320B6</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
 		</dict>
 		<key>6806D03541EF0FFEE8CF6229</key>
 		<dict>
@@ -11349,6 +11371,14 @@
 				<dict>
 					<key>object</key>
 					<string>1156B5C2D79D4346B85DE472</string>
+				</dict>
+				<dict>
+					<key>object</key>
+					<string>67E9B03EC4BD467E82D256C3</string>
+				</dict>
+				<dict>
+					<key>object</key>
+					<string>C02FCAF0405343188DEBA466</string>
 				</dict>
 			</array>
 			<key>isa</key>
@@ -16447,6 +16477,13 @@
 			<string>Resources/Sprites/치코/치코_resting_014.png</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
+		</dict>
+		<key>C02FCAF0405343188DEBA466</key>
+		<dict>
+			<key>fileRef</key>
+			<string>F897DC77B84241399B9C7355</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
 		</dict>
 		<key>C03E7912EC2BBCC084FBB64C</key>
 		<dict>
@@ -22260,6 +22297,21 @@
 			<string>Resources/Sprites/치코/치코_angry_033.png</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
+		</dict>
+		<key>F897DC77B84241399B9C7355</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>ObservationPresentationPolicy.swift</string>
+			<key>path</key>
+			<string>ObservationPresentationPolicy.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
 		</dict>
 		<key>F8A9E8B747A32AC22587A49B</key>
 		<dict>
