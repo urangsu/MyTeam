@@ -134,7 +134,17 @@ else
     fail "ToolContractValidator.swift에 TTS validators 없음"
 fi
 
-# ── 15. 246B 전제조건: preflight_round246b.sh 40/40 ──────────────────────────
+# ── 15. 267B: git-tracked .onnx 없음 ───────────────────────────────────────
+# 정책: Supertonic3 모델 파일 repo 커밋 금지 (Round 247TTS 정책)
+TRACKED_ONNX=$(git -C "$REPO_ROOT" ls-files | grep '\.onnx$' | wc -l | tr -d ' ')
+if [ "$TRACKED_ONNX" -eq 0 ]; then
+    ok "git-tracked .onnx 없음 (모델 파일 repo 커밋 금지 준수)"
+else
+    fail "git-tracked .onnx $TRACKED_ONNX 건 발견 — 모델 파일 repo 커밋 금지 위반"
+    git -C "$REPO_ROOT" ls-files | grep '\.onnx$' | head -5
+fi
+
+# ── (구) 15. 246B 전제조건: preflight_round246b.sh 40/40 ──────────────────────────
 if [ -f "$SCRIPTS_DIR/preflight_round246b.sh" ]; then
     RESULT_246B=$(bash "$SCRIPTS_DIR/preflight_round246b.sh" 2>/dev/null | tail -5)
     if echo "$RESULT_246B" | grep -qE "✅ 40|40/40|✅ Round 246B"; then
@@ -151,7 +161,7 @@ echo "=== 결과 ==="
 echo -e "PASS: ${GREEN}$PASS${NC} / FAIL: ${RED}$FAIL${NC} / WARN: ${YELLOW}$WARN${NC} (총 $((PASS + FAIL + WARN)))"
 
 if [ "$FAIL" -eq 0 ]; then
-    echo -e "${GREEN}✅ 247TTS PREFLIGHT 통과 — 커밋 가능${NC}"
+    echo -e "${GREEN}✅ 247TTS+267B PREFLIGHT 통과 — 커밋 가능${NC}"
     exit 0
 else
     echo -e "${RED}❌ $FAIL 건 실패 — 커밋 불가${NC}"

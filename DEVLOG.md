@@ -6,6 +6,34 @@
 
 ---
 
+## 2026-05-21 (Round 267B — Swift Warning Burn-Down + ONNX Stub Policy)
+
+### 완료 (2026-05-21)
+
+Swift 5 strict-concurrency=targeted 경고 14건 → 0 (pending Mac build verification).
+
+**근본 원인**: `TTSLabView.swift`의 `@State` 기본값이 `Supertonic3TTSConfig.isEnabled`와 `Supertonic3ModelLocator.checkModel()`을 SwiftUI `@MainActor` 컨텍스트에서 호출 → Swift가 해당 메서드들을 `@MainActor`로 추론 → cascade로 `Supertonic3TTSProvider`, `Supertonic3InferencePipeline`, `ONNXRuntimeUnavailableAdapter` 등에 경고 전파.
+
+**수정 방법** (구조적, suppression 아님):
+- `TTSLabView`: @State 기본값 리터럴(`false`, `"F1"`, `.checking`)으로 교체, `.onAppear`에서 복원
+- `Supertonic3ModelLocator`: `ModelCheckResult.checking` nonisolated 플레이스홀더 추가
+- `Supertonic3TTSProvider`: Cloud skeleton 단순화 — `synthesize()` 즉시 throw, 미사용 nonisolated 헬퍼 제거
+- `Supertonic3InferencePipeline`: Cloud skeleton 단순화 — adapter 제거, `prepare()`/`synthesize()` 즉시 throw
+- `ObservationPresentationPolicy`: unused `name` 변수 제거
+- `CharacterReactionEventSink`: `[weak self]` + `guard let self` + `Task { @MainActor [self] in }` 패턴
+- `MemoryRetriever`: `store: MemoryStore? = nil` + 함수 내부에서 `.shared` 해결
+
+**ONNX stub 정책**:
+- `s3gen_enc.onnx`, `ve.onnx` git untrack (`git rm --cached`)
+- 앱 번들 미포함 확인 (PBXResourcesBuildPhase 확인)
+- `.gitignore` 규칙 `MyTeam/Resources/onnx_models/`로 재추적 방지
+
+**preflight**: 247TTS 16/16, 266A 13/13 모두 PASS
+
+**다음**: Mac Debug/Release 빌드로 경고 0 확인
+
+---
+
 ## 2026-05-21 (Round 266A-CLOUD-VERIFY — AssistOnly Governance Cloud Static Verification)
 
 ### 완료 (2026-05-21)

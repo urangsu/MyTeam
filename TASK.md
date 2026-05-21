@@ -1130,4 +1130,30 @@ ONNX, Chatterbox Multilingual Python 서버, VITS2/Piper/Kokoro 비교, TTSEngin
 | StoreKit | ✅ 변경 없음 |
 | Manual QA | ⏳ Pending |
 
-**다음:** Manual QA 수행 후 App Store submission 검토
+**다음:** Round 267B — Swift Warning Burn-Down
+
+---
+
+## Round 267B — Swift Warning Burn-Down + ONNX Stub Policy (완료)
+
+**날짜:** 2026-05-21
+
+| 항목 | 결과 |
+|---|---|
+| Debug app code warnings | 0 ⬜ (pending Mac build verification) |
+| Release app code warnings | 0 ⬜ (pending Mac build verification) |
+| preflight_round247tts | 16/16 PASSED ✅ |
+| preflight_round266a_cloud_verify | 13/13 PASSED ✅ |
+| git-tracked .onnx | 0 ✅ (untracked s3gen_enc.onnx, ve.onnx) |
+| ONNX in app bundle | ❌ None (PBXResourcesBuildPhase 미포함 확인) ✅ |
+
+**경고 수정 내역:**
+- `TTSLabView.swift`: @State default값 리터럴 교체 + .onAppear 복원 (cascade 근본 수정)
+- `Supertonic3ModelLocator.swift`: `ModelCheckResult.checking` 플레이스홀더 추가
+- `Supertonic3TTSProvider.swift`: Cloud skeleton 단순화 (nonisolated 헬퍼 제거)
+- `Supertonic3InferencePipeline.swift`: Cloud skeleton 단순화 (adapter 제거)
+- `ObservationPresentationPolicy.swift`: unused `name` 변수 제거
+- `CharacterReactionEventSink.swift`: Task capture `[self]` 패턴 수정
+- `MemoryRetriever.swift`: default param @MainActor 해결 (Optional + 내부 resolve)
+
+**다음:** Mac Debug/Release 빌드로 경고 0 확인 후 Manual QA 수행

@@ -51,7 +51,10 @@ enum MemoryRetriever {
     // MARK: - Public API
 
     @MainActor
-    static func retrieve(input: Input, store: MemoryStore = .shared) -> MemoryContext {
+    static func retrieve(input: Input, store: MemoryStore? = nil) -> MemoryContext {
+        // Resolve store inside @MainActor context — MemoryStore.shared is @MainActor-isolated
+        // and cannot be referenced from the nonisolated default-argument evaluation context.
+        let store = store ?? MemoryStore.shared
         let maxItems = max(1, min(input.maxItems, 20))  // 상한 20개
         var remaining = maxItems
 

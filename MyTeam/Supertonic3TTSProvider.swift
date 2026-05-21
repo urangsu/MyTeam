@@ -28,74 +28,23 @@ enum Supertonic3TTSError: Error, Sendable {
 // MARK: - Supertonic3TTSProvider
 
 /// Supertonic3 TTS provider.
-/// 이번 라운드(247TTS): skeleton — synthesize()는 항상 .missingRuntime
-/// 다음 라운드(248TTS): 실제 ONNX inference 연결
+/// Round 247TTS: Cloud skeleton — synthesize()는 항상 .missingRuntime.
+/// Round 249TTS: 실제 ONNX inference 연결 (Mac local, SPM 의존성 추가 후).
+///
+/// 구조 단순화 이유: Cloud 환경에서 ONNX Runtime 미탑재.
+/// isEnabled/checkModel 등 Config/Locator 호출은 249TTS에서 actor context 정리 후 연결.
 actor Supertonic3TTSProvider {
     static let shared = Supertonic3TTSProvider()
     private init() {}
 
-    // MARK: - Availability
-
-    nonisolated func isConfigEnabled() -> Bool {
-        Supertonic3TTSConfig.isEnabled
-    }
-
-    nonisolated func isModelAvailable() -> Bool {
-        Supertonic3ModelLocator.isModelAvailable()
-    }
-
-    /// provider를 실제로 사용할 수 있는지 확인
-    nonisolated func canSynthesize() -> Bool {
-        isConfigEnabled() && isModelAvailable()
-    }
-
     // MARK: - Synthesis
 
-    /// TTS 합성 (pipeline 기반).
-    /// - Checks config enabled
-    /// - Validates model availability
-    /// - Validates voice preset
-    /// - Delegates to Supertonic3InferencePipeline
-    ///
-    /// - Parameters:
-    ///   - text: 합성할 텍스트
-    ///   - voicePreset: 음성 프리셋 ID (M1–M5, F1–F5)
-    /// - Returns: TTSOutput
-    /// - Throws: TTSProviderError for various failure modes
+    /// TTS 합성.
+    /// Cloud 구현: 항상 .missingRuntime. ONNX Runtime 미탑재.
+    /// Mac 구현 TODO (249TTS): ONNX Runtime SPM 추가 후 실제 inference 연결.
     func synthesize(text: String, voicePreset: String? = nil) async throws -> TTSOutput {
-        // Step 1: Check provider is enabled
-        guard Supertonic3TTSConfig.isEnabled else {
-            throw TTSProviderError.notEnabled
-        }
-
-        // Step 2: Check model files exist
-        let modelCheck = Supertonic3ModelLocator.checkModel()
-        guard modelCheck.isAvailable else {
-            throw TTSProviderError.missingModel(files: [])
-        }
-
-        // Step 3: Validate voice preset
-        let preset = voicePreset ?? Supertonic3TTSConfig.selectedVoicePreset
-        guard Supertonic3TTSConfig.availableVoicePresets.contains(preset) else {
-            throw TTSProviderError.invalidVoicePreset(preset)
-        }
-
-        // Step 4: Delegate to inference pipeline
-        let pipeline = Supertonic3InferencePipeline()
-        let result = try await pipeline.synthesize(
-            text: text,
-            preset: preset,
-            languageCode: Supertonic3TTSConfig.selectedLanguage,
-            modelDirectory: modelCheck.directoryURL
-        )
-
-        return result
-    }
-
-    // MARK: - Probe
-
-    /// 모델 파일 상태 점검 (inference 없음). Supertonic3TTSProbe에 위임.
-    func probe() -> Supertonic3ProbeResult {
-        Supertonic3TTSProbe.probe()
+        // Cloud skeleton: ONNX Runtime not available. Always throws.
+        // 249TTS(Mac): guard isEnabled, checkModel, validate preset, run pipeline.
+        throw TTSProviderError.missingRuntime
     }
 }

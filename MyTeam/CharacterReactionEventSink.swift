@@ -140,9 +140,10 @@ final class CharacterReactionEventSink {
     private func resetIdleTimer(roomID: UUID) {
         idleTimer?.invalidate()
         idleTimer = Timer.scheduledTimer(withTimeInterval: idleTimeoutSeconds, repeats: false) { [weak self] _ in
-            Task { @MainActor in
+            guard let self else { return }
+            Task { @MainActor [self] in
                 let rid = AgentWindowManager.shared.currentRoomID ?? roomID
-                self?.postEvent(.longIdleTriggered(roomID: rid))
+                self.postEvent(.longIdleTriggered(roomID: rid))
             }
         }
     }

@@ -142,3 +142,60 @@
 - Beginner card contrast (P0): resolved — mtCardBackground on all card surfaces
 - Agent chat switching (P0): resolved — openPersonalChat() wired to seat/nameplate taps
 - Status: Build-ready, Manual QA pending
+
+---
+
+## Round 267B — Swift Warning Burn-Down (2026-05-21)
+
+### 목표: Debug + Release app code 경고 → 0
+
+### 267A 이후 경고 현황 (14건)
+
+| 파일 | 경고 수 | 종류 |
+|------|--------|------|
+| `Supertonic3TTSProvider.swift` | 7 | @MainActor cascade (actor isolation) |
+| `Supertonic3InferencePipeline.swift` | 4 | @MainActor cascade (2) + unused var (2) |
+| `ObservationPresentationPolicy.swift` | 1 | unused var |
+| `CharacterReactionEventSink.swift` | 1 | captured var `self` in concurrent Task |
+| `MemoryRetriever.swift` | 1 | @MainActor default param |
+
+### 수정 내역
+
+| 파일 | 수정 방법 |
+|------|---------|
+| `TTSLabView.swift` | @State 기본값 리터럴로 교체 + .onAppear 복원 (cascade 근본 수정) |
+| `Supertonic3ModelLocator.swift` | `ModelCheckResult.checking` 정적 플레이스홀더 추가 |
+| `Supertonic3TTSProvider.swift` | Cloud skeleton 단순화 — nonisolated 헬퍼 제거, synthesize() 즉시 throw |
+| `Supertonic3InferencePipeline.swift` | Cloud skeleton 단순화 — adapter 제거, prepare/synthesize 즉시 throw |
+| `ObservationPresentationPolicy.swift` | `let name` 미사용 변수 제거 |
+| `CharacterReactionEventSink.swift` | `guard let self` + `Task { @MainActor [self] in }` 패턴 |
+| `MemoryRetriever.swift` | `store: MemoryStore? = nil` + 내부 `let store = store ?? MemoryStore.shared` |
+
+### 추가: ONNX Stub 번들 정책 수리
+
+- `s3gen_enc.onnx` (1,532B), `ve.onnx` (854B): `git rm --cached` (untrack)
+- 앱 번들 포함 여부: **없음** (PBXResourcesBuildPhase에 없음 확인)
+- `.gitignore`의 `MyTeam/Resources/onnx_models/` 규칙으로 재추적 방지 ✓
+
+### 결과 (pending Mac build verification)
+
+| 항목 | 상태 |
+|------|------|
+| Debug app code warnings | 0 ⬜ (Mac 빌드 확인 필요) |
+| Release app code warnings | 0 ⬜ (Mac 빌드 확인 필요) |
+| preflight_round247tts.sh | 16/16 ✅ |
+| preflight_round266a_cloud_verify.sh | 13/13 ✅ |
+| git-tracked .onnx | 0 ✅ |
+
+### 적용 정책
+
+- `SWIFT_STRICT_CONCURRENCY=targeted`, `SWIFT_VERSION=5.0`
+- @MainActor 무분별 적용 금지
+- @unchecked Sendable 남발 금지
+- MainActor.run 억제 금지
+- 구조적 수정 (경고 원인 이해 후 제거)
+
+### Submission Readiness
+
+**Build-ready**: ⬜ Mac Debug/Release 빌드 확인 필요
+**Submission-ready**: ❌ Manual QA 미완료

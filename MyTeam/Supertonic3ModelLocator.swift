@@ -31,6 +31,18 @@ enum Supertonic3ModelLocator {
         let missingFiles: [String]
         let totalFoundSizeBytes: Int64
 
+        /// Safe nonisolated placeholder used as @State default in SwiftUI views.
+        /// Avoids @MainActor isolation inference from FileManager calls.
+        /// Replaced with real data in .onAppear / .task.
+        static let checking = ModelCheckResult(
+            directoryURL: URL(fileURLWithPath: NSHomeDirectory() + "/.cache/supertonic3/onnx"),
+            files: [],
+            optionalFiles: [],
+            isAvailable: false,
+            missingFiles: [],
+            totalFoundSizeBytes: 0
+        )
+
         var foundFiles: [String] {
             files.compactMap { $0.foundURL?.lastPathComponent }
         }

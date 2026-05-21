@@ -20,7 +20,6 @@ enum ObservationPresentationPolicy {
 
     /// 사용자가 분석을 명시적으로 요청했을 때 준비 메시지
     static func analyzeMessage(for observation: LocalObservation) -> String {
-        let name = observation.displayName.isEmpty ? observation.contentKind.displayName : observation.displayName
         return "이 파일을 이 방에 붙였어요. 자동 분석은 하지 않았습니다. 원하시면 요약/검토 기준을 먼저 잡아드릴게요."
     }
 

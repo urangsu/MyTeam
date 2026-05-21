@@ -19,14 +19,17 @@ struct TTSLabView: View {
 
     // MARK: - State
 
-    @State private var supertonic3Enabled: Bool = Supertonic3TTSConfig.isEnabled
-    @State private var selectedPreset: String = Supertonic3TTSConfig.selectedVoicePreset
-    @State private var selectedLanguage: String = Supertonic3TTSConfig.selectedLanguage
-    @State private var qwen3DevLabOverride: Bool = UserDefaults.standard.bool(forKey: "ttsDevLabQwen3Override")
-    @State private var qwen3Enabled: Bool = UserDefaults.standard.bool(forKey: "enableExperimentalQwenTTS")
+    // Use safe literal defaults — real values loaded in .onAppear.
+    // Avoids @MainActor isolation inference from calling UserDefaults/FileManager
+    // in @State default expressions (evaluated nonisolated in Swift 5 strict concurrency).
+    @State private var supertonic3Enabled: Bool = false
+    @State private var selectedPreset: String = "F1"
+    @State private var selectedLanguage: String = "auto"
+    @State private var qwen3DevLabOverride: Bool = false
+    @State private var qwen3Enabled: Bool = false
     @State private var probeResult: Supertonic3ProbeRunResult? = nil
     @State private var readinessResult: Supertonic3ProbeResult? = nil
-    @State private var modelCheck: Supertonic3ModelLocator.ModelCheckResult = Supertonic3ModelLocator.checkModel()
+    @State private var modelCheck: Supertonic3ModelLocator.ModelCheckResult = .checking
     @State private var showProbeDetail: Bool = false
 
     private let availableLanguages = ["auto", "ko", "en", "ja"]
@@ -44,7 +47,15 @@ struct TTSLabView: View {
             .padding()
         }
         .navigationTitle("TTS 실험실")
-        .onAppear { refreshModelCheck() }
+        .onAppear {
+            // Restore persisted settings (deferred from @State defaults to avoid @MainActor inference)
+            supertonic3Enabled = UserDefaults.standard.bool(forKey: "supertonic3ExperimentalEnabled")
+            selectedPreset = UserDefaults.standard.string(forKey: "supertonic3VoicePreset") ?? "F1"
+            selectedLanguage = UserDefaults.standard.string(forKey: "supertonic3Language") ?? "auto"
+            qwen3DevLabOverride = UserDefaults.standard.bool(forKey: "ttsDevLabQwen3Override")
+            qwen3Enabled = UserDefaults.standard.bool(forKey: "enableExperimentalQwenTTS")
+            refreshModelCheck()
+        }
     }
 
     // MARK: - Sections
