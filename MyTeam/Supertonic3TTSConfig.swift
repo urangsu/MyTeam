@@ -7,7 +7,8 @@ import Foundation
 // - 기본 비활성화 (isEnabled = UserDefaults bool → false by default)
 // - 로컬 모델 필요 (~/.cache/supertonic3/onnx/)
 // - 자동 다운로드 절대 없음 — 사용자가 직접 다운로드해야 함
-// - HuggingFace: Supertone/supertonic-3 (MIT + OpenRAIL-M)
+// - HuggingFace: Supertone/supertonic-3
+// - Sample code license / model license are documented by upstream, but product release gates remain locked.
 // - 44.1kHz WAV 출력 — 기존 24kHz AudioPlaybackService와 변환 필요 (248TTS에서 구현)
 
 enum Supertonic3TTSConfig {
@@ -97,8 +98,11 @@ enum Supertonic3TTSConfig {
 
     // MARK: - License / Distribution Policy
 
-    /// MIT (코드) + OpenRAIL-M (모델) — 상업적 사용 허용, 재배포 조건 검토 필요
-    /// App Store 번들 허용 여부: 미검증 (248TTS에서 법무 검토 필요)
-    static let licenseStatus: String = "MIT (code) + OpenRAIL-M (model) — unverified for App Store distribution"
+    /// Upstream states sample code is MIT and the model is OpenRAIL-M.
+    /// Product release still requires compliance review, attribution/use-restriction handling,
+    /// model redistribution review, and App Store distribution review.
+    static let licenseStatus: String = "MIT sample code + OpenRAIL-M model — product compliance review pending"
     static let isLicenseVerifiedForAppStore: Bool = false
+    static let isModelRedistributionApproved: Bool = false
+    static let isCommercialProductGateApproved: Bool = false
 }
