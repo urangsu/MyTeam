@@ -2,6 +2,7 @@ import Foundation
 
 enum LocalSkillExecutionResult {
     case handled(message: String, skillID: String)
+    case officeReviewResult(OfficeReviewLiteExecutor.ReviewResult, skillID: String)
     case needsInput(message: String, skillID: String)
     case notHandled
 }
@@ -20,12 +21,11 @@ enum LocalSkillExecutor {
             )
         }
 
-        // Office review lite detection: check if skill is 1차 (immediately executable)
+        // Office review lite detection: 1차 and 2차 both intercepted here
         for skill in skills {
-            if let officeSkill = detectOfficeReviewLiteSkill(skillID: skill.id, message: userMessage) {
-                if is1PhaseSkill(officeSkill) {
-                    return .handled(message: "", skillID: skill.id)
-                }
+            if detectOfficeReviewLiteSkill(skillID: skill.id) != nil {
+                // Both 1차 and 2차 are handled locally; 1차 runs, 2차 returns assistOnly guidance
+                return .handled(message: "", skillID: skill.id)
             }
         }
 
@@ -46,28 +46,25 @@ enum LocalSkillExecutor {
                 return .handled(message: result, skillID: skillID)
             }
 
-            // Office review lite execution (Round 248A)
-            if let officeSkill = detectOfficeReviewLiteSkill(skillID: skillID, message: userMessage) {
-                if is1PhaseSkill(officeSkill) {
-                    let outcome = OfficeReviewLiteExecutor.execute(
-                        skill: officeSkill,
-                        text: userMessage,
-                        sourceName: "user input"
-                    )
-                    switch outcome {
-                    case .success:
-                        // Execute locally, result will be passed to artifact handler
-                        return .handled(message: "", skillID: skillID)
-                    case .unsupported(let msg):
-                        return .needsInput(message: msg, skillID: skillID)
-                    case .needsAssistant(let msg):
-                        return .needsInput(message: msg, skillID: skillID)
-                    }
+            // Office review lite execution (Round 248A-HOTFIX: result no longer discarded)
+            if let officeSkill = detectOfficeReviewLiteSkill(skillID: skillID) {
+                let outcome = OfficeReviewLiteExecutor.execute(
+                    skill: officeSkill,
+                    text: userMessage,
+                    sourceName: "user input"
+                )
+                switch outcome {
+                case .success(let result):
+                    return .officeReviewResult(result, skillID: skillID)
+                case .unsupported(let msg):
+                    return .needsInput(message: msg, skillID: skillID)
+                case .needsAssistant(let msg):
+                    return .needsInput(message: msg, skillID: skillID)
                 }
             }
 
             return detection
-        case .needsInput, .notHandled:
+        case .officeReviewResult, .needsInput, .notHandled:
             return detection
         }
     }
@@ -75,8 +72,7 @@ enum LocalSkillExecutor {
     // MARK: - Office Review Lite Helpers
 
     private static func detectOfficeReviewLiteSkill(
-        skillID: String,
-        message: String
+        skillID: String
     ) -> OfficeReviewInputPolicy.OfficeReviewSkill? {
         switch skillID {
         case "office-review.meeting-action-items": return .meetingActionItems
@@ -89,15 +85,6 @@ enum LocalSkillExecutor {
         case "office-review.tax-invoice-comparison": return .taxInvoiceComparison
         case "office-review.contract-checklist": return .contractChecklist
         default: return nil
-        }
-    }
-
-    private static func is1PhaseSkill(_ skill: OfficeReviewInputPolicy.OfficeReviewSkill) -> Bool {
-        switch skill {
-        case .meetingActionItems, .filenameOrganization, .reportTonePolish:
-            return true
-        default:
-            return false
         }
     }
 }

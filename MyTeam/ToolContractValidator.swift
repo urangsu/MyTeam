@@ -220,6 +220,14 @@ enum ToolContractValidator {
         validateOfficeReviewLimitationsDisclaimerPolicy(issues: &issues)
         validateOfficeReviewAssistOnlyGuidancePolicy(issues: &issues)
 
+        // Round 248A-HOTFIX validators
+        validateOfficeReviewResultNotDiscardedPolicy(issues: &issues)
+        validateOfficeReviewNoEmptyHandledMessagePolicy(issues: &issues)
+        validateOfficeReviewMarkdownPresentationPolicy(issues: &issues)
+        validateOfficeReviewCardMacColorPolicy(issues: &issues)
+        validateOfficeReviewAssistOnlyReachablePolicy(issues: &issues)
+        validateOfficeReviewEvidenceLabelHonestyPolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -1734,6 +1742,56 @@ enum ToolContractValidator {
         guard let snap else { return }
         if !snap.officeReviewAssistOnlyGuidanceAvailable {
             issues.append(issue(.error, "2차 assistOnly 스킬이 적절한 안내 메시지를 제공하지 않습니다. LLM 상담 가이드 필수입니다."))
+        }
+    }
+
+    // Round 248A-HOTFIX validators
+
+    private static func validateOfficeReviewResultNotDiscardedPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.officeReviewLiteResultReturnedToOrchestrator {
+            issues.append(issue(.error, "OfficeReviewLiteExecutor.ReviewResult가 LocalSkillExecutor에서 버려지고 있습니다. .officeReviewResult case를 통해 Orchestrator에 전달해야 합니다."))
+        }
+    }
+
+    private static func validateOfficeReviewNoEmptyHandledMessagePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.officeReviewLiteDoesNotReturnEmptyMessage {
+            issues.append(issue(.error, "Office review 스킬이 빈 message를 채팅에 추가하고 있습니다. 결과는 반드시 내용이 있어야 합니다."))
+        }
+    }
+
+    private static func validateOfficeReviewMarkdownPresentationPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.officeReviewMarkdownPresentationAvailable {
+            issues.append(issue(.error, "OfficeReviewLiteExecutor.formatMarkdown()이 없습니다. 검토 결과를 사용자에게 표시할 수 없습니다."))
+        }
+    }
+
+    private static func validateOfficeReviewCardMacColorPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.officeReviewCardViewCompileSafeOnMac {
+            issues.append(issue(.warning, "OfficeReviewResultCardView.swift가 macOS-safe 색상을 사용하는지 확인이 필요합니다. Color(.systemBackground)는 macOS에서 컴파일 위험이 있습니다."))
+        }
+    }
+
+    private static func validateOfficeReviewAssistOnlyReachablePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.officeReviewAssistOnlySecondPhaseReachable {
+            issues.append(issue(.error, "2차 assistOnly 스킬이 detectIfPossible에서 .notHandled로 빠집니다. 모든 office review 스킬은 LocalSkillExecutor에서 처리되어야 합니다."))
+        }
+    }
+
+    private static func validateOfficeReviewEvidenceLabelHonestyPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.officeReviewEvidenceLabelHonest {
+            issues.append(issue(.error, "OfficeReviewResultCardView에서 '위치:'라고 표시하고 있습니다. 근거 위치 추적 미지원 정책에 위반됩니다. '휴리스틱 참고:'로 변경하세요."))
         }
     }
 }

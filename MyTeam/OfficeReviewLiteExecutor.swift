@@ -187,14 +187,12 @@ enum OfficeReviewLiteExecutor {
         let datePattern = try! NSRegularExpression(pattern: "\\d{4}년\\s?\\d{1,2}월|\\d{4}-\\d{2}(-\\d{2})?", options: [])
         let dateMatches = datePattern.matches(in: text, options: [], range: NSRange(text.startIndex..., in: text))
         let dates = dateMatches.compactMap { Range($0.range, in: text).map(String.init) }
-        if let date = dates.first {
+        if !dates.isEmpty {
             suggestions.append("[DATE]_[TOPIC]_[VERSION].xlsx    (예: 20260521_매출현황_v1.xlsx)")
         }
 
         // Extract potential topic (first meaningful words)
-        let words = text.split(separator: " ").map(String.init)
-        if words.count > 0 {
-            let topic = words.prefix(3).joined(separator: "_")
+        if !text.split(separator: " ").isEmpty {
             suggestions.append("[CATEGORY]_[DATE]_[TOPIC].xlsx    (예: 재무_20260521_월간실적.xlsx)")
         }
 
@@ -245,5 +243,54 @@ enum OfficeReviewLiteExecutor {
         }
 
         return Array(issues.prefix(5))
+    }
+
+    // MARK: - Markdown Formatter (Round 248A-HOTFIX)
+
+    static func formatMarkdown(_ result: ReviewResult) -> String {
+        var lines: [String] = []
+
+        lines.append("## \(result.title)")
+        lines.append("")
+        lines.append(result.summary)
+
+        if !result.actionItems.isEmpty {
+            lines.append("")
+            lines.append("### 추천 조치")
+            for item in result.actionItems {
+                lines.append("- \(item)")
+            }
+        }
+
+        if !result.issues.isEmpty {
+            lines.append("")
+            lines.append("### 발견 사항")
+            for issue in result.issues {
+                let badge = issue.severity == "critical" ? "🔴" : issue.severity == "warning" ? "🟡" : "🔵"
+                lines.append("\(badge) \(issue.text)")
+                if !issue.evidence.isEmpty {
+                    lines.append("  휴리스틱 참고: \(issue.evidence)")
+                }
+            }
+        }
+
+        // Limitations are mandatory (always shown)
+        lines.append("")
+        lines.append("### 한계 안내")
+        for limitation in result.limitations {
+            lines.append("- \(limitation)")
+        }
+        lines.append("- 원본 파일은 수정하지 않았습니다.")
+        lines.append("- 근거 위치 추적은 아직 지원하지 않습니다.")
+
+        if !result.suggestedNextSteps.isEmpty {
+            lines.append("")
+            lines.append("### 다음 단계")
+            for (idx, step) in result.suggestedNextSteps.enumerated() {
+                lines.append("\(idx + 1). \(step)")
+            }
+        }
+
+        return lines.joined(separator: "\n")
     }
 }

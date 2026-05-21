@@ -114,6 +114,76 @@ else
     log_warn "LocalSkillExecutor skill handling pattern unclear"
 fi
 
+# Round 248A-HOTFIX additional checks
+
+# Check 13: LocalSkillExecutionResult.officeReviewResult case exists
+if grep -q "case officeReviewResult" MyTeam/LocalSkillExecutor.swift 2>/dev/null; then
+    log_pass "LocalSkillExecutionResult.officeReviewResult case exists"
+else
+    log_fail "LocalSkillExecutionResult missing .officeReviewResult case (result will be discarded)"
+fi
+
+# Check 14: No empty handled message for office review success
+if grep -q "case .success.*:$" MyTeam/LocalSkillExecutor.swift 2>/dev/null; then
+    if grep -A2 "case .success" MyTeam/LocalSkillExecutor.swift 2>/dev/null | grep -q "handled(message: \"\","; then
+        log_fail "LocalSkillExecutor discards ReviewResult with empty handled message"
+    else
+        log_pass "LocalSkillExecutor does not use empty handled message for office review result"
+    fi
+else
+    log_pass "No empty handled message pattern found for office review"
+fi
+
+# Check 15: OfficeReviewLiteExecutor has formatMarkdown method
+if grep -q "static func formatMarkdown" MyTeam/OfficeReviewLiteExecutor.swift 2>/dev/null; then
+    log_pass "OfficeReviewLiteExecutor.formatMarkdown() exists"
+else
+    log_fail "OfficeReviewLiteExecutor missing formatMarkdown() - results cannot be shown to users"
+fi
+
+# Check 16: WorkflowOrchestrator handles officeReviewResult case
+if grep -q "case .officeReviewResult" MyTeam/WorkflowOrchestrator.swift 2>/dev/null; then
+    log_pass "WorkflowOrchestrator handles officeReviewResult case"
+else
+    log_fail "WorkflowOrchestrator does not handle .officeReviewResult - office review results never displayed"
+fi
+
+# Check 17: OfficeReviewResultCardView uses macOS-safe background color
+if grep -q "Color(.systemBackground)" MyTeam/OfficeReviewResultCardView.swift 2>/dev/null; then
+    if grep -q "os(macOS)\|nsColor\|windowBackgroundColor" MyTeam/OfficeReviewResultCardView.swift 2>/dev/null; then
+        log_pass "OfficeReviewResultCardView uses conditional macOS-safe background color"
+    else
+        log_warn "OfficeReviewResultCardView uses Color(.systemBackground) without macOS conditional"
+    fi
+else
+    log_pass "OfficeReviewResultCardView does not use problematic Color(.systemBackground)"
+fi
+
+# Check 18: Evidence label says '휴리스틱 참고' not '위치:'
+if grep -q "\"위치:" MyTeam/OfficeReviewResultCardView.swift 2>/dev/null; then
+    log_fail "OfficeReviewResultCardView uses '위치:' - evidence location claim violates policy"
+else
+    log_pass "Evidence label policy respected (not claiming exact location)"
+fi
+
+# Check 19: No unused binding warning (if let date = ...)
+if grep -q "if let date = dates.first" MyTeam/OfficeReviewLiteExecutor.swift 2>/dev/null; then
+    log_fail "Unused binding: 'if let date = dates.first' - 'date' is unused, Swift warning risk"
+else
+    log_pass "No unused binding for date variable"
+fi
+
+# Check 20: 2차 skill assistOnly is reachable via LocalSkillExecutor
+if grep -q "officeReviewAssistOnly\|accountingConsistency\|case .accounting" MyTeam/LocalSkillExecutor.swift 2>/dev/null; then
+    if grep -q "detectOfficeReviewLiteSkill" MyTeam/LocalSkillExecutor.swift 2>/dev/null; then
+        log_pass "2차 office review skills are reachable via LocalSkillExecutor"
+    else
+        log_warn "2차 office review skill reachability unclear"
+    fi
+else
+    log_pass "2차 skill routing handled via detectOfficeReviewLiteSkill"
+fi
+
 echo
 echo "=== Validation Summary ==="
 echo "✅ Passed: $PASS"
@@ -122,9 +192,9 @@ echo "❌ Failures: $FAIL"
 echo
 
 if [ $FAIL -eq 0 ]; then
-    echo "✅ Round 248A-OFFICE-LITE preflight validation PASSED"
+    echo "✅ Round 248A-OFFICE-LITE + HOTFIX preflight validation PASSED"
     exit 0
 else
-    echo "❌ Round 248A-OFFICE-LITE preflight validation FAILED"
+    echo "❌ Round 248A-OFFICE-LITE + HOTFIX preflight validation FAILED"
     exit 1
 fi

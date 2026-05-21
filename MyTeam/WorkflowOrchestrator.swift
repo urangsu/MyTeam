@@ -456,6 +456,43 @@ final class WorkflowOrchestrator {
             AppLog.info("[Skill] local result posted roomID=\(roomID.uuidString)")
             return
 
+        case .officeReviewResult(let result, let skillID):
+            AppLog.info("[Skill] office review lite result: \(skillID)")
+            await MainActor.run {
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .localSkillHandled,
+                    message: "office review lite: \(skillID)"
+                )
+                self.recordTurnProfile(
+                    manager: manager,
+                    roomID: roomID,
+                    userMessage: userMessage,
+                    route: .localSkill,
+                    reason: "office review lite: \(skillID)",
+                    matchedSkills: enabledSkills.filter { $0.id == skillID },
+                    effectiveScopes: effectiveScopes,
+                    expectedOutput: "office review heuristic result",
+                    requiresApproval: false,
+                    blockedTools: []
+                )
+            }
+            let markdown = OfficeReviewLiteExecutor.formatMarkdown(result)
+            await MainActor.run {
+                manager.addChatLog(
+                    roomID: roomID,
+                    agentID: "system",
+                    agentName: "사무 검토",
+                    text: markdown,
+                    isUser: false,
+                    isSystem: false,
+                    skillID: skillID
+                )
+            }
+            AppLog.info("[Skill] office review result posted roomID=\(roomID.uuidString)")
+            return
+
         case .notHandled:
             break
         }

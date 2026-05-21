@@ -53,7 +53,7 @@ struct OfficeReviewResultCardView: View {
                                     Text(issue.text)
                                         .font(.system(.caption, design: .default))
                                     if !issue.evidence.isEmpty {
-                                        Text("위치: \(issue.evidence)")
+                                        Text("휴리스틱 참고: \(issue.evidence)")
                                             .font(.system(.caption2, design: .default))
                                             .foregroundColor(.gray)
                                     }
@@ -135,7 +135,11 @@ struct OfficeReviewResultCardView: View {
             }
         }
         .padding(12)
+        #if os(macOS)
+        .background(Color(nsColor: .windowBackgroundColor))
+        #else
         .background(Color(.systemBackground))
+        #endif
         .cornerRadius(8)
         .overlay(
             RoundedRectangle(cornerRadius: 8)

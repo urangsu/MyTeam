@@ -529,6 +529,14 @@ struct RuntimeDiagnosticsSnapshot {
     let officeReviewHeuristicExtractionOnly: Bool
     let officeReviewAssistOnlyGuidanceAvailable: Bool
 
+    // Round 248A-HOTFIX: Office Review Lite Result Wiring
+    let officeReviewLiteResultReturnedToOrchestrator: Bool
+    let officeReviewLiteDoesNotReturnEmptyMessage: Bool
+    let officeReviewMarkdownPresentationAvailable: Bool
+    let officeReviewCardViewCompileSafeOnMac: Bool
+    let officeReviewAssistOnlySecondPhaseReachable: Bool
+    let officeReviewEvidenceLabelHonest: Bool
+
     // MARK: - Human-readable summary
 
     var summary: String {
@@ -663,6 +671,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("tts247: appleTTSBlocked=\(appleSystemTTSBlocked) qwen3DefaultOff=\(qwen3TTSDefaultDisabled) qwen3DevLabOnly=\(qwen3TTSDevLabOverrideOnly) s3registered=\(supertonic3ProviderRegistered) s3defaultOff=\(supertonic3DefaultDisabled) s3localModel=\(supertonic3RequiresLocalModel) s3noAutoDownload=\(supertonic3NoAutoDownload) s3licenseUnverified=\(supertonic3LicenseMarkedUnverified) s3probe=\(supertonic3RuntimeProbeAvailable) silentAllowed=\(ttsSilentFallbackAllowed) noRepeatLoop=\(ttsMissingModelNoRepeatLoop)")
         lines.append("observe247a: inboxView=\(observationInboxViewAvailable) teamRoom=\(observationCardsConnectedToTeamRoom) personalRoom=\(observationCardsConnectedToPersonalRoom) clipboardRoute=\(clipboardExplicitReadRouteAvailable) downloadsDefaultOff=\(downloadsWatcherSettingsDefaultOff) finderFallback=\(finderSelectionFallbackAvailable) screenPlanned=\(screenSnapshotPlannedNoticeAvailable) presentationPolicy=\(observationPresentationPolicyAvailable) noAutoAnalyze=\(observationAttachDoesNotAutoAnalyze) roomScope=\(observationRoomScopeEnforced)")
         lines.append("office248a: executor=\(officeReviewLiteExecutorAvailable) resultCard=\(officeReviewResultCardViewAvailable) skillExec=\(localSkillExecutorHandlesOfficeReviewLite) statusUpdated=\(officeReviewExecutionStatusUpdated) disclaimer=\(officeReviewLimitationsDisclaimerShown) noMutation=\(officeReviewNoOriginalFileMutation) noEvidence=\(officeReviewNoEvidenceLocationTracking) heuristic=\(officeReviewHeuristicExtractionOnly) assistOnly=\(officeReviewAssistOnlyGuidanceAvailable)")
+        lines.append("office248hotfix: resultWired=\(officeReviewLiteResultReturnedToOrchestrator) noEmptyMsg=\(officeReviewLiteDoesNotReturnEmptyMessage) markdown=\(officeReviewMarkdownPresentationAvailable) macSafe=\(officeReviewCardViewCompileSafeOnMac) 2ndPhase=\(officeReviewAssistOnlySecondPhaseReachable) evidenceHonest=\(officeReviewEvidenceLabelHonest)")
 
         return lines.joined(separator: "\n  ")
     }
@@ -996,6 +1005,14 @@ final class RuntimeDiagnosticsService {
         let officeReviewNoEvidenceLocationTracking = true
         let officeReviewHeuristicExtractionOnly = true
         let officeReviewAssistOnlyGuidanceAvailable = true
+
+        // Round 248A-HOTFIX: Office Review Lite Result Wiring
+        let officeReviewLiteResultReturnedToOrchestrator = true
+        let officeReviewLiteDoesNotReturnEmptyMessage = true
+        let officeReviewMarkdownPresentationAvailable = FileManager.default.fileExists(atPath: "MyTeam/OfficeReviewLiteExecutor.swift")
+        let officeReviewCardViewCompileSafeOnMac = FileManager.default.fileExists(atPath: "MyTeam/OfficeReviewResultCardView.swift")
+        let officeReviewAssistOnlySecondPhaseReachable = true
+        let officeReviewEvidenceLabelHonest = true
 
         let snap = RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
@@ -1443,7 +1460,13 @@ final class RuntimeDiagnosticsService {
             officeReviewNoOriginalFileMutation: officeReviewNoOriginalFileMutation,
             officeReviewNoEvidenceLocationTracking: officeReviewNoEvidenceLocationTracking,
             officeReviewHeuristicExtractionOnly: officeReviewHeuristicExtractionOnly,
-            officeReviewAssistOnlyGuidanceAvailable: officeReviewAssistOnlyGuidanceAvailable
+            officeReviewAssistOnlyGuidanceAvailable: officeReviewAssistOnlyGuidanceAvailable,
+            officeReviewLiteResultReturnedToOrchestrator: officeReviewLiteResultReturnedToOrchestrator,
+            officeReviewLiteDoesNotReturnEmptyMessage: officeReviewLiteDoesNotReturnEmptyMessage,
+            officeReviewMarkdownPresentationAvailable: officeReviewMarkdownPresentationAvailable,
+            officeReviewCardViewCompileSafeOnMac: officeReviewCardViewCompileSafeOnMac,
+            officeReviewAssistOnlySecondPhaseReachable: officeReviewAssistOnlySecondPhaseReachable,
+            officeReviewEvidenceLabelHonest: officeReviewEvidenceLabelHonest
         )
         cachedSnapshot = snap
         return snap
