@@ -6,6 +6,63 @@
 
 ---
 
+## 2026-05-21 (Round 248A-HOTFIX — Office Review Lite Result Wiring + Card Presentation Repair)
+
+### 완료 (2026-05-21)
+
+248A에서 생성한 결과를 실제로 사용자에게 보여주지 못하던 문제 수정.
+Preflight 20/20 통과. Cloud 환경 — xcodebuild 미실행. **Mac build pending**.
+
+**문제 및 수정:**
+
+1. **ReviewResult 버려짐 (P0)**
+   - 원인: `LocalSkillExecutor`에서 `.success(result)` → `.handled(message: "", ...)` 반환
+   - 수정: `LocalSkillExecutionResult.officeReviewResult(ReviewResult, skillID:)` case 추가
+   - `executeIfPossible`: `.success(let result)` → `.officeReviewResult(result, skillID:)` 반환
+
+2. **2차 assistOnly 도달 불가**
+   - 원인: `detectIfPossible`이 1차 스킬만 intercept하고 2차는 `.notHandled`로 빠짐
+   - 수정: 모든 office review skillID를 `detectOfficeReviewLiteSkill()`로 매칭 → intercept
+
+3. **Orchestrator 처리 없음**
+   - 원인: `WorkflowOrchestrator`에 `.officeReviewResult` case 없음
+   - 수정: `case .officeReviewResult(let result, let skillID)` 처리 추가
+   - `OfficeReviewLiteExecutor.formatMarkdown(result)` 호출 후 채팅에 추가
+
+4. **formatMarkdown 없음**
+   - 추가: `OfficeReviewLiteExecutor.formatMarkdown(_ result: ReviewResult) -> String`
+   - 포맷: 제목 / 요약 / 추천조치 / 발견사항 (휴리스틱 참고) / 한계안내 (항상) / 다음단계
+
+5. **macOS 컴파일 위험**
+   - `Color(.systemBackground)` → `#if os(macOS)` 조건으로 `Color(nsColor: .windowBackgroundColor)` 적용
+
+6. **"위치:" 레이블 정책 위반**
+   - `Text("위치: ...")` → `Text("휴리스틱 참고: ...")`
+
+7. **미사용 바인딩 경고**
+   - `if let date = dates.first` → `if !dates.isEmpty`
+   - unused `topic` 변수 제거
+
+**ToolContractValidator 추가 (6개):**
+- validateOfficeReviewResultNotDiscardedPolicy
+- validateOfficeReviewNoEmptyHandledMessagePolicy
+- validateOfficeReviewMarkdownPresentationPolicy
+- validateOfficeReviewCardMacColorPolicy
+- validateOfficeReviewAssistOnlyReachablePolicy
+- validateOfficeReviewEvidenceLabelHonestyPolicy
+
+**RuntimeDiagnosticsService 추가 (6개 fields):**
+- officeReviewLiteResultReturnedToOrchestrator
+- officeReviewLiteDoesNotReturnEmptyMessage
+- officeReviewMarkdownPresentationAvailable
+- officeReviewCardViewCompileSafeOnMac
+- officeReviewAssistOnlySecondPhaseReachable
+- officeReviewEvidenceLabelHonest
+
+**preflight:** 20/20 ✅
+
+---
+
 ## 2026-05-21 (Round 248A-OFFICE-LITE — Lite Office Review Executor with Heuristic Extraction)
 
 ### 완료 (2026-05-21)

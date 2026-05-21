@@ -64,6 +64,18 @@ if let officeSkill = detectOfficeReviewLiteSkill(skillID: skillID, message: user
 }
 ```
 
+### Round 248A-HOTFIX 수정 사항
+
+- `LocalSkillExecutionResult.officeReviewResult(ReviewResult, skillID:)` case 추가
+- `LocalSkillExecutor.executeIfPossible`이 `.success(result)` → `.officeReviewResult(result)` 반환
+- 빈 message 반환 제거
+- 2차 assistOnly 스킬도 `detectIfPossible`에서 intercept → execute 경로 진입
+- `WorkflowOrchestrator.dispatch`에 `.officeReviewResult` case 처리 추가
+- `OfficeReviewLiteExecutor.formatMarkdown(_:)` 추가 (채팅 메시지 포맷)
+- `OfficeReviewResultCardView` macOS-safe 색상 조건부 적용
+- evidence 레이블 "위치:" → "휴리스틱 참고:"
+- 미사용 바인딩 경고 수정 (`if let date` → `if !dates.isEmpty`)
+
 ### 다음 단계 (Round 249TTS 이후)
 
 - 2차 skillID들을 실제 LLM 상담 파이프라인으로 연결
