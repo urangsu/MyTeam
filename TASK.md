@@ -989,3 +989,28 @@ Mac App Store에 출시 가능한 macOS 네이티브 AI 팀 앱.
 
 ONNX, Chatterbox Multilingual Python 서버, VITS2/Piper/Kokoro 비교, TTSEngine 프로토콜 초안은 모두 과거 실험 기록이다.
 새 작업자는 이 파일의 P0~P5만 기준으로 삼는다.
+
+---
+
+## Round 247A-OBSERVE-RUNTIME (완료 2026-05-21)
+
+### 완료
+- [x] ObservationInboxView.swift — pending observation UI (room-scoped)
+- [x] ObservationPresentationPolicy.swift — 사용자 메시지 정책
+- [x] AgentWindowManager observation helpers — pendingObservations, analyzeObservation, ignoreObservation, attachObservation
+- [x] TeamStatusView — selectedTeamWorkroomID 기준 ObservationInboxView 연결
+- [x] AgentChatView — agentRoomID 기준 ObservationInboxView 연결
+- [x] WorkflowOrchestrator — 클립보드/Finder/화면 명시 라우트 (handleExplicitContextRoute)
+- [x] ObservationPresentationPolicy — clipboardBlockedMessage, finderFallbackMessage, screenSnapshotPlannedMessage
+- [x] RuntimeDiagnosticsService — 10개 observation runtime 필드
+- [x] ToolContractValidator — 8개 observation 정책 검사
+- [x] preflight_round247a_observe_runtime.sh — 13개 검사
+- [x] pbxproj 등록 — ObservationInboxView, ObservationPresentationPolicy
+- [x] docs: ObservationRuntimeUXPolicy, ClipboardExplicitReadPolicy, FinderSelectionFallbackPolicy
+
+### 다음 (Round 249TTS — Mac 로컬 ONNX Runtime)
+- [ ] SPM: onnxruntime-swift-package-manager 의존성 추가
+- [ ] ONNXRuntimeLiveAdapter 구현 (OrtEnvironment / OrtSession / OrtValue)
+- [ ] 4단계 inference pipeline 구현 (text_encoder → duration_predictor → vector_estimator → vocoder)
+- [ ] 텍스트 토크나이저 (사전 학습 모델 기반)
+- [ ] 샘플레이트 변환 (44.1kHz → 24kHz, AudioPlaybackService 연동)

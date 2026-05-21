@@ -39,3 +39,12 @@
 
 현재: "화면 읽기는 다음 업데이트에서 제공됩니다."
 상시 캡처 관련: "MyTeam은 화면을 항상 캡처하지 않습니다. 필요할 때만 직접 요청해 주세요."
+
+## Round 247A-OBSERVE-RUNTIME 확인
+
+- 화면 캡처 planned notice route 추가 (WorkflowOrchestrator)
+- 트리거: "현재 화면 설명해줘", "화면 읽어줘", "지금 보고 있는 거 분석해줘"
+- 응답: ObservationPresentationPolicy.screenSnapshotPlannedMessage()
+  > "현재 화면 읽기는 단발성 권한 기반 기능으로 준비 중입니다. 상시 화면 감시는 하지 않습니다."
+- ToolContractValidator: validateScreenSnapshotPlannedNoticePolicy 추가
+- 상시 화면 감시 ScreenObservationPolicy.continuousCaptureAllowed = false 유지

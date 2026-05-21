@@ -55,3 +55,10 @@ FileIntakeEventCardView 표시
 
 - "다운로드된 파일을 발견했어요." → [이 방에서 분석] [무시]
 - 권한 없을 때: "시스템 설정 → 개인 정보 보호에서 MyTeam의 파일 접근을 허용해 주세요."
+
+## Round 247A-OBSERVE-RUNTIME 확인
+
+- Downloads watcher default OFF 유지 (isEnabled = false)
+- 사용자 명시 활성화 없이 자동 감시 없음
+- RuntimeDiagnostics: downloadsWatcherSettingsDefaultOff 필드 추가
+- ToolContractValidator: validateDownloadsWatcherDefaultOffUIPolicy 추가

@@ -66,3 +66,12 @@ attachObservation(_:to:) → 방에 배정
 | `ScreenObservationPolicy.swift` | 화면 관찰 정책 + stub |
 | `FileIntakeEventCardView.swift` | 카드 UI |
 | `OfficeReviewInputPolicy.swift` | 사무 검토 입력/skill 정책 |
+
+## Round 247A-OBSERVE-RUNTIME 업데이트
+
+- ObservationInboxView.swift 추가: pending observation을 방별 UI로 표시
+- ObservationPresentationPolicy.swift 추가: 사용자 메시지 정책 중앙화
+- AgentWindowManager observation helpers 추가: pendingObservations(for:), analyzeObservation, ignoreObservation, attachObservation
+- TeamStatusView: selectedTeamWorkroomID 기준 ObservationInboxView 연결
+- AgentChatView: agentRoomID 기준 ObservationInboxView 연결
+- WorkflowOrchestrator: 클립보드/Finder/화면 명시 라우트 추가 (자동 감시 없음)

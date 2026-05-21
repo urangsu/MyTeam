@@ -3742,3 +3742,33 @@ WorkroomHomeView에 치코 안내 문구, 업무 카드, "예시로 시작하기
 ### Build
 - Debug BUILD SUCCEEDED, 0 Swift warnings
 - Release BUILD SUCCEEDED, 0 Swift warnings
+
+---
+
+## 2026-05-21 Round 247A-OBSERVE-RUNTIME
+
+### 목표
+Observation foundation을 실제 사용자 흐름에 연결. QA 없음. UI 연결·라우팅·room scope·pending attach·명시적 읽기 경로만 구현.
+
+### 구현
+- **ObservationInboxView.swift** (신규): pending observation을 방별로 표시하는 SwiftUI 카드 목록. roomID nil인 observation만 표시. full path 표시 금지. 파일 내용 자동 분석 금지.
+- **ObservationPresentationPolicy.swift** (신규): 클립보드 차단/Finder fallback/화면 캡처 planned/attach 준비 메시지 중앙화.
+- **AgentWindowManager** (수정): pendingObservations(for:), analyzeObservation(_:in:), ignoreObservation(_:), attachObservation(_:to:) 헬퍼 추가.
+- **TeamStatusView** (수정): selectedTeamWorkroomID 기준 ObservationInboxView 연결. currentRoomID fallback 사용 금지.
+- **AgentChatView** (수정): agentRoomID 기준 ObservationInboxView 연결. selectedTeamWorkroomID 사용 금지.
+- **WorkflowOrchestrator** (수정): handleExplicitContextRoute 메서드 추가. 클립보드/Finder/화면 명시 요청 intercepting. 자동 감시/자동 분석 없음.
+- **RuntimeDiagnosticsService** (수정): 10개 observation runtime 진단 필드.
+- **ToolContractValidator** (수정): 8개 observation 정책 검사 추가.
+- **pbxproj**: 2개 신규 파일 Python 스크립트로 등록.
+- **docs**: ObservationRuntimeUXPolicy, ClipboardExplicitReadPolicy, FinderSelectionFallbackPolicy 신규. ObservationLayerPolicy, DownloadsWatcherPolicy, ScreenObservationPolicy 업데이트.
+
+### 정책 확인
+- 감지 ≠ 분석. attach ≠ 분석. 분석은 사용자 action 이후.
+- room-scoped observation만 허용.
+- 상시 클립보드 감시 금지 (continuousMonitoringAllowed = false 유지).
+- 상시 화면 감시 금지 (continuousCaptureAllowed = false 유지).
+- Downloads watcher default off 유지.
+
+### Build
+- Cloud 환경 — xcodebuild 미실행.
+- Mac 빌드: Round 249TTS 이후 예정.
