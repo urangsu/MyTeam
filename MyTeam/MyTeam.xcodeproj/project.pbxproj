@@ -11069,6 +11069,7 @@
 				<string>6438044E22AE4238A0BC2C27</string>
 				<string>96DD751029D448A8A367BAD5</string>
 				<string>C4C3909DD99D4F8CB84327D9</string>
+				<string>B3A2C9D1E4F5060708090A0B</string>
 			</array>
 			<key>isa</key>
 			<string>PBXGroup</string>
@@ -11493,6 +11494,7 @@
 				<string>6976E348FB7743AC95F58197</string>
 				<string>6E6FC37A89764F9095E8D62B</string>
 				<string>3F4FD0A86C9E44DBA9CBDCE5</string>
+				<string>C4D5E6F7A8B9C0D1E2F30001</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -12055,7 +12057,7 @@
 				<key>CURRENT_PROJECT_VERSION</key>
 				<string>1</string>
 				<key>ENABLE_APP_SANDBOX</key>
-				<string>YES</string>
+				<string>NO</string>
 				<key>ENABLE_HARDENED_RUNTIME</key>
 				<string>YES</string>
 				<key>ENABLE_INCOMING_NETWORK_CONNECTIONS</key>
@@ -12148,7 +12150,7 @@
 				<key>CURRENT_PROJECT_VERSION</key>
 				<string>1</string>
 				<key>ENABLE_APP_SANDBOX</key>
-				<string>YES</string>
+				<string>NO</string>
 				<key>ENABLE_HARDENED_RUNTIME</key>
 				<string>YES</string>
 				<key>ENABLE_INCOMING_NETWORK_CONNECTIONS</key>
@@ -15584,6 +15586,17 @@
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
+		<key>B3A2C9D1E4F5060708090A0B</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>S3WavWriter.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
 		<key>B3B1FF9DF9B265AA23920768</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -17198,6 +17211,13 @@
 			<string>Resources/Sprites/치코/치코_drag_012.png</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
+		</dict>
+		<key>C4D5E6F7A8B9C0D1E2F30001</key>
+		<dict>
+			<key>fileRef</key>
+			<string>B3A2C9D1E4F5060708090A0B</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
 		</dict>
 		<key>C4F5AD68EEDD1216651CEB80</key>
 		<dict>

@@ -183,10 +183,11 @@ actor Supertonic3ONNXRunner {
     // MARK: - ORT Helpers
 
     private func ortSession(env: ORTEnv, modelPath: String) throws -> ORTSession {
-        guard let sess = try? ORTSession(env: env, modelPath: modelPath, sessionOptions: nil) else {
-            throw Supertonic3ONNXRunnerError.inferenceFailure("ORTSession init failed: \(modelPath)")
+        do {
+            return try ORTSession(env: env, modelPath: modelPath, sessionOptions: nil)
+        } catch {
+            throw Supertonic3ONNXRunnerError.inferenceFailure("ORTSession init failed [\(URL(fileURLWithPath: modelPath).lastPathComponent)]: \(error.localizedDescription)")
         }
-        return sess
     }
 
     private func ortRun(
@@ -195,10 +196,12 @@ actor Supertonic3ONNXRunner {
         outputNames: [String]
     ) throws -> [String: ORTValue] {
         let names = Set(outputNames)
-        guard let result = try? session.run(withInputs: inputs, outputNames: names, runOptions: nil) else {
-            throw Supertonic3ONNXRunnerError.inferenceFailure("ORTSession.run failed")
+        do {
+            let result = try session.run(withInputs: inputs, outputNames: names, runOptions: nil)
+            return result
+        } catch {
+            throw Supertonic3ONNXRunnerError.inferenceFailure("ORTSession.run failed: \(error.localizedDescription)")
         }
-        return result
     }
 
     // MARK: - Tensor Helpers

@@ -37,6 +37,7 @@ struct TTSLabView: View {
     @State private var spikeSynthesisResult: Supertonic3SynthesisResult? = nil
     @State private var spikeSynthesisError: String? = nil
     @State private var spikeIsSynthesizing: Bool = false
+    @State private var spikeWavOutputPath: String? = nil
 
     private let availableLanguages = ["auto", "ko", "en", "ja"]
 
@@ -246,6 +247,7 @@ struct TTSLabView: View {
             if showProbeDetail, let result = probeResult {
                 Text(result.detailedSummary)
                     .font(.system(.caption, design: .monospaced))
+                    .textSelection(.enabled)
                     .padding(6)
                     .background(Color.secondary.opacity(0.08))
                     .cornerRadius(4)
@@ -324,6 +326,19 @@ struct TTSLabView: View {
                             Text("\(result.wavSamples.count) samples @ \(result.sampleRate) Hz")
                                 .font(.system(.caption, design: .monospaced))
                         }
+                        if let wavPath = spikeWavOutputPath {
+                            HStack {
+                                Text("WAV")
+                                    .font(.caption.bold())
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(wavPath)
+                                    .font(.system(.caption2, design: .monospaced))
+                                    .textSelection(.enabled)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                            }
+                        }
                     }
                 }
 
@@ -331,6 +346,7 @@ struct TTSLabView: View {
                     Text("오류: \(err)")
                         .font(.caption)
                         .foregroundStyle(.red)
+                        .textSelection(.enabled)
                         .padding(6)
                         .background(Color.red.opacity(0.08))
                         .cornerRadius(4)
@@ -407,8 +423,14 @@ struct TTSLabView: View {
                     totalSteps: 8,
                     paths: paths
                 )
+                // Save wav to ~/Desktop for afplay verification
+                let wavPath = S3WavWriter.write(
+                    samples: result.wavSamples,
+                    sampleRate: result.sampleRate,
+                    tag: "spike_\(result.presetUsed)")
                 await MainActor.run {
                     spikeSynthesisResult = result
+                    spikeWavOutputPath = wavPath
                     spikeIsSynthesizing = false
                 }
             } catch {
