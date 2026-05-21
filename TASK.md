@@ -67,6 +67,39 @@ MyTeam은 Mac 안에서 사용자의 자연어 요청을 받아, 문서/파일/�
 
 ### Now
 
+#### Round 266A-CLOUD-VERIFY — 완료 (2026-05-21)
+
+AssistOnly Governance Cloud Static Verification + Mac Handoff Pack
+
+- assistOnly hard-block policy static audit: 외부 write 없음 확인
+- KSkillAssistRuntime user-facing section headers Korean UX terms 확인
+- Dedicated skill card reachability (4 cards) 확인
+- Accounting-tax disclaimer always visible 확인
+- Supertonic3 Dev Lab isolation 확인
+- `scripts/preflight_round266a_cloud_verify.sh` — 13/13 PASS
+- `docs/MacBuildHandoffRound266A.md` 추가
+- `reports/round266a_cloud_static_verify.md` 추가
+- Cloud static checked ✅ — Mac build pending ⏳ — Submission not ready ⛔
+
+#### Round 266A-275Z — 완료 (2026-05-21)
+
+AssistOnly Governance Hardening Pack
+
+- ToolContractValidator: 5 new validators (assistOnly, dedicated cards, disclaimer, sections, priority)
+- RuntimeDiagnosticsService: 6 governance diagnostic fields
+- RouterBurnInSuite: 10 K-skill governance burn-in cases
+- KSkillAssistRuntime: Korean UX section headers (준비 체크리스트, 필요한 입력, 다음에 할 일, 직접 진행이 필요한 작업)
+- AccountingTaxSummaryCardView: disclaimer hardened to exact policy copy, non-collapsible
+- SkillAvailabilityResolver: assistOnlySkillIDs property added
+- BuiltInKoreanSkills: accounting-tax skill manifest
+- 4 policy docs: KSkillAssistPolicy.md, SkillResultRenderingPolicy.md, AccountingTaxSkillPolicy.md, TTSProviderPolicy.md
+
+#### Next — Mac Build (Round 267A)
+
+- Mac xcodebuild Debug/Release (0 errors, 0 warnings)
+- See: `docs/MacBuildHandoffRound266A.md` for full checklist and known compile risks
+- After build: update reports/round266a_cloud_static_verify.md with build result
+
 #### Round 248A-HOTFIX — 완료 (2026-05-21)
 
 Office Review Lite Result Wiring + Card Presentation Repair

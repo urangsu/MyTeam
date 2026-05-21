@@ -143,6 +143,178 @@ enum RouterBurnInSuite {
             shouldRequireApproval: false,
             notes: "활성 스킬 매칭"
         ),
+        // Round 250A-255Z: K-Skills assistOnly intent burn-in
+        .init(
+            id: "kskill-ktx-assist",
+            message: "KTX 예매하는 방법 알려줘",
+            expectedRoute: .localSkill,
+            expectedSkillID: "korean.ktx-booking",
+            expectedRouteHint: nil,
+            expectedGoalType: "assistOnly",
+            shouldRequireApproval: false,
+            notes: "assistOnly — 예매 확정 대행 없음, 체크리스트만"
+        ),
+        .init(
+            id: "kskill-stock-assist",
+            message: "삼성전자 주식 정보 알려줘",
+            expectedRoute: .localSkill,
+            expectedSkillID: "korean.stock-info",
+            expectedRouteHint: nil,
+            expectedGoalType: "assistOnly",
+            shouldRequireApproval: false,
+            notes: "assistOnly — 실시간 시세 조회 없음, 매수 추천 없음"
+        ),
+        .init(
+            id: "kskill-dart-assist",
+            message: "DART 공시 확인하는 방법",
+            expectedRoute: .localSkill,
+            expectedSkillID: "korean.dart",
+            expectedRouteHint: nil,
+            expectedGoalType: "assistOnly",
+            shouldRequireApproval: false,
+            notes: "assistOnly — 실제 DART API 조회 없음"
+        ),
+        .init(
+            id: "kskill-map-assist",
+            message: "강남역 근처 맛집 찾아줘",
+            expectedRoute: .localSkill,
+            expectedSkillID: "korean.map-place",
+            expectedRouteHint: nil,
+            expectedGoalType: "assistOnly",
+            shouldRequireApproval: false,
+            notes: "assistOnly — 지도 직접 검색 없음, 자동 예약 없음"
+        ),
+        .init(
+            id: "kskill-scholarship-assist",
+            message: "장학금 신청 방법 알려줘",
+            expectedRoute: .localSkill,
+            expectedSkillID: "korean.scholarship",
+            expectedRouteHint: nil,
+            expectedGoalType: "assistOnly",
+            shouldRequireApproval: false,
+            notes: "assistOnly — 자동 신청 없음, 공고 조회 없음"
+        ),
+        .init(
+            id: "kskill-law-assist",
+            message: "임대차 계약 법령 정보",
+            expectedRoute: .localSkill,
+            expectedSkillID: "korean.law-search",
+            expectedRouteHint: nil,
+            expectedGoalType: "assistOnly",
+            shouldRequireApproval: false,
+            notes: "assistOnly — 법률 자문 확정 없음, 최신 법령 조회 없음"
+        ),
+        .init(
+            id: "kskill-news-assist",
+            message: "오늘 네이버 뉴스 검색 방법",
+            expectedRoute: .localSkill,
+            expectedSkillID: "korean.naver-news",
+            expectedRouteHint: nil,
+            expectedGoalType: "assistOnly",
+            shouldRequireApproval: false,
+            notes: "assistOnly — 실시간 검색 없음, 링크/본문 입력 필요"
+        ),
+        // Round 266A-275Z: Korean UX governance burn-in (10 cases)
+        .init(
+            id: "gov-spell-check",
+            message: "맞춤법 검사해줘",
+            expectedRoute: .localSkill,
+            expectedSkillID: "korean.spell-check",
+            expectedRouteHint: nil,
+            expectedGoalType: "artifactGeneration",
+            shouldRequireApproval: false,
+            notes: "spell-check → SpellCheckResultCardView; no external write"
+        ),
+        .init(
+            id: "gov-privacy-terms",
+            message: "개인정보 처리방침 만들어줘",
+            expectedRoute: .privacyTerms,
+            expectedSkillID: "korean.privacy-terms",
+            expectedRouteHint: "privacyTerms",
+            expectedGoalType: "artifactGeneration",
+            shouldRequireApproval: false,
+            notes: "privacy-terms → PrivacyTermsArtifactCardView; artifact route"
+        ),
+        .init(
+            id: "gov-accounting-tax",
+            message: "세금 계산 도와줘",
+            expectedRoute: .localSkill,
+            expectedSkillID: "korean.accounting-tax",
+            expectedRouteHint: nil,
+            expectedGoalType: "assistOnly",
+            shouldRequireApproval: false,
+            notes: "accounting-tax → AccountingTaxSummaryCardView; assistOnly; disclaimer always visible"
+        ),
+        .init(
+            id: "gov-accounting-vat",
+            message: "매입세액 계산 도와줘",
+            expectedRoute: .localSkill,
+            expectedSkillID: "korean.accounting-tax",
+            expectedRouteHint: nil,
+            expectedGoalType: "assistOnly",
+            shouldRequireApproval: false,
+            notes: "accounting-tax; VAT calculation; assistOnly; no payment execution"
+        ),
+        .init(
+            id: "gov-dart",
+            message: "DART 공시 확인해줘",
+            expectedRoute: .localSkill,
+            expectedSkillID: "korean.dart",
+            expectedRouteHint: nil,
+            expectedGoalType: "assistOnly",
+            shouldRequireApproval: false,
+            notes: "DART assistOnly; no live API call; checklist + summary only"
+        ),
+        .init(
+            id: "gov-ktx",
+            message: "KTX 예매 도와줘",
+            expectedRoute: .localSkill,
+            expectedSkillID: "korean.ktx-booking",
+            expectedRouteHint: nil,
+            expectedGoalType: "assistOnly",
+            shouldRequireApproval: false,
+            notes: "KTX assistOnly; no booking execution; no payment; checklist only"
+        ),
+        .init(
+            id: "gov-stock-purchase",
+            message: "삼성전자 지금 사도 될까",
+            expectedRoute: .localSkill,
+            expectedSkillID: "korean.stock-info",
+            expectedRouteHint: nil,
+            expectedGoalType: "assistOnly",
+            shouldRequireApproval: false,
+            notes: "stock assistOnly; no purchase execution; no real-time feed; checklist + risk summary"
+        ),
+        .init(
+            id: "gov-scholarship",
+            message: "장학금 신청 준비 도와줘",
+            expectedRoute: .localSkill,
+            expectedSkillID: "korean.scholarship",
+            expectedRouteHint: nil,
+            expectedGoalType: "assistOnly",
+            shouldRequireApproval: false,
+            notes: "scholarship assistOnly; no application submission; checklist only"
+        ),
+        .init(
+            id: "gov-law",
+            message: "법령 찾아줘",
+            expectedRoute: .localSkill,
+            expectedSkillID: "korean.law-search",
+            expectedRouteHint: nil,
+            expectedGoalType: "assistOnly",
+            shouldRequireApproval: false,
+            notes: "law assistOnly; no legal advice; no external API; checklist + guidance only"
+        ),
+        .init(
+            id: "gov-news",
+            message: "네이버 뉴스 요약해줘",
+            expectedRoute: .localSkill,
+            expectedSkillID: "korean.naver-news",
+            expectedRouteHint: nil,
+            expectedGoalType: "assistOnly",
+            shouldRequireApproval: false,
+            notes: "naver-news assistOnly; no live search; link/paste required"
+        ),
         .init(
             id: "artifact-report",
             message: "MyTeam 소개 보고서 만들어줘",

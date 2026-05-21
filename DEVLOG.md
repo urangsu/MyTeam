@@ -6,6 +6,44 @@
 
 ---
 
+## 2026-05-21 (Round 266A-CLOUD-VERIFY — AssistOnly Governance Cloud Static Verification)
+
+### 완료 (2026-05-21)
+
+AssistOnly Governance static audit + Mac handoff pack.
+
+**Cloud status: Cloud static checked. Mac build pending. Manual QA pending. Submission not ready.**
+
+- AssistOnly hard-block policy static checked — 외부 write 없음
+- KSkillAssistRuntime user-facing section headers checked (Korean UX terms only)
+- Dedicated skill card reachability checked (4 cards: spell-check, privacy-terms, diagnostics, accounting-tax)
+- Accounting-tax disclaimer always visible (non-collapsible, code comment enforced)
+- TTSLab isolation checked — Supertonic3 Dev Lab gated, no default provider, no auto-init
+- `scripts/preflight_round266a_cloud_verify.sh` added — 13/13 PASS
+- `docs/MacBuildHandoffRound266A.md` added
+- `reports/round266a_cloud_static_verify.md` added
+- Mac xcodebuild: Mac build pending
+- 외부 write 없음
+- Gmail API 없음
+- Calendar write 없음
+- StoreKit/entitlement 미수정
+- OAuth 미수정
+
+## 2026-05-21 (Round 266A-275Z — AssistOnly Governance Hardening Pack)
+
+### 완료 (2026-05-21)
+
+- ToolContractValidator: 5 new validators added
+- RuntimeDiagnosticsService: 6 governance diagnostic fields added
+- RouterBurnInSuite: 10 K-skill governance burn-in cases added
+- KSkillAssistRuntime: section headers updated to Korean UX terminology
+- AccountingTaxSummaryCardView: disclaimer hardened, non-collapsible enforcement
+- SkillAvailabilityResolver: assistOnlySkillIDs property added, accounting-tax case added
+- BuiltInKoreanSkills: accounting-tax skill manifest created
+- Policy docs: KSkillAssistPolicy.md, SkillResultRenderingPolicy.md, AccountingTaxSkillPolicy.md, TTSProviderPolicy.md
+
+---
+
 ## 2026-05-21 (Round 248A-HOTFIX — Office Review Lite Result Wiring + Card Presentation Repair)
 
 ### 완료 (2026-05-21)

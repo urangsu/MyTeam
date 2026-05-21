@@ -10,6 +10,14 @@ enum WorkroomCharacterEvent: Equatable, Identifiable {
     case documentCreated(documentType: String, roomID: UUID)
     case artifactReuseRequested(artifactID: String, roomID: UUID)
     case multiRoomSwitched(fromRoomID: UUID, toRoomID: UUID)
+    // Round 256A-260Z: Extended event set
+    case fileReadStarted(filename: String, roomID: UUID)
+    case verificationWarning(detail: String, roomID: UUID)
+    case verificationFailed(detail: String, roomID: UUID)
+    case approvalWaiting(taskID: String, roomID: UUID)
+    case taskCompleted(skillID: String, roomID: UUID)
+    case errorRecoveryStarted(roomID: UUID)
+    case longIdleTriggered(roomID: UUID)
 
     var id: String {
         switch self {
@@ -23,6 +31,20 @@ enum WorkroomCharacterEvent: Equatable, Identifiable {
             return "artifactReuse_\(id)"
         case .multiRoomSwitched:
             return "multiRoomSwitched"
+        case .fileReadStarted(let filename, _):
+            return "fileRead_\(filename)"
+        case .verificationWarning(let detail, _):
+            return "verificationWarning_\(detail.prefix(20))"
+        case .verificationFailed(let detail, _):
+            return "verificationFailed_\(detail.prefix(20))"
+        case .approvalWaiting(let taskID, _):
+            return "approvalWaiting_\(taskID)"
+        case .taskCompleted(let skillID, _):
+            return "taskCompleted_\(skillID)"
+        case .errorRecoveryStarted:
+            return "errorRecovery"
+        case .longIdleTriggered:
+            return "longIdle"
         }
     }
 
@@ -31,7 +53,14 @@ enum WorkroomCharacterEvent: Equatable, Identifiable {
         case .workroomOpened(let roomID),
              .workflowStarted(_, let roomID),
              .documentCreated(_, let roomID),
-             .artifactReuseRequested(_, let roomID):
+             .artifactReuseRequested(_, let roomID),
+             .fileReadStarted(_, let roomID),
+             .verificationWarning(_, let roomID),
+             .verificationFailed(_, let roomID),
+             .approvalWaiting(_, let roomID),
+             .taskCompleted(_, let roomID),
+             .errorRecoveryStarted(let roomID),
+             .longIdleTriggered(let roomID):
             return roomID
         case .multiRoomSwitched:
             return nil
@@ -67,19 +96,31 @@ enum CharacterReactionMapping {
     static func reactionFor(_ event: WorkroomCharacterEvent) -> CharacterReaction? {
         switch event {
         case .workroomOpened:
-            // 앱 오픈 → 인사
             return CharacterReaction(event: event, targetState: .greeting, responseText: "워크룸에 오신 걸 환영해요!")
         case .workflowStarted(let type, _):
             return workflowStartedReaction(event: event, workflowType: type)
         case .documentCreated:
-            // 문서 완성 → 기쁨
             return CharacterReaction(event: event, targetState: .joy, responseText: "문서가 만들어졌어요! 확인해보세요.")
         case .artifactReuseRequested:
-            // 이전 결과 재사용 → 업무 복귀
             return CharacterReaction(event: event, targetState: .backToWork, responseText: "이전 결과를 다시 활용해드릴게요.")
         case .multiRoomSwitched:
-            // 방 전환 → 아이들 (쿨다운 짧게)
             return CharacterReaction(event: event, targetState: .idle, responseText: "", cooldown: 5)
+        case .fileReadStarted(let filename, _):
+            let name = (filename as NSString).lastPathComponent
+            return CharacterReaction(event: event, targetState: .thinking, responseText: "\(name) 읽는 중이에요.", cooldown: 10)
+        case .verificationWarning:
+            return CharacterReaction(event: event, targetState: .confused, responseText: "뭔가 이상한 게 있어요. 확인해볼게요.", cooldown: 15)
+        case .verificationFailed:
+            return CharacterReaction(event: event, targetState: .sad, responseText: "확인 중 문제가 발생했어요.", cooldown: 20)
+        case .approvalWaiting:
+            return CharacterReaction(event: event, targetState: .resting, responseText: "승인을 기다리고 있어요.", cooldown: 60)
+        case .taskCompleted(let skillID, _):
+            let name = skillID.components(separatedBy: ".").last ?? skillID
+            return CharacterReaction(event: event, targetState: .backToWork, responseText: "\(name) 완료했어요!", cooldown: 20)
+        case .errorRecoveryStarted:
+            return CharacterReaction(event: event, targetState: .thinking, responseText: "다시 시도해볼게요.", cooldown: 15)
+        case .longIdleTriggered:
+            return CharacterReaction(event: event, targetState: .sleeping, responseText: "음...", cooldown: 300)
         }
     }
 

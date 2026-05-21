@@ -218,11 +218,29 @@ final class WorkflowOrchestrator {
         let disabledSkills = SkillRegistry.shared.matchAllSkills(for: userMessage)
             .filter { !SkillRegistry.shared.isSkillEnabled(id: $0.id) }
 
-        // Round 246B: SkillAvailabilityResolver 연결 — assistOnly 스킬 감지
-        // assistOnly이면 fake API 실행 없이 directChat fallback
+        // Round 246B / 249A: SkillAvailabilityResolver 연결 — assistOnly 스킬 감지
+        // KSkillAssistRuntime이 intent를 감지하면 구조화된 체크리스트 응답 생성
+        // 그 외 assistOnly는 기존 directChat fallback
         if let assistOnlySkill = enabledSkills.first(where: {
             SkillAvailabilityResolver.availability(for: $0) == .assistOnly
         }) {
+            if let intent = KSkillAssistRuntime.detectIntent(userMessage: userMessage, skillID: assistOnlySkill.id) {
+                let response = KSkillAssistRuntime.buildAssistResponse(intent: intent, userMessage: userMessage)
+                let markdown = KSkillAssistRuntime.formatMarkdown(response)
+                await MainActor.run {
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: response.title,
+                        text: markdown,
+                        isUser: false,
+                        isSystem: false,
+                        skillID: assistOnlySkill.id
+                    )
+                    CharacterReactionEventSink.shared.notifyTaskCompleted(skillID: assistOnlySkill.id, roomID: roomID)
+                }
+                return
+            }
             let notice = SkillAvailabilityResolver.assistOnlyMessage(for: assistOnlySkill.id)
             await runDirectChatFallback(
                 userMessage: "\(notice)\n\n사용자 원래 요청: \(userMessage)",
@@ -761,7 +779,10 @@ final class WorkflowOrchestrator {
                 return
             }
 
-            await MainActor.run { manager.isWorkflowRunning = true }
+            await MainActor.run {
+                manager.isWorkflowRunning = true
+                CharacterReactionEventSink.shared.notifyDocumentGenerationStarted(workflowType: "universalDocument", roomID: roomID)
+            }
             defer { Task { @MainActor in manager.isWorkflowRunning = false } }
             let task = Task {
                 _ = await self.runUniversalDocumentWorkflow(
@@ -1856,6 +1877,7 @@ final class WorkflowOrchestrator {
                 for request in result.approvalRequiredRequests {
                     manager.addPendingApproval(request)
                     AppLog.info("[WorkflowOrchestrator] approvalRequired 등록: \(request.toolName) id=\(request.id)")
+                    CharacterReactionEventSink.shared.notifyApprovalWaiting(taskID: request.id.uuidString, roomID: roomID)
                 }
             }
             // .planned → directChat fallback (기능 준비 중 안내 + 초안 제공)

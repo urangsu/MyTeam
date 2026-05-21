@@ -31,6 +31,14 @@ enum Supertonic3ModelLocator {
         let missingFiles: [String]
         let totalFoundSizeBytes: Int64
 
+        var foundFiles: [String] {
+            files.compactMap { $0.foundURL?.lastPathComponent }
+        }
+
+        var modelDirectoryExists: Bool {
+            FileManager.default.fileExists(atPath: directoryURL.path)
+        }
+
         var redactedDirectory: String {
             if let home = FileManager.default.homeDirectoryForCurrentUser as URL? {
                 let path = directoryURL.path

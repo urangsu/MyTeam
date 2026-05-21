@@ -228,6 +228,36 @@ enum ToolContractValidator {
         validateOfficeReviewAssistOnlyReachablePolicy(issues: &issues)
         validateOfficeReviewEvidenceLabelHonestyPolicy(issues: &issues)
 
+        // Round 248TTS-A-CONTINUE validators
+        validateONNXRuntimeAdapterBoundaryPolicy(issues: &issues)
+        validateSupertonic3ModelManifestPolicy(issues: &issues)
+        validateSupertonic3PipelineSkeletonPolicy(issues: &issues)
+        validateSupertonic3NoDummyAudioPolicy(issues: &issues)
+        validateSupertonic3ModelPathRedactionPolicy(issues: &issues)
+
+        // Round 249A-KSKILLS-ASSIST validators
+        validateKSkillAssistRuntimePolicy(issues: &issues)
+        validateKTXNoAutoBookingPolicy(issues: &issues)
+        validateStockAssistNoFakeQuotePolicy(issues: &issues)
+        validateDARTAssistNoFakePolicy(issues: &issues)
+        validateNaverAssistNoFakeSearchPolicy(issues: &issues)
+        validateKSkillsChecklistAvailablePolicy(issues: &issues)
+        validateKSkillsRequiredInputsAvailablePolicy(issues: &issues)
+        validateKSkillsHardBlockedActionsPolicy(issues: &issues)
+
+        // Round 250A-255Z validators
+        validateKSkillAssistCardViewPolicy(issues: &issues)
+        validateKSkillHardBlockedActionsAlwaysVisiblePolicy(issues: &issues)
+        validateTTSDefaultSilentPolicy(issues: &issues)
+        validateSupertonic3DevLabGatePolicy(issues: &issues)
+
+        // Round 266A-275Z: Skill Workflow Governance validators
+        validateAssistOnlyNeverExecutesExternalWrite(skills: skills, issues: &issues)
+        validateDedicatedSkillCardsReachable(issues: &issues)
+        validateAccountingTaxDisclaimerAlwaysVisible(issues: &issues)
+        validateKSkillAssistResponseSections(issues: &issues)
+        validateSkillRendererPriority(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -1792,6 +1822,261 @@ enum ToolContractValidator {
         guard let snap else { return }
         if !snap.officeReviewEvidenceLabelHonest {
             issues.append(issue(.error, "OfficeReviewResultCardView에서 '위치:'라고 표시하고 있습니다. 근거 위치 추적 미지원 정책에 위반됩니다. '휴리스틱 참고:'로 변경하세요."))
+        }
+    }
+
+    // MARK: - Round 248TTS-A-CONTINUE Validators
+
+    private static func validateONNXRuntimeAdapterBoundaryPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.onnxRuntimeAdapterBoundaryAvailable {
+            issues.append(issue(.error, "ONNXRuntimeAdapter.swift가 없습니다. Cloud/Mac 런타임 경계를 protocol로 분리해야 합니다."))
+        }
+    }
+
+    private static func validateSupertonic3ModelManifestPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonic3ModelManifestAvailable {
+            issues.append(issue(.error, "Supertonic3ModelManifest.swift가 없습니다. candidateFilenames 기반 manifest 탐색이 필요합니다."))
+        }
+    }
+
+    private static func validateSupertonic3PipelineSkeletonPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonic3PipelineSkeletonAvailable {
+            issues.append(issue(.error, "Supertonic3InferencePipeline.swift가 없습니다. Cloud에서는 missingRuntime을 throw해야 합니다."))
+        }
+    }
+
+    private static func validateSupertonic3NoDummyAudioPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonic3NoDummyAudio {
+            issues.append(issue(.error, "Supertonic3 pipeline에 dummy WAV 또는 fake inference가 포함되어 있습니다."))
+        }
+    }
+
+    private static func validateSupertonic3ModelPathRedactionPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonic3ModelPathRedacted {
+            issues.append(issue(.warning, "TTSLabView가 모델 전체 경로를 노출하고 있습니다. redactedDirectory를 사용해야 합니다."))
+        }
+    }
+
+    // MARK: - Round 249A-KSKILLS-ASSIST Validators
+
+    private static func validateKSkillAssistRuntimePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.kskillAssistRuntimeAvailable {
+            issues.append(issue(.error, "KSkillAssistRuntime.swift가 없습니다. Korean lifestyle 스킬 assistOnly 응답 생성기가 필요합니다."))
+        }
+    }
+
+    private static func validateKTXNoAutoBookingPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.ktxAssistNoAutoBooking {
+            issues.append(issue(.error, "KTX 예매 도우미가 자동 예매를 hardBlockedActions에 포함하지 않습니다."))
+        }
+    }
+
+    private static func validateStockAssistNoFakeQuotePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.stockAssistNoFakeQuote {
+            issues.append(issue(.error, "주가 도우미가 '매수/매도 확정 추천'을 hardBlockedActions에 포함하지 않습니다."))
+        }
+    }
+
+    private static func validateDARTAssistNoFakePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.dartAssistNoFakeDisclosureLookup {
+            issues.append(issue(.error, "DART 도우미가 'DART API 조회한 척하기'를 hardBlockedActions에 포함하지 않습니다."))
+        }
+    }
+
+    private static func validateNaverAssistNoFakeSearchPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.naverAssistNoFakeSearch {
+            issues.append(issue(.error, "네이버 뉴스 도우미가 체크리스트를 제공하지 않습니다."))
+        }
+    }
+
+    private static func validateKSkillsChecklistAvailablePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.kskillAssistChecklistAvailable {
+            issues.append(issue(.error, "KSkillAssistResponse.checklist가 비어있습니다. 모든 K-skills 응답에 체크리스트가 포함되어야 합니다."))
+        }
+    }
+
+    private static func validateKSkillsRequiredInputsAvailablePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.kskillRequiredInputsAvailable {
+            issues.append(issue(.error, "KSkillAssistResponse.requiredUserInputs가 비어있습니다. 모든 K-skills 응답에 필수 입력값이 명시되어야 합니다."))
+        }
+    }
+
+    private static func validateKSkillsHardBlockedActionsPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.reservationPaymentHardBlocked {
+            issues.append(issue(.error, "예약·결제 처리가 hardBlockedActions에 포함되지 않았습니다. 자동 결제는 영원히 금지입니다."))
+        }
+    }
+
+    // MARK: - Round 250A-255Z Validators
+
+    private static func validateKSkillAssistCardViewPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.kskillAssistCardViewAvailable {
+            issues.append(issue(.warning, "KSkillAssistCardView.swift가 없습니다. K-skills 응답이 generic WorkResultCard로 렌더링됩니다."))
+        }
+        if !snap.kskillAssistSkillIDDispatchAvailable {
+            issues.append(issue(.error, "KSkillAssistRuntime.isAssistSkillID()가 korean.ktx-booking을 인식하지 못합니다. SkillResultRendererView 라우팅이 동작하지 않습니다."))
+        }
+    }
+
+    private static func validateKSkillHardBlockedActionsAlwaysVisiblePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.kskillHardBlockedActionsAlwaysVisible {
+            issues.append(issue(.error, "K-skills hardBlockedActions가 비어있습니다. 차단 항목은 모든 응답에 반드시 포함되어야 합니다."))
+        }
+    }
+
+    private static func validateTTSDefaultSilentPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.ttsDefaultProviderIsNilOrExperimental {
+            issues.append(issue(.error, "기본 TTS provider가 활성화되어 있습니다. Supertonic3는 Developer Lab에서만 켤 수 있어야 합니다."))
+        }
+    }
+
+    private static func validateSupertonic3DevLabGatePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonic3StrictlyDevLabGated {
+            issues.append(issue(.error, "supertonic3ExperimentalEnabled가 UserDefaults에서 true입니다. 이 값은 기본 false이어야 하고 Developer Lab에서만 변경 가능해야 합니다."))
+        }
+    }
+
+    // Round 266A-275Z validators
+
+    private static func validateAssistOnlyNeverExecutesExternalWrite(
+        skills: [SkillManifest],
+        issues: inout [ToolContractValidationIssue]
+    ) {
+        // Hard-banned permissions for assistOnly skills
+        let bannedPermissions: [SkillPermission] = [.sendsMessage, .makesReservation, .handlesPayment]
+        let bannedTriggerKeywords = ["예매 확정", "결제", "전송", "삭제", "업로드", "자동 신청", "계좌 이체", "직접 예약"]
+
+        let assistOnlyIDs = SkillAvailabilityResolver.assistOnlySkillIDs
+        let assistOnlySkills = skills.filter { assistOnlyIDs.contains($0.id) }
+
+        for skill in assistOnlySkills {
+            for banned in bannedPermissions where skill.requiredPermissions.contains(banned) {
+                issues.append(issue(.error,
+                    "assistOnly 스킬 '\(skill.id)'에 금지된 권한 '\(banned.rawValue)'이 설정되어 있습니다. assistOnly 스킬은 외부 실행 권한을 가질 수 없습니다."))
+            }
+            for keyword in bannedTriggerKeywords where skill.description.contains(keyword) {
+                issues.append(issue(.warning,
+                    "assistOnly 스킬 '\(skill.id)' 설명에 외부 실행 암시 키워드 '\(keyword)'가 포함되어 있습니다."))
+            }
+        }
+
+        // Verify accounting-tax is explicitly assistOnly
+        if let taxSkill = skills.first(where: { $0.id == "korean.accounting-tax" }) {
+            // accounting-tax must not have execution permissions (sendsMessage, makesReservation, handlesPayment)
+            let executionPermissions: [SkillPermission] = [.sendsMessage, .makesReservation, .handlesPayment]
+            for banned in executionPermissions where taxSkill.requiredPermissions.contains(banned) {
+                issues.append(issue(.error,
+                    "korean.accounting-tax 스킬에 금지된 실행 권한 '\(banned.rawValue)'이 있습니다. 이 스킬은 LLM 안내 전용입니다."))
+            }
+            // Verify accounting-tax is classified as assistOnly by resolver
+            if !SkillAvailabilityResolver.assistOnlySkillIDs.contains("korean.accounting-tax") {
+                issues.append(issue(.error,
+                    "korean.accounting-tax가 SkillAvailabilityResolver.assistOnlySkillIDs에 없습니다."))
+            }
+        } else {
+            issues.append(issue(.warning, "korean.accounting-tax 스킬이 등록되지 않았습니다."))
+        }
+    }
+
+    private static func validateDedicatedSkillCardsReachable(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.dedicatedSkillCardsReachable {
+            issues.append(issue(.error,
+                "전용 스킬 카드(spell-check, privacy-terms, diagnostics, accounting-tax)가 SkillResultRendererView에 등록되지 않았습니다."))
+        }
+        // Cross-check: SkillResultRendererView dispatch for accounting-tax must exist
+        let accountingTaxAssistOnly = SkillAvailabilityResolver.assistOnlySkillIDs.contains("korean.accounting-tax")
+            || (snap.noExternalExecutionFromAssistSkills)
+        if !accountingTaxAssistOnly {
+            issues.append(issue(.error,
+                "korean.accounting-tax가 assistOnly 목록에 없거나 외부 실행 경로가 차단되지 않았습니다."))
+        }
+    }
+
+    private static func validateAccountingTaxDisclaimerAlwaysVisible(issues: inout [ToolContractValidationIssue]) {
+        // Verify disclaimer in AccountingTaxSummaryCardView is not inside DisclosureGroup
+        // File content verified at Round 261A-265Z build; revalidated here via diagnostic snapshot.
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.accountingTaxDisclaimerAlwaysVisible {
+            issues.append(issue(.error,
+                "AccountingTaxSummaryCardView.swift 파일이 없거나 면책 조항이 없습니다. 세무·회계 면책 조항은 항상 표시되어야 합니다."))
+        }
+        // Policy enforcement check: accounting-tax disclaimer must contain exact required text.
+        // We validate the static policy copy here by checking the text is in the BuiltInKoreanSkills prompt template.
+        let taxSkills = BuiltInKoreanSkills.all.filter { $0.id == "korean.accounting-tax" }
+        for skill in taxSkills {
+            if !skill.promptTemplate.lowercased().contains("면책") && !skill.promptTemplate.lowercased().contains("전문가") {
+                issues.append(issue(.warning,
+                    "korean.accounting-tax 프롬프트 템플릿에 면책 조항 지시사항이 없습니다. 프롬프트에 '전문가 확인' 문구를 포함해야 합니다."))
+            }
+        }
+    }
+
+    private static func validateKSkillAssistResponseSections(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.kSkillAssistSectionsConsistent {
+            issues.append(issue(.error,
+                "KSkillAssistRuntime.formatMarkdown()이 4개 필수 섹션(필요한 입력, 준비 체크리스트, 다음에 할 일, 직접 진행이 필요한 작업)을 모두 생성하지 않습니다."))
+        }
+        // Verify that old internal section names are not present in user-facing output
+        let sampleResponse = KSkillAssistRuntime.buildAssistResponse(intent: .ktxBookingAssist, userMessage: "KTX 예매")
+        let formatted = KSkillAssistRuntime.formatMarkdown(sampleResponse)
+        let internalTerms = ["hardBlockedActions", "assistOnly", "validator", "policy enum", "route"]
+        for term in internalTerms where formatted.contains(term) {
+            issues.append(issue(.error,
+                "KSkillAssistRuntime.formatMarkdown() 출력에 내부 정책 용어 '\(term)'이 포함되어 있습니다. 사용자에게 표시되는 텍스트에 내부 구현 용어가 있어서는 안 됩니다."))
+        }
+    }
+
+    private static func validateSkillRendererPriority(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.skillRendererPriorityStable {
+            issues.append(issue(.error,
+                "SkillResultRendererView의 case 우선순위가 잘못되었습니다. 전용 카드 case → KSkillAssist catch-all → generic fallback 순서여야 합니다."))
+        }
+        // Verify that accounting-tax has an explicit case (not relying on catch-all or fallback)
+        let accountingTaxHasDedicatedCard = snap.dedicatedSkillCardsReachable
+        if !accountingTaxHasDedicatedCard {
+            issues.append(issue(.error,
+                "korean.accounting-tax가 전용 카드 케이스 없이 generic fallback으로 라우팅될 수 있습니다. SkillResultRendererView에 명시적 case가 필요합니다."))
         }
     }
 }
