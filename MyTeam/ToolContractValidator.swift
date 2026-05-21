@@ -212,6 +212,14 @@ enum ToolContractValidator {
         validateObservationPresentationPolicy(issues: &issues)
         validateObservationNoAutoAnalyzePolicy(issues: &issues)
 
+        // Round 248A-OFFICE-LITE validators
+        validateOfficeReviewLiteExecutorPolicy(issues: &issues)
+        validateOfficeReviewResultCardPolicy(issues: &issues)
+        validateOfficeReviewNoOriginalFileMutationPolicy(issues: &issues)
+        validateOfficeReviewNoEvidenceLocationTrackingPolicy(issues: &issues)
+        validateOfficeReviewLimitationsDisclaimerPolicy(issues: &issues)
+        validateOfficeReviewAssistOnlyGuidancePolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -1673,6 +1681,59 @@ enum ToolContractValidator {
         guard let snap else { return }
         if !snap.observationAttachDoesNotAutoAnalyze {
             issues.append(issue(.error, "observation attach가 자동으로 LLM 분석을 트리거합니다. attach는 분석이 아닙니다."))
+        }
+    }
+
+    // Round 248A-OFFICE-LITE validators
+
+    private static func validateOfficeReviewLiteExecutorPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.officeReviewLiteExecutorAvailable {
+            issues.append(issue(.error, "OfficeReviewLiteExecutor.swift가 없습니다. 1차 office review 실행이 필요합니다."))
+        }
+        if !snap.officeReviewHeuristicExtractionOnly {
+            issues.append(issue(.error, "Office review lite는 휴리스틱 기반 추출만 지원합니다. 실제 Excel/PDF 파싱 금지입니다."))
+        }
+    }
+
+    private static func validateOfficeReviewResultCardPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.officeReviewResultCardViewAvailable {
+            issues.append(issue(.error, "OfficeReviewResultCardView.swift가 없습니다. 검토 결과 UI 컴포넌트가 필요합니다."))
+        }
+    }
+
+    private static func validateOfficeReviewNoOriginalFileMutationPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.officeReviewNoOriginalFileMutation {
+            issues.append(issue(.error, "Office review가 원본 파일을 변경하면 안 됩니다. 결과만 artifact로 생성해야 합니다."))
+        }
+    }
+
+    private static func validateOfficeReviewNoEvidenceLocationTrackingPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.officeReviewNoEvidenceLocationTracking {
+            issues.append(issue(.warning, "Evidence location tracking이 구현되지 않았습니다. 휴리스틱 기반 결과는 근거 위치 추적을 지원하지 않습니다."))
+        }
+    }
+
+    private static func validateOfficeReviewLimitationsDisclaimerPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.officeReviewLimitationsDisclaimerShown {
+            issues.append(issue(.error, "Office review 결과 카드에 limitations disclaimer가 표시되지 않습니다. 사용자 신뢰 보호 필수입니다."))
+        }
+    }
+
+    private static func validateOfficeReviewAssistOnlyGuidancePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.officeReviewAssistOnlyGuidanceAvailable {
+            issues.append(issue(.error, "2차 assistOnly 스킬이 적절한 안내 메시지를 제공하지 않습니다. LLM 상담 가이드 필수입니다."))
         }
     }
 }

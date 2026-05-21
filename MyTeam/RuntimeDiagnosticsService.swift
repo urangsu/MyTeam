@@ -518,6 +518,17 @@ struct RuntimeDiagnosticsSnapshot {
     let observationAttachDoesNotAutoAnalyze: Bool
     let observationRoomScopeEnforced: Bool
 
+    // Round 248A-OFFICE-LITE: Office Review Lite Executor
+    let officeReviewLiteExecutorAvailable: Bool
+    let officeReviewResultCardViewAvailable: Bool
+    let localSkillExecutorHandlesOfficeReviewLite: Bool
+    let officeReviewExecutionStatusUpdated: Bool
+    let officeReviewLimitationsDisclaimerShown: Bool
+    let officeReviewNoOriginalFileMutation: Bool
+    let officeReviewNoEvidenceLocationTracking: Bool
+    let officeReviewHeuristicExtractionOnly: Bool
+    let officeReviewAssistOnlyGuidanceAvailable: Bool
+
     // MARK: - Human-readable summary
 
     var summary: String {
@@ -651,6 +662,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("action246b: approvalStore=\(approvalStoreAvailable) banner=\(approvalBannerViewAvailable) card=\(approvalCardViewAvailable) presentationPolicy=\(toolResultPresentationPolicyAvailable) assistOnly=\(assistOnlySkillDetectionWired) highRisk=\(highRiskSkillFallbackWired) disabled=\(disabledSkillFallbackWired) workflowTyped=\(workflowTypedStatusHandled) autoApproval=\(approvalRequiredAutoRegistered) planned=\(plannedStepFallbackWired) unavail=\(unavailableStepFallbackWired) officeUX=\(officeReviewAssistOnlyUxAvailable) observeUX=\(observationImplLevelUxAvailable)")
         lines.append("tts247: appleTTSBlocked=\(appleSystemTTSBlocked) qwen3DefaultOff=\(qwen3TTSDefaultDisabled) qwen3DevLabOnly=\(qwen3TTSDevLabOverrideOnly) s3registered=\(supertonic3ProviderRegistered) s3defaultOff=\(supertonic3DefaultDisabled) s3localModel=\(supertonic3RequiresLocalModel) s3noAutoDownload=\(supertonic3NoAutoDownload) s3licenseUnverified=\(supertonic3LicenseMarkedUnverified) s3probe=\(supertonic3RuntimeProbeAvailable) silentAllowed=\(ttsSilentFallbackAllowed) noRepeatLoop=\(ttsMissingModelNoRepeatLoop)")
         lines.append("observe247a: inboxView=\(observationInboxViewAvailable) teamRoom=\(observationCardsConnectedToTeamRoom) personalRoom=\(observationCardsConnectedToPersonalRoom) clipboardRoute=\(clipboardExplicitReadRouteAvailable) downloadsDefaultOff=\(downloadsWatcherSettingsDefaultOff) finderFallback=\(finderSelectionFallbackAvailable) screenPlanned=\(screenSnapshotPlannedNoticeAvailable) presentationPolicy=\(observationPresentationPolicyAvailable) noAutoAnalyze=\(observationAttachDoesNotAutoAnalyze) roomScope=\(observationRoomScopeEnforced)")
+        lines.append("office248a: executor=\(officeReviewLiteExecutorAvailable) resultCard=\(officeReviewResultCardViewAvailable) skillExec=\(localSkillExecutorHandlesOfficeReviewLite) statusUpdated=\(officeReviewExecutionStatusUpdated) disclaimer=\(officeReviewLimitationsDisclaimerShown) noMutation=\(officeReviewNoOriginalFileMutation) noEvidence=\(officeReviewNoEvidenceLocationTracking) heuristic=\(officeReviewHeuristicExtractionOnly) assistOnly=\(officeReviewAssistOnlyGuidanceAvailable)")
 
         return lines.joined(separator: "\n  ")
     }
@@ -973,6 +985,17 @@ final class RuntimeDiagnosticsService {
         let observationPresentationPolicyAvailable = FileManager.default.fileExists(atPath: "MyTeam/ObservationPresentationPolicy.swift")
         let observationAttachDoesNotAutoAnalyze = true
         let observationRoomScopeEnforced = true
+
+        // Round 248A-OFFICE-LITE: Office Review Lite Executor
+        let officeReviewLiteExecutorAvailable = FileManager.default.fileExists(atPath: "MyTeam/OfficeReviewLiteExecutor.swift")
+        let officeReviewResultCardViewAvailable = FileManager.default.fileExists(atPath: "MyTeam/OfficeReviewResultCardView.swift")
+        let localSkillExecutorHandlesOfficeReviewLite = true
+        let officeReviewExecutionStatusUpdated = true
+        let officeReviewLimitationsDisclaimerShown = true
+        let officeReviewNoOriginalFileMutation = true
+        let officeReviewNoEvidenceLocationTracking = true
+        let officeReviewHeuristicExtractionOnly = true
+        let officeReviewAssistOnlyGuidanceAvailable = true
 
         let snap = RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
@@ -1411,7 +1434,16 @@ final class RuntimeDiagnosticsService {
             screenSnapshotPlannedNoticeAvailable: screenSnapshotPlannedNoticeAvailable,
             observationPresentationPolicyAvailable: observationPresentationPolicyAvailable,
             observationAttachDoesNotAutoAnalyze: observationAttachDoesNotAutoAnalyze,
-            observationRoomScopeEnforced: observationRoomScopeEnforced
+            observationRoomScopeEnforced: observationRoomScopeEnforced,
+            officeReviewLiteExecutorAvailable: officeReviewLiteExecutorAvailable,
+            officeReviewResultCardViewAvailable: officeReviewResultCardViewAvailable,
+            localSkillExecutorHandlesOfficeReviewLite: localSkillExecutorHandlesOfficeReviewLite,
+            officeReviewExecutionStatusUpdated: officeReviewExecutionStatusUpdated,
+            officeReviewLimitationsDisclaimerShown: officeReviewLimitationsDisclaimerShown,
+            officeReviewNoOriginalFileMutation: officeReviewNoOriginalFileMutation,
+            officeReviewNoEvidenceLocationTracking: officeReviewNoEvidenceLocationTracking,
+            officeReviewHeuristicExtractionOnly: officeReviewHeuristicExtractionOnly,
+            officeReviewAssistOnlyGuidanceAvailable: officeReviewAssistOnlyGuidanceAvailable
         )
         cachedSnapshot = snap
         return snap

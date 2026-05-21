@@ -6,6 +6,169 @@
 
 ---
 
+## 2026-05-21 (Round 248A-OFFICE-LITE — Lite Office Review Executor with Heuristic Extraction)
+
+### 완료 (2026-05-21)
+
+Office review foundation을 실제 사용자 흐름에 연결한다. 1차 heuristic (meetingActionItems, filenameOrganization, reportTonePolish) 구현, 2차 assistOnly stubs + guidance.
+
+**신규 Swift 파일 (2개):**
+- `OfficeReviewLiteExecutor.swift` (220줄)
+  - enum ExecutionOutcome: success(ReviewResult) / needsAssistant / unsupported
+  - 1차 execute(skill:text:sourceName:) heuristic implementations
+  - 2차 assistOnly 스킬은 `unsupported(message:)` 반환 후 LLM 상담 유도
+  - extractActionItems: 키워드 기반 ("확인", "준비", "검토" 등) → action item list
+  - suggestFilenamingPatterns: 날짜/주제/버전 추출 → filename pattern 3개 제안
+  - detectToneIssues: 피동형, 과도한 경어, 장황한 표현 감지
+  - 제약: no real Excel/PDF parsing, no evidence tracking, no file mutation
+
+- `OfficeReviewResultCardView.swift` (150줄)
+  - SwiftUI card: header(title+summary) / issues / actionItems / limitations disclaimer / nextSteps
+  - 항상 limitations disclaimer 오렌지 박스 표시 (휴리스틱 기반 명시)
+  - 근거 위치 추적 미지원 명시
+  - 실제 파일 변경 미지원 명시
+
+**기존 파일 수정:**
+- `LocalSkillExecutor.swift`: detectOfficeReviewLiteSkill() + is1PhaseSkill() 추가
+  - detect: skillID 매칭 → OfficeReviewSkill enum 반환
+  - 1차만 detectIfPossible에서 .handled 반환
+  - executeIfPossible에서 actual execution call
+  - 2차는 detectIfPossible에서 스킵 (다음 라운드 LLM 상담 루트)
+
+- `RuntimeDiagnosticsService.swift`: 9개 office review fields
+  - officeReviewLiteExecutorAvailable, officeReviewResultCardViewAvailable
+  - localSkillExecutorHandlesOfficeReviewLite, officeReviewExecutionStatusUpdated
+  - officeReviewLimitationsDisclaimerShown, officeReviewNoOriginalFileMutation
+  - officeReviewNoEvidenceLocationTracking, officeReviewHeuristicExtractionOnly
+  - officeReviewAssistOnlyGuidanceAvailable
+  - snapshot line: office248a: executor=true resultCard=true skillExec=true... (9/9 true)
+
+- `ToolContractValidator.swift`: 6개 validators
+  - validateOfficeReviewLiteExecutorPolicy: 파일 존재 + 휴리스틱만 확인
+  - validateOfficeReviewResultCardPolicy: UI 컴포넌트 존재
+  - validateOfficeReviewNoOriginalFileMutationPolicy: 원문 변경 금지
+  - validateOfficeReviewNoEvidenceLocationTrackingPolicy: 근거 미지원 선언
+  - validateOfficeReviewLimitationsDisclaimerPolicy: disclaimer 표시 필수
+  - validateOfficeReviewAssistOnlyGuidancePolicy: 2차 안내 메시지 필수
+
+- `OfficeReviewInputPolicy.md`: Round 248A update section
+  - 1차/2차 구현 상태 표
+  - Limitations & Honesty 섹션
+
+**신규 문서:**
+- `docs/OfficeReviewLiteExecutorPolicy.md` — 1차 heuristic detail, 2차 assistOnly guidance, limitations disclaimer, LocalSkillExecutor 통합 코드
+- `docs/OfficeReviewEvidenceHonestyPolicy.md` — evidence location unsupported, file mutation 금지, real parsing claims 금지, 체크리스트, Round 249TTS 진화 계획
+
+**pbxproj 등록:** register_round247a_files.py 수정 (4개 파일 등록: 247A ObservationInboxView/ObservationPresentationPolicy + 248A OfficeReviewLiteExecutor/OfficeReviewResultCardView)
+
+**preflight:** preflight_round248a_office_lite.sh (12/12 ✅)
+
+### 정책 확인
+- ❌ Real Excel/PDF parsing (휴리스틱만)
+- ❌ Original file mutation (artifact 결과만)
+- ❌ Evidence location tracking (근거 미지원)
+- ❌ Auto-analysis trigger (사용자 요청 후)
+- ✅ Limitations disclaimer (always shown)
+- ✅ 2차 assistOnly guidance (LLM 상담 유도)
+
+### 다음 라운드 (249TTS)
+- 2차 skillID를 실제 LLM 상담 파이프라인으로 연결
+- 실제 Excel 표 파싱 구현 (OfficeReviewFullExecutor)
+- 근거 위치 추적 (row/column) 지원
+
+---
+
+## 2026-05-21 (Round 247A-OBSERVE-RUNTIME — Observation Foundation into User Flows)
+
+### 완료 (2026-05-21)
+
+Observation foundation (243A-246B) 을 실제 사용자 흐름에 연결한다. room-scoped pending observation UI, explicit-only context routes (clipboard/Finder/screen), presentation policy, no auto-analysis.
+
+**신규 Swift 파일 (2개):**
+- `ObservationInboxView.swift` (70줄)
+  - pending observations (roomID=nil만) 표시, attach/ignore 버튼
+  - orange inbox header with count badge
+  - FileIntakeEventCardView 재사용
+  - onAnalyze callback: manager.analyzeObservation(obs, in: roomID)
+  - onIgnore callback: manager.ignoreObservation(obs)
+  - 제약: no full path, no content preview, no auto-analysis
+
+- `ObservationPresentationPolicy.swift` (80줄)
+  - static func attachMessage(for:): "이 방에 붙였어요. 자동 분석은 하지 않았습니다."
+  - static func analyzeMessage(for:): prep message without LLM
+  - static func clipboardBlockedMessage(): credential blocking (token/password/API key)
+  - static func finderFallbackMessage(): "권한 또는 환경 때문에... 끌어다 놓아주세요"
+  - static func screenSnapshotPlannedMessage(): "단발성 권한 기반 기능으로 준비 중입니다"
+
+**기존 파일 수정:**
+- `TeamStatusView.swift`: ObservationInboxView 추가 (selectedTeamWorkroomID만)
+  - 위치: 채팅 로그 아래, 입력 작성기 위
+  - room scope enforce: personal observation 차단
+
+- `AgentChatView.swift`: ObservationInboxView 추가 (agentRoomID만)
+  - 위치: 개인 대화 채팅 로그 아래
+  - room scope enforce: team observation 차단
+
+- `WorkflowOrchestrator.swift`: handleExplicitContextRoute() 추가
+  - dispatch 시작에 호출 (skill matching 전)
+  - Clipboard: ["클립보드", "복사한 내용", "붙여넣은 내용"] → ClipboardContextReader.readAsObservation()
+  - Finder: ["finder에서 선택한 파일", "선택한 파일 가져와", "지금 선택한 파일"] → FinderSelectionReader.readCurrentFinderSelection()
+  - Screen: ["현재 화면 설명해줘", "화면 읽어줘", "지금 보고 있는 거 분석해줘"] → screenSnapshotPlannedMessage()
+  - credential 감지 시 clipboardBlockedMessage()
+  - Finder fail 시 finderFallbackMessage()
+  - 반환: true (handled) or false (continue)
+
+- `AgentWindowManager.swift`: observation action methods
+  - func pendingObservationsForCurrentSurface() → [LocalObservation]
+  - func pendingObservations(for roomID: UUID) → [LocalObservation]
+  - func attachObservation(_ observation:, to roomID:)
+  - func analyzeObservation(_ observation:, in roomID:) → observationService.attachObservation() + chat log message
+  - func ignoreObservation(_ observation:) → observationService.ignorePendingObservation()
+
+- `RuntimeDiagnosticsService.swift`: 10개 observation fields
+  - observationInboxViewAvailable, observationCardsConnectedToTeamRoom/PersonalRoom
+  - clipboardExplicitReadRouteAvailable, downloadsWatcherSettingsDefaultOff
+  - finderSelectionFallbackAvailable, screenSnapshotPlannedNoticeAvailable
+  - observationPresentationPolicyAvailable, observationAttachDoesNotAutoAnalyze
+  - observationRoomScopeEnforced
+  - snapshot line: observe247a: inboxView=true teamRoom=true... (10/10 true)
+
+- `ToolContractValidator.swift`: 8개 validators
+  - validateObservationInboxViewPolicy, validateObservationTeamPersonalRoomScopePolicy
+  - validateClipboardExplicitReadRoutePolicy, validateDownloadsWatcherDefaultOffUIPolicy
+  - validateFinderSelectionFallbackPolicy, validateScreenSnapshotPlannedNoticePolicy
+  - validateObservationPresentationPolicy, validateObservationNoAutoAnalyzePolicy
+
+**신규 문서:**
+- `docs/ObservationRuntimeUXPolicy.md` — core principles (감지≠분석, attach≠분석, 분석은사용자action이후), UI 연결 표, ObservationInboxView policy, AgentWindowManager helper, Round 249TTS next steps
+- `docs/ClipboardExplicitReadPolicy.md` — explicit-only (no continuous monitoring), trigger phrases, handling flow, credential blocking, attach message, Round 249TTS implementation
+- `docs/FinderSelectionFallbackPolicy.md` — Cloud constraints (no AppleScript QA), trigger phrases, fallback flow, fallback message, Round 249TTS Mac local plan
+
+**docs 업데이트:**
+- ObservationLayerPolicy.md, DownloadsWatcherPolicy.md, ScreenObservationPolicy.md: Round 247A update notes 추가
+
+**pbxproj 등록:** register_round247a_files.py 신규 (2개 파일: ObservationInboxView, ObservationPresentationPolicy)
+- 별도 실행: `python3 scripts/register_round247a_files.py`
+
+**preflight:** preflight_round247a_observe_runtime.sh (13/13 ✅)
+- file exists 체크, UI 연결, room scope 강제, credential block, attach no-auto-analyze, full path 금지
+
+### 정책 확인
+- ❌ Continuous monitoring (explicit keyword 요청만)
+- ❌ Full path display (displayName only)
+- ❌ Auto-analysis trigger (attach는 분석 아님)
+- ❌ Cross-room observation (room-scoped only)
+- ❌ Auto upload / background capture
+- ✅ Room-scoped pending inbox
+- ✅ Explicit context routes (clipboard/Finder)
+- ✅ Fallback messages for unavailable contexts
+
+### 다음 라운드 (249TTS)
+- Mac 로컬: AXIsProcessTrustedWithOptions 권한 확인 후 실제 Finder 선택 파일 읽기
+- Screen capture 권한 기반 단발성 구현 (continuous 아님)
+
+---
+
 ## 2026-05-21 (Round 247TTS — MergeVerify + Supertonic3 PoC Skeleton)
 
 ### 완료 (2026-05-21)

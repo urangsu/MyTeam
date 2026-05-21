@@ -67,3 +67,28 @@ ReviewResultCard
 - 외부 write 없음 — 결과는 artifact로만 생성
 - 파일 원문 저장 금지 — 검토 결과와 요약만 보존
 - 민감 정보(계좌/개인정보) 감지 시 사용자 경고
+
+---
+
+## Round 248A-OFFICE-LITE Update
+
+### 1차 구현: Heuristic-based 3 Skills
+
+| Skill | 상태 | 메모 |
+|---|---|---|
+| meetingActionItems | ✅ 구현 | 키워드 기반 추출 |
+| filenameOrganization | ✅ 구현 | 패턴 제안 |
+| reportTonePolish | ✅ 구현 | 휴리스틱 분석 |
+
+### 2차 계획: AssistOnly Guidance
+
+- accountingConsistency, vendorNameMismatch, budgetActualAnalysis, invoiceDescriptionAnomaly, taxInvoiceComparison, contractChecklist
+- `unsupported(message:)` 반환 후 LLM 상담 유도
+- 실제 파싱은 Round 249TTS 이후 계획
+
+### Limitations & Honesty
+
+- 근거 위치 추적 미지원 (휴리스틱 기반)
+- 원본 파일 변경 금지
+- 실제 Excel/PDF 파싱 미구현
+- OfficeReviewResultCardView에서 disclaimer 항상 표시

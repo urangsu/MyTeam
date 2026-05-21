@@ -10,6 +10,8 @@ from pathlib import Path
 FILENAMES = [
     "ObservationInboxView.swift",
     "ObservationPresentationPolicy.swift",
+    "OfficeReviewLiteExecutor.swift",
+    "OfficeReviewResultCardView.swift",
 ]
 
 def find_pbxproj():
