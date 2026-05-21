@@ -159,7 +159,7 @@ enum Supertonic3ModelLocator {
         - vocoder.onnx
 
         총 용량 (~398 MB)
-        라이선스: MIT + OpenRAIL-M (상업 허용)
+        라이선스/상업 사용/모델 재배포/App Store 번들 정책은 제품 gate에서 별도 검토해야 합니다.
         """
     }
 
