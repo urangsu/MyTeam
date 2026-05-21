@@ -1161,6 +1161,34 @@
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
+		<key>F3E72D9B4C1A8E560D7B3F1A</key>
+		<dict>
+			<key>fileRef</key>
+			<string>B91C4A7F2E835D1A9F430EC2</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E4F83EAC5D2B9F671E8C4A2B</key>
+		<dict>
+			<key>fileRef</key>
+			<string>C82D5B8E3F946E2B0A541FD3</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>A5E94FBD6B168A4D2C763EF5</key>
+		<dict>
+			<key>fileRef</key>
+			<string>D73C6C9F4A057F3C1B652DE4</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>B6FA5ACE7C27AB6E4E985D07</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E64D7DAE5B169B5E3D874CF6</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
 		<key>1169827A3DD6EC8CE4DC8CC9</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -11437,6 +11465,10 @@
 				<string>406356C2FA9C40D2954C1007</string>
 				<string>CA5B663B13CA471084B1F612</string>
 				<string>4DC5447CCEFAEE1D3BB315DF</string>
+				<string>F3E72D9B4C1A8E560D7B3F1A</string>
+				<string>E4F83EAC5D2B9F671E8C4A2B</string>
+				<string>A5E94FBD6B168A4D2C763EF5</string>
+				<string>B6FA5ACE7C27AB6E4E985D07</string>
 				<dict>
 					<key>object</key>
 					<string>F8DA8113F1CA43BBB254F81A</string>
@@ -14699,6 +14731,66 @@
 			<string>KSkillAssistCardView.swift</string>
 			<key>path</key>
 			<string>KSkillAssistCardView.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>B91C4A7F2E835D1A9F430EC2</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>SpellCheckResultCardView.swift</string>
+			<key>path</key>
+			<string>SpellCheckResultCardView.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>C82D5B8E3F946E2B0A541FD3</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>PrivacyTermsArtifactCardView.swift</string>
+			<key>path</key>
+			<string>PrivacyTermsArtifactCardView.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>D73C6C9F4A057F3C1B652DE4</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>DiagnosticsResultCardView.swift</string>
+			<key>path</key>
+			<string>DiagnosticsResultCardView.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E64D7DAE5B169B5E3D874CF6</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>AccountingTaxSummaryCardView.swift</string>
+			<key>path</key>
+			<string>AccountingTaxSummaryCardView.swift</string>
 			<key>sourceTree</key>
 			<string>SOURCE_ROOT</string>
 		</dict>

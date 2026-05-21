@@ -27,7 +27,8 @@ enum BuiltInKoreanSkills {
         checklistSkill,
         tableSummarySkill,
         meetingMinutesSkill,
-        actionItemsSkill
+        actionItemsSkill,
+        accountingTaxSkill
     ]
 
     // MARK: - 1. 한국 날씨
@@ -477,6 +478,27 @@ enum BuiltInKoreanSkills {
         riskLevel: .safeReadOnly,
         promptTemplate: "사용자가 액션아이템 추출을 요청했습니다. 작성 가정, 바로 할 일, 이번 주 할 일, 확인이 필요한 일, 담당자/기한 정리, 다음 확인 질문, 다음 수정 포인트를 포함한 마크다운 초안을 작성하세요.",
         outputType: .artifact,
+        isBuiltIn: true,
+        defaultEnabled: true,
+        requiresApprovalEveryRun: false
+    )
+
+    // MARK: - 21. 세금·세무 계산 참고
+
+    private static let accountingTaxSkill = SkillManifest(
+        id: "korean.accounting-tax",
+        name: "세금·세무 계산 참고",
+        version: "1.0",
+        description: "부가가치세, 소득세, 원천세 등 한국 세금 계산 방법을 안내하고 참고용 계산 결과를 제시한다. 실제 세무 조언이 아닌 참고용으로만 사용한다.",
+        locale: "ko-KR",
+        category: .document,
+        triggers: ["부가가치세", "VAT", "소득세", "원천세", "법인세", "세금 계산", "세무", "세율", "세금 얼마"],
+        allowedScopes: [.assistOnly],
+        requiredPermissions: [],
+        requiredLogin: false,
+        riskLevel: .safeReadOnly,
+        promptTemplate: "사용자가 한국 세금·세무 계산 참고 정보를 요청했습니다. 해당 세금의 종류, 세율, 계산 방법, 참고용 계산 결과를 안내하세요. 반드시 '이 계산은 참고용이며 실제 세무·법률 조언이 아닙니다'라는 면책 조항을 포함하세요.",
+        outputType: .chat,
         isBuiltIn: true,
         defaultEnabled: true,
         requiresApprovalEveryRun: false

@@ -17,10 +17,17 @@ struct SkillResultRendererView: View {
                 // TODO: Consider custom card vs KoreanTextMetricsResultCardView
                 KoreanTextMetricsResultCardView(text: text, isDarkMode: isDarkMode)
 
-            // TODO: korean.spell-check result card
-            // TODO: korean.privacy-terms artifact card
-            // TODO: runtime.diagnostics card
-            // TODO: korean.accounting-tax summary card
+            case "korean.spell-check":
+                SpellCheckResultCardView(text: text, isDarkMode: isDarkMode)
+
+            case "korean.privacy-terms":
+                PrivacyTermsArtifactCardView(text: text, isDarkMode: isDarkMode)
+
+            case "runtime.diagnostics":
+                DiagnosticsResultCardView(text: text, isDarkMode: isDarkMode)
+
+            case "korean.accounting-tax":
+                AccountingTaxSummaryCardView(text: text, isDarkMode: isDarkMode)
 
             case _ where KSkillAssistRuntime.isAssistSkillID(skillID):
                 KSkillAssistCardView(text: text, skillID: skillID, isDarkMode: isDarkMode)

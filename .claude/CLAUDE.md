@@ -78,8 +78,9 @@ See `docs/archive/claude-context/` for round specs, completion reports, QA check
 - ✅ Round 246B-250Z: Approval UX, Office Review, Supertonic3 skeleton, KSkillAssistRuntime
 - ✅ Round 250A-255Z: KSkillAssistCardView (structured card), RouterBurnInSuite (7 K-skills burn-in)
 - ✅ Round 256A-260Z: Character bridge wiring, 7 new events, App Store policy docs
+- ✅ Round 261A-265Z: 4 skill result cards (spell-check, privacy-terms, diagnostics, accounting-tax), accounting-tax skill manifest
 - 🔄 Next: App Store Connect metadata upload, screenshots, manual QA checklist
 
 ---
 
-**Last update:** 2026-05-21 Round 256A-260Z-CHARACTER-BRIDGE
+**Last update:** 2026-05-21 Round 261A-265Z-SKILL-CARDS
