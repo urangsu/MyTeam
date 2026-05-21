@@ -1154,6 +1154,13 @@
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
+		<key>4DC5447CCEFAEE1D3BB315DF</key>
+		<dict>
+			<key>fileRef</key>
+			<string>A37DFEFDEA76897D9569A043</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
 		<key>1169827A3DD6EC8CE4DC8CC9</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -11429,6 +11436,7 @@
 				<string>AFBEA4983C0842438E40978A</string>
 				<string>406356C2FA9C40D2954C1007</string>
 				<string>CA5B663B13CA471084B1F612</string>
+				<string>4DC5447CCEFAEE1D3BB315DF</string>
 				<dict>
 					<key>object</key>
 					<string>F8DA8113F1CA43BBB254F81A</string>
@@ -14676,6 +14684,21 @@
 			<string>KSkillAssistRuntime.swift</string>
 			<key>path</key>
 			<string>KSkillAssistRuntime.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>A37DFEFDEA76897D9569A043</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>KSkillAssistCardView.swift</string>
+			<key>path</key>
+			<string>KSkillAssistCardView.swift</string>
 			<key>sourceTree</key>
 			<string>SOURCE_ROOT</string>
 		</dict>

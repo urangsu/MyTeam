@@ -556,6 +556,13 @@ struct RuntimeDiagnosticsSnapshot {
     let kskillAssistChecklistAvailable: Bool
     let kskillRequiredInputsAvailable: Bool
 
+    // Round 250A-255Z: AssistOnly UX + TTS scope lock
+    let kskillAssistCardViewAvailable: Bool
+    let kskillAssistSkillIDDispatchAvailable: Bool
+    let kskillHardBlockedActionsAlwaysVisible: Bool
+    let ttsDefaultProviderIsNilOrExperimental: Bool
+    let supertonic3StrictlyDevLabGated: Bool
+
     // MARK: - Human-readable summary
 
     var summary: String {
@@ -1057,6 +1064,15 @@ final class RuntimeDiagnosticsService {
         let kskillAssistChecklistAvailable = !sampleKTX.checklist.isEmpty && !sampleStock.checklist.isEmpty
         let kskillRequiredInputsAvailable = !sampleKTX.requiredUserInputs.isEmpty && !sampleDart.requiredUserInputs.isEmpty
 
+        // Round 250A-255Z: AssistOnly UX + TTS scope lock
+        let kskillAssistCardViewAvailable = FileManager.default.fileExists(atPath: "MyTeam/KSkillAssistCardView.swift")
+        let kskillAssistSkillIDDispatchAvailable = KSkillAssistRuntime.isAssistSkillID("korean.ktx-booking")
+        let kskillHardBlockedActionsAlwaysVisible = !sampleKTX.hardBlockedActions.isEmpty
+            && !sampleStock.hardBlockedActions.isEmpty
+            && !sampleDart.hardBlockedActions.isEmpty
+        let ttsDefaultProviderIsNilOrExperimental = !Supertonic3TTSConfig.isEnabled
+        let supertonic3StrictlyDevLabGated = !UserDefaults.standard.bool(forKey: "supertonic3ExperimentalEnabled")
+
         let snap = RuntimeDiagnosticsSnapshot(
             capturedAt: Date(),
             currentRoomID: currentRoomID,
@@ -1524,7 +1540,12 @@ final class RuntimeDiagnosticsService {
             naverAssistNoFakeSearch: naverAssistNoFakeSearch,
             reservationPaymentHardBlocked: reservationPaymentHardBlocked,
             kskillAssistChecklistAvailable: kskillAssistChecklistAvailable,
-            kskillRequiredInputsAvailable: kskillRequiredInputsAvailable
+            kskillRequiredInputsAvailable: kskillRequiredInputsAvailable,
+            kskillAssistCardViewAvailable: kskillAssistCardViewAvailable,
+            kskillAssistSkillIDDispatchAvailable: kskillAssistSkillIDDispatchAvailable,
+            kskillHardBlockedActionsAlwaysVisible: kskillHardBlockedActionsAlwaysVisible,
+            ttsDefaultProviderIsNilOrExperimental: ttsDefaultProviderIsNilOrExperimental,
+            supertonic3StrictlyDevLabGated: supertonic3StrictlyDevLabGated
         )
         cachedSnapshot = snap
         return snap

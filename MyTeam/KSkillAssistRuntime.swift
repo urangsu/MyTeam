@@ -32,9 +32,104 @@ struct KSkillAssistResponse: Sendable {
     let requiredUserInputs: [String]
 }
 
+// MARK: - Parsed Sections
+
+struct KSkillAssistParsedSections: Sendable {
+    let title: String
+    let message: String
+    let checklist: [String]
+    let requiredInputs: [String]
+    let nextActions: [String]
+    let hardBlockedActions: [String]
+}
+
 // MARK: - Runtime
 
 enum KSkillAssistRuntime {
+
+    // MARK: - Skill ID Registry
+
+    private static let assistSkillIDs: Set<String> = [
+        "korean.ktx-booking",
+        "korean.map-place",
+        "korean.reservation-preparation",
+        "korean.stock-info",
+        "korean.dart",
+        "korean.naver-news",
+        "korean.naver-blog-research",
+        "korean.law-search",
+        "korean.scholarship",
+        "korean.office-review-assist",
+        "korean.file-image-assist"
+    ]
+
+    static func isAssistSkillID(_ skillID: String) -> Bool {
+        assistSkillIDs.contains(skillID)
+    }
+
+    // MARK: - Section Parser
+
+    static func parseSections(from text: String) -> KSkillAssistParsedSections {
+        let lines = text.components(separatedBy: "\n")
+        var title = ""
+        var messageLines: [String] = []
+        var checklist: [String] = []
+        var requiredInputs: [String] = []
+        var nextActions: [String] = []
+        var hardBlockedActions: [String] = []
+
+        enum Section { case none, message, checklist, required, next, blocked }
+        var currentSection: Section = .none
+
+        for line in lines {
+            if line.hasPrefix("## ") {
+                title = String(line.dropFirst(3))
+                currentSection = .message
+            } else if line == "### 확인 체크리스트" {
+                currentSection = .checklist
+            } else if line == "### 필요한 정보" {
+                currentSection = .required
+            } else if line == "### 다음 단계" {
+                currentSection = .next
+            } else if line == "### 직접 대신하지 않는 항목" {
+                currentSection = .blocked
+            } else {
+                switch currentSection {
+                case .message:
+                    if !line.isEmpty || !messageLines.isEmpty { messageLines.append(line) }
+                case .checklist:
+                    if line.hasPrefix("- [ ] ") { checklist.append(String(line.dropFirst(6))) }
+                    else if line.hasPrefix("- ✅ ") { checklist.append(String(line.dropFirst(5))) }
+                case .required:
+                    if line.hasPrefix("- ") { requiredInputs.append(String(line.dropFirst(2))) }
+                case .next:
+                    if let dotRange = line.range(of: ". "), line.first?.isNumber == true {
+                        nextActions.append(String(line[dotRange.upperBound...]))
+                    }
+                case .blocked:
+                    if line.hasPrefix("- 🚫 ") { hardBlockedActions.append(String(line.dropFirst(6))) }
+                    else if line.hasPrefix("- ") { hardBlockedActions.append(String(line.dropFirst(2))) }
+                case .none: break
+                }
+            }
+        }
+
+        let trimmedMessage = messageLines
+            .drop(while: { $0.isEmpty })
+            .reversed()
+            .drop(while: { $0.isEmpty })
+            .reversed()
+            .joined(separator: "\n")
+
+        return KSkillAssistParsedSections(
+            title: title,
+            message: trimmedMessage,
+            checklist: checklist,
+            requiredInputs: requiredInputs,
+            nextActions: nextActions,
+            hardBlockedActions: hardBlockedActions
+        )
+    }
 
     // MARK: - Detection
 

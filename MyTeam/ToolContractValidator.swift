@@ -245,6 +245,12 @@ enum ToolContractValidator {
         validateKSkillsRequiredInputsAvailablePolicy(issues: &issues)
         validateKSkillsHardBlockedActionsPolicy(issues: &issues)
 
+        // Round 250A-255Z validators
+        validateKSkillAssistCardViewPolicy(issues: &issues)
+        validateKSkillHardBlockedActionsAlwaysVisiblePolicy(issues: &issues)
+        validateTTSDefaultSilentPolicy(issues: &issues)
+        validateSupertonic3DevLabGatePolicy(issues: &issues)
+
         let errorCount = issues.filter { $0.severity == .error }.count
         let warningCount = issues.filter { $0.severity == .warning }.count
         return ToolContractValidationSummary(
@@ -1917,6 +1923,43 @@ enum ToolContractValidator {
         guard let snap else { return }
         if !snap.reservationPaymentHardBlocked {
             issues.append(issue(.error, "예약·결제 처리가 hardBlockedActions에 포함되지 않았습니다. 자동 결제는 영원히 금지입니다."))
+        }
+    }
+
+    // MARK: - Round 250A-255Z Validators
+
+    private static func validateKSkillAssistCardViewPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.kskillAssistCardViewAvailable {
+            issues.append(issue(.warning, "KSkillAssistCardView.swift가 없습니다. K-skills 응답이 generic WorkResultCard로 렌더링됩니다."))
+        }
+        if !snap.kskillAssistSkillIDDispatchAvailable {
+            issues.append(issue(.error, "KSkillAssistRuntime.isAssistSkillID()가 korean.ktx-booking을 인식하지 못합니다. SkillResultRendererView 라우팅이 동작하지 않습니다."))
+        }
+    }
+
+    private static func validateKSkillHardBlockedActionsAlwaysVisiblePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.kskillHardBlockedActionsAlwaysVisible {
+            issues.append(issue(.error, "K-skills hardBlockedActions가 비어있습니다. 차단 항목은 모든 응답에 반드시 포함되어야 합니다."))
+        }
+    }
+
+    private static func validateTTSDefaultSilentPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.ttsDefaultProviderIsNilOrExperimental {
+            issues.append(issue(.error, "기본 TTS provider가 활성화되어 있습니다. Supertonic3는 Developer Lab에서만 켤 수 있어야 합니다."))
+        }
+    }
+
+    private static func validateSupertonic3DevLabGatePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonic3StrictlyDevLabGated {
+            issues.append(issue(.error, "supertonic3ExperimentalEnabled가 UserDefaults에서 true입니다. 이 값은 기본 false이어야 하고 Developer Lab에서만 변경 가능해야 합니다."))
         }
     }
 }

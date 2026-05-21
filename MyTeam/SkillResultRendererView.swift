@@ -22,6 +22,9 @@ struct SkillResultRendererView: View {
             // TODO: runtime.diagnostics card
             // TODO: korean.accounting-tax summary card
 
+            case _ where KSkillAssistRuntime.isAssistSkillID(skillID):
+                KSkillAssistCardView(text: text, skillID: skillID, isDarkMode: isDarkMode)
+
             default:
                 fallbackContent
             }
