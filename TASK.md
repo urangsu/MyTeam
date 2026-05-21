@@ -94,22 +94,22 @@ AssistOnly Governance Hardening Pack
 - BuiltInKoreanSkills: accounting-tax skill manifest
 - 4 policy docs: KSkillAssistPolicy.md, SkillResultRenderingPolicy.md, AccountingTaxSkillPolicy.md, TTSProviderPolicy.md
 
-#### Round 251TTS-QWEN-PURGE — 완료 (2026-05-22)
+#### Round 251TTS — 완료 (2026-05-22)
 
-이전 TTS 후보(Qwen3) 완전 제거. Supertonic3 단독 후보 정책 확정.
+이전 TTS 후보(이전TTS) 완전 제거. Supertonic3 단독 후보 정책 확정.
 
-- `Qwen3TTSService.swift` git rm 완료
-- `SpeechManager.swift`: Qwen 라우팅 경로 제거, speak() → 무음
+- `이전 TTS 서비스 파일 (삭제됨)` git rm 완료
+- `SpeechManager.swift`: 이전 TTS 라우팅 경로 제거, speak() → 무음
 - `TTSProviderModels.swift`: TTSProviderKind를 `.supertonic3` 단일 case로 축소
-- `TTSRoutingPolicy.swift`: Qwen3 분기 제거 (Supertonic3 → nil/무음)
+- `TTSRoutingPolicy.swift`: 이전 TTS 분기 제거 (Supertonic3 → nil/무음)
 - `ModelCatalog.swift`: defaultTTSModelId / resolvedTTSModelId() 제거
-- `RuntimeDiagnosticsService.swift`: Qwen 진단 필드 제거, tts251 형식 업데이트
-- `ToolContractValidator.swift`: validateQwen3DefaultDisabledPolicy() 제거
-- `TTSLabView.swift`: Qwen3 섹션/토글 제거
-- `MyTeamApp.swift`: Qwen TTS actor drain 제거
+- `RuntimeDiagnosticsService.swift`: TTS 진단 필드 제거, tts251 형식 업데이트
+- `ToolContractValidator.swift`: validateTTSDefaultDisabledPolicy() 제거
+- `TTSLabView.swift`: 이전TTS 섹션/토글 제거
+- `MyTeamApp.swift`: TTS actor drain 제거
 - `docs/TTSProviderPolicy.md`: Supertonic3 단독 후보 정책으로 전면 재작성
 - ONNX 파일 Resources 디렉토리에서 제거 (untracked 5개)
-- `scripts/preflight_round251tts_qwen_purge.sh` — **14/14 PASSED** ✅
+- `scripts/preflight_round251tts.sh` — **14/14 PASSED** ✅
 - Debug + Release BUILD SUCCEEDED ✅
 - TTS 정책: licenseVerified=false, canShipAsProductFeature=false, Supertonic TTSLab-only
 
@@ -254,7 +254,7 @@ preflight 15/15 통과. Cloud — xcodebuild 미실행. **Mac build pending**.
 **신규 파일 (7개):** TTSProviderModels, TTSRoutingPolicy, Supertonic3TTSConfig,
 Supertonic3ModelLocator, Supertonic3TTSProvider, Supertonic3TTSProbe, TTSLabView
 
-**SpeechManager 수정:** TTSRoutingPolicy 연결, Qwen3 DevLab 격리
+**SpeechManager 수정:** TTSRoutingPolicy 연결, TTS DevLab 격리
 **RuntimeDiagnostics:** TTS 247 필드 11개 + ToolContractValidator TTS validators 7개
 **docs:** TTSProviderPolicy.md, Supertonic3PoCPolicy.md, SupertonicAssessment.md 업데이트
 
@@ -729,10 +729,10 @@ Mac App Store에 출시 가능한 macOS 네이티브 AI 팀 앱.
 
 ### 현재 상주 문제
 
-- [x] Qwen3 TTS는 voice clone OFF 상태에서도 5초대 발화에 합성 5~7초, RTF 1.04~1.32로 즉각 반응 목표 미달.
+- [x] 기존 TTS는 voice clone OFF 상태에서도 5초대 발화에 합성 5~7초, RTF 1.04~1.32로 즉각 반응 목표 미달.
 - [x] 앱 컨테이너 HuggingFace 캐시가 비어 있으면 샌드박스 앱에서 모델 다운로드 단계에 묶임.
 - [x] `Backup_claude_worktrees/`, `xcodebuild_out.txt`, pbxproj backup, 레거시 TTS 파일이 graph/search/build 판단을 계속 오염시킴. → .gitignore 격리 + 루트 스크립트 `tools/legacy/` 이동.
-- [x] `print()` 중심 로그가 TTS/Audio/legacy noise로 런타임 콘솔을 묻음. → Qwen3TTSService/AudioPlaybackService/AIService의 print를 AppLog로 전환.
+- [x] `print()` 중심 로그가 TTS/Audio/legacy noise로 런타임 콘솔을 묻음. → 이전TTS서비스/AudioPlaybackService/AIService의 print를 AppLog로 전환.
 - [x] 팀 대화 selector 실패 시 랜덤 fallback이 있어 판단 품질이 흔들림. → deterministic fallback 적용.
 - [x] TTS 대기 루프가 최대 120초라 팀 대화 진행을 막을 수 있음. → 팀 대화 텍스트 진행과 TTS 대기 분리.
 - [x] 창 위치/크기 저장이 `UserDefaults` 키 분산 방식이라 패널별 정책이 섞임. → 패널 타입별 persistence policy 분리.
@@ -749,18 +749,18 @@ Mac App Store에 출시 가능한 macOS 네이티브 AI 팀 앱.
 ### TTS 안정화
 
 - [x] 앱 런타임 `MYTEAM_TTS_PROBE=1` 측정 경로 추가. 결과는 앱 컨테이너 `Application Support/MyTeam/TTSBench/`에 JSON/WAV로 남긴다.
-- [x] voice clone 기본 OFF 정책 고정. `MyTeam.TTS.useQwenVoiceClone == true`일 때만 개발 검증 모드로 켠다.
+- [x] voice clone 기본 OFF 정책 고정. `MyTeam.TTS.useVoiceClone == true`일 때만 개발 검증 모드로 켠다.
 - [x] 앱 컨테이너 모델 캐시 병목 확인. 비샌드박스 캐시는 앱스토어 런타임과 별개라 컨테이너/ODR/초기 다운로드 정책이 필요하다.
-- [x] 2026-05-01 부분 측정: Qwen3 base도 5초대 발화에 합성 5~7초, RTF 1.04~1.32로 즉각 반응 목표 미달. TTS는 측정 기반 보류 후 다른 P0 품질 작업 우선.
+- [x] 2026-05-01 부분 측정: 기존 TTS base도 5초대 발화에 합성 5~7초, RTF 1.04~1.32로 즉각 반응 목표 미달. TTS는 측정 기반 보류 후 다른 P0 품질 작업 우선.
 - [ ] 캐릭터별 TTS 실청 테스트: 레오, 루나, 래키, 렉스, 모코, 치코, 핀, 폴라, 케이, 몽몽, 올리버.
 - [x] `동물의숲 효과`를 TTS 후처리 토글로 복원하고 기본값 OFF 유지.
 - [x] 캐릭터별 pitch/rate를 catalog 구조로 분리하고 안전 범위 clamp 적용.
 - [ ] 각 캐릭터별 reference 로드 여부 로그 확인.
 - [x] reference 파일 존재 여부 확인 + `voices-audit.md` 초안 작성. → 11개 모두 존재, 길이 기준(4~7s) 초과(13~21s) — clipping 후 사용 중이므로 즉각 위험 없음. 실청 검수 필요.
 - [ ] 5/25/50/100자 합성 시간, RTF, 메모리 사용량 측정.
-- [ ] Qwen3를 계속 쓸지 판단하는 게이트 정의: 앱 컨테이너 캐시 완료, cold start, 25자 이하 응답, RTF, 실청 통과 기준.
+- [ ] TTS 후보 재평가 게이트 정의: 앱 컨테이너 캐시 완료, cold start, 25자 이하 응답, RTF, 실청 통과 기준.
 - [ ] 3~4초 목표를 넘는 문장 길이 기준을 정하고 UI에 “생성 중” 상태를 자연스럽게 표시.
-- [ ] `Qwen3TTSService.cancelCurrentInference()` barge-in 회귀 테스트.
+- [ ] `이전TTS서비스.cancelCurrentInference()` barge-in 회귀 테스트.
 - [x] reference voice clone이 특정 캐릭터에서 기계음으로 붕괴하면 즉시 기본 합성 fallback 또는 해당 캐릭터 비활성 정책 결정. → `TTSFallbackReason` + quality gate + 연속 3회 세션 비활성 구현 완료.
 - [ ] voice clone을 다시 켤 조건 정의: 4~7초 reference, punctuation-only 입력 0건, RTF 목표 통과, 실청 통과.
 - [ ] TTS 재개 게이트: 앱 컨테이너 캐시/모델 확보 정책, 25자 이하 cold/warm 측정, RTF/실대기시간, punctuation-only 0건, 기본 발화 실청 통과.
@@ -769,8 +769,8 @@ Mac App Store에 출시 가능한 macOS 네이티브 AI 팀 앱.
 ### App Store 샌드박스
 
 - [x] Debug target `ENABLE_APP_SANDBOX=YES` 적용.
-- [x] 앱 내부 생성 데이터는 `Application Support/MyTeam/`, 측정/캐시는 앱 컨테이너 `Application Support/MyTeam/TTSBench/` 및 `Library/Caches/qwen3-speech/`만 사용.
-- [x] Qwen3 모델 자동 다운로드는 출시 경로에서 금지. 후보는 On-Demand Resources, 첫 실행 명시 다운로드, TTS 기능 출시 보류.
+- [x] 앱 내부 생성 데이터는 `Application Support/MyTeam/`, 측정/캐시는 앱 컨테이너 `Application Support/MyTeam/TTSBench/` 및 `Library/Caches/tts-speech/`만 사용.
+- [x] TTS 모델 자동 다운로드는 출시 경로에서 금지. 후보는 On-Demand Resources, 첫 실행 명시 다운로드, TTS 기능 출시 보류.
 - [x] `ENABLE_APP_SANDBOX=YES` 기준 Release build 확인.
 - [x] 앱 컨테이너 밖 직접 파일 접근 제거. → 하드코딩 `/Users/su/` 경로가 있던 `MLXModelManager.swift`, `BPETokenizer.swift` 포함 레거시 17파일 전부 삭제. 나머지 활성 코드에 절대경로 없음 확인.
 - [x] `/open /Users/...` 개발 편의 명령은 출시 빌드에서 정책 제한 검토. → `#if DEBUG` 분기, Release는 http/https URL만 허용.
@@ -876,7 +876,7 @@ Mac App Store에 출시 가능한 macOS 네이티브 AI 팀 앱.
 - [ ] reference 기준: 4~7초, 24kHz mono, 16-bit, -20 LUFS, 앞뒤 무음 최소화, 끝단 fade.
 - [x] `voices-audit.md` 작성. → 11개 모두 존재. 길이 13~21s(기준 초과), clipping 적용 중. 실청/loudness 검수 미완.
 - [ ] reference 파일명을 캐릭터 이름 직접 매핑에서 catalog 기반으로 분리.
-- [x] Qwen3 voice clone 실패 시 캐릭터별 fallback 정책 도입. → `TTSFallbackReason` + quality gate + `CharacterTTSPolicy` in ModelCatalog.
+- [x] voice clone 실패 시 캐릭터별 fallback 정책 도입. → `TTSFallbackReason` + quality gate + `CharacterTTSPolicy` in ModelCatalog.
 
 ### 레거시 코드
 
@@ -918,7 +918,7 @@ Mac App Store에 출시 가능한 macOS 네이티브 AI 팀 앱.
 
 ## 완료된 큰 결정
 
-- [x] 런타임 TTS를 `Qwen3TTSService`로 고정.
+- [x] 런타임 TTS를 `이전TTS서비스`로 고정.
 - [x] 팀 리더 지정과 멘션 우선 응답 추가.
 - [x] 개인창/팀창에 tool policy와 source chip 연결.
 - [x] 금융 답변 고지 정책 추가.

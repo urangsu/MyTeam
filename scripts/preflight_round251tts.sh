@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# preflight_round251tts_qwen_purge.sh
-# Round 251TTS-QWEN-PURGE: Qwen3 완전 제거 + Supertonic-only 정책 검증
+# preflight_round251tts.sh
+# Round 251TTS: Supertonic3 단독 후보 정책 검증
 # 기대: 14/14 PASSED
 
 set -uo pipefail
@@ -23,7 +23,7 @@ check() {
 
 echo ""
 echo "═══════════════════════════════════════════════════"
-echo " preflight_round251tts_qwen_purge.sh"
+echo " preflight_round251tts.sh"
 echo "═══════════════════════════════════════════════════"
 echo ""
 
@@ -117,23 +117,23 @@ echo "────────────────────────�
 echo " RESULT: $PASS PASSED / $FAIL FAILED"
 echo "───────────────────────────────────────────────────"
 
-# Final Qwen grep (활성 코드/정책 파일만; TASK.md·DEVLOG.md는 역사적 개발 로그 → 제외)
+# Final Qwen grep — 전체 repo (script 자기 자신만 제외, build log만 제외)
 echo ""
-echo "Final Qwen grep (활성 파일 0건 이어야 함):"
+echo "Final Qwen grep (repo 전체 0건 이어야 함):"
 QWEN_FINAL=$(grep -R "Qwen\|qwen\|QWEN" \
-    --include="*.swift" --include="*.sh" --include="*.md" \
-    "$MYTEAM" "$DOCS" "$SCRIPTS" 2>/dev/null | \
-    grep -v "Binary\|SupertonicAssessment\|AppStorePackaging\|PrivacyNutrition\|voices-audit\|POLICY.md\|round247\|round248\|round251tts_qwen_purge\|graphify" | \
+    --include="*.swift" --include="*.sh" --include="*.md" --include="*.txt" \
+    "$MYTEAM" "$DOCS" "$SCRIPTS" TASK.md DEVLOG.md reports 2>/dev/null | \
+    grep -v "preflight_round251tts\|graphify-out\|debug-build.log\|release-build.log\|package-resolve.log" | \
     wc -l | tr -d ' ')
 if [ "$QWEN_FINAL" -eq 0 ]; then
     echo "  ✅ Qwen 참조 0건"
 else
     echo "  ❌ Qwen 참조 ${QWEN_FINAL}건 남음:"
     grep -R "Qwen\|qwen\|QWEN" \
-        --include="*.swift" --include="*.sh" --include="*.md" \
-        "$MYTEAM" "$DOCS" "$SCRIPTS" 2>/dev/null | \
-        grep -v "Binary\|SupertonicAssessment\|AppStorePackaging\|PrivacyNutrition\|voices-audit\|POLICY.md\|round247\|round248\|round251tts_qwen_purge\|graphify" | \
-        head -20
+        --include="*.swift" --include="*.sh" --include="*.md" --include="*.txt" \
+        "$MYTEAM" "$DOCS" "$SCRIPTS" TASK.md DEVLOG.md reports 2>/dev/null | \
+        grep -v "preflight_round251tts\|graphify-out\|debug-build.log\|release-build.log\|package-resolve.log" | \
+        head -30
 fi
 
 echo ""

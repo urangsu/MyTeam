@@ -1,45 +1,47 @@
 # TTS Provider Policy
 
-**Round 251TTS** — Supertonic3 단독 후보. 이전 후보 모두 제거.
+**Round 251TTS** — Supertonic3 is the only TTS candidate.
 
 ---
 
 ## Product Decision
 
-MyTeam은 기본 TTS를 제공하지 않는다.
+Supertonic is the only TTS candidate.
 
-Supertonic3가 유일한 TTS 후보다.
+MyTeam has no default user-facing TTS.
 
-Supertonic3가 품질/라이선스/런타임/번들/릴리즈 gate를 통과하지 못하면
-**MyTeam v1은 TTS 없이 출시한다.**
+There is no fallback TTS.
+
+If Supertonic fails product gates, MyTeam v1 ships without TTS.
 
 ---
 
 ## Candidate
 
-| 항목 | 값 |
+| Item | Value |
 |---|---|
 | Provider | Supertonic3 |
-| Scope | TTS Lab / experimental 전용 |
-| Release 기본값 | 비활성 |
-| 모델 번들 | 금지 |
-| launch 자동 init | 금지 |
-| 상업 라이선스 | pending |
-| 모델 재배포 | pending |
+| Scope | TTS Lab / experimental only |
+| Release default | disabled |
+| Model bundle | prohibited |
+| Launch auto-init | prohibited |
+| Commercial license | pending |
+| Model redistribution | pending |
+| Release product exposure | blocked until all gates pass |
 
 ---
 
 ## Gate (canShipAsProductFeature)
 
-다음 5개가 모두 true여야 제품 기능으로 제공 가능:
+All 5 must be `true` before shipping as a product feature:
 
-1. `koreanQualityAccepted` — 한국어 품질 검증 통과
-2. `licenseVerified` — 공식 LICENSE / model card 확인
-3. `localRuntimeVerified` — 로컬 Mac 런타임 검증
-4. `bundlePolicyAccepted` — 모델 번들 재배포 정책 확인
-5. `releaseIntegrationApproved` — 릴리즈 통합 승인
+1. `koreanQualityAccepted` — Korean quality verified
+2. `licenseVerified` — Official LICENSE / model card confirmed
+3. `localRuntimeVerified` — Local Mac runtime verified
+4. `bundlePolicyAccepted` — Model bundle redistribution policy confirmed
+5. `releaseIntegrationApproved` — Release integration approved
 
-현재: 모두 `false`. 제품 기능 제공 불가.
+Current: all `false`. Release product exposure is blocked until all gates pass.
 
 ---
 
@@ -47,19 +49,19 @@ Supertonic3가 품질/라이선스/런타임/번들/릴리즈 gate를 통과하�
 
 ```swift
 // TTSRoutingPolicy.selectedProvider()
-// Supertonic3(isEnabled && modelAvailable) → .supertonic3
-// nil → 무음
-// Apple TTS: 영원히 금지
+// Supertonic3 (isEnabled && modelAvailable) → .supertonic3
+// nil → silent
+// Apple TTS: permanently forbidden
 ```
 
 ---
 
 ## Not Allowed
 
-- fallback TTS
-- Apple TTS / AVSpeechSynthesizer (폴백 포함 영원히 금지)
-- 라이선스 검증 전 제품 TTS 노출
-- 모델 번들 (재배포 정책 확인 전)
-- ONNX 파일 git commit
-- Supertonic launch 자동 init
-- 상업 출시 준비 완료 / 런타임 검증 완료 표현 (제품 준비 완료 주장 금지)
+- Fallback TTS
+- Apple TTS / AVSpeechSynthesizer (permanently forbidden, including as fallback)
+- Product TTS exposure before license verification
+- Model bundle before redistribution policy is confirmed
+- ONNX files committed to git
+- Supertonic launch auto-init
+- Claiming production readiness or verified runtime status before all gates pass

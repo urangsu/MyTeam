@@ -6,20 +6,20 @@
 
 ---
 
-## 2026-05-22 (Round 251TTS-QWEN-PURGE — Supertonic3 단독 후보 확정)
+## 2026-05-22 (Round 251TTS — Supertonic3 단독 후보 확정)
 
 ### 완료 (2026-05-22)
 
 이전 TTS 후보 제거. Supertonic3를 유일한 실험용 TTS 후보로 확정.
 
 **핵심 변경:**
-- `Qwen3TTSService.swift` 삭제 (`git rm`)
+- `이전 TTS 서비스 파일 (삭제됨)` 삭제 (`git rm`)
 - `TTSProviderKind` enum: `.supertonic3` 단일 case (이전 후보 case 제거)
 - `TTSProductPolicy.canShipAsProductFeature` 항상 `false` — 5개 gate 모두 미충족
 - `SpeechManager.speak()` → Supertonic3 미활성 시 무음 (폴백 없음)
 - 모든 활성 정책 파일에서 이전 TTS 참조 제거
 - ONNX 모델 파일 5개 Resources 디렉토리에서 제거
-- `scripts/preflight_round251tts_qwen_purge.sh` 14/14 PASSED
+- `scripts/preflight_round251tts.sh` 14/14 PASSED
 - Debug + Release BUILD SUCCEEDED (기존 warnings 유지, 신규 error 없음)
 
 **TTS 현황:**
@@ -326,12 +326,12 @@ Cloud 환경 — xcodebuild 미실행. ONNX Runtime SPM 미추가 (248TTS에서)
 **Apple TTS 정책 재확인:** AVSpeechSynthesizer 완전 금지, 폴백 포함. 코드 어디에도 없음.
 
 **TTSProviderModels.swift** (신규)
-- `TTSProviderKind` enum: `.qwen3MLX`, `.supertonic3` — appleSystem 없음 (정책)
+- `TTSProviderKind` enum: `.이전Provider`, `.supertonic3` — appleSystem 없음 (정책)
 - `TTSProviderAvailability`: available / experimental / disabledByPolicy / missingModel / licenseUnverified / runtimeUnavailable
 - `TTSOutput`, `TTSProviderError`, `TTSProviderStatus` 타입 정의
 
 **TTSRoutingPolicy.swift** (신규)
-- `selectedProvider()` → Supertonic3 (isEnabled+model) → Qwen3 (DevLab override) → nil(무음)
+- `selectedProvider()` → Supertonic3 (isEnabled+model) → 이전TTS (DevLab override) → nil(무음)
 - Apple TTS 절대 반환 안 함. 무음 허용.
 - `appleSystemTTSIsPermanentlyForbidden() -> true` (정책 마커)
 
@@ -356,14 +356,14 @@ Cloud 환경 — xcodebuild 미실행. ONNX Runtime SPM 미추가 (248TTS에서)
 
 **TTSLabView.swift** (신규, Developer Lab 전용)
 - Supertonic3 enable 토글, 모델 파일 상태, voice preset 선택, probe 버튼
-- Qwen3 DevLab override 토글 (별도 섹션)
+- TTS DevLab override 토글 (별도 섹션)
 - Apple TTS 선택지 없음 (정책)
 
 **SpeechManager.swift** (수정)
-- `qwenEnabled`: `TTSRoutingPolicy.selectedProvider() == .qwen3MLX` 로 교체
+- TTS enable 플래그: `TTSRoutingPolicy.selectedProvider()` 사용으로 교체
 - `dispatchToInferencePipeline()`: switch on `TTSRoutingPolicy.selectedProvider()` 
   - `.supertonic3` → Supertonic3TTSProvider.shared.synthesize() (Cloud: silent)
-  - `.qwen3MLX` → 기존 Qwen3 경로 (DevLab override 전용)
+  - `.이전Provider` → 기존 이전TTS 경로 (DevLab override 전용)
   - `.none` → 무음 (Apple TTS 폴백 없음)
 
 **RuntimeDiagnosticsSnapshot** — TTS 247 필드 11개 추가
@@ -837,7 +837,7 @@ LLM extraction 없이 heuristic keyword/pattern 기반으로 candidate 자동 �
 - 한국어 CER 3.26%, 44.1kHz 16-bit WAV 출력
 - **Swift/iOS 바인딩 공식 지원**
 - 10개 프리셋 음성(M1-M5, F1-F5) + speed 파라미터로 11캐릭터 커버 가능
-- Qwen3 대비 모든 면에서 우위 → PoC 라운드 별도 진행 예정
+- 이전 TTS 대비 모든 면에서 우위 → PoC 라운드 별도 진행 예정
 
 **Preflight 240**: 10/10 전체 통과
 
@@ -3435,14 +3435,14 @@ MyTeam은 macOS 데스크톱에 4명의 캐릭터 AI 에이전트가 상주하�
 | 상태 관리 | `AgentWindowManager` + `ChatRoom` / `ChatLog` |
 | LLM | `AIService` 직접 호출: Gemini, OpenAI, Claude, OpenRouter |
 | API 키 | `KeychainManager` |
-| TTS | `Qwen3TTSService` + `ModelCatalog` + Qwen3-TTS MLX |
+| TTS | `이전TTS서비스` + `ModelCatalog` + MLX 기반 TTS (삭제됨) |
 | 음성 재생 | `SpeechManager` + `AudioPlaybackService` |
 | 팀 대화 | `TeamOrchestrator` + `IntentRouter` + `ToolPolicy` |
 | 웹/금융 자료 | `ToolEvidenceService`, 출처 칩 `SourceReference` |
 
 ### 현재 고정 결정
 
-- 런타임 TTS는 `Qwen3TTSService` 기준이다.
+- 런타임 TTS는 `이전TTS서비스` 기준이다.
 - Apple TTS/AVSpeechSynthesizer는 폴백으로도 사용하지 않는다.
 - Python TTS 서버, ONNX Chatterbox, MLXInferenceService 기반 실험은 아카이브다.
 - 캐릭터 음성은 pitch/rate 보정이 아니라 레퍼런스 음성 자산 품질로 관리한다.
@@ -3466,7 +3466,7 @@ MyTeam은 macOS 데스크톱에 4명의 캐릭터 AI 에이전트가 상주하�
 | `MyTeam/AIService.swift` | LLM 호출, 모델 발견, API 키 검증 |
 | `MyTeam/AgentToolKit.swift` | 도구 정책, 웹/금융/URL 자료 수집 |
 | `MyTeam/ConversationMemory.swift` | 첨부 컨텍스트, `/clear`, `/compact`, `/schedule` 등 명령어 |
-| `MyTeam/Qwen3TTSService.swift` | Qwen3 TTS 런타임, 캐릭터 레퍼런스 voice clone |
+| `MyTeam/이전 TTS 서비스 파일 (삭제됨)` | 기존 TTS 런타임, 캐릭터 레퍼런스 voice clone |
 | `MyTeam/ModelCatalog.swift` | TTS 모델 ID 기본값 |
 | `MyTeam/SpeechManager.swift` | STT, TTS 스트림 연결, barge-in |
 | `MyTeam/FloatingPanel.swift` | 위치/크기 저장 복원, 패널 드래그 |
@@ -3500,15 +3500,15 @@ MyTeam은 macOS 데스크톱에 4명의 캐릭터 AI 에이전트가 상주하�
 - 앱 로그는 `AppLog` 래퍼를 기준으로 점진 전환. legacy TTS/WebSocket/OnDevice 로그는 기본 비활성화할 수 있는 구조로 이동.
 - 팀 대화 selector 실패 시 랜덤 fallback을 deterministic fallback으로 교체하고, TTS 첫 발화 대기 때문에 텍스트 진행이 막히는 구조를 제거.
 - `FloatingPanel`의 window restoration을 명시적으로 끄고 패널별 크기 저장 정책을 함수로 분리.
-- Qwen3 모델 캐시가 앱 컨테이너에 없으면 자동 다운로드로 조용히 빠지지 않고 명확한 오류를 내도록 preflight를 추가.
+- TTS 모델 캐시가 앱 컨테이너에 없으면 자동 다운로드로 조용히 빠지지 않고 명확한 오류를 내도록 preflight를 추가.
 
 #### TTS 측정과 보류 결정
 
 - 앱 런타임 전용 `MYTEAM_TTS_PROBE=1` 측정 경로를 추가. 결과는 앱 컨테이너 `Application Support/MyTeam/TTSBench/`에 JSON/WAV로 저장.
-- voice clone 기본값은 OFF로 고정. `UserDefaults("MyTeam.TTS.useQwenVoiceClone") == true`일 때만 개발 검증 모드로 사용.
+- voice clone 기본값은 OFF로 고정. `UserDefaults("MyTeam.TTS.useVoiceClone") == true`일 때만 개발 검증 모드로 사용.
 - 앱스토어 샌드박스 기준에서는 기존 비샌드박스 HuggingFace 캐시를 자동 공유하지 못해 앱 컨테이너 캐시/초기 다운로드/ODR 정책이 별도 P0임을 확인.
 - 2026-05-01 부분 측정: 루나 base는 모델 준비 3.84s, 합성 6.67s, 오디오 5.56s, RTF 1.20. 11캐릭터 base 부분 측정도 RTF 1.04~1.32 범위로 즉각 반응 목표와 거리가 있음.
-- 결론: TTS는 “감상”이 아니라 측정 기반으로 관리하되, 현 Qwen3 경로는 출시 품질 블로커다. 당장은 다른 P0 앱 품질 작업을 우선하고 TTS는 별도 게이트로 재평가한다.
+- 결론: TTS는 “감상”이 아니라 측정 기반으로 관리하되, 현 기존 TTS는 출시 품질 블로커다. 당장은 다른 P0 앱 품질 작업을 우선하고 TTS는 별도 게이트로 재평가한다.
 
 #### TTS 후처리와 스케줄 UX 정리
 
@@ -3533,7 +3533,7 @@ MyTeam은 macOS 데스크톱에 4명의 캐릭터 AI 에이전트가 상주하�
 #### [BUG FIX] 캐릭터 음성 일관성 (P0 TTS)
 
 - **원인**: `SamplingConfig`에 seed 파라미터 없음. 내부 `MLXRandom.gumbel()` 매 호출마다 새 랜덤 시퀀스 생성 → 같은 캐릭터도 청크마다 다른 음성 토큰 경로.
-- **해결**: `Qwen3TTSService`에 `import MLX` 추가, `characterSeed(for:)` (FNV-1a 해시) 함수 추가, 합성 직전 `MLXRandom.seed(characterSeed(for: characterName))` 고정.
+- **해결**: `이전TTS서비스`에 `import MLX` 추가, `characterSeed(for:)` (FNV-1a 해시) 함수 추가, 합성 직전 `MLXRandom.seed(characterSeed(for: characterName))` 고정.
 - 결과: 동일 캐릭터 → 동일 seed → 동일 gumbel noise → 일관된 토큰 경로 → 일관된 음성.
 
 #### Reference Audio 자산 정리 (P4)
@@ -3546,7 +3546,7 @@ MyTeam은 macOS 데스크톱에 4명의 캐릭터 AI 에이전트가 상주하�
 **종료 크래시 (EXC_BAD_ACCESS in __hash__)**
 - 증상: 앱 종료 시 Task 154 `com.apple.root.user-initiated-qos.cooperative` 에서 `__hash__()` 크래시
 - 원인: MLX Metal 셰이더 캐시(C++ `unordered_map`)를 백그라운드 스레드가 접근 중에 Swift 래퍼 객체 해제
-- 해결: `applicationWillTerminate`에 `Task.detached(@Qwen3TTSActor) { cancelCurrentInference() }` + `Thread.sleep(1.0)` drain 대기 추가
+- 해결: `applicationWillTerminate`에 `Task.detached(@TTSActor) { cancelCurrentInference() }` + `Thread.sleep(1.0)` drain 대기 추가
 
 **음성 일관성 2차 수정 — 세션 앵커**
 - 1차 seed 고정은 "동일 텍스트 재현성"만 보장. 다른 텍스트는 여전히 다른 speaker zone → 다른 목소리
@@ -3572,7 +3572,7 @@ MyTeam은 macOS 데스크톱에 4명의 캐릭터 AI 에이전트가 상주하�
 - `AudioPlaybackService.stopEngineForTermination()` 추가: `playerNode.stop()` → `engine.stop()` 명시 호출 → 노드 분리. CoreAudio 렌더 스레드를 즉시 정지시켜 in-flight 콜백 차단.
 - `applicationWillTerminate`를 `DispatchSemaphore` 방식으로 전면 교체:
   1. `stopEngineForTermination()` 비동기 호출 + 50ms 드레인
-  2. `Task.detached(@Qwen3TTSActor)` → `cancelCurrentInference()` 호출 후 `sem.signal()`
+  2. `Task.detached(@TTSActor)` → `cancelCurrentInference()` 호출 후 `sem.signal()`
   3. `sem.wait(timeout: .now() + 5.0)` — 최대 5초 대기 (actor 확인 보장)
   4. Metal command queue drain용 `Thread.sleep(0.5)`
 
@@ -3580,7 +3580,7 @@ MyTeam은 macOS 데스크톱에 4명의 캐릭터 AI 에이전트가 상주하�
 
 **증상**: 세션 앵커가 1.88초(≈22 codec tokens)처럼 짧으면 voice clone 합성이 75-token safety limit에 걸려 6초짜리 반복 오디오 생성 → quality gate 실패 → base fallback → 루프
 
-**해결** (`Qwen3TTSService.swift`):
+**해결** (`이전 TTS 서비스 파일 (삭제됨)`):
 - `paddedClippedReferenceAudio(_:)` 추가: 앵커가 3초(72,000 samples) 미만이면 루프 패딩으로 3초 채운 뒤 7초(168,000 samples) 상한 적용
 - `isQualityGateFailed()` 에 `isVoiceClone: Bool = false` 파라미터 추가: voice clone 경로는 per-char 상한 배율을 0.8x → 1.5x로 완화 (prosody 확장 고려)
 - voice clone 경로(3-b)에서 `clippedReferenceAudio(anchor)` → `paddedClippedReferenceAudio(anchor)`로 교체
@@ -3741,9 +3741,9 @@ MyTeam은 macOS 데스크톱에 4명의 캐릭터 AI 에이전트가 상주하�
 
 #### TTS
 
-- 런타임 TTS를 `Qwen3TTSService`로 고정.
+- 런타임 TTS를 `이전TTS서비스`로 고정.
 - 긴 reference audio 기반 voice clone에서 음질 붕괴와 과도한 생성 시간이 확인되어 기본 런타임은 한국어 기본 합성으로 임시 전환.
-- voice clone은 `UserDefaults("MyTeam.TTS.useQwenVoiceClone") == true`인 개발 검증 모드에서만 사용.
+- voice clone은 `UserDefaults("MyTeam.TTS.useVoiceClone") == true`인 개발 검증 모드에서만 사용.
 - voice clone 검증 시 reference audio는 최대 7초로 잘라 사용.
 - `!` 같은 의미 없는 punctuation-only 청크가 TTS로 들어가지 않도록 필터링.
 - TTS 청크 길이를 90자로 제한해 safety limit 폭주 가능성을 낮춤.

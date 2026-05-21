@@ -536,19 +536,6 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
-		<key>06F04BE2CE7E8746828FE6C6</key>
-		<dict>
-			<key>includeInIndex</key>
-			<string>1</string>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>name</key>
-			<string>s3gen_enc_full.onnx</string>
-			<key>path</key>
-			<string>Resources/onnx_models/s3gen_enc_full.onnx</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
 		<key>072D1419F2E360BAEAC92D10</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -7196,19 +7183,6 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
-		<key>6A9C263DE630F56AEDCD5596</key>
-		<dict>
-			<key>includeInIndex</key>
-			<string>1</string>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>name</key>
-			<string>hifigan_full.onnx</string>
-			<key>path</key>
-			<string>Resources/onnx_models/hifigan_full.onnx</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
 		<key>6AAAD3F33790B0A8C570C56F</key>
 		<dict>
 			<key>fileRef</key>
@@ -8067,19 +8041,6 @@
 			<string>C1BF5FCDF2B6CEB34E9BB395</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
-		</dict>
-		<key>788FECC77004EB825A6A5D24</key>
-		<dict>
-			<key>includeInIndex</key>
-			<string>1</string>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>name</key>
-			<string>ve.onnx</string>
-			<key>path</key>
-			<string>Resources/onnx_models/ve.onnx</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
 		</dict>
 		<key>78DE926078E3115691FB1A6E</key>
 		<dict>
@@ -11003,13 +10964,8 @@
 				<string>84802B26FC19C1A6311D37D0</string>
 				<string>15E1BD408CA65994A4DADB0E</string>
 				<string>7EE7F764C205E8FC0AC5D07F</string>
-				<string>06F04BE2CE7E8746828FE6C6</string>
-				<string>788FECC77004EB825A6A5D24</string>
 				<string>108B03D963D12F87FDD17C9D</string>
 				<string>11FF06FABC59574A5B3986E6</string>
-				<string>E4F8D0666C2164B99E617884</string>
-				<string>6A9C263DE630F56AEDCD5596</string>
-				<string>D740C851543CF9D27DF7A207</string>
 				<string>3DC956B218BE184DE0934706</string>
 				<string>EEC5D79905C2043D76053663</string>
 				<string>20F95EA464F2CD84C9E6E0BB</string>
@@ -19771,19 +19727,6 @@
 			<key>sourceTree</key>
 			<string>SOURCE_ROOT</string>
 		</dict>
-		<key>D740C851543CF9D27DF7A207</key>
-		<dict>
-			<key>includeInIndex</key>
-			<string>1</string>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>name</key>
-			<string>s3gen_cfm.onnx</string>
-			<key>path</key>
-			<string>Resources/onnx_models/s3gen_cfm.onnx</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
-		</dict>
 		<key>D76C8A9DE19BEAD020FAB2B5</key>
 		<dict>
 			<key>fileRef</key>
@@ -20753,19 +20696,6 @@
 			<string>C82D5B8E3F946E2B0A541FD3</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
-		</dict>
-		<key>E4F8D0666C2164B99E617884</key>
-		<dict>
-			<key>includeInIndex</key>
-			<string>1</string>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>name</key>
-			<string>s3gen_enc.onnx</string>
-			<key>path</key>
-			<string>Resources/onnx_models/s3gen_enc.onnx</string>
-			<key>sourceTree</key>
-			<string>&lt;group&gt;</string>
 		</dict>
 		<key>E4FA848FBE05AAF692FB8EF0</key>
 		<dict>

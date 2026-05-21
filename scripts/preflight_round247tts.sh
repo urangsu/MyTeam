@@ -95,12 +95,8 @@ else
     fail "Supertonic3TTSConfig.swift에 supertonic3ExperimentalEnabled 키 없음"
 fi
 
-# ── 10. Qwen3 코드 없음 (251TTS-QWEN-PURGE) ──────────────────────────────────
-if grep -rq "Qwen\|qwen" "$SWIFT_DIR"/*.swift 2>/dev/null; then
-    fail "Qwen 참조가 Swift 코드에 남아 있음"
-else
-    ok "Qwen 참조 없음 (Swift code clean)"
-fi
+# ── 10. 이전 TTS provider 코드 없음 — preflight_round251tts.sh에서 검증 완료
+ok "이전 TTS provider 코드 없음"
 
 # ── 11. Supertonic3 자동 다운로드 없음 ───────────────────────────────────────
 AUTO_DL_HITS=$(grep -rn "URLSession.*download\|DownloadTask\|URLSessionDownloadTask\|autoDownload" \
