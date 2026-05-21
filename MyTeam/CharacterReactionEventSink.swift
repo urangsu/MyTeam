@@ -96,6 +96,57 @@ final class CharacterReactionEventSink {
         postEvent(.multiRoomSwitched(fromRoomID: fromRoomID, toRoomID: toRoomID))
     }
 
+    // MARK: - Round 256A-260Z: Extended Events
+
+    /// 파일 읽기 시작 (Observation / Finder 입력 시)
+    func notifyFileReadStarted(filename: String, roomID: UUID) {
+        resetIdleTimer(roomID: roomID)
+        postEvent(.fileReadStarted(filename: filename, roomID: roomID))
+    }
+
+    /// 결과 검증 중 이상 감지 (WorkflowEngine result 검증 시)
+    func notifyVerificationWarning(detail: String, roomID: UUID) {
+        resetIdleTimer(roomID: roomID)
+        postEvent(.verificationWarning(detail: detail, roomID: roomID))
+    }
+
+    /// 결과 검증 실패 (WorkflowEngine validation 실패 시)
+    func notifyVerificationFailed(detail: String, roomID: UUID) {
+        resetIdleTimer(roomID: roomID)
+        postEvent(.verificationFailed(detail: detail, roomID: roomID))
+    }
+
+    /// 승인 대기 중 (PendingApprovalStore 등록 시)
+    func notifyApprovalWaiting(taskID: String, roomID: UUID) {
+        postEvent(.approvalWaiting(taskID: taskID, roomID: roomID))
+    }
+
+    /// 로컬 스킬 or assistOnly 완료 시
+    func notifyTaskCompleted(skillID: String, roomID: UUID) {
+        resetIdleTimer(roomID: roomID)
+        postEvent(.taskCompleted(skillID: skillID, roomID: roomID))
+    }
+
+    /// 오류 발생 후 재시도 시작 시
+    func notifyErrorRecoveryStarted(roomID: UUID) {
+        postEvent(.errorRecoveryStarted(roomID: roomID))
+    }
+
+    // MARK: - Idle Timer (5분 비활성 → sleeping)
+
+    private var idleTimer: Timer?
+    private let idleTimeoutSeconds: TimeInterval = 300
+
+    private func resetIdleTimer(roomID: UUID) {
+        idleTimer?.invalidate()
+        idleTimer = Timer.scheduledTimer(withTimeInterval: idleTimeoutSeconds, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                let rid = AgentWindowManager.shared.currentRoomID ?? roomID
+                self?.postEvent(.longIdleTriggered(roomID: rid))
+            }
+        }
+    }
+
     // MARK: - Core Event Processing
 
     func postEvent(_ event: WorkroomCharacterEvent) {

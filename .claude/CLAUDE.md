@@ -75,9 +75,11 @@ See `docs/archive/claude-context/` for round specs, completion reports, QA check
 ## Immediate Unblock
 
 - ✅ Round 196A-230Z pbxproj fix + Workroom handlers complete
-- ⏳ Steps 11-20: room-scope validation, service augmentation, final docs
-- 🔄 Next: preflight validation + commit
+- ✅ Round 246B-250Z: Approval UX, Office Review, Supertonic3 skeleton, KSkillAssistRuntime
+- ✅ Round 250A-255Z: KSkillAssistCardView (structured card), RouterBurnInSuite (7 K-skills burn-in)
+- ✅ Round 256A-260Z: Character bridge wiring, 7 new events, App Store policy docs
+- 🔄 Next: App Store Connect metadata upload, screenshots, manual QA checklist
 
 ---
 
-**Last update:** 2026-05-17 Round 196A-230Z-REPAIR+SLIM
+**Last update:** 2026-05-21 Round 256A-260Z-CHARACTER-BRIDGE

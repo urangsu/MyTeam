@@ -237,6 +237,7 @@ final class WorkflowOrchestrator {
                         isSystem: false,
                         skillID: assistOnlySkill.id
                     )
+                    CharacterReactionEventSink.shared.notifyTaskCompleted(skillID: assistOnlySkill.id, roomID: roomID)
                 }
                 return
             }
@@ -778,7 +779,10 @@ final class WorkflowOrchestrator {
                 return
             }
 
-            await MainActor.run { manager.isWorkflowRunning = true }
+            await MainActor.run {
+                manager.isWorkflowRunning = true
+                CharacterReactionEventSink.shared.notifyDocumentGenerationStarted(workflowType: "universalDocument", roomID: roomID)
+            }
             defer { Task { @MainActor in manager.isWorkflowRunning = false } }
             let task = Task {
                 _ = await self.runUniversalDocumentWorkflow(
@@ -1873,6 +1877,7 @@ final class WorkflowOrchestrator {
                 for request in result.approvalRequiredRequests {
                     manager.addPendingApproval(request)
                     AppLog.info("[WorkflowOrchestrator] approvalRequired 등록: \(request.toolName) id=\(request.id)")
+                    CharacterReactionEventSink.shared.notifyApprovalWaiting(taskID: request.id.uuidString, roomID: roomID)
                 }
             }
             // .planned → directChat fallback (기능 준비 중 안내 + 초안 제공)
