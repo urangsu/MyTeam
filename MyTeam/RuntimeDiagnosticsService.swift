@@ -557,6 +557,14 @@ struct RuntimeDiagnosticsSnapshot {
     let ttsDefaultProviderIsNilOrExperimental: Bool
     let supertonic3StrictlyDevLabGated: Bool
 
+    // Round 254TTS-NOTICE: Supertonic notice/acceptance gate
+    let supertonicNoticePolicyAvailable: Bool          // SupertonicTTSNoticePolicy.swift present
+    let supertonicLicenseNoticeRequired: Bool          // TTSProductPolicy.licenseNoticeRequired
+    let supertonicUseRestrictionNoticeRequired: Bool   // TTSProductPolicy.useRestrictionNoticeRequired
+    let supertonicNoticeAcceptanceRequired: Bool       // TTSProductPolicy.userNoticeAcceptanceRequired
+    let supertonicNoticeAccepted: Bool                 // SupertonicTTSNoticePolicy.isCurrentNoticeAccepted
+    let supertonicReleaseGateStillLocked: Bool         // !TTSProductPolicy.canShipAsProductFeature
+
     // Round 249TTS-SPIKE: Supertonic3 ONNX Swift feasibility
     let supertonicONNXSpikeAvailable: Bool          // Supertonic3ONNXRunner.swift exists
     let supertonicONNXAutoInitOnLaunch: Bool         // must be false (no init on launch)
@@ -1082,6 +1090,14 @@ final class RuntimeDiagnosticsService {
         let ttsDefaultProviderIsNilOrExperimental = !Supertonic3TTSConfig.isEnabled
         let supertonic3StrictlyDevLabGated = !UserDefaults.standard.bool(forKey: "supertonic3ExperimentalEnabled")
 
+        // Round 254TTS-NOTICE: notice gate diagnostics
+        let supertonicNoticePolicyAvailable = true   // SupertonicTTSNoticePolicy.swift compiled in
+        let supertonicLicenseNoticeRequired = TTSProductPolicy.licenseNoticeRequired
+        let supertonicUseRestrictionNoticeRequired = TTSProductPolicy.useRestrictionNoticeRequired
+        let supertonicNoticeAcceptanceRequired = TTSProductPolicy.userNoticeAcceptanceRequired
+        let supertonicNoticeAccepted = SupertonicTTSNoticePolicy.isCurrentNoticeAccepted
+        let supertonicReleaseGateStillLocked = !TTSProductPolicy.canShipAsProductFeature
+
         // Round 249TTS-SPIKE: Supertonic3 ONNX Swift feasibility
         let supertonicONNXSpikeAvailable = FileManager.default.fileExists(
             atPath: "MyTeam/Supertonic3ONNXRunner.swift"
@@ -1591,6 +1607,12 @@ final class RuntimeDiagnosticsService {
             kskillHardBlockedActionsAlwaysVisible: kskillHardBlockedActionsAlwaysVisible,
             ttsDefaultProviderIsNilOrExperimental: ttsDefaultProviderIsNilOrExperimental,
             supertonic3StrictlyDevLabGated: supertonic3StrictlyDevLabGated,
+            supertonicNoticePolicyAvailable: supertonicNoticePolicyAvailable,
+            supertonicLicenseNoticeRequired: supertonicLicenseNoticeRequired,
+            supertonicUseRestrictionNoticeRequired: supertonicUseRestrictionNoticeRequired,
+            supertonicNoticeAcceptanceRequired: supertonicNoticeAcceptanceRequired,
+            supertonicNoticeAccepted: supertonicNoticeAccepted,
+            supertonicReleaseGateStillLocked: supertonicReleaseGateStillLocked,
             supertonicONNXSpikeAvailable: supertonicONNXSpikeAvailable,
             supertonicONNXAutoInitOnLaunch: supertonicONNXAutoInitOnLaunch,
             supertonicONNXModelBundled: supertonicONNXModelBundled,

@@ -33,6 +33,11 @@ enum TTSProductPolicy {
     static let appBundleAllowed: Bool           = true   // bundle policy 승인 전제
     static let fallbackTTSAvailable: Bool       = false  // 폴백 없음
 
+    // Round 254TTS-NOTICE: user notice acceptance required before lab synthesis
+    static let licenseNoticeRequired: Bool          = true
+    static let useRestrictionNoticeRequired: Bool   = true
+    static let userNoticeAcceptanceRequired: Bool   = true
+
     static let koreanQualityAccepted: Bool      = false  // 수석님 음질 승인 전 false
     static let localRuntimeVerified: Bool       = false  // Mac RTF/품질 실측 전 false
     static let bundlePolicyAccepted: Bool       = false  // 실제 배포 방식 확정 전 false

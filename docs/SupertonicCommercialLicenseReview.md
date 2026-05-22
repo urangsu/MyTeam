@@ -1,5 +1,18 @@
 # Supertonic Commercial License Review
 
+## Round 254TTS-NOTICE Update (2026-05-22)
+
+Notice/acceptance gate added to TTS Lab:
+
+- License notice text delivered via `SupertonicTTSNoticePolicy.licenseNoticeText`
+- Use restriction text delivered via `SupertonicTTSNoticePolicy.useRestrictionsText`
+- User must accept notice before ONNX synthesis is enabled in TTSLabView
+- Acceptance stored in UserDefaults under version key `round254-2026-05`
+- OpenRAIL-M attribution and use restriction UX requirement fulfilled at lab level
+- Release gate remains locked pending quality/runtime/bundle policy approval
+
+---
+
 ## Status
 
 | Item | Status |
@@ -13,6 +26,8 @@
 | Release user-facing exposure | Blocked until runtime, quality, and release UX gates pass |
 | Default TTS | None |
 | Fallback TTS | None |
+| Notice gate (TTS Lab) | ✅ Implemented (Round 254TTS-NOTICE) |
+| ONNX synthesis gate | ✅ Requires notice acceptance |
 
 ## Current Decision
 

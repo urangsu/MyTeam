@@ -67,6 +67,24 @@ MyTeam은 Mac 안에서 사용자의 자연어 요청을 받아, 문서/파일/�
 
 ### Now
 
+#### Round 254TTS-NOTICE — 완료 (2026-05-22)
+
+Supertonic License Notice + Use Restriction UX Gate
+
+- Supertonic을 MyTeam의 유일한 TTS 후보로 유지
+- `SupertonicTTSNoticePolicy.swift` 추가 — notice version, UserDefaults keys, accept/reset
+- `SupertonicNoticeCardView.swift` 추가 — TTSLabView 고지 카드
+- TTSLabView: `noticeAccepted` 상태 추가, ONNX 합성 버튼 `!noticeAccepted` 시 disabled
+- `TTSProductPolicy`: licenseNoticeRequired/useRestrictionNoticeRequired/userNoticeAcceptanceRequired 추가
+- RuntimeDiagnosticsService: 6개 notice gate 진단 필드 추가
+- ToolContractValidator: 4개 Round 254 validators 추가
+- `scripts/preflight_round254tts_notice.sh` — 18/18 PASS
+- Release user-facing TTS는 여전히 비활성 (userFacingTTSEnabled = false)
+- 폴백 TTS 없음
+- 모델 자동 다운로드 없음
+- launch auto-init 없음
+- Cloud static changes only; Mac build pending ⏳
+
 #### Round 266A-CLOUD-VERIFY — 완료 (2026-05-21)
 
 AssistOnly Governance Cloud Static Verification + Mac Handoff Pack

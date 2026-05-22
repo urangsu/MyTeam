@@ -1,5 +1,18 @@
 # Supertonic Use Restriction Policy
 
+## Round 254TTS-NOTICE Update (2026-05-22)
+
+TTS Lab notice gate implemented. Key additions:
+
+- `SupertonicTTSNoticePolicy.swift`: centralizes notice version, UserDefaults keys, accept/reset
+- `SupertonicNoticeCardView.swift`: license notice + use restriction card shown in TTSLabView
+- ONNX synthesis disabled until notice accepted (`!noticeAccepted` in disabled condition)
+- Notice version `round254-2026-05` — version bump triggers re-acceptance
+- Release user-facing TTS remains locked (`TTSProductPolicy.userFacingTTSEnabled = false`)
+- `scripts/preflight_round254tts_notice.sh`: 18/18 checks pass
+
+---
+
 ## Purpose
 
 This document defines the product guardrails required before Supertonic TTS can become a user-facing MyTeam feature.

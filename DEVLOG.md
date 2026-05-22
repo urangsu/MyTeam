@@ -6,6 +6,25 @@
 
 ---
 
+## 2026-05-22 (Round 254TTS-NOTICE — Supertonic License Notice + Use Restriction UX Gate)
+
+### 완료 (2026-05-22)
+
+- Added `SupertonicTTSNoticePolicy.swift` (notice version, UserDefaults keys, accept/reset)
+- Added `SupertonicNoticeCardView.swift` (license + use restriction card for TTSLabView)
+- TTSLabView: noticeAccepted @State, supertonicNoticeSection added, ONNX synthesis gated
+- TTSProductPolicy: licenseNoticeRequired/useRestrictionNoticeRequired/userNoticeAcceptanceRequired
+- RuntimeDiagnosticsService: 6 notice gate diagnostic fields
+- ToolContractValidator: 4 Round 254TTS validators
+- scripts/preflight_round254tts_notice.sh: 18/18 PASS
+- docs updated: SupertonicUseRestrictions.md, SupertonicCommercialLicenseReview.md, TTSProviderPolicy.md
+- Release exposure remains locked
+- No default TTS
+- No fallback TTS
+- No model bundling
+- No launch auto-init
+- Cloud static changes only; Mac build pending
+
 ## 2026-05-22 (Round 251TTS — Supertonic3 단독 후보 확정)
 
 ### 완료 (2026-05-22)

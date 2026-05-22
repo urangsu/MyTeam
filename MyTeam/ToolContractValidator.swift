@@ -250,6 +250,12 @@ enum ToolContractValidator {
         validateTTSDefaultSilentPolicy(issues: &issues)
         validateSupertonic3DevLabGatePolicy(issues: &issues)
 
+        // Round 254TTS-NOTICE validators
+        validateSupertonicNoticePolicyAvailable(issues: &issues)
+        validateSupertonicUseRestrictionNoticePolicy(issues: &issues)
+        validateSupertonicNoticeAcceptanceGatePolicy(issues: &issues)
+        validateSupertonicReleaseGateStillLockedPolicy(issues: &issues)
+
         // Round 249TTS-SPIKE validators
         validateSupertonicONNXSpikeIsolation(issues: &issues)
         validateSupertonicNoAutoInit(issues: &issues)
@@ -1964,6 +1970,63 @@ enum ToolContractValidator {
         guard let snap else { return }
         if !snap.supertonic3StrictlyDevLabGated {
             issues.append(issue(.error, "supertonic3ExperimentalEnabled가 UserDefaults에서 true입니다. 이 값은 기본 false이어야 하고 Developer Lab에서만 변경 가능해야 합니다."))
+        }
+    }
+
+    // MARK: - Round 254TTS-NOTICE Validators
+
+    private static func validateSupertonicNoticePolicyAvailable(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonicNoticePolicyAvailable {
+            issues.append(issue(.error, "SupertonicTTSNoticePolicy.swift가 없습니다. Round 254TTS-NOTICE 정책 파일이 누락되었습니다."))
+        }
+        // Notice card UI must also exist
+        let cardExists = FileManager.default.fileExists(atPath: "MyTeam/SupertonicNoticeCardView.swift")
+        if !cardExists {
+            issues.append(issue(.error, "SupertonicNoticeCardView.swift가 없습니다. Round 254TTS-NOTICE 고지 카드가 누락되었습니다."))
+        }
+    }
+
+    private static func validateSupertonicUseRestrictionNoticePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonicUseRestrictionNoticeRequired {
+            issues.append(issue(.error, "TTSProductPolicy.useRestrictionNoticeRequired가 false입니다. 사용 제한 고지는 항상 필수입니다."))
+        }
+        if !snap.supertonicLicenseNoticeRequired {
+            issues.append(issue(.error, "TTSProductPolicy.licenseNoticeRequired가 false입니다. 라이선스 고지는 항상 필수입니다."))
+        }
+    }
+
+    private static func validateSupertonicNoticeAcceptanceGatePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonicNoticeAcceptanceRequired {
+            issues.append(issue(.error, "TTSProductPolicy.userNoticeAcceptanceRequired가 false입니다. 사용자 고지 수락은 항상 필수입니다."))
+        }
+        // Verify TTSLabView gates synthesis on noticeAccepted
+        let labContent = (try? String(contentsOfFile: "MyTeam/TTSLabView.swift", encoding: .utf8)) ?? ""
+        if !labContent.contains("!noticeAccepted") {
+            issues.append(issue(.error, "TTSLabView.swift의 ONNX 합성 버튼이 noticeAccepted로 gate되지 않습니다."))
+        }
+        if !labContent.contains("SupertonicNoticeCardView") {
+            issues.append(issue(.error, "TTSLabView.swift가 SupertonicNoticeCardView를 사용하지 않습니다."))
+        }
+    }
+
+    private static func validateSupertonicReleaseGateStillLockedPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonicReleaseGateStillLocked {
+            issues.append(issue(.error, "TTSProductPolicy.canShipAsProductFeature가 true입니다. 모든 릴리즈 gate 조건이 충족될 때까지 false여야 합니다."))
+        }
+        // Confirm userFacingTTSEnabled is still false
+        if TTSProductPolicy.userFacingTTSEnabled {
+            issues.append(issue(.error, "TTSProductPolicy.userFacingTTSEnabled가 true입니다. Release TTS는 여전히 비활성이어야 합니다."))
+        }
+        if TTSProductPolicy.fallbackTTSAvailable {
+            issues.append(issue(.error, "TTSProductPolicy.fallbackTTSAvailable가 true입니다. 폴백 TTS는 금지됩니다."))
         }
     }
 

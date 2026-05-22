@@ -36,6 +36,9 @@ struct TTSLabView: View {
     @State private var spikeIsSynthesizing: Bool = false
     @State private var spikeWavOutputPath: String? = nil
 
+    // MARK: - Notice Gate State (Round 254TTS-NOTICE)
+    @State private var noticeAccepted: Bool = false
+
     private let availableLanguages = ["auto", "ko", "en", "ja"]
 
     // MARK: - Body
@@ -44,6 +47,7 @@ struct TTSLabView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 headerSection
+                supertonicNoticeSection
                 supertonic3Section
                 onnxSpikeSection
                 policyNoticeSection
@@ -56,6 +60,7 @@ struct TTSLabView: View {
             supertonic3Enabled = UserDefaults.standard.bool(forKey: "supertonic3ExperimentalEnabled")
             selectedPreset = UserDefaults.standard.string(forKey: "supertonic3VoicePreset") ?? "F1"
             selectedLanguage = UserDefaults.standard.string(forKey: "supertonic3Language") ?? "auto"
+            noticeAccepted = SupertonicTTSNoticePolicy.isCurrentNoticeAccepted
             refreshModelCheck()
         }
     }
@@ -71,6 +76,22 @@ struct TTSLabView: View {
                 .foregroundStyle(.secondary)
             Divider()
         }
+    }
+
+    // MARK: - Notice Section (Round 254TTS-NOTICE)
+
+    private var supertonicNoticeSection: some View {
+        SupertonicNoticeCardView(
+            accepted: $noticeAccepted,
+            onAccept: {
+                SupertonicTTSNoticePolicy.acceptCurrentNotice()
+                noticeAccepted = true
+            },
+            onReset: {
+                SupertonicTTSNoticePolicy.resetNoticeAcceptance()
+                noticeAccepted = false
+            }
+        )
     }
 
     private var supertonic3Section: some View {
@@ -359,7 +380,16 @@ struct TTSLabView: View {
                         .lineLimit(3)
                 }
 
-                // Synthesize button
+                // Synthesize button (notice acceptance required — Round 254TTS-NOTICE)
+                if !noticeAccepted {
+                    Text("Supertonic 고지와 사용 제한을 확인해야 ONNX 합성을 실행할 수 있습니다.")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .padding(6)
+                        .background(Color.orange.opacity(0.08))
+                        .cornerRadius(4)
+                }
+
                 HStack {
                     Button {
                         runONNXSpike()
@@ -373,7 +403,7 @@ struct TTSLabView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(.orange)
-                    .disabled(spikeIsSynthesizing || !modelCheck.isAvailable || spikeInputText.isEmpty)
+                    .disabled(spikeIsSynthesizing || !modelCheck.isAvailable || spikeInputText.isEmpty || !noticeAccepted)
                     .font(.caption)
 
                     Spacer()

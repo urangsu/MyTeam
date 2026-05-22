@@ -1,5 +1,23 @@
 # TTS Provider Policy
 
+**Round 254TTS-NOTICE** — Supertonic license notice + use restriction UX gate.
+
+## Round 254TTS-NOTICE (2026-05-22)
+
+TTS Lab ONNX synthesis now gated behind notice acceptance:
+
+1. `SupertonicTTSNoticePolicy.swift` — notice version management, UserDefaults keys, accept/reset
+2. `SupertonicNoticeCardView.swift` — SwiftUI card shown in TTSLabView with license + use restrictions
+3. TTSLabView: `noticeAccepted` state, ONNX synth button `.disabled(...|| !noticeAccepted)`
+4. `TTSProductPolicy.licenseNoticeRequired = true`, `useRestrictionNoticeRequired = true`, `userNoticeAcceptanceRequired = true`
+5. `RuntimeDiagnosticsSnapshot` fields: 6 notice gate diagnostics
+6. `ToolContractValidator`: 4 Round 254 validators
+7. `scripts/preflight_round254tts_notice.sh`: 18/18 pass
+
+Release user-facing TTS remains locked (`userFacingTTSEnabled = false`).
+
+---
+
 **Round 253TTS** — Supertonic adoption gate.
 
 ---
