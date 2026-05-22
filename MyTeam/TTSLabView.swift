@@ -487,6 +487,7 @@ struct TTSLabView: View {
         case .disabled: return "⏸ 비활성화"
         case .missingModel: return "⚠️ 모델 없음"
         case .runtimeUnavailable: return "⚠️ Runtime 없음 (Mac 필요)"
+        case .noticeRequired: return "📋 고지 수락 필요"
         case .readyForInference: return "✅ 사용 가능"
         }
     }

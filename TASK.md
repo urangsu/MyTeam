@@ -67,6 +67,25 @@ MyTeam은 Mac 안에서 사용자의 자연어 요청을 받아, 문서/파일/�
 
 ### Now
 
+#### Round 254TTS-PROBE-FIX — 완료 (2026-05-23)
+
+Supertonic Probe Runtime Status 수정
+
+- `Supertonic3ONNXRuntimeProbe.swift` 추가 — ORTEnv 생성으로 runtime linked 여부 판단
+- `Supertonic3TTSProbe.run()` hardcoded `runtimeAvailable: false` 제거
+- stale "248TTS에서 SPM 추가 예정" 문구 제거
+- Probe가 실제 `Supertonic3ONNXRuntimeProbe.isRuntimeLinked` 반영
+- `Supertonic3Readiness` + `ONNXRuntimeAvailability` 에 `noticeRequired` case 추가
+- `Supertonic3ProbeRunResult` 에 `noticeAccepted: Bool` 추가
+- `canSynthesize`: enabled + model + runtimeLinked + noticeAccepted 모두 필요
+- `detailedLines` 에 `noticeAccepted` 포함
+- `TTSLabView.readinessBadge`: `noticeRequired` 케이스 추가
+- `scripts/preflight_round254tts_probe_fix.sh` — 13/13 PASS
+- Debug build: SUCCEEDED / Release build: SUCCEEDED
+- 브랜치: `cloud/round252-supertonic-license-lock`
+
+---
+
 #### Round 254TTS-NOTICE — 완료 (2026-05-22)
 
 Supertonic License Notice + Use Restriction UX Gate

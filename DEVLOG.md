@@ -6,6 +6,34 @@
 
 ---
 
+## 2026-05-23 (Round 254TTS-PROBE-FIX — Supertonic Probe Runtime Status 수정)
+
+### 완료 (2026-05-23)
+
+- Added `Supertonic3ONNXRuntimeProbe.swift` — lightweight ONNX Runtime binding probe
+  - `import OnnxRuntimeBindings` + `ORTEnv` 생성 시도로 runtime linked 여부 판단
+  - inference 없음, model session 생성 없음, launch 자동 호출 금지
+- Removed hardcoded `runtimeAvailable: false` from `Supertonic3TTSProbe.run()`
+- Removed stale "248TTS에서 onnxruntime-swift-package-manager SPM 추가 예정" note
+- `Supertonic3TTSProbe.run()` now uses `Supertonic3ONNXRuntimeProbe.isRuntimeLinked`
+- `Supertonic3TTSProbe.probe()` now uses `Supertonic3ONNXRuntimeProbe.isRuntimeLinked`
+- `Supertonic3Readiness` enum: added `noticeRequired` case
+- `ONNXRuntimeAvailability` enum: added `noticeRequired` case
+- `Supertonic3ProbeRunResult`: added `noticeAccepted: Bool` field
+- `canSynthesize`: now reflects enabled + model + runtimeLinked + noticeAccepted
+- `detailedLines` includes `noticeAccepted` line
+- `TTSLabView.readinessBadge`: added `noticeRequired` case ("📋 고지 수락 필요")
+- `preflight_round254tts_probe_fix.sh`: 13/13 PASS
+- Debug build: SUCCEEDED / Release build: SUCCEEDED
+- Probe output after fix:
+  `runtime: linked — ONNX Runtime linked. 실제 합성은 ONNX 합성 실행으로 검증 필요.`
+  `noticeAccepted: true/false`
+  `canSynthesize: true` (enabled + model + runtime + notice all satisfied)
+- Release TTS exposure: 계속 locked
+- Actual synthesis (inference): 별도 ONNX 합성 실행으로 검증 필요
+
+---
+
 ## 2026-05-22 (Round 254TTS-NOTICE — Supertonic License Notice + Use Restriction UX Gate)
 
 ### 완료 (2026-05-22)
