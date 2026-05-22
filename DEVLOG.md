@@ -25,6 +25,25 @@
 - No launch auto-init
 - Cloud static changes only; Mac build pending
 
+## 2026-05-22 (Round 254TTS-MAC-HANDOFF — Local Mac Build Verification Handoff)
+
+### 완료 (2026-05-22)
+
+- Created `scripts/local_round254tts_macverify.sh` (12-step local Mac verification script)
+  - Part 1: Static source code checks (8 checks, runs on any platform)
+  - Part 2: Mac build verification (4 checks, requires macOS + Xcode)
+  - Part 3: Runtime verification (manual, after app launch on Mac)
+- Created `docs/MacBuildHandoffRound254TTS.md` (complete handoff documentation)
+  - Implementation details of all cloud changes
+  - How to use the verification script
+  - Step-by-step instructions for local developer
+  - Expected behavior after implementation
+  - Troubleshooting guide
+  - Cloud verification results summary (18/18 PASS)
+- Cloud side: ✅ Complete (static checks + validators + diagnostics)
+- Mac side: 🔄 Pending local build and runtime verification
+- Handoff: 📋 Fully documented, ready for local Mac developer
+
 ## 2026-05-22 (Round 251TTS — Supertonic3 단독 후보 확정)
 
 ### 완료 (2026-05-22)

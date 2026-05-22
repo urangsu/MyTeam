@@ -85,6 +85,16 @@ Supertonic License Notice + Use Restriction UX Gate
 - launch auto-init 없음
 - Cloud static changes only; Mac build pending ⏳
 
+#### Round 254TTS-MAC-HANDOFF — 완료 (2026-05-22)
+
+Local Mac Build Verification Handoff
+
+- `scripts/local_round254tts_macverify.sh` 추가 — 12단계 Mac 로컬 검증 스크립트 (static + build + runtime)
+- `docs/MacBuildHandoffRound254TTS.md` 추가 — 상세 핸드오프 문서
+- Cloud ✅ static checks done (18/18 PASS)
+- Mac 🔄 build verification pending — local xcodebuild + manual runtime QA
+- Handoff 📋 fully documented for local developer
+
 #### Round 266A-CLOUD-VERIFY — 완료 (2026-05-21)
 
 AssistOnly Governance Cloud Static Verification + Mac Handoff Pack
