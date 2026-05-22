@@ -123,7 +123,8 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         switch TTSRoutingPolicy.selectedProvider() {
 
         case .supertonic3:
-            // Round 256TTS: 공식 엔진 경로. Lazy init — launch 시 자동 init 없음.
+            // Round 257TTS: 합성 결과를 AudioPlaybackService.playFloatSamples로 직접 재생.
+            // onPlaybackStarted는 playerNode.play() 이후 AudioPlaybackService가 호출 — 립싱크 원칙 준수.
             AppLog.info("[AICall] callType=tts provider=supertonic3 (official)")
             do {
                 let preset = SupertonicVoicePresetPolicy.preset(for: agentID)
@@ -135,7 +136,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                     totalSteps: Supertonic3TTSConfig.totalStep,
                     paths: paths
                 )
-                // Write WAV to Desktop (spike scope — playback integration pending)
+                // WAV 저장 — debug/lab 확인용 (재생과 무관)
                 if let wavPath = S3WavWriter.write(
                     samples: result.wavSamples,
                     sampleRate: result.sampleRate,
@@ -143,7 +144,14 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 ) {
                     AppLog.info("[SpeechManager] WAV written: \(wavPath)")
                 }
-                onPlaybackStarted()
+                // 실제 재생: playerNode.play() 이후 onPlaybackStarted 호출됨
+                await playback.playFloatSamples(
+                    samples: result.wavSamples,
+                    sampleRate: result.sampleRate,
+                    streamId: UUID().uuidString,
+                    characterName: characterName,
+                    onPlaybackStarted: onPlaybackStarted
+                )
             } catch {
                 AppLog.info("[SpeechManager] Supertonic3 synthesis failed: \(error) → silent")
                 onPlaybackStarted()
@@ -223,6 +231,53 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 onPlaybackStarted: {}
             )
             await MainActor.run { self.isSpeaking = false }
+        }
+    }
+
+    // MARK: - Round 257TTS-PLAYBACK: 합성 + 재생 단일 API
+
+    /// 단발성 TTS: 합성 → AudioPlaybackService 재생 → TTSOutput 반환.
+    /// SpeakButtonView 등 명시적 사용자 액션에서 호출. launch auto-init 없음.
+    /// - Returns: 합성+재생 성공 시 TTSOutput, 실패(라우팅 실패/합성 오류) 시 nil
+    func speakOnce(text: String, agentID: String? = nil) async -> TTSOutput? {
+        guard TTSRoutingPolicy.selectedProvider() == .supertonic3 else { return nil }
+        let preset = SupertonicVoicePresetPolicy.preset(for: agentID)
+        let paths = Supertonic3ONNXModelPaths.defaultPaths()
+        let charName: String = agentID.flatMap { id in
+            AgentWindowManager.shared.allAvailableAgents.first(where: { $0.id == id })?.name
+        } ?? "루나"
+        do {
+            let result = try await Supertonic3ONNXRunner.shared.synthesize(
+                text: text,
+                preset: preset,
+                lang: Supertonic3TTSConfig.selectedLanguage,
+                totalSteps: Supertonic3TTSConfig.totalStep,
+                paths: paths
+            )
+            // 재생 — playerNode.play() 이후 완료
+            await playback.playFloatSamples(
+                samples: result.wavSamples,
+                sampleRate: result.sampleRate,
+                streamId: UUID().uuidString,
+                characterName: charName,
+                onPlaybackStarted: nil
+            )
+            // WAV 저장 (debug/lab 확인용, 실패해도 재생에 영향 없음)
+            let wavPath = S3WavWriter.write(
+                samples: result.wavSamples,
+                sampleRate: result.sampleRate,
+                tag: "speakonce_\(preset)"
+            )
+            AppLog.info("[SpeechManager.speakOnce] ▶️ played preset=\(preset) frames=\(result.wavSamples.count)")
+            return TTSOutput(
+                audioFileURL: wavPath.map { URL(fileURLWithPath: $0) },
+                duration: result.durationSec,
+                sampleRate: result.sampleRate,
+                providerKind: .supertonic3
+            )
+        } catch {
+            AppLog.info("[SpeechManager.speakOnce] failed: \(error) → silent")
+            return nil
         }
     }
 

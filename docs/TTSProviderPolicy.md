@@ -2,6 +2,21 @@
 
 **Round 256TTS-OFFICIAL-ENGINE** — Supertonic3 공식 MyTeam TTS 엔진 승격.
 
+## Round 257TTS-PLAYBACK (2026-05-23)
+
+Supertonic3 합성 결과를 실제 스피커로 재생 연결.
+
+변경 사항:
+1. `AudioPlaybackService.playFloatSamples(samples:sampleRate:streamId:characterName:onPlaybackStarted:)` 추가
+2. `SpeechManager.speakOnce(text:agentID:)` 신규 — 합성 + 재생 단일 API
+3. `SpeechManager.dispatchToInferencePipeline` supertonic3 경로: `playFloatSamples` 호출
+4. `SpeakButtonView` — `speakOnce` 호출, 성공 시 `speaker.wave.2.fill`
+5. `scripts/preflight_round257tts_playback.sh` — 12/12 PASS
+
+자동 재생 기본 OFF, 폴백 없음, Apple TTS 없음 정책 유지.
+
+---
+
 ## Round 256TTS-OFFICIAL-ENGINE (2026-05-23)
 
 Supertonic3를 실험용 후보에서 공식 MyTeam TTS 엔진으로 승격.

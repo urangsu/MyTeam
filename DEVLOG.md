@@ -6,6 +6,42 @@
 
 ---
 
+## 2026-05-23 (Round 257TTS-PLAYBACK — 합성 결과 AudioPlaybackService 재생 연결)
+
+### 완료 (2026-05-23)
+
+- `AudioPlaybackService.playFloatSamples(samples:sampleRate:streamId:characterName:onPlaybackStarted:)` 추가
+  - `AVAudioFormat(standardFormatWithSampleRate:channels:1)` — float non-interleaved 소스 포맷
+  - `AVAudioPCMBuffer` 생성 + `floatChannelData[0].update(from:count:)` 샘플 복사
+  - `prepareSession(...)` → 노드 재연결 + `currentActiveStreamId` 설정
+  - `convertBuffer(...)` → 엔진 포맷(44.1kHz stereo 등)으로 변환
+  - `playerNode.scheduleBuffer(...)` → `engine.start()` → `playerNode.play()`
+  - `playerNode.play()` **이후** `onPlaybackStarted` 호출 (MainActor, 립싱크 원칙)
+- `SpeechManager.speakOnce(text:agentID:)` 신규
+  - 합성 → `playback.playFloatSamples(...)` → WAV 저장(debug) → `TTSOutput` 반환
+  - 실패 시 `nil` 반환
+- `SpeechManager.dispatchToInferencePipeline` supertonic3 경로 수정
+  - 기존: WAV 저장 후 `onPlaybackStarted()` 직접 호출
+  - 변경: WAV 저장(debug) + `await playback.playFloatSamples(..., onPlaybackStarted:)`
+- `AgentChatView.SpeakButtonView` (Round 257TTS-PLAYBACK)
+  - `synthesize()` → `speakOnce()` 교체
+  - `SpeechManager.shared.speakOnce(text:agentID:)` 호출
+  - 성공: `hasPlayed = true` → `speaker.wave.2.fill`
+  - 실패: `errorMessage` + 아이콘 빨간색 + help 텍스트 변경
+- `scripts/preflight_round257tts_playback.sh` — **12/12 PASS** ✅
+- `reports/round257tts_playback.md` 추가
+- `docs/TTSProviderPolicy.md` 업데이트
+
+### 정책 유지
+
+- 자동 재생 기본 OFF (`autoSpeakDefaultEnabled = false`)
+- Apple TTS 영구 차단
+- 폴백 TTS 없음
+- 앱 launch auto-init 없음
+- Runtime Manual QA (스피커 출력 확인) 필요
+
+---
+
 ## 2026-05-23 (Round 256TTS-OFFICIAL-ENGINE — Supertonic3 공식 엔진 승격)
 
 ### 완료 (2026-05-23)

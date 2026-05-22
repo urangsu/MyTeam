@@ -67,6 +67,24 @@ MyTeam은 Mac 안에서 사용자의 자연어 요청을 받아, 문서/파일/�
 
 ### Now
 
+#### Round 257TTS-PLAYBACK — 완료 (2026-05-23)
+
+Supertonic3 합성 결과 AudioPlaybackService 재생 연결
+
+- `AudioPlaybackService.playFloatSamples(...)` 신규 — Float 샘플 → AVAudioPCMBuffer → convertBuffer → playerNode.play()
+- `SpeechManager.speakOnce(text:agentID:)` 신규 — 합성 + 재생 단일 API
+- `dispatchToInferencePipeline` supertonic3 경로: S3WavWriter(debug) + `playback.playFloatSamples(onPlaybackStarted:)` 호출
+- `SpeakButtonView` — `speakOnce` 사용, 성공 `hasPlayed=true` → `speaker.wave.2.fill` 아이콘
+- `onPlaybackStarted` 타이밍: `playerNode.play()` 이후 (립싱크 원칙 준수)
+- `scripts/preflight_round257tts_playback.sh` — **12/12 PASS** ✅
+- `reports/round257tts_playback.md` 추가
+- `docs/TTSProviderPolicy.md` 업데이트
+- 자동 재생 OFF, 폴백 없음, Apple TTS 없음 정책 유지
+- Runtime Manual QA 필요 (스피커 출력, 프리셋 매핑, crash 없음 확인)
+- 브랜치: `cloud/round252-supertonic-license-lock`
+
+---
+
 #### Round 256TTS-OFFICIAL-ENGINE — 완료 (2026-05-23)
 
 Supertonic3 공식 MyTeam TTS 엔진 승격
