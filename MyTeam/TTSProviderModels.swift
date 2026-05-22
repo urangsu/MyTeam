@@ -17,48 +17,6 @@ enum TTSProviderKind: String, Codable, CaseIterable, Sendable {
     case supertonic3  // Supertonic3 ONNX, 유일한 후보, TTSLab 전용
 }
 
-// MARK: - TTSProductPolicy
-
-/// Supertonic3 제품 출시 gate.
-/// License gate는 통과 가능한 것으로 보고, 제품 출시는 품질/런타임/번들/릴리즈 gate로 제어한다.
-enum TTSProductPolicy {
-    static let userFacingTTSEnabled: Bool       = false  // 제품 기본 TTS 없음
-    static let supertonicOnlyCandidate: Bool    = true   // Supertonic 단독 후보
-    static let supertonicDefaultEnabled: Bool   = false  // 기본 비활성
-    static let supertonicAutoInitOnLaunch: Bool = false  // launch 자동 init 금지
-    static let modelBundled: Bool               = false  // 현재 repo/app bundle에는 모델 미포함
-    static let licenseVerified: Bool            = true   // OpenRAIL-M / MIT license evidence 확인
-    static let commercialUseAllowed: Bool       = true   // license 조건 준수 전제
-    static let modelRedistributionAllowed: Bool = true   // license notice 포함 전제
-    static let appBundleAllowed: Bool           = true   // bundle policy 승인 전제
-    static let fallbackTTSAvailable: Bool       = false  // 폴백 없음
-
-    // Round 254TTS-NOTICE: user notice acceptance required before lab synthesis
-    static let licenseNoticeRequired: Bool          = true
-    static let useRestrictionNoticeRequired: Bool   = true
-    static let userNoticeAcceptanceRequired: Bool   = true
-
-    static let koreanQualityAccepted: Bool      = false  // 수석님 음질 승인 전 false
-    static let localRuntimeVerified: Bool       = false  // Mac RTF/품질 실측 전 false
-    static let bundlePolicyAccepted: Bool       = false  // 실제 배포 방식 확정 전 false
-    static let releaseIntegrationApproved: Bool = false  // Release UX/고지/정책 반영 전 false
-
-    static var canShipAsProductFeature: Bool {
-        userFacingTTSEnabled &&
-        supertonicOnlyCandidate &&
-        licenseVerified &&
-        commercialUseAllowed &&
-        modelRedistributionAllowed &&
-        appBundleAllowed &&
-        koreanQualityAccepted &&
-        localRuntimeVerified &&
-        bundlePolicyAccepted &&
-        releaseIntegrationApproved &&
-        !supertonicAutoInitOnLaunch &&
-        !fallbackTTSAvailable
-    }
-}
-
 // MARK: - TTSProviderAvailability
 
 enum TTSProviderAvailability: String, Codable, Sendable {

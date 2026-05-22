@@ -3390,6 +3390,19 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>33EDF5FA35DC7782FF169FD1</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>SupertonicNoticeCardView.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
 		<key>340C38A7021B16F80AD20D18</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -6003,6 +6016,19 @@
 			<string>치코_confused_013.png</string>
 			<key>path</key>
 			<string>Resources/Sprites/치코/치코_confused_013.png</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>5A1C0A44C5F4FEF8122109B3</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>SupertonicTTSNoticePolicy.swift</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
@@ -8934,6 +8960,19 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>84398FD483899C65768B13BB</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>TTSProductPolicy.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
 		<key>845C7A639111D5B8F008857F</key>
 		<dict>
 			<key>fileRef</key>
@@ -11025,6 +11064,9 @@
 				<string>96DD751029D448A8A367BAD5</string>
 				<string>C4C3909DD99D4F8CB84327D9</string>
 				<string>B3A2C9D1E4F5060708090A0B</string>
+				<string>5A1C0A44C5F4FEF8122109B3</string>
+				<string>33EDF5FA35DC7782FF169FD1</string>
+				<string>84398FD483899C65768B13BB</string>
 			</array>
 			<key>isa</key>
 			<string>PBXGroup</string>
@@ -11448,6 +11490,9 @@
 				<string>6E6FC37A89764F9095E8D62B</string>
 				<string>3F4FD0A86C9E44DBA9CBDCE5</string>
 				<string>C4D5E6F7A8B9C0D1E2F30001</string>
+				<string>FEF0E47CE4482732D721E146</string>
+				<string>DC5F81771FFF28C034BC97EE</string>
+				<string>BB9EAC91B940467C08515E14</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -16149,6 +16194,13 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>BB9EAC91B940467C08515E14</key>
+		<dict>
+			<key>fileRef</key>
+			<string>84398FD483899C65768B13BB</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
 		<key>BBC3BC1185C00D6D85F5F1A1</key>
 		<dict>
 			<key>fileRef</key>
@@ -19963,6 +20015,13 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>DC5F81771FFF28C034BC97EE</key>
+		<dict>
+			<key>fileRef</key>
+			<string>33EDF5FA35DC7782FF169FD1</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
 		<key>DCFC38B53A14F02392E17141</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -23052,6 +23111,13 @@
 			<string>Resources/CharacterPhonemes/올리버_reference/ja/올리버_ja_manifest.json</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
+		</dict>
+		<key>FEF0E47CE4482732D721E146</key>
+		<dict>
+			<key>fileRef</key>
+			<string>5A1C0A44C5F4FEF8122109B3</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
 		</dict>
 		<key>FF199F6C1BA3F6C5F6DB48BF</key>
 		<dict>

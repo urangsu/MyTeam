@@ -20,12 +20,12 @@ FAIL_COUNT=0
 
 check_pass() {
     echo -e "${GREEN}✅ PASS${NC}: $1"
-    ((PASS_COUNT++))
+    PASS_COUNT=$((PASS_COUNT + 1))
 }
 
 check_fail() {
     echo -e "${RED}❌ FAIL${NC}: $1"
-    ((FAIL_COUNT++))
+    FAIL_COUNT=$((FAIL_COUNT + 1))
 }
 
 check_warn() {
