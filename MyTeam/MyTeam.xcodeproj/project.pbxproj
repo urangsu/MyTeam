@@ -7110,6 +7110,19 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>68ACEE63E7ABABF7546ACAED</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>SupertonicVoicePresetPolicy.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
 		<key>695418579A8BE8841B18E4A6</key>
 		<dict>
 			<key>fileRef</key>
@@ -11081,6 +11094,7 @@
 				<string>33EDF5FA35DC7782FF169FD1</string>
 				<string>84398FD483899C65768B13BB</string>
 				<string>25D185747AA34F44FB45A317</string>
+				<string>68ACEE63E7ABABF7546ACAED</string>
 			</array>
 			<key>isa</key>
 			<string>PBXGroup</string>
@@ -11508,6 +11522,7 @@
 				<string>DC5F81771FFF28C034BC97EE</string>
 				<string>BB9EAC91B940467C08515E14</string>
 				<string>A2FAC00690AED725FB48DB70</string>
+				<string>9BBF1A37FD6318EA8507988F</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -13164,6 +13179,13 @@
 			<string>StarterAction.swift</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
+		</dict>
+		<key>9BBF1A37FD6318EA8507988F</key>
+		<dict>
+			<key>fileRef</key>
+			<string>68ACEE63E7ABABF7546ACAED</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
 		</dict>
 		<key>9BC74BD0B69E037F2EB69C86</key>
 		<dict>

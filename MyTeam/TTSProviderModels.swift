@@ -25,6 +25,8 @@ enum TTSProviderAvailability: String, Codable, Sendable {
     case missingModel        // 로컬 모델 파일 없음
     case releaseGateLocked   // License는 가능하나 품질/런타임/릴리즈 gate 전
     case runtimeUnavailable  // ONNX Runtime 미탑재
+    case noticeRequired      // Runtime linked but notice not accepted
+    case runtimeReady        // Runtime linked, model ready, notice accepted
 }
 
 // MARK: - TTSProviderStatus

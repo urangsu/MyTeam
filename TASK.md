@@ -67,6 +67,28 @@ MyTeam은 Mac 안에서 사용자의 자연어 요청을 받아, 문서/파일/�
 
 ### Now
 
+#### Round 256TTS-OFFICIAL-ENGINE — 완료 (2026-05-23)
+
+Supertonic3 공식 MyTeam TTS 엔진 승격
+
+- `SupertonicVoicePresetPolicy.swift` 추가 — 11개 에이전트 → 보이스 프리셋 매핑
+- `TTSProductPolicy.officialEngineEnabled = true`, `officialEngine = .supertonic3`
+- `TTSProductPolicy.autoSpeakDefaultEnabled = false` — 자동 재생 기본 OFF
+- `TTSRoutingPolicy.isSupertonic3Available` computed property 추가
+- `SpeechManager.synthesize(text:agentID:)` 공개 API — ONNXRunner 직접 호출
+- `AgentChatView` — `SpeakButtonView` 추가 (말하기 버튼, 비활성화 시 숨김)
+- `TTSLabView` — `officialEngineStatusSection` 추가
+- `RuntimeDiagnosticsService` — 256TTS 필드 10개 추가
+- `ToolContractValidator` — Round 256TTS validators 6개 추가 (호출 + 구현)
+- `scripts/preflight_round256tts_official_engine.sh` — **18/18 PASS** ✅
+- `reports/round256tts_official_engine.md` 추가
+- `docs/TTSProviderPolicy.md` 업데이트 ("candidate" → "공식 엔진")
+- Apple TTS 차단 유지, 폴백 없음, launch auto-init 없음
+- bundle/release gate는 다음 라운드에서 결정
+- 브랜치: `cloud/round252-supertonic-license-lock`
+
+---
+
 #### Round 254TTS-PROBE-FIX — 완료 (2026-05-23)
 
 Supertonic Probe Runtime Status 수정

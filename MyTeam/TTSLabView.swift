@@ -47,6 +47,7 @@ struct TTSLabView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 headerSection
+                officialEngineStatusSection
                 supertonicNoticeSection
                 supertonic3Section
                 onnxSpikeSection
@@ -67,11 +68,82 @@ struct TTSLabView: View {
 
     // MARK: - Sections
 
+    // MARK: - Official Engine Status (Round 256TTS-OFFICIAL-ENGINE)
+
+    private var officialEngineStatusSection: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .foregroundStyle(.green)
+                    Text("공식 TTS 엔진")
+                        .font(.headline)
+                    Spacer()
+                    Text("Supertonic3")
+                        .font(.caption.bold())
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .background(Color.green.opacity(0.12))
+                        .cornerRadius(5)
+                }
+                Divider()
+                let routing = TTSRoutingPolicy.availabilitySummary()[.supertonic3]
+                let isReady = TTSRoutingPolicy.isSupertonic3Available
+                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
+                    GridRow {
+                        Text("공식 엔진").font(.caption).foregroundStyle(.secondary)
+                        Text("Supertonic3").font(.caption.bold())
+                    }
+                    GridRow {
+                        Text("자동 재생 기본값").font(.caption).foregroundStyle(.secondary)
+                        Text("꺼짐").font(.caption).foregroundStyle(.orange)
+                    }
+                    GridRow {
+                        Text("캐릭터 말하기").font(.caption).foregroundStyle(.secondary)
+                        Text(TTSProductPolicy.characterVoiceEnabled ? "사용 가능" : "비활성").font(.caption)
+                    }
+                    GridRow {
+                        Text("fallback").font(.caption).foregroundStyle(.secondary)
+                        Text("없음").font(.caption).foregroundStyle(.secondary)
+                    }
+                    GridRow {
+                        Text("현재 preset").font(.caption).foregroundStyle(.secondary)
+                        Text(selectedPreset).font(.system(.caption, design: .monospaced))
+                    }
+                    GridRow {
+                        Text("모델").font(.caption).foregroundStyle(.secondary)
+                        Text(modelCheck.isAvailable ? "ready (\(modelCheck.totalFoundSizeBytes / 1_048_576) MB)" : "없음")
+                            .font(.caption)
+                            .foregroundStyle(modelCheck.isAvailable ? .green : .red)
+                    }
+                    GridRow {
+                        Text("runtime").font(.caption).foregroundStyle(.secondary)
+                        Text(Supertonic3ONNXRuntimeProbe.isRuntimeLinked ? "linked" : "미탑재")
+                            .font(.caption)
+                            .foregroundStyle(Supertonic3ONNXRuntimeProbe.isRuntimeLinked ? .green : .red)
+                    }
+                    GridRow {
+                        Text("notice").font(.caption).foregroundStyle(.secondary)
+                        Text(noticeAccepted ? "accepted" : "미수락")
+                            .font(.caption)
+                            .foregroundStyle(noticeAccepted ? .green : .orange)
+                    }
+                    GridRow {
+                        Text("routing").font(.caption).foregroundStyle(.secondary)
+                        Text(isReady ? "✅ supertonic3" : "⏸ \(routing?.rawValue ?? "unavailable")")
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(isReady ? .green : .orange)
+                    }
+                }
+            }
+            .padding(4)
+        }
+    }
+
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 4) {
             Label("TTS 실험실 (Developer Only)", systemImage: "waveform")
                 .font(.title2.bold())
-            Text("실험용 TTS provider 설정. 기본 비활성화. 운영 환경에서 사용 금지.")
+            Text("Supertonic3 공식 TTS 엔진. 자동 재생 기본 OFF. 수동 말하기만 허용.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Divider()

@@ -1,5 +1,30 @@
 # TTS Provider Policy
 
+**Round 256TTS-OFFICIAL-ENGINE** — Supertonic3 공식 MyTeam TTS 엔진 승격.
+
+## Round 256TTS-OFFICIAL-ENGINE (2026-05-23)
+
+Supertonic3를 실험용 후보에서 공식 MyTeam TTS 엔진으로 승격.
+
+변경 사항:
+1. `TTSProductPolicy.officialEngineEnabled = true`, `officialEngine = .supertonic3`
+2. `SupertonicVoicePresetPolicy.swift` — 11개 캐릭터 → 보이스 프리셋 매핑
+3. `SpeechManager.synthesize(text:agentID:)` — 공개 API, ONNXRunner 직접 호출
+4. `AgentChatView` — `SpeakButtonView` 추가 (말하기 버튼, 기본 OFF)
+5. `TTSRoutingPolicy.isSupertonic3Available` — computed property 추가
+6. `RuntimeDiagnosticsSnapshot` 10개 필드 추가
+7. `ToolContractValidator` 6개 validators 추가
+8. `scripts/preflight_round256tts_official_engine.sh` — 18/18 PASS
+
+핵심 정책:
+- 자동 재생 기본 OFF (`autoSpeakDefaultEnabled = false`)
+- 폴백 TTS 없음 (`fallbackTTSAvailable = false`)
+- Apple TTS 절대 금지 (폴백 포함)
+- 앱 launch auto-init 금지
+- ONNX 파일 bundle 여부는 다음 gate에서 결정
+
+---
+
 **Round 254TTS-NOTICE** — Supertonic license notice + use restriction UX gate.
 
 ## Round 254TTS-NOTICE (2026-05-22)
@@ -36,13 +61,13 @@ If Supertonic fails quality, runtime, bundle, or release UX gates, MyTeam v1 shi
 
 ---
 
-## Candidate
+## Official Engine (Round 256TTS~)
 
 | Item | Value |
 |---|---|
 | Provider | Supertonic3 |
-| Scope now | TTS Lab / experimental validation |
-| Scope next | Product adoption candidate |
+| Scope now | 공식 MyTeam TTS 엔진 (사용자 활성화 필요) |
+| Scope next | bundle/release gate 통과 시 기본 활성화 |
 | Release default | disabled until release UX is approved |
 | Model bundle | allowed only with license notice and distribution policy |
 | Launch auto-init | prohibited |

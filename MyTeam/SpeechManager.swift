@@ -115,24 +115,42 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
     private func dispatchToInferencePipeline(
         text: String,
         characterName: String,
+        agentID: String? = nil,
         onPlaybackStarted: @escaping @Sendable () -> Void
     ) async {
-        // ── TTSRoutingPolicy 기반 provider 선택 (Round 247TTS) ──
+        // ── TTSRoutingPolicy 기반 provider 선택 (Round 256TTS-OFFICIAL-ENGINE) ──
         // Apple TTS (AVSpeechSynthesizer)는 이 switch에 없음 — 프로젝트 정책: 절대 금지.
         switch TTSRoutingPolicy.selectedProvider() {
 
         case .supertonic3:
-            // Cloud 환경: missingRuntime → 무음. Mac 248TTS 이후: 실제 inference.
-            AppLog.info("[AICall] callType=tts provider=supertonic3 (skeleton, Cloud: silent)")
+            // Round 256TTS: 공식 엔진 경로. Lazy init — launch 시 자동 init 없음.
+            AppLog.info("[AICall] callType=tts provider=supertonic3 (official)")
             do {
-                _ = try await Supertonic3TTSProvider.shared.synthesize(text: text)
+                let preset = SupertonicVoicePresetPolicy.preset(for: agentID)
+                let paths = Supertonic3ONNXModelPaths.defaultPaths()
+                let result = try await Supertonic3ONNXRunner.shared.synthesize(
+                    text: text,
+                    preset: preset,
+                    lang: Supertonic3TTSConfig.selectedLanguage,
+                    totalSteps: Supertonic3TTSConfig.totalStep,
+                    paths: paths
+                )
+                // Write WAV to Desktop (spike scope — playback integration pending)
+                if let wavPath = S3WavWriter.write(
+                    samples: result.wavSamples,
+                    sampleRate: result.sampleRate,
+                    tag: "official_\(preset)"
+                ) {
+                    AppLog.info("[SpeechManager] WAV written: \(wavPath)")
+                }
+                onPlaybackStarted()
             } catch {
-                AppLog.info("[SpeechManager] Supertonic3 unavailable: \(error) → silent")
+                AppLog.info("[SpeechManager] Supertonic3 synthesis failed: \(error) → silent")
+                onPlaybackStarted()
             }
-            onPlaybackStarted()
 
         case .none:
-            // 무음 — provider 없음. Apple TTS 폴백 없음.
+            // 무음 — provider 없음 또는 조건 미충족. Apple TTS 폴백 없음.
             AppLog.info("[AICall] callType=tts skipped (noProvider → silent)")
             onPlaybackStarted()
         }
@@ -196,10 +214,46 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         DispatchQueue.main.async { self.isSpeaking = true }
 
         currentStreamTask = Task {
-            // TTS 없음 — Supertonic3 gate 미통과 시 무음.
-            // Apple TTS 폴백 없음.
-            AppLog.info("[AICall] callType=tts speak() → silent (no provider)")
+            // Round 256TTS-OFFICIAL-ENGINE: Supertonic3 공식 경로 사용.
+            // Apple TTS 폴백 없음. provider 없으면 무음.
+            await dispatchToInferencePipeline(
+                text: text,
+                characterName: character,
+                agentID: agentID,
+                onPlaybackStarted: {}
+            )
             await MainActor.run { self.isSpeaking = false }
+        }
+    }
+
+    /// 단발성 공식 TTS 합성. 반환값: WAV 파일 경로 (nil=무음 또는 실패).
+    /// 호출 시점에만 Supertonic3ONNXRunner.shared.synthesize 실행. launch auto-init 없음.
+    func synthesize(text: String, agentID: String? = nil) async -> TTSOutput? {
+        guard TTSRoutingPolicy.selectedProvider() == .supertonic3 else { return nil }
+        let preset = SupertonicVoicePresetPolicy.preset(for: agentID)
+        let paths = Supertonic3ONNXModelPaths.defaultPaths()
+        do {
+            let result = try await Supertonic3ONNXRunner.shared.synthesize(
+                text: text,
+                preset: preset,
+                lang: Supertonic3TTSConfig.selectedLanguage,
+                totalSteps: Supertonic3TTSConfig.totalStep,
+                paths: paths
+            )
+            guard let wavPath = S3WavWriter.write(
+                samples: result.wavSamples,
+                sampleRate: result.sampleRate,
+                tag: "manual_\(preset)"
+            ) else { return nil }
+            return TTSOutput(
+                audioFileURL: URL(fileURLWithPath: wavPath),
+                duration: result.durationSec,
+                sampleRate: result.sampleRate,
+                providerKind: .supertonic3
+            )
+        } catch {
+            AppLog.info("[SpeechManager.synthesize] failed: \(error)")
+            return nil
         }
     }
 

@@ -746,6 +746,16 @@ struct AgentChatView: View {
                 .offset(x: -4, y: 0)
                 .transition(.scale.combined(with: .opacity))
             }
+
+            // 말하기 버튼 (Round 256TTS-OFFICIAL-ENGINE) — 비편집 모드, 비사용자 메시지만
+            if !isEditingMessages && !log.isUser && !log.text.isEmpty {
+                SpeakButtonView(
+                    text: log.text,
+                    agentID: log.agentID
+                )
+                .offset(x: 0, y: -2)
+                .transition(.opacity)
+            }
         }
         .padding(.vertical, 2)
     }
@@ -1176,6 +1186,59 @@ struct AgentChatView: View {
                         manager.typingAgentIDs.remove(targetID)
                         manager.addChatLog(roomID: roomID, agentID: "system", agentName: "시스템", text: error.localizedDescription, isUser: false)
                     }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - SpeakButtonView (Round 256TTS-OFFICIAL-ENGINE)
+/// 작은 말하기 버튼 — 비사용자 메시지에 오버레이. 클릭 시 Supertonic3 합성 실행.
+/// 자동 재생 없음 — 사용자 명시 클릭 시만 동작.
+private struct SpeakButtonView: View {
+    let text: String
+    let agentID: String?
+
+    @State private var isSynthesizing: Bool = false
+    @State private var lastWavPath: String? = nil
+    @State private var errorMessage: String? = nil
+
+    private var isAvailable: Bool {
+        TTSRoutingPolicy.isSupertonic3Available
+    }
+
+    var body: some View {
+        HStack(spacing: 3) {
+            if isSynthesizing {
+                ProgressView()
+                    .scaleEffect(0.55)
+                    .frame(width: 14, height: 14)
+            } else {
+                Button {
+                    synthesize()
+                } label: {
+                    Image(systemName: lastWavPath != nil ? "speaker.wave.2.fill" : "speaker.wave.2")
+                        .font(.system(size: 11))
+                        .foregroundStyle(isAvailable ? Color.accentColor.opacity(0.7) : Color.secondary.opacity(0.4))
+                }
+                .buttonStyle(.plain)
+                .disabled(!isAvailable || isSynthesizing)
+                .help(isAvailable ? "말하기 (Supertonic3)" : "TTS 미사용 가능 — 모델·고지·활성화 확인 필요")
+            }
+        }
+        .padding(3)
+    }
+
+    private func synthesize() {
+        isSynthesizing = true
+        errorMessage = nil
+        Task {
+            let output = await SpeechManager.shared.synthesize(text: text, agentID: agentID)
+            await MainActor.run {
+                isSynthesizing = false
+                lastWavPath = output?.audioFileURL?.path
+                if output == nil {
+                    errorMessage = "합성 실패 또는 TTS 미설정"
                 }
             }
         }

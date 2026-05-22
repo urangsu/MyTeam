@@ -6,6 +6,48 @@
 
 ---
 
+## 2026-05-23 (Round 256TTS-OFFICIAL-ENGINE — Supertonic3 공식 엔진 승격)
+
+### 완료 (2026-05-23)
+
+- `TTSProductPolicy.officialEngineEnabled = true`, `officialEngine = .supertonic3`
+- `TTSProductPolicy.autoSpeakDefaultEnabled = false` — 자동 재생 기본 OFF
+- `TTSProductPolicy.fallbackTTSAvailable = false` — 폴백 TTS 없음 (이전과 동일)
+- `SupertonicVoicePresetPolicy.swift` 신규 — 11개 에이전트 ID → M/F 프리셋 매핑
+- `TTSRoutingPolicy.isSupertonic3Available` computed property 추가
+- `SpeechManager.synthesize(text:agentID:)` 공개 async API 추가
+  - `TTSRoutingPolicy.selectedProvider() == .supertonic3` gate
+  - `SupertonicVoicePresetPolicy.preset(for: agentID)` 으로 캐릭터별 프리셋
+  - `Supertonic3ONNXRunner.shared.synthesize(...)` 직접 호출
+  - `S3WavWriter.write(...)` 로 WAV Desktop 저장
+- `AgentChatView.SpeakButtonView` — 비-사용자 메시지 버블에 말하기(🔊) 버튼
+  - `TTSRoutingPolicy.isSupertonic3Available` false 시 비활성
+  - `isSynthesizing` 중 비활성
+  - 결과: `lastWavPath` 로컬 표시
+- `TTSLabView.officialEngineStatusSection` — 공식 엔진 상태 Grid 섹션
+- `RuntimeDiagnosticsService` 256TTS 필드 10개 추가
+- `ToolContractValidator` Round 256TTS validators 6개 구현
+  - `validateSupertonicOfficialEnginePolicy`
+  - `validateNoFallbackTTSAfterOfficialEngine`
+  - `validateNoAutoSpeakDefaultPolicy`
+  - `validateSupertonicCharacterVoicePresetPolicy` — 11 agent 매핑 검증
+  - `validateNoAppleTTSAfterOfficialEngine`
+  - `validateNoLaunchAutoInitAfterOfficialEngine`
+- `scripts/preflight_round256tts_official_engine.sh` — **18/18 PASS** ✅
+- `reports/round256tts_official_engine.md` 추가
+- `docs/TTSProviderPolicy.md` 업데이트 — 공식 엔진 섹션 추가, "Candidate" → "Official Engine"
+
+### 정책 결정
+
+- 모든 메시지 자동 재생: **기본 OFF** — 사용자가 말하기 버튼을 눌러야 합성 시작
+- Apple TTS: **영구 차단** (폴백 포함)
+- 폴백 TTS: **없음**
+- 앱 launch auto-init: **금지**
+- ONNX 파일 bundle 여부: **다음 gate에서 결정** (bundlePolicyAccepted=false)
+- release 통합 승인: **다음 gate에서 결정** (releaseIntegrationApproved=false)
+
+---
+
 ## 2026-05-23 (Round 254TTS-PROBE-FIX — Supertonic Probe Runtime Status 수정)
 
 ### 완료 (2026-05-23)

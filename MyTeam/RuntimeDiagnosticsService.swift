@@ -565,6 +565,18 @@ struct RuntimeDiagnosticsSnapshot {
     let supertonicNoticeAccepted: Bool                 // SupertonicTTSNoticePolicy.isCurrentNoticeAccepted
     let supertonicReleaseGateStillLocked: Bool         // !TTSProductPolicy.canShipAsProductFeature
 
+    // Round 256TTS-OFFICIAL-ENGINE: Supertonic3 공식 엔진 승격
+    let ttsOfficialEngine: String                           // "supertonic3"
+    let ttsOfficialEngineEnabled: Bool                      // TTSProductPolicy.officialEngineEnabled
+    let ttsAutoSpeakDefaultEnabled: Bool                    // TTSProductPolicy.autoSpeakDefaultEnabled (must be false)
+    let ttsCharacterVoiceEnabled: Bool                      // TTSProductPolicy.characterVoiceEnabled
+    let ttsAgentVoiceEnabled: Bool                          // TTSProductPolicy.agentVoiceEnabled
+    let ttsFallbackAvailableAfterOfficial: Bool             // must be false
+    let supertonicKoreanQualityConditionalPass: Bool        // koreanQualityAccepted (conditional)
+    let supertonicLocalRuntimeSynthesisVerified: Bool       // localRuntimeVerified (local synthesis passed)
+    let supertonicReleaseIntegrationApproved: Bool          // releaseIntegrationApproved (still false)
+    let supertonicBundlePolicyAccepted: Bool                // bundlePolicyAccepted (still false)
+
     // Round 249TTS-SPIKE: Supertonic3 ONNX Swift feasibility
     let supertonicONNXSpikeAvailable: Bool          // Supertonic3ONNXRunner.swift exists
     let supertonicONNXAutoInitOnLaunch: Bool         // must be false (no init on launch)
@@ -1098,6 +1110,18 @@ final class RuntimeDiagnosticsService {
         let supertonicNoticeAccepted = SupertonicTTSNoticePolicy.isCurrentNoticeAccepted
         let supertonicReleaseGateStillLocked = !TTSProductPolicy.canShipAsProductFeature
 
+        // Round 256TTS-OFFICIAL-ENGINE: Supertonic3 공식 엔진 승격
+        let ttsOfficialEngine = TTSProductPolicy.officialEngine.rawValue
+        let ttsOfficialEngineEnabled = TTSProductPolicy.officialEngineEnabled
+        let ttsAutoSpeakDefaultEnabled = TTSProductPolicy.autoSpeakDefaultEnabled
+        let ttsCharacterVoiceEnabled = TTSProductPolicy.characterVoiceEnabled
+        let ttsAgentVoiceEnabled = TTSProductPolicy.agentVoiceEnabled
+        let ttsFallbackAvailableAfterOfficial = TTSProductPolicy.fallbackTTSAvailable
+        let supertonicKoreanQualityConditionalPass = TTSProductPolicy.koreanQualityAccepted
+        let supertonicLocalRuntimeSynthesisVerified = TTSProductPolicy.localRuntimeVerified
+        let supertonicReleaseIntegrationApproved = TTSProductPolicy.releaseIntegrationApproved
+        let supertonicBundlePolicyAccepted = TTSProductPolicy.bundlePolicyAccepted
+
         // Round 249TTS-SPIKE: Supertonic3 ONNX Swift feasibility
         let supertonicONNXSpikeAvailable = FileManager.default.fileExists(
             atPath: "MyTeam/Supertonic3ONNXRunner.swift"
@@ -1613,6 +1637,16 @@ final class RuntimeDiagnosticsService {
             supertonicNoticeAcceptanceRequired: supertonicNoticeAcceptanceRequired,
             supertonicNoticeAccepted: supertonicNoticeAccepted,
             supertonicReleaseGateStillLocked: supertonicReleaseGateStillLocked,
+            ttsOfficialEngine: ttsOfficialEngine,
+            ttsOfficialEngineEnabled: ttsOfficialEngineEnabled,
+            ttsAutoSpeakDefaultEnabled: ttsAutoSpeakDefaultEnabled,
+            ttsCharacterVoiceEnabled: ttsCharacterVoiceEnabled,
+            ttsAgentVoiceEnabled: ttsAgentVoiceEnabled,
+            ttsFallbackAvailableAfterOfficial: ttsFallbackAvailableAfterOfficial,
+            supertonicKoreanQualityConditionalPass: supertonicKoreanQualityConditionalPass,
+            supertonicLocalRuntimeSynthesisVerified: supertonicLocalRuntimeSynthesisVerified,
+            supertonicReleaseIntegrationApproved: supertonicReleaseIntegrationApproved,
+            supertonicBundlePolicyAccepted: supertonicBundlePolicyAccepted,
             supertonicONNXSpikeAvailable: supertonicONNXSpikeAvailable,
             supertonicONNXAutoInitOnLaunch: supertonicONNXAutoInitOnLaunch,
             supertonicONNXModelBundled: supertonicONNXModelBundled,
