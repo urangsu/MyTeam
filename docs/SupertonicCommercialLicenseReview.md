@@ -20,23 +20,33 @@ MyTeam must not claim product readiness, commercial readiness, App Store readine
 
 If Supertonic fails quality, runtime, license, bundle, or release gates, MyTeam v1 ships without TTS.
 
-## Verified Inputs To Review
+## Verified Upstream Facts
 
-The upstream public materials indicate that SupertonicTTS is a research/demo TTS system and that the local integration uses the Supertonic3 ONNX model files. The MyTeam repository must treat upstream license details as compliance inputs, not as automatic product approval.
+The public Hugging Face model page for `Supertone/supertonic-3` states the following facts:
+
+- The model page license badge is `openrail`.
+- The project sample code is released under the MIT License.
+- The accompanying model is released under the OpenRAIL-M License.
+- The model is designed for local ONNX Runtime inference without cloud synthesis calls.
+- The model card describes supported Korean output and lists Korean among the supported languages.
+
+These facts are evidence inputs for review. They do not automatically approve MyTeam product release, App Store distribution, model bundling, attribution handling, or restricted-use compliance.
 
 ## Required Before Product Use
 
 Before Supertonic can become a release feature, all of the following must be documented:
 
-1. Official LICENSE file or model card terms for the exact model files used by MyTeam.
-2. Commercial use permission.
+1. Exact official LICENSE file or model card revision used by MyTeam.
+2. Commercial use interpretation for MyTeam's intended app use case.
 3. Weight/model redistribution permission.
 4. App bundle distribution permission.
 5. Attribution requirements.
 6. Prohibited-use or acceptable-use restrictions.
-7. Any generated-audio restrictions.
+7. Generated-audio restrictions, if any.
 8. App Store distribution compatibility.
 9. Internal approval that MyTeam can satisfy the license obligations in product UX/docs.
+10. Korean quality acceptance by the product owner.
+11. Local Mac runtime benchmark results.
 
 ## Product Gate
 
@@ -67,6 +77,7 @@ Current state: all product gates remain false.
 - Local user-selected model directory.
 - Runtime and quality measurement.
 - Documentation of benchmark results.
+- License evidence collection.
 
 ## Final Policy
 
