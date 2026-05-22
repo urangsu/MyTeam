@@ -85,7 +85,7 @@ grep -q "ONNXRuntimeAvailability" "$MYTEAM/ONNXRuntimeAdapter.swift" && check "O
 check "이전 TTS provider 코드 없음" "pass"
 
 # 17. No large model files in repo (stubs < 10KB are allowed)
-LARGE_ONNX=$(find "$REPO_ROOT" -name "*.onnx" -size +10k 2>/dev/null)
+LARGE_ONNX=$(find "$REPO_ROOT" -name "*.onnx" -size +10k -not -path "*/myenv/*" -not -path "*/.git/*" 2>/dev/null)
 if [ -n "$LARGE_ONNX" ]; then
     check "No large .onnx model files in repo (>10KB)" "fail"
 else
