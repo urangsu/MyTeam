@@ -45,6 +45,18 @@ struct TTSLabView: View {
     // MARK: - Round 260B: Expression Tags State
     @State private var expressionTagSpeakingID: String? = nil
 
+    // MARK: - Round 261TTS: Speed Probe State
+    @State private var speedProbeText: String = "안녕하세요. 오늘도 같이 작업해봐요."
+    @State private var speedProbeResults: [SupertonicSpeedProbeResult] = []
+    @State private var speedProbeRunning: Bool = false
+
+    // MARK: - Round 261TTS: Animalese State
+    @State private var animaleseText: String = "안녕하세요! 오늘도 같이 해봐요!"
+    @State private var animaleseProfile: AnimaleseVoiceProfile = .cute
+    @State private var animaleseSpeed: Double = 1.0
+    @State private var animalesePitchOffset: Double = 0.0
+    @State private var animalesePlaying: Bool = false
+
     // MARK: - ONNX Spike State (Round 249TTS)
     @State private var spikeInputText: String = "안녕하세요. 테스트입니다."
     @State private var spikeSynthesisResult: Supertonic3SynthesisResult? = nil
@@ -66,6 +78,8 @@ struct TTSLabView: View {
                 officialEngineStatusSection
                 supertonicNoticeSection
                 voiceDirectorSection
+                speedProbeSection
+                animaleseSection
                 supertonic3Section
                 onnxSpikeSection
                 policyNoticeSection
@@ -833,6 +847,33 @@ struct TTSLabView: View {
         .disabled(isDisabled)
     }
 
+    // MARK: - Round 261TTS Helpers
+
+    @ViewBuilder
+    private func speedProbeRow(_ r: SupertonicSpeedProbeResult, results: [SupertonicSpeedProbeResult]) -> some View {
+        let idx = results.firstIndex(where: { $0.id == r.id }) ?? 0
+        let prevDuration: Double? = idx > 0 ? results[idx - 1].durationSec : nil
+        let shrinking: Bool = prevDuration.map { r.durationSec < $0 } ?? true
+        HStack {
+            Text(r.verdictLabel)
+                .font(.caption.monospaced())
+                .frame(width: 50)
+            Text(r.durationDisplay)
+                .font(.caption.monospaced())
+                .frame(width: 60)
+            Text("\(r.sampleCount)")
+                .font(.caption.monospaced())
+                .frame(width: 65)
+            Text(r.rtfDisplay)
+                .font(.caption.monospaced())
+                .frame(width: 45)
+            Text(idx == 0 ? "—" : (shrinking ? "✅ 감소" : "❌ 의심"))
+                .font(.caption2)
+                .foregroundStyle(idx == 0 ? Color.secondary : (shrinking ? Color.green : Color.orange))
+                .frame(width: 55)
+        }
+    }
+
     private func speakVoiceDirectorSample(text: String, agentID: String?, speakID: String) {
         guard voiceDirectorSpeakingID == nil else { return }
         voiceDirectorSpeakingID = speakID
@@ -845,6 +886,194 @@ struct TTSLabView: View {
                     voiceDirectorError = "재생 실패 — TTS 미설정 또는 모델 없음"
                 }
             }
+        }
+    }
+
+    // MARK: - Round 261TTS: Speed Probe Section
+
+    private var speedProbeSection: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                // Header
+                HStack {
+                    Image(systemName: "speedometer")
+                        .foregroundStyle(.orange)
+                        .font(.caption)
+                    Text("Speed 적용 계측")
+                        .font(.subheadline.bold())
+                }
+
+                Text("귀로 느끼기 어려운 경우 durationSec으로 speed 적용 여부를 확인합니다.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Text("기대: S 0.70 > S 1.00 > S 1.30 > S 2.00 (duration 감소)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                // 테스트 문장
+                HStack {
+                    Text("문장").font(.caption2).foregroundStyle(.secondary).frame(width: 36, alignment: .leading)
+                    TextField("계측 문장", text: $speedProbeText)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.caption)
+                }
+
+                // Preset 표시
+                HStack {
+                    Text("Preset").font(.caption2).foregroundStyle(.secondary).frame(width: 36, alignment: .leading)
+                    Text(selectedPreset).font(.caption.monospaced()).foregroundStyle(.primary)
+                    Text("(보이스 디렉터 선택값 사용)").font(.caption2).foregroundStyle(.tertiary)
+                }
+
+                // 계측 버튼
+                Button {
+                    guard !speedProbeRunning else { return }
+                    speedProbeRunning = true
+                    speedProbeResults = []
+                    Task {
+                        let results = await SpeechManager.shared.probeSpeedApplication(
+                            text: speedProbeText,
+                            preset: selectedPreset
+                        )
+                        await MainActor.run {
+                            speedProbeResults = results
+                            speedProbeRunning = false
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        if speedProbeRunning {
+                            ProgressView().scaleEffect(0.6)
+                        } else {
+                            Image(systemName: "chart.xyaxis.line")
+                        }
+                        Text(speedProbeRunning ? "계측 중..." : "S 0.70 / 1.00 / 1.30 / 2.00 계측")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled(speedProbeRunning)
+
+                // 결과 표
+                if !speedProbeResults.isEmpty {
+                    Divider()
+
+                    // 판정
+                    let verdict = SupertonicSpeedProbe.verdictSummary(speedProbeResults)
+                    Text(verdict)
+                        .font(.caption.bold())
+                        .foregroundStyle(SupertonicSpeedProbe.verifyOrdering(speedProbeResults) ? .green : .orange)
+
+                    // 표 헤더
+                    HStack {
+                        Text("Speed").font(.caption2.bold()).frame(width: 50)
+                        Text("Duration").font(.caption2.bold()).frame(width: 60)
+                        Text("Samples").font(.caption2.bold()).frame(width: 65)
+                        Text("RTF").font(.caption2.bold()).frame(width: 45)
+                        Text("비교").font(.caption2.bold()).frame(width: 55)
+                    }
+                    .foregroundStyle(.secondary)
+
+                    ForEach(speedProbeResults) { r in
+                        speedProbeRow(r, results: speedProbeResults)
+                    }
+                }
+            }
+            .padding(6)
+        }
+    }
+
+    // MARK: - Round 261TTS: Animalese Section
+
+    private var animaleseSection: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                // Header
+                HStack {
+                    Image(systemName: "waveform.and.magnifyingglass")
+                        .foregroundStyle(.purple)
+                        .font(.caption)
+                    Text("Animalese / 동물의숲식 말소리 테스트")
+                        .font(.subheadline.bold())
+                }
+
+                Text("이 모드는 Supertonic TTS가 아니라 글자 단위 procedural blip speech입니다.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Text("원본 게임 사운드를 사용하지 않고 앱 내부에서 파형을 생성합니다.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                // 테스트 문장
+                HStack {
+                    Text("문장").font(.caption2).foregroundStyle(.secondary).frame(width: 36, alignment: .leading)
+                    TextField("Animalese 테스트 문장", text: $animaleseText)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.caption)
+                }
+
+                // Profile Picker
+                HStack {
+                    Text("Profile").font(.caption2).foregroundStyle(.secondary).frame(width: 36, alignment: .leading)
+                    Picker("", selection: $animaleseProfile) {
+                        ForEach(AnimaleseVoiceProfile.allCases) { p in
+                            Text(p.displayName).tag(p)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .font(.caption)
+                }
+
+                // Speed Slider
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Text("Speed").font(.caption2).foregroundStyle(.secondary).frame(width: 36, alignment: .leading)
+                        Slider(value: $animaleseSpeed, in: 0.5...2.0, step: 0.05)
+                        Text(String(format: "%.2f", animaleseSpeed))
+                            .font(.caption.monospaced())
+                            .frame(width: 36)
+                    }
+                }
+
+                // PitchOffset Slider
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Text("Pitch±").font(.caption2).foregroundStyle(.secondary).frame(width: 36, alignment: .leading)
+                        Slider(value: $animalesePitchOffset, in: -120...120, step: 10)
+                        Text(String(format: "%+.0f", animalesePitchOffset))
+                            .font(.caption.monospaced())
+                            .frame(width: 36)
+                    }
+                }
+
+                // 재생 버튼
+                Button {
+                    guard !animalesePlaying else { return }
+                    animalesePlaying = true
+                    Task {
+                        _ = await SpeechManager.shared.previewAnimalese(
+                            text: animaleseText,
+                            profile: animaleseProfile,
+                            speed: Float(animaleseSpeed),
+                            pitchOffset: Float(animalesePitchOffset),
+                            label: "animalese_\(animaleseProfile.rawValue)"
+                        )
+                        await MainActor.run { animalesePlaying = false }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        if animalesePlaying {
+                            ProgressView().scaleEffect(0.6)
+                        } else {
+                            Image(systemName: "play.fill")
+                        }
+                        Text(animalesePlaying ? "재생 중..." : "Animalese 재생")
+                    }
+                }
+                .buttonStyle(.bordered)
+                .tint(.purple)
+                .disabled(animalesePlaying)
+            }
+            .padding(6)
         }
     }
 

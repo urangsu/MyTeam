@@ -67,6 +67,26 @@ MyTeam은 Mac 안에서 사용자의 자연어 요청을 받아, 문서/파일/�
 
 ### Now
 
+#### Round 261TTS-SPEED-PROBE-AND-ANIMALESE — 완료 (2026-05-23)
+
+speed 계측 + procedural Animalese blip speech 엔진
+
+- `SupertonicSpeedProbe.swift` 신규 — `SupertonicSpeedProbeResult` + `verifyOrdering()` + `verdictSummary()`
+- `AnimaleseSynthesizer.swift` 신규 — `AnimaleseWaveform`/`AnimaleseVoiceProfile`/`AnimaleseConfig`/`AnimaleseSynthesizer.synthesize()`
+  - 프로필 5종: cute/calm/deep/robot/tiny (base freq 300~760Hz, duration 35~60ms)
+  - sine/triangle/squareSoft/noiseBlend 파형, ADSR envelope
+  - Nintendo 원본 샘플 사용 없음 (procedural only)
+- `SpeechManager.probeSpeedApplication(text:preset:)` 추가 — 4개 speed 순차 합성, 재생 없음
+- `SpeechManager.previewAnimalese(text:profile:speed:pitchOffset:label:)` 추가 — Supertonic3ONNXRunner 독립
+- `TTSLabView.speedProbeSection` 추가 — 계측 버튼 + 결과 표 (Speed/Duration/Samples/RTF/비교 판정)
+- `TTSLabView.animaleseSection` 추가 — profile Picker + speed/pitchOffset 슬라이더 + 재생 버튼
+- `scripts/preflight_round261tts_speed_probe_animalese.sh` — **22/22 PASS** ✅
+- `reports/round261tts_speed_probe_animalese.md` 생성
+- Debug/Release BUILD SUCCEEDED ✅
+- 브랜치: `cloud/round252-supertonic-license-lock`
+
+---
+
 #### Round 260B-TTS-OFFICIAL-SPEED-RANGE — 완료 (2026-05-23)
 
 공식 speed 범위 0.70~2.00 적용 + Expression Tag A/B 테스트 인프라

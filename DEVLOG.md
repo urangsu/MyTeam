@@ -6,6 +6,44 @@
 
 ---
 
+## 2026-05-23 (Round 261TTS-SPEED-PROBE-AND-ANIMALESE — speed 계측 + procedural blip speech)
+
+### 완료 (2026-05-23)
+
+- `SupertonicSpeedProbe.swift` 신규
+  - `SupertonicSpeedProbeResult`: speed/durationSec/sampleCount/elapsedMs/realtimeFactor
+  - `verifyOrdering()`: duration 감소 순서 검증
+  - `verdictSummary()`: "✅ Speed 적용됨" / "⚠️ Speed 의심" 판정
+  - `testSpeeds`: [0.70, 1.00, 1.30, 2.00]
+- `AnimaleseSynthesizer.swift` 신규
+  - `AnimaleseWaveform`: sine/triangle/squareSoft/noiseBlend
+  - `AnimaleseVoiceProfile`: cute(620Hz)/calm(430Hz)/deep(300Hz)/robot(520Hz,square)/tiny(760Hz)
+  - `AnimaleseConfig.from(profile:speed:)`: 프로필 기반 config factory
+  - `synthesize(text:config:)`: 한글/영문/숫자 → blip, 공백/구두점 → gap, ADSR envelope
+  - Nintendo 원본 샘플 없음, 외부 파일 로드 없음
+- `SpeechManager.probeSpeedApplication(text:preset:)` 추가
+  - 4개 speed 순차 Supertonic3 합성 → 결과 배열 반환
+  - 재생 없음. WAV 저장 없음. AppLog: [SpeedProbe] speed/duration/rtf
+- `SpeechManager.previewAnimalese(text:profile:speed:pitchOffset:label:)` 추가
+  - Supertonic3ONNXRunner 호출 없음. 모델 없어도 동작.
+  - AnimaleseSynthesizer.synthesize → AudioPlaybackService.playFloatSamples
+- `TTSLabView` 업데이트
+  - `speedProbeSection`: 문장/preset 표시, 계측 버튼, 결과 표
+  - `animaleseSection`: 문장/profile Picker/speed/pitchOffset 슬라이더/재생 버튼
+  - `speedProbeRow()` helper(@ViewBuilder): ForEach 타입추론 오류 방지
+
+### 빌드
+- Debug: BUILD SUCCEEDED ✅
+- Release: BUILD SUCCEEDED ✅
+
+### Preflight
+- `preflight_round258tts_character_voice_system.sh`: 38/38 ✅
+- `preflight_round259tts_voice_tuner.sh`: 22/22 ✅
+- `preflight_round260btts_official_speed_range.sh`: 18/18 ✅
+- `preflight_round261tts_speed_probe_animalese.sh`: 22/22 ✅
+
+---
+
 ## 2026-05-23 (Round 260B-TTS-OFFICIAL-SPEED-RANGE — 공식 speed 범위 + Expression Tag A/B)
 
 ### 완료 (2026-05-23)

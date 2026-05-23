@@ -11099,6 +11099,8 @@
 				<string>SPTP258TTS001FILEREF0000B1</string>
 				<string>VTS259TTS001FILEREF0000C1</string>
 				<string>SETP260TTS001FILEREF0000D1</string>
+				<string>SPBP261TTS001FILEREF0000E1</string>
+				<string>ANIM261TTS001FILEREF0000F1</string>
 			</array>
 			<key>isa</key>
 			<string>PBXGroup</string>
@@ -11531,6 +11533,8 @@
 				<string>SPTP258TTS001BUILDFILE00B1</string>
 				<string>VTS259TTS001BUILDFILE00C1</string>
 				<string>SETP260TTS001BUILDFILE00D1</string>
+				<string>SPBP261TTS001BUILDFILE00E1</string>
+				<string>ANIM261TTS001BUILDFILE00F1</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -23305,6 +23309,42 @@
 			<string>sourcecode.swift</string>
 			<key>path</key>
 			<string>SupertonicExpressionTagPolicy.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>SPBP261TTS001BUILDFILE00E1</key>
+		<dict>
+			<key>fileRef</key>
+			<string>SPBP261TTS001FILEREF0000E1</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>SPBP261TTS001FILEREF0000E1</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>SupertonicSpeedProbe.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>ANIM261TTS001BUILDFILE00F1</key>
+		<dict>
+			<key>fileRef</key>
+			<string>ANIM261TTS001FILEREF0000F1</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>ANIM261TTS001FILEREF0000F1</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>AnimaleseSynthesizer.swift</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>

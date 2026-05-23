@@ -1,5 +1,37 @@
 # TTS Provider Policy
 
+**Round 261TTS-SPEED-PROBE-AND-ANIMALESE** — speed 계측 + procedural Animalese blip speech 엔진.
+
+## Round 261TTS-SPEED-PROBE-AND-ANIMALESE (2026-05-23)
+
+### Speed Probe 정책
+
+`probeSpeedApplication(text:preset:)` — Supertonic3 합성 duration이 speed에 따라 실제로 변하는지 계측.
+재생 없음. WAV 저장 없음. AppLog에 speed/duration/RTF 기록.
+
+기대: `S 0.70 > S 1.00 > S 1.30 > S 2.00` (durationSec 감소). 깨지면 의심 표시.
+
+### Animalese 정책
+
+- **Supertonic TTS와 완전 분리** — Supertonic3ONNXRunner 호출 없음.
+- **Fallback TTS 아님** — TTS Lab 테스트 전용. 기본 채팅 발화에 사용하지 않음.
+- **procedural audio only** — Nintendo/AC 원본 샘플, YouTube 추출 금지. 자체 sine/triangle/squareSoft/noiseBlend 파형.
+- **모델 없어도 동작** — AnimaleseSynthesizer는 순수 DSP 계산.
+- AudioPlaybackService.playFloatSamples 재사용 (pitch/rate 오프셋 지원).
+
+Animalese 프로필 5종: cute(620Hz/triangle), calm(430Hz/triangle), deep(300Hz/triangle), robot(520Hz/squareSoft), tiny(760Hz/sine).
+
+변경 파일:
+1. `SupertonicSpeedProbe.swift` (신규) — probe result + ordering 검증
+2. `AnimaleseSynthesizer.swift` (신규) — AnimaleseWaveform + AnimaleseVoiceProfile + AnimaleseConfig + synthesize
+3. `SpeechManager.probeSpeedApplication()` — speed 4종 계측 API
+4. `SpeechManager.previewAnimalese()` — procedural blip 재생 API
+5. `TTSLabView.speedProbeSection` — 계측 UI + 결과 표
+6. `TTSLabView.animaleseSection` — profile/speed/pitchOffset + 재생 버튼
+7. `scripts/preflight_round261tts_speed_probe_animalese.sh` — 22/22 PASS
+
+---
+
 **Round 260B-TTS-OFFICIAL-SPEED-RANGE** — 공식 speed 범위 0.70~2.00 적용 + Expression Tag A/B 인프라.
 
 ## Round 260B-TTS-OFFICIAL-SPEED-RANGE (2026-05-23)

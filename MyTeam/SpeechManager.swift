@@ -432,6 +432,94 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         }
     }
 
+    // MARK: - Round 261TTS: Speed Probe
+
+    /// Supertonic3 speed 적용 계측. 재생 없음. WAV 저장 없음.
+    /// 기대: speed가 높을수록 durationSec이 짧아야 함.
+    /// - Parameters:
+    ///   - text: 계측용 텍스트
+    ///   - preset: voice preset (e.g. "F1")
+    /// - Returns: testSpeeds 순서의 결과 배열. 모델 없으면 빈 배열.
+    func probeSpeedApplication(
+        text: String,
+        preset: String
+    ) async -> [SupertonicSpeedProbeResult] {
+        let paths = Supertonic3ONNXModelPaths.defaultPaths()
+        var results: [SupertonicSpeedProbeResult] = []
+
+        for speed in SupertonicSpeedProbe.testSpeeds {
+            let t0 = CFAbsoluteTimeGetCurrent()
+            do {
+                let result = try await Supertonic3ONNXRunner.shared.synthesize(
+                    text: text,
+                    preset: preset,
+                    lang: Supertonic3TTSConfig.selectedLanguage,
+                    totalSteps: Supertonic3TTSConfig.totalStep,
+                    speed: speed,
+                    paths: paths
+                )
+                let elapsed = (CFAbsoluteTimeGetCurrent() - t0) * 1000.0
+                let entry = SupertonicSpeedProbeResult(
+                    preset: preset,
+                    speed: speed,
+                    text: text,
+                    durationSec: result.durationSec,
+                    sampleRate: result.sampleRate,
+                    sampleCount: result.wavSamples.count,
+                    elapsedMs: elapsed,
+                    realtimeFactor: result.realtimeFactor
+                )
+                AppLog.info("[SpeedProbe] speed=\(speed) duration=\(String(format: "%.3f", result.durationSec))s samples=\(result.wavSamples.count) rtf=\(String(format: "%.2f", result.realtimeFactor))")
+                results.append(entry)
+            } catch {
+                AppLog.info("[SpeedProbe] speed=\(speed) failed: \(error)")
+            }
+        }
+
+        let verdict = SupertonicSpeedProbe.verdictSummary(results)
+        AppLog.info("[SpeedProbe] verdict: \(verdict)")
+        return results
+    }
+
+    // MARK: - Round 261TTS: Animalese Preview
+
+    /// Procedural Animalese 미리듣기. Supertonic3ONNXRunner 사용하지 않음.
+    /// 모델 없어도 동작. TTS routing 정책과 독립. TTS Lab 테스트 전용.
+    /// 기본 채팅 발화에는 사용하지 않음.
+    /// - Parameters:
+    ///   - text: 발화 텍스트
+    ///   - profile: AnimaleseVoiceProfile (cute/calm/deep/robot/tiny)
+    ///   - speed: 속도 배율 0.5~2.0
+    ///   - pitchOffset: AudioPlaybackService pitch 오프셋 (cents, -120~+120)
+    ///   - label: 로그 태그
+    func previewAnimalese(
+        text: String,
+        profile: AnimaleseVoiceProfile,
+        speed: Float,
+        pitchOffset: Float = 0,
+        label: String = "animalese"
+    ) async -> TTSOutput? {
+        let config = AnimaleseConfig.from(profile: profile, speed: Double(speed))
+        let samples = AnimaleseSynthesizer.synthesize(text: text, config: config)
+        guard !samples.isEmpty else { return nil }
+
+        let sampleRate = Int(config.sampleRate)
+        let durationSec = Double(samples.count) / config.sampleRate
+
+        await playback.playFloatSamples(
+            samples: samples,
+            sampleRate: sampleRate,
+            streamId: UUID().uuidString,
+            characterName: label,
+            pitch: pitchOffset,
+            rate: 1.0,
+            onPlaybackStarted: nil
+        )
+
+        AppLog.info("[SpeechManager.previewAnimalese] profile=\(profile.rawValue) speed=\(speed) pitchOffset=\(pitchOffset) duration=\(String(format: "%.3f", durationSec))s samples=\(samples.count)")
+        return TTSOutput(audioFileURL: nil, duration: durationSec, sampleRate: sampleRate, providerKind: .supertonic3)
+    }
+
     /// 단발성 공식 TTS 합성. 반환값: WAV 파일 경로 (nil=무음 또는 실패).
     /// 호출 시점에만 Supertonic3ONNXRunner.shared.synthesize 실행. launch auto-init 없음.
     func synthesize(text: String, agentID: String? = nil) async -> TTSOutput? {
