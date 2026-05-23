@@ -382,7 +382,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
     ///   - preset: Supertonic3 voice preset (e.g. "F2")
     ///   - pitch: pitch override (cents). clamp은 AudioPlaybackService 내부에서 수행.
     ///   - rate: rate override 배율. clamp은 AudioPlaybackService 내부.
-    ///   - speed: Supertonic3 합성 speed. clamp(0.85~1.25)은 ONNXRunner 내부.
+    ///   - speed: Supertonic3 합성 speed. clamp(0.70~2.00)은 ONNXRunner 내부.
     ///   - emotion: prosody 전처리 감정 스타일 (기본 .neutral)
     ///   - agentID: prosody 전처리 캐릭터 ID (nil = 캐릭터 보정 없음)
     ///   - label: S3WavWriter tag 접두사

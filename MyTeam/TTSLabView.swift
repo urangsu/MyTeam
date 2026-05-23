@@ -43,7 +43,6 @@ struct TTSLabView: View {
     @State private var useTuningOverride: Bool = false
 
     // MARK: - Round 260B: Expression Tags State
-    @State private var useExpressionTagsInTest: Bool = false
     @State private var expressionTagSpeakingID: String? = nil
 
     // MARK: - ONNX Spike State (Round 249TTS)
@@ -738,10 +737,6 @@ struct TTSLabView: View {
                 Text("Expression Tags 테스트")
                     .font(.subheadline.bold())
                 Spacer()
-                Toggle("Tags 사용", isOn: $useExpressionTagsInTest)
-                    .toggleStyle(.switch)
-                    .font(.caption)
-                    .controlSize(.small)
             }
 
             Text("Expression Tags는 TTS 입력에만 적용됩니다. 채팅 말풍선에는 표시하지 않습니다.")

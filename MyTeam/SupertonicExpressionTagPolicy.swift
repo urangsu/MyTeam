@@ -51,8 +51,8 @@ enum SupertonicExpressionTagPolicy {
     /// - Returns: 태그가 접두사로 붙은 TTS 입력 문자열
     static func apply(tags: [SupertonicExpressionTag], to text: String) -> String {
         guard !tags.isEmpty else { return text }
-        let prefix = tags.map(\.rawValue).joined()
-        return prefix + text
+        let prefix = tags.map(\.rawValue).joined(separator: " ")
+        return prefix + " " + text
     }
 
     /// 감정 스타일에 맞는 태그를 text에 자동 삽입.
