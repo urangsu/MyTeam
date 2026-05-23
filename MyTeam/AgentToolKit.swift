@@ -310,7 +310,7 @@ enum ToolEvidenceService {
         let apiKey = KeychainManager.load(key: "geminiAPIKey") ?? ""
         guard !apiKey.isEmpty else { return ("", []) }
 
-        let modelId = LLMConfigCatalog.shared.configs[.gemini]?.selectedModelId ?? "gemini-2.0-flash"
+        let modelId = LLMConfigCatalog.shared.configs[.gemini]?.selectedModelId ?? LLMModelRegistry.Gemini.primary
         guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(modelId):generateContent?key=\(apiKey)") else {
             return ("", [])
         }

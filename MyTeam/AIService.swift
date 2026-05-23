@@ -329,7 +329,7 @@ final class AIService {
             return AIModelPolicy.pinnedModelID(for: .openAI)
         }
         guard let url = URL(string: "https://api.openai.com/v1/models") else {
-            return "gpt-4o"
+            return LLMModelRegistry.OpenAI.fallback
         }
         var request = URLRequest(url: url)
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
@@ -338,7 +338,7 @@ final class AIService {
         guard let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200,
               let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let models = json["data"] as? [[String: Any]] else {
-            return "gpt-4o"
+            return LLMModelRegistry.OpenAI.fallback
         }
 
         let excludePatterns = ["instruct", "embedding", "tts", "whisper", "dall-e",
@@ -347,10 +347,11 @@ final class AIService {
             .compactMap { $0["id"] as? String }
             .filter { id in
                 id.hasPrefix("gpt-") && !excludePatterns.contains(where: { id.contains($0) })
+                && !LLMModelRegistry.isBlocked(id)
             }
             .map { (id: $0, score: scoreModel($0)) }
             .sorted { $0.score > $1.score }
-            .first?.id ?? "gpt-4o"
+            .first?.id ?? LLMModelRegistry.OpenAI.fallback
 
         AppLog.info("[AIService] 🔍 OpenAI 모델 동적 색인 성공 -> \(best)")
         return best
