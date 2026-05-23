@@ -6,6 +6,42 @@
 
 ---
 
+## 2026-05-24 (Round 269A/B — MODEL-TRUTH-GATE + UNIFIED-ROUTER)
+
+### 완료 (2026-05-24)
+
+**Round 269A: Model Truth Gate**
+- **LLMModelRegistry.swift** 재설계 — 정적 blockedIDs 완전 제거
+  - `KnownBrokenModel` 구조체 도입 (`id`, `provider`, `reason`, `expiresAt`, `isCurrentlyBroken`)
+  - `knownBrokenModels: [KnownBrokenModel]` 초기 빈 목록 (live discovery가 결정)
+  - `isKnownBroken(_:)` + `knownBrokenIDs` 추가, 레거시 `isBlocked()` 제거
+  - floor fallback constants (`primary`/`fallback`) 유지 — discovery 실패 시 최후 안전망
+- **AIModelPolicy.swift** — `dynamicModelDiscoveryAllowed = true` 항상 (Release 포함)
+  - Release에서도 최신 모델 discovery 허용 → stale local registry에 묶이지 않음
+  - `resolvedModelID`: `isBlocked` → `isKnownBroken` 교체
+- **AIService.swift** — `isBlocked` → `isKnownBroken` 3곳 전환
+
+**Round 269B: Unified LLM Router**
+- **AIService.swift** — `LLMResponseMetadata` 구조체 추가
+  - `provider`, `modelID`, `fallbackChain`, `usedFallback` 포함
+- **AIService.getResponse** — 실제 성공 provider 반환 (설정값이 아닌 실제값)
+  - 기존: `agentConfig?.llmProvider.displayName ?? "Gemini"` (거짓 반환)
+  - 수정: 실제 성공한 provider 루프에서 추적 → 정확한 provider.displayName 반환
+- **AIService.getResponseWithMetadata** 신규 — `LLMResponseMetadata` 포함 응답
+- **AIService.getResponseStream** — `requiresToolUse: Bool = false` 파라미터 추가
+  - tool 요청 시 Claude/OpenAI 우선 후보 배치
+- **quickSummary** — `providerCandidates` 기반 통합 라우팅 (하드코딩 순서 제거)
+- **generatePrivacyTerms** — 동일, candidates 루프 통합
+
+**Preflight**
+- `preflight_round264_model_registry.sh` — 검사 #8-12,#17 KnownBrokenModel 기준으로 재작성 (22/22 PASS)
+- `preflight_round265_llm_call_paths.sh` — 검사 #6,#14-16 업데이트 (18/18 PASS)
+- `preflight_round269a_model_truth_gate.sh` 신규 (18/18 PASS)
+
+- Debug BUILD SUCCEEDED, 0 errors
+
+---
+
 ## 2026-05-24 (Round 268-RELIABILITY-POLISH)
 
 ### 완료 (2026-05-24)

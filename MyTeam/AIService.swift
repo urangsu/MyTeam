@@ -2,6 +2,17 @@ import Foundation
 import Combine
 
 
+// MARK: - LLMResponseMetadata
+// Round 269B: 실제 사용된 provider + model 정보를 포함한 응답 메타데이터.
+// 진단 UI, 로그, fallback 추적에 사용한다.
+struct LLMResponseMetadata: Sendable {
+    let provider: LLMProvider
+    let modelID: String         // 실제 사용된 모델 ID (discovery 결과 포함)
+    let fallbackChain: [LLMProvider]  // 실제 시도된 provider 순서
+    let usedFallback: Bool      // 선호 provider 대신 fallback provider 사용 여부
+    var providerDisplayName: String { provider.displayName }
+}
+
 // MARK: - AIService (ModelRouter 통합)
 final class AIService {
     static let shared = AIService()
@@ -17,10 +28,11 @@ final class AIService {
         text: String,
         agentID: String,
         chatHistory: [AgentWindowManager.ChatLog],
-        agentConfig: AgentWindowManager.AgentConfig? = nil
+        agentConfig: AgentWindowManager.AgentConfig? = nil,
+        requiresToolUse: Bool = false
     ) -> AsyncThrowingStream<String, Error> {
         let preferredProvider = preferredProvider(for: agentConfig)
-        let candidates = providerCandidates(preferred: preferredProvider)
+        let candidates = providerCandidates(preferred: preferredProvider, requiresToolUse: requiresToolUse)
 
         guard !candidates.isEmpty else {
             return AsyncThrowingStream { continuation in
@@ -322,7 +334,7 @@ final class AIService {
         let best = models
             .compactMap { $0["id"] as? String }
             .filter { $0.hasPrefix("claude-") }
-            .filter { !LLMModelRegistry.isBlocked($0) }
+            .filter { !LLMModelRegistry.isKnownBroken($0) }
             .map { (id: $0, score: scoreModel($0)) }
             .sorted { $0.score > $1.score }
             .first?.id ?? LLMModelRegistry.Claude.primary
@@ -355,7 +367,7 @@ final class AIService {
             .compactMap { $0["id"] as? String }
             .filter { id in
                 id.hasPrefix("gpt-") && !excludePatterns.contains(where: { id.contains($0) })
-                && !LLMModelRegistry.isBlocked(id)
+                && !LLMModelRegistry.isKnownBroken(id)
             }
             .map { (id: $0, score: scoreModel($0)) }
             .sorted { $0.score > $1.score }
@@ -894,16 +906,72 @@ final class AIService {
     }
 
     // MARK: - Convenience: Non-Streaming (Stream 수집)
+    // Round 269B: 실제 사용된 provider를 반환한다 (설정값이 아닌 실제 성공 provider).
     func getResponse(
         text: String,
         agentID: String,
         chatHistory: [AgentWindowManager.ChatLog],
-        agentConfig: AgentWindowManager.AgentConfig? = nil
+        agentConfig: AgentWindowManager.AgentConfig? = nil,
+        requiresToolUse: Bool = false
     ) async throws -> (text: String, provider: String) {
-        var fullText = ""
-        let stream = getResponseStream(text: text, agentID: agentID, chatHistory: chatHistory, agentConfig: agentConfig)
-        for try await token in stream { fullText += token }
-        return (text: fullText, provider: agentConfig?.llmProvider.displayName ?? "Gemini")
+        let preferred = preferredProvider(for: agentConfig)
+        let candidates = providerCandidates(preferred: preferred, requiresToolUse: requiresToolUse)
+        guard !candidates.isEmpty else { throw AIServiceError.noAPIKeys }
+
+        var lastError: Error?
+        for provider in candidates {
+            do {
+                var fullText = ""
+                let stream = streamForProvider(
+                    provider, text: text, agentID: agentID,
+                    chatHistory: chatHistory, agentConfig: agentConfig
+                )
+                for try await token in stream { fullText += token }
+                // 실제 성공한 provider 반환
+                return (text: fullText, provider: provider.displayName)
+            } catch {
+                lastError = error
+                AppLog.warning("[AIService] getResponse provider \(provider.displayName) failed: \(error.localizedDescription)")
+                if !shouldFallbackProvider(after: error) { throw error }
+            }
+        }
+        throw lastError ?? AIServiceError.noAPIKeys
+    }
+
+    /// 실제 provider + model 메타데이터를 포함한 응답. 진단 UI 및 로그용.
+    func getResponseWithMetadata(
+        text: String,
+        agentID: String,
+        chatHistory: [AgentWindowManager.ChatLog],
+        agentConfig: AgentWindowManager.AgentConfig? = nil,
+        requiresToolUse: Bool = false
+    ) async throws -> (text: String, metadata: LLMResponseMetadata) {
+        let preferred = preferredProvider(for: agentConfig)
+        let candidates = providerCandidates(preferred: preferred, requiresToolUse: requiresToolUse)
+        guard !candidates.isEmpty else { throw AIServiceError.noAPIKeys }
+
+        var lastError: Error?
+        for (idx, provider) in candidates.enumerated() {
+            do {
+                var fullText = ""
+                let stream = streamForProvider(
+                    provider, text: text, agentID: agentID,
+                    chatHistory: chatHistory, agentConfig: agentConfig
+                )
+                for try await token in stream { fullText += token }
+                let metadata = LLMResponseMetadata(
+                    provider: provider,
+                    modelID: AIModelPolicy.pinnedModelID(for: provider),
+                    fallbackChain: candidates,
+                    usedFallback: idx > 0
+                )
+                return (text: fullText, metadata: metadata)
+            } catch {
+                lastError = error
+                if !shouldFallbackProvider(after: error) { throw error }
+            }
+        }
+        throw lastError ?? AIServiceError.noAPIKeys
     }
 
     // MARK: - Message Builders
@@ -971,18 +1039,23 @@ final class AIService {
 
     // MARK: - Quick Summary (non-streaming, single-turn)
     /// 짧은 요약/분류 등 단발 LLM 호출. 스트리밍 없이 전체 응답을 String으로 반환.
-    /// 사용 가능한 API 키를 Gemini → Claude → OpenAI 순서로 자동 선택.
+    /// Round 269B: providerCandidates 기반으로 통합 라우팅.
+    /// 선호 provider(defaultProvider 설정) 순서로 시도, 실패 시 다음 provider로 fallback.
     func quickSummary(prompt: String) async -> String {
-        // 사용 가능한 provider 우선순위 탐색
-        let pairs: [(key: String, fn: (String) async throws -> String)] = [
-            ("geminiAPIKey", { key in try await self.geminiQuickCall(prompt: prompt, apiKey: key) }),
-            ("claudeAPIKey", { key in try await self.claudeQuickCall(prompt: prompt, apiKey: key) }),
-            ("openAIAPIKey", { key in try await self.openAIQuickCall(prompt: prompt, apiKey: key) }),
-        ]
-        for (keychainKey, fn) in pairs {
-            let apiKey = KeychainManager.load(key: keychainKey) ?? ""
+        let preferred = preferredProvider(for: nil)
+        // OpenRouter는 quickCall 전용 구현 없음 — 제외
+        let candidates = providerCandidates(preferred: preferred).filter { $0 != .openRouter }
+        for provider in candidates {
+            let apiKey = KeychainManager.load(key: keychainKey(for: provider)) ?? ""
             guard !apiKey.isEmpty else { continue }
-            do { return try await fn(apiKey) } catch { continue }
+            do {
+                switch provider {
+                case .gemini:   return try await geminiQuickCall(prompt: prompt, apiKey: apiKey)
+                case .claude:   return try await claudeQuickCall(prompt: prompt, apiKey: apiKey)
+                case .openAI:   return try await openAIQuickCall(prompt: prompt, apiKey: apiKey)
+                case .openRouter: continue
+                }
+            } catch { continue }
         }
         return "(요약 실패: 사용 가능한 API 키가 없습니다)"
     }
@@ -1057,39 +1130,34 @@ final class AIService {
     // MARK: - Generate Privacy Terms (Skill: korean.privacy-terms)
 
     /// 개인정보처리방침/이용약관을 생성한다.
-    /// 사용 가능한 provider 우선순위로 탐색하여 처음 성공한 provider의 결과를 반환한다.
+    /// Round 269B: providerCandidates 기반으로 통합 라우팅.
+    /// Gemini 쿨다운 중이면 자동으로 다음 provider로 이동한다.
     func generatePrivacyTerms(prompt: String) async throws -> String {
-        // ── Provider 선택 전략: Gemini 우선, 쿨다운 시 Claude 1회만 fallback ──
-        // OpenAI는 프라이버시 생성 목적으로는 사용하지 않음 (비용 관리)
-
-        // 1. Gemini 시도 (쿨다운 중이 아닐 때)
-        if !isGeminiProviderCoolingDown() {
-            if let geminiKey = KeychainManager.load(key: "geminiAPIKey"), !geminiKey.isEmpty {
-                do {
-                    let result = try await geminiQuickCall(prompt: prompt, apiKey: geminiKey)
-                    AppLog.info("[PrivacyTermsGen] LLM 생성 완료 (Gemini)")
-                    return result
-                } catch {
-                    AppLog.warning("[PrivacyTermsGen] Gemini 실패: \(error) — Claude fallback 시도")
-                    // Gemini 실패 시 아래의 fallback 진행
-                }
+        let preferred = preferredProvider(for: nil)
+        let candidates = providerCandidates(preferred: preferred).filter { $0 != .openRouter }
+        for provider in candidates {
+            // Gemini 쿨다운 중이면 건너뜀
+            if provider == .gemini && isGeminiProviderCoolingDown() {
+                AppLog.warning("[PrivacyTermsGen] Gemini 쿨다운 중 — 다음 provider로")
+                continue
             }
-        } else {
-            AppLog.warning("[PrivacyTermsGen] Gemini 쿨다운 중 — Claude fallback 시도")
-        }
-
-        // 2. Claude fallback (1회만, Gemini 부재/실패 시)
-        if let claudeKey = KeychainManager.load(key: "claudeAPIKey"), !claudeKey.isEmpty {
+            let apiKey = KeychainManager.load(key: keychainKey(for: provider)) ?? ""
+            guard !apiKey.isEmpty else { continue }
             do {
-                let result = try await claudeQuickCall(prompt: prompt, apiKey: claudeKey)
-                AppLog.info("[PrivacyTermsGen] LLM 생성 완료 (Claude fallback)")
+                let result: String
+                switch provider {
+                case .gemini:   result = try await geminiQuickCall(prompt: prompt, apiKey: apiKey)
+                case .claude:   result = try await claudeQuickCall(prompt: prompt, apiKey: apiKey)
+                case .openAI:   result = try await openAIQuickCall(prompt: prompt, apiKey: apiKey)
+                case .openRouter: continue
+                }
+                AppLog.info("[PrivacyTermsGen] LLM 생성 완료 (\(provider.displayName))")
                 return result
             } catch {
-                AppLog.warning("[PrivacyTermsGen] Claude fallback 실패: \(error)")
-                // fallback 1회 초과 금지 — OpenAI 시도 없음
+                AppLog.warning("[PrivacyTermsGen] \(provider.displayName) 실패: \(error)")
+                continue
             }
         }
-
         throw AIServiceError.noAPIKeys
     }
 
@@ -1113,7 +1181,7 @@ final class AIService {
         let systemPrompt = buildSystemPrompt(agentID: agentID)
 
         var claudeModel = LLMModelRegistry.Claude.toolPrimary
-        if let cached = cachedClaudeModelId, !LLMModelRegistry.isBlocked(cached) {
+        if let cached = cachedClaudeModelId, !LLMModelRegistry.isKnownBroken(cached) {
             claudeModel = cached
         } else if let discovered = try? await discoverLatestClaudeModel(apiKey: apiKey) {
             claudeModel = discovered

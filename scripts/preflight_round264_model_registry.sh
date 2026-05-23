@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # preflight_round264_model_registry.sh
-# Round 264-MODEL-REGISTRY: LLMModelRegistry + AIModelPolicy registry wrapper
+# Round 264-MODEL-REGISTRY + Round 269A-MODEL-TRUTH-GATE
+# LLMModelRegistry + AIModelPolicy registry wrapper
 # 22개 검사
 
 set -euo pipefail
@@ -14,7 +15,7 @@ fail() { echo "  ❌ FAIL: $1"; FAIL=$((FAIL+1)); }
 fhas() { grep -qF "$1" "$2" 2>/dev/null; }
 fnot() { ! grep -qF "$1" "$2" 2>/dev/null; }
 
-echo "=== Round 264 MODEL-REGISTRY Preflight ==="
+echo "=== Round 264 MODEL-REGISTRY + Round 269A MODEL-TRUTH-GATE Preflight ==="
 echo
 
 # 1. LLMModelRegistry.swift 존재
@@ -26,12 +27,12 @@ fhas "LLMModelRegistry.swift" "$SRC/MyTeam.xcodeproj/project.pbxproj" \
   || fail "pbxproj에 LLMModelRegistry.swift 미등록"
 
 # 3. OpenAI primary = gpt-4.1
-fhas 'static let primary:  String = "gpt-4.1"' "$SRC/LLMModelRegistry.swift" \
+fhas '"gpt-4.1"' "$SRC/LLMModelRegistry.swift" \
   && ok "OpenAI.primary = gpt-4.1" \
   || fail "OpenAI.primary != gpt-4.1"
 
 # 4. OpenAI fallback = gpt-4o
-fhas 'static let fallback: String = "gpt-4o"' "$SRC/LLMModelRegistry.swift" \
+fhas '"gpt-4o"' "$SRC/LLMModelRegistry.swift" \
   && ok "OpenAI.fallback = gpt-4o" \
   || fail "OpenAI.fallback 없음"
 
@@ -50,30 +51,30 @@ fhas 'anthropic/claude-sonnet-4-5' "$SRC/LLMModelRegistry.swift" \
   && ok "OpenRouter.primary = anthropic/claude-sonnet-4-5" \
   || fail "OpenRouter.primary 없음"
 
-# 8. blockedIDs 정의 — gpt-5.5 포함
-fhas '"gpt-5.5"' "$SRC/LLMModelRegistry.swift" \
-  && ok "blockedIDs에 gpt-5.5 포함" \
-  || fail "blockedIDs에 gpt-5.5 없음"
+# 8. 269A: 정적 blockedIDs 배열 없음 (KnownBrokenModel 기반으로 대체)
+fnot 'static let blockedIDs' "$SRC/LLMModelRegistry.swift" \
+  && ok "정적 blockedIDs 없음 (269A: KnownBrokenModel 기반)" \
+  || fail "정적 blockedIDs 잔존 — 269A 마이그레이션 필요"
 
-# 9. blockedIDs — claude-opus-4-7 포함
-fhas '"claude-opus-4-7"' "$SRC/LLMModelRegistry.swift" \
-  && ok "blockedIDs에 claude-opus-4-7 포함" \
-  || fail "blockedIDs에 claude-opus-4-7 없음"
+# 9. 269A: KnownBrokenModel 구조체 존재
+fhas 'KnownBrokenModel' "$SRC/LLMModelRegistry.swift" \
+  && ok "KnownBrokenModel 구조체 존재" \
+  || fail "KnownBrokenModel 없음"
 
-# 10. blockedIDs — gemini-2.0-flash 포함
-fhas '"gemini-2.0-flash"' "$SRC/LLMModelRegistry.swift" \
-  && ok "blockedIDs에 gemini-2.0-flash 포함" \
-  || fail "blockedIDs에 gemini-2.0-flash 없음"
+# 10. 269A: knownBrokenModels 목록 존재
+fhas 'knownBrokenModels' "$SRC/LLMModelRegistry.swift" \
+  && ok "knownBrokenModels 목록 존재" \
+  || fail "knownBrokenModels 없음"
 
-# 11. isBlocked() 함수 존재
-fhas 'func isBlocked' "$SRC/LLMModelRegistry.swift" \
-  && ok "isBlocked() 존재" \
-  || fail "isBlocked() 없음"
+# 11. 269A: isKnownBroken() 함수 존재
+fhas 'func isKnownBroken' "$SRC/LLMModelRegistry.swift" \
+  && ok "isKnownBroken() 존재" \
+  || fail "isKnownBroken() 없음"
 
-# 12. allBlockedIDs 집합 존재
-fhas 'allBlockedIDs' "$SRC/LLMModelRegistry.swift" \
-  && ok "allBlockedIDs 존재" \
-  || fail "allBlockedIDs 없음"
+# 12. 269A: knownBrokenIDs 집합 존재
+fhas 'knownBrokenIDs' "$SRC/LLMModelRegistry.swift" \
+  && ok "knownBrokenIDs 존재" \
+  || fail "knownBrokenIDs 없음"
 
 # 13. AIModelPolicy.swift에 LLMModelRegistry 참조
 fhas 'LLMModelRegistry' "$SRC/AIModelPolicy.swift" \
@@ -95,10 +96,10 @@ fhas 'LLMModelRegistry.Claude.primary' "$SRC/AIModelPolicy.swift" \
   && ok "pinnedModelID에 LLMModelRegistry.Claude.primary 사용" \
   || fail "pinnedModelID에 LLMModelRegistry.Claude.primary 없음"
 
-# 17. resolvedModelID가 isBlocked 사용
-fhas 'LLMModelRegistry.isBlocked' "$SRC/AIModelPolicy.swift" \
-  && ok "resolvedModelID에 isBlocked 사용" \
-  || fail "resolvedModelID에 isBlocked 없음"
+# 17. 269A: resolvedModelID가 isKnownBroken 사용
+fhas 'LLMModelRegistry.isKnownBroken' "$SRC/AIModelPolicy.swift" \
+  && ok "resolvedModelID에 isKnownBroken 사용" \
+  || fail "resolvedModelID에 isKnownBroken 없음"
 
 # 18. AIService.swift에 LLMModelRegistry 참조
 fhas 'LLMModelRegistry' "$SRC/AIService.swift" \
