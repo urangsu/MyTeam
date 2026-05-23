@@ -11103,6 +11103,7 @@
 				<string>ANIM261TTS001FILEREF0000F1</string>
 				<string>KSD262TTS001FILEREF0000G1</string>
 				<string>AFS262TTS001FILEREF0000H1</string>
+				<string>LLMR264REL001FILEREF0000G1</string>
 			</array>
 			<key>isa</key>
 			<string>PBXGroup</string>
@@ -11539,6 +11540,7 @@
 				<string>ANIM261TTS001BUILDFILE00F1</string>
 				<string>KSD262TTS001BUILDFILE00G1</string>
 				<string>AFS262TTS001BUILDFILE00H1</string>
+				<string>LLMR264REL001BUILDFILE00G1</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -23349,6 +23351,24 @@
 			<string>sourcecode.swift</string>
 			<key>path</key>
 			<string>AnimaleseSynthesizer.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>LLMR264REL001BUILDFILE00G1</key>
+		<dict>
+			<key>fileRef</key>
+			<string>LLMR264REL001FILEREF0000G1</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>LLMR264REL001FILEREF0000G1</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>LLMModelRegistry.swift</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>

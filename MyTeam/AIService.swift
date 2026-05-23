@@ -274,7 +274,7 @@ final class AIService {
         validModels.sort { $0.score > $1.score }
 
         guard let bestModel = validModels.first?.id else {
-            return "gemini-2.0-flash"
+            return LLMModelRegistry.Gemini.primary
         }
         
         AppLog.info("[AIService] 🔍 Self-Healing: 최신 Gemini 모델 동적 색인 성공 -> \(bestModel)")
@@ -287,7 +287,7 @@ final class AIService {
             return AIModelPolicy.pinnedModelID(for: .claude)
         }
         guard let url = URL(string: "https://api.anthropic.com/v1/models") else {
-            return "claude-opus-4-7"
+            return LLMModelRegistry.Claude.primary
         }
         var request = URLRequest(url: url)
         request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
@@ -297,15 +297,16 @@ final class AIService {
         guard let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200,
               let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let models = json["data"] as? [[String: Any]] else {
-            return "claude-opus-4-7"
+            return LLMModelRegistry.Claude.primary
         }
 
         let best = models
             .compactMap { $0["id"] as? String }
             .filter { $0.hasPrefix("claude-") }
+            .filter { !LLMModelRegistry.isBlocked($0) }
             .map { (id: $0, score: scoreModel($0)) }
             .sorted { $0.score > $1.score }
-            .first?.id ?? "claude-opus-4-7"
+            .first?.id ?? LLMModelRegistry.Claude.primary
 
         AppLog.info("[AIService] 🔍 Claude 모델 동적 색인 성공 -> \(best)")
         return best
@@ -351,7 +352,7 @@ final class AIService {
            let range = Range(match.range(at: 1), in: text),
            let v = Double(String(text[range])) { return v }
 
-        // 2. 대시 구분 major-minor 1~2자리: "claude-opus-4-7"→4.7, "claude-3-5-sonnet"→3.5
+        // 2. 대시 구분 major-minor 1~2자리: "claude-sonnet-4-5"→4.5, "claude-3-5-sonnet"→3.5
         // 8자리 날짜(20240620)는 \d{1,2} 제한으로 자동 제외
         if let regex = try? NSRegularExpression(pattern: "(?:^|[-_])(\\d{1,2})-(\\d{1,2})(?:[-_]|$)"),
            let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
@@ -488,7 +489,10 @@ final class AIService {
                     body["system_instruction"] = ["parts": [["text": systemPrompt]]]
                 }
                 
-                request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+                guard let bodyData = try? JSONSerialization.data(withJSONObject: body) else {
+                    continuation.finish(throwing: AIServiceError.invalidResponse); return
+                }
+                request.httpBody = bodyData
 
                 do {
                     // withTaskCancellationHandler: 취소 시 즉시 로그 + CancellationError 전파
@@ -621,7 +625,10 @@ final class AIService {
                 if !systemPrompt.isEmpty {
                     body["system"] = systemPrompt
                 }
-                request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+                guard let bodyData = try? JSONSerialization.data(withJSONObject: body) else {
+                    continuation.finish(throwing: AIServiceError.invalidResponse); return
+                }
+                request.httpBody = bodyData
 
                 do {
                     let (result, response) = try await withTaskCancellationHandler {
@@ -722,7 +729,10 @@ final class AIService {
                     "stream": true,
                     "max_tokens": 1024
                 ]
-                request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+                guard let bodyData = try? JSONSerialization.data(withJSONObject: body) else {
+                    continuation.finish(throwing: AIServiceError.invalidResponse); return
+                }
+                request.httpBody = bodyData
 
                 do {
                     let (result, response) = try await withTaskCancellationHandler {
@@ -806,7 +816,10 @@ final class AIService {
                     "messages": messages,
                     "stream": true
                 ]
-                request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+                guard let bodyData = try? JSONSerialization.data(withJSONObject: body) else {
+                    continuation.finish(throwing: AIServiceError.invalidResponse); return
+                }
+                request.httpBody = bodyData
 
                 do {
                     let (result, response) = try await withTaskCancellationHandler {
@@ -955,7 +968,7 @@ final class AIService {
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (data, _) = try await session.data(for: req)
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let candidates = json["candidates"] as? [[String: Any]],
@@ -977,7 +990,7 @@ final class AIService {
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         req.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (data, _) = try await session.data(for: req)
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let content = json["content"] as? [[String: Any]],
@@ -994,7 +1007,7 @@ final class AIService {
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (data, _) = try await session.data(for: req)
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let choices = json["choices"] as? [[String: Any]],
@@ -1061,8 +1074,8 @@ final class AIService {
         var messages = buildAnthropicMessages(text: text, chatHistory: chatHistory)
         let systemPrompt = buildSystemPrompt(agentID: agentID)
 
-        var claudeModel = "claude-opus-4-7"
-        if let cached = cachedClaudeModelId {
+        var claudeModel = LLMModelRegistry.Claude.toolPrimary
+        if let cached = cachedClaudeModelId, !LLMModelRegistry.isBlocked(cached) {
             claudeModel = cached
         } else if let discovered = try? await discoverLatestClaudeModel(apiKey: apiKey) {
             claudeModel = discovered

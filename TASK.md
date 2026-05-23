@@ -67,6 +67,25 @@ MyTeam은 Mac 안에서 사용자의 자연어 요청을 받아, 문서/파일/�
 
 ### Now
 
+#### Round 264-267-RELIABILITY — 완료 (2026-05-24)
+
+대화 신뢰성 기반 강화 + LLM model registry + TTS agentID 전파 + Swift 6 경고 제거.
+
+- `LLMModelRegistry.swift` 신규 — provider별 검증된 production model ID 단일 관리
+  - OpenAI: primary=gpt-4.1, fallback=gpt-4o; Claude: primary=claude-sonnet-4-5-20250514; Gemini: gemini-2.5-flash; OpenRouter: anthropic/claude-sonnet-4-5
+  - blockedIDs: gpt-5.5, claude-opus-4-7, gemini-2.0-flash 등
+  - `isBlocked()`, `allBlockedIDs`, `defaultModelFamilyLabel`
+- `AIModelPolicy.swift` 업데이트 — 모든 model ID를 LLMModelRegistry에서 위임
+- `AIService.swift` 업데이트 — 하드코딩된 claude-opus-4-7/gemini-2.0-flash → LLMModelRegistry; httpBody try? → guard/throw
+- `SpeechManager.swift` 업데이트 — agentID 전파 수정, TTS-CharConfig 로그 추가
+- `Supertonic3ONNXRunner.swift` — S3Config 상수 전체 `nonisolated(unsafe)` (Swift 6 경고 제거)
+- pbxproj에 LLMModelRegistry.swift 등록 (LLMR264REL001)
+- 검증:
+  - `scripts/preflight_round264_model_registry.sh` — **22/22 PASS** ✅
+  - `scripts/preflight_round265_llm_call_paths.sh` — **18/18 PASS** ✅
+  - `scripts/preflight_round266_tts_character_config.sh` — **16/16 PASS** ✅
+  - Debug/Release BUILD SUCCEEDED ✅
+
 #### Round 263-CONVERSATION-RELIABILITY-GATE — 완료 (2026-05-23)
 
 앱이 “말은 하는데 일을 못하는” 상태로 보이지 않게 대화/Provider/컨텍스트 P0 계약을 보강했다.

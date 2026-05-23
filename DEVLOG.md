@@ -6,6 +6,29 @@
 
 ---
 
+## 2026-05-24 (Round 264-267-RELIABILITY)
+
+### 완료 (2026-05-24)
+
+- **LLMModelRegistry.swift** 신규 — provider별 검증된 production model ID 단일 관리
+  - OpenAI primary=gpt-4.1, Claude primary=claude-sonnet-4-5-20250514, Gemini primary=gemini-2.5-flash, OpenRouter primary=anthropic/claude-sonnet-4-5
+  - blockedIDs: gpt-5.5/5.1/5.2, claude-opus-4-7/4-8, gemini-2.0-flash, openai/gpt-5.5 등
+  - isBlocked() + allBlockedIDs + resolve() + defaultModelFamilyLabel
+- **AIModelPolicy.swift** 업데이트 — 모든 model ID를 LLMModelRegistry 위임, 하드코딩 제거
+- **AIService.swift** 업데이트
+  - claude-opus-4-7 × 4개 하드코딩 → LLMModelRegistry.Claude.primary
+  - gemini-2.0-flash 하드코딩 → LLMModelRegistry.Gemini.primary
+  - Claude model discovery에 isBlocked() 필터 추가
+  - httpBody = try? → guard bodyData + continuation.finish(throwing:) (4곳, continuation closure)
+  - QuickCall 함수 httpBody = try? → try (3곳, async throws 함수)
+  - 주석 내 claude-opus-4-7 → claude-sonnet-4-5 업데이트
+- **SpeechManager.swift** 업데이트 — agentID 전파 수정, TTS-CharConfig 로그 추가
+- **Supertonic3ONNXRunner.swift** — S3Config 상수 전체 nonisolated(unsafe) (Swift 6 actor-isolation 경고 제거)
+- **pbxproj** 업데이트 — LLMModelRegistry.swift 등록 (LLMR264REL001FILEREF/BUILDFILE)
+- 검증: preflight264 22/22 + preflight265 18/18 + preflight266 16/16, Debug/Release BUILD SUCCEEDED
+
+---
+
 ## 2026-05-23 (Round 263-CONVERSATION-RELIABILITY-GATE)
 
 ### 완료 (2026-05-23)

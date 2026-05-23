@@ -24,15 +24,17 @@ import OnnxRuntimeBindings
 
 // MARK: - Config Constants
 
+// Round 267: nonisolated(unsafe) — Swift 6 actor-isolation 경고 제거.
+// S3Config는 변경 불가 상수만 포함하며 어떤 액터 격리도 갖지 않는다.
 private enum S3Config {
-    static let sampleRate: Int          = 44100
-    static let baseChunkSize: Int       = 512
-    static let chunkCompressFactor: Int = 6
-    static let ldim: Int                = 24
-    static let totalStepDefault: Int    = 8
+    nonisolated(unsafe) static let sampleRate: Int          = 44100
+    nonisolated(unsafe) static let baseChunkSize: Int       = 512
+    nonisolated(unsafe) static let chunkCompressFactor: Int = 6
+    nonisolated(unsafe) static let ldim: Int                = 24
+    nonisolated(unsafe) static let totalStepDefault: Int    = 8
     // Derived:
-    static let chunkSize: Int  = baseChunkSize * chunkCompressFactor  // 3072
-    static let latentDim: Int  = ldim * chunkCompressFactor           // 144
+    nonisolated(unsafe) static let chunkSize: Int  = 512 * 6   // baseChunkSize * chunkCompressFactor = 3072
+    nonisolated(unsafe) static let latentDim: Int  = 24  * 6   // ldim * chunkCompressFactor = 144
 }
 
 // MARK: - Result Types

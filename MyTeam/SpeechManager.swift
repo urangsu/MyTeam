@@ -80,9 +80,11 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                         if let ttsChunk = Self.normalizedTTSChunk(chunk), !Task.isCancelled {
                             // ✅ 핵심: UI 콜백을 여기서 직접 호출하지 않음
                             // 대신 오디오 재생 시작 시점에 실행될 클로저를 파이프라인에 주입
+                            // Round 266: agentID 전달 — 캐릭터별 preset/emotion/pitch/rate/speed 적용
                             await self.dispatchToInferencePipeline(
                                 text: ttsChunk,
                                 characterName: characterName,
+                                agentID: agentID,
                                 onPlaybackStarted: {
                                     // 이 클로저는 playerNode.play() 직후 AudioPlaybackService가 호출
                                     // ← 이 시점이 텍스트가 화면에 나타나야 하는 정확한 순간
@@ -96,9 +98,11 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 // 자투리 미완성 문장 처리
                 let remainder = sentenceBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
                 if let ttsRemainder = Self.normalizedTTSChunk(remainder), !Task.isCancelled {
+                    // Round 266: agentID 전달 (자투리 문장도 동일하게)
                     await self.dispatchToInferencePipeline(
                         text: ttsRemainder,
                         characterName: characterName,
+                        agentID: agentID,
                         onPlaybackStarted: { onAudioPlaybackStarted(ttsRemainder) }
                     )
                 }
@@ -134,6 +138,8 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 let pitch   = SupertonicVoicePresetPolicy.pitch(for: agentID, emotion: emotion)
                 let rate    = SupertonicVoicePresetPolicy.rate(for: agentID, emotion: emotion)
                 let speed   = SupertonicVoicePresetPolicy.speed(for: agentID, emotion: emotion)
+                // Round 266: TTS character config 로그 — agentID가 nil이면 기본 preset 사용
+                AppLog.info("[TTS-CharConfig] agentID=\(agentID ?? "nil") preset=\(preset) emotion=\(emotion.rawValue) pitch=\(pitch) rate=\(rate) speed=\(speed)")
                 // 텍스트 전처리 — 말풍선 원문은 건드리지 않고 TTS 입력만 처리
                 let spokenText = SupertonicProsodyTextProcessor.preprocess(text, agentID: agentID, style: emotion)
                 let paths = Supertonic3ONNXModelPaths.defaultPaths()
