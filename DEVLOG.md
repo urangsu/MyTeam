@@ -33,12 +33,31 @@
 - **quickSummary** — `providerCandidates` 기반 통합 라우팅 (하드코딩 순서 제거)
 - **generatePrivacyTerms** — 동일, candidates 루프 통합
 
+**Round 269C: Behavioral Contracts**
+- `preflight_round269c_behavioral_contracts.sh` 신규 (20/20 PASS)
+  - Contract 1: 최신 모델 차단되지 않음 (knownBrokenModels 빈 목록)
+  - Contract 2: tool 요청 → Claude/OpenAI tool-capable 우선 라우팅
+  - Contract 3: fallback metadata 실제 provider 반영
+  - Contract 4: roomID 명시 addChatLog / deprecated 마킹 검증
+  - Contract 5: 단일 candidates 루프 통합 (quickSummary/generatePrivacyTerms)
+  - Contract 6: floor fallback 상수 유지, 쿨다운 메커니즘 유지
+
+**Round 269D: Warning Zero Gate**
+- `preflight_round269d_warning_gate.sh` 신규 (12/12 PASS)
+  - @discardableResult 존재 확인 (MainActor.run unused result 방지)
+  - httpBody = try? 없음 확인
+  - Supertonic3 Spike-only 격리 + Swift 6 주석 확인
+  - TTSProductPolicy fallback/autoSpeak false 확인
+  - .onnx/.log untracked 확인
+
 **Preflight**
 - `preflight_round264_model_registry.sh` — 검사 #8-12,#17 KnownBrokenModel 기준으로 재작성 (22/22 PASS)
 - `preflight_round265_llm_call_paths.sh` — 검사 #6,#14-16 업데이트 (18/18 PASS)
 - `preflight_round269a_model_truth_gate.sh` 신규 (18/18 PASS)
+- `preflight_round269c_behavioral_contracts.sh` 신규 (20/20 PASS)
+- `preflight_round269d_warning_gate.sh` 신규 (12/12 PASS)
 
-- Debug BUILD SUCCEEDED, 0 errors
+- Debug + Release BUILD SUCCEEDED, 0 errors
 
 ---
 
