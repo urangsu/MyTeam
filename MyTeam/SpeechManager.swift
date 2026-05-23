@@ -124,16 +124,23 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
 
         case .supertonic3:
             // Round 257TTS: 합성 결과를 AudioPlaybackService.playFloatSamples로 직접 재생.
+            // Round 258TTS: prosody 전처리 + pitch/rate/speed 캐릭터별 적용.
             // onPlaybackStarted는 playerNode.play() 이후 AudioPlaybackService가 호출 — 립싱크 원칙 준수.
             AppLog.info("[AICall] callType=tts provider=supertonic3 (official)")
             do {
                 let preset = SupertonicVoicePresetPolicy.preset(for: agentID)
+                let pitch  = SupertonicVoicePresetPolicy.pitch(for: agentID)
+                let rate   = SupertonicVoicePresetPolicy.rate(for: agentID)
+                let speed  = SupertonicVoicePresetPolicy.speed(for: agentID)
+                // 텍스트 전처리 — 말풍선 원문은 건드리지 않고 TTS 입력만 처리
+                let spokenText = SupertonicProsodyTextProcessor.preprocess(text, agentID: agentID)
                 let paths = Supertonic3ONNXModelPaths.defaultPaths()
                 let result = try await Supertonic3ONNXRunner.shared.synthesize(
-                    text: text,
+                    text: spokenText,
                     preset: preset,
                     lang: Supertonic3TTSConfig.selectedLanguage,
                     totalSteps: Supertonic3TTSConfig.totalStep,
+                    speed: speed,
                     paths: paths
                 )
                 // WAV 저장 — debug/lab 확인용 (재생과 무관)
@@ -150,6 +157,8 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                     sampleRate: result.sampleRate,
                     streamId: UUID().uuidString,
                     characterName: characterName,
+                    pitch: pitch,
+                    rate: rate,
                     onPlaybackStarted: onPlaybackStarted
                 )
             } catch {
@@ -242,16 +251,22 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
     func speakOnce(text: String, agentID: String? = nil) async -> TTSOutput? {
         guard TTSRoutingPolicy.selectedProvider() == .supertonic3 else { return nil }
         let preset = SupertonicVoicePresetPolicy.preset(for: agentID)
+        let pitch  = SupertonicVoicePresetPolicy.pitch(for: agentID)
+        let rate   = SupertonicVoicePresetPolicy.rate(for: agentID)
+        let speed  = SupertonicVoicePresetPolicy.speed(for: agentID)
+        // 텍스트 전처리 — 말풍선 원문은 건드리지 않고 TTS 입력만 처리
+        let spokenText = SupertonicProsodyTextProcessor.preprocess(text, agentID: agentID)
         let paths = Supertonic3ONNXModelPaths.defaultPaths()
         let charName: String = agentID.flatMap { id in
             AgentWindowManager.shared.allAvailableAgents.first(where: { $0.id == id })?.name
         } ?? "루나"
         do {
             let result = try await Supertonic3ONNXRunner.shared.synthesize(
-                text: text,
+                text: spokenText,
                 preset: preset,
                 lang: Supertonic3TTSConfig.selectedLanguage,
                 totalSteps: Supertonic3TTSConfig.totalStep,
+                speed: speed,
                 paths: paths
             )
             // 재생 — playerNode.play() 이후 완료
@@ -260,6 +275,8 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 sampleRate: result.sampleRate,
                 streamId: UUID().uuidString,
                 characterName: charName,
+                pitch: pitch,
+                rate: rate,
                 onPlaybackStarted: nil
             )
             // WAV 저장 (debug/lab 확인용, 실패해도 재생에 영향 없음)

@@ -11095,6 +11095,8 @@
 				<string>84398FD483899C65768B13BB</string>
 				<string>25D185747AA34F44FB45A317</string>
 				<string>68ACEE63E7ABABF7546ACAED</string>
+				<string>CVP258TTS001FILEREF0000A1</string>
+				<string>SPTP258TTS001FILEREF0000B1</string>
 			</array>
 			<key>isa</key>
 			<string>PBXGroup</string>
@@ -11523,6 +11525,8 @@
 				<string>BB9EAC91B940467C08515E14</string>
 				<string>A2FAC00690AED725FB48DB70</string>
 				<string>9BBF1A37FD6318EA8507988F</string>
+				<string>CVP258TTS001BUILDFILE000A1</string>
+				<string>SPTP258TTS001BUILDFILE00B1</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -18171,6 +18175,26 @@
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
+		<key>CVP258TTS001BUILDFILE000A1</key>
+		<dict>
+			<key>fileRef</key>
+			<string>CVP258TTS001FILEREF0000A1</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>CVP258TTS001FILEREF0000A1</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>CharacterVoiceProfile.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
 		<key>D00DF7A268169FADA918C6F3</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -23259,6 +23283,26 @@
 			<string>sourcecode.swift</string>
 			<key>path</key>
 			<string>CodeBlockView.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>SPTP258TTS001BUILDFILE00B1</key>
+		<dict>
+			<key>fileRef</key>
+			<string>SPTP258TTS001FILEREF0000B1</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>SPTP258TTS001FILEREF0000B1</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>SupertonicProsodyTextProcessor.swift</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>

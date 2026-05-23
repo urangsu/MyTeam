@@ -6,6 +6,33 @@
 
 ---
 
+## 2026-05-23 (Round 258TTS-CHARACTER-VOICE-SYSTEM — 캐릭터 보이스 아이덴티티 + 감정 운율 + 팀원 교체 버그)
+
+### 완료 (2026-05-23)
+
+- `CharacterVoiceProfile.swift` 신규 — 11개 캐릭터 voice 프로필
+  - basePitch/baseRate: VoiceStyleCatalog 기존값 계승 (cents 기준)
+  - baseSpeed: Supertonic3 duration predictor 속도 스케일 (캐릭터별 0.95~1.08)
+  - defaultEmotionStyle: 캐릭터별 기본 감정 (레오:confident, 치코:friendly 등)
+  - animalCrossingPitchBoost/RateBoost: 강한 모드 추가 boost, 기본 OFF
+- `SupertonicProsodyTextProcessor.swift` 신규 — 경량 텍스트 전처리
+  - 법률/회계/숫자 감지 → neutral (변환 스킵)
+  - friendly 스타일 + 80자 이하: 공식 표현 소프트 변환
+  - 200자 초과 → 첫 200자 + "..."
+  - 말풍선 원문 절대 불변 — TTS 입력만 처리
+- `Supertonic3ONNXRunner.synthesize(speed:)` 파라미터화 (clamp 0.85~1.25)
+- `SupertonicVoicePresetPolicy` CharacterVoiceProfileCatalog 기반 재구성 + speed API 추가
+- `AudioPlaybackService.playFloatSamples(pitch:rate:)` + clampedPitch/clampedRate helpers
+- `SpeechManager` dispatchToInferencePipeline + speakOnce 양쪽 prosody + pitch/rate/speed 적용
+- `TTSLabView` 보이스 디렉터: preset 10개 + 캐릭터 11개 샘플 말하기 + pitch/rate/speed 표시
+- `AgentWindowManager` 치코 role → "UX 디자이너 & 온보딩 도우미"
+- `AgentWindowManager` replaceTeamAgent(at:with:) 래퍼 + syncSelectedTeamWorkroomAgents()
+- `TeamTableView` 팀원 교체 슬롯 서브메뉴 — 슬롯 0 고정 버그 수정
+- pbxproj에 신규 2개 파일 등록
+- preflight 22/22 PASS, Debug/Release BUILD SUCCEEDED
+
+---
+
 ## 2026-05-23 (Round 257TTS-PLAYBACK — 합성 결과 AudioPlaybackService 재생 연결)
 
 ### 완료 (2026-05-23)

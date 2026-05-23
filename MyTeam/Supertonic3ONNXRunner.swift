@@ -65,6 +65,7 @@ actor Supertonic3ONNXRunner {
         preset: String,
         lang: String?,
         totalSteps: Int = S3Config.totalStepDefault,
+        speed: Float = 1.05,
         paths: Supertonic3ONNXModelPaths
     ) async throws -> Supertonic3SynthesisResult {
         let t0 = CFAbsoluteTimeGetCurrent()
@@ -103,8 +104,9 @@ actor Supertonic3ONNXRunner {
 
         // Compute latent length from durations
         // Python applies speed=1.05 default: dur_onnx / speed (higher speed → shorter duration)
-        let speed: Float = 1.05
-        let durScaled = durOnnx.map { $0 / speed }
+        // Round 258TTS: speed is now a parameter (default 1.05). clamp: 0.85~1.25.
+        let safeSpeed: Float = min(1.25, max(0.85, speed))
+        let durScaled = durOnnx.map { $0 / safeSpeed }
         let wavLengths = durScaled.map { Int64(Double($0) * Double(S3Config.sampleRate)) }
         let wavLenMax  = wavLengths.max() ?? 1
         let latentL    = Int((Double(wavLenMax) + Double(S3Config.chunkSize) - 1.0) /

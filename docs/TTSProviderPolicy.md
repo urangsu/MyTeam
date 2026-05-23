@@ -1,5 +1,32 @@
 # TTS Provider Policy
 
+**Round 258TTS-CHARACTER-VOICE-SYSTEM** — 캐릭터별 보이스 아이덴티티 + 감정 운율 + 팀원 교체 버그 수정.
+
+## Round 258TTS-CHARACTER-VOICE-SYSTEM (2026-05-23)
+
+캐릭터별 pitch/rate/speed 아이덴티티 적용, 텍스트 전처리(prosody), TTS Lab 보이스 디렉터 UI.
+
+변경 사항:
+1. `CharacterVoiceProfile.swift` — 11개 캐릭터 보이스 프로필 (pitch/rate/speed/emotionStyle)
+2. `SupertonicProsodyTextProcessor.swift` — 텍스트 전처리 (prosody, neutral 보호)
+3. `Supertonic3ONNXRunner.synthesize(speed:)` — speed 파라미터화 (기존 하드코딩 1.05 제거)
+4. `SupertonicVoicePresetPolicy` — CharacterVoiceProfileCatalog 기반, pitch/rate/speed API 추가
+5. `AudioPlaybackService.playFloatSamples(pitch:rate:)` — pitch/rate 파라미터 추가
+6. `SpeechManager` — prosody 전처리 + pitch/rate/speed 적용
+7. `TTSLabView` — 보이스 디렉터 섹션 (preset 10개 버튼 + 캐릭터 11개 샘플)
+8. `AgentWindowManager` — 치코 role "UX 디자이너 & 온보딩 도우미", replaceTeamAgent 래퍼
+9. `TeamTableView` — 팀원 교체 슬롯 서브메뉴 (슬롯 0 고정 버그 수정)
+10. `scripts/preflight_round258tts_character_voice_system.sh` — 22/22 PASS
+
+캐릭터 보이스 정책:
+- basePitch/baseRate: VoiceStyleCatalog 기존값 계승 (cents 기준)
+- baseSpeed: Supertonic3 duration predictor 속도 스케일 (0.85~1.25 clamp)
+- Animal Crossing mode: animalCrossingPitchBoost/RateBoost로 분리, 기본 OFF
+- 법률/회계/숫자 텍스트 → neutral 처리 (변환 스킵)
+- 말풍선 원문은 절대 변경 안 함
+
+---
+
 **Round 256TTS-OFFICIAL-ENGINE** — Supertonic3 공식 MyTeam TTS 엔진 승격.
 
 ## Round 257TTS-PLAYBACK (2026-05-23)

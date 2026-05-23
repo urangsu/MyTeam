@@ -29,6 +29,10 @@ struct TTSLabView: View {
     @State private var modelCheck: Supertonic3ModelLocator.ModelCheckResult = .checking
     @State private var showProbeDetail: Bool = false
 
+    // MARK: - Round 258TTS: Voice Director State
+    @State private var voiceDirectorSpeakingID: String? = nil   // speaking agentID or preset
+    @State private var voiceDirectorError: String? = nil
+
     // MARK: - ONNX Spike State (Round 249TTS)
     @State private var spikeInputText: String = "안녕하세요. 테스트입니다."
     @State private var spikeSynthesisResult: Supertonic3SynthesisResult? = nil
@@ -49,6 +53,7 @@ struct TTSLabView: View {
                 headerSection
                 officialEngineStatusSection
                 supertonicNoticeSection
+                voiceDirectorSection
                 supertonic3Section
                 onnxSpikeSection
                 policyNoticeSection
@@ -164,6 +169,159 @@ struct TTSLabView: View {
                 noticeAccepted = false
             }
         )
+    }
+
+    // MARK: - Round 258TTS: Voice Director Section
+
+    private var voiceDirectorSection: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 14) {
+
+                HStack(spacing: 8) {
+                    Image(systemName: "music.microphone")
+                        .foregroundStyle(.purple)
+                    Text("보이스 디렉터")
+                        .font(.headline)
+                    Spacer()
+                    Text("Round 258TTS")
+                        .font(.caption2.bold())
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Color.purple.opacity(0.12))
+                        .cornerRadius(4)
+                }
+
+                if let err = voiceDirectorError {
+                    Text("오류: \(err)")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .padding(6)
+                        .background(Color.red.opacity(0.08))
+                        .cornerRadius(4)
+                }
+
+                Divider()
+
+                // MARK: Preset 전체 테스트 (M1~M5, F1~F5)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Preset 전체 테스트")
+                        .font(.subheadline.bold())
+                    Text("각 버튼: \"안녕하세요. 제 목소리는 이 톤이에요.\" 발화")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    let presets = ["M1", "M2", "M3", "M4", "M5", "F1", "F2", "F3", "F4", "F5"]
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 6) {
+                        ForEach(presets, id: \.self) { preset in
+                            let agentID = CharacterVoiceProfileCatalog.profile(forPreset: preset)?.agentID
+                            let isSpeaking = voiceDirectorSpeakingID == "preset_\(preset)"
+                            Button(action: {
+                                speakVoiceDirectorSample(
+                                    text: "안녕하세요. 제 목소리는 이 톤이에요.",
+                                    agentID: agentID,
+                                    speakID: "preset_\(preset)"
+                                )
+                            }) {
+                                VStack(spacing: 2) {
+                                    if isSpeaking {
+                                        ProgressView().scaleEffect(0.6)
+                                    } else {
+                                        Image(systemName: "speaker.wave.2")
+                                            .font(.caption2)
+                                    }
+                                    Text(preset)
+                                        .font(.system(.caption, design: .monospaced).bold())
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 6)
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(preset.hasPrefix("M") ? .blue : .pink)
+                            .disabled(voiceDirectorSpeakingID != nil || !modelCheck.isAvailable || !noticeAccepted)
+                        }
+                    }
+                }
+
+                Divider()
+
+                // MARK: 캐릭터 목소리 매핑 테이블
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("캐릭터 목소리 매핑")
+                        .font(.subheadline.bold())
+
+                    ForEach(CharacterVoiceProfileCatalog.profiles) { profile in
+                        let isSpeaking = voiceDirectorSpeakingID == "char_\(profile.agentID)"
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 8) {
+                                Text(profile.displayName)
+                                    .font(.caption.bold())
+                                    .frame(width: 44, alignment: .leading)
+                                Text(profile.preset)
+                                    .font(.system(.caption2, design: .monospaced))
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 28)
+                                Text(String(format: "p%+.0f r%.2f s%.2f",
+                                             profile.basePitch, profile.baseRate, profile.baseSpeed))
+                                    .font(.system(.caption2, design: .monospaced))
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Button(action: {
+                                    speakVoiceDirectorSample(
+                                        text: profile.sampleLine,
+                                        agentID: profile.agentID,
+                                        speakID: "char_\(profile.agentID)"
+                                    )
+                                }) {
+                                    if isSpeaking {
+                                        ProgressView().scaleEffect(0.5)
+                                    } else {
+                                        Image(systemName: "speaker.wave.2.fill")
+                                            .font(.caption)
+                                    }
+                                }
+                                .buttonStyle(.borderless)
+                                .disabled(voiceDirectorSpeakingID != nil || !modelCheck.isAvailable || !noticeAccepted)
+                            }
+                            Text(profile.sampleLine)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .padding(.leading, 52)
+                        }
+                        .padding(.vertical, 2)
+                        .padding(.horizontal, 6)
+                        .background(
+                            isSpeaking ? Color.purple.opacity(0.08) : Color.clear
+                        )
+                        .cornerRadius(4)
+                    }
+                }
+
+                // Disabled notice
+                if !noticeAccepted || !modelCheck.isAvailable {
+                    Text(noticeAccepted ? "⚠️ 모델 파일 없음 — ~/.cache/supertonic3/onnx/ 필요" : "📋 Supertonic 고지 수락 후 사용 가능")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
+            }
+            .padding(8)
+        } label: {
+            Label("보이스 디렉터", systemImage: "music.microphone")
+                .foregroundStyle(.purple)
+        }
+    }
+
+    private func speakVoiceDirectorSample(text: String, agentID: String?, speakID: String) {
+        guard voiceDirectorSpeakingID == nil else { return }
+        voiceDirectorSpeakingID = speakID
+        voiceDirectorError = nil
+        Task {
+            let output = await SpeechManager.shared.speakOnce(text: text, agentID: agentID)
+            await MainActor.run {
+                voiceDirectorSpeakingID = nil
+                if output == nil {
+                    voiceDirectorError = "재생 실패 — TTS 미설정 또는 모델 없음"
+                }
+            }
+        }
     }
 
     private var supertonic3Section: some View {

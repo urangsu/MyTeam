@@ -258,12 +258,16 @@ actor AudioPlaybackService: AudioPlayable {
     ///   - sampleRate: 출력 샘플레이트 (보통 44100)
     ///   - streamId: 세션 식별자 (UUID().uuidString 권장)
     ///   - characterName: 로그용 캐릭터 이름
+    ///   - pitch: AVAudioUnitTimePitch.pitch (cents). clamp: -300~+360. default 0.0
+    ///   - rate: AVAudioUnitTimePitch.rate 배율. clamp: 0.90~1.14. default 1.0
     ///   - onPlaybackStarted: playerNode.play() 이후 MainActor에서 호출되는 콜백 (nil 가능)
     func playFloatSamples(
         samples: [Float],
         sampleRate: Int,
         streamId: String,
         characterName: String,
+        pitch: Float = 0.0,
+        rate: Float = 1.0,
         onPlaybackStarted: (@Sendable () -> Void)? = nil
     ) async {
         guard !samples.isEmpty else {
@@ -296,7 +300,9 @@ actor AudioPlaybackService: AudioPlayable {
         channelData[0].update(from: samples, count: Int(frameCount))
 
         // 3. 세션 준비 (노드 재연결 + currentActiveStreamId 설정)
-        prepareSession(streamId: streamId, characterName: characterName, pitch: 0.0, rate: 1.0)
+        // Round 258TTS: pitch/rate clamp 적용 후 prepareSession에 전달
+        prepareSession(streamId: streamId, characterName: characterName,
+                       pitch: clampedPitch(pitch), rate: clampedRate(rate))
 
         // 4. 엔진 포맷으로 변환 (모노→스테레오, 샘플레이트 변환 포함)
         guard let outBuffer = convertBuffer(srcBuffer, from: srcFormat, to: ef) else {
@@ -333,6 +339,11 @@ actor AudioPlaybackService: AudioPlayable {
             Task { @MainActor in cb() }
         }
     }
+
+    // MARK: - Round 258TTS: pitch/rate clamp helpers
+    // 범위: VoicePlaybackStyle.clamped와 동일 (SpeechManager.swift 참고)
+    private func clampedPitch(_ p: Float) -> Float { min(360, max(-300, p)) }
+    private func clampedRate(_ r: Float) -> Float { min(1.14, max(0.90, r)) }
 
     func stopAll() {
 

@@ -67,6 +67,26 @@ MyTeam은 Mac 안에서 사용자의 자연어 요청을 받아, 문서/파일/�
 
 ### Now
 
+#### Round 258TTS-CHARACTER-VOICE-SYSTEM — 완료 (2026-05-23)
+
+캐릭터별 보이스 아이덴티티 + 감정 운율 + 팀원 교체 버그 수정
+
+- `CharacterVoiceProfile.swift` 신규 — 11개 캐릭터 pitch/rate/speed/emotionStyle 프로필
+- `SupertonicProsodyTextProcessor.swift` 신규 — 텍스트 전처리 (법률/숫자 보호, 소프트 변환)
+- `Supertonic3ONNXRunner.synthesize(speed:)` 파라미터화 (clamp 0.85~1.25)
+- `SupertonicVoicePresetPolicy` CharacterVoiceProfileCatalog 기반으로 교체 + pitch/rate/speed API
+- `AudioPlaybackService.playFloatSamples(pitch:rate:)` 파라미터 추가 + clamp helpers
+- `SpeechManager` dispatchToInferencePipeline + speakOnce: prosody 전처리 + pitch/rate/speed 적용
+- `TTSLabView` 보이스 디렉터 섹션 (preset 10개 + 캐릭터 11개 샘플 말하기)
+- `AgentWindowManager` 치코 role "UX 디자이너 & 온보딩 도우미" + replaceTeamAgent 래퍼
+- `TeamTableView` 팀원 교체 슬롯 서브메뉴 (슬롯 0 고정 버그 수정)
+- `scripts/preflight_round258tts_character_voice_system.sh` — **22/22 PASS** ✅
+- Debug/Release BUILD SUCCEEDED ✅
+- Runtime Manual QA 필요 (pitch/rate 청감, 슬롯 교체 확인, 치코 역할 표시 확인)
+- 브랜치: `cloud/round252-supertonic-license-lock`
+
+---
+
 #### Round 257TTS-PLAYBACK — 완료 (2026-05-23)
 
 Supertonic3 합성 결과 AudioPlaybackService 재생 연결

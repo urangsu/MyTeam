@@ -19,7 +19,7 @@ class AgentWindowManager: ObservableObject {
         AgentConfig(id: "agent_2",  name: "루나",   role: "마케터/콘텐츠 기획", emoji: "🐰", color: .pink,   isPremium: false, status: "바이럴 캠페인 기획 중",    spriteName: nil, fallbackImageName: "루나_profile", dragEmoji: "😆", dragRotation:  10, dragSoundName: "Blow",  dropSoundName: "Pop"),
         AgentConfig(id: "agent_3",  name: "모코",   role: "프로젝트 매니저",    emoji: "🐹", color: .purple, isPremium: false, status: "이미 다 계획해둔 마스터",  spriteName: nil, fallbackImageName: "모코_profile", dragEmoji: "😵", dragRotation:  -8, dragSoundName: "Morse", dropSoundName: "Funk"),
         AgentConfig(id: "agent_4",  name: "핀",     role: "UI 디자이너",        emoji: "🐧", color: .cyan,   isPremium: false, status: "픽셀 하나에 30분째 고민", spriteName: nil, fallbackImageName: "핀_profile", dragEmoji: "😱", dragRotation:  12, dragSoundName: "Ping",  dropSoundName: "Pop"),
-        AgentConfig(id: "agent_5",  name: "치코",   role: "문서·할일 정리 팀원", emoji: "🐿️", color: Color(red:0.6, green:0.4, blue:0.2), isPremium: false, status: "문서와 할 일을 정리하는 중", spriteName: "치코", fallbackImageName: "치코_profile", dragEmoji: "🤯", dragRotation: -10, dragSoundName: "Pop",   dropSoundName: "Funk"),
+        AgentConfig(id: "agent_5",  name: "치코",   role: "UX 디자이너 & 온보딩 도우미", emoji: "🐿️", color: Color(red:0.6, green:0.4, blue:0.2), isPremium: false, status: "UX와 온보딩을 도와주는 중", spriteName: "치코", fallbackImageName: "치코_profile", dragEmoji: "🤯", dragRotation: -10, dragSoundName: "Pop",   dropSoundName: "Funk"),
         AgentConfig(id: "agent_6",  name: "렉스",   role: "법률 전문가",        emoji: "🦥", color: .green,  isPremium: true,  status: "계약서 검토 중 (천천히)", spriteName: nil, fallbackImageName: "렉스_profile", dragEmoji: "😴", dragRotation:  14, dragSoundName: "Blow",  dropSoundName: "Pop"),
         AgentConfig(id: "agent_7",  name: "케이",   role: "보안/데이터 전문가", emoji: "🐕", color: .blue,   isPremium: true,  status: "보안 로그 분석 중",       spriteName: nil, fallbackImageName: "케이_profile", dragEmoji: "😐", dragRotation:  -5, dragSoundName: "Morse", dropSoundName: "Funk"),
         AgentConfig(id: "agent_8",  name: "래키",   role: "백엔드 개발자",      emoji: "🦝", color: .gray,   isPremium: true,  status: "밤새워 API 디버깅 중",    spriteName: nil, fallbackImageName: "래키_profile", dragEmoji: "😵‍💫", dragRotation:   8, dragSoundName: "Ping",  dropSoundName: "Pop"),
@@ -1030,6 +1030,28 @@ class AgentWindowManager: ObservableObject {
             let greeting = swapGreeting(for: routedAgent.name)
             SpeechManager.shared.speak(text: greeting, agentID: routedAgent.id, characterName: routedAgent.name)
         }
+    }
+
+    // MARK: - Round 258TTS: 팀원 교체 래퍼 + 워크룸 동기화
+
+    /// 슬롯 index의 팀원을 agentID로 교체. swapAgent(at:with:) 기반 래퍼.
+    /// - Parameters:
+    ///   - index: 교체할 슬롯 인덱스 (0~3)
+    ///   - agentID: 새로 투입할 에이전트 ID
+    @MainActor
+    func replaceTeamAgent(at index: Int, with agentID: String) {
+        guard activeAgents.indices.contains(index) else { return }
+        guard let newAgent = allAvailableAgents.first(where: { $0.id == agentID }) else { return }
+        // 이미 활성화된 에이전트면 위치 스왑 (swapAgent 동작과 동일)
+        swapAgent(at: index, with: newAgent)
+        syncSelectedTeamWorkroomAgents()
+    }
+
+    /// 현재 선택된 팀 워크룸의 agentIDs를 activeAgents와 동기화.
+    private func syncSelectedTeamWorkroomAgents() {
+        guard let roomID = selectedTeamWorkroomID,
+              let idx = rooms.firstIndex(where: { $0.id == roomID }) else { return }
+        rooms[idx].agentIDs = activeAgents.map(\.id)
     }
 
     // MARK: - 팀 리더 관리
