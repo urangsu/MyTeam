@@ -69,7 +69,7 @@ check 12 "previewAnimalese는 Supertonic3ONNXRunner 호출 없음" \
 
 # [13] TTSLabView에 Animalese 섹션 존재
 check 13 "TTSLabView Animalese 섹션 존재" \
-  "grep -q '동물의숲식 말소리 테스트' '$LAB'"
+  "grep -q '음절형 말소리 테스트' '$LAB'"
 
 # [14] Animalese 섹션에 profile picker 존재
 check 14 "Animalese profile picker 존재" \
