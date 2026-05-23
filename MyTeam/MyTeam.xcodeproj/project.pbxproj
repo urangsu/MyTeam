@@ -11101,6 +11101,8 @@
 				<string>SETP260TTS001FILEREF0000D1</string>
 				<string>SPBP261TTS001FILEREF0000E1</string>
 				<string>ANIM261TTS001FILEREF0000F1</string>
+				<string>KSD262TTS001FILEREF0000G1</string>
+				<string>AFS262TTS001FILEREF0000H1</string>
 			</array>
 			<key>isa</key>
 			<string>PBXGroup</string>
@@ -11535,6 +11537,8 @@
 				<string>SETP260TTS001BUILDFILE00D1</string>
 				<string>SPBP261TTS001BUILDFILE00E1</string>
 				<string>ANIM261TTS001BUILDFILE00F1</string>
+				<string>KSD262TTS001BUILDFILE00G1</string>
+				<string>AFS262TTS001BUILDFILE00H1</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -23345,6 +23349,42 @@
 			<string>sourcecode.swift</string>
 			<key>path</key>
 			<string>AnimaleseSynthesizer.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>KSD262TTS001BUILDFILE00G1</key>
+		<dict>
+			<key>fileRef</key>
+			<string>KSD262TTS001FILEREF0000G1</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>KSD262TTS001FILEREF0000G1</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>KoreanSyllableDecomposer.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>AFS262TTS001BUILDFILE00H1</key>
+		<dict>
+			<key>fileRef</key>
+			<string>AFS262TTS001FILEREF0000H1</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>AFS262TTS001FILEREF0000H1</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>AudioFeatureSnapshot.swift</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
