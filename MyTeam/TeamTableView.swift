@@ -333,13 +333,14 @@ struct TeamTableView: View {
 
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("/") else { return }
 
-        manager.addChatLog(roomID: roomID, agentID: "user", agentName: "나", text: text, isUser: true)
+        let userMessageID = manager.addChatLog(roomID: roomID, agentID: "user", agentName: "나", text: text, isUser: true)
 
         Task {
             await TeamOrchestrator.shared.runTeamDiscussion(
                 userMessage: text,
                 roomID: roomID,
-                manager: manager
+                manager: manager,
+                currentUserMessageID: userMessageID
             )
         }
     }

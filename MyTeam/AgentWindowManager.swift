@@ -1275,6 +1275,7 @@ class AgentWindowManager: ObservableObject {
 
     /// roomID 명시 필수형 — 비동기 Task 안에서는 반드시 이것을 사용한다.
     /// 발신 시점의 roomID를 캡처해서 전달해야 race condition / room 오염을 막는다.
+    @discardableResult
     func addChatLog(
         roomID: UUID,
         agentID: String,
@@ -1284,16 +1285,43 @@ class AgentWindowManager: ObservableObject {
         isSystem: Bool = false,
         sources: [SourceReference] = [],
         skillID: String? = nil
-    ) {
-        guard let index = rooms.firstIndex(where: { $0.id == roomID }) else { return }
+    ) -> UUID? {
+        guard let index = rooms.firstIndex(where: { $0.id == roomID }) else { return nil }
         let newLog = ChatLog(id: UUID(), agentID: agentID, agentName: agentName,
                              text: text, isUser: isUser, timestamp: Date(), isSystem: isSystem, sources: sources, skillID: skillID)
         rooms[index].messages.append(newLog)
+        return newLog.id
+    }
+
+    func updateChatLogText(
+        roomID: UUID,
+        messageID: UUID,
+        text: String,
+        sources: [SourceReference] = []
+    ) {
+        guard let roomIndex = rooms.firstIndex(where: { $0.id == roomID }),
+              let messageIndex = rooms[roomIndex].messages.firstIndex(where: { $0.id == messageID }) else {
+            return
+        }
+        rooms[roomIndex].messages[messageIndex] = ChatLog(
+            id: rooms[roomIndex].messages[messageIndex].id,
+            agentID: rooms[roomIndex].messages[messageIndex].agentID,
+            agentName: rooms[roomIndex].messages[messageIndex].agentName,
+            text: text,
+            isUser: rooms[roomIndex].messages[messageIndex].isUser,
+            timestamp: rooms[roomIndex].messages[messageIndex].timestamp,
+            isSystem: rooms[roomIndex].messages[messageIndex].isSystem,
+            attachments: rooms[roomIndex].messages[messageIndex].attachments,
+            sources: sources,
+            skillID: rooms[roomIndex].messages[messageIndex].skillID,
+            artifactIDs: rooms[roomIndex].messages[messageIndex].artifactIDs
+        )
     }
 
     /// ⚠️ currentRoomID를 내부에서 읽어 비동기 컨텍스트에서 race condition 위험이 있습니다.
     /// 비동기 Task 내부에서는 addChatLog(roomID:...) 명시형을 사용하세요.
     @available(*, deprecated, message: "Use addChatLog(roomID:agentID:agentName:text:isUser:) in async contexts to avoid room contamination")
+    @discardableResult
     func addChatLog(
         agentID: String,
         agentName: String,
@@ -1303,11 +1331,11 @@ class AgentWindowManager: ObservableObject {
         isSystem: Bool = false,
         sources: [SourceReference] = [],
         skillID: String? = nil
-    ) {
+    ) -> UUID? {
         let rid = roomID ?? currentRoomID
-        guard let rid else { return }
-        addChatLog(roomID: rid, agentID: agentID, agentName: agentName,
-                   text: text, isUser: isUser, isSystem: isSystem, sources: sources, skillID: skillID)
+        guard let rid else { return nil }
+        return addChatLog(roomID: rid, agentID: agentID, agentName: agentName,
+                          text: text, isUser: isUser, isSystem: isSystem, sources: sources, skillID: skillID)
     }
 
     func replaceMessages(roomID: UUID, with messages: [ChatLog]) {

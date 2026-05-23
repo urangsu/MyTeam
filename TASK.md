@@ -67,6 +67,30 @@ MyTeam은 Mac 안에서 사용자의 자연어 요청을 받아, 문서/파일/�
 
 ### Now
 
+#### Round 263-CONVERSATION-RELIABILITY-GATE — 완료 (2026-05-23)
+
+앱이 “말은 하는데 일을 못하는” 상태로 보이지 않게 대화/Provider/컨텍스트 P0 계약을 보강했다.
+
+- `AIService.getResponseStream`
+  - API 키가 있는 provider 후보만 순차 선택
+  - Gemini 고정 실패 대신 OpenAI/Claude/Gemini/OpenRouter fallback
+  - OpenAI/Claude/OpenRouter HTTP status 보존
+- `ConversationMemory.promptHistory`
+  - 현재 사용자 턴 중복 주입 제거
+- `AgentWindowManager`
+  - chat log insert가 message ID 반환
+  - streaming assistant message update API 추가
+- `AgentChatView`
+  - 화면 표시 원문과 TTS chunk stream 분리
+  - TTS 90자 제한이 채팅 로그를 훼손하지 않도록 변경
+  - room-scoped memory context 사용
+- `TeamTableView` / `TeamOrchestrator`
+  - 팀 대화도 현재 사용자 턴 제외
+  - room-scoped memory context 사용
+- 검증:
+  - Debug build ✅
+  - `scripts/preflight_round263_conversation_reliability.sh` 추가
+
 #### Round 262TTS-ANIMALESE-SPEECHLIKE-ENGINE — 완료 (2026-05-23)
 
 Round 261의 melody-like blip Animalese를 음절형 procedural speech effect로 재작성한다.

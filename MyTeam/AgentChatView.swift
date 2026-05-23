@@ -1072,7 +1072,7 @@ struct AgentChatView: View {
         let attachmentContext = ConversationMemory.buildAttachmentContext(from: attachments)
         let fullText = attachmentContext.isEmpty ? text : text + attachmentContext
 
-        manager.addChatLog(
+        let userMessageID = manager.addChatLog(
             roomID: roomID, agentID: targetID, agentName: "나",
             text: text.isEmpty ? "[첨부파일 \(attachments.count)개]" : text,
             isUser: true
@@ -1085,17 +1085,20 @@ struct AgentChatView: View {
                 await TeamOrchestrator.shared.runTeamDiscussion(
                     userMessage: fullText,
                     roomID: roomID,
-                    manager: manager
+                    manager: manager,
+                    currentUserMessageID: userMessageID
                 )
             } else {
                 // ── 개별 채팅: 해당 에이전트 단독 응답 ──
                 // WorkflowOrchestrator / TeamOrchestrator 호출 금지
                 // Selector 호출 금지 — 이 경로는 항상 targetID 에이전트 단독 응답
                 AppLog.info("[DirectChat] submit roomID=\(roomID.uuidString.prefix(8)) targetAgentID=\(targetID)")
-                var history = manager.rooms.first(where: { $0.id == roomID })?.messages ?? []
-                
-                // 과거 페르소나 오염 방지를 위한 엄격한 슬라이딩 윈도우 한도 적용 (최신 5개)
-                history = Array(history.suffix(5))
+                let roomMessages = manager.rooms.first(where: { $0.id == roomID })?.messages ?? []
+                var history = ConversationMemory.promptHistory(
+                    messages: roomMessages,
+                    excludingMessageID: userMessageID,
+                    maxMessages: 5
+                )
                 
                 // (선택) 여전히 30개 초과 요약 로직이 있다면 태우되, 보통 5개면 안 탐
                 history = await ConversationMemory.compactHistory(messages: history)
@@ -1133,7 +1136,7 @@ struct AgentChatView: View {
                     )
                     let groundedText = fullText
                         + manager.roomProfileContext(roomID: roomID)
-                        + manager.persistentContext
+                        + manager.scopedMemoryContext(agentName: agentName, roomID: roomID)
                         + personalPolicy
                         + toolEvidence.promptContext
 
@@ -1161,21 +1164,81 @@ struct AgentChatView: View {
                         // 1. 타이핑 인디케이터 ON
                         _ = await MainActor.run { manager.typingAgentIDs.insert(targetIDAtSend) }
 
-                        // 2. SSE 스트림 오픈
-                        let tokenStream = AIService.shared.getResponseStream(
+                        // 2. SSE 스트림 오픈. 화면에는 LLM 원문을 누적 표시하고,
+                        // TTS에는 별도 proxy stream을 넘긴다. TTS chunk truncation이 채팅 로그를 훼손하면 안 된다.
+                        let sourceStream = AIService.shared.getResponseStream(
                             text: groundedText, agentID: targetIDAtSend, chatHistory: history, agentConfig: agentConfig
                         )
+                        let ttsStream = AsyncThrowingStream<String, Error> { continuation in
+                            let relayTask = Task {
+                                var accumulated = ""
+                                var assistantMessageID: UUID?
+                                do {
+                                    for try await token in sourceStream {
+                                        accumulated += token
+                                        continuation.yield(token)
 
-                        // 3. SpeechManager에 SSE→오디오 배관 완전 위임
+                                        let visibleText = accumulated.trimmingCharacters(in: .whitespacesAndNewlines)
+                                        guard !visibleText.isEmpty else { continue }
+                                        await MainActor.run {
+                                            if let assistantMessageID {
+                                                manager.updateChatLogText(
+                                                    roomID: roomIDAtSend,
+                                                    messageID: assistantMessageID,
+                                                    text: visibleText,
+                                                    sources: toolEvidence.sources
+                                                )
+                                            } else {
+                                                assistantMessageID = manager.addChatLog(
+                                                    roomID: roomIDAtSend,
+                                                    agentID: targetIDAtSend,
+                                                    agentName: agentName,
+                                                    text: visibleText,
+                                                    isUser: false,
+                                                    sources: toolEvidence.sources
+                                                )
+                                            }
+                                        }
+                                    }
+                                    continuation.finish()
+                                    await MainActor.run {
+                                        manager.typingAgentIDs.remove(targetIDAtSend)
+                                        if assistantMessageID == nil {
+                                            manager.addChatLog(
+                                                roomID: roomIDAtSend,
+                                                agentID: "system",
+                                                agentName: "시스템",
+                                                text: "응답이 비어 있습니다. API 키와 모델 설정을 확인해 주세요.",
+                                                isUser: false
+                                            )
+                                        }
+                                    }
+                                } catch {
+                                    continuation.finish(throwing: error)
+                                    await MainActor.run {
+                                        manager.typingAgentIDs.remove(targetIDAtSend)
+                                        manager.addChatLog(
+                                            roomID: roomIDAtSend,
+                                            agentID: "system",
+                                            agentName: "시스템",
+                                            text: error.localizedDescription,
+                                            isUser: false
+                                        )
+                                    }
+                                }
+                            }
+                            continuation.onTermination = { @Sendable _ in
+                                relayTask.cancel()
+                            }
+                        }
+
+                        // 3. SpeechManager는 오디오용 proxy stream만 소비한다.
                         SpeechManager.shared.processRealtimeSSEStream(
                             agentID: targetIDAtSend,
                             characterName: agentName,
-                            tokenStream: tokenStream,
+                            tokenStream: ttsStream,
                             onAudioPlaybackStarted: { chunk in
                                 DispatchQueue.main.async {
-                                    manager.typingAgentIDs.remove(targetIDAtSend)
-                                    manager.addChatLog(roomID: roomIDAtSend, agentID: targetIDAtSend, agentName: agentName,
-                                                       text: chunk, isUser: false, sources: toolEvidence.sources)
                                     manager.setAgentSpeaking(agentID: targetIDAtSend, text: chunk)
                                 }
                             }

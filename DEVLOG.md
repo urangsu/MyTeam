@@ -6,6 +6,20 @@
 
 ---
 
+## 2026-05-23 (Round 263-CONVERSATION-RELIABILITY-GATE)
+
+### 완료 (2026-05-23)
+
+- Added available-key provider candidate routing in `AIService.getResponseStream`
+- Preserved OpenAI/Claude/OpenRouter HTTP status errors for provider fallback
+- Added `ConversationMemory.promptHistory` to exclude the current user turn from prompt history
+- Changed chat log insertion to return message IDs and added streaming message text updates
+- Split personal chat display streaming from TTS streaming so TTS-normalized chunks no longer become persisted chat text
+- Switched direct/team context assembly to room-scoped memory context
+- Added Round 263 preflight and conversation reliability policy/report
+
+---
+
 ## 2026-05-23 (Round 262TTS-ANIMALESE-SPEECHLIKE-ENGINE)
 
 ### 완료 (2026-05-23)

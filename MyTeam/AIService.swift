@@ -19,17 +19,92 @@ final class AIService {
         chatHistory: [AgentWindowManager.ChatLog],
         agentConfig: AgentWindowManager.AgentConfig? = nil
     ) -> AsyncThrowingStream<String, Error> {
+        let preferredProvider = preferredProvider(for: agentConfig)
+        let candidates = providerCandidates(preferred: preferredProvider)
 
-        let provider: LLMProvider
-        if let configured = agentConfig?.llmProvider {
-            provider = configured
-        } else if let raw = UserDefaults.standard.string(forKey: "defaultLLMProvider"),
-                  let defaultProvider = LLMProvider(rawValue: raw) {
-            provider = defaultProvider
-        } else {
-            provider = .gemini
+        guard !candidates.isEmpty else {
+            return AsyncThrowingStream { continuation in
+                continuation.finish(throwing: AIServiceError.noAPIKeys)
+            }
         }
 
+        return AsyncThrowingStream { continuation in
+            Task {
+                var lastError: Error?
+                for provider in candidates {
+                    var didYieldToken = false
+                    do {
+                        AppLog.info("[AIService] provider candidate=\(provider.displayName) agent=\(agentID)")
+                        let stream = streamForProvider(
+                            provider,
+                            text: text,
+                            agentID: agentID,
+                            chatHistory: chatHistory,
+                            agentConfig: agentConfig
+                        )
+                        for try await token in stream {
+                            didYieldToken = true
+                            continuation.yield(token)
+                        }
+                        continuation.finish()
+                        return
+                    } catch {
+                        lastError = error
+                        AppLog.warning("[AIService] provider \(provider.displayName) failed: \(error.localizedDescription)")
+                        if didYieldToken || !shouldFallbackProvider(after: error) {
+                            continuation.finish(throwing: error)
+                            return
+                        }
+                    }
+                }
+                continuation.finish(throwing: lastError ?? AIServiceError.noAPIKeys)
+            }
+        }
+    }
+
+    private func preferredProvider(for agentConfig: AgentWindowManager.AgentConfig?) -> LLMProvider {
+        if let configured = agentConfig?.llmProvider {
+            return configured
+        }
+        if let raw = UserDefaults.standard.string(forKey: "defaultLLMProvider"),
+           let defaultProvider = LLMProvider(rawValue: raw) {
+            return defaultProvider
+        }
+        return .gemini
+    }
+
+    private func providerCandidates(preferred: LLMProvider) -> [LLMProvider] {
+        let fallbackOrder: [LLMProvider] = [preferred, .openAI, .claude, .gemini, .openRouter]
+        var seen = Set<LLMProvider>()
+        return fallbackOrder.filter { provider in
+            guard seen.insert(provider).inserted else { return false }
+            if provider == .gemini && isGeminiProviderCoolingDown() {
+                return hasAPIKey(for: .claude) || hasAPIKey(for: .openRouter) ? false : hasAPIKey(for: provider)
+            }
+            return hasAPIKey(for: provider)
+        }
+    }
+
+    private func hasAPIKey(for provider: LLMProvider) -> Bool {
+        !(KeychainManager.load(key: keychainKey(for: provider)) ?? "").isEmpty
+    }
+
+    private func keychainKey(for provider: LLMProvider) -> String {
+        switch provider {
+        case .gemini: return "geminiAPIKey"
+        case .openAI: return "openAIAPIKey"
+        case .claude: return "claudeAPIKey"
+        case .openRouter: return "openRouterAPIKey"
+        }
+    }
+
+    private func streamForProvider(
+        _ provider: LLMProvider,
+        text: String,
+        agentID: String,
+        chatHistory: [AgentWindowManager.ChatLog],
+        agentConfig: AgentWindowManager.AgentConfig?
+    ) -> AsyncThrowingStream<String, Error> {
         switch provider {
         case .gemini:
             return geminiStream(text: text, agentID: agentID, chatHistory: chatHistory)
@@ -48,6 +123,25 @@ final class AIService {
             )
             return openRouterStream(text: text, agentID: agentID, chatHistory: chatHistory, modelId: modelId)
         }
+    }
+
+    private func shouldFallbackProvider(after error: Error) -> Bool {
+        if let aiError = error as? AIServiceError {
+            switch aiError {
+            case .noAPIKeys, .invalidResponse:
+                return true
+            case .httpError(let code, _):
+                return [401, 403, 404, 408, 409, 429, 500, 502, 503, 504].contains(code)
+            case .networkError:
+                return true
+            case .invalidProvider:
+                return false
+            }
+        }
+        if let urlError = error as? URLError {
+            return urlError.code != .cancelled
+        }
+        return true
     }
 
     private var cachedGeminiModelId: String?
@@ -535,8 +629,12 @@ final class AIService {
                     } onCancel: {
                         AppLog.info("[AIService] Claude request cancelled (task cancellation)")
                     }
-                    guard let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200 else {
+                    guard let httpResp = response as? HTTPURLResponse else {
                         continuation.finish(throwing: AIServiceError.invalidResponse)
+                        return
+                    }
+                    guard httpResp.statusCode == 200 else {
+                        continuation.finish(throwing: AIServiceError.httpError(httpResp.statusCode, "Claude 응답 오류"))
                         return
                     }
 
@@ -632,8 +730,12 @@ final class AIService {
                     } onCancel: {
                         AppLog.info("[AIService] OpenAI request cancelled (task cancellation)")
                     }
-                    guard let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200 else {
+                    guard let httpResp = response as? HTTPURLResponse else {
                         continuation.finish(throwing: AIServiceError.invalidResponse)
+                        return
+                    }
+                    guard httpResp.statusCode == 200 else {
+                        continuation.finish(throwing: AIServiceError.httpError(httpResp.statusCode, "OpenAI 응답 오류"))
                         return
                     }
 
@@ -712,8 +814,12 @@ final class AIService {
                     } onCancel: {
                         AppLog.info("[AIService] OpenRouter request cancelled (task cancellation)")
                     }
-                    guard let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200 else {
+                    guard let httpResp = response as? HTTPURLResponse else {
                         continuation.finish(throwing: AIServiceError.invalidResponse)
+                        return
+                    }
+                    guard httpResp.statusCode == 200 else {
+                        continuation.finish(throwing: AIServiceError.httpError(httpResp.statusCode, "OpenRouter 응답 오류"))
                         return
                     }
 
