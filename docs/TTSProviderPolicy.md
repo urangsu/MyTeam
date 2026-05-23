@@ -1,5 +1,40 @@
 # TTS Provider Policy
 
+**Round 262TTS-ANIMALESE-SPEECHLIKE-ENGINE** — melody-like blip을 음절형 procedural speech effect로 재작성.
+
+## Round 262TTS-ANIMALESE-SPEECHLIKE-ENGINE (2026-05-23)
+
+### Animalese Speech Effect 정책
+
+Animalese는 Supertonic 대체 TTS가 아니다. fallback TTS도 아니다. TTS Lab에서만 쓰는 procedural speech effect다.
+
+Round 261 구현은 글자마다 장음계 pitch를 부여하는 blip engine이라 음표처럼 들리는 문제가 있었다. Round 262는 다음 구조로 바꾼다.
+
+- 한글 음절 분해: 초성 / 중성 / 종성
+- 음절 생성: consonant transient + vowel-colored body + final tail
+- pitch: major scale 금지, profile base 주변 speech contour만 사용
+- phrase pause: 공백, 쉼표, 마침표, 물음표, 느낌표에 pause와 ending contour 적용
+- profile: speech profile과 effect profile 분리
+- QA: duration, peak, zero crossing rate, estimated click count snapshot 표시
+
+### QA 기준
+
+- 음표처럼 들리는가?
+- 말소리처럼 이어지는가?
+- phrase pause가 자연스러운가?
+- 클릭/깨짐이 있는가?
+- speech profile과 effect profile이 명확히 구분되는가?
+
+### Safety
+
+- Nintendo/Animal Crossing 원본 샘플 사용 금지
+- YouTube 오디오 추출 금지
+- 외부 sample file 로드 금지
+- Apple TTS/fallback TTS 추가 금지
+- launch auto-init 금지
+
+---
+
 **Round 261TTS-SPEED-PROBE-AND-ANIMALESE** — speed 계측 + procedural Animalese blip speech 엔진.
 
 ## Round 261TTS-SPEED-PROBE-AND-ANIMALESE (2026-05-23)
