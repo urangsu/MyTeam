@@ -505,6 +505,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
 
         let sampleRate = Int(config.sampleRate)
         let durationSec = Double(samples.count) / config.sampleRate
+        let snapshot = AudioFeatureAnalyzer.analyze(samples: samples, sampleRate: sampleRate)
 
         await playback.playFloatSamples(
             samples: samples,
@@ -516,7 +517,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
             onPlaybackStarted: nil
         )
 
-        AppLog.info("[SpeechManager.previewAnimalese] profile=\(profile.rawValue) speed=\(speed) pitchOffset=\(pitchOffset) duration=\(String(format: "%.3f", durationSec))s samples=\(samples.count)")
+        AppLog.info("[Animalese] profile=\(profile.rawValue) kind=\(profile.profileKindLabel) samples=\(samples.count) duration=\(String(format: "%.3f", durationSec))s speed=\(speed) peak=\(String(format: "%.3f", snapshot.peak)) zcr=\(String(format: "%.1f", snapshot.zeroCrossingRate)) clicks=\(snapshot.estimatedClickCount)")
         return TTSOutput(audioFileURL: nil, duration: durationSec, sampleRate: sampleRate, providerKind: .supertonic3)
     }
 

@@ -56,6 +56,7 @@ struct TTSLabView: View {
     @State private var animaleseSpeed: Double = 1.0
     @State private var animalesePitchOffset: Double = 0.0
     @State private var animalesePlaying: Bool = false
+    @State private var animaleseSnapshot: AudioFeatureSnapshot? = nil
 
     // MARK: - ONNX Spike State (Round 249TTS)
     @State private var spikeInputText: String = "안녕하세요. 테스트입니다."
@@ -992,14 +993,25 @@ struct TTSLabView: View {
                     Image(systemName: "waveform.and.magnifyingglass")
                         .foregroundStyle(.purple)
                         .font(.caption)
-                    Text("Animalese / 동물의숲식 말소리 테스트")
+                    Text("Animalese / 음절형 말소리 테스트")
                         .font(.subheadline.bold())
+                    Spacer()
+                    Text(animaleseProfile.profileKindLabel)
+                        .font(.system(size: 10, weight: .semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(animaleseProfile.isEffectProfile ? Color.orange.opacity(0.14) : Color.green.opacity(0.14))
+                        .foregroundStyle(animaleseProfile.isEffectProfile ? .orange : .green)
+                        .cornerRadius(4)
                 }
 
-                Text("이 모드는 Supertonic TTS가 아니라 글자 단위 procedural blip speech입니다.")
+                Text("이 모드는 Supertonic TTS가 아니라 글자/음절 단위 procedural speech effect입니다.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Text("원본 게임 사운드를 사용하지 않고 앱 내부에서 파형을 생성합니다.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Text("speech profile과 effect profile을 구분합니다.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
 
@@ -1050,6 +1062,9 @@ struct TTSLabView: View {
                     guard !animalesePlaying else { return }
                     animalesePlaying = true
                     Task {
+                        let config = AnimaleseConfig.from(profile: animaleseProfile, speed: animaleseSpeed)
+                        let samples = AnimaleseSynthesizer.synthesize(text: animaleseText, config: config)
+                        let snapshot = AudioFeatureAnalyzer.analyze(samples: samples, sampleRate: Int(config.sampleRate))
                         _ = await SpeechManager.shared.previewAnimalese(
                             text: animaleseText,
                             profile: animaleseProfile,
@@ -1057,7 +1072,10 @@ struct TTSLabView: View {
                             pitchOffset: Float(animalesePitchOffset),
                             label: "animalese_\(animaleseProfile.rawValue)"
                         )
-                        await MainActor.run { animalesePlaying = false }
+                        await MainActor.run {
+                            animaleseSnapshot = snapshot
+                            animalesePlaying = false
+                        }
                     }
                 } label: {
                     HStack(spacing: 4) {
@@ -1072,6 +1090,35 @@ struct TTSLabView: View {
                 .buttonStyle(.bordered)
                 .tint(.purple)
                 .disabled(animalesePlaying)
+
+                if let animaleseSnapshot {
+                    Divider()
+                    Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
+                        GridRow {
+                            Text("Duration").font(.caption2).foregroundStyle(.secondary)
+                            Text(String(format: "%.3fs", animaleseSnapshot.durationSec)).font(.caption2.monospaced())
+                        }
+                        GridRow {
+                            Text("Peak").font(.caption2).foregroundStyle(.secondary)
+                            Text(String(format: "%.3f", animaleseSnapshot.peak)).font(.caption2.monospaced())
+                        }
+                        GridRow {
+                            Text("ZCR").font(.caption2).foregroundStyle(.secondary)
+                            Text(String(format: "%.1f/s", animaleseSnapshot.zeroCrossingRate)).font(.caption2.monospaced())
+                        }
+                        GridRow {
+                            Text("Clicks").font(.caption2).foregroundStyle(.secondary)
+                            Text("\(animaleseSnapshot.estimatedClickCount)")
+                                .font(.caption2.monospaced())
+                                .foregroundStyle(animaleseSnapshot.hasClickWarning ? .orange : .secondary)
+                        }
+                    }
+                    if animaleseSnapshot.hasClickWarning {
+                        Text("Click warning: 급격한 샘플 jump가 많습니다.")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.orange)
+                    }
+                }
             }
             .padding(6)
         }
