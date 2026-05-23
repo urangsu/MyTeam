@@ -67,6 +67,21 @@ MyTeam은 Mac 안에서 사용자의 자연어 요청을 받아, 문서/파일/�
 
 ### Now
 
+#### Round 262TTS-ANIMALESE-SPEECHLIKE-ENGINE — 완료 (2026-05-23)
+
+Round 261의 melody-like blip Animalese를 음절형 procedural speech effect로 재작성한다.
+
+- `KoreanSyllableDecomposer.swift` 신규 — 한글 초성/중성/종성 분해
+- `AnimaleseSynthesizer.swift` 재작성
+  - major-scale pitch mapping 제거
+  - consonant transient + vowel body + final tail
+  - speech contour + phrase pause
+  - speech/effect profile 구분
+- `AudioFeatureSnapshot.swift` 신규 — duration/peak/ZCR/click count QA
+- `TTSLabView` — "음절형 말소리" UI, speech/effect badge, feature snapshot 표시
+- 안전 정책 유지: Nintendo 샘플 없음, Apple/fallback TTS 없음, auto speak OFF, 치코 role 유지
+- 검증: Debug/Release build PASS, Round 261 22/22 PASS, Round 262 23/23 PASS
+
 #### Round 261TTS-SPEED-PROBE-AND-ANIMALESE — 완료 (2026-05-23)
 
 speed 계측 + procedural Animalese blip speech 엔진

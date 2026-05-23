@@ -6,6 +6,23 @@
 
 ---
 
+## 2026-05-23 (Round 262TTS-ANIMALESE-SPEECHLIKE-ENGINE)
+
+### 완료 (2026-05-23)
+
+- Rewrote Animalese from major-scale blip melody to syllable-like speech effect
+- Added Hangul syllable decomposition
+- Added vowel color, consonant transient, final tail
+- Added phrase pause and speech contour
+- Added speech/effect profile split
+- Added audio feature snapshot for click/ZCR QA
+- Preserved Chiko role
+- No Nintendo samples
+- No fallback TTS
+- Auto speak remains OFF
+
+---
+
 ## 2026-05-23 (Round 261TTS-SPEED-PROBE-AND-ANIMALESE — speed 계측 + procedural blip speech)
 
 ### 완료 (2026-05-23)
