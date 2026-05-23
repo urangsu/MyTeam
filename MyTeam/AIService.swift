@@ -73,10 +73,18 @@ final class AIService {
         return .gemini
     }
 
-    private func providerCandidates(preferred: LLMProvider) -> [LLMProvider] {
-        let fallbackOrder: [LLMProvider] = [preferred, .openAI, .claude, .gemini, .openRouter]
+    private func providerCandidates(preferred: LLMProvider, requiresToolUse: Bool = false) -> [LLMProvider] {
+        // Round 268-P3: tool use 필요 시 tool-capable provider (Claude, OpenAI) 우선 배치
+        let toolCapable: [LLMProvider] = [.claude, .openAI]
+        let baseOrder: [LLMProvider]
+        if requiresToolUse && !toolCapable.contains(preferred) {
+            // Preferred가 tool-capable이 아닌 경우: tool-capable을 앞에 배치
+            baseOrder = [preferred] + toolCapable + [.gemini, .openRouter]
+        } else {
+            baseOrder = [preferred, .openAI, .claude, .gemini, .openRouter]
+        }
         var seen = Set<LLMProvider>()
-        return fallbackOrder.filter { provider in
+        return baseOrder.filter { provider in
             guard seen.insert(provider).inserted else { return false }
             if provider == .gemini && isGeminiProviderCoolingDown() {
                 return hasAPIKey(for: .claude) || hasAPIKey(for: .openRouter) ? false : hasAPIKey(for: provider)

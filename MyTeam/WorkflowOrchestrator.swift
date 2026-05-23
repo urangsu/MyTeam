@@ -136,7 +136,7 @@ final class WorkflowOrchestrator {
         // ── 화면 캡처 계획 안내 (상시 감시/자동 OCR 절대 없음) ──
         let screenKeywords = ["현재 화면 설명", "화면 읽어줘", "지금 보고 있는 거 분석"]
         if screenKeywords.contains(where: { lower.contains($0) }) {
-            await MainActor.run {
+            _ = await MainActor.run {
                 manager.addChatLog(roomID: roomID, agentID: "system", agentName: "화면",
                                    text: ObservationPresentationPolicy.screenSnapshotPlannedMessage(),
                                    isUser: false, isSystem: true)
@@ -347,7 +347,7 @@ final class WorkflowOrchestrator {
                 )
                 switch fallbackAction {
                 case .hardBlock(let msg):
-                    await MainActor.run {
+                    _ = await MainActor.run {
                         manager.addChatLog(
                             roomID: roomID, agentID: "system", agentName: "시스템",
                             text: msg, isUser: false, isSystem: true
@@ -424,7 +424,7 @@ final class WorkflowOrchestrator {
                     blockedTools: []
                 )
             }
-            await MainActor.run {
+            _ = await MainActor.run {
                 manager.addChatLog(
                     roomID: roomID,
                     agentID: "system",
@@ -460,7 +460,7 @@ final class WorkflowOrchestrator {
                     blockedTools: []
                 )
             }
-            await MainActor.run {
+            _ = await MainActor.run {
                 manager.addChatLog(
                     roomID: roomID,
                     agentID: "system",

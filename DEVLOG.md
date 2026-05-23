@@ -18,7 +18,15 @@
 - **AgentToolKit.swift** — ToolNeedClassifier false positive 감소 (P1)
   - `needsCurrentTime`: 단독 "오늘/현재" → 강한 시간 신호(날짜/몇시/날씨) 또는 조합 신호 필요
   - `needsSearch`: 단순 "검색", "찾아" → "검색해줘", "찾아봐줘" 명령형으로 강화
-- Debug BUILD SUCCEEDED, 0 errors
+- **AIService.swift** — providerCandidates tool-use routing (P3 #16)
+  - `requiresToolUse: Bool` 파라미터 추가 → Claude/OpenAI 우선 순위 정책
+- **AgentWindowManager.swift** — `addChatLog(roomID:...)` @discardableResult 추가
+  - WorkflowOrchestrator에서 `MainActor.run { manager.addChatLog(...) }` unused result 경고 해소 (16건)
+- **WorkflowOrchestrator.swift** — `MainActor.run` unused result 경고 수동 수정
+  - lines 139, 350, 427, 463 `_ = await MainActor.run { }` 적용
+- **Supertonic3ONNXRunner.swift** — S3Config nonisolated(unsafe) 제거 (컴파일러 권고)
+  - Swift 6 forward-compat 경고는 Spike 전용 파일로 현행 유지; 빌드 무영향
+- Debug BUILD SUCCEEDED, 0 errors, WorkflowOrchestrator 경고 0건
 
 ---
 

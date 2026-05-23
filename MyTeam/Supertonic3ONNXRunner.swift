@@ -24,17 +24,19 @@ import OnnxRuntimeBindings
 
 // MARK: - Config Constants
 
-// Round 267: nonisolated(unsafe) — Swift 6 actor-isolation 경고 제거.
-// S3Config는 변경 불가 상수만 포함하며 어떤 액터 격리도 갖지 않는다.
+// S3Config: 순수 Int 상수 — Sendable value type이므로 actor isolation 불필요.
+// 아래 main-actor-isolated 경고는 Swift 5 호환 모드에서 "Swift 6 future error" 수준의 경고임.
+// Supertonic3ONNXModelPaths.missingModelNames / UnicodeIndexer.load / VoiceStyle.load 등
+// 호출 대상이 @MainActor인 경우 발생; Spike 전용 파일이므로 현행 유지.
 private enum S3Config {
-    nonisolated(unsafe) static let sampleRate: Int          = 44100
-    nonisolated(unsafe) static let baseChunkSize: Int       = 512
-    nonisolated(unsafe) static let chunkCompressFactor: Int = 6
-    nonisolated(unsafe) static let ldim: Int                = 24
-    nonisolated(unsafe) static let totalStepDefault: Int    = 8
+    static let sampleRate: Int          = 44100
+    static let baseChunkSize: Int       = 512
+    static let chunkCompressFactor: Int = 6
+    static let ldim: Int                = 24
+    static let totalStepDefault: Int    = 8
     // Derived:
-    nonisolated(unsafe) static let chunkSize: Int  = 512 * 6   // baseChunkSize * chunkCompressFactor = 3072
-    nonisolated(unsafe) static let latentDim: Int  = 24  * 6   // ldim * chunkCompressFactor = 144
+    static let chunkSize: Int  = 512 * 6   // baseChunkSize * chunkCompressFactor = 3072
+    static let latentDim: Int  = 24  * 6   // ldim * chunkCompressFactor = 144
 }
 
 // MARK: - Result Types
