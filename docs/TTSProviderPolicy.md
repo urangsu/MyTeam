@@ -1,6 +1,34 @@
 # TTS Provider Policy
 
-**Round 258TTS-CHARACTER-VOICE-SYSTEM** — 캐릭터별 보이스 아이덴티티 + 감정 운율 + 팀원 교체 버그 수정.
+**Round 258B-TTS-EMOTION-AUDIT** — 감정 표현 감사 + 보이스 디렉터 분리 + 팀 슬롯 동기화 강화.
+
+## Round 258B-TTS-EMOTION-AUDIT (2026-05-23)
+
+캐릭터별 기본 감정 스타일 적용, emotion-aware pitch/rate/speed API, 보이스 디렉터 원본 preset 분리.
+
+변경 사항:
+1. `CharacterVoiceProfile.emotionSpeedBoost` — 감정 speed 부스트 필드 추가
+2. `SupertonicVoicePresetPolicy.emotionStyle(for:)` — 캐릭터 기본 감정 반환
+3. `SupertonicVoicePresetPolicy.pitch/rate/speed(for:emotion:)` — emotion-aware API 추가
+   - neutral: base 값 그대로
+   - careful: base + min(0, boost) — 음수 boost만 적용
+   - friendly/confident/excited: base + boost 전체 적용
+   - animalCrossing: base + animalCrossingBoost (강한 모드, 기본 미사용)
+4. `SpeechManager` — dispatch/speakOnce에서 emotionStyle 조회 후 emotion-aware API 사용
+5. `SpeechManager.previewPreset(text:preset:)` — 원본 preset 미리듣기 (pitch=0, rate=1, neutral)
+6. `SpeechManager.previewCharacterEmotion(text:agentID:emotion:)` — 캐릭터+감정 미리듣기
+7. `TTSLabView` — "원본 Preset 테스트"(previewPreset 사용) + "감정 표현 테스트"(Picker+6 감정 버튼)
+8. `AgentWindowManager.swapAgent()` → `syncSelectedTeamWorkroomAgents()` 추가 (팀 슬롯 동기화)
+9. `AgentSwapView` → `replaceTeamAgent(at:with:)` 사용
+10. `scripts/preflight_round258tts_character_voice_system.sh` — 22 → 38 checks, 38/38 PASS
+
+기본 감정 스타일:
+- 레오: confident, 루나: excited, 모코: careful, 핀: friendly, 치코: friendly
+- 렉스: careful, 케이: neutral, 래키: confident, 폴라: confident, 몽몽: friendly, 올리버: careful
+
+치코 role "UX 디자이너 & 온보딩 도우미" — 이번 라운드 수정 없음 (Round 258TTS에서 설정됨).
+
+---
 
 ## Round 258TTS-CHARACTER-VOICE-SYSTEM (2026-05-23)
 

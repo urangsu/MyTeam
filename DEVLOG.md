@@ -6,6 +6,33 @@
 
 ---
 
+## 2026-05-23 (Round 258B-TTS-EMOTION-AUDIT — 감정 표현 감사 + 보이스 디렉터 분리 + 팀 슬롯 동기화 강화)
+
+### 완료 (2026-05-23)
+
+- `CharacterVoiceProfile.emotionSpeedBoost` 필드 추가
+  - 감정 발화 시 speed 부스트 (레오/모코/케이/올리버: 0.00, 루나/치코: 0.03, 핀: 0.03, 래키: 0.02, 폴라: 0.01, 몽몽: 0.03, 렉스: -0.01)
+- `SupertonicVoicePresetPolicy` emotion-aware API 추가
+  - `emotionStyle(for:)` — 캐릭터 기본 감정 반환
+  - `pitch/rate/speed(for:emotion:)` — neutral→base, careful→base+min(0,boost), friendly/confident/excited→base+boost
+  - base API (`pitch/rate/speed(for:)`) → emotion=nil 위임으로 일원화
+- `SpeechManager` 업데이트
+  - dispatchToInferencePipeline + speakOnce: `emotionStyle(for:)` 조회 후 emotion-aware pitch/rate/speed 적용
+  - `previewPreset(text:preset:speed:)` 추가 — 원본 preset, pitch=0/rate=1/neutral
+  - `previewCharacterEmotion(text:agentID:emotion:)` 추가 — 캐릭터+감정 full preview
+- `TTSLabView` 보이스 디렉터 섹션 분리
+  - "원본 Preset 테스트": M1~F5 버튼 → `previewPreset()` 호출 (캐릭터 보정 없음)
+  - "감정 표현 테스트": 캐릭터 Picker + neutral/friendly/confident/careful/excited/animalCrossing 버튼
+  - `emotionPreviewAgentID` @State 추가
+- `AgentWindowManager.swapAgent()` 내부에 `syncSelectedTeamWorkroomAgents()` 호출 추가
+- `AgentSwapView` → `replaceTeamAgent(at:with:)` 사용 (swapAgent 직접 호출 제거)
+- `scripts/preflight_round258tts_character_voice_system.sh` 22 → 38 checks, 38/38 PASS ✅
+- `reports/round258b_tts_emotion_audit.md` 생성 (11캐릭터 × 6감정 매트릭스)
+- `docs/TTSProviderPolicy.md` Round 258B 섹션 추가
+- Debug/Release BUILD SUCCEEDED ✅
+
+---
+
 ## 2026-05-23 (Round 258TTS-CHARACTER-VOICE-SYSTEM — 캐릭터 보이스 아이덴티티 + 감정 운율 + 팀원 교체 버그)
 
 ### 완료 (2026-05-23)

@@ -67,6 +67,25 @@ MyTeam은 Mac 안에서 사용자의 자연어 요청을 받아, 문서/파일/�
 
 ### Now
 
+#### Round 258B-TTS-EMOTION-AUDIT — 완료 (2026-05-23)
+
+감정 표현 감사 + 보이스 디렉터 분리 + 팀 슬롯 동기화 강화
+
+- `CharacterVoiceProfile.emotionSpeedBoost` 필드 추가 (11개 캐릭터 값 설정)
+- `SupertonicVoicePresetPolicy.emotionStyle(for:)` + `pitch/rate/speed(for:emotion:)` emotion-aware API
+- `SpeechManager` dispatch/speakOnce → emotion-aware pitch/rate/speed 적용
+- `SpeechManager.previewPreset()` 원본 preset 미리듣기 (pitch=0, rate=1, neutral)
+- `SpeechManager.previewCharacterEmotion()` 캐릭터+감정 full preview
+- `TTSLabView` 보이스 디렉터: "원본 Preset 테스트" + "감정 표현 테스트" (Picker + 6감정)
+- `AgentWindowManager.swapAgent()` → `syncSelectedTeamWorkroomAgents()` 내부 추가
+- `AgentSwapView` → `replaceTeamAgent(at:with:)` 사용
+- `scripts/preflight_round258tts_character_voice_system.sh` — **38/38 PASS** ✅
+- `reports/round258b_tts_emotion_audit.md` 생성
+- Debug/Release BUILD SUCCEEDED ✅
+- 브랜치: `cloud/round252-supertonic-license-lock`
+
+---
+
 #### Round 258TTS-CHARACTER-VOICE-SYSTEM — 완료 (2026-05-23)
 
 캐릭터별 보이스 아이덴티티 + 감정 운율 + 팀원 교체 버그 수정

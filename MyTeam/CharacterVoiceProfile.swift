@@ -8,7 +8,7 @@ import Foundation
 //   rate 단위: 배율 (1.0 = 원본). clamp 범위: rate 0.90~1.14.
 // baseSpeed: Supertonic3ONNXRunner.synthesize(speed:) 값. duration predictor 스케일.
 //   range: 0.85~1.25. 1.0 = 원래 속도. 1.05 = 현재 기본값.
-// emotionPitchBoost / emotionRateBoost: 감정 발화 시 basePitch/baseRate에 더함.
+// emotionPitchBoost / emotionRateBoost / emotionSpeedBoost: 감정 발화 시 base값에 더함.
 // animalCrossingPitchBoost / animalCrossingRateBoost: 강한 모드 추가 boost (기본 OFF).
 // defaultEmotionStyle: 캐릭터 기본 감정 스타일 (SupertonicProsodyTextProcessor 전처리에 사용).
 
@@ -22,6 +22,7 @@ struct CharacterVoiceProfile: Sendable, Identifiable {
     let baseSpeed: Float                 // Supertonic3 duration predictor 속도 스케일
     let emotionPitchBoost: Float         // 감정 발화 시 추가 pitch
     let emotionRateBoost: Float          // 감정 발화 시 추가 rate
+    let emotionSpeedBoost: Float         // 감정 발화 시 추가 speed (Round 258B)
     let animalCrossingPitchBoost: Float  // 강한 모드 추가 pitch (기본 미사용)
     let animalCrossingRateBoost: Float   // 강한 모드 추가 rate (기본 미사용)
     let defaultEmotionStyle: SupertonicEmotionStyle
@@ -46,6 +47,7 @@ enum CharacterVoiceProfileCatalog {
             baseSpeed: 1.00,
             emotionPitchBoost: -20,
             emotionRateBoost: -0.01,
+            emotionSpeedBoost: 0.00,
             animalCrossingPitchBoost: -120,
             animalCrossingRateBoost: -0.03,
             defaultEmotionStyle: .confident,
@@ -62,6 +64,7 @@ enum CharacterVoiceProfileCatalog {
             baseSpeed: 1.05,
             emotionPitchBoost: 20,
             emotionRateBoost: 0.02,
+            emotionSpeedBoost: 0.03,
             animalCrossingPitchBoost: 80,
             animalCrossingRateBoost: 0.02,
             defaultEmotionStyle: .excited,
@@ -78,6 +81,7 @@ enum CharacterVoiceProfileCatalog {
             baseSpeed: 1.00,
             emotionPitchBoost: 10,
             emotionRateBoost: 0.01,
+            emotionSpeedBoost: 0.00,
             animalCrossingPitchBoost: 60,
             animalCrossingRateBoost: 0.02,
             defaultEmotionStyle: .careful,
@@ -94,6 +98,7 @@ enum CharacterVoiceProfileCatalog {
             baseSpeed: 1.08,
             emotionPitchBoost: 30,
             emotionRateBoost: 0.02,
+            emotionSpeedBoost: 0.03,
             animalCrossingPitchBoost: 160,
             animalCrossingRateBoost: 0.06,
             defaultEmotionStyle: .friendly,
@@ -110,6 +115,7 @@ enum CharacterVoiceProfileCatalog {
             baseSpeed: 1.05,
             emotionPitchBoost: 20,
             emotionRateBoost: 0.02,
+            emotionSpeedBoost: 0.03,
             animalCrossingPitchBoost: 140,
             animalCrossingRateBoost: 0.05,
             defaultEmotionStyle: .friendly,
@@ -126,6 +132,7 @@ enum CharacterVoiceProfileCatalog {
             baseSpeed: 0.95,
             emotionPitchBoost: -20,
             emotionRateBoost: -0.02,
+            emotionSpeedBoost: -0.01,
             animalCrossingPitchBoost: -100,
             animalCrossingRateBoost: -0.03,
             defaultEmotionStyle: .careful,
@@ -142,6 +149,7 @@ enum CharacterVoiceProfileCatalog {
             baseSpeed: 1.02,
             emotionPitchBoost: -15,
             emotionRateBoost: -0.01,
+            emotionSpeedBoost: 0.00,
             animalCrossingPitchBoost: -80,
             animalCrossingRateBoost: -0.02,
             defaultEmotionStyle: .neutral,
@@ -158,6 +166,7 @@ enum CharacterVoiceProfileCatalog {
             baseSpeed: 1.05,
             emotionPitchBoost: 15,
             emotionRateBoost: 0.02,
+            emotionSpeedBoost: 0.02,
             animalCrossingPitchBoost: 60,
             animalCrossingRateBoost: 0.03,
             defaultEmotionStyle: .confident,
@@ -174,6 +183,7 @@ enum CharacterVoiceProfileCatalog {
             baseSpeed: 1.03,
             emotionPitchBoost: -20,
             emotionRateBoost: -0.01,
+            emotionSpeedBoost: 0.01,
             animalCrossingPitchBoost: -100,
             animalCrossingRateBoost: -0.03,
             defaultEmotionStyle: .confident,
@@ -190,6 +200,7 @@ enum CharacterVoiceProfileCatalog {
             baseSpeed: 1.00,
             emotionPitchBoost: 25,
             emotionRateBoost: 0.02,
+            emotionSpeedBoost: 0.03,
             animalCrossingPitchBoost: 180,
             animalCrossingRateBoost: 0.07,
             defaultEmotionStyle: .friendly,
@@ -206,6 +217,7 @@ enum CharacterVoiceProfileCatalog {
             baseSpeed: 0.98,
             emotionPitchBoost: -10,
             emotionRateBoost: -0.01,
+            emotionSpeedBoost: 0.00,
             animalCrossingPitchBoost: -50,
             animalCrossingRateBoost: -0.02,
             defaultEmotionStyle: .careful,

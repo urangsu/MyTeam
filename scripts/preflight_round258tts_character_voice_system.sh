@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # preflight_round258tts_character_voice_system.sh
-# Round 258TTS-CHARACTER-VOICE-SYSTEM: 캐릭터 보이스 아이덴티티 + 감정 운율 + 팀원 교체 버그 수정 검증
-# 검사 22개 — 예상: 22/22 PASS
+# Round 258TTS-CHARACTER-VOICE-SYSTEM + Round 258B-TTS-EMOTION-AUDIT:
+#   캐릭터 보이스 아이덴티티 + 감정 운율 + 팀원 교체 버그 수정 + 감정 표현 감사 검증
+# 검사 38개 — 예상: 38/38 PASS
 set -u
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -10,13 +11,13 @@ SCRIPTS="$REPO_ROOT/scripts"
 
 PASS=0
 FAIL=0
-TOTAL=22
+TOTAL=38
 
 pass() { PASS=$((PASS + 1)); echo "  ✅ PASS [$PASS/$TOTAL] $1"; }
 fail() { FAIL=$((FAIL + 1)); echo "  ❌ FAIL [$FAIL/$TOTAL] $1"; }
 
 echo "=================================================="
-echo " Round 258TTS-CHARACTER-VOICE-SYSTEM Preflight"
+echo " Round 258TTS-CHARACTER-VOICE-SYSTEM + 258B-TTS-EMOTION-AUDIT Preflight"
 echo " $(date)"
 echo "=================================================="
 
@@ -250,11 +251,167 @@ else
   fail ".onnx 파일 $ONNX_TRACKED건 git 추적 중 — ONNX 파일 commit 금지"
 fi
 
+# ============================================================
+# Round 258B-TTS-EMOTION-AUDIT: 감정 표현 감사 추가 검사 (23~38)
+# ============================================================
+
+# 23. 치코 status "UX와 온보딩을 도와주는 중" 확인
+echo ""
+echo "[23] 치코 status 'UX와 온보딩을 도와주는 중' 확인"
+if grep -q "UX와 온보딩을 도와주는 중" "$MYTEAM/AgentWindowManager.swift" 2>/dev/null; then
+  pass "치코 status 'UX와 온보딩을 도와주는 중' 존재"
+else
+  fail "치코 status 'UX와 온보딩을 도와주는 중' 없음"
+fi
+
+# 24. SupertonicVoicePresetPolicy.emotionStyle(for:) 존재
+echo ""
+echo "[24] SupertonicVoicePresetPolicy.emotionStyle(for:) 존재 확인"
+if grep -q "static func emotionStyle" "$MYTEAM/SupertonicVoicePresetPolicy.swift" 2>/dev/null; then
+  pass "emotionStyle(for:) 존재"
+else
+  fail "emotionStyle(for:) 없음"
+fi
+
+# 25. pitch(for:emotion:) emotion-aware API 존재
+echo ""
+echo "[25] pitch(for:emotion:) emotion-aware API 존재 확인"
+if grep -q "func pitch.*emotion.*SupertonicEmotionStyle" "$MYTEAM/SupertonicVoicePresetPolicy.swift" 2>/dev/null; then
+  pass "pitch(for:emotion:) emotion-aware API 존재"
+else
+  fail "pitch(for:emotion:) emotion-aware API 없음"
+fi
+
+# 26. rate(for:emotion:) emotion-aware API 존재
+echo ""
+echo "[26] rate(for:emotion:) emotion-aware API 존재 확인"
+if grep -q "func rate.*emotion.*SupertonicEmotionStyle" "$MYTEAM/SupertonicVoicePresetPolicy.swift" 2>/dev/null; then
+  pass "rate(for:emotion:) emotion-aware API 존재"
+else
+  fail "rate(for:emotion:) emotion-aware API 없음"
+fi
+
+# 27. speed(for:emotion:) emotion-aware API 존재
+echo ""
+echo "[27] speed(for:emotion:) emotion-aware API 존재 확인"
+if grep -q "func speed.*emotion.*SupertonicEmotionStyle" "$MYTEAM/SupertonicVoicePresetPolicy.swift" 2>/dev/null; then
+  pass "speed(for:emotion:) emotion-aware API 존재"
+else
+  fail "speed(for:emotion:) emotion-aware API 없음"
+fi
+
+# 28. SpeechManager에서 emotionStyle(for:) 호출
+echo ""
+echo "[28] SpeechManager → emotionStyle(for:) 호출 확인"
+if grep -q "emotionStyle(for:" "$MYTEAM/SpeechManager.swift" 2>/dev/null; then
+  pass "SpeechManager에서 emotionStyle(for:) 호출"
+else
+  fail "SpeechManager에서 emotionStyle(for:) 호출 없음"
+fi
+
+# 29. SpeechManager에 previewPreset 함수 존재
+echo ""
+echo "[29] SpeechManager.previewPreset 함수 존재 확인"
+if grep -q "func previewPreset" "$MYTEAM/SpeechManager.swift" 2>/dev/null; then
+  pass "SpeechManager.previewPreset 존재"
+else
+  fail "SpeechManager.previewPreset 없음"
+fi
+
+# 30. previewPreset이 pitch=0, rate=1 사용 확인
+echo ""
+echo "[30] previewPreset pitch=0, rate=1 사용 확인"
+PRESET_PITCH0=0
+PRESET_RATE1=0
+if grep -A 30 "func previewPreset" "$MYTEAM/SpeechManager.swift" 2>/dev/null | grep -q "pitch:.*0"; then
+  PRESET_PITCH0=1
+fi
+if grep -A 30 "func previewPreset" "$MYTEAM/SpeechManager.swift" 2>/dev/null | grep -q "rate:.*1"; then
+  PRESET_RATE1=1
+fi
+if [ "$PRESET_PITCH0" -eq 1 ] && [ "$PRESET_RATE1" -eq 1 ]; then
+  pass "previewPreset pitch=0, rate=1 확인"
+else
+  fail "previewPreset pitch=0($PRESET_PITCH0) 또는 rate=1($PRESET_RATE1) 미확인"
+fi
+
+# 31. SpeechManager에 previewCharacterEmotion 함수 존재
+echo ""
+echo "[31] SpeechManager.previewCharacterEmotion 함수 존재 확인"
+if grep -q "func previewCharacterEmotion" "$MYTEAM/SpeechManager.swift" 2>/dev/null; then
+  pass "SpeechManager.previewCharacterEmotion 존재"
+else
+  fail "SpeechManager.previewCharacterEmotion 없음"
+fi
+
+# 32. TTSLabView에 "원본 Preset 테스트" 섹션 존재
+echo ""
+echo "[32] TTSLabView '원본 Preset 테스트' 섹션 확인"
+if grep -q "원본 Preset 테스트" "$MYTEAM/TTSLabView.swift" 2>/dev/null; then
+  pass "TTSLabView에 '원본 Preset 테스트' 섹션 존재"
+else
+  fail "TTSLabView에 '원본 Preset 테스트' 섹션 없음"
+fi
+
+# 33. TTSLabView에 "감정 표현 테스트" 섹션 존재
+echo ""
+echo "[33] TTSLabView '감정 표현 테스트' 섹션 확인"
+if grep -q "감정 표현 테스트" "$MYTEAM/TTSLabView.swift" 2>/dev/null; then
+  pass "TTSLabView에 '감정 표현 테스트' 섹션 존재"
+else
+  fail "TTSLabView에 '감정 표현 테스트' 섹션 없음"
+fi
+
+# 34. TTSLabView에서 previewPreset 호출
+echo ""
+echo "[34] TTSLabView → previewPreset 호출 확인"
+if grep -q "previewPreset" "$MYTEAM/TTSLabView.swift" 2>/dev/null; then
+  pass "TTSLabView에서 previewPreset 호출"
+else
+  fail "TTSLabView에서 previewPreset 호출 없음"
+fi
+
+# 35. AgentSwapView에서 replaceTeamAgent 사용
+echo ""
+echo "[35] AgentSwapView → replaceTeamAgent 사용 확인"
+if grep -q "replaceTeamAgent" "$MYTEAM/AgentSwapView.swift" 2>/dev/null; then
+  pass "AgentSwapView에서 replaceTeamAgent 사용"
+else
+  fail "AgentSwapView에서 replaceTeamAgent 사용 없음"
+fi
+
+# 36. swapAgent 내부에서 syncSelectedTeamWorkroomAgents 호출
+echo ""
+echo "[36] swapAgent → syncSelectedTeamWorkroomAgents 호출 확인"
+if grep -A 30 "func swapAgent" "$MYTEAM/AgentWindowManager.swift" 2>/dev/null | grep -q "syncSelectedTeamWorkroomAgents"; then
+  pass "swapAgent에서 syncSelectedTeamWorkroomAgents 호출"
+else
+  fail "swapAgent에서 syncSelectedTeamWorkroomAgents 호출 없음"
+fi
+
+# 37. CharacterVoiceProfile에 emotionSpeedBoost 필드 존재
+echo ""
+echo "[37] CharacterVoiceProfile.emotionSpeedBoost 필드 확인"
+if grep -q "emotionSpeedBoost" "$MYTEAM/CharacterVoiceProfile.swift" 2>/dev/null; then
+  pass "CharacterVoiceProfile에 emotionSpeedBoost 필드 존재"
+else
+  fail "CharacterVoiceProfile에 emotionSpeedBoost 필드 없음"
+fi
+
+# 38. reports/round258b_tts_emotion_audit.md 존재
+echo ""
+echo "[38] reports/round258b_tts_emotion_audit.md 존재 확인"
+if [ -f "$REPO_ROOT/reports/round258b_tts_emotion_audit.md" ]; then
+  pass "reports/round258b_tts_emotion_audit.md 존재"
+else
+  fail "reports/round258b_tts_emotion_audit.md 없음"
+fi
+
 echo ""
 echo "=================================================="
 echo " 결과: PASS=$PASS / FAIL=$FAIL / TOTAL=$TOTAL"
 if [ "$FAIL" -eq 0 ]; then
-  echo " 🎉 ALL PASS — Round 258TTS-CHARACTER-VOICE-SYSTEM preflight 통과"
+  echo " 🎉 ALL PASS — Round 258TTS+258B preflight 통과"
 else
   echo " ⚠️  FAIL $FAIL건 — 수정 후 재실행 필요"
 fi

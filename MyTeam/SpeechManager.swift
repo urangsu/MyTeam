@@ -125,15 +125,17 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         case .supertonic3:
             // Round 257TTS: 합성 결과를 AudioPlaybackService.playFloatSamples로 직접 재생.
             // Round 258TTS: prosody 전처리 + pitch/rate/speed 캐릭터별 적용.
+            // Round 258B: emotion-aware pitch/rate/speed 적용.
             // onPlaybackStarted는 playerNode.play() 이후 AudioPlaybackService가 호출 — 립싱크 원칙 준수.
             AppLog.info("[AICall] callType=tts provider=supertonic3 (official)")
             do {
-                let preset = SupertonicVoicePresetPolicy.preset(for: agentID)
-                let pitch  = SupertonicVoicePresetPolicy.pitch(for: agentID)
-                let rate   = SupertonicVoicePresetPolicy.rate(for: agentID)
-                let speed  = SupertonicVoicePresetPolicy.speed(for: agentID)
+                let preset  = SupertonicVoicePresetPolicy.preset(for: agentID)
+                let emotion = SupertonicVoicePresetPolicy.emotionStyle(for: agentID)
+                let pitch   = SupertonicVoicePresetPolicy.pitch(for: agentID, emotion: emotion)
+                let rate    = SupertonicVoicePresetPolicy.rate(for: agentID, emotion: emotion)
+                let speed   = SupertonicVoicePresetPolicy.speed(for: agentID, emotion: emotion)
                 // 텍스트 전처리 — 말풍선 원문은 건드리지 않고 TTS 입력만 처리
-                let spokenText = SupertonicProsodyTextProcessor.preprocess(text, agentID: agentID)
+                let spokenText = SupertonicProsodyTextProcessor.preprocess(text, agentID: agentID, style: emotion)
                 let paths = Supertonic3ONNXModelPaths.defaultPaths()
                 let result = try await Supertonic3ONNXRunner.shared.synthesize(
                     text: spokenText,
@@ -250,12 +252,13 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
     /// - Returns: 합성+재생 성공 시 TTSOutput, 실패(라우팅 실패/합성 오류) 시 nil
     func speakOnce(text: String, agentID: String? = nil) async -> TTSOutput? {
         guard TTSRoutingPolicy.selectedProvider() == .supertonic3 else { return nil }
-        let preset = SupertonicVoicePresetPolicy.preset(for: agentID)
-        let pitch  = SupertonicVoicePresetPolicy.pitch(for: agentID)
-        let rate   = SupertonicVoicePresetPolicy.rate(for: agentID)
-        let speed  = SupertonicVoicePresetPolicy.speed(for: agentID)
+        let preset  = SupertonicVoicePresetPolicy.preset(for: agentID)
+        let emotion = SupertonicVoicePresetPolicy.emotionStyle(for: agentID)
+        let pitch   = SupertonicVoicePresetPolicy.pitch(for: agentID, emotion: emotion)
+        let rate    = SupertonicVoicePresetPolicy.rate(for: agentID, emotion: emotion)
+        let speed   = SupertonicVoicePresetPolicy.speed(for: agentID, emotion: emotion)
         // 텍스트 전처리 — 말풍선 원문은 건드리지 않고 TTS 입력만 처리
-        let spokenText = SupertonicProsodyTextProcessor.preprocess(text, agentID: agentID)
+        let spokenText = SupertonicProsodyTextProcessor.preprocess(text, agentID: agentID, style: emotion)
         let paths = Supertonic3ONNXModelPaths.defaultPaths()
         let charName: String = agentID.flatMap { id in
             AgentWindowManager.shared.allAvailableAgents.first(where: { $0.id == id })?.name
@@ -294,6 +297,78 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
             )
         } catch {
             AppLog.info("[SpeechManager.speakOnce] failed: \(error) → silent")
+            return nil
+        }
+    }
+
+    // MARK: - Round 258B: Raw Preset Preview (캐릭터 보정 없음)
+
+    /// 원본 Preset 미리듣기 — 캐릭터 pitch/rate/speed 보정 없이 순수 preset 목소리 재생.
+    /// TTS Lab "원본 Preset 테스트" 전용. pitch=0, rate=1로 재생.
+    func previewPreset(text: String, preset: String, speed: Float = 1.05) async -> TTSOutput? {
+        guard TTSRoutingPolicy.selectedProvider() == .supertonic3 else { return nil }
+        let paths = Supertonic3ONNXModelPaths.defaultPaths()
+        let spokenText = SupertonicProsodyTextProcessor.preprocess(text, agentID: nil, style: .neutral)
+        do {
+            let result = try await Supertonic3ONNXRunner.shared.synthesize(
+                text: spokenText,
+                preset: preset,
+                lang: Supertonic3TTSConfig.selectedLanguage,
+                totalSteps: Supertonic3TTSConfig.totalStep,
+                speed: speed,
+                paths: paths
+            )
+            await playback.playFloatSamples(
+                samples: result.wavSamples,
+                sampleRate: result.sampleRate,
+                streamId: UUID().uuidString,
+                characterName: "Preset \(preset)",
+                pitch: 0,
+                rate: 1,
+                onPlaybackStarted: nil
+            )
+            let wavPath = S3WavWriter.write(samples: result.wavSamples, sampleRate: result.sampleRate, tag: "preset_\(preset)")
+            AppLog.info("[SpeechManager.previewPreset] preset=\(preset) frames=\(result.wavSamples.count)")
+            return TTSOutput(audioFileURL: wavPath.map { URL(fileURLWithPath: $0) },
+                             duration: result.durationSec, sampleRate: result.sampleRate, providerKind: .supertonic3)
+        } catch {
+            AppLog.info("[SpeechManager.previewPreset] failed: \(error)")
+            return nil
+        }
+    }
+
+    // MARK: - Round 258B: Character Emotion Preview
+
+    /// 감정 표현 미리듣기 — 지정 agentID 캐릭터의 특정 emotion style로 발화.
+    /// TTS Lab "감정 표현 테스트" 전용.
+    func previewCharacterEmotion(text: String, agentID: String, emotion: SupertonicEmotionStyle) async -> TTSOutput? {
+        guard TTSRoutingPolicy.selectedProvider() == .supertonic3 else { return nil }
+        let preset     = SupertonicVoicePresetPolicy.preset(for: agentID)
+        let pitch      = SupertonicVoicePresetPolicy.pitch(for: agentID, emotion: emotion)
+        let rate       = SupertonicVoicePresetPolicy.rate(for: agentID, emotion: emotion)
+        let speed      = SupertonicVoicePresetPolicy.speed(for: agentID, emotion: emotion)
+        let spokenText = SupertonicProsodyTextProcessor.preprocess(text, agentID: agentID, style: emotion)
+        let paths      = Supertonic3ONNXModelPaths.defaultPaths()
+        let charName   = AgentWindowManager.shared.allAvailableAgents.first(where: { $0.id == agentID })?.name ?? agentID
+        do {
+            let result = try await Supertonic3ONNXRunner.shared.synthesize(
+                text: spokenText, preset: preset,
+                lang: Supertonic3TTSConfig.selectedLanguage,
+                totalSteps: Supertonic3TTSConfig.totalStep,
+                speed: speed, paths: paths
+            )
+            await playback.playFloatSamples(
+                samples: result.wavSamples, sampleRate: result.sampleRate,
+                streamId: UUID().uuidString, characterName: charName,
+                pitch: pitch, rate: rate, onPlaybackStarted: nil
+            )
+            let wavPath = S3WavWriter.write(samples: result.wavSamples, sampleRate: result.sampleRate,
+                                            tag: "emotion_\(charName)_\(emotion.rawValue)")
+            AppLog.info("[SpeechManager.previewCharacterEmotion] \(charName) emotion=\(emotion.rawValue)")
+            return TTSOutput(audioFileURL: wavPath.map { URL(fileURLWithPath: $0) },
+                             duration: result.durationSec, sampleRate: result.sampleRate, providerKind: .supertonic3)
+        } catch {
+            AppLog.info("[SpeechManager.previewCharacterEmotion] failed: \(error)")
             return nil
         }
     }

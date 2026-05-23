@@ -1024,6 +1024,9 @@ class AgentWindowManager: ObservableObject {
             activeAgents[index] = routedAgent
         }
 
+        // Round 258B: activeAgents 변경 후 selectedTeamWorkroom 동기화
+        syncSelectedTeamWorkroomAgents()
+
         // 교체 TTS — 동기적 flush 후 즉시 실행 (딜레이 없음)
         if !isSilentMode {
             SpeechManager.shared.stopSpeaking()
@@ -1048,7 +1051,7 @@ class AgentWindowManager: ObservableObject {
     }
 
     /// 현재 선택된 팀 워크룸의 agentIDs를 activeAgents와 동기화.
-    private func syncSelectedTeamWorkroomAgents() {
+    func syncSelectedTeamWorkroomAgents() {
         guard let roomID = selectedTeamWorkroomID,
               let idx = rooms.firstIndex(where: { $0.id == roomID }) else { return }
         rooms[idx].agentIDs = activeAgents.map(\.id)

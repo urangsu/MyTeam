@@ -33,6 +33,9 @@ struct TTSLabView: View {
     @State private var voiceDirectorSpeakingID: String? = nil   // speaking agentID or preset
     @State private var voiceDirectorError: String? = nil
 
+    // MARK: - Round 258B: Emotion Preview State
+    @State private var emotionPreviewAgentID: String = "agent_1"
+
     // MARK: - ONNX Spike State (Round 249TTS)
     @State private var spikeInputText: String = "안녕하세요. 테스트입니다."
     @State private var spikeSynthesisResult: Supertonic3SynthesisResult? = nil
@@ -171,7 +174,7 @@ struct TTSLabView: View {
         )
     }
 
-    // MARK: - Round 258TTS: Voice Director Section
+    // MARK: - Round 258TTS/258B: Voice Director Section
 
     private var voiceDirectorSection: some View {
         GroupBox {
@@ -183,7 +186,7 @@ struct TTSLabView: View {
                     Text("보이스 디렉터")
                         .font(.headline)
                     Spacer()
-                    Text("Round 258TTS")
+                    Text("Round 258B")
                         .font(.caption2.bold())
                         .padding(.horizontal, 6).padding(.vertical, 2)
                         .background(Color.purple.opacity(0.12))
@@ -201,25 +204,32 @@ struct TTSLabView: View {
 
                 Divider()
 
-                // MARK: Preset 전체 테스트 (M1~M5, F1~F5)
+                // MARK: 원본 Preset 테스트 (M1~M5, F1~F5) — 캐릭터 보정 없음
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Preset 전체 테스트")
+                    Text("원본 Preset 테스트")
                         .font(.subheadline.bold())
-                    Text("각 버튼: \"안녕하세요. 제 목소리는 이 톤이에요.\" 발화")
+                    Text("캐릭터 보정 없이 Supertonic preset 원본을 듣습니다. pitch=0, rate=1")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
                     let presets = ["M1", "M2", "M3", "M4", "M5", "F1", "F2", "F3", "F4", "F5"]
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 6) {
                         ForEach(presets, id: \.self) { preset in
-                            let agentID = CharacterVoiceProfileCatalog.profile(forPreset: preset)?.agentID
                             let isSpeaking = voiceDirectorSpeakingID == "preset_\(preset)"
                             Button(action: {
-                                speakVoiceDirectorSample(
-                                    text: "안녕하세요. 제 목소리는 이 톤이에요.",
-                                    agentID: agentID,
-                                    speakID: "preset_\(preset)"
-                                )
+                                guard voiceDirectorSpeakingID == nil else { return }
+                                voiceDirectorSpeakingID = "preset_\(preset)"
+                                voiceDirectorError = nil
+                                Task {
+                                    let output = await SpeechManager.shared.previewPreset(
+                                        text: "안녕하세요. 제 목소리는 이 톤이에요.",
+                                        preset: preset
+                                    )
+                                    await MainActor.run {
+                                        voiceDirectorSpeakingID = nil
+                                        if output == nil { voiceDirectorError = "재생 실패 — preset \(preset)" }
+                                    }
+                                }
                             }) {
                                 VStack(spacing: 2) {
                                     if isSpeaking {
@@ -243,7 +253,7 @@ struct TTSLabView: View {
 
                 Divider()
 
-                // MARK: 캐릭터 목소리 매핑 테이블
+                // MARK: 캐릭터 목소리 매핑 테이블 (캐릭터 보정 + emotion style 포함)
                 VStack(alignment: .leading, spacing: 6) {
                     Text("캐릭터 목소리 매핑")
                         .font(.subheadline.bold())
@@ -288,12 +298,15 @@ struct TTSLabView: View {
                         }
                         .padding(.vertical, 2)
                         .padding(.horizontal, 6)
-                        .background(
-                            isSpeaking ? Color.purple.opacity(0.08) : Color.clear
-                        )
+                        .background(isSpeaking ? Color.purple.opacity(0.08) : Color.clear)
                         .cornerRadius(4)
                     }
                 }
+
+                Divider()
+
+                // MARK: 감정 표현 테스트 (Round 258B)
+                emotionPreviewSection
 
                 // Disabled notice
                 if !noticeAccepted || !modelCheck.isAvailable {
@@ -306,6 +319,79 @@ struct TTSLabView: View {
         } label: {
             Label("보이스 디렉터", systemImage: "music.microphone")
                 .foregroundStyle(.purple)
+        }
+    }
+
+    // MARK: - Round 258B: Emotion Preview Section
+
+    private var emotionPreviewSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("감정 표현 테스트")
+                    .font(.subheadline.bold())
+                Spacer()
+                Picker("캐릭터", selection: $emotionPreviewAgentID) {
+                    ForEach(CharacterVoiceProfileCatalog.profiles) { profile in
+                        Text(profile.displayName).tag(profile.agentID)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(width: 90)
+                .font(.caption)
+            }
+
+            let emotionItems: [(SupertonicEmotionStyle, String, Color)] = [
+                (.neutral,       "확인했습니다. 요청하신 내용을 정리하겠습니다.", .gray),
+                (.friendly,      "확인했어요. 제가 차근차근 도와드릴게요.", .green),
+                (.confident,     "핵심부터 빠르게 정리하겠습니다.", .blue),
+                (.careful,       "조심스럽게 검토한 뒤 말씀드리겠습니다.", .orange),
+                (.excited,       "좋아요! 바로 한번 만들어볼게요.", .yellow),
+                (.animalCrossing,"안녕하세요! 오늘도 같이 해봐요!", .pink)
+            ]
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+                ForEach(emotionItems, id: \.0.rawValue) { (emotion, sampleText, color) in
+                    let speakID = "emotion_\(emotionPreviewAgentID)_\(emotion.rawValue)"
+                    let isSpeaking = voiceDirectorSpeakingID == speakID
+                    Button(action: {
+                        guard voiceDirectorSpeakingID == nil else { return }
+                        voiceDirectorSpeakingID = speakID
+                        voiceDirectorError = nil
+                        let agentID = emotionPreviewAgentID
+                        Task {
+                            let output = await SpeechManager.shared.previewCharacterEmotion(
+                                text: sampleText, agentID: agentID, emotion: emotion
+                            )
+                            await MainActor.run {
+                                voiceDirectorSpeakingID = nil
+                                if output == nil { voiceDirectorError = "재생 실패 — \(emotion.rawValue)" }
+                            }
+                        }
+                    }) {
+                        VStack(spacing: 2) {
+                            if isSpeaking {
+                                ProgressView().scaleEffect(0.6)
+                            } else {
+                                Image(systemName: "waveform")
+                                    .font(.caption2)
+                            }
+                            Text(emotion.rawValue)
+                                .font(.system(.caption2, design: .monospaced).bold())
+                            if emotion == .animalCrossing {
+                                Text("테스트 전용")
+                                    .font(.system(size: 8))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(color)
+                    .disabled(voiceDirectorSpeakingID != nil || !modelCheck.isAvailable || !noticeAccepted)
+                }
+            }
+            .font(.caption)
         }
     }
 
