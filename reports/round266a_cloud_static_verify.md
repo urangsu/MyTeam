@@ -1,10 +1,10 @@
 # Round 266A-CLOUD-VERIFY — AssistOnly Governance Static Verification Report
 
-**Date:** 2026-05-21  
+**Date:** 2026-05-21 (updated 2026-05-24)
 **Round:** 266A-275Z + 266A-CLOUD-VERIFY  
 **Status:**
 - Cloud static checked ✅
-- Mac build pending ⏳
+- Mac build: Debug ✅ Release ✅ (0 errors, 0 warnings — 2026-05-24)
 - Manual QA pending ⏳
 - Submission not ready ⛔
 
@@ -151,11 +151,11 @@ No changes to:
 
 ---
 
-## Mac Build Checklist (pending)
+## Mac Build Checklist
 
 ```
-[ ] Debug xcodebuild — 0 errors, 0 warnings
-[ ] Release xcodebuild — 0 errors, 0 warnings
+[x] Debug xcodebuild — 0 errors, 0 warnings ✅ (2026-05-24)
+[x] Release xcodebuild — 0 errors, 0 warnings ✅ (2026-05-24)
 [ ] Manual test: accounting-tax renders dedicated card
 [ ] Manual test: disclaimer visible without scroll/expand
 [ ] Manual test: KTX intent → KSkillAssistCardView with 4 sections

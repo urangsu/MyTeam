@@ -148,6 +148,17 @@ final class AIService {
     private var cachedClaudeModelId: String?
     private var cachedOpenAIModelId: String?
 
+    // Round 268-CACHE-EXPIRY: 모델 discovery 캐시 만료 정책 (1시간)
+    private var cachedGeminiModelIdAt: Date?
+    private var cachedClaudeModelIdAt: Date?
+    private var cachedOpenAIModelIdAt: Date?
+    private let modelCacheMaxAge: TimeInterval = 3600 // 1시간
+
+    private func isCacheExpired(_ cacheDate: Date?) -> Bool {
+        guard let d = cacheDate else { return true }
+        return Date().timeIntervalSince(d) > modelCacheMaxAge
+    }
+
     /// 모델별 429 쿨다운 — [modelId: 만료 시각]
     private var gemini429Cooldown: [String: Date] = [:]
     private let gemini429CooldownSeconds: TimeInterval = 120 // 모델 단위: 2분
@@ -170,7 +181,7 @@ final class AIService {
 
     private func markGeminiModel429(_ modelId: String) {
         gemini429Cooldown[modelId] = Date().addingTimeInterval(gemini429CooldownSeconds)
-        if cachedGeminiModelId == modelId { cachedGeminiModelId = nil }
+        if cachedGeminiModelId == modelId { cachedGeminiModelId = nil; cachedGeminiModelIdAt = nil }
 
         // Aggressive protection: 429 1회 발생 즉시 provider 전체 쿨다운
         // (이전: 2회 연속 후 쿨다운 → 데모 모드에서는 1회도 낭비 방지)
@@ -456,14 +467,18 @@ final class AIService {
                 let fallbackFlash = AIModelPolicy.pinnedModelID(for: .gemini)
                 let modelToUse: String
                 if AIModelPolicy.modelOverrideAllowed {
-                    if let cached = cachedGeminiModelId, !isGeminiModelCoolingDown(cached) {
+                    if let cached = cachedGeminiModelId,
+                       !isGeminiModelCoolingDown(cached),
+                       !isCacheExpired(cachedGeminiModelIdAt) {
                         modelToUse = cached
                     } else {
                         cachedGeminiModelId = nil
+                        cachedGeminiModelIdAt = nil
                         if let discoveredModel = try? await discoverLatestGeminiModel(apiKey: apiKey),
                            !isGeminiModelCoolingDown(discoveredModel) {
                             modelToUse = discoveredModel
                             cachedGeminiModelId = discoveredModel
+                            cachedGeminiModelIdAt = Date()
                         } else {
                             modelToUse = fallbackFlash
                         }
@@ -601,12 +616,15 @@ final class AIService {
 
                 let claudeModel: String
                 if AIModelPolicy.modelOverrideAllowed {
-                    if let cached = cachedClaudeModelId {
+                    if let cached = cachedClaudeModelId, !isCacheExpired(cachedClaudeModelIdAt) {
                         claudeModel = cached
                     } else if let discovered = try? await discoverLatestClaudeModel(apiKey: apiKey) {
                         claudeModel = discovered
                         cachedClaudeModelId = discovered
+                        cachedClaudeModelIdAt = Date()
                     } else {
+                        cachedClaudeModelId = nil
+                        cachedClaudeModelIdAt = nil
                         claudeModel = AIModelPolicy.pinnedModelID(for: .claude)
                     }
                 } else {
@@ -694,12 +712,15 @@ final class AIService {
                 if AIModelPolicy.modelOverrideAllowed {
                     var model = modelId.isEmpty ? "" : modelId
                     if model.isEmpty {
-                        if let cached = cachedOpenAIModelId {
+                        if let cached = cachedOpenAIModelId, !isCacheExpired(cachedOpenAIModelIdAt) {
                             model = cached
                         } else if let discovered = try? await discoverLatestOpenAIModel(apiKey: apiKey) {
                             model = discovered
                             cachedOpenAIModelId = discovered
+                            cachedOpenAIModelIdAt = Date()
                         } else {
+                            cachedOpenAIModelId = nil
+                            cachedOpenAIModelIdAt = nil
                             model = AIModelPolicy.pinnedModelID(for: .openAI)
                         }
                     }
@@ -958,9 +979,13 @@ final class AIService {
     }
 
     private func geminiQuickCall(prompt: String, apiKey: String) async throws -> String {
-        let modelId = AIModelPolicy.modelOverrideAllowed
-            ? (cachedGeminiModelId ?? AIModelPolicy.pinnedModelID(for: .gemini))
-            : AIModelPolicy.pinnedModelID(for: .gemini)
+        let modelId: String
+        if AIModelPolicy.modelOverrideAllowed,
+           let cached = cachedGeminiModelId, !isCacheExpired(cachedGeminiModelIdAt) {
+            modelId = cached
+        } else {
+            modelId = AIModelPolicy.pinnedModelID(for: .gemini)
+        }
         guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(modelId):generateContent?key=\(apiKey)") else {
             throw AIServiceError.invalidResponse
         }
@@ -980,9 +1005,13 @@ final class AIService {
 
     private func claudeQuickCall(prompt: String, apiKey: String) async throws -> String {
         guard let url = URL(string: "https://api.anthropic.com/v1/messages") else { throw AIServiceError.invalidResponse }
-        let modelId = AIModelPolicy.modelOverrideAllowed
-            ? (cachedClaudeModelId ?? AIModelPolicy.pinnedModelID(for: .claude))
-            : AIModelPolicy.pinnedModelID(for: .claude)
+        let modelId: String
+        if AIModelPolicy.modelOverrideAllowed,
+           let cached = cachedClaudeModelId, !isCacheExpired(cachedClaudeModelIdAt) {
+            modelId = cached
+        } else {
+            modelId = AIModelPolicy.pinnedModelID(for: .claude)
+        }
         let body: [String: Any] = ["model": modelId, "max_tokens": 512,
                                     "messages": [["role": "user", "content": prompt]]]
         var req = URLRequest(url: url)

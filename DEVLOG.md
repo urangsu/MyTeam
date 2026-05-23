@@ -6,6 +6,22 @@
 
 ---
 
+## 2026-05-24 (Round 268-RELIABILITY-POLISH)
+
+### 완료 (2026-05-24)
+
+- **AIService.swift** — 모델 discovery 캐시 만료 정책 (P3 #15)
+  - `cachedGeminiModelIdAt/cachedClaudeModelIdAt/cachedOpenAIModelIdAt` 타임스탬프
+  - `isCacheExpired(_:)` + `modelCacheMaxAge = 3600` (1시간)
+  - Gemini/Claude/OpenAI streaming 경로 및 QuickCall 함수 전체 적용
+  - 429 쿨다운 시 캐시 타임스탬프도 함께 nil 처리
+- **AgentToolKit.swift** — ToolNeedClassifier false positive 감소 (P1)
+  - `needsCurrentTime`: 단독 "오늘/현재" → 강한 시간 신호(날짜/몇시/날씨) 또는 조합 신호 필요
+  - `needsSearch`: 단순 "검색", "찾아" → "검색해줘", "찾아봐줘" 명령형으로 강화
+- Debug BUILD SUCCEEDED, 0 errors
+
+---
+
 ## 2026-05-24 (Round 264-267-RELIABILITY)
 
 ### 완료 (2026-05-24)

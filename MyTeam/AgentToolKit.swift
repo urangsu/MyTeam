@@ -36,17 +36,25 @@ enum ToolPolicy {
         let compact = lowered.replacingOccurrences(of: " ", with: "")
 
         let needsURLFetch = containsURL(in: message)
-        let needsCurrentTime = containsAny(compact, [
-            "오늘", "현재", "지금", "요즘", "최근", "이번주", "이번달", "올해",
-            "today", "current", "now", "recent", "latest"
-        ])
+        // Round 268: false positive 방지 — 단일 키워드("오늘","현재")만으로는 트리거 안 함.
+        // 시간 의존 질문: 날짜·시각·날씨·기온·환경 정보가 함께 언급될 때만 트리거.
+        let needsCurrentTime: Bool = {
+            // 명확한 시간 조회 신호
+            let strongSignals = ["날짜", "몇시", "몇월", "요일", "날씨", "기온",
+                                 "time", "date", "weather", "temperature"]
+            if containsAny(compact, strongSignals) { return true }
+            // "오늘/현재/지금" + 뉴스·환율·시세 함께 언급 → 시간 의존
+            let timeWords = ["오늘", "현재", "지금", "today", "current", "now"]
+            let contextWords = ["뉴스", "시세", "환율", "주가", "날씨", "기온", "latest", "recent"]
+            return containsAny(compact, timeWords) && containsAny(compact, contextWords)
+        }()
         let needsNews = containsAny(compact, [
             "뉴스", "속보", "기사", "주요뉴스", "헤드라인", "이슈",
             "news", "headline"
         ])
         let needsSearch = containsAny(compact, [
-            "검색", "찾아", "알아봐", "조사", "출처", "근거", "자료", "웹",
-            "search", "web", "source", "citation", "reference"
+            "검색해", "찾아봐", "알아봐줘", "조사해줘", "출처알려", "근거알려",
+            "search for", "find me", "look up", "citation", "reference"
         ])
         let needsFinance = containsAny(compact, [
             "주식", "주가", "증시", "나스닥", "코스피", "코스닥", "환율", "시세",

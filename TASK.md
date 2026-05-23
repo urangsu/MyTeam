@@ -355,11 +355,27 @@ AssistOnly Governance Hardening Pack
 - Debug + Release BUILD SUCCEEDED ✅
 - TTS 정책: licenseVerified=false, canShipAsProductFeature=false, Supertonic TTSLab-only
 
-#### Next — Mac Build (Round 267A)
+#### Round 268-RELIABILITY-POLISH — 완료 (2026-05-24)
 
-- Mac xcodebuild Debug/Release (0 errors, 0 warnings)
-- See: `docs/MacBuildHandoffRound266A.md` for full checklist and known compile risks
-- After build: update reports/round266a_cloud_static_verify.md with build result
+신뢰성 보완 + ToolNeedClassifier false positive 감소.
+
+- `AIService.swift` — 모델 discovery 캐시 만료 정책 (1시간)
+  - `cachedGeminiModelIdAt/cachedClaudeModelIdAt/cachedOpenAIModelIdAt` 타임스탬프 추가
+  - `isCacheExpired(_:)` 헬퍼 + `modelCacheMaxAge = 3600` 상수
+  - Gemini/Claude/OpenAI streaming 경로 + QuickCall 함수 모두 적용
+  - 429 쿨다운 시 `cachedGeminiModelIdAt = nil` 함께 처리
+- `AgentToolKit.swift` — ToolNeedClassifier false positive 감소 (Round 268)
+  - `needsCurrentTime`: "오늘/현재/지금" 단독으로는 트리거 안 함
+  - 명확한 시간 조회 신호(날짜/몇시/날씨/기온) + 뉴스·시세와 조합 시에만 트리거
+  - `needsSearch`: "검색", "찾아" 같은 단순 단어 제거 → "검색해", "찾아봐줘" 등 명령형만 트리거
+- Debug/Release BUILD SUCCEEDED ✅
+
+#### Round 267A-MAC-BUILD — 완료 (2026-05-24)
+
+- Debug xcodebuild: BUILD SUCCEEDED, 0 errors, 0 Swift warnings ✅
+- Release xcodebuild: BUILD SUCCEEDED, 0 errors, 0 Swift warnings ✅
+- reports/round266a_cloud_static_verify.md 빌드 결과 업데이트 ✅
+- Rounds 264-267 changes: LLMModelRegistry + agentID fix + nonisolated(unsafe) 포함
 
 #### Round 248A-HOTFIX — 완료 (2026-05-21)
 
