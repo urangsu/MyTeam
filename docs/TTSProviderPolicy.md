@@ -1,5 +1,46 @@
 # TTS Provider Policy
 
+**Round 259TTS-VOICE-TUNER** — 임시 P/R/S 튜닝 컨트롤 + pitch 재조정 + Animal Crossing 모드 분리.
+
+## Round 259TTS-VOICE-TUNER (2026-05-23)
+
+### P/R/S 파라미터 정책
+
+| 파라미터 | 설명 | UI 범위 | artifact 경고 |
+|---------|------|---------|--------------|
+| P / Pitch | 음높이 (cents, AVAudioUnitTimePitch) | -180~+180 | ±100 초과 시 금속성/비프음 가능 |
+| R / Rate | 재생 후처리 속도 배율 | 0.92~1.12 | - |
+| S / Speed | Supertonic3 합성 duration predictor | 0.90~1.20 | - |
+
+> 목소리 개성은 preset, 말의 빠르기는 S, 최종 보정은 P/R.
+
+### CharacterVoiceProfile basePitch 재조정 (Round 259TTS)
+
+사용자 청감 피드백(pitch 100 이상 금속성/비프음)에 따라 basePitch를 ±100 이하로 재조정.  
+이전 최대값: 핀 +320, 몽몽 +340, 치코 +260 → 모두 +90으로 낮춤.  
+모코/올리버는 안정적으로 평가되어 ±60 이내 유지.
+
+### Animal Crossing 모드 재정의 (Round 259TTS)
+
+- **이전:** `basePitch + animalCrossingPitchBoost` (누적 방식) → 기존 설정과 체감 차이 없음
+- **이후:** `animalCrossingTuning(for:)` — 독립 cartoon target (M:+140, F:+180, rate:1.12)
+- Animal Crossing은 테스트 전용. 기본 캐릭터 발화에는 사용되지 않음.
+
+### VoiceTuningState (신규)
+
+`VoiceTuningValues` — P/R/S 임시 튜닝값 컨테이너 (Codable, Sendable, Equatable).  
+`VoiceTuningDefaults` — UI 슬라이더 범위 + artifact 경고 임계값 (pitchArtifactThreshold: 100).
+
+변경 파일:
+1. `VoiceTuningState.swift` (신규)
+2. `CharacterVoiceProfile.swift` — basePitch 재조정 + animalCrossingBoost 필드 비활성화
+3. `SupertonicVoicePresetPolicy.swift` — animalCrossingTuning(for:) 추가, AC case 재정의
+4. `SpeechManager.previewWithTuning(text:preset:pitch:rate:speed:)` 추가
+5. `TTSLabView` — prsDescriptionBox + prsTuningSection + 3개 섹션 tuning override 지원
+6. `scripts/preflight_round259tts_voice_tuner.sh` — 22/22 PASS
+
+---
+
 **Round 258B-TTS-EMOTION-AUDIT** — 감정 표현 감사 + 보이스 디렉터 분리 + 팀 슬롯 동기화 강화.
 
 ## Round 258B-TTS-EMOTION-AUDIT (2026-05-23)

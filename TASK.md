@@ -67,6 +67,25 @@ MyTeam은 Mac 안에서 사용자의 자연어 요청을 받아, 문서/파일/�
 
 ### Now
 
+#### Round 259TTS-VOICE-TUNER — 완료 (2026-05-23)
+
+임시 P/R/S 튜닝 컨트롤 + pitch 재조정 + Animal Crossing 모드 분리
+
+- `VoiceTuningState.swift` 신규 — VoiceTuningValues(pitch/rate/speed) + VoiceTuningDefaults(범위/경고임계값)
+- `CharacterVoiceProfile` basePitch 재조정: 치코 260→90, 핀 320→90, 몽몽 340→90 등 ±100 이내
+- `SupertonicVoicePresetPolicy.animalCrossingTuning(for:)` 추가 — AC 별도 cartoon target
+- `SpeechManager.previewWithTuning(text:preset:pitch:rate:speed:emotion:agentID:label:)` 추가
+- `TTSLabView` P/R/S 설명 박스 (prsDescriptionBox) 추가
+- `TTSLabView` "임시 P/R/S 튜닝" 섹션 (prsTuningSection) — Slider×3 + pitch 경고 + 초기화/캐릭터값 버튼
+- `TTSLabView` 3개 섹션(원본/캐릭터/감정) 모두 useTuningOverride 분기 지원
+- `TTSLabView` 감정 샘플 문장 개선 (confident/careful/excited 더 명확하게)
+- `scripts/preflight_round259tts_voice_tuner.sh` — **22/22 PASS** ✅
+- `reports/round259tts_voice_tuner.md` 생성
+- Debug/Release BUILD SUCCEEDED ✅
+- 브랜치: `cloud/round252-supertonic-license-lock`
+
+---
+
 #### Round 258B-TTS-EMOTION-AUDIT — 완료 (2026-05-23)
 
 감정 표현 감사 + 보이스 디렉터 분리 + 팀 슬롯 동기화 강화

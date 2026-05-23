@@ -6,6 +6,37 @@
 
 ---
 
+## 2026-05-23 (Round 259TTS-VOICE-TUNER — 임시 P/R/S 튜닝 + pitch 재조정 + Animal Crossing 모드 분리)
+
+### 완료 (2026-05-23)
+
+- `VoiceTuningState.swift` 신규 생성
+  - `VoiceTuningValues`: pitch/rate/speed 컨테이너 (Codable/Sendable/Equatable, `.neutral`, `.clamped`, `.displayString`)
+  - `VoiceTuningDefaults`: pitchRange(-180~+180), rateRange(0.92~1.12), speedRange(0.90~1.20), pitchArtifactThreshold(100)
+- `CharacterVoiceProfile` basePitch 재조정 (11개 캐릭터 모두 ±110 이하)
+  - 치코: 260→90, 핀: 320→90, 몽몽: 340→90, 루나: 180→80, 레오: -180→-80
+  - 모코/올리버 안정 범위 유지 (±60 이내)
+  - animalCrossingPitchBoost/RateBoost 필드 0으로 비활성화 (별도 tuning 방식으로 교체)
+- `SupertonicVoicePresetPolicy` 업데이트
+  - `animalCrossingTuning(for:) -> VoiceTuningValues` 추가 (M:+140, F:+180, rate:1.12)
+  - `.animalCrossing` 케이스 → animalCrossingTuning() 기반으로 변경 (boost 누적 제거)
+- `SpeechManager.previewWithTuning(text:preset:pitch:rate:speed:emotion:agentID:label:)` 추가
+  - 원본 preset + 캐릭터 + 감정 3가지 경로 모두 지원
+  - TTSRoutingPolicy guard, prosody 전처리, synthesize(speed:), playFloatSamples(pitch:rate:) 포함
+- `TTSLabView` 보이스 디렉터 섹션 대폭 개선
+  - `prsDescriptionBox`: P/R/S 파라미터 Grid 설명 + "목소리 개성은 preset, 빠르기는 S" 안내
+  - `prsTuningSection`: Toggle/Slider×3/경고/초기화/캐릭터기본값 버튼 포함
+  - 원본 Preset 테스트, 캐릭터 목소리 매핑, 감정 표현 테스트 3섹션 모두 useTuningOverride 분기
+  - 감정 샘플 문장 개선: confident "좋습니다. 핵심부터...", careful "조심스럽게 확인해보고...", excited "이건 바로 한번..."
+  - Round 258B→Round 259 badge 업데이트
+  - Animal Crossing 테스트 전용 안내 문구 추가
+- `scripts/preflight_round259tts_voice_tuner.sh` 신규 — 22/22 PASS ✅
+- `reports/round259tts_voice_tuner.md` 생성
+- Debug/Release BUILD SUCCEEDED ✅
+- 치코 role 수정 없음 ("UX 디자이너 & 온보딩 도우미" 유지)
+
+---
+
 ## 2026-05-23 (Round 258B-TTS-EMOTION-AUDIT — 감정 표현 감사 + 보이스 디렉터 분리 + 팀 슬롯 동기화 강화)
 
 ### 완료 (2026-05-23)

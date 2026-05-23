@@ -11097,6 +11097,7 @@
 				<string>68ACEE63E7ABABF7546ACAED</string>
 				<string>CVP258TTS001FILEREF0000A1</string>
 				<string>SPTP258TTS001FILEREF0000B1</string>
+				<string>VTS259TTS001FILEREF0000C1</string>
 			</array>
 			<key>isa</key>
 			<string>PBXGroup</string>
@@ -11527,6 +11528,7 @@
 				<string>9BBF1A37FD6318EA8507988F</string>
 				<string>CVP258TTS001BUILDFILE000A1</string>
 				<string>SPTP258TTS001BUILDFILE00B1</string>
+				<string>VTS259TTS001BUILDFILE00C1</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -23303,6 +23305,24 @@
 			<string>sourcecode.swift</string>
 			<key>path</key>
 			<string>SupertonicProsodyTextProcessor.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>VTS259TTS001BUILDFILE00C1</key>
+		<dict>
+			<key>fileRef</key>
+			<string>VTS259TTS001FILEREF0000C1</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>VTS259TTS001FILEREF0000C1</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>VoiceTuningState.swift</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>

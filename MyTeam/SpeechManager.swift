@@ -373,6 +373,63 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         }
     }
 
+    // MARK: - Round 259TTS: Tuning Override Preview
+
+    /// P/R/S 임시 튜닝 적용 미리듣기.
+    /// TTS Lab "임시 P/R/S 튜닝" toggle이 ON일 때 사용.
+    /// - Parameters:
+    ///   - text: 발화 텍스트
+    ///   - preset: Supertonic3 voice preset (e.g. "F2")
+    ///   - pitch: pitch override (cents). clamp은 AudioPlaybackService 내부에서 수행.
+    ///   - rate: rate override 배율. clamp은 AudioPlaybackService 내부.
+    ///   - speed: Supertonic3 합성 speed. clamp(0.85~1.25)은 ONNXRunner 내부.
+    ///   - emotion: prosody 전처리 감정 스타일 (기본 .neutral)
+    ///   - agentID: prosody 전처리 캐릭터 ID (nil = 캐릭터 보정 없음)
+    ///   - label: S3WavWriter tag 접두사
+    /// - Returns: TTSOutput 또는 nil(라우팅 실패/합성 오류)
+    func previewWithTuning(
+        text: String,
+        preset: String,
+        pitch: Float,
+        rate: Float,
+        speed: Float,
+        emotion: SupertonicEmotionStyle = .neutral,
+        agentID: String? = nil,
+        label: String = "tuning_preview"
+    ) async -> TTSOutput? {
+        guard TTSRoutingPolicy.selectedProvider() == .supertonic3 else { return nil }
+        let paths = Supertonic3ONNXModelPaths.defaultPaths()
+        let spokenText = SupertonicProsodyTextProcessor.preprocess(text, agentID: agentID, style: emotion)
+        do {
+            let result = try await Supertonic3ONNXRunner.shared.synthesize(
+                text: spokenText,
+                preset: preset,
+                lang: Supertonic3TTSConfig.selectedLanguage,
+                totalSteps: Supertonic3TTSConfig.totalStep,
+                speed: speed,
+                paths: paths
+            )
+            await playback.playFloatSamples(
+                samples: result.wavSamples,
+                sampleRate: result.sampleRate,
+                streamId: UUID().uuidString,
+                characterName: label,
+                pitch: pitch,
+                rate: rate,
+                onPlaybackStarted: nil
+            )
+            let safeLabel = label.replacingOccurrences(of: " ", with: "_")
+            let wavPath = S3WavWriter.write(samples: result.wavSamples, sampleRate: result.sampleRate,
+                                            tag: "tuning_\(safeLabel)")
+            AppLog.info("[SpeechManager.previewWithTuning] preset=\(preset) pitch=\(pitch) rate=\(rate) speed=\(speed)")
+            return TTSOutput(audioFileURL: wavPath.map { URL(fileURLWithPath: $0) },
+                             duration: result.durationSec, sampleRate: result.sampleRate, providerKind: .supertonic3)
+        } catch {
+            AppLog.info("[SpeechManager.previewWithTuning] failed: \(error)")
+            return nil
+        }
+    }
+
     /// 단발성 공식 TTS 합성. 반환값: WAV 파일 경로 (nil=무음 또는 실패).
     /// 호출 시점에만 Supertonic3ONNXRunner.shared.synthesize 실행. launch auto-init 없음.
     func synthesize(text: String, agentID: String? = nil) async -> TTSOutput? {

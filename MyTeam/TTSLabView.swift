@@ -36,6 +36,12 @@ struct TTSLabView: View {
     // MARK: - Round 258B: Emotion Preview State
     @State private var emotionPreviewAgentID: String = "agent_1"
 
+    // MARK: - Round 259TTS: P/R/S Tuning State
+    @State private var tuningPitch: Double = 0.0
+    @State private var tuningRate: Double = 1.0
+    @State private var tuningSpeed: Double = 1.05
+    @State private var useTuningOverride: Bool = false
+
     // MARK: - ONNX Spike State (Round 249TTS)
     @State private var spikeInputText: String = "안녕하세요. 테스트입니다."
     @State private var spikeSynthesisResult: Supertonic3SynthesisResult? = nil
@@ -186,12 +192,15 @@ struct TTSLabView: View {
                     Text("보이스 디렉터")
                         .font(.headline)
                     Spacer()
-                    Text("Round 258B")
+                    Text("Round 259")
                         .font(.caption2.bold())
                         .padding(.horizontal, 6).padding(.vertical, 2)
                         .background(Color.purple.opacity(0.12))
                         .cornerRadius(4)
                 }
+
+                // MARK: P/R/S 설명 박스 (Round 259TTS)
+                prsDescriptionBox
 
                 if let err = voiceDirectorError {
                     Text("오류: \(err)")
@@ -204,15 +213,31 @@ struct TTSLabView: View {
 
                 Divider()
 
+                // MARK: 임시 P/R/S 튜닝 (Round 259TTS)
+                prsTuningSection
+
+                Divider()
+
                 // MARK: 원본 Preset 테스트 (M1~M5, F1~F5) — 캐릭터 보정 없음
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("원본 Preset 테스트")
-                        .font(.subheadline.bold())
-                    Text("캐릭터 보정 없이 Supertonic preset 원본을 듣습니다. pitch=0, rate=1")
+                    HStack {
+                        Text("원본 Preset 테스트")
+                            .font(.subheadline.bold())
+                        Spacer()
+                        if useTuningOverride {
+                            Text("튜닝 적용 중")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                    Text(useTuningOverride
+                         ? "P/R/S 튜닝 적용 — pitch=\(Int(tuningPitch)), rate=\(String(format:"%.2f",tuningRate)), speed=\(String(format:"%.2f",tuningSpeed))"
+                         : "캐릭터 보정 없이 Supertonic preset 원본을 듣습니다. pitch=0, rate=1")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
                     let presets = ["M1", "M2", "M3", "M4", "M5", "F1", "F2", "F3", "F4", "F5"]
+                    let sampleText = "안녕하세요. 제 목소리는 이 톤이에요."
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 6) {
                         ForEach(presets, id: \.self) { preset in
                             let isSpeaking = voiceDirectorSpeakingID == "preset_\(preset)"
@@ -220,11 +245,22 @@ struct TTSLabView: View {
                                 guard voiceDirectorSpeakingID == nil else { return }
                                 voiceDirectorSpeakingID = "preset_\(preset)"
                                 voiceDirectorError = nil
+                                let p = Float(tuningPitch), r = Float(tuningRate), s = Float(tuningSpeed)
+                                let useOverride = useTuningOverride
                                 Task {
-                                    let output = await SpeechManager.shared.previewPreset(
-                                        text: "안녕하세요. 제 목소리는 이 톤이에요.",
-                                        preset: preset
-                                    )
+                                    let output: TTSOutput?
+                                    if useOverride {
+                                        output = await SpeechManager.shared.previewWithTuning(
+                                            text: sampleText, preset: preset,
+                                            pitch: p, rate: r, speed: s,
+                                            emotion: .neutral, agentID: nil,
+                                            label: "Raw \(preset)"
+                                        )
+                                    } else {
+                                        output = await SpeechManager.shared.previewPreset(
+                                            text: sampleText, preset: preset
+                                        )
+                                    }
                                     await MainActor.run {
                                         voiceDirectorSpeakingID = nil
                                         if output == nil { voiceDirectorError = "재생 실패 — preset \(preset)" }
@@ -235,7 +271,7 @@ struct TTSLabView: View {
                                     if isSpeaking {
                                         ProgressView().scaleEffect(0.6)
                                     } else {
-                                        Image(systemName: "speaker.wave.2")
+                                        Image(systemName: useTuningOverride ? "slider.horizontal.3" : "speaker.wave.2")
                                             .font(.caption2)
                                     }
                                     Text(preset)
@@ -255,8 +291,16 @@ struct TTSLabView: View {
 
                 // MARK: 캐릭터 목소리 매핑 테이블 (캐릭터 보정 + emotion style 포함)
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("캐릭터 목소리 매핑")
-                        .font(.subheadline.bold())
+                    HStack {
+                        Text("캐릭터 목소리 매핑")
+                            .font(.subheadline.bold())
+                        Spacer()
+                        if useTuningOverride {
+                            Text("튜닝 적용 중")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(.orange)
+                        }
+                    }
 
                     ForEach(CharacterVoiceProfileCatalog.profiles) { profile in
                         let isSpeaking = voiceDirectorSpeakingID == "char_\(profile.agentID)"
@@ -275,16 +319,40 @@ struct TTSLabView: View {
                                     .foregroundStyle(.secondary)
                                 Spacer()
                                 Button(action: {
-                                    speakVoiceDirectorSample(
-                                        text: profile.sampleLine,
-                                        agentID: profile.agentID,
-                                        speakID: "char_\(profile.agentID)"
-                                    )
+                                    if useTuningOverride {
+                                        guard voiceDirectorSpeakingID == nil else { return }
+                                        let speakID = "char_\(profile.agentID)"
+                                        voiceDirectorSpeakingID = speakID
+                                        voiceDirectorError = nil
+                                        let p = Float(tuningPitch), r = Float(tuningRate), s = Float(tuningSpeed)
+                                        let charPreset = profile.preset
+                                        let charAgentID = profile.agentID
+                                        let charLine = profile.sampleLine
+                                        let charEmotion = profile.defaultEmotionStyle
+                                        Task {
+                                            let output = await SpeechManager.shared.previewWithTuning(
+                                                text: charLine, preset: charPreset,
+                                                pitch: p, rate: r, speed: s,
+                                                emotion: charEmotion, agentID: charAgentID,
+                                                label: profile.displayName
+                                            )
+                                            await MainActor.run {
+                                                voiceDirectorSpeakingID = nil
+                                                if output == nil { voiceDirectorError = "재생 실패 — \(profile.displayName)" }
+                                            }
+                                        }
+                                    } else {
+                                        speakVoiceDirectorSample(
+                                            text: profile.sampleLine,
+                                            agentID: profile.agentID,
+                                            speakID: "char_\(profile.agentID)"
+                                        )
+                                    }
                                 }) {
                                     if isSpeaking {
                                         ProgressView().scaleEffect(0.5)
                                     } else {
-                                        Image(systemName: "speaker.wave.2.fill")
+                                        Image(systemName: useTuningOverride ? "slider.horizontal.3" : "speaker.wave.2.fill")
                                             .font(.caption)
                                     }
                                 }
@@ -322,7 +390,7 @@ struct TTSLabView: View {
         }
     }
 
-    // MARK: - Round 258B: Emotion Preview Section
+    // MARK: - Round 258B/259: Emotion Preview Section
 
     private var emotionPreviewSection: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -330,6 +398,11 @@ struct TTSLabView: View {
                 Text("감정 표현 테스트")
                     .font(.subheadline.bold())
                 Spacer()
+                if useTuningOverride {
+                    Text("튜닝 적용 중")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.orange)
+                }
                 Picker("캐릭터", selection: $emotionPreviewAgentID) {
                     ForEach(CharacterVoiceProfileCatalog.profiles) { profile in
                         Text(profile.displayName).tag(profile.agentID)
@@ -343,9 +416,9 @@ struct TTSLabView: View {
             let emotionItems: [(SupertonicEmotionStyle, String, Color)] = [
                 (.neutral,       "확인했습니다. 요청하신 내용을 정리하겠습니다.", .gray),
                 (.friendly,      "확인했어요. 제가 차근차근 도와드릴게요.", .green),
-                (.confident,     "핵심부터 빠르게 정리하겠습니다.", .blue),
-                (.careful,       "조심스럽게 검토한 뒤 말씀드리겠습니다.", .orange),
-                (.excited,       "좋아요! 바로 한번 만들어볼게요.", .yellow),
+                (.confident,     "좋습니다. 핵심부터 빠르게 정리하겠습니다.", .blue),
+                (.careful,       "조심스럽게 확인해보고, 필요한 부분만 말씀드릴게요.", .orange),
+                (.excited,       "좋아요! 이건 바로 한번 만들어볼 수 있겠어요.", .yellow),
                 (.animalCrossing,"안녕하세요! 오늘도 같이 해봐요!", .pink)
             ]
 
@@ -358,10 +431,23 @@ struct TTSLabView: View {
                         voiceDirectorSpeakingID = speakID
                         voiceDirectorError = nil
                         let agentID = emotionPreviewAgentID
+                        let p = Float(tuningPitch), r = Float(tuningRate), s = Float(tuningSpeed)
+                        let useOverride = useTuningOverride
                         Task {
-                            let output = await SpeechManager.shared.previewCharacterEmotion(
-                                text: sampleText, agentID: agentID, emotion: emotion
-                            )
+                            let output: TTSOutput?
+                            if useOverride {
+                                let preset = SupertonicVoicePresetPolicy.preset(for: agentID)
+                                output = await SpeechManager.shared.previewWithTuning(
+                                    text: sampleText, preset: preset,
+                                    pitch: p, rate: r, speed: s,
+                                    emotion: emotion, agentID: agentID,
+                                    label: "\(agentID)_\(emotion.rawValue)"
+                                )
+                            } else {
+                                output = await SpeechManager.shared.previewCharacterEmotion(
+                                    text: sampleText, agentID: agentID, emotion: emotion
+                                )
+                            }
                             await MainActor.run {
                                 voiceDirectorSpeakingID = nil
                                 if output == nil { voiceDirectorError = "재생 실패 — \(emotion.rawValue)" }
@@ -372,7 +458,7 @@ struct TTSLabView: View {
                             if isSpeaking {
                                 ProgressView().scaleEffect(0.6)
                             } else {
-                                Image(systemName: "waveform")
+                                Image(systemName: useTuningOverride ? "slider.horizontal.3" : "waveform")
                                     .font(.caption2)
                             }
                             Text(emotion.rawValue)
@@ -392,7 +478,206 @@ struct TTSLabView: View {
                 }
             }
             .font(.caption)
+
+            // Animal Crossing test-only note
+            Text("Animal Crossing은 테스트 전용입니다. 기본 캐릭터 보이스에는 적용되지 않습니다.")
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+                .padding(.top, 2)
         }
+    }
+
+    // MARK: - Round 259TTS: P/R/S Description Box
+
+    private var prsDescriptionBox: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 4) {
+                Image(systemName: "info.circle")
+                    .font(.caption2)
+                    .foregroundStyle(.blue)
+                Text("목소리 파라미터 안내")
+                    .font(.caption.bold())
+                    .foregroundStyle(.primary)
+            }
+
+            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 3) {
+                GridRow {
+                    Text("P / Pitch")
+                        .font(.system(.caption2, design: .monospaced).bold())
+                        .foregroundStyle(.blue)
+                    Text("음높이 (cents). ±100 이내 권장 — 초과 시 금속성 artifact 가능.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                GridRow {
+                    Text("R / Rate")
+                        .font(.system(.caption2, design: .monospaced).bold())
+                        .foregroundStyle(.green)
+                    Text("재생 후처리 속도 배율. 이미 생성된 음성을 빠르게/느리게.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                GridRow {
+                    Text("S / Speed")
+                        .font(.system(.caption2, design: .monospaced).bold())
+                        .foregroundStyle(.orange)
+                    Text("합성 단계 말 속도 (duration predictor). 캐릭터 빠르기 조정은 S 우선.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Text("목소리 개성은 preset, 말의 빠르기는 S, 최종 보정은 P/R로 조절합니다.")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.blue.opacity(0.8))
+                .padding(.top, 2)
+        }
+        .padding(8)
+        .background(Color.blue.opacity(0.04))
+        .cornerRadius(6)
+    }
+
+    // MARK: - Round 259TTS: P/R/S Tuning Section
+
+    private var prsTuningSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: "slider.horizontal.3")
+                    .foregroundStyle(.orange)
+                Text("임시 P/R/S 튜닝")
+                    .font(.subheadline.bold())
+                Spacer()
+                Toggle("튜닝 적용", isOn: $useTuningOverride)
+                    .toggleStyle(.switch)
+                    .font(.caption)
+                    .controlSize(.small)
+            }
+
+            if useTuningOverride {
+                // Current values display
+                HStack {
+                    Text(VoiceTuningValues(pitch: Float(tuningPitch),
+                                          rate: Float(tuningRate),
+                                          speed: Float(tuningSpeed)).displayString)
+                        .font(.system(.caption, design: .monospaced).bold())
+                        .foregroundStyle(.orange)
+                    Spacer()
+                }
+
+                // Pitch artifact warning
+                if abs(tuningPitch) > Double(VoiceTuningDefaults.pitchArtifactThreshold) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.yellow)
+                        Text("⚠️ Pitch ±100 초과 시 비프음/금속성이 섞일 수 있습니다.")
+                            .font(.caption2)
+                            .foregroundStyle(.yellow)
+                    }
+                    .padding(4)
+                    .background(Color.yellow.opacity(0.08))
+                    .cornerRadius(4)
+                }
+
+                // P Slider
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Text("P")
+                            .font(.system(.caption2, design: .monospaced).bold())
+                            .foregroundStyle(.blue)
+                            .frame(width: 14)
+                        Text("Pitch")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(String(format: "%+.0f cents", tuningPitch))
+                            .font(.system(.caption2, design: .monospaced))
+                            .foregroundStyle(.blue)
+                    }
+                    Slider(
+                        value: $tuningPitch,
+                        in: Double(VoiceTuningDefaults.pitchRange.lowerBound)...Double(VoiceTuningDefaults.pitchRange.upperBound),
+                        step: VoiceTuningDefaults.pitchStep
+                    )
+                    .tint(.blue)
+                }
+
+                // R Slider
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Text("R")
+                            .font(.system(.caption2, design: .monospaced).bold())
+                            .foregroundStyle(.green)
+                            .frame(width: 14)
+                        Text("Rate")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(String(format: "%.2f×", tuningRate))
+                            .font(.system(.caption2, design: .monospaced))
+                            .foregroundStyle(.green)
+                    }
+                    Slider(
+                        value: $tuningRate,
+                        in: Double(VoiceTuningDefaults.rateRange.lowerBound)...Double(VoiceTuningDefaults.rateRange.upperBound),
+                        step: VoiceTuningDefaults.rateStep
+                    )
+                    .tint(.green)
+                }
+
+                // S Slider
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Text("S")
+                            .font(.system(.caption2, design: .monospaced).bold())
+                            .foregroundStyle(.orange)
+                            .frame(width: 14)
+                        Text("Speed")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text(String(format: "%.2f×", tuningSpeed))
+                            .font(.system(.caption2, design: .monospaced))
+                            .foregroundStyle(.orange)
+                    }
+                    Slider(
+                        value: $tuningSpeed,
+                        in: Double(VoiceTuningDefaults.speedRange.lowerBound)...Double(VoiceTuningDefaults.speedRange.upperBound),
+                        step: VoiceTuningDefaults.speedStep
+                    )
+                    .tint(.orange)
+                }
+
+                // Action buttons
+                HStack(spacing: 8) {
+                    Button("중립값으로 초기화") {
+                        tuningPitch = 0.0
+                        tuningRate = 1.0
+                        tuningSpeed = 1.05
+                    }
+                    .font(.caption)
+                    .buttonStyle(.bordered)
+
+                    Button("현재 캐릭터 기본값") {
+                        let profile = CharacterVoiceProfileCatalog.profile(for: emotionPreviewAgentID)
+                        tuningPitch  = Double(profile.basePitch)
+                        tuningRate   = Double(profile.baseRate)
+                        tuningSpeed  = Double(profile.baseSpeed)
+                    }
+                    .font(.caption)
+                    .buttonStyle(.bordered)
+
+                    Spacer()
+                }
+            } else {
+                Text("슬라이더로 P/R/S를 실시간으로 바꿔 들을 수 있습니다. 위 '튜닝 적용' 토글을 켜주세요.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(8)
+        .background(Color.orange.opacity(0.04))
+        .cornerRadius(6)
     }
 
     private func speakVoiceDirectorSample(text: String, agentID: String?, speakID: String) {

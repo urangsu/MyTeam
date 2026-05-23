@@ -1,15 +1,17 @@
 import Foundation
 
 // MARK: - SupertonicVoicePresetPolicy
-// Round 258B-TTS-EMOTION-AUDIT: emotion-aware pitch/rate/speed API 추가.
+// Round 258B: emotion-aware pitch/rate/speed API.
+// Round 259TTS: animalCrossingTuning(for:) 추가 — AC는 별도 target으로 분리.
 //
 // base API: pitch/rate/speed(for:) — 기본값 반환 (emotion nil 위임).
 // emotion-aware API: pitch/rate/speed(for:emotion:) — emotion에 따라 boost 적용.
 //   - neutral: base 값 그대로
 //   - careful: base + min(0, boost) — 음수 boost만 적용 (더 조심스럽게)
 //   - friendly, confident, excited: base + boost 전체 적용
-//   - animalCrossing: base + animalCrossingBoost (강한 모드, 기본 미사용)
+//   - animalCrossing: animalCrossingTuning(for:) 별도 target (기존 boost 누적 방식 제거)
 // emotionStyle(for:): 캐릭터 기본 감정 반환 (SpeechManager에서 사용)
+// animalCrossingTuning(for:): AC 별도 cartoon target (M preset→+140, F preset→+180)
 
 enum SupertonicVoicePresetPolicy {
 
@@ -58,7 +60,8 @@ enum SupertonicVoicePresetPolicy {
         case .friendly, .confident, .excited:
             return p.basePitch + p.emotionPitchBoost
         case .animalCrossing:
-            return p.basePitch + p.animalCrossingPitchBoost
+            // Round 259: 별도 cartoon target — boost 누적 방식 제거
+            return animalCrossingTuning(for: agentID).pitch
         }
     }
 
@@ -74,7 +77,7 @@ enum SupertonicVoicePresetPolicy {
         case .friendly, .confident, .excited:
             return p.baseRate + p.emotionRateBoost
         case .animalCrossing:
-            return p.baseRate + p.animalCrossingRateBoost
+            return animalCrossingTuning(for: agentID).rate
         }
     }
 
@@ -90,8 +93,29 @@ enum SupertonicVoicePresetPolicy {
         case .friendly, .confident, .excited:
             return p.baseSpeed + p.emotionSpeedBoost
         case .animalCrossing:
-            return p.baseSpeed + 0.12
+            return animalCrossingTuning(for: agentID).speed
         }
+    }
+
+    // MARK: - Animal Crossing Separate Tuning (Round 259TTS)
+
+    /// Animal Crossing 별도 tuning target.
+    /// 기존 base + boost 누적 방식이 아닌, 독립적인 cartoon 목표값으로 이동.
+    /// M preset: targetPitch +140, F preset: targetPitch +180, rate 1.12
+    /// 테스트 전용 모드 — 기본 캐릭터 발화에는 사용되지 않음.
+    static func animalCrossingTuning(for agentID: String?) -> VoiceTuningValues {
+        let p = CharacterVoiceProfileCatalog.profile(for: agentID)
+        let targetPitch: Float
+        switch p.preset.first {
+        case "M": targetPitch = 140
+        case "F": targetPitch = 180
+        default:  targetPitch = 160
+        }
+        return VoiceTuningValues(
+            pitch: targetPitch,
+            rate:  1.12,
+            speed: min(1.20, p.baseSpeed + 0.12)
+        )
     }
 
     // MARK: - Style / Sample Info
