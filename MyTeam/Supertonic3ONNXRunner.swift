@@ -104,8 +104,9 @@ actor Supertonic3ONNXRunner {
 
         // Compute latent length from durations
         // Python applies speed=1.05 default: dur_onnx / speed (higher speed → shorter duration)
-        // Round 258TTS: speed is now a parameter (default 1.05). clamp: 0.85~1.25.
-        let safeSpeed: Float = min(1.25, max(0.85, speed))
+        // Round 260B: official Supertonic3 speed range 0.70~2.00.
+        // UI warns above 1.30 and marks 1.60~2.00 as extreme/special-effect range.
+        let safeSpeed: Float = min(2.00, max(0.70, speed))
         let durScaled = durOnnx.map { $0 / safeSpeed }
         let wavLengths = durScaled.map { Int64(Double($0) * Double(S3Config.sampleRate)) }
         let wavLenMax  = wavLengths.max() ?? 1

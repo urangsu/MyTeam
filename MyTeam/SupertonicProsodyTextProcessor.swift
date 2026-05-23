@@ -38,23 +38,30 @@ enum SupertonicProsodyTextProcessor {
     ///   - text: 원본 텍스트 (말풍선 원문과 동일)
     ///   - agentID: 캐릭터 agentID (nil → friendly 기본 스타일)
     ///   - style: 감정 스타일 (nil → CharacterVoiceProfile.defaultEmotionStyle 사용)
+    ///   - useExpressionTags: true 시 Supertonic3 expression tag 삽입 (기본 false).
+    ///     TTS Lab 감정 테스트 전용. 기본 발화(speakOnce 등)에는 사용하지 않음.
     /// - Returns: TTS 입력용 전처리된 텍스트 (원본은 변경되지 않음)
     static func preprocess(
         _ text: String,
         agentID: String? = nil,
-        style: SupertonicEmotionStyle? = nil
+        style: SupertonicEmotionStyle? = nil,
+        useExpressionTags: Bool = false
     ) -> String {
         let profile = CharacterVoiceProfileCatalog.profile(for: agentID)
         let effectiveStyle = style ?? profile.defaultEmotionStyle
 
-        // 1. 법률/회계/숫자 감지 → neutral 처리 (변환 스킵)
+        // 1. 법률/회계/숫자 감지 → neutral 처리 (변환 스킵, tag도 금지)
         if looksLikeFormalOrNumericText(text) {
             return normalizeWhitespace(text, truncate: true)
         }
 
-        // 2. animalCrossing 스타일 → 변환 없음 (pitch/rate로만 처리)
+        // 2. animalCrossing 스타일 → 텍스트 변환 없음 (pitch/rate/speed로 처리)
         if effectiveStyle == .animalCrossing {
-            return normalizeWhitespace(text, truncate: true)
+            var result = normalizeWhitespace(text, truncate: true)
+            if useExpressionTags {
+                result = SupertonicExpressionTagPolicy.apply(emotion: effectiveStyle, to: result)
+            }
+            return result
         }
 
         // 3. 기본 정규화
@@ -68,6 +75,11 @@ enum SupertonicProsodyTextProcessor {
         // 5. 감정 스타일별 소프트 변환 (friendly, 짧은 텍스트만)
         if effectiveStyle == .friendly && result.count < 80 {
             result = applyFriendlyTransforms(result)
+        }
+
+        // 6. Expression tags (TTS Lab 테스트 전용)
+        if useExpressionTags {
+            result = SupertonicExpressionTagPolicy.apply(emotion: effectiveStyle, to: result)
         }
 
         return result

@@ -67,6 +67,25 @@ MyTeam은 Mac 안에서 사용자의 자연어 요청을 받아, 문서/파일/�
 
 ### Now
 
+#### Round 260B-TTS-OFFICIAL-SPEED-RANGE — 완료 (2026-05-23)
+
+공식 speed 범위 0.70~2.00 적용 + Expression Tag A/B 테스트 인프라
+
+- `SupertonicExpressionTagPolicy.swift` 신규 — `<laugh>/<breath>/<sigh>` tag + 감정→tag 매핑
+- `VoiceTuningState.swift` speedRange 0.70~2.00 (공식 범위), zone/warning 상수 추가
+- `Supertonic3ONNXRunner.swift` safeSpeed clamp → min(2.00, max(0.70, speed))
+- `SupertonicProsodyTextProcessor.preprocess()` useExpressionTags 파라미터 추가
+- `SpeechManager.previewWithTuning()` useExpressionTags 파라미터 추가
+- `SupertonicVoicePresetPolicy.animalCrossingTuning()` speed-first 재정의 (1.35~1.60, pitch M:+120/F:+160)
+- `TTSLabView` S 슬라이더 존 배지(권장/실험/특수효과) + 경고 3종 추가
+- `TTSLabView` Expression Tags A/B 테스트 섹션 추가 (감정별 없음/태그 2버튼)
+- `scripts/preflight_round260btts_official_speed_range.sh` — **18/18 PASS** ✅
+- `reports/round260btts_official_speed_range.md` 생성
+- Debug/Release BUILD SUCCEEDED ✅
+- 브랜치: `cloud/round252-supertonic-license-lock`
+
+---
+
 #### Round 259TTS-VOICE-TUNER — 완료 (2026-05-23)
 
 임시 P/R/S 튜닝 컨트롤 + pitch 재조정 + Animal Crossing 모드 분리

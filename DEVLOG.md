@@ -6,6 +6,43 @@
 
 ---
 
+## 2026-05-23 (Round 260B-TTS-OFFICIAL-SPEED-RANGE — 공식 speed 범위 + Expression Tag A/B)
+
+### 완료 (2026-05-23)
+
+- `SupertonicExpressionTagPolicy.swift` 신규 생성
+  - `SupertonicExpressionTag`: `<laugh>/<breath>/<sigh>` 3종 + `recommended(for:)` 감정→tag 매핑
+  - `SupertonicExpressionTagPolicy.apply(tags:to:)` / `apply(emotion:to:)` — formal/numeric 가드 포함
+  - TTS Lab 전용; 기본 발화에는 미적용 정책 명시
+- `VoiceTuningState.swift` 업데이트
+  - `speedRange` 0.70~2.00 (공식 Supertonic3 범위)
+  - speed zone 상수: `recommendedSpeedRange`(0.90~1.30), `experimentalSpeedRange`(1.30~1.60), `extremeSpeedRange`(1.60~2.00)
+  - warning 임계값: `speedWarningLow`(0.80), `speedWarningHigh`(1.30), `speedExtremeHigh`(1.60)
+  - `speedStep` 0.01 → 0.05
+- `Supertonic3ONNXRunner.swift`: safeSpeed clamp `min(2.00, max(0.70, speed))`
+- `SupertonicProsodyTextProcessor.preprocess()`: `useExpressionTags: Bool = false` 파라미터 추가 (round 6단계)
+- `SpeechManager.previewWithTuning()`: `useExpressionTags: Bool = false` 파라미터 추가
+- `SupertonicVoicePresetPolicy.animalCrossingTuning()`: speed-first 재정의
+  - pitch M:+120/F:+160 (기존 +140/+180에서 감소)
+  - rate 1.12 → 1.08
+  - speed `min(1.60, max(1.35, base+0.35))`
+- `TTSLabView` 업데이트
+  - S 슬라이더: 존 배지(🟢권장/🟠실험/🔴특수효과) + 경고 3종
+  - Expression Tags A/B 테스트 섹션: 6개 감정 × "없음"/"태그" 버튼 쌍
+  - `useExpressionTagsInTest` State 변수 추가
+  - 빌드 오류 수정: `.font(.system(size:design:weight:))` → `.font(.system(size:weight:design:))`
+
+### 빌드
+- Debug: BUILD SUCCEEDED ✅
+- Release: BUILD SUCCEEDED ✅
+
+### Preflight
+- `preflight_round258tts_character_voice_system.sh`: 38/38 ✅
+- `preflight_round259tts_voice_tuner.sh`: 22/22 ✅ (grep -A 20 → -A 30 버그 수정 포함)
+- `preflight_round260btts_official_speed_range.sh`: 18/18 ✅
+
+---
+
 ## 2026-05-23 (Round 259TTS-VOICE-TUNER — 임시 P/R/S 튜닝 + pitch 재조정 + Animal Crossing 모드 분리)
 
 ### 완료 (2026-05-23)

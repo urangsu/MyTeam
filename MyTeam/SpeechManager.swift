@@ -395,11 +395,13 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         speed: Float,
         emotion: SupertonicEmotionStyle = .neutral,
         agentID: String? = nil,
-        label: String = "tuning_preview"
+        label: String = "tuning_preview",
+        useExpressionTags: Bool = false
     ) async -> TTSOutput? {
         guard TTSRoutingPolicy.selectedProvider() == .supertonic3 else { return nil }
         let paths = Supertonic3ONNXModelPaths.defaultPaths()
-        let spokenText = SupertonicProsodyTextProcessor.preprocess(text, agentID: agentID, style: emotion)
+        let spokenText = SupertonicProsodyTextProcessor.preprocess(text, agentID: agentID, style: emotion,
+                                                                    useExpressionTags: useExpressionTags)
         do {
             let result = try await Supertonic3ONNXRunner.shared.synthesize(
                 text: spokenText,
@@ -421,7 +423,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
             let safeLabel = label.replacingOccurrences(of: " ", with: "_")
             let wavPath = S3WavWriter.write(samples: result.wavSamples, sampleRate: result.sampleRate,
                                             tag: "tuning_\(safeLabel)")
-            AppLog.info("[SpeechManager.previewWithTuning] preset=\(preset) pitch=\(pitch) rate=\(rate) speed=\(speed)")
+            AppLog.info("[SpeechManager.previewWithTuning] preset=\(preset) pitch=\(pitch) rate=\(rate) speed=\(speed) tags=\(useExpressionTags)")
             return TTSOutput(audioFileURL: wavPath.map { URL(fileURLWithPath: $0) },
                              duration: result.durationSec, sampleRate: result.sampleRate, providerKind: .supertonic3)
         } catch {

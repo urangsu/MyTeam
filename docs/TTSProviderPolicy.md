@@ -1,5 +1,64 @@
 # TTS Provider Policy
 
+**Round 260B-TTS-OFFICIAL-SPEED-RANGE** — 공식 speed 범위 0.70~2.00 적용 + Expression Tag A/B 인프라.
+
+## Round 260B-TTS-OFFICIAL-SPEED-RANGE (2026-05-23)
+
+### Speed Zone 정책
+
+Supertonic3 공식 speed 범위: 0.70(slow) ~ 2.00(fast). GitHub/HuggingFace 문서 기준.
+
+| Zone | 범위 | UI 배지 | 경고 |
+|------|------|---------|------|
+| 권장 | 0.90~1.30 | 🟢 "권장" | 없음 |
+| 실험 | 1.30~1.60 | 🟠 "실험" | ⚠️ 효과음 느낌 |
+| 특수효과 | 1.60~2.00 | 🔴 "특수효과" | 🚨 일반 캐릭터 비권장 |
+| 하한 경고 | <0.80 | — | ⚠️ 발음 흐려짐 |
+
+기본 캐릭터 발화(`speakOnce`, `dispatchToInferencePipeline`)의 speed는 `baseSpeed`(0.96~1.06) 유지.  
+슬라이더 전체 범위 0.70~2.00는 TTS Lab 튜닝 전용.
+
+### Expression Tags 정책
+
+Supertonic3 공식 expression tag: `<laugh>`, `<breath>`, `<sigh>`.
+
+- **기본 발화에는 적용하지 않음** — TTS Lab A/B 테스트 전용.
+- `SupertonicExpressionTagPolicy.apply(emotion:to:)`: 감정→권장 태그 자동 매핑.
+- formal/numeric 텍스트(숫자 밀도 15% 초과, 법률/회계 키워드)에는 적용 금지.
+- 태그는 텍스트 앞에 접두사로 삽입, 말풍선 원문에는 절대 표시 안 함.
+
+| 감정 | 권장 태그 |
+|------|-----------|
+| neutral | 없음 |
+| friendly | `<breath>` |
+| confident | 없음 |
+| careful | `<breath>` |
+| excited | `<laugh>` |
+| animalCrossing | `<laugh>` |
+
+### Animal Crossing 재튜닝 (Round 260B)
+
+speed-first 전략으로 재정의. pitch 과도 상승 제거.
+
+| | Round 259 | Round 260B |
+|---|---|---|
+| pitch M | +140 | +120 |
+| pitch F | +180 | +160 |
+| rate | 1.12 | 1.08 |
+| speed | base+0.35 (max 1.60) | min(1.60, max(1.35, base+0.35)) |
+
+변경 파일:
+1. `SupertonicExpressionTagPolicy.swift` (신규) — tag 3종 + 감정→tag 매핑
+2. `VoiceTuningState.swift` — speedRange 0.70~2.00, zone/warning 상수
+3. `Supertonic3ONNXRunner.swift` — safeSpeed clamp min(2.00, max(0.70, speed))
+4. `SupertonicProsodyTextProcessor.swift` — useExpressionTags 파라미터 추가
+5. `SpeechManager.previewWithTuning` — useExpressionTags 파라미터 추가
+6. `SupertonicVoicePresetPolicy.animalCrossingTuning` — speed-first 재정의
+7. `TTSLabView` — S 슬라이더 존 배지+경고, Expression Tags A/B 섹션
+8. `scripts/preflight_round260btts_official_speed_range.sh` — 18/18 PASS
+
+---
+
 **Round 259TTS-VOICE-TUNER** — 임시 P/R/S 튜닝 컨트롤 + pitch 재조정 + Animal Crossing 모드 분리.
 
 ## Round 259TTS-VOICE-TUNER (2026-05-23)

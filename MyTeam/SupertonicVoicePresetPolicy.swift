@@ -99,22 +99,25 @@ enum SupertonicVoicePresetPolicy {
 
     // MARK: - Animal Crossing Separate Tuning (Round 259TTS)
 
-    /// Animal Crossing 별도 tuning target.
-    /// 기존 base + boost 누적 방식이 아닌, 독립적인 cartoon 목표값으로 이동.
-    /// M preset: targetPitch +140, F preset: targetPitch +180, rate 1.12
+    /// Animal Crossing 별도 tuning target (Round 259: 분리, Round 260B: speed 중심 재정의).
+    /// pitch를 과하게 올리지 않고, Animal Crossing 느낌은 speed 중심으로 구현.
+    /// M preset: targetPitch +120, F preset: targetPitch +160.
+    /// speed: 1.35~1.60 실험 범위 (baseSpeed + 0.35, max 1.60).
     /// 테스트 전용 모드 — 기본 캐릭터 발화에는 사용되지 않음.
     static func animalCrossingTuning(for agentID: String?) -> VoiceTuningValues {
         let p = CharacterVoiceProfileCatalog.profile(for: agentID)
         let targetPitch: Float
         switch p.preset.first {
-        case "M": targetPitch = 140
-        case "F": targetPitch = 180
-        default:  targetPitch = 160
+        case "M": targetPitch = 120
+        case "F": targetPitch = 160
+        default:  targetPitch = 140
         }
+        // Speed 중심: 1.35~1.60 실험 범위. 2.00은 수동 슬라이더로만 열어둠.
+        let targetSpeed = min(1.60, max(1.35, p.baseSpeed + 0.35))
         return VoiceTuningValues(
             pitch: targetPitch,
-            rate:  1.12,
-            speed: min(1.20, p.baseSpeed + 0.12)
+            rate:  1.08,
+            speed: targetSpeed
         )
     }
 

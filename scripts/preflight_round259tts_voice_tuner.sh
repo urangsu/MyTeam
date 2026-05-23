@@ -90,7 +90,7 @@ fi
 # 8. previewWithTuning이 speed를 Supertonic3ONNXRunner에 전달
 echo ""
 echo "[8] previewWithTuning → synthesize(speed:) 전달 확인"
-if grep -A 20 "func previewWithTuning" "$MYTEAM/SpeechManager.swift" 2>/dev/null | grep -q "speed: speed"; then
+if grep -A 30 "func previewWithTuning" "$MYTEAM/SpeechManager.swift" 2>/dev/null | grep -q "speed: speed"; then
   pass "previewWithTuning에서 speed를 synthesize에 전달"
 else
   fail "previewWithTuning에서 speed 전달 없음"

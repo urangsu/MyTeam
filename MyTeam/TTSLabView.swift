@@ -42,6 +42,10 @@ struct TTSLabView: View {
     @State private var tuningSpeed: Double = 1.05
     @State private var useTuningOverride: Bool = false
 
+    // MARK: - Round 260B: Expression Tags State
+    @State private var useExpressionTagsInTest: Bool = false
+    @State private var expressionTagSpeakingID: String? = nil
+
     // MARK: - ONNX Spike State (Round 249TTS)
     @State private var spikeInputText: String = "안녕하세요. 테스트입니다."
     @State private var spikeSynthesisResult: Supertonic3SynthesisResult? = nil
@@ -376,6 +380,11 @@ struct TTSLabView: View {
                 // MARK: 감정 표현 테스트 (Round 258B)
                 emotionPreviewSection
 
+                Divider()
+
+                // MARK: Expression Tags 테스트 (Round 260B)
+                expressionTagsSection
+
                 // Disabled notice
                 if !noticeAccepted || !modelCheck.isAvailable {
                     Text(noticeAccepted ? "⚠️ 모델 파일 없음 — ~/.cache/supertonic3/onnx/ 필요" : "📋 Supertonic 고지 수락 후 사용 가능")
@@ -487,7 +496,7 @@ struct TTSLabView: View {
         }
     }
 
-    // MARK: - Round 259TTS: P/R/S Description Box
+    // MARK: - Round 259TTS/260B: P/R/S Description Box
 
     private var prsDescriptionBox: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -521,16 +530,28 @@ struct TTSLabView: View {
                     Text("S / Speed")
                         .font(.system(.caption2, design: .monospaced).bold())
                         .foregroundStyle(.orange)
-                    Text("합성 단계 말 속도 (duration predictor). 캐릭터 빠르기 조정은 S 우선.")
+                    Text("합성 단계 말 속도. 공식 예제 범위 0.70~2.00. 일반 캐릭터 권장: 0.90~1.30.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
             }
 
+            HStack(spacing: 16) {
+                Label("권장 0.90~1.30", systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.green)
+                Label("실험 1.30~1.60", systemImage: "exclamationmark.circle.fill")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.orange)
+                Label("특수효과 1.60~2.00", systemImage: "bolt.circle.fill")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.red)
+            }
+            .padding(.top, 2)
+
             Text("목소리 개성은 preset, 말의 빠르기는 S, 최종 보정은 P/R로 조절합니다.")
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(.blue.opacity(0.8))
-                .padding(.top, 2)
         }
         .padding(8)
         .background(Color.blue.opacity(0.04))
@@ -626,7 +647,7 @@ struct TTSLabView: View {
                 }
 
                 // S Slider
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text("S")
                             .font(.system(.caption2, design: .monospaced).bold())
@@ -636,6 +657,17 @@ struct TTSLabView: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                         Spacer()
+                        // Zone badge
+                        let speedZoneColor: Color = tuningSpeed > 1.60 ? .red
+                            : tuningSpeed > 1.30 ? .orange : .green
+                        let speedZoneLabel: String = tuningSpeed > 1.60 ? "특수효과"
+                            : tuningSpeed > 1.30 ? "실험" : "권장"
+                        Text(speedZoneLabel)
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(speedZoneColor)
+                            .padding(.horizontal, 4).padding(.vertical, 1)
+                            .background(speedZoneColor.opacity(0.12))
+                            .cornerRadius(3)
                         Text(String(format: "%.2f×", tuningSpeed))
                             .font(.system(.caption2, design: .monospaced))
                             .foregroundStyle(.orange)
@@ -645,7 +677,22 @@ struct TTSLabView: View {
                         in: Double(VoiceTuningDefaults.speedRange.lowerBound)...Double(VoiceTuningDefaults.speedRange.upperBound),
                         step: VoiceTuningDefaults.speedStep
                     )
-                    .tint(.orange)
+                    .tint(tuningSpeed > 1.60 ? .red : tuningSpeed > 1.30 ? .orange : .green)
+
+                    // Speed zone warnings
+                    if tuningSpeed < Double(VoiceTuningDefaults.speedWarningLow) {
+                        Text("⚠️ S 0.80 미만은 말이 늘어지고 발음이 흐려질 수 있습니다.")
+                            .font(.caption2)
+                            .foregroundStyle(.yellow)
+                    } else if tuningSpeed > Double(VoiceTuningDefaults.speedExtremeHigh) {
+                        Text("🚨 S 1.60 초과는 공식 범위 내 실험값이지만 일반 캐릭터 음성에는 권장하지 않습니다.")
+                            .font(.caption2)
+                            .foregroundStyle(.red)
+                    } else if tuningSpeed > Double(VoiceTuningDefaults.speedWarningHigh) {
+                        Text("⚠️ S 1.30 초과는 감정표현보다 효과음/장난감 느낌이 강해질 수 있습니다.")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                    }
                 }
 
                 // Action buttons
@@ -678,6 +725,117 @@ struct TTSLabView: View {
         .padding(8)
         .background(Color.orange.opacity(0.04))
         .cornerRadius(6)
+    }
+
+    // MARK: - Round 260B: Expression Tags Section
+
+    private var expressionTagsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: "tag.fill")
+                    .foregroundStyle(.teal)
+                    .font(.caption)
+                Text("Expression Tags 테스트")
+                    .font(.subheadline.bold())
+                Spacer()
+                Toggle("Tags 사용", isOn: $useExpressionTagsInTest)
+                    .toggleStyle(.switch)
+                    .font(.caption)
+                    .controlSize(.small)
+            }
+
+            Text("Expression Tags는 TTS 입력에만 적용됩니다. 채팅 말풍선에는 표시하지 않습니다.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Text("태그가 글자로 읽히면 해당 tag는 비활성화해야 합니다.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+                expressionTagCell(emotion: .friendly,       tags: [.breath], sample: "확인했어요. 제가 차근차근 도와드릴게요.", color: .green)
+                expressionTagCell(emotion: .excited,        tags: [.laugh],  sample: "좋아요! 이건 바로 한번 만들어볼 수 있겠어요.", color: .yellow)
+                expressionTagCell(emotion: .careful,        tags: [.breath], sample: "조심스럽게 확인해보고, 필요한 부분만 말씀드릴게요.", color: .orange)
+                expressionTagCell(emotion: .animalCrossing, tags: [.laugh],  sample: "안녕하세요! 오늘도 같이 해봐요!", color: .pink)
+            }
+        }
+        .padding(8)
+        .background(Color.teal.opacity(0.04))
+        .cornerRadius(6)
+    }
+
+    @ViewBuilder
+    private func expressionTagCell(emotion: SupertonicEmotionStyle,
+                                   tags: [SupertonicExpressionTag],
+                                   sample: String,
+                                   color: Color) -> some View {
+        let tagStr = tags.map(\.rawValue).joined()
+        let isDisabled = (expressionTagSpeakingID != nil || voiceDirectorSpeakingID != nil
+                          || !modelCheck.isAvailable || !noticeAccepted)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                Text(emotion.rawValue)
+                    .font(.system(.caption2, design: .monospaced).bold())
+                    .foregroundStyle(color)
+                Text(tagStr)
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
+            HStack(spacing: 4) {
+                expressionTagButton(emotion: emotion, sample: sample,
+                                    withTags: false, tagStr: tagStr, isDisabled: isDisabled)
+                expressionTagButton(emotion: emotion, sample: sample,
+                                    withTags: true, tagStr: tagStr, color: color, isDisabled: isDisabled)
+            }
+        }
+        .padding(6)
+        .background(Color.teal.opacity(0.04))
+        .cornerRadius(6)
+    }
+
+    @ViewBuilder
+    private func expressionTagButton(emotion: SupertonicEmotionStyle,
+                                     sample: String,
+                                     withTags: Bool,
+                                     tagStr: String,
+                                     color: Color = .gray,
+                                     isDisabled: Bool) -> some View {
+        let speakID = "tag_\(emotion.rawValue)_\(withTags ? "tag" : "no")"
+        let isSpeaking = expressionTagSpeakingID == speakID
+        Button(action: {
+            guard !isDisabled else { return }
+            expressionTagSpeakingID = speakID
+            let agentID = emotionPreviewAgentID
+            let preset = SupertonicVoicePresetPolicy.preset(for: agentID)
+            let pitch  = SupertonicVoicePresetPolicy.pitch(for: agentID, emotion: emotion)
+            let rate   = SupertonicVoicePresetPolicy.rate(for: agentID, emotion: emotion)
+            let speed  = SupertonicVoicePresetPolicy.speed(for: agentID, emotion: emotion)
+            let useTags = withTags
+            let label = "\(emotion.rawValue)_\(withTags ? "tag" : "no")"
+            Task {
+                let _ = await SpeechManager.shared.previewWithTuning(
+                    text: sample, preset: preset,
+                    pitch: pitch, rate: rate, speed: speed,
+                    emotion: emotion, agentID: agentID,
+                    label: label, useExpressionTags: useTags
+                )
+                await MainActor.run { expressionTagSpeakingID = nil }
+            }
+        }) {
+            HStack(spacing: 2) {
+                if isSpeaking {
+                    ProgressView().scaleEffect(0.5)
+                } else {
+                    Image(systemName: withTags ? "tag" : "speaker.wave.1")
+                        .font(.system(size: 8))
+                }
+                Text(withTags ? tagStr : "없음")
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+            }
+            .padding(.horizontal, 5).padding(.vertical, 3)
+        }
+        .buttonStyle(.bordered)
+        .tint(color)
+        .disabled(isDisabled)
     }
 
     private func speakVoiceDirectorSample(text: String, agentID: String?, speakID: String) {
