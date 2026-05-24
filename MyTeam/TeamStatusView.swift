@@ -75,16 +75,18 @@ struct TeamStatusView: View {
                 Spacer()
                 
                 HStack(spacing: 14) {
-                    headerControlStrip
+                    if !isCollapsed {
+                        headerControlStrip
 
-                    // 탭 전환 버튼
-                    Button(action: { selectedTab = (selectedTab == 0 ? 1 : 0) }) {
-                        Image(systemName: selectedTab == 0 ? "bubble.left.and.bubble.right.fill" : "person.3.fill")
-                            .font(.system(size: 12))
+                        // 탭 전환 버튼
+                        Button(action: { selectedTab = (selectedTab == 0 ? 1 : 0) }) {
+                            Image(systemName: selectedTab == 0 ? "bubble.left.and.bubble.right.fill" : "person.3.fill")
+                                .font(.system(size: 12))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .help(selectedTab == 0 ? "팀 워크룸 보기" : "협업 상태 보기")
+                        .accessibilityLabel(selectedTab == 0 ? "팀 워크룸 보기" : "협업 상태 보기")
                     }
-                    .buttonStyle(PlainButtonStyle())
-                    .help(selectedTab == 0 ? "팀 워크룸 보기" : "협업 상태 보기")
-                    .accessibilityLabel(selectedTab == 0 ? "팀 워크룸 보기" : "협업 상태 보기")
 
                     Button(action: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
