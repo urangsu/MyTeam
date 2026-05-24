@@ -22,6 +22,7 @@ struct TeamStatusView: View {
     @State private var scheduleDraftAgentID: String = "auto"
     @State private var scheduleDraftError: String? = nil
     @State private var isFileIntakeSheetPresented: Bool = false
+    @State private var isQuickActionMenuPresented = false
     @State private var collaborationStatusTick: Int = 0
     @State private var collaborationStatusRefreshTask: Task<Void, Never>? = nil
     @State private var latestEventType: AgentEventType? = nil
@@ -452,36 +453,174 @@ struct TeamStatusView: View {
         .padding(.vertical, 8)
     }
 
+    // MARK: - 빠른 기능 메뉴 (두루마리 아이콘 팝오버)
+    private var quickActionMenuView: some View {
+        let isDark = manager.isDarkMode
+        let bg = isDark ? Color(white: 0.12) : Color(white: 0.97)
+        let dividerColor = isDark ? Color.white.opacity(0.08) : Color.black.opacity(0.08)
+
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+
+                // ── 헤더 ──
+                HStack(spacing: 6) {
+                    Image(systemName: "scroll")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.blue)
+                    Text("할 수 있는 것")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(isDark ? .white : .primary)
+                    Spacer()
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
+
+                Divider().background(dividerColor).padding(.horizontal, 8)
+
+                // ── 섹션 1: 문서 만들기 ──
+                quickMenuSection(
+                    label: "문서 만들기",
+                    isDark: isDark,
+                    items: [
+                        ("doc.text",            "회의록",        "회의 내용 → 회의록 자동 정리",   "회의록 만들어줘"),
+                        ("checkmark.square",    "체크리스트",     "할 일 목록을 체크리스트로",       "체크리스트 만들어줘"),
+                        ("doc.badge.plus",      "보고서 초안",    "목적·배경 → 보고서 형태로",       "보고서 초안 만들어줘"),
+                    ]
+                )
+
+                Divider().background(dividerColor).padding(.horizontal, 8)
+
+                // ── 섹션 2: 파일 & 정보 ──
+                quickMenuSection(
+                    label: "파일 & 정보",
+                    isDark: isDark,
+                    items: [
+                        ("folder",                    "파일 읽기",   "첨부 파일을 분석·요약",       "파일 읽기"),
+                        ("calendar.badge.checkmark",  "오늘 할 일", "지금 이어서 할 일 정리",       "오늘 할 일 정리해줘"),
+                    ]
+                )
+
+                Divider().background(dividerColor).padding(.horizontal, 8)
+
+                // ── 섹션 3: 변환 ──
+                quickMenuSection(
+                    label: "변환",
+                    isDark: isDark,
+                    items: [
+                        ("text.alignleft",  "요약하기",       "최근 문서를 핵심만 요약",        "방금 만든 문서 요약해줘"),
+                        ("tablecells",      "표로 바꾸기",    "내용을 표 형태로 재정리",         "방금 만든 문서 표로 바꿔줘"),
+                        ("checklist",       "체크리스트 변환","내용을 체크리스트로 변환",        "방금 만든 문서 체크리스트로 바꿔줘"),
+                    ]
+                )
+
+                Divider().background(dividerColor).padding(.horizontal, 8)
+
+                // ── 섹션 4: 예시 ──
+                quickMenuSection(
+                    label: "예시로 시작하기",
+                    isDark: isDark,
+                    items: [
+                        ("play.circle.fill", "샘플 회의록", "샘플 회의 내용으로 회의록 바로 만들기", BeginnerTaskCard.exampleMeetingPrompt),
+                    ]
+                )
+
+                // ── 하단 힌트 ──
+                Text("💡 메시지 창에 직접 입력해도 됩니다")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary.opacity(0.7))
+                    .padding(.horizontal, 14)
+                    .padding(.top, 8)
+                    .padding(.bottom, 12)
+            }
+        }
+        .frame(width: 280, height: 440)
+        .background(bg)
+    }
+
+    @ViewBuilder
+    private func quickMenuSection(
+        label: String,
+        isDark: Bool,
+        items: [(icon: String, title: String, desc: String, prompt: String)]
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(label)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 14)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+
+            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                Button(action: {
+                    isQuickActionMenuPresented = false
+                    guard let roomID = manager.selectedTeamWorkroomID else { return }
+                    dispatchWorkroomPrompt(item.prompt, roomID: roomID)
+                }) {
+                    HStack(spacing: 10) {
+                        Image(systemName: item.icon)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.blue.opacity(0.85))
+                            .frame(width: 22)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(item.title)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(isDark ? .white : .primary)
+                            Text(item.desc)
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                        }
+                        Spacer()
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundColor(.secondary.opacity(0.4))
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PlainButtonStyle())
+                .background(
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(Color.blue.opacity(0))
+                )
+            }
+        }
+    }
+
     private var scheduleSidebarButton: some View {
         Button {
             withAnimation(.spring(response: 0.26, dampingFraction: 0.82)) {
                 manager.isSchedulePanelPresented.toggle()
             }
         } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 ZStack(alignment: .topTrailing) {
                     Image(systemName: "clock.badge.checkmark")
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(manager.isSchedulePanelPresented ? .orange : textColor.opacity(0.5))
                     if !manager.automationTasks.isEmpty {
                         Circle()
                             .fill(Color.orange)
-                            .frame(width: 6, height: 6)
-                            .offset(x: 4, y: -3)
+                            .frame(width: 5, height: 5)
+                            .offset(x: 3, y: -2)
                     }
                 }
                 Text("예약 작업")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundColor(textColor.opacity(manager.isSchedulePanelPresented ? 0.78 : 0.48))
-                Spacer()
                 if !manager.automationTasks.isEmpty {
                     Text("\(manager.automationTasks.count)")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundColor(.orange)
+                        .padding(.horizontal, 4)
+                        .background(Capsule().fill(Color.orange.opacity(0.12)))
                 }
             }
-            .padding(.horizontal, 12)
-            .frame(height: 38)
+            .padding(.horizontal, 10)
+            .frame(height: 34)
             .background(
                 RoundedRectangle(cornerRadius: 8)
                     .fill(manager.isSchedulePanelPresented ? Color.orange.opacity(0.10) : Color.clear)
@@ -670,6 +809,18 @@ struct TeamStatusView: View {
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(PlainButtonStyle())
+
+                // ── 빠른 기능 메뉴 (두루마리 아이콘) ──
+                Button(action: { isQuickActionMenuPresented.toggle() }) {
+                    Image(systemName: "scroll")
+                        .font(.system(size: 14))
+                        .foregroundColor(isQuickActionMenuPresented ? .blue : .secondary.opacity(0.7))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .help("할 수 있는 것 보기")
+                .popover(isPresented: $isQuickActionMenuPresented, arrowEdge: .bottom) {
+                    quickActionMenuView
+                }
 
                 TextField("팀원들에게 메시지...", text: $inputText)
                     .textFieldStyle(PlainTextFieldStyle())
