@@ -66,12 +66,6 @@ else
     fail "recentArtifacts currentRoom global fallback 잔존"
 fi
 
-if fhas "trustStrip" "$SRC/WorkroomHomeView.swift"; then
-    ok "Workroom Trust Strip 존재"
-else
-    fail "Workroom Trust Strip 없음"
-fi
-
 ROOT_SPIKES=0
 while IFS= read -r file; do
     base="$(basename "$file")"

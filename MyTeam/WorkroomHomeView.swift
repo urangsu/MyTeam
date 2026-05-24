@@ -11,11 +11,10 @@ struct WorkroomHomeView: View {
     var onPromptDispatched: ((String) -> Void)?  // 초보자 카드 / 가이드 메시지에서 직접 프롬프트 dispatch
 
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 16) {
 
-                // MARK: - Header
-                VStack(alignment: .leading, spacing: 4) {
+            // MARK: - Header
+            VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(model.title)
@@ -53,8 +52,6 @@ struct WorkroomHomeView: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.top, 12)
-
-                trustStrip
 
                 if manager.isBeginnerMode {
                     // ─────────────────────────────────────────
@@ -188,9 +185,8 @@ struct WorkroomHomeView: View {
                 }
 
                 Spacer(minLength: 16)
-            }
         }
-        .frame(maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .onAppear {
             if let roomID = manager.currentRoomID {
                 CharacterReactionEventSink.shared.notifyWorkroomOpened(roomID: roomID)
@@ -199,43 +195,6 @@ struct WorkroomHomeView: View {
     }
 
     // MARK: - Shared Sub-sections
-
-    private var trustStrip: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                trustPill(
-                    icon: "rectangle.3.group",
-                    text: manager.roomProfileSummary(roomID: model.roomID).contains("콘텐츠 초안") ? "콘텐츠 보조" : "업무 워크룸"
-                )
-                trustPill(icon: "cpu", text: AIModelPolicy.modelFamily)
-                trustPill(icon: "wrench.and.screwdriver", text: "도구 자동")
-                if let active = model.activeTaskSummary, !active.isEmpty {
-                    trustPill(icon: "bolt.fill", text: active)
-                }
-            }
-            .padding(.horizontal, 14)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("워크룸 상태")
-    }
-
-    private func trustPill(icon: String, text: String) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 9, weight: .semibold))
-            Text(text)
-                .font(.system(size: 9, weight: .medium))
-                .lineLimit(1)
-        }
-        .foregroundColor(.mtTextSecondary)
-        .padding(.horizontal, 7)
-        .padding(.vertical, 4)
-        .background(
-            Capsule()
-                .fill(Color.mtCardBackground)
-                .overlay(Capsule().strokeBorder(Color.mtCardBorder, lineWidth: 0.5))
-        )
-    }
 
     @ViewBuilder
     private func recentDocumentsSection(label: String) -> some View {
