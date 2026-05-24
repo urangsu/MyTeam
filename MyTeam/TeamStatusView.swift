@@ -41,7 +41,7 @@ struct TeamStatusView: View {
     }
 
     private var panelHeight: CGFloat {
-        isCollapsed ? 40 : 480
+        isCollapsed ? 40 : 500
     }
 
     private var collaborationStatus: TeamCollaborationStatus {
@@ -76,8 +76,6 @@ struct TeamStatusView: View {
                 
                 HStack(spacing: 14) {
                     if !isCollapsed {
-                        headerControlStrip
-
                         // 탭 전환 버튼
                         Button(action: { selectedTab = (selectedTab == 0 ? 1 : 0) }) {
                             Image(systemName: selectedTab == 0 ? "bubble.left.and.bubble.right.fill" : "person.3.fill")
@@ -144,8 +142,6 @@ struct TeamStatusView: View {
                     // ── 탭 1: 팀 워크룸 (로그) ──
                     chatroomView
                 }
-
-                Divider().background(textColor.opacity(0.05))
             }
         }
         .frame(width: panelWidth, height: panelHeight, alignment: .top)
@@ -238,9 +234,9 @@ struct TeamStatusView: View {
     private var agentListView: some View {
         VStack(spacing: 0) {
             collaborationStatusBanner
-            
+
             Divider().background(textColor.opacity(0.05))
-            
+
             ScrollView {
                 VStack(spacing: 14) {
                     ForEach(manager.activeAgents) { agent in
@@ -256,6 +252,17 @@ struct TeamStatusView: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
             }
+
+            Divider().background(textColor.opacity(0.05))
+
+            // ── 하단 컨트롤 바 ──
+            HStack {
+                Spacer()
+                headerControlStrip
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
         }
     }
     

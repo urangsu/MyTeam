@@ -205,7 +205,7 @@ struct SettingsView: View {
             }
         }
         .preferredColorScheme(manager.isDarkMode ? .dark : .light)
-        .frame(width: 500, height: 600)
+        .frame(width: 500, height: currentTab == 5 ? 700 : 600)
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear {
             TeamNameplateAppearanceSettings.migrateLegacyValuesIfNeeded()
