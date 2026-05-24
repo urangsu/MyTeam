@@ -252,6 +252,7 @@ struct TeamStatusView: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
             }
+            .background(WindowDragBlocker())
 
             Divider().background(textColor.opacity(0.05))
 
@@ -358,6 +359,7 @@ struct TeamStatusView: View {
                 }
                 .padding(.horizontal, 8).padding(.vertical, 6)
             }
+            .background(WindowDragBlocker())
             .alert("이름 변경", isPresented: $showRenameAlert) {
                 TextField("새 이름", text: $newName)
                 Button("변경") {
@@ -622,7 +624,7 @@ struct TeamStatusView: View {
                     }
                     .padding(12)
                 }
-                .background(Color.clear)
+                .background(WindowDragBlocker())
                 .onChange(of: manager.teamChatLogs.count) { _, _ in
                     if let last = manager.teamChatLogs.last {
                         withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }

@@ -20,9 +20,12 @@ struct WorkroomHomeView: View {
                             Text(model.title)
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.primary)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
                             Text(model.subtitle)
                                 .font(.system(size: 12))
                                 .foregroundColor(.secondary)
+                                .lineLimit(1)
                         }
                         Spacer()
 
