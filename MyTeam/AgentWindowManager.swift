@@ -1856,6 +1856,21 @@ class AgentWindowManager: ObservableObject {
     func deleteRoom(id: UUID) {
         rooms.removeAll { $0.id == id }
         if currentRoomID == id { currentRoomID = rooms.first?.id }
+        // Round 273: selectedTeamWorkroomID도 정리 (누락 시 삭제된 룸에 계속 접근)
+        if selectedTeamWorkroomID == id {
+            selectedTeamWorkroomID = rooms.first(where: { $0.agentIDs.contains("team_all") })?.id ?? rooms.first?.id
+        }
+        // 룸별 딕셔너리 메모리 정리 (삭제된 룸 항목 누적 방지)
+        lastTurnProfileByRoom.removeValue(forKey: id)
+        lastGoalInterpretationsByRoom.removeValue(forKey: id)
+        lastCapabilityRouteDecisionsByRoom.removeValue(forKey: id)
+        lastUniversalDocumentTypesByRoom.removeValue(forKey: id)
+        routeTracesByRoom.removeValue(forKey: id)
+        delegationModeStatesByRoom.removeValue(forKey: id)
+        activeDelegationContractsByRoom.removeValue(forKey: id)
+        delegatedWorkflowPlansByRoom.removeValue(forKey: id)
+        pendingDelegatedExecutionRequestsByRoom.removeValue(forKey: id)
+        lastReadAtByRoomID.removeValue(forKey: id)
     }
 
     func deleteMessage(roomID: UUID, messageID: UUID) {

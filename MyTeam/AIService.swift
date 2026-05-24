@@ -746,7 +746,7 @@ final class AIService {
 
                 var body: [String: Any] = [
                     "model": claudeModel,
-                    "max_tokens": 1024,
+                    "max_tokens": 4096,   // Round 273: 1024→4096 (회의록/보고서 잘림 방지)
                     "stream": true,
                     "messages": messages
                 ]
@@ -850,7 +850,7 @@ final class AIService {
                     "model": resolvedModel,
                     "messages": messages,
                     "stream": true,
-                    "max_tokens": 1024
+                    "max_tokens": 4096    // Round 273: 1024→4096 (문서 생성 잘림 방지)
                 ]
                 guard let bodyData = try? JSONSerialization.data(withJSONObject: body) else {
                     continuation.finish(throwing: AIServiceError.invalidResponse); return
@@ -1272,7 +1272,7 @@ final class AIService {
 
             var body: [String: Any] = [
                 "model": claudeModel,
-                "max_tokens": 1024,
+                "max_tokens": 4096,   // Round 273: tool-use도 4096으로 통일
                 "messages": messages,
                 "tools": tools
             ]
