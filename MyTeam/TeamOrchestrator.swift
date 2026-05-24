@@ -136,7 +136,7 @@ class TeamOrchestrator {
             
         } catch {
             print("Orchestration Error: \(error)")
-            await MainActor.run {
+            _ = await MainActor.run {
                 manager.addChatLog(roomID: roomID, agentID: "system", agentName: "시스템", text: "팀 업무 수행 중 오류가 발생했습니다: \(error.localizedDescription)", isUser: false)
             }
         }

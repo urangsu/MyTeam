@@ -38,7 +38,7 @@ struct Supertonic3VoiceStyle: Sendable {
     /// - Parameters:
     ///   - url: Path to the preset JSON file (e.g., ~/.cache/supertonic3/voice_styles/F1.json)
     ///   - preset: Preset name for diagnostics
-    static func load(from url: URL, preset: String) throws -> Supertonic3VoiceStyle {
+    nonisolated static func load(from url: URL, preset: String) throws -> Supertonic3VoiceStyle {
         let data = try Data(contentsOf: url)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         guard let json else {
@@ -64,7 +64,7 @@ struct Supertonic3VoiceStyle: Sendable {
         let shape: [Int]
     }
 
-    private static func extractTensor(from json: [String: Any], key: String) throws -> TensorEntry {
+    nonisolated private static func extractTensor(from json: [String: Any], key: String) throws -> TensorEntry {
         guard let entry = json[key] as? [String: Any] else {
             throw Supertonic3VoiceStyleError.missingKey(key)
         }
@@ -100,7 +100,7 @@ struct Supertonic3VoiceStyle: Sendable {
     }
 
     /// Recursively flatten nested JSON arrays to [Float].
-    private static func flattenToFloat(_ value: Any) throws -> [Float] {
+    nonisolated private static func flattenToFloat(_ value: Any) throws -> [Float] {
         if let arr = value as? [Any] {
             var result: [Float] = []
             for element in arr {

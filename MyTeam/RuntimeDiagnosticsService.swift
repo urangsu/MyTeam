@@ -745,7 +745,7 @@ final class RuntimeDiagnosticsService {
 
     /// 현재 상태 스냅샷 생성
     func snapshot(manager: AgentWindowManager) async -> RuntimeDiagnosticsSnapshot {
-        let speech = SpeechManager.shared
+        let _ = SpeechManager.shared  // access to trigger lazy init; result unused
         let ai = AIService.shared
         let capture = AudioCaptureService.shared
 

@@ -982,7 +982,7 @@ struct TeamStatusView: View {
             let attachmentContext = ConversationMemory.buildAttachmentContext(from: attachments)
             let fullText = attachmentContext.isEmpty ? text : text + attachmentContext
 
-            await MainActor.run {
+            _ = await MainActor.run {
                 manager.addChatLog(
                     roomID: roomIDAtSend,
                     agentID: "user", agentName: "나",

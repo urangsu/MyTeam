@@ -4,6 +4,21 @@ import UniformTypeIdentifiers
 
 // JiggleEffect, IMMessageBubble, DateSeparator, ChatBubble → ChatComponents.swift 로 분리됨
 
+// MARK: - ToolNeedClassifier
+// Round 270B: 메시지 텍스트 분석으로 tool-use 필요 여부 결정.
+// tool-capable provider (Claude, OpenAI)를 우선 라우팅하기 위해 사용.
+enum ToolNeedClassifier {
+    /// 한국어 + 영어 키워드로 tool-use 의도를 추론한다.
+    nonisolated static func needsTool(_ text: String) -> Bool {
+        let keywords = [
+            "검색", "찾아", "파일", "실행", "열어", "계산", "웹",
+            "search", "find", "file", "run", "execute", "open", "calculate", "web",
+            "코드 실행", "터미널", "code run"
+        ]
+        return keywords.contains { text.contains($0) }
+    }
+}
+
 // MARK: - AgentChatView
 struct AgentChatView: View {
     let config: AgentWindowManager.AgentConfig
@@ -1148,7 +1163,8 @@ struct AgentChatView: View {
                         _ = await MainActor.run { manager.typingAgentIDs.insert(targetIDAtSend) }
                         let tokenStream = AIService.shared.getResponseStream(
                             text: groundedText, agentID: targetIDAtSend,
-                            chatHistory: history, agentConfig: agentConfig
+                            chatHistory: history, agentConfig: agentConfig,
+                            requiresToolUse: ToolNeedClassifier.needsTool(groundedText)
                         )
                         AppLog.debug("[DirectChat] silent getResponseStream opened targetAgentID=\(targetIDAtSend)")
                         var accumulated = ""
@@ -1167,7 +1183,8 @@ struct AgentChatView: View {
                         // 2. SSE 스트림 오픈. 화면에는 LLM 원문을 누적 표시하고,
                         // TTS에는 별도 proxy stream을 넘긴다. TTS chunk truncation이 채팅 로그를 훼손하면 안 된다.
                         let sourceStream = AIService.shared.getResponseStream(
-                            text: groundedText, agentID: targetIDAtSend, chatHistory: history, agentConfig: agentConfig
+                            text: groundedText, agentID: targetIDAtSend, chatHistory: history, agentConfig: agentConfig,
+                            requiresToolUse: ToolNeedClassifier.needsTool(groundedText)
                         )
                         let ttsStream = AsyncThrowingStream<String, Error> { continuation in
                             let relayTask = Task {

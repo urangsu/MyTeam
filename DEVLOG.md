@@ -6,6 +6,65 @@
 
 ---
 
+## 2026-05-24 (Round 270A-D — TRUE-WARNING-ZERO + ROUTER-TRUTH + XCTEST + ROOM-CONTEXT)
+
+### 완료 (2026-05-24)
+
+**Round 270A: True Warning Zero Gate**
+- 실제 경고 원인 규명: 프로젝트 빌드 설정 `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`로 모든 코드가 기본 `@MainActor` — `actor Supertonic3ONNXRunner`에서 접근 시 격리 경고 37개 발생
+- **Supertonic3ONNXRunner.swift**: `S3Config.xxx` 정적 참조 제거 → 인라인 상수로 교체
+- **Supertonic3ONNXModelPaths.swift / Supertonic3UnicodeIndexer.swift / Supertonic3VoiceStyle.swift / Supertonic3TTSConfig.swift**: `nonisolated` 추가하여 호출 체인 완성
+- **WorkflowOrchestrator.swift / TeamOrchestrator.swift / TeamStatusView.swift**: `await MainActor.run { }` 결과 미사용 경고 18곳 → `_ = await MainActor.run { }` 패턴 적용
+- **AudioPlaybackService.swift**: `completionCallbackType: .dataPlayedBack` overload로 async 경고 제거
+- **RuntimeDiagnosticsService.swift**: unused init → `let _ =` 패턴으로 수정
+- **scripts/preflight_round270a_true_warning_zero.sh**: xcodebuild 실제 실행 → Debug 0개, Release 0개 확인
+- 결과: Debug 0 warnings, Release 0 warnings (clean build 포함)
+
+**Round 270B: LLM Router Truth**
+- **AIService.swift**: `providerCandidates` 순서 버그 수정 — requiresToolUse+비tool-capable preferred → `toolCapable + [preferred]` (기존: 반대 순서)
+- **AIService.swift**: 스트림 경로 3곳 `modelOverrideAllowed`(Debug-only) → `dynamicModelDiscoveryAllowed`(항상 true)로 교체
+- **AIService.swift**: `ResolvedLLMCall` struct 추가 (`ModelSource`: cached/discovered/floor)
+- **AIService.swift**: `getResponseWithMetadata` — 캐시된 실제 modelID 반환 (pinnedModelID 고정 버그 수정)
+- **AgentChatView.swift**: `ToolNeedClassifier` 추가 + `getResponseStream` 2곳에 `requiresToolUse: ToolNeedClassifier.needsTool(groundedText)` 전달
+- **scripts/preflight_round270b_router_truth.sh**: 12개 정적 검사 — 12/12 PASS
+
+**Round 270C: XCTest Target**
+- **MyTeamTests/** 디렉토리 신규 생성
+- **MyTeamTests/MockLLMProvider.swift**: 네트워크 없는 fake provider
+- **MyTeamTests/LLMRouterTests.swift**: 4개 behavioral test
+  1. `test_latestModels_notBlocked` — 최신 모델 차단 없음 확인
+  2. `test_toolUse_routesToToolCapableFirst` — tool-capable 우선 순서 알고리즘 검증
+  3. `test_resolvedLLMCall_displayDescription` — cached/discovered/floor 표시 검증
+  4. `test_roomContext_notCrossContaminated` — room context 격리 확인
+- **MyTeam.xcodeproj/project.pbxproj**: MyTeamTests 타깃 완전 등록 (PBXNativeTarget, PBXSourcesBuildPhase, PBXFrameworksBuildPhase, XCConfigurationList, PBXTargetDependency, PBXContainerItemProxy, Products 그룹)
+- **xcshareddata/xcschemes/MyTeamTests.xcscheme**: xcodebuild test 실행을 위한 공유 스킴
+- `AIService.providerCandidates` → `internal` 변경 (@testable import로 접근 가능)
+- 결과: `xcodebuild test -scheme MyTeamTests` 4개 테스트 전원 PASSED
+
+**Round 270D: Room-Scoped Context Builder**
+- **MyTeam/RoomContextBuilder.swift**: 신규 파일
+  - `RoomContext` struct: `roomID`, `roomPurpose`, `recentMessages`, `recentArtifactSummaries`, `systemPromptContext`, `contextualChatHistory`
+  - `RoomContextBuilder.build(manager:roomID:maxMessages:)` `@MainActor` static func
+- **WorkflowOrchestrator.swift**: `chatHistory: []` 3곳 모두 교체
+  - `planWorkflowWithRepair` + `attemptPlan` 시그니처에 `roomID: UUID, manager: AgentWindowManager` 추가
+  - 각 LLM 호출 직전 `await MainActor.run { RoomContextBuilder.build(...).contextualChatHistory }` 주입
+- **RoomContextBuilder.swift** pbxproj 등록
+- **scripts/preflight_round270d_room_context.sh**: 8개 검사 — 8/8 PASS
+
+### 전체 검증 결과
+- preflight_round264: 22/22 ✅
+- preflight_round265: 18/18 ✅
+- preflight_round269a: 18/18 ✅
+- preflight_round269d: 12/12 ✅
+- preflight_round270a: 2/2 ✅ (xcodebuild clean build 실행)
+- preflight_round270b: 12/12 ✅
+- preflight_round270d: 8/8 ✅
+- XCTest (4 tests): 4/4 PASSED ✅
+- Debug BUILD SUCCEEDED, 0 warnings ✅
+- Release BUILD SUCCEEDED, 0 warnings ✅
+
+---
+
 ## 2026-05-24 (Round 269A/B — MODEL-TRUTH-GATE + UNIFIED-ROUTER)
 
 ### 완료 (2026-05-24)

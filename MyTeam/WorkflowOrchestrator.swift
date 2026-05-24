@@ -497,7 +497,7 @@ final class WorkflowOrchestrator {
                 )
             }
             let markdown = OfficeReviewLiteExecutor.formatMarkdown(result)
-            await MainActor.run {
+            _ = await MainActor.run {
                 manager.addChatLog(
                     roomID: roomID,
                     agentID: "system",
@@ -570,7 +570,7 @@ final class WorkflowOrchestrator {
             let missing = AppLaunchSkillService.needsMoreInfo(request)
             if !missing.isEmpty {
                 AppLog.info("[Skill] app-launch-pack missing info: \(missing.joined(separator: ", "))")
-                await MainActor.run {
+                _ = await MainActor.run {
                     manager.addChatLog(
                         roomID: roomID,
                         agentID: "system",
@@ -627,7 +627,7 @@ final class WorkflowOrchestrator {
             // 1단계: 소유권 확인 (타사 공식 문서 방지)
             if KoreanPrivacyTermsService.needsOwnershipConfirmation(for: userMessage) {
                 AppLog.info("[Skill] privacy-terms 소유권 확인 필요")
-                await MainActor.run {
+                _ = await MainActor.run {
                     manager.addChatLog(
                         roomID: roomID, agentID: "system", agentName: "스킬",
                         text: """
@@ -649,7 +649,7 @@ final class WorkflowOrchestrator {
                 // serviceName 유효성 확인
                 if request.serviceName.trimmingCharacters(in: .whitespaces).isEmpty {
                     AppLog.info("[Skill] privacy-terms 서비스명 부족")
-                    await MainActor.run {
+                    _ = await MainActor.run {
                         manager.addChatLog(
                             roomID: roomID, agentID: "system", agentName: "스킬",
                             text: """
@@ -683,7 +683,7 @@ final class WorkflowOrchestrator {
         if routeDecision.kind == .localSchedulerDocumentBridge {
             guard let command = LocalSchedulerCommandDetector.detect(userMessage),
                   let targetType = LocalSchedulerDocumentBridge.targetType(for: command) else {
-                await MainActor.run {
+                _ = await MainActor.run {
                     manager.addChatLog(
                         roomID: roomID,
                         agentID: "system",
@@ -702,7 +702,7 @@ final class WorkflowOrchestrator {
                 manager: manager,
                 targetType: targetType
             ) else {
-                await MainActor.run {
+                _ = await MainActor.run {
                     manager.addChatLog(
                         roomID: roomID,
                         agentID: "system",
@@ -716,7 +716,7 @@ final class WorkflowOrchestrator {
             }
 
             guard enabledSkills.contains(where: { $0.id == targetType.skillID }) else {
-                await MainActor.run {
+                _ = await MainActor.run {
                     manager.addChatLog(
                         roomID: roomID,
                         agentID: "system",
@@ -832,7 +832,7 @@ final class WorkflowOrchestrator {
                     )
                 }
 
-                await MainActor.run {
+                _ = await MainActor.run {
                     manager.addChatLog(
                         roomID: roomID,
                         agentID: "system",
@@ -890,7 +890,7 @@ final class WorkflowOrchestrator {
         let isFileCreationRequest = GoalContextEngine.isFileCreationRequest(userMessage)
         if referencesRecentFile && !isFileCreationRequest {
             guard let recentFileIntakeResult else {
-                await MainActor.run {
+                _ = await MainActor.run {
                     manager.addChatLog(
                         roomID: roomID,
                         agentID: "system",
@@ -906,7 +906,7 @@ final class WorkflowOrchestrator {
             guard recentFileIntakeResult.status == .ready,
                   let sourceText = recentFileIntakeResult.extractedText,
                   let documentType = GoalContextEngine.documentTypeFromFileRequest(userMessage) else {
-                await MainActor.run {
+                _ = await MainActor.run {
                     manager.addChatLog(
                         roomID: roomID,
                         agentID: "system",
@@ -925,7 +925,7 @@ final class WorkflowOrchestrator {
             }
 
             guard enabledSkills.contains(where: { $0.id == documentType.skillID }) else {
-                await MainActor.run {
+                _ = await MainActor.run {
                     manager.addChatLog(
                         roomID: roomID,
                         agentID: "system",
@@ -960,7 +960,7 @@ final class WorkflowOrchestrator {
             if UniversalDocumentSkillService.needsMoreInput(request) {
                 let clarification = ClarificationPolicy.decideForUniversalDocument(request, context: await MainActor.run { manager.roomGoalContext(for: roomID) })
                 if case .askRequired(let questions) = clarification {
-                    await MainActor.run {
+                    _ = await MainActor.run {
                         manager.addChatLog(
                             roomID: roomID,
                             agentID: "system",
@@ -1002,7 +1002,7 @@ final class WorkflowOrchestrator {
                 manager: manager
             )
             guard let request else {
-                await MainActor.run {
+                _ = await MainActor.run {
                     manager.addChatLog(
                         roomID: roomID,
                         agentID: "system",
@@ -1016,7 +1016,7 @@ final class WorkflowOrchestrator {
             }
 
             guard enabledSkills.contains(where: { $0.id == request.type.skillID }) else {
-                await MainActor.run {
+                _ = await MainActor.run {
                     manager.addChatLog(
                         roomID: roomID,
                         agentID: "system",
@@ -1096,7 +1096,7 @@ final class WorkflowOrchestrator {
             await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
             return
         } else if GoalContextEngine.referencesRecentArtifact(userMessage) {
-            await MainActor.run {
+            _ = await MainActor.run {
                 manager.addChatLog(
                     roomID: roomID,
                     agentID: "system",
@@ -1654,7 +1654,7 @@ final class WorkflowOrchestrator {
                         message: "delegation resume blocked"
                     )
                 }
-                await MainActor.run {
+                _ = await MainActor.run {
                     manager.addChatLog(
                         roomID: roomID,
                         agentID: "system",
@@ -1852,7 +1852,7 @@ final class WorkflowOrchestrator {
         // 취소 검사 — finalStatus = .cancelled (기본값) 유지
         guard !Task.isCancelled else { return }
 
-        switch await planWorkflowWithRepair(userMessage: userMessage, allowedScopes: allowedScopes) {
+        switch await planWorkflowWithRepair(userMessage: userMessage, allowedScopes: allowedScopes, roomID: roomID, manager: manager) {
         case .failure(let msg):
             // 취소 중이어도 실패 이유는 기록
             finalStatus = .failed
@@ -1940,9 +1940,9 @@ final class WorkflowOrchestrator {
 
     // MARK: - Planner with self-repair (최대 2회 시도)
 
-    private func planWorkflowWithRepair(userMessage: String, allowedScopes: Set<ToolScope>) async -> PlannerResult {
+    private func planWorkflowWithRepair(userMessage: String, allowedScopes: Set<ToolScope>, roomID: UUID, manager: AgentWindowManager) async -> PlannerResult {
         // 1차 시도
-        let result1 = await attemptPlan(userMessage: userMessage, previousError: nil, allowedScopes: allowedScopes)
+        let result1 = await attemptPlan(userMessage: userMessage, previousError: nil, allowedScopes: allowedScopes, roomID: roomID, manager: manager)
         if case .success = result1 { return result1 }
         guard case .failure(let error1) = result1 else { return result1 }
 
@@ -1953,13 +1953,15 @@ final class WorkflowOrchestrator {
 
         // 2차 시도 — JSON/decode 오류에 대해서만 self-repair
         AppLog.info("[WorkflowOrchestrator] Self-repair 시도: \(error1)")
-        return await attemptPlan(userMessage: userMessage, previousError: error1, allowedScopes: allowedScopes)
+        return await attemptPlan(userMessage: userMessage, previousError: error1, allowedScopes: allowedScopes, roomID: roomID, manager: manager)
     }
 
     private func attemptPlan(
         userMessage: String,
         previousError: String?,
-        allowedScopes: Set<ToolScope>
+        allowedScopes: Set<ToolScope>,
+        roomID: UUID,
+        manager: AgentWindowManager
     ) async -> PlannerResult {
         let callType = previousError == nil ? "workflow_plan" : "workflow_repair"
         let budgetType: AICallType = previousError == nil ? .workflowPlan : .workflowRepair
@@ -1970,11 +1972,12 @@ final class WorkflowOrchestrator {
         }
         AppLog.info("[AICall] callType=\(callType)")
         let prompt = buildPlannerPrompt(userMessage: userMessage, previousError: previousError, allowedScopes: allowedScopes)
+        let plannerHistory = await MainActor.run { RoomContextBuilder.build(manager: manager, roomID: roomID).contextualChatHistory }
         do {
             let (jsonText, _) = try await AIService.shared.getResponse(
                 text: prompt,
                 agentID: "planner",
-                chatHistory: []
+                chatHistory: plannerHistory
             )
             let cleaned = extractJSON(from: jsonText)
             guard let data = cleaned.data(using: .utf8) else {
@@ -2336,11 +2339,12 @@ final class WorkflowOrchestrator {
                 manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "universalDocument.generating")
             }
 
+            let universalDocHistory = await MainActor.run { RoomContextBuilder.build(manager: manager, roomID: roomID).contextualChatHistory }
             do {
                 let generatedMarkdown = try await AIService.shared.getResponse(
                     text: prompt,
                     agentID: "planner",
-                    chatHistory: []
+                    chatHistory: universalDocHistory
                 )
                 guard !Task.isCancelled else {
                     return PlanExecutionResult(
@@ -2734,12 +2738,13 @@ final class WorkflowOrchestrator {
         AppLog.info("[AICall] callType=\(budgetType.rawValue)")
 
         let prompt = AppLaunchSkillService.buildPrompt(request)
+        let appLaunchHistory = await MainActor.run { RoomContextBuilder.build(manager: manager, roomID: roomID).contextualChatHistory }
 
         do {
             let generatedMarkdown = try await AIService.shared.getResponse(
                 text: prompt,
                 agentID: "planner",
-                chatHistory: []
+                chatHistory: appLaunchHistory
             )
             guard !Task.isCancelled else { return }
 

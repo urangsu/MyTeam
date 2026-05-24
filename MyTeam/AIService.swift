@@ -13,6 +13,28 @@ struct LLMResponseMetadata: Sendable {
     var providerDisplayName: String { provider.displayName }
 }
 
+// MARK: - ResolvedLLMCall
+// Round 270B: LLM 호출 결과 추적 — 실제로 사용된 provider/model 기록.
+// metadata.modelID가 항상 pinnedModelID였던 버그를 수정하기 위해 도입.
+struct ResolvedLLMCall: Sendable {
+    enum ModelSource: Sendable {
+        case cached(String)       // 이전 discovery 결과 재사용
+        case discovered(String)   // 이번 API 호출로 확인
+        case floor(String)        // pinnedModelID fallback
+    }
+    let provider: LLMProvider
+    let modelID: String
+    let source: ModelSource
+
+    var displayDescription: String {
+        switch source {
+        case .cached(let m):     return "\(provider.displayName) / \(m) (cached)"
+        case .discovered(let m): return "\(provider.displayName) / \(m) (live)"
+        case .floor(let m):      return "\(provider.displayName) / \(m) (pinned)"
+        }
+    }
+}
+
 // MARK: - AIService (ModelRouter 통합)
 final class AIService {
     static let shared = AIService()
@@ -85,13 +107,20 @@ final class AIService {
         return .gemini
     }
 
-    private func providerCandidates(preferred: LLMProvider, requiresToolUse: Bool = false) -> [LLMProvider] {
+    func providerCandidates(preferred: LLMProvider, requiresToolUse: Bool = false) -> [LLMProvider] {
         // Round 268-P3: tool use 필요 시 tool-capable provider (Claude, OpenAI) 우선 배치
         let toolCapable: [LLMProvider] = [.claude, .openAI]
         let baseOrder: [LLMProvider]
         if requiresToolUse && !toolCapable.contains(preferred) {
-            // Preferred가 tool-capable이 아닌 경우: tool-capable을 앞에 배치
-            baseOrder = [preferred] + toolCapable + [.gemini, .openRouter]
+            // Round 270B: preferred가 tool-capable 아닐 때 tool-capable을 먼저, preferred는 그 다음
+            // 수정 전(버그): [preferred] + toolCapable → preferred(Gemini)가 tool 지원 없이 첫 번째
+            // 수정 후: toolCapable + [preferred] + 나머지
+            let nonCapableRest = [LLMProvider.gemini, .openRouter].filter { !toolCapable.contains($0) && $0 != preferred }
+            baseOrder = toolCapable + [preferred] + nonCapableRest
+        } else if requiresToolUse {
+            // Preferred가 이미 tool-capable → preferred 유지, non-capable은 후순위
+            let others = [LLMProvider.openAI, .claude, .gemini, .openRouter].filter { $0 != preferred }
+            baseOrder = [preferred] + others
         } else {
             baseOrder = [preferred, .openAI, .claude, .gemini, .openRouter]
         }
@@ -487,7 +516,7 @@ final class AIService {
                 // ── 모델 선택 (Release는 pinned, DEBUG는 쿨다운 중 모델 제외) ──
                 let fallbackFlash = AIModelPolicy.pinnedModelID(for: .gemini)
                 let modelToUse: String
-                if AIModelPolicy.modelOverrideAllowed {
+                if AIModelPolicy.dynamicModelDiscoveryAllowed {  // Round 270B: Release도 동적 디스커버리 허용 (modelOverrideAllowed는 DEBUG-only였음)
                     if let cached = cachedGeminiModelId,
                        !isGeminiModelCoolingDown(cached),
                        !isCacheExpired(cachedGeminiModelIdAt) {
@@ -636,7 +665,7 @@ final class AIService {
                 request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
 
                 let claudeModel: String
-                if AIModelPolicy.modelOverrideAllowed {
+                if AIModelPolicy.dynamicModelDiscoveryAllowed {  // Round 270B: Release도 동적 디스커버리 허용 (modelOverrideAllowed는 DEBUG-only였음)
                     if let cached = cachedClaudeModelId, !isCacheExpired(cachedClaudeModelIdAt) {
                         claudeModel = cached
                     } else if let discovered = try? await discoverLatestClaudeModel(apiKey: apiKey) {
@@ -730,7 +759,7 @@ final class AIService {
                 }
 
                 let resolvedModel: String
-                if AIModelPolicy.modelOverrideAllowed {
+                if AIModelPolicy.dynamicModelDiscoveryAllowed {  // Round 270B: Release도 동적 디스커버리 허용 (modelOverrideAllowed는 DEBUG-only였음)
                     var model = modelId.isEmpty ? "" : modelId
                     if model.isEmpty {
                         if let cached = cachedOpenAIModelId, !isCacheExpired(cachedOpenAIModelIdAt) {
@@ -959,9 +988,25 @@ final class AIService {
                     chatHistory: chatHistory, agentConfig: agentConfig
                 )
                 for try await token in stream { fullText += token }
+                // Round 270B: 실제 discovery 결과를 사용 (pinnedModelID 버그 수정)
+                // 스트림 완료 후 캐시된 모델 ID가 설정되어 있으면 그것이 실제 사용된 모델
+                let actualModelID: String
+                switch provider {
+                case .gemini:
+                    actualModelID = cachedGeminiModelId ?? AIModelPolicy.pinnedModelID(for: provider)
+                case .claude:
+                    actualModelID = cachedClaudeModelId ?? AIModelPolicy.pinnedModelID(for: provider)
+                case .openAI:
+                    actualModelID = cachedOpenAIModelId ?? AIModelPolicy.pinnedModelID(for: provider)
+                case .openRouter:
+                    actualModelID = AIModelPolicy.resolvedModelID(
+                        provider: .openRouter,
+                        configuredModelID: agentConfig?.openRouterModelId ?? UserDefaults.standard.string(forKey: "openRouterModelId")
+                    )
+                }
                 let metadata = LLMResponseMetadata(
                     provider: provider,
-                    modelID: AIModelPolicy.pinnedModelID(for: provider),
+                    modelID: actualModelID,
                     fallbackChain: candidates,
                     usedFallback: idx > 0
                 )

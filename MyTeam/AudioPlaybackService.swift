@@ -312,7 +312,8 @@ actor AudioPlaybackService: AudioPlayable {
 
         // 5. 버퍼 스케줄링
         playerNode.volume = 1.0
-        playerNode.scheduleBuffer(outBuffer, at: nil, options: []) { [weak self] in
+        // completionCallbackType 오버로드 사용 — async 대안 경고 없이 콜백 패턴 유지
+        playerNode.scheduleBuffer(outBuffer, at: nil, options: [], completionCallbackType: .dataPlayedBack) { [weak self] _ in
             Task { [weak self] in
                 guard let self else { return }
                 await self.decrementBufferCount()
