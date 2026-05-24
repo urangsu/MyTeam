@@ -74,7 +74,7 @@ struct TTSLabView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 14) {
                 headerSection
                 officialEngineStatusSection
                 supertonicNoticeSection
@@ -87,6 +87,7 @@ struct TTSLabView: View {
             }
             .padding()
         }
+        .scrollIndicators(.visible)
         .navigationTitle("TTS 실험실")
         .onAppear {
             // Restore persisted settings (deferred from @State defaults to avoid @MainActor inference)
@@ -173,9 +174,9 @@ struct TTSLabView: View {
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label("TTS 실험실 (Developer Only)", systemImage: "waveform")
+            Label("TTS 실험실", systemImage: "waveform")
                 .font(.title2.bold())
-            Text("Supertonic3 공식 TTS 엔진. 자동 재생 기본 OFF. 수동 말하기만 허용.")
+            Text("Supertonic3 엔진 / 자동 재생 OFF / 수동 말하기만 허용")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Divider()
@@ -210,11 +211,6 @@ struct TTSLabView: View {
                     Text("보이스 디렉터")
                         .font(.headline)
                     Spacer()
-                    Text("Round 259")
-                        .font(.caption2.bold())
-                        .padding(.horizontal, 6).padding(.vertical, 2)
-                        .background(Color.purple.opacity(0.12))
-                        .cornerRadius(4)
                 }
 
                 // MARK: P/R/S 설명 박스 (Round 259TTS)
@@ -502,70 +498,36 @@ struct TTSLabView: View {
             }
             .font(.caption)
 
-            // Animal Crossing test-only note
-            Text("Animal Crossing은 테스트 전용입니다. 기본 캐릭터 보이스에는 적용되지 않습니다.")
+            Text("Animal Crossing: 테스트 전용")
                 .font(.system(size: 10))
                 .foregroundStyle(.secondary)
-                .padding(.top, 2)
         }
     }
 
     // MARK: - Round 259TTS/260B: P/R/S Description Box
 
     private var prsDescriptionBox: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 4) {
-                Image(systemName: "info.circle")
-                    .font(.caption2)
-                    .foregroundStyle(.blue)
-                Text("목소리 파라미터 안내")
-                    .font(.caption.bold())
-                    .foregroundStyle(.primary)
-            }
-
+        DisclosureGroup {
             Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 3) {
                 GridRow {
-                    Text("P / Pitch")
-                        .font(.system(.caption2, design: .monospaced).bold())
-                        .foregroundStyle(.blue)
-                    Text("음높이 (cents). ±100 이내 권장 — 초과 시 금속성 artifact 가능.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                    Text("P / Pitch").font(.system(.caption2, design: .monospaced).bold()).foregroundStyle(.blue)
+                    Text("음높이 (cents). ±100 이내 권장").font(.caption2).foregroundStyle(.secondary)
                 }
                 GridRow {
-                    Text("R / Rate")
-                        .font(.system(.caption2, design: .monospaced).bold())
-                        .foregroundStyle(.green)
-                    Text("재생 후처리 속도 배율. 이미 생성된 음성을 빠르게/느리게.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                    Text("R / Rate").font(.system(.caption2, design: .monospaced).bold()).foregroundStyle(.green)
+                    Text("재생 후처리 속도 배율").font(.caption2).foregroundStyle(.secondary)
                 }
                 GridRow {
-                    Text("S / Speed")
-                        .font(.system(.caption2, design: .monospaced).bold())
-                        .foregroundStyle(.orange)
-                    Text("합성 단계 말 속도. 공식 예제 범위 0.70~2.00. 일반 캐릭터 권장: 0.90~1.30.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                    Text("S / Speed").font(.system(.caption2, design: .monospaced).bold()).foregroundStyle(.orange)
+                    Text("합성 말 속도. 권장 0.90~1.30").font(.caption2).foregroundStyle(.secondary)
                 }
             }
-
-            HStack(spacing: 16) {
-                Label("권장 0.90~1.30", systemImage: "checkmark.circle.fill")
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(.green)
-                Label("실험 1.30~1.60", systemImage: "exclamationmark.circle.fill")
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(.orange)
-                Label("특수효과 1.60~2.00", systemImage: "bolt.circle.fill")
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(.red)
+            .padding(.top, 4)
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "info.circle").font(.caption2).foregroundStyle(.blue)
+                Text("P/R/S 파라미터 안내").font(.caption.bold())
             }
-            .padding(.top, 2)
-
-            Text("목소리 개성은 preset, 말의 빠르기는 S, 최종 보정은 P/R로 조절합니다.")
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.blue.opacity(0.8))
         }
         .padding(8)
         .background(Color.blue.opacity(0.04))
@@ -754,10 +716,7 @@ struct TTSLabView: View {
                 Spacer()
             }
 
-            Text("Expression Tags는 TTS 입력에만 적용됩니다. 채팅 말풍선에는 표시하지 않습니다.")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            Text("태그가 글자로 읽히면 해당 tag는 비활성화해야 합니다.")
+            Text("TTS 입력 전용 태그. 태그가 글자로 읽히면 비활성화 필요.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
@@ -904,10 +863,7 @@ struct TTSLabView: View {
                         .font(.subheadline.bold())
                 }
 
-                Text("귀로 느끼기 어려운 경우 durationSec으로 speed 적용 여부를 확인합니다.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Text("기대: S 0.70 > S 1.00 > S 1.30 > S 2.00 (duration 감소)")
+                Text("S 0.70 > 1.00 > 1.30 > 2.00 순으로 duration 감소 확인")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
 
@@ -1005,13 +961,7 @@ struct TTSLabView: View {
                         .cornerRadius(4)
                 }
 
-                Text("이 모드는 Supertonic TTS가 아니라 글자/음절 단위 procedural speech effect입니다.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Text("원본 게임 사운드를 사용하지 않고 앱 내부에서 파형을 생성합니다.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Text("speech profile과 effect profile을 구분합니다.")
+                Text("음절 단위 procedural speech effect (앱 내부 파형 생성)")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
 
@@ -1160,9 +1110,6 @@ struct TTSLabView: View {
                         .padding(6)
                         .background(Color.secondary.opacity(0.1))
                         .cornerRadius(4)
-                    Text("※ 전체 경로는 보안을 위해 표시하지 않습니다.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
                 }
 
                 // Model check result
