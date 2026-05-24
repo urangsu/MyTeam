@@ -4,6 +4,23 @@ import UniformTypeIdentifiers
 
 // JiggleEffect, IMMessageBubble, DateSeparator, ChatBubble → ChatComponents.swift 로 분리됨
 
+// MARK: - ToolNeedClassifier
+// Round 270B: 메시지 텍스트 분석으로 tool-use 필요 여부 결정.
+// tool-capable provider (Claude, OpenAI)를 우선 라우팅하기 위해 사용.
+enum ToolNeedClassifier {
+    /// 한국어 + 영어 키워드로 tool-use 의도를 추론한다.
+    nonisolated static func needsTool(_ text: String, hasAttachments: Bool = false) -> Bool {
+        if hasAttachments { return true }
+        let normalized = text.lowercased()
+        let keywords = [
+            "검색", "찾아", "파일", "실행", "열어", "계산", "웹",
+            "search", "find", "file", "run", "execute", "open", "calculate", "web",
+            "코드 실행", "터미널", "code run"
+        ]
+        return keywords.contains { normalized.contains($0.lowercased()) }
+    }
+}
+
 // MARK: - AgentChatView
 struct AgentChatView: View {
     let config: AgentWindowManager.AgentConfig
@@ -232,6 +249,8 @@ struct AgentChatView: View {
                         .foregroundColor(subTextColor)
                 }
                 .buttonStyle(PlainButtonStyle())
+                .help("채팅창 펼치기")
+                .accessibilityLabel("채팅창 펼치기")
 
                 // 닫기
                 Button(action: onClose) {
@@ -240,6 +259,8 @@ struct AgentChatView: View {
                         .foregroundColor(subTextColor.opacity(0.6))
                 }
                 .buttonStyle(PlainButtonStyle())
+                .help("채팅창 닫기")
+                .accessibilityLabel("채팅창 닫기")
             }
         }
         .padding(.horizontal, 12)
@@ -341,6 +362,16 @@ struct AgentChatView: View {
                     .disabled(speechManager.isStarting)
                 }
 
+                Button(action: {
+                    manager.tuckChatWindow(edge: .bottom)
+                }) {
+                    Image(systemName: "dock.rectangle")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(subTextColor.opacity(0.8))
+                }
+                .help("Dock 위에 살짝 숨기기")
+                .accessibilityLabel("채팅창 숨기기")
+
                 // 최소화 (팀 협업창 스타일)
                 Button(action: {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
@@ -351,6 +382,8 @@ struct AgentChatView: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(subTextColor)
                 }
+                .help("작은 바로 최소화")
+                .accessibilityLabel("채팅창 최소화")
 
                 // 닫기
                 Button(action: onClose) {
@@ -358,6 +391,8 @@ struct AgentChatView: View {
                         .font(.system(size: 13, weight: .bold))
                         .foregroundColor(subTextColor.opacity(0.6))
                 }
+                .help("채팅창 닫기")
+                .accessibilityLabel("채팅창 닫기")
             }
             .buttonStyle(PlainButtonStyle())
         }
@@ -492,15 +527,6 @@ struct AgentChatView: View {
                                     .font(.system(size: 11, weight: isSelected ? .bold : .medium))
                                     .foregroundColor(isSelected ? currentAgent.color : textColor.opacity(0.7))
                                     .lineLimit(1)
-                                    // 텍스트에만 직접 더블탭을 붙여서 Button에 이벤트가 먹히는 것을 우회
-                                    .onTapGesture(count: 2) {
-                                        guard !isSidebarCollapsed && !isEditingProjects else { return }
-                                        renameText = room.name
-                                        renamingRoomID = room.id
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                                            isRenameFieldFocused = true
-                                        }
-                                    }
                             }
                             // Round 241A: 개인 대화 사이드바 message preview 금지
                             // 내용 노출 없이 방 이름만 표시
@@ -522,14 +548,6 @@ struct AgentChatView: View {
                     }
             }
             .contentShape(Rectangle()) // 빈공간도 클릭하게
-            .onTapGesture(count: 2) {
-                guard !isSidebarCollapsed && !isEditingProjects else { return }
-                renameText = room.name
-                renamingRoomID = room.id
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                    isRenameFieldFocused = true
-                }
-            }
             .onTapGesture(count: 1) {
                 guard !isEditingProjects else { return }
                 withAnimation(.easeInOut(duration: 0.15)) { agentRoomID = room.id }
@@ -746,6 +764,16 @@ struct AgentChatView: View {
                 .offset(x: -4, y: 0)
                 .transition(.scale.combined(with: .opacity))
             }
+
+            // 말하기 버튼 (Round 256TTS-OFFICIAL-ENGINE) — 비편집 모드, 비사용자 메시지만
+            if !isEditingMessages && !log.isUser && !log.text.isEmpty {
+                SpeakButtonView(
+                    text: log.text,
+                    agentID: log.agentID
+                )
+                .offset(x: 0, y: -2)
+                .transition(.opacity)
+            }
         }
         .padding(.vertical, 2)
     }
@@ -844,6 +872,8 @@ struct AgentChatView: View {
                             .foregroundColor(subTextColor)
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .help("파일 첨부")
+                    .accessibilityLabel("파일 첨부")
 
                     TextField("\(currentAgent.name)에게 메시지...", text: $inputText)
                         .textFieldStyle(PlainTextFieldStyle())
@@ -868,6 +898,8 @@ struct AgentChatView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                     .disabled(inputText.isEmpty && pendingAttachments.isEmpty)
+                    .help("메시지 보내기")
+                    .accessibilityLabel("메시지 보내기")
                 }
                 if let errorMsg = speechManager.sttError {
                     Text(errorMsg).font(.system(size: 10)).foregroundColor(.red)
@@ -1062,7 +1094,7 @@ struct AgentChatView: View {
         let attachmentContext = ConversationMemory.buildAttachmentContext(from: attachments)
         let fullText = attachmentContext.isEmpty ? text : text + attachmentContext
 
-        manager.addChatLog(
+        let userMessageID = manager.addChatLog(
             roomID: roomID, agentID: targetID, agentName: "나",
             text: text.isEmpty ? "[첨부파일 \(attachments.count)개]" : text,
             isUser: true
@@ -1075,17 +1107,20 @@ struct AgentChatView: View {
                 await TeamOrchestrator.shared.runTeamDiscussion(
                     userMessage: fullText,
                     roomID: roomID,
-                    manager: manager
+                    manager: manager,
+                    currentUserMessageID: userMessageID
                 )
             } else {
                 // ── 개별 채팅: 해당 에이전트 단독 응답 ──
                 // WorkflowOrchestrator / TeamOrchestrator 호출 금지
                 // Selector 호출 금지 — 이 경로는 항상 targetID 에이전트 단독 응답
                 AppLog.info("[DirectChat] submit roomID=\(roomID.uuidString.prefix(8)) targetAgentID=\(targetID)")
-                var history = manager.rooms.first(where: { $0.id == roomID })?.messages ?? []
-                
-                // 과거 페르소나 오염 방지를 위한 엄격한 슬라이딩 윈도우 한도 적용 (최신 5개)
-                history = Array(history.suffix(5))
+                let roomMessages = manager.rooms.first(where: { $0.id == roomID })?.messages ?? []
+                var history = ConversationMemory.promptHistory(
+                    messages: roomMessages,
+                    excludingMessageID: userMessageID,
+                    maxMessages: 5
+                )
                 
                 // (선택) 여전히 30개 초과 요약 로직이 있다면 태우되, 보통 5개면 안 탐
                 history = await ConversationMemory.compactHistory(messages: history)
@@ -1094,6 +1129,10 @@ struct AgentChatView: View {
                     // DirectChat evidence gate — 명확한 외부 정보 요청일 때만 evidence gather 허용
                     // 조건: URL 포함 / 외부 키워드 / 첨부파일 있음
                     let toolPolicy = ToolPolicy.evaluate(fullText)
+                    let requiresToolUse = toolPolicy.needsTool || ToolNeedClassifier.needsTool(
+                        fullText,
+                        hasAttachments: !attachments.isEmpty
+                    )
                     let needsEvidence = Self.directChatNeedsEvidence(fullText, hasAttachments: !attachments.isEmpty)
                     let toolEvidence: ToolEvidenceResult
                     if needsEvidence {
@@ -1123,7 +1162,7 @@ struct AgentChatView: View {
                     )
                     let groundedText = fullText
                         + manager.roomProfileContext(roomID: roomID)
-                        + manager.persistentContext
+                        + manager.scopedMemoryContext(agentName: agentName, roomID: roomID)
                         + personalPolicy
                         + toolEvidence.promptContext
 
@@ -1135,7 +1174,8 @@ struct AgentChatView: View {
                         _ = await MainActor.run { manager.typingAgentIDs.insert(targetIDAtSend) }
                         let tokenStream = AIService.shared.getResponseStream(
                             text: groundedText, agentID: targetIDAtSend,
-                            chatHistory: history, agentConfig: agentConfig
+                            chatHistory: history, agentConfig: agentConfig,
+                            requiresToolUse: requiresToolUse
                         )
                         AppLog.debug("[DirectChat] silent getResponseStream opened targetAgentID=\(targetIDAtSend)")
                         var accumulated = ""
@@ -1151,21 +1191,82 @@ struct AgentChatView: View {
                         // 1. 타이핑 인디케이터 ON
                         _ = await MainActor.run { manager.typingAgentIDs.insert(targetIDAtSend) }
 
-                        // 2. SSE 스트림 오픈
-                        let tokenStream = AIService.shared.getResponseStream(
-                            text: groundedText, agentID: targetIDAtSend, chatHistory: history, agentConfig: agentConfig
+                        // 2. SSE 스트림 오픈. 화면에는 LLM 원문을 누적 표시하고,
+                        // TTS에는 별도 proxy stream을 넘긴다. TTS chunk truncation이 채팅 로그를 훼손하면 안 된다.
+                        let sourceStream = AIService.shared.getResponseStream(
+                            text: groundedText, agentID: targetIDAtSend, chatHistory: history, agentConfig: agentConfig,
+                            requiresToolUse: requiresToolUse
                         )
+                        let ttsStream = AsyncThrowingStream<String, Error> { continuation in
+                            let relayTask = Task {
+                                var accumulated = ""
+                                var assistantMessageID: UUID?
+                                do {
+                                    for try await token in sourceStream {
+                                        accumulated += token
+                                        continuation.yield(token)
 
-                        // 3. SpeechManager에 SSE→오디오 배관 완전 위임
+                                        let visibleText = accumulated.trimmingCharacters(in: .whitespacesAndNewlines)
+                                        guard !visibleText.isEmpty else { continue }
+                                        await MainActor.run {
+                                            if let assistantMessageID {
+                                                manager.updateChatLogText(
+                                                    roomID: roomIDAtSend,
+                                                    messageID: assistantMessageID,
+                                                    text: visibleText,
+                                                    sources: toolEvidence.sources
+                                                )
+                                            } else {
+                                                assistantMessageID = manager.addChatLog(
+                                                    roomID: roomIDAtSend,
+                                                    agentID: targetIDAtSend,
+                                                    agentName: agentName,
+                                                    text: visibleText,
+                                                    isUser: false,
+                                                    sources: toolEvidence.sources
+                                                )
+                                            }
+                                        }
+                                    }
+                                    continuation.finish()
+                                    await MainActor.run {
+                                        manager.typingAgentIDs.remove(targetIDAtSend)
+                                        if assistantMessageID == nil {
+                                            manager.addChatLog(
+                                                roomID: roomIDAtSend,
+                                                agentID: "system",
+                                                agentName: "시스템",
+                                                text: "응답이 비어 있습니다. API 키와 모델 설정을 확인해 주세요.",
+                                                isUser: false
+                                            )
+                                        }
+                                    }
+                                } catch {
+                                    continuation.finish(throwing: error)
+                                    await MainActor.run {
+                                        manager.typingAgentIDs.remove(targetIDAtSend)
+                                        manager.addChatLog(
+                                            roomID: roomIDAtSend,
+                                            agentID: "system",
+                                            agentName: "시스템",
+                                            text: error.localizedDescription,
+                                            isUser: false
+                                        )
+                                    }
+                                }
+                            }
+                            continuation.onTermination = { @Sendable _ in
+                                relayTask.cancel()
+                            }
+                        }
+
+                        // 3. SpeechManager는 오디오용 proxy stream만 소비한다.
                         SpeechManager.shared.processRealtimeSSEStream(
                             agentID: targetIDAtSend,
                             characterName: agentName,
-                            tokenStream: tokenStream,
+                            tokenStream: ttsStream,
                             onAudioPlaybackStarted: { chunk in
                                 DispatchQueue.main.async {
-                                    manager.typingAgentIDs.remove(targetIDAtSend)
-                                    manager.addChatLog(roomID: roomIDAtSend, agentID: targetIDAtSend, agentName: agentName,
-                                                       text: chunk, isUser: false, sources: toolEvidence.sources)
                                     manager.setAgentSpeaking(agentID: targetIDAtSend, text: chunk)
                                 }
                             }
@@ -1176,6 +1277,75 @@ struct AgentChatView: View {
                         manager.typingAgentIDs.remove(targetID)
                         manager.addChatLog(roomID: roomID, agentID: "system", agentName: "시스템", text: error.localizedDescription, isUser: false)
                     }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - SpeakButtonView (Round 257TTS-PLAYBACK)
+/// 작은 말하기 버튼 — 비사용자 메시지에 오버레이.
+/// 클릭 시 SpeechManager.speakOnce → Supertonic3 합성 + AudioPlaybackService 재생.
+/// 자동 재생 없음 — 사용자 명시 클릭 시만 동작.
+private struct SpeakButtonView: View {
+    let text: String
+    let agentID: String?
+
+    @State private var isSynthesizing: Bool = false
+    @State private var hasPlayed: Bool = false      // 재생 성공 여부 (아이콘 상태)
+    @State private var errorMessage: String? = nil
+
+    private var isAvailable: Bool {
+        TTSRoutingPolicy.isSupertonic3Available
+    }
+
+    var body: some View {
+        HStack(spacing: 3) {
+            if isSynthesizing {
+                ProgressView()
+                    .scaleEffect(0.55)
+                    .frame(width: 14, height: 14)
+            } else {
+                Button {
+                    speakOnce()
+                } label: {
+                    Image(systemName: hasPlayed ? "speaker.wave.2.fill" : "speaker.wave.2")
+                        .font(.system(size: 11))
+                        .foregroundStyle(
+                            errorMessage != nil
+                                ? Color.red.opacity(0.7)
+                                : isAvailable
+                                    ? Color.accentColor.opacity(0.7)
+                                    : Color.secondary.opacity(0.4)
+                        )
+                }
+                .buttonStyle(.plain)
+                .disabled(!isAvailable || isSynthesizing)
+                .help(
+                    errorMessage != nil
+                        ? "재생 실패 — 모델 파일·ONNX Runtime·고지 수락 확인 필요"
+                        : isAvailable
+                            ? "말하기 (Supertonic3)"
+                            : "TTS 미사용 가능 — 모델·고지·활성화 확인 필요"
+                )
+            }
+        }
+        .padding(3)
+    }
+
+    /// 합성 + 재생. SpeechManager.speakOnce가 playerNode.play() 이후 반환.
+    private func speakOnce() {
+        isSynthesizing = true
+        errorMessage = nil
+        Task {
+            let output = await SpeechManager.shared.speakOnce(text: text, agentID: agentID)
+            await MainActor.run {
+                isSynthesizing = false
+                if output != nil {
+                    hasPlayed = true
+                    errorMessage = nil
+                } else {
+                    errorMessage = "재생 실패 또는 TTS 미설정"
                 }
             }
         }

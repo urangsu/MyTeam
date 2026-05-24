@@ -194,7 +194,14 @@ struct TeamTableView: View {
                     Button(action: { manager.showStatusWindow() }) {
                         Label("협업창 보기", systemImage: "person.3.fill")
                     }
-                    Button(action: { manager.showSwapWindow() }) {
+                    // Round 258TTS: 슬롯 서브메뉴로 교체 — 항상 슬롯 0만 교체하던 버그 수정
+                    Menu {
+                        ForEach(Array(manager.activeAgents.enumerated()), id: \.offset) { index, agent in
+                            Button(action: { manager.showSwapWindow(replaceIndex: index) }) {
+                                Label("\(index + 1)번 — \(agent.name) 교체", systemImage: "arrow.triangle.2.circlepath")
+                            }
+                        }
+                    } label: {
                         Label("팀원 교체하기", systemImage: "arrow.triangle.2.circlepath")
                     }
                     Menu {
@@ -326,13 +333,14 @@ struct TeamTableView: View {
 
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("/") else { return }
 
-        manager.addChatLog(roomID: roomID, agentID: "user", agentName: "나", text: text, isUser: true)
+        let userMessageID = manager.addChatLog(roomID: roomID, agentID: "user", agentName: "나", text: text, isUser: true)
 
         Task {
             await TeamOrchestrator.shared.runTeamDiscussion(
                 userMessage: text,
                 roomID: roomID,
-                manager: manager
+                manager: manager,
+                currentUserMessageID: userMessageID
             )
         }
     }

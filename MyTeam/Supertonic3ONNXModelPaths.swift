@@ -26,7 +26,7 @@ struct Supertonic3ONNXModelPaths: Sendable {
 
     // MARK: - Init from directory
 
-    init(modelDirectory: URL) {
+    nonisolated init(modelDirectory: URL) {
         textEncoderURL       = modelDirectory.appendingPathComponent("text_encoder.onnx")
         durationPredictorURL = modelDirectory.appendingPathComponent("duration_predictor.onnx")
         vectorEstimatorURL   = modelDirectory.appendingPathComponent("vector_estimator.onnx")
@@ -42,7 +42,7 @@ struct Supertonic3ONNXModelPaths: Sendable {
     // MARK: - Validation
 
     /// Returns true if all required ONNX model files exist on disk.
-    var allModelsPresent: Bool {
+    nonisolated var allModelsPresent: Bool {
         let required = [textEncoderURL, durationPredictorURL, vectorEstimatorURL, vocoderURL]
         return required.allSatisfy { url in
             FileManager.default.fileExists(atPath: url.path)
@@ -50,7 +50,7 @@ struct Supertonic3ONNXModelPaths: Sendable {
     }
 
     /// Missing file names (for error reporting).
-    var missingModelNames: [String] {
+    nonisolated var missingModelNames: [String] {
         let named: [(URL, String)] = [
             (textEncoderURL, "text_encoder.onnx"),
             (durationPredictorURL, "duration_predictor.onnx"),
@@ -65,12 +65,12 @@ struct Supertonic3ONNXModelPaths: Sendable {
     // MARK: - Factory
 
     /// Creates paths from the default Supertonic3 model directory.
-    static func defaultPaths() -> Supertonic3ONNXModelPaths {
+    nonisolated static func defaultPaths() -> Supertonic3ONNXModelPaths {
         Supertonic3ONNXModelPaths(modelDirectory: Supertonic3TTSConfig.modelDirectoryURL)
     }
 
     /// Voice style JSON file URL for a given preset name (e.g., "F1", "M3").
-    func voiceStyleURL(preset: String) -> URL {
+    nonisolated func voiceStyleURL(preset: String) -> URL {
         voiceStylesDirectoryURL.appendingPathComponent("\(preset).json")
     }
 }

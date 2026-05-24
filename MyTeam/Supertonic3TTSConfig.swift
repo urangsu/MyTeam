@@ -7,7 +7,8 @@ import Foundation
 // - 기본 비활성화 (isEnabled = UserDefaults bool → false by default)
 // - 로컬 모델 필요 (~/.cache/supertonic3/onnx/)
 // - 자동 다운로드 절대 없음 — 사용자가 직접 다운로드해야 함
-// - HuggingFace: Supertone/supertonic-3 (MIT + OpenRAIL-M)
+// - HuggingFace: Supertone/supertonic-3
+// - Sample code license / model license are documented by upstream, but product release gates remain locked.
 // - 44.1kHz WAV 출력 — 기존 24kHz AudioPlaybackService와 변환 필요 (248TTS에서 구현)
 
 enum Supertonic3TTSConfig {
@@ -17,7 +18,7 @@ enum Supertonic3TTSConfig {
     /// Supertonic3 ONNX 모델 디렉토리 (Python SDK 기본 경로 참조)
     /// 샌드박스 환경에서 homeDirectoryForCurrentUser는 컨테이너를 반환하므로
     /// ProcessInfo.processInfo.environment["HOME"]로 실제 홈 디렉토리를 사용한다.
-    static var realHomeURL: URL {
+    nonisolated static var realHomeURL: URL {
         // getpwuid는 패스워드 DB를 직접 읽어 샌드박스 HOME 재매핑을 우회한다.
         if let pw = getpwuid(getuid()), let dir = pw.pointee.pw_dir {
             let path = String(cString: dir)
@@ -33,12 +34,12 @@ enum Supertonic3TTSConfig {
         return FileManager.default.homeDirectoryForCurrentUser
     }
 
-    static var modelDirectoryURL: URL {
+    nonisolated static var modelDirectoryURL: URL {
         realHomeURL.appendingPathComponent(".cache/supertonic3/onnx", isDirectory: true)
     }
 
     /// Voice style JSON 파일 디렉토리
-    static var voiceStylesDirectoryURL: URL {
+    nonisolated static var voiceStylesDirectoryURL: URL {
         realHomeURL.appendingPathComponent(".cache/supertonic3/voice_styles", isDirectory: true)
     }
 
@@ -97,8 +98,11 @@ enum Supertonic3TTSConfig {
 
     // MARK: - License / Distribution Policy
 
-    /// MIT (코드) + OpenRAIL-M (모델) — 상업적 사용 허용, 재배포 조건 검토 필요
-    /// App Store 번들 허용 여부: 미검증 (248TTS에서 법무 검토 필요)
-    static let licenseStatus: String = "MIT (code) + OpenRAIL-M (model) — unverified for App Store distribution"
+    /// Upstream states sample code is MIT and the model is OpenRAIL-M.
+    /// Product release still requires compliance review, attribution/use-restriction handling,
+    /// model redistribution review, and App Store distribution review.
+    static let licenseStatus: String = "MIT sample code + OpenRAIL-M model — product compliance review pending"
     static let isLicenseVerifiedForAppStore: Bool = false
+    static let isModelRedistributionApproved: Bool = false
+    static let isCommercialProductGateApproved: Bool = false
 }

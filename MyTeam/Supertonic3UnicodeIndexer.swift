@@ -29,12 +29,12 @@ struct Supertonic3UnicodeIndexer: Sendable {
 
     // MARK: - Init
 
-    init(indexer: [Int]) {
+    nonisolated init(indexer: [Int]) {
         self.indexer = indexer
     }
 
     /// Load from unicode_indexer.json at the given URL.
-    static func load(from url: URL) throws -> Supertonic3UnicodeIndexer {
+    nonisolated static func load(from url: URL) throws -> Supertonic3UnicodeIndexer {
         let data = try Data(contentsOf: url)
         let decoded = try JSONDecoder().decode([Int].self, from: data)
         guard decoded.count >= 256 else {
@@ -55,7 +55,7 @@ struct Supertonic3UnicodeIndexer: Sendable {
     ///           If nil, no language tokens are added (v1 compatibility).
     /// - Returns: `(text_ids, text_mask)` as flat arrays.
     ///   Caller must reshape to [1, T] and [1, 1, T] respectively.
-    func encode(text: String, lang: String?) throws -> (textIds: [Int64], textMask: [Float], seqLen: Int) {
+    nonisolated func encode(text: String, lang: String?) throws -> (textIds: [Int64], textMask: [Float], seqLen: Int) {
         let preprocessed = preprocess(text: text, lang: lang)
         var textIds: [Int64] = []
 
@@ -97,7 +97,7 @@ struct Supertonic3UnicodeIndexer: Sendable {
     /// Mirrors Python TextProcessor._preprocess_text (simplified).
     /// Full Python preprocessing includes NFKD, emoji removal, abbreviation expansion, etc.
     /// This Swift implementation covers the core steps relevant to character encoding.
-    private func preprocess(text: String, lang: String?) -> String {
+    nonisolated private func preprocess(text: String, lang: String?) -> String {
         var result = text
 
         // Step 1: NFKD-equivalent normalization

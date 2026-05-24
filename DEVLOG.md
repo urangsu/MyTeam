@@ -6,6 +6,538 @@
 
 ---
 
+## 2026-05-24 (Round 271 — ROUTER-REALITY + CONTEXT-INTEGRITY + EDGE-TUCK-UX)
+
+### 완료 (2026-05-24)
+
+**Edge-Tuck 최소화 UX**
+- **FloatingPanel.swift**: `PanelTuckState`, `PanelTuckEdge`, `PanelTuckGeometry` 추가
+- `chat_single`, `status_window`, `settings_window`, `agent_settings_window`, `swap_window`에 edge tuck 적용
+- `team` 패널은 edge tuck 대상에서 제외
+- 좌/우/상/하단 Dock 위 tuck frame 계산, reveal tab 클릭 복원, context menu tuck/restore 액션 추가
+- expanded frame과 tucked edge를 panel별 UserDefaults에 저장
+
+**Router Reality**
+- **AIService.swift**: Gemini/Claude/OpenAI/OpenRouter stream, metadata, quickSummary, privacyTerms가 `ResolvedLLMCall` resolver를 공유
+- OpenAI stream에서 pinned model을 먼저 넘겨 discovery를 우회하던 경로 제거
+- `metadata.modelID`를 cache 추정이 아니라 실제 resolver 결과로 기록
+- **AgentChatView.swift**: `ToolNeedClassifier`가 grounded context가 아니라 원문 사용자 입력과 첨부 여부를 기준으로 판단
+
+**Room/Artifact Integrity**
+- **RoomContextBuilder.swift**: system message 제외, room-scoped artifact summaries 포함
+- **AgentWindowManager.swift**: `recentArtifacts(for:)`의 currentRoom global fallback 제거
+- 방 이름 변경이 profile 자동 변경을 유발하지 않도록 분리
+- 루트 `test_*` 실행 파일 정리 및 `.gitignore`/preflight 방어 추가
+
+**Workroom UI Polish**
+- **WorkroomHomeView.swift**: Trust Strip 추가 — room type, provider/model source, tool/evidence 상태, active workflow 표시
+- action 카드의 고정 60pt/1줄 레이아웃을 한국어 2줄 안정 레이아웃으로 변경
+- 개인방 row double-click rename 제거, 이름 변경은 context menu/pencil 계열 명시 액션으로 유지
+
+### 검증 결과
+- `scripts/preflight_round270b_router_truth.sh`: 12/12 PASS
+- `scripts/preflight_round270d_room_context.sh`: 8/8 PASS
+- `scripts/preflight_round271_edge_tuck_router_context.sh`: 14/14 PASS
+- `xcodebuild test -scheme MyTeamTests`: 8/8 PASSED
+
+---
+
+## 2026-05-24 (Round 270A-D — TRUE-WARNING-ZERO + ROUTER-TRUTH + XCTEST + ROOM-CONTEXT)
+
+### 완료 (2026-05-24)
+
+**Round 270A: True Warning Zero Gate**
+- 실제 경고 원인 규명: 프로젝트 빌드 설정 `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`로 모든 코드가 기본 `@MainActor` — `actor Supertonic3ONNXRunner`에서 접근 시 격리 경고 37개 발생
+- **Supertonic3ONNXRunner.swift**: `S3Config.xxx` 정적 참조 제거 → 인라인 상수로 교체
+- **Supertonic3ONNXModelPaths.swift / Supertonic3UnicodeIndexer.swift / Supertonic3VoiceStyle.swift / Supertonic3TTSConfig.swift**: `nonisolated` 추가하여 호출 체인 완성
+- **WorkflowOrchestrator.swift / TeamOrchestrator.swift / TeamStatusView.swift**: `await MainActor.run { }` 결과 미사용 경고 18곳 → `_ = await MainActor.run { }` 패턴 적용
+- **AudioPlaybackService.swift**: `completionCallbackType: .dataPlayedBack` overload로 async 경고 제거
+- **RuntimeDiagnosticsService.swift**: unused init → `let _ =` 패턴으로 수정
+- **scripts/preflight_round270a_true_warning_zero.sh**: xcodebuild 실제 실행 → Debug 0개, Release 0개 확인
+- 결과: Debug 0 warnings, Release 0 warnings (clean build 포함)
+
+**Round 270B: LLM Router Truth**
+- **AIService.swift**: `providerCandidates` 순서 버그 수정 — requiresToolUse+비tool-capable preferred → `toolCapable + [preferred]` (기존: 반대 순서)
+- **AIService.swift**: 스트림 경로 3곳 `modelOverrideAllowed`(Debug-only) → `dynamicModelDiscoveryAllowed`(항상 true)로 교체
+- **AIService.swift**: `ResolvedLLMCall` struct 추가 (`ModelSource`: cached/discovered/floor)
+- **AIService.swift**: `getResponseWithMetadata` — 캐시된 실제 modelID 반환 (pinnedModelID 고정 버그 수정)
+- **AgentChatView.swift**: `ToolNeedClassifier` 추가 + `getResponseStream` 2곳에 `requiresToolUse: ToolNeedClassifier.needsTool(groundedText)` 전달
+- **scripts/preflight_round270b_router_truth.sh**: 12개 정적 검사 — 12/12 PASS
+
+**Round 270C: XCTest Target**
+- **MyTeamTests/** 디렉토리 신규 생성
+- **MyTeamTests/MockLLMProvider.swift**: 네트워크 없는 fake provider
+- **MyTeamTests/LLMRouterTests.swift**: 4개 behavioral test
+  1. `test_latestModels_notBlocked` — 최신 모델 차단 없음 확인
+  2. `test_toolUse_routesToToolCapableFirst` — tool-capable 우선 순서 알고리즘 검증
+  3. `test_resolvedLLMCall_displayDescription` — cached/discovered/floor 표시 검증
+  4. `test_roomContext_notCrossContaminated` — room context 격리 확인
+- **MyTeam.xcodeproj/project.pbxproj**: MyTeamTests 타깃 완전 등록 (PBXNativeTarget, PBXSourcesBuildPhase, PBXFrameworksBuildPhase, XCConfigurationList, PBXTargetDependency, PBXContainerItemProxy, Products 그룹)
+- **xcshareddata/xcschemes/MyTeamTests.xcscheme**: xcodebuild test 실행을 위한 공유 스킴
+- `AIService.providerCandidates` → `internal` 변경 (@testable import로 접근 가능)
+- 결과: `xcodebuild test -scheme MyTeamTests` 4개 테스트 전원 PASSED
+
+**Round 270D: Room-Scoped Context Builder**
+- **MyTeam/RoomContextBuilder.swift**: 신규 파일
+  - `RoomContext` struct: `roomID`, `roomPurpose`, `recentMessages`, `recentArtifactSummaries`, `systemPromptContext`, `contextualChatHistory`
+  - `RoomContextBuilder.build(manager:roomID:maxMessages:)` `@MainActor` static func
+- **WorkflowOrchestrator.swift**: `chatHistory: []` 3곳 모두 교체
+  - `planWorkflowWithRepair` + `attemptPlan` 시그니처에 `roomID: UUID, manager: AgentWindowManager` 추가
+  - 각 LLM 호출 직전 `await MainActor.run { RoomContextBuilder.build(...).contextualChatHistory }` 주입
+- **RoomContextBuilder.swift** pbxproj 등록
+- **scripts/preflight_round270d_room_context.sh**: 8개 검사 — 8/8 PASS
+
+### 전체 검증 결과
+- preflight_round264: 22/22 ✅
+- preflight_round265: 18/18 ✅
+- preflight_round269a: 18/18 ✅
+- preflight_round269d: 12/12 ✅
+- preflight_round270a: 2/2 ✅ (xcodebuild clean build 실행)
+- preflight_round270b: 12/12 ✅
+- preflight_round270d: 8/8 ✅
+- XCTest (4 tests): 4/4 PASSED ✅
+- Debug BUILD SUCCEEDED, 0 warnings ✅
+- Release BUILD SUCCEEDED, 0 warnings ✅
+
+---
+
+## 2026-05-24 (Round 269A/B — MODEL-TRUTH-GATE + UNIFIED-ROUTER)
+
+### 완료 (2026-05-24)
+
+**Round 269A: Model Truth Gate**
+- **LLMModelRegistry.swift** 재설계 — 정적 blockedIDs 완전 제거
+  - `KnownBrokenModel` 구조체 도입 (`id`, `provider`, `reason`, `expiresAt`, `isCurrentlyBroken`)
+  - `knownBrokenModels: [KnownBrokenModel]` 초기 빈 목록 (live discovery가 결정)
+  - `isKnownBroken(_:)` + `knownBrokenIDs` 추가, 레거시 `isBlocked()` 제거
+  - floor fallback constants (`primary`/`fallback`) 유지 — discovery 실패 시 최후 안전망
+- **AIModelPolicy.swift** — `dynamicModelDiscoveryAllowed = true` 항상 (Release 포함)
+  - Release에서도 최신 모델 discovery 허용 → stale local registry에 묶이지 않음
+  - `resolvedModelID`: `isBlocked` → `isKnownBroken` 교체
+- **AIService.swift** — `isBlocked` → `isKnownBroken` 3곳 전환
+
+**Round 269B: Unified LLM Router**
+- **AIService.swift** — `LLMResponseMetadata` 구조체 추가
+  - `provider`, `modelID`, `fallbackChain`, `usedFallback` 포함
+- **AIService.getResponse** — 실제 성공 provider 반환 (설정값이 아닌 실제값)
+  - 기존: `agentConfig?.llmProvider.displayName ?? "Gemini"` (거짓 반환)
+  - 수정: 실제 성공한 provider 루프에서 추적 → 정확한 provider.displayName 반환
+- **AIService.getResponseWithMetadata** 신규 — `LLMResponseMetadata` 포함 응답
+- **AIService.getResponseStream** — `requiresToolUse: Bool = false` 파라미터 추가
+  - tool 요청 시 Claude/OpenAI 우선 후보 배치
+- **quickSummary** — `providerCandidates` 기반 통합 라우팅 (하드코딩 순서 제거)
+- **generatePrivacyTerms** — 동일, candidates 루프 통합
+
+**Round 269C: Behavioral Contracts**
+- `preflight_round269c_behavioral_contracts.sh` 신규 (20/20 PASS)
+  - Contract 1: 최신 모델 차단되지 않음 (knownBrokenModels 빈 목록)
+  - Contract 2: tool 요청 → Claude/OpenAI tool-capable 우선 라우팅
+  - Contract 3: fallback metadata 실제 provider 반영
+  - Contract 4: roomID 명시 addChatLog / deprecated 마킹 검증
+  - Contract 5: 단일 candidates 루프 통합 (quickSummary/generatePrivacyTerms)
+  - Contract 6: floor fallback 상수 유지, 쿨다운 메커니즘 유지
+
+**Round 269D: Warning Zero Gate**
+- `preflight_round269d_warning_gate.sh` 신규 (12/12 PASS)
+  - @discardableResult 존재 확인 (MainActor.run unused result 방지)
+  - httpBody = try? 없음 확인
+  - Supertonic3 Spike-only 격리 + Swift 6 주석 확인
+  - TTSProductPolicy fallback/autoSpeak false 확인
+  - .onnx/.log untracked 확인
+
+**Preflight**
+- `preflight_round264_model_registry.sh` — 검사 #8-12,#17 KnownBrokenModel 기준으로 재작성 (22/22 PASS)
+- `preflight_round265_llm_call_paths.sh` — 검사 #6,#14-16 업데이트 (18/18 PASS)
+- `preflight_round269a_model_truth_gate.sh` 신규 (18/18 PASS)
+- `preflight_round269c_behavioral_contracts.sh` 신규 (20/20 PASS)
+- `preflight_round269d_warning_gate.sh` 신규 (12/12 PASS)
+
+- Debug + Release BUILD SUCCEEDED, 0 errors
+
+---
+
+## 2026-05-24 (Round 268-RELIABILITY-POLISH)
+
+### 완료 (2026-05-24)
+
+- **AIService.swift** — 모델 discovery 캐시 만료 정책 (P3 #15)
+  - `cachedGeminiModelIdAt/cachedClaudeModelIdAt/cachedOpenAIModelIdAt` 타임스탬프
+  - `isCacheExpired(_:)` + `modelCacheMaxAge = 3600` (1시간)
+  - Gemini/Claude/OpenAI streaming 경로 및 QuickCall 함수 전체 적용
+  - 429 쿨다운 시 캐시 타임스탬프도 함께 nil 처리
+- **AgentToolKit.swift** — ToolNeedClassifier false positive 감소 (P1)
+  - `needsCurrentTime`: 단독 "오늘/현재" → 강한 시간 신호(날짜/몇시/날씨) 또는 조합 신호 필요
+  - `needsSearch`: 단순 "검색", "찾아" → "검색해줘", "찾아봐줘" 명령형으로 강화
+- **AIService.swift** — providerCandidates tool-use routing (P3 #16)
+  - `requiresToolUse: Bool` 파라미터 추가 → Claude/OpenAI 우선 순위 정책
+- **AgentWindowManager.swift** — `addChatLog(roomID:...)` @discardableResult 추가
+  - WorkflowOrchestrator에서 `MainActor.run { manager.addChatLog(...) }` unused result 경고 해소 (16건)
+- **WorkflowOrchestrator.swift** — `MainActor.run` unused result 경고 수동 수정
+  - lines 139, 350, 427, 463 `_ = await MainActor.run { }` 적용
+- **Supertonic3ONNXRunner.swift** — S3Config nonisolated(unsafe) 제거 (컴파일러 권고)
+  - Swift 6 forward-compat 경고는 Spike 전용 파일로 현행 유지; 빌드 무영향
+- Debug BUILD SUCCEEDED, 0 errors, WorkflowOrchestrator 경고 0건
+
+---
+
+## 2026-05-24 (Round 264-267-RELIABILITY)
+
+### 완료 (2026-05-24)
+
+- **LLMModelRegistry.swift** 신규 — provider별 검증된 production model ID 단일 관리
+  - OpenAI primary=gpt-4.1, Claude primary=claude-sonnet-4-5-20250514, Gemini primary=gemini-2.5-flash, OpenRouter primary=anthropic/claude-sonnet-4-5
+  - blockedIDs: gpt-5.5/5.1/5.2, claude-opus-4-7/4-8, gemini-2.0-flash, openai/gpt-5.5 등
+  - isBlocked() + allBlockedIDs + resolve() + defaultModelFamilyLabel
+- **AIModelPolicy.swift** 업데이트 — 모든 model ID를 LLMModelRegistry 위임, 하드코딩 제거
+- **AIService.swift** 업데이트
+  - claude-opus-4-7 × 4개 하드코딩 → LLMModelRegistry.Claude.primary
+  - gemini-2.0-flash 하드코딩 → LLMModelRegistry.Gemini.primary
+  - Claude model discovery에 isBlocked() 필터 추가
+  - httpBody = try? → guard bodyData + continuation.finish(throwing:) (4곳, continuation closure)
+  - QuickCall 함수 httpBody = try? → try (3곳, async throws 함수)
+  - 주석 내 claude-opus-4-7 → claude-sonnet-4-5 업데이트
+- **SpeechManager.swift** 업데이트 — agentID 전파 수정, TTS-CharConfig 로그 추가
+- **Supertonic3ONNXRunner.swift** — S3Config 상수 전체 nonisolated(unsafe) (Swift 6 actor-isolation 경고 제거)
+- **pbxproj** 업데이트 — LLMModelRegistry.swift 등록 (LLMR264REL001FILEREF/BUILDFILE)
+- 검증: preflight264 22/22 + preflight265 18/18 + preflight266 16/16, Debug/Release BUILD SUCCEEDED
+
+---
+
+## 2026-05-23 (Round 263-CONVERSATION-RELIABILITY-GATE)
+
+### 완료 (2026-05-23)
+
+- Added available-key provider candidate routing in `AIService.getResponseStream`
+- Preserved OpenAI/Claude/OpenRouter HTTP status errors for provider fallback
+- Added `ConversationMemory.promptHistory` to exclude the current user turn from prompt history
+- Changed chat log insertion to return message IDs and added streaming message text updates
+- Split personal chat display streaming from TTS streaming so TTS-normalized chunks no longer become persisted chat text
+- Switched direct/team context assembly to room-scoped memory context
+- Added Round 263 preflight and conversation reliability policy/report
+
+---
+
+## 2026-05-23 (Round 262TTS-ANIMALESE-SPEECHLIKE-ENGINE)
+
+### 완료 (2026-05-23)
+
+- Rewrote Animalese from major-scale blip melody to syllable-like speech effect
+- Added Hangul syllable decomposition
+- Added vowel color, consonant transient, final tail
+- Added phrase pause and speech contour
+- Added speech/effect profile split
+- Added audio feature snapshot for click/ZCR QA
+- Preserved Chiko role
+- No Nintendo samples
+- No fallback TTS
+- Auto speak remains OFF
+
+---
+
+## 2026-05-23 (Round 261TTS-SPEED-PROBE-AND-ANIMALESE — speed 계측 + procedural blip speech)
+
+### 완료 (2026-05-23)
+
+- `SupertonicSpeedProbe.swift` 신규
+  - `SupertonicSpeedProbeResult`: speed/durationSec/sampleCount/elapsedMs/realtimeFactor
+  - `verifyOrdering()`: duration 감소 순서 검증
+  - `verdictSummary()`: "✅ Speed 적용됨" / "⚠️ Speed 의심" 판정
+  - `testSpeeds`: [0.70, 1.00, 1.30, 2.00]
+- `AnimaleseSynthesizer.swift` 신규
+  - `AnimaleseWaveform`: sine/triangle/squareSoft/noiseBlend
+  - `AnimaleseVoiceProfile`: cute(620Hz)/calm(430Hz)/deep(300Hz)/robot(520Hz,square)/tiny(760Hz)
+  - `AnimaleseConfig.from(profile:speed:)`: 프로필 기반 config factory
+  - `synthesize(text:config:)`: 한글/영문/숫자 → blip, 공백/구두점 → gap, ADSR envelope
+  - Nintendo 원본 샘플 없음, 외부 파일 로드 없음
+- `SpeechManager.probeSpeedApplication(text:preset:)` 추가
+  - 4개 speed 순차 Supertonic3 합성 → 결과 배열 반환
+  - 재생 없음. WAV 저장 없음. AppLog: [SpeedProbe] speed/duration/rtf
+- `SpeechManager.previewAnimalese(text:profile:speed:pitchOffset:label:)` 추가
+  - Supertonic3ONNXRunner 호출 없음. 모델 없어도 동작.
+  - AnimaleseSynthesizer.synthesize → AudioPlaybackService.playFloatSamples
+- `TTSLabView` 업데이트
+  - `speedProbeSection`: 문장/preset 표시, 계측 버튼, 결과 표
+  - `animaleseSection`: 문장/profile Picker/speed/pitchOffset 슬라이더/재생 버튼
+  - `speedProbeRow()` helper(@ViewBuilder): ForEach 타입추론 오류 방지
+
+### 빌드
+- Debug: BUILD SUCCEEDED ✅
+- Release: BUILD SUCCEEDED ✅
+
+### Preflight
+- `preflight_round258tts_character_voice_system.sh`: 38/38 ✅
+- `preflight_round259tts_voice_tuner.sh`: 22/22 ✅
+- `preflight_round260btts_official_speed_range.sh`: 18/18 ✅
+- `preflight_round261tts_speed_probe_animalese.sh`: 22/22 ✅
+
+---
+
+## 2026-05-23 (Round 260B-TTS-OFFICIAL-SPEED-RANGE — 공식 speed 범위 + Expression Tag A/B)
+
+### 완료 (2026-05-23)
+
+- `SupertonicExpressionTagPolicy.swift` 신규 생성
+  - `SupertonicExpressionTag`: `<laugh>/<breath>/<sigh>` 3종 + `recommended(for:)` 감정→tag 매핑
+  - `SupertonicExpressionTagPolicy.apply(tags:to:)` / `apply(emotion:to:)` — formal/numeric 가드 포함
+  - TTS Lab 전용; 기본 발화에는 미적용 정책 명시
+- `VoiceTuningState.swift` 업데이트
+  - `speedRange` 0.70~2.00 (공식 Supertonic3 범위)
+  - speed zone 상수: `recommendedSpeedRange`(0.90~1.30), `experimentalSpeedRange`(1.30~1.60), `extremeSpeedRange`(1.60~2.00)
+  - warning 임계값: `speedWarningLow`(0.80), `speedWarningHigh`(1.30), `speedExtremeHigh`(1.60)
+  - `speedStep` 0.01 → 0.05
+- `Supertonic3ONNXRunner.swift`: safeSpeed clamp `min(2.00, max(0.70, speed))`
+- `SupertonicProsodyTextProcessor.preprocess()`: `useExpressionTags: Bool = false` 파라미터 추가 (round 6단계)
+- `SpeechManager.previewWithTuning()`: `useExpressionTags: Bool = false` 파라미터 추가
+- `SupertonicVoicePresetPolicy.animalCrossingTuning()`: speed-first 재정의
+  - pitch M:+120/F:+160 (기존 +140/+180에서 감소)
+  - rate 1.12 → 1.08
+  - speed `min(1.60, max(1.35, base+0.35))`
+- `TTSLabView` 업데이트
+  - S 슬라이더: 존 배지(🟢권장/🟠실험/🔴특수효과) + 경고 3종
+  - Expression Tags A/B 테스트 섹션: 6개 감정 × "없음"/"태그" 버튼 쌍
+  - `useExpressionTagsInTest` State 변수 추가
+  - 빌드 오류 수정: `.font(.system(size:design:weight:))` → `.font(.system(size:weight:design:))`
+
+### 빌드
+- Debug: BUILD SUCCEEDED ✅
+- Release: BUILD SUCCEEDED ✅
+
+### Preflight
+- `preflight_round258tts_character_voice_system.sh`: 38/38 ✅
+- `preflight_round259tts_voice_tuner.sh`: 22/22 ✅ (grep -A 20 → -A 30 버그 수정 포함)
+- `preflight_round260btts_official_speed_range.sh`: 18/18 ✅
+
+---
+
+## 2026-05-23 (Round 259TTS-VOICE-TUNER — 임시 P/R/S 튜닝 + pitch 재조정 + Animal Crossing 모드 분리)
+
+### 완료 (2026-05-23)
+
+- `VoiceTuningState.swift` 신규 생성
+  - `VoiceTuningValues`: pitch/rate/speed 컨테이너 (Codable/Sendable/Equatable, `.neutral`, `.clamped`, `.displayString`)
+  - `VoiceTuningDefaults`: pitchRange(-180~+180), rateRange(0.92~1.12), speedRange(0.90~1.20), pitchArtifactThreshold(100)
+- `CharacterVoiceProfile` basePitch 재조정 (11개 캐릭터 모두 ±110 이하)
+  - 치코: 260→90, 핀: 320→90, 몽몽: 340→90, 루나: 180→80, 레오: -180→-80
+  - 모코/올리버 안정 범위 유지 (±60 이내)
+  - animalCrossingPitchBoost/RateBoost 필드 0으로 비활성화 (별도 tuning 방식으로 교체)
+- `SupertonicVoicePresetPolicy` 업데이트
+  - `animalCrossingTuning(for:) -> VoiceTuningValues` 추가 (M:+140, F:+180, rate:1.12)
+  - `.animalCrossing` 케이스 → animalCrossingTuning() 기반으로 변경 (boost 누적 제거)
+- `SpeechManager.previewWithTuning(text:preset:pitch:rate:speed:emotion:agentID:label:)` 추가
+  - 원본 preset + 캐릭터 + 감정 3가지 경로 모두 지원
+  - TTSRoutingPolicy guard, prosody 전처리, synthesize(speed:), playFloatSamples(pitch:rate:) 포함
+- `TTSLabView` 보이스 디렉터 섹션 대폭 개선
+  - `prsDescriptionBox`: P/R/S 파라미터 Grid 설명 + "목소리 개성은 preset, 빠르기는 S" 안내
+  - `prsTuningSection`: Toggle/Slider×3/경고/초기화/캐릭터기본값 버튼 포함
+  - 원본 Preset 테스트, 캐릭터 목소리 매핑, 감정 표현 테스트 3섹션 모두 useTuningOverride 분기
+  - 감정 샘플 문장 개선: confident "좋습니다. 핵심부터...", careful "조심스럽게 확인해보고...", excited "이건 바로 한번..."
+  - Round 258B→Round 259 badge 업데이트
+  - Animal Crossing 테스트 전용 안내 문구 추가
+- `scripts/preflight_round259tts_voice_tuner.sh` 신규 — 22/22 PASS ✅
+- `reports/round259tts_voice_tuner.md` 생성
+- Debug/Release BUILD SUCCEEDED ✅
+- 치코 role 수정 없음 ("UX 디자이너 & 온보딩 도우미" 유지)
+
+---
+
+## 2026-05-23 (Round 258B-TTS-EMOTION-AUDIT — 감정 표현 감사 + 보이스 디렉터 분리 + 팀 슬롯 동기화 강화)
+
+### 완료 (2026-05-23)
+
+- `CharacterVoiceProfile.emotionSpeedBoost` 필드 추가
+  - 감정 발화 시 speed 부스트 (레오/모코/케이/올리버: 0.00, 루나/치코: 0.03, 핀: 0.03, 래키: 0.02, 폴라: 0.01, 몽몽: 0.03, 렉스: -0.01)
+- `SupertonicVoicePresetPolicy` emotion-aware API 추가
+  - `emotionStyle(for:)` — 캐릭터 기본 감정 반환
+  - `pitch/rate/speed(for:emotion:)` — neutral→base, careful→base+min(0,boost), friendly/confident/excited→base+boost
+  - base API (`pitch/rate/speed(for:)`) → emotion=nil 위임으로 일원화
+- `SpeechManager` 업데이트
+  - dispatchToInferencePipeline + speakOnce: `emotionStyle(for:)` 조회 후 emotion-aware pitch/rate/speed 적용
+  - `previewPreset(text:preset:speed:)` 추가 — 원본 preset, pitch=0/rate=1/neutral
+  - `previewCharacterEmotion(text:agentID:emotion:)` 추가 — 캐릭터+감정 full preview
+- `TTSLabView` 보이스 디렉터 섹션 분리
+  - "원본 Preset 테스트": M1~F5 버튼 → `previewPreset()` 호출 (캐릭터 보정 없음)
+  - "감정 표현 테스트": 캐릭터 Picker + neutral/friendly/confident/careful/excited/animalCrossing 버튼
+  - `emotionPreviewAgentID` @State 추가
+- `AgentWindowManager.swapAgent()` 내부에 `syncSelectedTeamWorkroomAgents()` 호출 추가
+- `AgentSwapView` → `replaceTeamAgent(at:with:)` 사용 (swapAgent 직접 호출 제거)
+- `scripts/preflight_round258tts_character_voice_system.sh` 22 → 38 checks, 38/38 PASS ✅
+- `reports/round258b_tts_emotion_audit.md` 생성 (11캐릭터 × 6감정 매트릭스)
+- `docs/TTSProviderPolicy.md` Round 258B 섹션 추가
+- Debug/Release BUILD SUCCEEDED ✅
+
+---
+
+## 2026-05-23 (Round 258TTS-CHARACTER-VOICE-SYSTEM — 캐릭터 보이스 아이덴티티 + 감정 운율 + 팀원 교체 버그)
+
+### 완료 (2026-05-23)
+
+- `CharacterVoiceProfile.swift` 신규 — 11개 캐릭터 voice 프로필
+  - basePitch/baseRate: VoiceStyleCatalog 기존값 계승 (cents 기준)
+  - baseSpeed: Supertonic3 duration predictor 속도 스케일 (캐릭터별 0.95~1.08)
+  - defaultEmotionStyle: 캐릭터별 기본 감정 (레오:confident, 치코:friendly 등)
+  - animalCrossingPitchBoost/RateBoost: 강한 모드 추가 boost, 기본 OFF
+- `SupertonicProsodyTextProcessor.swift` 신규 — 경량 텍스트 전처리
+  - 법률/회계/숫자 감지 → neutral (변환 스킵)
+  - friendly 스타일 + 80자 이하: 공식 표현 소프트 변환
+  - 200자 초과 → 첫 200자 + "..."
+  - 말풍선 원문 절대 불변 — TTS 입력만 처리
+- `Supertonic3ONNXRunner.synthesize(speed:)` 파라미터화 (clamp 0.85~1.25)
+- `SupertonicVoicePresetPolicy` CharacterVoiceProfileCatalog 기반 재구성 + speed API 추가
+- `AudioPlaybackService.playFloatSamples(pitch:rate:)` + clampedPitch/clampedRate helpers
+- `SpeechManager` dispatchToInferencePipeline + speakOnce 양쪽 prosody + pitch/rate/speed 적용
+- `TTSLabView` 보이스 디렉터: preset 10개 + 캐릭터 11개 샘플 말하기 + pitch/rate/speed 표시
+- `AgentWindowManager` 치코 role → "UX 디자이너 & 온보딩 도우미"
+- `AgentWindowManager` replaceTeamAgent(at:with:) 래퍼 + syncSelectedTeamWorkroomAgents()
+- `TeamTableView` 팀원 교체 슬롯 서브메뉴 — 슬롯 0 고정 버그 수정
+- pbxproj에 신규 2개 파일 등록
+- preflight 22/22 PASS, Debug/Release BUILD SUCCEEDED
+
+---
+
+## 2026-05-23 (Round 257TTS-PLAYBACK — 합성 결과 AudioPlaybackService 재생 연결)
+
+### 완료 (2026-05-23)
+
+- `AudioPlaybackService.playFloatSamples(samples:sampleRate:streamId:characterName:onPlaybackStarted:)` 추가
+  - `AVAudioFormat(standardFormatWithSampleRate:channels:1)` — float non-interleaved 소스 포맷
+  - `AVAudioPCMBuffer` 생성 + `floatChannelData[0].update(from:count:)` 샘플 복사
+  - `prepareSession(...)` → 노드 재연결 + `currentActiveStreamId` 설정
+  - `convertBuffer(...)` → 엔진 포맷(44.1kHz stereo 등)으로 변환
+  - `playerNode.scheduleBuffer(...)` → `engine.start()` → `playerNode.play()`
+  - `playerNode.play()` **이후** `onPlaybackStarted` 호출 (MainActor, 립싱크 원칙)
+- `SpeechManager.speakOnce(text:agentID:)` 신규
+  - 합성 → `playback.playFloatSamples(...)` → WAV 저장(debug) → `TTSOutput` 반환
+  - 실패 시 `nil` 반환
+- `SpeechManager.dispatchToInferencePipeline` supertonic3 경로 수정
+  - 기존: WAV 저장 후 `onPlaybackStarted()` 직접 호출
+  - 변경: WAV 저장(debug) + `await playback.playFloatSamples(..., onPlaybackStarted:)`
+- `AgentChatView.SpeakButtonView` (Round 257TTS-PLAYBACK)
+  - `synthesize()` → `speakOnce()` 교체
+  - `SpeechManager.shared.speakOnce(text:agentID:)` 호출
+  - 성공: `hasPlayed = true` → `speaker.wave.2.fill`
+  - 실패: `errorMessage` + 아이콘 빨간색 + help 텍스트 변경
+- `scripts/preflight_round257tts_playback.sh` — **12/12 PASS** ✅
+- `reports/round257tts_playback.md` 추가
+- `docs/TTSProviderPolicy.md` 업데이트
+
+### 정책 유지
+
+- 자동 재생 기본 OFF (`autoSpeakDefaultEnabled = false`)
+- Apple TTS 영구 차단
+- 폴백 TTS 없음
+- 앱 launch auto-init 없음
+- Runtime Manual QA (스피커 출력 확인) 필요
+
+---
+
+## 2026-05-23 (Round 256TTS-OFFICIAL-ENGINE — Supertonic3 공식 엔진 승격)
+
+### 완료 (2026-05-23)
+
+- `TTSProductPolicy.officialEngineEnabled = true`, `officialEngine = .supertonic3`
+- `TTSProductPolicy.autoSpeakDefaultEnabled = false` — 자동 재생 기본 OFF
+- `TTSProductPolicy.fallbackTTSAvailable = false` — 폴백 TTS 없음 (이전과 동일)
+- `SupertonicVoicePresetPolicy.swift` 신규 — 11개 에이전트 ID → M/F 프리셋 매핑
+- `TTSRoutingPolicy.isSupertonic3Available` computed property 추가
+- `SpeechManager.synthesize(text:agentID:)` 공개 async API 추가
+  - `TTSRoutingPolicy.selectedProvider() == .supertonic3` gate
+  - `SupertonicVoicePresetPolicy.preset(for: agentID)` 으로 캐릭터별 프리셋
+  - `Supertonic3ONNXRunner.shared.synthesize(...)` 직접 호출
+  - `S3WavWriter.write(...)` 로 WAV Desktop 저장
+- `AgentChatView.SpeakButtonView` — 비-사용자 메시지 버블에 말하기(🔊) 버튼
+  - `TTSRoutingPolicy.isSupertonic3Available` false 시 비활성
+  - `isSynthesizing` 중 비활성
+  - 결과: `lastWavPath` 로컬 표시
+- `TTSLabView.officialEngineStatusSection` — 공식 엔진 상태 Grid 섹션
+- `RuntimeDiagnosticsService` 256TTS 필드 10개 추가
+- `ToolContractValidator` Round 256TTS validators 6개 구현
+  - `validateSupertonicOfficialEnginePolicy`
+  - `validateNoFallbackTTSAfterOfficialEngine`
+  - `validateNoAutoSpeakDefaultPolicy`
+  - `validateSupertonicCharacterVoicePresetPolicy` — 11 agent 매핑 검증
+  - `validateNoAppleTTSAfterOfficialEngine`
+  - `validateNoLaunchAutoInitAfterOfficialEngine`
+- `scripts/preflight_round256tts_official_engine.sh` — **18/18 PASS** ✅
+- `reports/round256tts_official_engine.md` 추가
+- `docs/TTSProviderPolicy.md` 업데이트 — 공식 엔진 섹션 추가, "Candidate" → "Official Engine"
+
+### 정책 결정
+
+- 모든 메시지 자동 재생: **기본 OFF** — 사용자가 말하기 버튼을 눌러야 합성 시작
+- Apple TTS: **영구 차단** (폴백 포함)
+- 폴백 TTS: **없음**
+- 앱 launch auto-init: **금지**
+- ONNX 파일 bundle 여부: **다음 gate에서 결정** (bundlePolicyAccepted=false)
+- release 통합 승인: **다음 gate에서 결정** (releaseIntegrationApproved=false)
+
+---
+
+## 2026-05-23 (Round 254TTS-PROBE-FIX — Supertonic Probe Runtime Status 수정)
+
+### 완료 (2026-05-23)
+
+- Added `Supertonic3ONNXRuntimeProbe.swift` — lightweight ONNX Runtime binding probe
+  - `import OnnxRuntimeBindings` + `ORTEnv` 생성 시도로 runtime linked 여부 판단
+  - inference 없음, model session 생성 없음, launch 자동 호출 금지
+- Removed hardcoded `runtimeAvailable: false` from `Supertonic3TTSProbe.run()`
+- Removed stale "248TTS에서 onnxruntime-swift-package-manager SPM 추가 예정" note
+- `Supertonic3TTSProbe.run()` now uses `Supertonic3ONNXRuntimeProbe.isRuntimeLinked`
+- `Supertonic3TTSProbe.probe()` now uses `Supertonic3ONNXRuntimeProbe.isRuntimeLinked`
+- `Supertonic3Readiness` enum: added `noticeRequired` case
+- `ONNXRuntimeAvailability` enum: added `noticeRequired` case
+- `Supertonic3ProbeRunResult`: added `noticeAccepted: Bool` field
+- `canSynthesize`: now reflects enabled + model + runtimeLinked + noticeAccepted
+- `detailedLines` includes `noticeAccepted` line
+- `TTSLabView.readinessBadge`: added `noticeRequired` case ("📋 고지 수락 필요")
+- `preflight_round254tts_probe_fix.sh`: 13/13 PASS
+- Debug build: SUCCEEDED / Release build: SUCCEEDED
+- Probe output after fix:
+  `runtime: linked — ONNX Runtime linked. 실제 합성은 ONNX 합성 실행으로 검증 필요.`
+  `noticeAccepted: true/false`
+  `canSynthesize: true` (enabled + model + runtime + notice all satisfied)
+- Release TTS exposure: 계속 locked
+- Actual synthesis (inference): 별도 ONNX 합성 실행으로 검증 필요
+
+---
+
+## 2026-05-22 (Round 254TTS-NOTICE — Supertonic License Notice + Use Restriction UX Gate)
+
+### 완료 (2026-05-22)
+
+- Added `SupertonicTTSNoticePolicy.swift` (notice version, UserDefaults keys, accept/reset)
+- Added `SupertonicNoticeCardView.swift` (license + use restriction card for TTSLabView)
+- TTSLabView: noticeAccepted @State, supertonicNoticeSection added, ONNX synthesis gated
+- TTSProductPolicy: licenseNoticeRequired/useRestrictionNoticeRequired/userNoticeAcceptanceRequired
+- RuntimeDiagnosticsService: 6 notice gate diagnostic fields
+- ToolContractValidator: 4 Round 254TTS validators
+- scripts/preflight_round254tts_notice.sh: 18/18 PASS
+- docs updated: SupertonicUseRestrictions.md, SupertonicCommercialLicenseReview.md, TTSProviderPolicy.md
+- Release exposure remains locked
+- No default TTS
+- No fallback TTS
+- No model bundling
+- No launch auto-init
+- Cloud static changes only; Mac build pending
+
+## 2026-05-22 (Round 254TTS-MAC-HANDOFF — Local Mac Build Verification Handoff)
+
+### 완료 (2026-05-22)
+
+- Created `scripts/local_round254tts_macverify.sh` (12-step local Mac verification script)
+  - Part 1: Static source code checks (8 checks, runs on any platform)
+  - Part 2: Mac build verification (4 checks, requires macOS + Xcode)
+  - Part 3: Runtime verification (manual, after app launch on Mac)
+- Created `docs/MacBuildHandoffRound254TTS.md` (complete handoff documentation)
+  - Implementation details of all cloud changes
+  - How to use the verification script
+  - Step-by-step instructions for local developer
+  - Expected behavior after implementation
+  - Troubleshooting guide
+  - Cloud verification results summary (18/18 PASS)
+- Cloud side: ✅ Complete (static checks + validators + diagnostics)
+- Mac side: 🔄 Pending local build and runtime verification
+- Handoff: 📋 Fully documented, ready for local Mac developer
+
 ## 2026-05-22 (Round 251TTS — Supertonic3 단독 후보 확정)
 
 ### 완료 (2026-05-22)

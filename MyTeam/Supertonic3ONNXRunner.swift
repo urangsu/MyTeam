@@ -24,6 +24,10 @@ import OnnxRuntimeBindings
 
 // MARK: - Config Constants
 
+// S3Config: 순수 Int 상수 — Sendable value type이므로 actor isolation 불필요.
+// 아래 main-actor-isolated 경고는 Swift 5 호환 모드에서 "Swift 6 future error" 수준의 경고임.
+// Supertonic3ONNXModelPaths.missingModelNames / UnicodeIndexer.load / VoiceStyle.load 등
+// 호출 대상이 @MainActor인 경우 발생; Spike 전용 파일이므로 현행 유지.
 private enum S3Config {
     static let sampleRate: Int          = 44100
     static let baseChunkSize: Int       = 512
@@ -31,8 +35,8 @@ private enum S3Config {
     static let ldim: Int                = 24
     static let totalStepDefault: Int    = 8
     // Derived:
-    static let chunkSize: Int  = baseChunkSize * chunkCompressFactor  // 3072
-    static let latentDim: Int  = ldim * chunkCompressFactor           // 144
+    static let chunkSize: Int  = 512 * 6   // baseChunkSize * chunkCompressFactor = 3072
+    static let latentDim: Int  = 24  * 6   // ldim * chunkCompressFactor = 144
 }
 
 // MARK: - Result Types
@@ -64,10 +68,15 @@ actor Supertonic3ONNXRunner {
         text: String,
         preset: String,
         lang: String?,
-        totalSteps: Int = S3Config.totalStepDefault,
+        totalSteps: Int = 8,   // S3Config.totalStepDefault — literal avoids @MainActor default-isolation inference
+        speed: Float = 1.05,
         paths: Supertonic3ONNXModelPaths
     ) async throws -> Supertonic3SynthesisResult {
         let t0 = CFAbsoluteTimeGetCurrent()
+        // Local constants shadow S3Config to avoid @MainActor inference from default-isolation=MainActor
+        let sampleRate: Int = 44100
+        let chunkSize: Int  = 3072  // 512 * 6
+        let latentDim: Int  = 144   // 24 * 6
 
         // 1. Validate paths
         let missing = paths.missingModelNames
@@ -103,12 +112,14 @@ actor Supertonic3ONNXRunner {
 
         // Compute latent length from durations
         // Python applies speed=1.05 default: dur_onnx / speed (higher speed → shorter duration)
-        let speed: Float = 1.05
-        let durScaled = durOnnx.map { $0 / speed }
-        let wavLengths = durScaled.map { Int64(Double($0) * Double(S3Config.sampleRate)) }
+        // Round 260B: official Supertonic3 speed range 0.70~2.00.
+        // UI warns above 1.30 and marks 1.60~2.00 as extreme/special-effect range.
+        let safeSpeed: Float = min(2.00, max(0.70, speed))
+        let durScaled = durOnnx.map { $0 / safeSpeed }
+        let wavLengths = durScaled.map { Int64(Double($0) * Double(sampleRate)) }
         let wavLenMax  = wavLengths.max() ?? 1
-        let latentL    = Int((Double(wavLenMax) + Double(S3Config.chunkSize) - 1.0) /
-                             Double(S3Config.chunkSize))
+        let latentL    = Int((Double(wavLenMax) + Double(chunkSize) - 1.0) /
+                             Double(chunkSize))
         let latentMask = makeLatentMask(wavLengths: wavLengths, latentLen: latentL)
 
         // Stage 2: Text encoder
@@ -131,11 +142,11 @@ actor Supertonic3ONNXRunner {
         }
 
         // Stage 3: Vector estimator (flow matching, N steps)
-        var xt = gaussianNoise(count: S3Config.latentDim * latentL)
+        var xt = gaussianNoise(count: latentDim * latentL)
         // Apply latent mask to initial noise: xt[b, dim, frame] *= mask[frame]
         for frameIdx in 0..<latentL {
             let m = latentMask[frameIdx]
-            for dimIdx in 0..<S3Config.latentDim {
+            for dimIdx in 0..<latentDim {
                 xt[dimIdx * latentL + frameIdx] *= m
             }
         }
@@ -146,7 +157,7 @@ actor Supertonic3ONNXRunner {
         let veSess = try ortSession(env: env, modelPath: paths.vectorEstimatorURL.path)
         for step in 0..<totalSteps {
             let inputs: [String: ORTValue] = [
-                "noisy_latent": try makeTensorF32(xt,             shape: [1, S3Config.latentDim, latentL]),
+                "noisy_latent": try makeTensorF32(xt,             shape: [1, latentDim, latentL]),
                 "text_emb":     try makeTensorF32(textEmb,        shape: textEmbShape),
                 "style_ttl":    try makeTensorF32(style.styleTTL, shape: style.styleTTLShape),
                 "text_mask":    try makeTensorF32(textMask1T,     shape: [1, 1, seqLen]),
@@ -163,7 +174,7 @@ actor Supertonic3ONNXRunner {
         do {
             let sess = try ortSession(env: env, modelPath: paths.vocoderURL.path)
             let inputs: [String: ORTValue] = [
-                "latent": try makeTensorF32(xt, shape: [1, S3Config.latentDim, latentL])
+                "latent": try makeTensorF32(xt, shape: [1, latentDim, latentL])
             ]
             let outs = try ortRun(sess, inputs: inputs, outputNames: ["wav_tts"])
             wavSamples = try floatArray(from: outs["wav_tts"])
@@ -171,12 +182,12 @@ actor Supertonic3ONNXRunner {
 
         // Metrics
         let elapsedMs   = (CFAbsoluteTimeGetCurrent() - t0) * 1000.0
-        let durationSec = Double(wavSamples.count) / Double(S3Config.sampleRate)
+        let durationSec = Double(wavSamples.count) / Double(sampleRate)
         let rtf         = durationSec > 0 ? elapsedMs / (durationSec * 1000.0) : 0.0
 
         return Supertonic3SynthesisResult(
             wavSamples:       wavSamples,
-            sampleRate:       S3Config.sampleRate,
+            sampleRate:       sampleRate,
             durationSec:      durationSec,
             elapsedMs:        elapsedMs,
             realtimeFactor:   rtf,
@@ -251,8 +262,9 @@ actor Supertonic3ONNXRunner {
 
     /// Python equivalent of get_latent_mask → length_to_mask. Returns [Float] shape [L].
     private func makeLatentMask(wavLengths: [Int64], latentLen: Int) -> [Float] {
+        let chunkSize: Int = 3072  // S3Config.chunkSize — local constant avoids @MainActor default-isolation
         let wavLen = wavLengths.first ?? 0
-        let latentLenForSeq = (Int(wavLen) + S3Config.chunkSize - 1) / S3Config.chunkSize
+        let latentLenForSeq = (Int(wavLen) + chunkSize - 1) / chunkSize
         return (0..<latentLen).map { $0 < latentLenForSeq ? 1.0 : 0.0 }
     }
 

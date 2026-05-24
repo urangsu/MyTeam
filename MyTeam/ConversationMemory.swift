@@ -7,6 +7,24 @@ import PDFKit
 
 class ConversationMemory {
 
+    // MARK: - Prompt History Contract
+
+    /// Returns room-scoped prompt history without the current user turn.
+    /// The active request is appended separately by AIService message builders, so including it
+    /// here makes models see the same user instruction twice.
+    static func promptHistory(
+        messages: [AgentWindowManager.ChatLog],
+        excludingMessageID: UUID?,
+        maxMessages: Int
+    ) -> [AgentWindowManager.ChatLog] {
+        let filtered = messages.filter { log in
+            if let excludingMessageID, log.id == excludingMessageID { return false }
+            if log.isSystem { return false }
+            return true
+        }
+        return Array(filtered.suffix(maxMessages))
+    }
+
     // MARK: - 대화 요약 (토큰 관리)
 
     /// 30개 초과 메시지를 AI로 요약하여 컨텍스트 윈도우 관리

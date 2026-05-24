@@ -11,19 +11,21 @@ struct WorkroomHomeView: View {
     var onPromptDispatched: ((String) -> Void)?  // 초보자 카드 / 가이드 메시지에서 직접 프롬프트 dispatch
 
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 16) {
 
-                // MARK: - Header
-                VStack(alignment: .leading, spacing: 4) {
+            // MARK: - Header
+            VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(model.title)
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.primary)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
                             Text(model.subtitle)
                                 .font(.system(size: 12))
                                 .foregroundColor(.secondary)
+                                .lineLimit(1)
                         }
                         Spacer()
 
@@ -147,15 +149,20 @@ struct WorkroomHomeView: View {
                                 Button(action: {
                                     onPrimaryActionTapped?(action)
                                 }) {
-                                    VStack(spacing: 4) {
+                                    HStack(spacing: 8) {
                                         Image(systemName: action.iconName)
                                             .font(.system(size: 16, weight: .semibold))
+                                            .frame(width: 20)
                                         Text(action.title)
-                                            .font(.system(size: 10, weight: .medium))
-                                            .lineLimit(1)
+                                            .font(.system(size: 11, weight: .medium))
+                                            .lineLimit(2)
+                                            .multilineTextAlignment(.leading)
+                                            .minimumScaleFactor(0.9)
+                                        Spacer(minLength: 0)
                                     }
                                     .frame(maxWidth: .infinity)
-                                    .frame(height: 60)
+                                    .frame(minHeight: 64)
+                                    .padding(.horizontal, 10)
                                     .foregroundColor(.blue)
                                     .background(
                                         RoundedRectangle(cornerRadius: 8)
@@ -181,9 +188,8 @@ struct WorkroomHomeView: View {
                 }
 
                 Spacer(minLength: 16)
-            }
         }
-        .frame(maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .onAppear {
             if let roomID = manager.currentRoomID {
                 CharacterReactionEventSink.shared.notifyWorkroomOpened(roomID: roomID)

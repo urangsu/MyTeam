@@ -9,6 +9,7 @@ enum ONNXRuntimeAvailability: String, Codable, Sendable {
     case packageMissing    // onnxruntime-swift not in SPM
     case packagePresent    // SPM registered but runtime unavailable
     case runtimeReady      // OrtEnvironment initialized, can create sessions
+    case noticeRequired    // Runtime linked but user notice not yet accepted
 }
 
 protocol ONNXRuntimeSessionProtocol: Sendable {

@@ -250,11 +250,25 @@ enum ToolContractValidator {
         validateTTSDefaultSilentPolicy(issues: &issues)
         validateSupertonic3DevLabGatePolicy(issues: &issues)
 
+        // Round 254TTS-NOTICE validators
+        validateSupertonicNoticePolicyAvailable(issues: &issues)
+        validateSupertonicUseRestrictionNoticePolicy(issues: &issues)
+        validateSupertonicNoticeAcceptanceGatePolicy(issues: &issues)
+        validateSupertonicReleaseGateStillLockedPolicy(issues: &issues)
+
         // Round 249TTS-SPIKE validators
         validateSupertonicONNXSpikeIsolation(issues: &issues)
         validateSupertonicNoAutoInit(issues: &issues)
         validateSupertonicModelNotBundled(issues: &issues)
         validateNoUserFacingTTSUntilReady(issues: &issues)
+
+        // Round 256TTS-OFFICIAL-ENGINE validators
+        validateSupertonicOfficialEnginePolicy(issues: &issues)
+        validateNoFallbackTTSAfterOfficialEngine(issues: &issues)
+        validateNoAutoSpeakDefaultPolicy(issues: &issues)
+        validateSupertonicCharacterVoicePresetPolicy(issues: &issues)
+        validateNoAppleTTSAfterOfficialEngine(issues: &issues)
+        validateNoLaunchAutoInitAfterOfficialEngine(issues: &issues)
 
         // Round 266A-275Z: Skill Workflow Governance validators
         validateAssistOnlyNeverExecutesExternalWrite(skills: skills, issues: &issues)
@@ -1967,6 +1981,63 @@ enum ToolContractValidator {
         }
     }
 
+    // MARK: - Round 254TTS-NOTICE Validators
+
+    private static func validateSupertonicNoticePolicyAvailable(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonicNoticePolicyAvailable {
+            issues.append(issue(.error, "SupertonicTTSNoticePolicy.swift가 없습니다. Round 254TTS-NOTICE 정책 파일이 누락되었습니다."))
+        }
+        // Notice card UI must also exist
+        let cardExists = FileManager.default.fileExists(atPath: "MyTeam/SupertonicNoticeCardView.swift")
+        if !cardExists {
+            issues.append(issue(.error, "SupertonicNoticeCardView.swift가 없습니다. Round 254TTS-NOTICE 고지 카드가 누락되었습니다."))
+        }
+    }
+
+    private static func validateSupertonicUseRestrictionNoticePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonicUseRestrictionNoticeRequired {
+            issues.append(issue(.error, "TTSProductPolicy.useRestrictionNoticeRequired가 false입니다. 사용 제한 고지는 항상 필수입니다."))
+        }
+        if !snap.supertonicLicenseNoticeRequired {
+            issues.append(issue(.error, "TTSProductPolicy.licenseNoticeRequired가 false입니다. 라이선스 고지는 항상 필수입니다."))
+        }
+    }
+
+    private static func validateSupertonicNoticeAcceptanceGatePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonicNoticeAcceptanceRequired {
+            issues.append(issue(.error, "TTSProductPolicy.userNoticeAcceptanceRequired가 false입니다. 사용자 고지 수락은 항상 필수입니다."))
+        }
+        // Verify TTSLabView gates synthesis on noticeAccepted
+        let labContent = (try? String(contentsOfFile: "MyTeam/TTSLabView.swift", encoding: .utf8)) ?? ""
+        if !labContent.contains("!noticeAccepted") {
+            issues.append(issue(.error, "TTSLabView.swift의 ONNX 합성 버튼이 noticeAccepted로 gate되지 않습니다."))
+        }
+        if !labContent.contains("SupertonicNoticeCardView") {
+            issues.append(issue(.error, "TTSLabView.swift가 SupertonicNoticeCardView를 사용하지 않습니다."))
+        }
+    }
+
+    private static func validateSupertonicReleaseGateStillLockedPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.supertonicReleaseGateStillLocked {
+            issues.append(issue(.error, "TTSProductPolicy.canShipAsProductFeature가 true입니다. 모든 릴리즈 gate 조건이 충족될 때까지 false여야 합니다."))
+        }
+        // Confirm userFacingTTSEnabled is still false
+        if TTSProductPolicy.userFacingTTSEnabled {
+            issues.append(issue(.error, "TTSProductPolicy.userFacingTTSEnabled가 true입니다. Release TTS는 여전히 비활성이어야 합니다."))
+        }
+        if TTSProductPolicy.fallbackTTSAvailable {
+            issues.append(issue(.error, "TTSProductPolicy.fallbackTTSAvailable가 true입니다. 폴백 TTS는 금지됩니다."))
+        }
+    }
+
     // MARK: - Round 249TTS-SPIKE Validators
 
     private static func validateSupertonicONNXSpikeIsolation(issues: inout [ToolContractValidationIssue]) {
@@ -2010,6 +2081,82 @@ enum ToolContractValidator {
         // and model is available. Since isEnabled defaults to false, this is safe.
         // Validator just ensures the gate struct itself still reports false.
         // (This validator will auto-pass when SupertonicProductReadiness is updated post-QA.)
+    }
+
+    // MARK: - Round 256TTS-OFFICIAL-ENGINE Validators
+
+    private static func validateSupertonicOfficialEnginePolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if !snap.ttsOfficialEngineEnabled {
+            issues.append(issue(.error,
+                "TTSProductPolicy.officialEngineEnabled가 false입니다. Round 256TTS에서 Supertonic3는 공식 엔진으로 승격되었습니다."))
+        }
+        if snap.ttsOfficialEngine != TTSProviderKind.supertonic3.rawValue {
+            issues.append(issue(.error,
+                "TTSProductPolicy.officialEngine이 supertonic3가 아닙니다. 현재 값: \(snap.ttsOfficialEngine)"))
+        }
+    }
+
+    private static func validateNoFallbackTTSAfterOfficialEngine(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if snap.ttsFallbackAvailableAfterOfficial {
+            issues.append(issue(.error,
+                "TTSProductPolicy.fallbackTTSAvailable가 true입니다. 공식 엔진 채택 후 폴백 TTS는 금지되어 있습니다. Apple TTS 포함 어떤 폴백도 없어야 합니다."))
+        }
+    }
+
+    private static func validateNoAutoSpeakDefaultPolicy(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        if snap.ttsAutoSpeakDefaultEnabled {
+            issues.append(issue(.error,
+                "TTSProductPolicy.autoSpeakDefaultEnabled가 true입니다. 모든 메시지 자동 재생은 기본 OFF여야 합니다. 사용자가 명시적으로 말하기 버튼을 눌러야만 합성이 시작됩니다."))
+        }
+    }
+
+    private static func validateSupertonicCharacterVoicePresetPolicy(issues: inout [ToolContractValidationIssue]) {
+        // SupertonicVoicePresetPolicy.swift 존재 여부와 에이전트 ID → 프리셋 매핑 확인
+        let presetForLeo = SupertonicVoicePresetPolicy.preset(for: "agent_1")
+        if presetForLeo.isEmpty {
+            issues.append(issue(.error,
+                "SupertonicVoicePresetPolicy.preset(for:)가 agent_1에 대해 빈 문자열을 반환합니다. 캐릭터 보이스 프리셋 매핑이 필요합니다."))
+        }
+        let allPresets = ["M1","M2","M3","M4","M5","F1","F2","F3","F4","F5"]
+        if !allPresets.contains(presetForLeo) {
+            issues.append(issue(.error,
+                "SupertonicVoicePresetPolicy.preset(for: \"agent_1\") 반환값 '\(presetForLeo)'가 유효한 Supertonic3 프리셋이 아닙니다."))
+        }
+        // 11개 에이전트 전체 매핑 검증
+        let agentIDs = (1...11).map { "agent_\($0)" }
+        for agentID in agentIDs {
+            let preset = SupertonicVoicePresetPolicy.preset(for: agentID)
+            if !allPresets.contains(preset) {
+                issues.append(issue(.warning,
+                    "SupertonicVoicePresetPolicy.preset(for: \"\(agentID)\") 반환값 '\(preset)'가 유효하지 않습니다."))
+            }
+        }
+    }
+
+    private static func validateNoAppleTTSAfterOfficialEngine(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        // appleSystemTTSBlocked는 Round 247TTS부터 관리; 공식 엔진 채택 후에도 여전히 차단이어야 함
+        if !snap.appleSystemTTSBlocked {
+            issues.append(issue(.error,
+                "Apple TTS (AVSpeechSynthesizer) 차단 정책이 해제되었습니다. 공식 엔진 채택 후에도 Apple TTS는 절대 허용 안 됨 (폴백 포함)."))
+        }
+    }
+
+    private static func validateNoLaunchAutoInitAfterOfficialEngine(issues: inout [ToolContractValidationIssue]) {
+        let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
+        guard let snap else { return }
+        // 앱 launch 시 Supertonic3ONNXRunner.shared를 자동 init하면 안 됨
+        if snap.supertonicONNXAutoInitOnLaunch {
+            issues.append(issue(.error,
+                "앱 launch 시 Supertonic3ONNXRunner.shared 자동 초기화가 감지되었습니다. 공식 엔진 채택 후에도 launch auto-init은 금지입니다. 사용자가 말하기 버튼을 누를 때만 초기화되어야 합니다."))
+        }
     }
 
     // Round 266A-275Z validators

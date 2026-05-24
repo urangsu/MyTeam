@@ -250,6 +250,102 @@ actor AudioPlaybackService: AudioPlayable {
         }
     }
 
+    // MARK: - Round 257TTS-PLAYBACK: Float samples 직접 재생 (Supertonic3 전용)
+
+    /// Supertonic3ONNXRunner 합성 결과([Float] wavSamples)를 AVAudioEngine을 통해 직접 재생.
+    /// - Parameters:
+    ///   - samples: Float [-1, 1] PCM samples (Supertonic3 출력)
+    ///   - sampleRate: 출력 샘플레이트 (보통 44100)
+    ///   - streamId: 세션 식별자 (UUID().uuidString 권장)
+    ///   - characterName: 로그용 캐릭터 이름
+    ///   - pitch: AVAudioUnitTimePitch.pitch (cents). clamp: -300~+360. default 0.0
+    ///   - rate: AVAudioUnitTimePitch.rate 배율. clamp: 0.90~1.14. default 1.0
+    ///   - onPlaybackStarted: playerNode.play() 이후 MainActor에서 호출되는 콜백 (nil 가능)
+    func playFloatSamples(
+        samples: [Float],
+        sampleRate: Int,
+        streamId: String,
+        characterName: String,
+        pitch: Float = 0.0,
+        rate: Float = 1.0,
+        onPlaybackStarted: (@Sendable () -> Void)? = nil
+    ) async {
+        guard !samples.isEmpty else {
+            AppLog.info("[AudioPlayback] playFloatSamples: empty samples → skip")
+            if let cb = onPlaybackStarted { Task { @MainActor in cb() } }
+            return
+        }
+        guard let ef = engineFormat else {
+            AppLog.error("[AudioPlayback] playFloatSamples: engineFormat nil — engine not ready")
+            return
+        }
+
+        // 1. 소스 포맷: standardFormat(44.1kHz, 1ch, float32 non-interleaved)
+        guard let srcFormat = AVAudioFormat(standardFormatWithSampleRate: Double(sampleRate), channels: 1) else {
+            AppLog.error("[AudioPlayback] playFloatSamples: 소스 포맷 생성 실패")
+            return
+        }
+        let frameCount = AVAudioFrameCount(samples.count)
+
+        // 2. AVAudioPCMBuffer 생성 + Float 샘플 복사
+        guard let srcBuffer = AVAudioPCMBuffer(pcmFormat: srcFormat, frameCapacity: frameCount) else {
+            AppLog.error("[AudioPlayback] playFloatSamples: PCM 버퍼 할당 실패")
+            return
+        }
+        srcBuffer.frameLength = frameCount
+        guard let channelData = srcBuffer.floatChannelData else {
+            AppLog.error("[AudioPlayback] playFloatSamples: floatChannelData nil")
+            return
+        }
+        channelData[0].update(from: samples, count: Int(frameCount))
+
+        // 3. 세션 준비 (노드 재연결 + currentActiveStreamId 설정)
+        // Round 258TTS: pitch/rate clamp 적용 후 prepareSession에 전달
+        prepareSession(streamId: streamId, characterName: characterName,
+                       pitch: clampedPitch(pitch), rate: clampedRate(rate))
+
+        // 4. 엔진 포맷으로 변환 (모노→스테레오, 샘플레이트 변환 포함)
+        guard let outBuffer = convertBuffer(srcBuffer, from: srcFormat, to: ef) else {
+            AppLog.error("[AudioPlayback] playFloatSamples: 포맷 변환 실패")
+            return
+        }
+
+        // 5. 버퍼 스케줄링
+        playerNode.volume = 1.0
+        // completionCallbackType 오버로드 사용 — async 대안 경고 없이 콜백 패턴 유지
+        playerNode.scheduleBuffer(outBuffer, at: nil, options: [], completionCallbackType: .dataPlayedBack) { [weak self] _ in
+            Task { [weak self] in
+                guard let self else { return }
+                await self.decrementBufferCount()
+            }
+        }
+        queuedBufferCount += 1
+
+        // 6. 엔진 시작 + 재생 — playerNode.play() 먼저, 콜백은 그 이후
+        if !engine.isRunning {
+            do { try engine.start() }
+            catch {
+                AppLog.error("[AudioPlayback] playFloatSamples: engine.start() 실패: \(error)")
+                return
+            }
+        }
+        if !playerNode.isPlaying {
+            playerNode.play()
+            AppLog.info("[AudioPlayback] ▶️ playFloatSamples 재생 시작 "
+                + "(streamId=\(streamId.prefix(12)), frames=\(frameCount), sr=\(sampleRate)Hz, char=\(characterName))")
+        }
+
+        // 7. playerNode.play() 이후 콜백 — 립싱크 원칙 준수
+        if let cb = onPlaybackStarted {
+            Task { @MainActor in cb() }
+        }
+    }
+
+    // MARK: - Round 258TTS: pitch/rate clamp helpers
+    // 범위: VoicePlaybackStyle.clamped와 동일 (SpeechManager.swift 참고)
+    private func clampedPitch(_ p: Float) -> Float { min(360, max(-300, p)) }
+    private func clampedRate(_ r: Float) -> Float { min(1.14, max(0.90, r)) }
+
     func stopAll() {
 
         playerNode.stop()

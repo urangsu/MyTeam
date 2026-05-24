@@ -205,7 +205,7 @@ struct SettingsView: View {
             }
         }
         .preferredColorScheme(manager.isDarkMode ? .dark : .light)
-        .frame(width: 500, height: currentTab == 5 ? 780 : 600)
+        .frame(width: 500, height: currentTab == 5 ? 700 : 600)
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear {
             TeamNameplateAppearanceSettings.migrateLegacyValuesIfNeeded()
@@ -292,19 +292,6 @@ struct SettingsView: View {
                 }
             }
 
-            Section("음성") {
-                Toggle(isOn: Binding(
-                    get: { !manager.isSilentMode },
-                    set: { manager.isSilentMode = !$0 }
-                )) {
-                    Label("음성 출력", systemImage: "waveform")
-                }
-                Toggle(isOn: $useAnimalCrossingTTS) {
-                    Label("동물의숲 효과", systemImage: "sparkles")
-                }
-                .disabled(manager.isSilentMode)
-            }
-
             Section("팀원창") {
                 LabeledContent("투명도 \(Int(agentWindowOpacity * 100))%") {
                     Slider(value: $agentWindowOpacity, in: 0...1.0, step: 0.05)
@@ -333,6 +320,19 @@ struct SettingsView: View {
             } footer: {
                 Text("AI가 익숙하지 않아도 업무 카드로 바로 시작할 수 있어요.")
                     .font(.caption2)
+            }
+
+            Section("음성") {
+                Toggle(isOn: Binding(
+                    get: { !manager.isSilentMode },
+                    set: { manager.isSilentMode = !$0 }
+                )) {
+                    Label("음성 출력", systemImage: "waveform")
+                }
+                Toggle(isOn: $useAnimalCrossingTTS) {
+                    Label("동물의숲 효과", systemImage: "sparkles")
+                }
+                .disabled(manager.isSilentMode)
             }
 
             Section {

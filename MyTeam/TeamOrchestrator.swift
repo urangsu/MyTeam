@@ -48,7 +48,8 @@ class TeamOrchestrator {
         roomID: UUID,
         manager: AgentWindowManager,
         maxTurns: Int = 6,
-        precomputedRouting: IntentResult? = nil
+        precomputedRouting: IntentResult? = nil,
+        currentUserMessageID: UUID? = nil
     ) async {
         // 디바운싱: 마지막 토의로부터 2초 이상 경과해야만 진행
         let now = Date()
@@ -70,6 +71,7 @@ class TeamOrchestrator {
             let toolEvidence = await ToolEvidenceService.gather(for: userMessage, policy: toolPolicy)
             let groundedUserMessage = userMessage
                 + manager.roomProfileContext(roomID: roomID)
+                + manager.scopedMemoryContext(agentName: leader?.name ?? "팀", roomID: roomID)
                 + toolEvidence.promptContext
 
             // 1. 의도 분류 및 리더 추천 (Intent Router)
@@ -111,7 +113,8 @@ class TeamOrchestrator {
                     leader: leader,
                     preferredFirstSpeaker: addressedAgent,
                     alreadySpoke: alreadySpoke,
-                    sources: toolEvidence.sources
+                    sources: toolEvidence.sources,
+                    currentUserMessageID: currentUserMessageID
                 )
             } else {
                 // [TRACK B] 수다 모드 (Chitchat Mode) - 기존 릴레이 방식
@@ -123,7 +126,8 @@ class TeamOrchestrator {
                     leader: leader,
                     preferredFirstSpeaker: addressedAgent,
                     alreadySpoke: alreadySpoke,
-                    sources: toolEvidence.sources
+                    sources: toolEvidence.sources,
+                    currentUserMessageID: currentUserMessageID
                 )
             }
             
@@ -132,7 +136,7 @@ class TeamOrchestrator {
             
         } catch {
             print("Orchestration Error: \(error)")
-            await MainActor.run {
+            _ = await MainActor.run {
                 manager.addChatLog(roomID: roomID, agentID: "system", agentName: "시스템", text: "팀 업무 수행 중 오류가 발생했습니다: \(error.localizedDescription)", isUser: false)
             }
         }
@@ -146,7 +150,8 @@ class TeamOrchestrator {
         userMessage: String,
         roomID: UUID,
         manager: AgentWindowManager,
-        maxTurns: Int = 3
+        maxTurns: Int = 3,
+        currentUserMessageID: UUID? = nil
     ) async {
         let now = Date()
         guard now.timeIntervalSince(lastDiscussionTime) >= discussionCooldown else { return }
@@ -171,6 +176,7 @@ class TeamOrchestrator {
         }
         let groundedUserMessage = userMessage
             + manager.roomProfileContext(roomID: roomID)
+            + manager.scopedMemoryContext(agentName: leader?.name ?? "팀", roomID: roomID)
             + toolEvidence.promptContext
 
         let alreadySpoke = await emitUnavailableMentionNoticeIfNeeded(
@@ -197,7 +203,8 @@ class TeamOrchestrator {
             leader: leader,
             preferredFirstSpeaker: addressedAgent,
             alreadySpoke: alreadySpoke,
-            sources: toolEvidence.sources
+            sources: toolEvidence.sources,
+            currentUserMessageID: currentUserMessageID
         )
     }
 
@@ -228,7 +235,8 @@ class TeamOrchestrator {
         leader: AgentWindowManager.AgentConfig?,
         preferredFirstSpeaker: AgentWindowManager.AgentConfig?,
         alreadySpoke: Bool,
-        sources: [AgentWindowManager.SourceReference]
+        sources: [AgentWindowManager.SourceReference],
+        currentUserMessageID: UUID?
     ) async -> Bool {
         guard let orders = routing.workOrders, !orders.isEmpty else { return false }
         let agents = manager.activeAgents
@@ -467,7 +475,8 @@ class TeamOrchestrator {
         leader: AgentWindowManager.AgentConfig?,
         preferredFirstSpeaker: AgentWindowManager.AgentConfig?,
         alreadySpoke: Bool,
-        sources: [AgentWindowManager.SourceReference]
+        sources: [AgentWindowManager.SourceReference],
+        currentUserMessageID: UUID?
     ) async -> Bool {
         var lastSpeakerID: String? = nil
         var didSpeakInThisDiscussion = alreadySpoke
@@ -475,7 +484,12 @@ class TeamOrchestrator {
         var discussionSucceeded = false
 
         for turn in 0..<maxTurns {
-            let history = manager.rooms.first(where: { $0.id == roomID })?.messages ?? []
+            let roomMessages = manager.rooms.first(where: { $0.id == roomID })?.messages ?? []
+            let history = ConversationMemory.promptHistory(
+                messages: roomMessages,
+                excludingMessageID: currentUserMessageID,
+                maxMessages: 12
+            )
             await MainActor.run {
                 manager.teamRuntimeState = TeamRuntimeState.selectingSpeaker(
                     roomID: roomID,

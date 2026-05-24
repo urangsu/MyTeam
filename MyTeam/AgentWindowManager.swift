@@ -19,7 +19,7 @@ class AgentWindowManager: ObservableObject {
         AgentConfig(id: "agent_2",  name: "루나",   role: "마케터/콘텐츠 기획", emoji: "🐰", color: .pink,   isPremium: false, status: "바이럴 캠페인 기획 중",    spriteName: nil, fallbackImageName: "루나_profile", dragEmoji: "😆", dragRotation:  10, dragSoundName: "Blow",  dropSoundName: "Pop"),
         AgentConfig(id: "agent_3",  name: "모코",   role: "프로젝트 매니저",    emoji: "🐹", color: .purple, isPremium: false, status: "이미 다 계획해둔 마스터",  spriteName: nil, fallbackImageName: "모코_profile", dragEmoji: "😵", dragRotation:  -8, dragSoundName: "Morse", dropSoundName: "Funk"),
         AgentConfig(id: "agent_4",  name: "핀",     role: "UI 디자이너",        emoji: "🐧", color: .cyan,   isPremium: false, status: "픽셀 하나에 30분째 고민", spriteName: nil, fallbackImageName: "핀_profile", dragEmoji: "😱", dragRotation:  12, dragSoundName: "Ping",  dropSoundName: "Pop"),
-        AgentConfig(id: "agent_5",  name: "치코",   role: "문서·할일 정리 팀원", emoji: "🐿️", color: Color(red:0.6, green:0.4, blue:0.2), isPremium: false, status: "문서와 할 일을 정리하는 중", spriteName: "치코", fallbackImageName: "치코_profile", dragEmoji: "🤯", dragRotation: -10, dragSoundName: "Pop",   dropSoundName: "Funk"),
+        AgentConfig(id: "agent_5",  name: "치코",   role: "UX 디자이너 & 온보딩 도우미", emoji: "🐿️", color: Color(red:0.6, green:0.4, blue:0.2), isPremium: false, status: "UX와 온보딩을 도와주는 중", spriteName: "치코", fallbackImageName: "치코_profile", dragEmoji: "🤯", dragRotation: -10, dragSoundName: "Pop",   dropSoundName: "Funk"),
         AgentConfig(id: "agent_6",  name: "렉스",   role: "법률 전문가",        emoji: "🦥", color: .green,  isPremium: true,  status: "계약서 검토 중 (천천히)", spriteName: nil, fallbackImageName: "렉스_profile", dragEmoji: "😴", dragRotation:  14, dragSoundName: "Blow",  dropSoundName: "Pop"),
         AgentConfig(id: "agent_7",  name: "케이",   role: "보안/데이터 전문가", emoji: "🐕", color: .blue,   isPremium: true,  status: "보안 로그 분석 중",       spriteName: nil, fallbackImageName: "케이_profile", dragEmoji: "😐", dragRotation:  -5, dragSoundName: "Morse", dropSoundName: "Funk"),
         AgentConfig(id: "agent_8",  name: "래키",   role: "백엔드 개발자",      emoji: "🦝", color: .gray,   isPremium: true,  status: "밤새워 API 디버깅 중",    spriteName: nil, fallbackImageName: "래키_profile", dragEmoji: "😵‍💫", dragRotation:   8, dragSoundName: "Ping",  dropSoundName: "Pop"),
@@ -1024,12 +1024,37 @@ class AgentWindowManager: ObservableObject {
             activeAgents[index] = routedAgent
         }
 
+        // Round 258B: activeAgents 변경 후 selectedTeamWorkroom 동기화
+        syncSelectedTeamWorkroomAgents()
+
         // 교체 TTS — 동기적 flush 후 즉시 실행 (딜레이 없음)
         if !isSilentMode {
             SpeechManager.shared.stopSpeaking()
             let greeting = swapGreeting(for: routedAgent.name)
             SpeechManager.shared.speak(text: greeting, agentID: routedAgent.id, characterName: routedAgent.name)
         }
+    }
+
+    // MARK: - Round 258TTS: 팀원 교체 래퍼 + 워크룸 동기화
+
+    /// 슬롯 index의 팀원을 agentID로 교체. swapAgent(at:with:) 기반 래퍼.
+    /// - Parameters:
+    ///   - index: 교체할 슬롯 인덱스 (0~3)
+    ///   - agentID: 새로 투입할 에이전트 ID
+    @MainActor
+    func replaceTeamAgent(at index: Int, with agentID: String) {
+        guard activeAgents.indices.contains(index) else { return }
+        guard let newAgent = allAvailableAgents.first(where: { $0.id == agentID }) else { return }
+        // 이미 활성화된 에이전트면 위치 스왑 (swapAgent 동작과 동일)
+        swapAgent(at: index, with: newAgent)
+        syncSelectedTeamWorkroomAgents()
+    }
+
+    /// 현재 선택된 팀 워크룸의 agentIDs를 activeAgents와 동기화.
+    func syncSelectedTeamWorkroomAgents() {
+        guard let roomID = selectedTeamWorkroomID,
+              let idx = rooms.firstIndex(where: { $0.id == roomID }) else { return }
+        rooms[idx].agentIDs = activeAgents.map(\.id)
     }
 
     // MARK: - 팀 리더 관리
@@ -1213,6 +1238,7 @@ class AgentWindowManager: ObservableObject {
     // MARK: - 창 크기 동적 조절 (SwiftUI에서 호출)
     func updateStatusWindowSize(width: CGFloat, height: CGFloat) {
         guard let panel = statusPanel else { return }
+        if panel.tuckState.tuckedEdge != nil { panel.restoreFromTuck() }
         var frame = panel.frame
         let heightDiff = height - frame.size.height
         frame.origin.y -= heightDiff
@@ -1223,6 +1249,7 @@ class AgentWindowManager: ObservableObject {
     
     func updateChatWindowWidth(id: String, width: CGFloat) {
         guard let panel = chatPanels["chat_single"] else { return }
+        if panel.tuckState.tuckedEdge != nil { panel.restoreFromTuck() }
         var frame = panel.frame
         frame.size.width = width
         panel.setFrame(frame, display: true, animate: true)
@@ -1230,6 +1257,7 @@ class AgentWindowManager: ObservableObject {
 
     func updateChatWindowSize(id: String, width: CGFloat, height: CGFloat, minSize: NSSize? = nil) {
         guard let panel = chatPanels["chat_single"] else { return }
+        if panel.tuckState.tuckedEdge != nil { panel.restoreFromTuck() }
         if let minSize { panel.minSize = minSize }
         var frame = panel.frame
         // y 좌표를 조정해서 창이 위로 줄어들지 않고 아래쪽이 고정되게
@@ -1237,6 +1265,14 @@ class AgentWindowManager: ObservableObject {
         frame.origin.y -= heightDiff
         frame.size = NSSize(width: width, height: height)
         panel.setFrame(frame, display: true, animate: true)
+    }
+
+    func tuckChatWindow(edge: PanelTuckEdge = .bottom) {
+        chatPanels["chat_single"]?.tuck(to: edge)
+    }
+
+    func restoreChatWindowFromTuck() {
+        chatPanels["chat_single"]?.restoreFromTuck()
     }
 
     func savedChatWindowSize() -> NSSize? {
@@ -1250,6 +1286,7 @@ class AgentWindowManager: ObservableObject {
 
     /// roomID 명시 필수형 — 비동기 Task 안에서는 반드시 이것을 사용한다.
     /// 발신 시점의 roomID를 캡처해서 전달해야 race condition / room 오염을 막는다.
+    @discardableResult
     func addChatLog(
         roomID: UUID,
         agentID: String,
@@ -1259,16 +1296,43 @@ class AgentWindowManager: ObservableObject {
         isSystem: Bool = false,
         sources: [SourceReference] = [],
         skillID: String? = nil
-    ) {
-        guard let index = rooms.firstIndex(where: { $0.id == roomID }) else { return }
+    ) -> UUID? {
+        guard let index = rooms.firstIndex(where: { $0.id == roomID }) else { return nil }
         let newLog = ChatLog(id: UUID(), agentID: agentID, agentName: agentName,
                              text: text, isUser: isUser, timestamp: Date(), isSystem: isSystem, sources: sources, skillID: skillID)
         rooms[index].messages.append(newLog)
+        return newLog.id
+    }
+
+    func updateChatLogText(
+        roomID: UUID,
+        messageID: UUID,
+        text: String,
+        sources: [SourceReference] = []
+    ) {
+        guard let roomIndex = rooms.firstIndex(where: { $0.id == roomID }),
+              let messageIndex = rooms[roomIndex].messages.firstIndex(where: { $0.id == messageID }) else {
+            return
+        }
+        rooms[roomIndex].messages[messageIndex] = ChatLog(
+            id: rooms[roomIndex].messages[messageIndex].id,
+            agentID: rooms[roomIndex].messages[messageIndex].agentID,
+            agentName: rooms[roomIndex].messages[messageIndex].agentName,
+            text: text,
+            isUser: rooms[roomIndex].messages[messageIndex].isUser,
+            timestamp: rooms[roomIndex].messages[messageIndex].timestamp,
+            isSystem: rooms[roomIndex].messages[messageIndex].isSystem,
+            attachments: rooms[roomIndex].messages[messageIndex].attachments,
+            sources: sources,
+            skillID: rooms[roomIndex].messages[messageIndex].skillID,
+            artifactIDs: rooms[roomIndex].messages[messageIndex].artifactIDs
+        )
     }
 
     /// ⚠️ currentRoomID를 내부에서 읽어 비동기 컨텍스트에서 race condition 위험이 있습니다.
     /// 비동기 Task 내부에서는 addChatLog(roomID:...) 명시형을 사용하세요.
     @available(*, deprecated, message: "Use addChatLog(roomID:agentID:agentName:text:isUser:) in async contexts to avoid room contamination")
+    @discardableResult
     func addChatLog(
         agentID: String,
         agentName: String,
@@ -1278,11 +1342,11 @@ class AgentWindowManager: ObservableObject {
         isSystem: Bool = false,
         sources: [SourceReference] = [],
         skillID: String? = nil
-    ) {
+    ) -> UUID? {
         let rid = roomID ?? currentRoomID
-        guard let rid else { return }
-        addChatLog(roomID: rid, agentID: agentID, agentName: agentName,
-                   text: text, isUser: isUser, isSystem: isSystem, sources: sources, skillID: skillID)
+        guard let rid else { return nil }
+        return addChatLog(roomID: rid, agentID: agentID, agentName: agentName,
+                          text: text, isUser: isUser, isSystem: isSystem, sources: sources, skillID: skillID)
     }
 
     func replaceMessages(roomID: UUID, with messages: [ChatLog]) {
@@ -1719,10 +1783,6 @@ class AgentWindowManager: ObservableObject {
     func renameRoom(id: UUID, newName: String) {
         guard let index = rooms.firstIndex(where: { $0.id == id }) else { return }
         rooms[index].name = newName
-        if rooms[index].profile?.mode != .blogWriting,
-           inferredRoomProfile(for: newName).mode == .blogWriting {
-            rooms[index].profile = .blogWriting(sourceURLs: rooms[index].profile?.sourceURLs ?? [])
-        }
     }
 
     func applyRoomTemplate(_ mode: RoomMode, to roomID: UUID) {
@@ -1877,7 +1937,7 @@ class AgentWindowManager: ObservableObject {
     // MARK: - Room-Scoped Artifact Facade (Round 137A)
 
     /// 특정 방의 최근 artifact만 반환한다.
-    /// RecentArtifactIndex(room-scoped) 우선 조회 → index 미기록 시 currentRoomID 한정 global fallback.
+    /// RecentArtifactIndex(room-scoped) 우선 조회 → index 미기록 시 roomID 메타데이터 일치 항목만 허용.
     @MainActor
     func recentArtifacts(for roomID: UUID) -> [IndexedArtifact] {
         let indexEntries = recentArtifactIndexEntries(for: roomID)
@@ -1886,11 +1946,9 @@ class AgentWindowManager: ObservableObject {
             let filtered = recentArtifacts.filter { idSet.contains($0.id) }
             if !filtered.isEmpty { return filtered }
         }
-        // Fallback: 현재 방인 경우에만 전역 목록 허용 (다른 방에 오염 방지)
-        if roomID == currentRoomID {
-            return recentArtifacts
+        return recentArtifacts.filter { artifact in
+            artifact.roomID == roomID.uuidString
         }
-        return []
     }
 
     /// room-scoped artifact lookup by ID

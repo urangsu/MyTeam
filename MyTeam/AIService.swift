@@ -2,6 +2,39 @@ import Foundation
 import Combine
 
 
+// MARK: - LLMResponseMetadata
+// Round 269B: 실제 사용된 provider + model 정보를 포함한 응답 메타데이터.
+// 진단 UI, 로그, fallback 추적에 사용한다.
+struct LLMResponseMetadata: Sendable {
+    let provider: LLMProvider
+    let modelID: String         // 실제 사용된 모델 ID (discovery 결과 포함)
+    let fallbackChain: [LLMProvider]  // 실제 시도된 provider 순서
+    let usedFallback: Bool      // 선호 provider 대신 fallback provider 사용 여부
+    var providerDisplayName: String { provider.displayName }
+}
+
+// MARK: - ResolvedLLMCall
+// Round 270B: LLM 호출 결과 추적 — 실제로 사용된 provider/model 기록.
+// metadata.modelID가 항상 pinnedModelID였던 버그를 수정하기 위해 도입.
+struct ResolvedLLMCall: Sendable {
+    enum ModelSource: Sendable {
+        case cached(String)       // 이전 discovery 결과 재사용
+        case discovered(String)   // 이번 API 호출로 확인
+        case floor(String)        // pinnedModelID fallback
+    }
+    let provider: LLMProvider
+    let modelID: String
+    let source: ModelSource
+
+    var displayDescription: String {
+        switch source {
+        case .cached(let m):     return "\(provider.displayName) / \(m) (cached)"
+        case .discovered(let m): return "\(provider.displayName) / \(m) (live)"
+        case .floor(let m):      return "\(provider.displayName) / \(m) (pinned)"
+        }
+    }
+}
+
 // MARK: - AIService (ModelRouter 통합)
 final class AIService {
     static let shared = AIService()
@@ -17,30 +50,124 @@ final class AIService {
         text: String,
         agentID: String,
         chatHistory: [AgentWindowManager.ChatLog],
-        agentConfig: AgentWindowManager.AgentConfig? = nil
+        agentConfig: AgentWindowManager.AgentConfig? = nil,
+        requiresToolUse: Bool = false
     ) -> AsyncThrowingStream<String, Error> {
+        let preferredProvider = preferredProvider(for: agentConfig)
+        let candidates = providerCandidates(preferred: preferredProvider, requiresToolUse: requiresToolUse)
 
-        let provider: LLMProvider
-        if let configured = agentConfig?.llmProvider {
-            provider = configured
-        } else if let raw = UserDefaults.standard.string(forKey: "defaultLLMProvider"),
-                  let defaultProvider = LLMProvider(rawValue: raw) {
-            provider = defaultProvider
-        } else {
-            provider = .gemini
+        guard !candidates.isEmpty else {
+            return AsyncThrowingStream { continuation in
+                continuation.finish(throwing: AIServiceError.noAPIKeys)
+            }
         }
 
+        return AsyncThrowingStream { continuation in
+            Task {
+                var lastError: Error?
+                for provider in candidates {
+                    var didYieldToken = false
+                    do {
+                        AppLog.info("[AIService] provider candidate=\(provider.displayName) agent=\(agentID)")
+                        let stream = streamForProvider(
+                            provider,
+                            text: text,
+                            agentID: agentID,
+                            chatHistory: chatHistory,
+                            agentConfig: agentConfig
+                        )
+                        for try await token in stream {
+                            didYieldToken = true
+                            continuation.yield(token)
+                        }
+                        continuation.finish()
+                        return
+                    } catch {
+                        lastError = error
+                        AppLog.warning("[AIService] provider \(provider.displayName) failed: \(error.localizedDescription)")
+                        if didYieldToken || !shouldFallbackProvider(after: error) {
+                            continuation.finish(throwing: error)
+                            return
+                        }
+                    }
+                }
+                continuation.finish(throwing: lastError ?? AIServiceError.noAPIKeys)
+            }
+        }
+    }
+
+    private func preferredProvider(for agentConfig: AgentWindowManager.AgentConfig?) -> LLMProvider {
+        if let configured = agentConfig?.llmProvider {
+            return configured
+        }
+        if let raw = UserDefaults.standard.string(forKey: "defaultLLMProvider"),
+           let defaultProvider = LLMProvider(rawValue: raw) {
+            return defaultProvider
+        }
+        return .gemini
+    }
+
+    func providerCandidates(preferred: LLMProvider, requiresToolUse: Bool = false) -> [LLMProvider] {
+        // Round 268-P3: tool use 필요 시 tool-capable provider (Claude, OpenAI) 우선 배치
+        let toolCapable: [LLMProvider] = [.claude, .openAI]
+        let baseOrder: [LLMProvider]
+        if requiresToolUse && !toolCapable.contains(preferred) {
+            // Round 270B: preferred가 tool-capable 아닐 때 tool-capable을 먼저, preferred는 그 다음
+            // 수정 전(버그): [preferred] + toolCapable → preferred(Gemini)가 tool 지원 없이 첫 번째
+            // 수정 후: toolCapable + [preferred] + 나머지
+            let nonCapableRest = [LLMProvider.gemini, .openRouter].filter { !toolCapable.contains($0) && $0 != preferred }
+            baseOrder = toolCapable + [preferred] + nonCapableRest
+        } else if requiresToolUse {
+            // Preferred가 이미 tool-capable → preferred 유지, non-capable은 후순위
+            let others = [LLMProvider.openAI, .claude, .gemini, .openRouter].filter { $0 != preferred }
+            baseOrder = [preferred] + others
+        } else {
+            baseOrder = [preferred, .openAI, .claude, .gemini, .openRouter]
+        }
+        var seen = Set<LLMProvider>()
+        return baseOrder.filter { provider in
+            guard seen.insert(provider).inserted else { return false }
+            if provider == .gemini && isGeminiProviderCoolingDown() {
+                return hasAPIKey(for: .claude) || hasAPIKey(for: .openRouter) ? false : hasAPIKey(for: provider)
+            }
+            return hasAPIKey(for: provider)
+        }
+    }
+
+    private func hasAPIKey(for provider: LLMProvider) -> Bool {
+        !(KeychainManager.load(key: keychainKey(for: provider)) ?? "").isEmpty
+    }
+
+    private func keychainKey(for provider: LLMProvider) -> String {
+        switch provider {
+        case .gemini: return "geminiAPIKey"
+        case .openAI: return "openAIAPIKey"
+        case .claude: return "claudeAPIKey"
+        case .openRouter: return "openRouterAPIKey"
+        }
+    }
+
+    private func streamForProvider(
+        _ provider: LLMProvider,
+        text: String,
+        agentID: String,
+        chatHistory: [AgentWindowManager.ChatLog],
+        agentConfig: AgentWindowManager.AgentConfig?,
+        resolvedCall: ResolvedLLMCall? = nil
+    ) -> AsyncThrowingStream<String, Error> {
         switch provider {
         case .gemini:
-            return geminiStream(text: text, agentID: agentID, chatHistory: chatHistory)
+            return geminiStream(text: text, agentID: agentID, chatHistory: chatHistory, resolvedCall: resolvedCall)
         case .openAI:
-            let modelId = AIModelPolicy.resolvedModelID(
-                provider: .openAI,
-                configuredModelID: UserDefaults.standard.string(forKey: "openAIModelId")
+            return openAIStream(
+                text: text,
+                agentID: agentID,
+                chatHistory: chatHistory,
+                configuredModelID: UserDefaults.standard.string(forKey: "openAIModelId"),
+                resolvedCall: resolvedCall
             )
-            return openAIStream(text: text, agentID: agentID, chatHistory: chatHistory, modelId: modelId)
         case .claude:
-            return claudeStream(text: text, agentID: agentID, chatHistory: chatHistory)
+            return claudeStream(text: text, agentID: agentID, chatHistory: chatHistory, resolvedCall: resolvedCall)
         case .openRouter:
             let modelId = AIModelPolicy.resolvedModelID(
                 provider: .openRouter,
@@ -50,9 +177,119 @@ final class AIService {
         }
     }
 
+    private func shouldFallbackProvider(after error: Error) -> Bool {
+        if let aiError = error as? AIServiceError {
+            switch aiError {
+            case .noAPIKeys, .invalidResponse:
+                return true
+            case .httpError(let code, _):
+                return [401, 403, 404, 408, 409, 429, 500, 502, 503, 504].contains(code)
+            case .networkError:
+                return true
+            case .invalidProvider:
+                return false
+            }
+        }
+        if let urlError = error as? URLError {
+            return urlError.code != .cancelled
+        }
+        return true
+    }
+
     private var cachedGeminiModelId: String?
     private var cachedClaudeModelId: String?
     private var cachedOpenAIModelId: String?
+
+    // Round 268-CACHE-EXPIRY: 모델 discovery 캐시 만료 정책 (1시간)
+    private var cachedGeminiModelIdAt: Date?
+    private var cachedClaudeModelIdAt: Date?
+    private var cachedOpenAIModelIdAt: Date?
+    private let modelCacheMaxAge: TimeInterval = 3600 // 1시간
+
+    private func isCacheExpired(_ cacheDate: Date?) -> Bool {
+        guard let d = cacheDate else { return true }
+        return Date().timeIntervalSince(d) > modelCacheMaxAge
+    }
+
+    private func resolveLLMCall(
+        for provider: LLMProvider,
+        apiKey: String? = nil,
+        configuredModelID: String? = nil
+    ) async -> ResolvedLLMCall {
+        let trimmedConfigured = configuredModelID?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if AIModelPolicy.modelOverrideAllowed,
+           !trimmedConfigured.isEmpty,
+           !LLMModelRegistry.isKnownBroken(trimmedConfigured) {
+            return ResolvedLLMCall(provider: provider, modelID: trimmedConfigured, source: .floor(trimmedConfigured))
+        }
+
+        switch provider {
+        case .gemini:
+            let floor = AIModelPolicy.pinnedModelID(for: .gemini)
+            guard AIModelPolicy.dynamicModelDiscoveryAllowed else {
+                return ResolvedLLMCall(provider: provider, modelID: floor, source: .floor(floor))
+            }
+            if let cached = cachedGeminiModelId,
+               !isGeminiModelCoolingDown(cached),
+               !isCacheExpired(cachedGeminiModelIdAt) {
+                return ResolvedLLMCall(provider: provider, modelID: cached, source: .cached(cached))
+            }
+            cachedGeminiModelId = nil
+            cachedGeminiModelIdAt = nil
+            let key = apiKey ?? KeychainManager.load(key: keychainKey(for: .gemini)) ?? ""
+            if !key.isEmpty,
+               let discovered = try? await discoverLatestGeminiModel(apiKey: key),
+               !isGeminiModelCoolingDown(discovered) {
+                cachedGeminiModelId = discovered
+                cachedGeminiModelIdAt = Date()
+                return ResolvedLLMCall(provider: provider, modelID: discovered, source: .discovered(discovered))
+            }
+            return ResolvedLLMCall(provider: provider, modelID: floor, source: .floor(floor))
+
+        case .claude:
+            let floor = AIModelPolicy.pinnedModelID(for: .claude)
+            guard AIModelPolicy.dynamicModelDiscoveryAllowed else {
+                return ResolvedLLMCall(provider: provider, modelID: floor, source: .floor(floor))
+            }
+            if let cached = cachedClaudeModelId, !isCacheExpired(cachedClaudeModelIdAt) {
+                return ResolvedLLMCall(provider: provider, modelID: cached, source: .cached(cached))
+            }
+            cachedClaudeModelId = nil
+            cachedClaudeModelIdAt = nil
+            let key = apiKey ?? KeychainManager.load(key: keychainKey(for: .claude)) ?? ""
+            if !key.isEmpty,
+               let discovered = try? await discoverLatestClaudeModel(apiKey: key) {
+                cachedClaudeModelId = discovered
+                cachedClaudeModelIdAt = Date()
+                return ResolvedLLMCall(provider: provider, modelID: discovered, source: .discovered(discovered))
+            }
+            return ResolvedLLMCall(provider: provider, modelID: floor, source: .floor(floor))
+
+        case .openAI:
+            let floor = AIModelPolicy.pinnedModelID(for: .openAI)
+            guard AIModelPolicy.dynamicModelDiscoveryAllowed else {
+                return ResolvedLLMCall(provider: provider, modelID: floor, source: .floor(floor))
+            }
+            if let cached = cachedOpenAIModelId, !isCacheExpired(cachedOpenAIModelIdAt) {
+                return ResolvedLLMCall(provider: provider, modelID: cached, source: .cached(cached))
+            }
+            cachedOpenAIModelId = nil
+            cachedOpenAIModelIdAt = nil
+            let key = apiKey ?? KeychainManager.load(key: keychainKey(for: .openAI)) ?? ""
+            if !key.isEmpty,
+               let discovered = try? await discoverLatestOpenAIModel(apiKey: key) {
+                cachedOpenAIModelId = discovered
+                cachedOpenAIModelIdAt = Date()
+                return ResolvedLLMCall(provider: provider, modelID: discovered, source: .discovered(discovered))
+            }
+            return ResolvedLLMCall(provider: provider, modelID: floor, source: .floor(floor))
+
+        case .openRouter:
+            let resolved = LLMModelRegistry.OpenRouter.resolve(configured: trimmedConfigured)
+            let model = LLMModelRegistry.isKnownBroken(resolved) ? LLMModelRegistry.OpenRouter.primary : resolved
+            return ResolvedLLMCall(provider: provider, modelID: model, source: .floor(model))
+        }
+    }
 
     /// 모델별 429 쿨다운 — [modelId: 만료 시각]
     private var gemini429Cooldown: [String: Date] = [:]
@@ -76,7 +313,7 @@ final class AIService {
 
     private func markGeminiModel429(_ modelId: String) {
         gemini429Cooldown[modelId] = Date().addingTimeInterval(gemini429CooldownSeconds)
-        if cachedGeminiModelId == modelId { cachedGeminiModelId = nil }
+        if cachedGeminiModelId == modelId { cachedGeminiModelId = nil; cachedGeminiModelIdAt = nil }
 
         // Aggressive protection: 429 1회 발생 즉시 provider 전체 쿨다운
         // (이전: 2회 연속 후 쿨다운 → 데모 모드에서는 1회도 낭비 방지)
@@ -180,7 +417,7 @@ final class AIService {
         validModels.sort { $0.score > $1.score }
 
         guard let bestModel = validModels.first?.id else {
-            return "gemini-2.0-flash"
+            return LLMModelRegistry.Gemini.primary
         }
         
         AppLog.info("[AIService] 🔍 Self-Healing: 최신 Gemini 모델 동적 색인 성공 -> \(bestModel)")
@@ -193,7 +430,7 @@ final class AIService {
             return AIModelPolicy.pinnedModelID(for: .claude)
         }
         guard let url = URL(string: "https://api.anthropic.com/v1/models") else {
-            return "claude-opus-4-7"
+            return LLMModelRegistry.Claude.primary
         }
         var request = URLRequest(url: url)
         request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
@@ -203,15 +440,16 @@ final class AIService {
         guard let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200,
               let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let models = json["data"] as? [[String: Any]] else {
-            return "claude-opus-4-7"
+            return LLMModelRegistry.Claude.primary
         }
 
         let best = models
             .compactMap { $0["id"] as? String }
             .filter { $0.hasPrefix("claude-") }
+            .filter { !LLMModelRegistry.isKnownBroken($0) }
             .map { (id: $0, score: scoreModel($0)) }
             .sorted { $0.score > $1.score }
-            .first?.id ?? "claude-opus-4-7"
+            .first?.id ?? LLMModelRegistry.Claude.primary
 
         AppLog.info("[AIService] 🔍 Claude 모델 동적 색인 성공 -> \(best)")
         return best
@@ -223,7 +461,7 @@ final class AIService {
             return AIModelPolicy.pinnedModelID(for: .openAI)
         }
         guard let url = URL(string: "https://api.openai.com/v1/models") else {
-            return "gpt-4o"
+            return LLMModelRegistry.OpenAI.fallback
         }
         var request = URLRequest(url: url)
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
@@ -232,7 +470,7 @@ final class AIService {
         guard let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200,
               let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let models = json["data"] as? [[String: Any]] else {
-            return "gpt-4o"
+            return LLMModelRegistry.OpenAI.fallback
         }
 
         let excludePatterns = ["instruct", "embedding", "tts", "whisper", "dall-e",
@@ -241,10 +479,11 @@ final class AIService {
             .compactMap { $0["id"] as? String }
             .filter { id in
                 id.hasPrefix("gpt-") && !excludePatterns.contains(where: { id.contains($0) })
+                && !LLMModelRegistry.isKnownBroken(id)
             }
             .map { (id: $0, score: scoreModel($0)) }
             .sorted { $0.score > $1.score }
-            .first?.id ?? "gpt-4o"
+            .first?.id ?? LLMModelRegistry.OpenAI.fallback
 
         AppLog.info("[AIService] 🔍 OpenAI 모델 동적 색인 성공 -> \(best)")
         return best
@@ -257,7 +496,7 @@ final class AIService {
            let range = Range(match.range(at: 1), in: text),
            let v = Double(String(text[range])) { return v }
 
-        // 2. 대시 구분 major-minor 1~2자리: "claude-opus-4-7"→4.7, "claude-3-5-sonnet"→3.5
+        // 2. 대시 구분 major-minor 1~2자리: "claude-sonnet-4-5"→4.5, "claude-3-5-sonnet"→3.5
         // 8자리 날짜(20240620)는 \d{1,2} 제한으로 자동 제외
         if let regex = try? NSRegularExpression(pattern: "(?:^|[-_])(\\d{1,2})-(\\d{1,2})(?:[-_]|$)"),
            let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
@@ -328,6 +567,7 @@ final class AIService {
         text: String,
         agentID: String,
         chatHistory: [AgentWindowManager.ChatLog],
+        resolvedCall: ResolvedLLMCall? = nil,
         retryCount: Int = 0
     ) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
@@ -357,25 +597,13 @@ final class AIService {
                     return
                 }
 
-                // ── 모델 선택 (Release는 pinned, DEBUG는 쿨다운 중 모델 제외) ──
-                let fallbackFlash = AIModelPolicy.pinnedModelID(for: .gemini)
-                let modelToUse: String
-                if AIModelPolicy.modelOverrideAllowed {
-                    if let cached = cachedGeminiModelId, !isGeminiModelCoolingDown(cached) {
-                        modelToUse = cached
-                    } else {
-                        cachedGeminiModelId = nil
-                        if let discoveredModel = try? await discoverLatestGeminiModel(apiKey: apiKey),
-                           !isGeminiModelCoolingDown(discoveredModel) {
-                            modelToUse = discoveredModel
-                            cachedGeminiModelId = discoveredModel
-                        } else {
-                            modelToUse = fallbackFlash
-                        }
-                    }
+                let resolved: ResolvedLLMCall
+                if let resolvedCall {
+                    resolved = resolvedCall
                 } else {
-                    modelToUse = fallbackFlash
+                    resolved = await resolveLLMCall(for: .gemini, apiKey: apiKey)
                 }
+                let modelToUse = resolved.modelID
 
                 guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(modelToUse):streamGenerateContent?key=\(apiKey)&alt=sse") else {
                     continuation.finish(throwing: AIServiceError.invalidResponse)
@@ -394,7 +622,10 @@ final class AIService {
                     body["system_instruction"] = ["parts": [["text": systemPrompt]]]
                 }
                 
-                request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+                guard let bodyData = try? JSONSerialization.data(withJSONObject: body) else {
+                    continuation.finish(throwing: AIServiceError.invalidResponse); return
+                }
+                request.httpBody = bodyData
 
                 do {
                     // withTaskCancellationHandler: 취소 시 즉시 로그 + CancellationError 전파
@@ -477,7 +708,8 @@ final class AIService {
     private func claudeStream(
         text: String,
         agentID: String,
-        chatHistory: [AgentWindowManager.ChatLog]
+        chatHistory: [AgentWindowManager.ChatLog],
+        resolvedCall: ResolvedLLMCall? = nil
     ) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             Task {
@@ -501,19 +733,13 @@ final class AIService {
                 request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
                 request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
 
-                let claudeModel: String
-                if AIModelPolicy.modelOverrideAllowed {
-                    if let cached = cachedClaudeModelId {
-                        claudeModel = cached
-                    } else if let discovered = try? await discoverLatestClaudeModel(apiKey: apiKey) {
-                        claudeModel = discovered
-                        cachedClaudeModelId = discovered
-                    } else {
-                        claudeModel = AIModelPolicy.pinnedModelID(for: .claude)
-                    }
+                let resolved: ResolvedLLMCall
+                if let resolvedCall {
+                    resolved = resolvedCall
                 } else {
-                    claudeModel = AIModelPolicy.pinnedModelID(for: .claude)
+                    resolved = await resolveLLMCall(for: .claude, apiKey: apiKey)
                 }
+                let claudeModel = resolved.modelID
 
                 let messages = buildAnthropicMessages(text: text, chatHistory: chatHistory)
                 let systemPrompt = buildSystemPrompt(agentID: agentID)
@@ -527,7 +753,10 @@ final class AIService {
                 if !systemPrompt.isEmpty {
                     body["system"] = systemPrompt
                 }
-                request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+                guard let bodyData = try? JSONSerialization.data(withJSONObject: body) else {
+                    continuation.finish(throwing: AIServiceError.invalidResponse); return
+                }
+                request.httpBody = bodyData
 
                 do {
                     let (result, response) = try await withTaskCancellationHandler {
@@ -535,8 +764,12 @@ final class AIService {
                     } onCancel: {
                         AppLog.info("[AIService] Claude request cancelled (task cancellation)")
                     }
-                    guard let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200 else {
+                    guard let httpResp = response as? HTTPURLResponse else {
                         continuation.finish(throwing: AIServiceError.invalidResponse)
+                        return
+                    }
+                    guard httpResp.statusCode == 200 else {
+                        continuation.finish(throwing: AIServiceError.httpError(httpResp.statusCode, "Claude 응답 오류"))
                         return
                     }
 
@@ -572,7 +805,8 @@ final class AIService {
         text: String,
         agentID: String,
         chatHistory: [AgentWindowManager.ChatLog],
-        modelId: String
+        configuredModelID: String?,
+        resolvedCall: ResolvedLLMCall? = nil
     ) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             Task {
@@ -585,23 +819,17 @@ final class AIService {
                     return
                 }
 
-                let resolvedModel: String
-                if AIModelPolicy.modelOverrideAllowed {
-                    var model = modelId.isEmpty ? "" : modelId
-                    if model.isEmpty {
-                        if let cached = cachedOpenAIModelId {
-                            model = cached
-                        } else if let discovered = try? await discoverLatestOpenAIModel(apiKey: apiKey) {
-                            model = discovered
-                            cachedOpenAIModelId = discovered
-                        } else {
-                            model = AIModelPolicy.pinnedModelID(for: .openAI)
-                        }
-                    }
-                    resolvedModel = model
+                let resolved: ResolvedLLMCall
+                if let resolvedCall {
+                    resolved = resolvedCall
                 } else {
-                    resolvedModel = AIModelPolicy.pinnedModelID(for: .openAI)
+                    resolved = await resolveLLMCall(
+                        for: .openAI,
+                        apiKey: apiKey,
+                        configuredModelID: configuredModelID
+                    )
                 }
+                let resolvedModel = resolved.modelID
 
                 guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else {
                     continuation.finish(throwing: AIServiceError.invalidResponse)
@@ -624,7 +852,10 @@ final class AIService {
                     "stream": true,
                     "max_tokens": 1024
                 ]
-                request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+                guard let bodyData = try? JSONSerialization.data(withJSONObject: body) else {
+                    continuation.finish(throwing: AIServiceError.invalidResponse); return
+                }
+                request.httpBody = bodyData
 
                 do {
                     let (result, response) = try await withTaskCancellationHandler {
@@ -632,8 +863,12 @@ final class AIService {
                     } onCancel: {
                         AppLog.info("[AIService] OpenAI request cancelled (task cancellation)")
                     }
-                    guard let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200 else {
+                    guard let httpResp = response as? HTTPURLResponse else {
                         continuation.finish(throwing: AIServiceError.invalidResponse)
+                        return
+                    }
+                    guard httpResp.statusCode == 200 else {
+                        continuation.finish(throwing: AIServiceError.httpError(httpResp.statusCode, "OpenAI 응답 오류"))
                         return
                     }
 
@@ -704,7 +939,10 @@ final class AIService {
                     "messages": messages,
                     "stream": true
                 ]
-                request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+                guard let bodyData = try? JSONSerialization.data(withJSONObject: body) else {
+                    continuation.finish(throwing: AIServiceError.invalidResponse); return
+                }
+                request.httpBody = bodyData
 
                 do {
                     let (result, response) = try await withTaskCancellationHandler {
@@ -712,8 +950,12 @@ final class AIService {
                     } onCancel: {
                         AppLog.info("[AIService] OpenRouter request cancelled (task cancellation)")
                     }
-                    guard let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200 else {
+                    guard let httpResp = response as? HTTPURLResponse else {
                         continuation.finish(throwing: AIServiceError.invalidResponse)
+                        return
+                    }
+                    guard httpResp.statusCode == 200 else {
+                        continuation.finish(throwing: AIServiceError.httpError(httpResp.statusCode, "OpenRouter 응답 오류"))
                         return
                     }
 
@@ -745,16 +987,79 @@ final class AIService {
     }
 
     // MARK: - Convenience: Non-Streaming (Stream 수집)
+    // Round 269B: 실제 사용된 provider를 반환한다 (설정값이 아닌 실제 성공 provider).
     func getResponse(
         text: String,
         agentID: String,
         chatHistory: [AgentWindowManager.ChatLog],
-        agentConfig: AgentWindowManager.AgentConfig? = nil
+        agentConfig: AgentWindowManager.AgentConfig? = nil,
+        requiresToolUse: Bool = false
     ) async throws -> (text: String, provider: String) {
-        var fullText = ""
-        let stream = getResponseStream(text: text, agentID: agentID, chatHistory: chatHistory, agentConfig: agentConfig)
-        for try await token in stream { fullText += token }
-        return (text: fullText, provider: agentConfig?.llmProvider.displayName ?? "Gemini")
+        let preferred = preferredProvider(for: agentConfig)
+        let candidates = providerCandidates(preferred: preferred, requiresToolUse: requiresToolUse)
+        guard !candidates.isEmpty else { throw AIServiceError.noAPIKeys }
+
+        var lastError: Error?
+        for provider in candidates {
+            do {
+                var fullText = ""
+                let stream = streamForProvider(
+                    provider, text: text, agentID: agentID,
+                    chatHistory: chatHistory, agentConfig: agentConfig
+                )
+                for try await token in stream { fullText += token }
+                // 실제 성공한 provider 반환
+                return (text: fullText, provider: provider.displayName)
+            } catch {
+                lastError = error
+                AppLog.warning("[AIService] getResponse provider \(provider.displayName) failed: \(error.localizedDescription)")
+                if !shouldFallbackProvider(after: error) { throw error }
+            }
+        }
+        throw lastError ?? AIServiceError.noAPIKeys
+    }
+
+    /// 실제 provider + model 메타데이터를 포함한 응답. 진단 UI 및 로그용.
+    func getResponseWithMetadata(
+        text: String,
+        agentID: String,
+        chatHistory: [AgentWindowManager.ChatLog],
+        agentConfig: AgentWindowManager.AgentConfig? = nil,
+        requiresToolUse: Bool = false
+    ) async throws -> (text: String, metadata: LLMResponseMetadata) {
+        let preferred = preferredProvider(for: agentConfig)
+        let candidates = providerCandidates(preferred: preferred, requiresToolUse: requiresToolUse)
+        guard !candidates.isEmpty else { throw AIServiceError.noAPIKeys }
+
+        var lastError: Error?
+        for (idx, provider) in candidates.enumerated() {
+            do {
+                var fullText = ""
+                let resolvedCall = await resolveLLMCall(
+                    for: provider,
+                    configuredModelID: provider == .openRouter
+                        ? (agentConfig?.openRouterModelId ?? UserDefaults.standard.string(forKey: "openRouterModelId"))
+                        : nil
+                )
+                let stream = streamForProvider(
+                    provider, text: text, agentID: agentID,
+                    chatHistory: chatHistory, agentConfig: agentConfig,
+                    resolvedCall: resolvedCall
+                )
+                for try await token in stream { fullText += token }
+                let metadata = LLMResponseMetadata(
+                    provider: provider,
+                    modelID: resolvedCall.modelID,
+                    fallbackChain: candidates,
+                    usedFallback: idx > 0
+                )
+                return (text: fullText, metadata: metadata)
+            } catch {
+                lastError = error
+                if !shouldFallbackProvider(after: error) { throw error }
+            }
+        }
+        throw lastError ?? AIServiceError.noAPIKeys
     }
 
     // MARK: - Message Builders
@@ -822,26 +1127,29 @@ final class AIService {
 
     // MARK: - Quick Summary (non-streaming, single-turn)
     /// 짧은 요약/분류 등 단발 LLM 호출. 스트리밍 없이 전체 응답을 String으로 반환.
-    /// 사용 가능한 API 키를 Gemini → Claude → OpenAI 순서로 자동 선택.
+    /// Round 269B: providerCandidates 기반으로 통합 라우팅.
+    /// 선호 provider(defaultProvider 설정) 순서로 시도, 실패 시 다음 provider로 fallback.
     func quickSummary(prompt: String) async -> String {
-        // 사용 가능한 provider 우선순위 탐색
-        let pairs: [(key: String, fn: (String) async throws -> String)] = [
-            ("geminiAPIKey", { key in try await self.geminiQuickCall(prompt: prompt, apiKey: key) }),
-            ("claudeAPIKey", { key in try await self.claudeQuickCall(prompt: prompt, apiKey: key) }),
-            ("openAIAPIKey", { key in try await self.openAIQuickCall(prompt: prompt, apiKey: key) }),
-        ]
-        for (keychainKey, fn) in pairs {
-            let apiKey = KeychainManager.load(key: keychainKey) ?? ""
+        let preferred = preferredProvider(for: nil)
+        // OpenRouter는 quickCall 전용 구현 없음 — 제외
+        let candidates = providerCandidates(preferred: preferred).filter { $0 != .openRouter }
+        for provider in candidates {
+            let apiKey = KeychainManager.load(key: keychainKey(for: provider)) ?? ""
             guard !apiKey.isEmpty else { continue }
-            do { return try await fn(apiKey) } catch { continue }
+            do {
+                let resolved = await resolveLLMCall(for: provider, apiKey: apiKey)
+                switch provider {
+                case .gemini:   return try await geminiQuickCall(prompt: prompt, apiKey: apiKey, modelId: resolved.modelID)
+                case .claude:   return try await claudeQuickCall(prompt: prompt, apiKey: apiKey, modelId: resolved.modelID)
+                case .openAI:   return try await openAIQuickCall(prompt: prompt, apiKey: apiKey, modelId: resolved.modelID)
+                case .openRouter: continue
+                }
+            } catch { continue }
         }
         return "(요약 실패: 사용 가능한 API 키가 없습니다)"
     }
 
-    private func geminiQuickCall(prompt: String, apiKey: String) async throws -> String {
-        let modelId = AIModelPolicy.modelOverrideAllowed
-            ? (cachedGeminiModelId ?? AIModelPolicy.pinnedModelID(for: .gemini))
-            : AIModelPolicy.pinnedModelID(for: .gemini)
+    private func geminiQuickCall(prompt: String, apiKey: String, modelId: String) async throws -> String {
         guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(modelId):generateContent?key=\(apiKey)") else {
             throw AIServiceError.invalidResponse
         }
@@ -849,7 +1157,7 @@ final class AIService {
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (data, _) = try await session.data(for: req)
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let candidates = json["candidates"] as? [[String: Any]],
@@ -859,11 +1167,8 @@ final class AIService {
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func claudeQuickCall(prompt: String, apiKey: String) async throws -> String {
+    private func claudeQuickCall(prompt: String, apiKey: String, modelId: String) async throws -> String {
         guard let url = URL(string: "https://api.anthropic.com/v1/messages") else { throw AIServiceError.invalidResponse }
-        let modelId = AIModelPolicy.modelOverrideAllowed
-            ? (cachedClaudeModelId ?? AIModelPolicy.pinnedModelID(for: .claude))
-            : AIModelPolicy.pinnedModelID(for: .claude)
         let body: [String: Any] = ["model": modelId, "max_tokens": 512,
                                     "messages": [["role": "user", "content": prompt]]]
         var req = URLRequest(url: url)
@@ -871,7 +1176,7 @@ final class AIService {
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue(apiKey, forHTTPHeaderField: "x-api-key")
         req.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (data, _) = try await session.data(for: req)
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let content = json["content"] as? [[String: Any]],
@@ -879,16 +1184,15 @@ final class AIService {
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func openAIQuickCall(prompt: String, apiKey: String) async throws -> String {
+    private func openAIQuickCall(prompt: String, apiKey: String, modelId: String) async throws -> String {
         guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else { throw AIServiceError.invalidResponse }
-        let modelId = AIModelPolicy.pinnedModelID(for: .openAI)
         let body: [String: Any] = ["model": modelId, "max_tokens": 512,
                                     "messages": [["role": "user", "content": prompt]]]
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        req.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (data, _) = try await session.data(for: req)
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let choices = json["choices"] as? [[String: Any]],
@@ -900,39 +1204,35 @@ final class AIService {
     // MARK: - Generate Privacy Terms (Skill: korean.privacy-terms)
 
     /// 개인정보처리방침/이용약관을 생성한다.
-    /// 사용 가능한 provider 우선순위로 탐색하여 처음 성공한 provider의 결과를 반환한다.
+    /// Round 269B: providerCandidates 기반으로 통합 라우팅.
+    /// Gemini 쿨다운 중이면 자동으로 다음 provider로 이동한다.
     func generatePrivacyTerms(prompt: String) async throws -> String {
-        // ── Provider 선택 전략: Gemini 우선, 쿨다운 시 Claude 1회만 fallback ──
-        // OpenAI는 프라이버시 생성 목적으로는 사용하지 않음 (비용 관리)
-
-        // 1. Gemini 시도 (쿨다운 중이 아닐 때)
-        if !isGeminiProviderCoolingDown() {
-            if let geminiKey = KeychainManager.load(key: "geminiAPIKey"), !geminiKey.isEmpty {
-                do {
-                    let result = try await geminiQuickCall(prompt: prompt, apiKey: geminiKey)
-                    AppLog.info("[PrivacyTermsGen] LLM 생성 완료 (Gemini)")
-                    return result
-                } catch {
-                    AppLog.warning("[PrivacyTermsGen] Gemini 실패: \(error) — Claude fallback 시도")
-                    // Gemini 실패 시 아래의 fallback 진행
-                }
+        let preferred = preferredProvider(for: nil)
+        let candidates = providerCandidates(preferred: preferred).filter { $0 != .openRouter }
+        for provider in candidates {
+            // Gemini 쿨다운 중이면 건너뜀
+            if provider == .gemini && isGeminiProviderCoolingDown() {
+                AppLog.warning("[PrivacyTermsGen] Gemini 쿨다운 중 — 다음 provider로")
+                continue
             }
-        } else {
-            AppLog.warning("[PrivacyTermsGen] Gemini 쿨다운 중 — Claude fallback 시도")
-        }
-
-        // 2. Claude fallback (1회만, Gemini 부재/실패 시)
-        if let claudeKey = KeychainManager.load(key: "claudeAPIKey"), !claudeKey.isEmpty {
+            let apiKey = KeychainManager.load(key: keychainKey(for: provider)) ?? ""
+            guard !apiKey.isEmpty else { continue }
             do {
-                let result = try await claudeQuickCall(prompt: prompt, apiKey: claudeKey)
-                AppLog.info("[PrivacyTermsGen] LLM 생성 완료 (Claude fallback)")
+                let resolved = await resolveLLMCall(for: provider, apiKey: apiKey)
+                let result: String
+                switch provider {
+                case .gemini:   result = try await geminiQuickCall(prompt: prompt, apiKey: apiKey, modelId: resolved.modelID)
+                case .claude:   result = try await claudeQuickCall(prompt: prompt, apiKey: apiKey, modelId: resolved.modelID)
+                case .openAI:   result = try await openAIQuickCall(prompt: prompt, apiKey: apiKey, modelId: resolved.modelID)
+                case .openRouter: continue
+                }
+                AppLog.info("[PrivacyTermsGen] LLM 생성 완료 (\(provider.displayName))")
                 return result
             } catch {
-                AppLog.warning("[PrivacyTermsGen] Claude fallback 실패: \(error)")
-                // fallback 1회 초과 금지 — OpenAI 시도 없음
+                AppLog.warning("[PrivacyTermsGen] \(provider.displayName) 실패: \(error)")
+                continue
             }
         }
-
         throw AIServiceError.noAPIKeys
     }
 
@@ -955,8 +1255,8 @@ final class AIService {
         var messages = buildAnthropicMessages(text: text, chatHistory: chatHistory)
         let systemPrompt = buildSystemPrompt(agentID: agentID)
 
-        var claudeModel = "claude-opus-4-7"
-        if let cached = cachedClaudeModelId {
+        var claudeModel = LLMModelRegistry.Claude.toolPrimary
+        if let cached = cachedClaudeModelId, !LLMModelRegistry.isKnownBroken(cached) {
             claudeModel = cached
         } else if let discovered = try? await discoverLatestClaudeModel(apiKey: apiKey) {
             claudeModel = discovered

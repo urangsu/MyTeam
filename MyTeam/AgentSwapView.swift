@@ -62,8 +62,8 @@ struct AgentSwapView: View {
                     
                     AgentCardView(agent: agent, isActive: isActive)
                         .onTapGesture {
-                            // 해당 에이전트로 교체
-                            manager.swapAgent(at: replaceIndex, with: agent)
+                            // Round 258B: replaceTeamAgent 사용 — swapAgent + syncSelectedTeamWorkroomAgents
+                            manager.replaceTeamAgent(at: replaceIndex, with: agent.id)
                             onClose()
                         }
                 }

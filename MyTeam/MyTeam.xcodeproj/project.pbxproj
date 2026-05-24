@@ -2487,6 +2487,19 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>25D185747AA34F44FB45A317</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>Supertonic3ONNXRuntimeProbe.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
 		<key>261F294D0071A219C94C4067</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -3387,6 +3400,19 @@
 			<string>치코_confused_033.png</string>
 			<key>path</key>
 			<string>Resources/Sprites/치코/치코_confused_033.png</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>33EDF5FA35DC7782FF169FD1</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>SupertonicNoticeCardView.swift</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
@@ -4502,6 +4528,58 @@
 			<string>치코_typing_013.png</string>
 			<key>path</key>
 			<string>Resources/Sprites/치코/치코_typing_013.png</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>270C0001A0B04E5EA7B69C3A</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>MockLLMProvider.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>270C0002A0B04E5EA7B69C3B</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>LLMRouterTests.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>270C00CAA0B04E5EA7B69C45</key>
+		<dict>
+			<key>explicitFileType</key>
+			<string>wrapper.cfbundle</string>
+			<key>includeInIndex</key>
+			<string>0</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>path</key>
+			<string>MyTeamTests.xctest</string>
+			<key>sourceTree</key>
+			<string>BUILT_PRODUCTS_DIR</string>
+		</dict>
+		<key>270D11F1C0B74E5EA7B69C3D</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>RoomContextBuilder.swift</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
@@ -6006,6 +6084,19 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>5A1C0A44C5F4FEF8122109B3</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>SupertonicTTSNoticePolicy.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
 		<key>5A464249A343439184031D70</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -7068,6 +7159,19 @@
 			<string>치코_sleeping_022.png</string>
 			<key>path</key>
 			<string>Resources/Sprites/치코/치코_sleeping_022.png</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>68ACEE63E7ABABF7546ACAED</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>SupertonicVoicePresetPolicy.swift</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
@@ -8934,6 +9038,19 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>84398FD483899C65768B13BB</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>TTSProductPolicy.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
 		<key>845C7A639111D5B8F008857F</key>
 		<dict>
 			<key>fileRef</key>
@@ -9988,6 +10105,7 @@
 			<key>children</key>
 			<array>
 				<string>9079F7EE2F6EDE4900B4CE24</string>
+				<string>270C0005A0B04E5EA7B69C3E</string>
 				<string>8EAD91A347512A83BC142D85</string>
 				<string>01A9062370B278BF30DB65F0</string>
 				<string>F25EF9DF54BC65C3CD0318BE</string>
@@ -11014,6 +11132,7 @@
 				<string>32AD2A13B57647AA8DE70A36</string>
 				<string>8491DDEFD7154FACB4684278</string>
 				<string>4EBB720A2BB74D49AA480276</string>
+				<string>270D11F1C0B74E5EA7B69C3D</string>
 				<string>42DAFD8E73EF452CB761729F</string>
 				<string>8D54411991414B93B2A2D9F7</string>
 				<string>37AB6511C28C41A48DD2F10F</string>
@@ -11025,6 +11144,20 @@
 				<string>96DD751029D448A8A367BAD5</string>
 				<string>C4C3909DD99D4F8CB84327D9</string>
 				<string>B3A2C9D1E4F5060708090A0B</string>
+				<string>5A1C0A44C5F4FEF8122109B3</string>
+				<string>33EDF5FA35DC7782FF169FD1</string>
+				<string>84398FD483899C65768B13BB</string>
+				<string>25D185747AA34F44FB45A317</string>
+				<string>68ACEE63E7ABABF7546ACAED</string>
+				<string>CVP258TTS001FILEREF0000A1</string>
+				<string>SPTP258TTS001FILEREF0000B1</string>
+				<string>VTS259TTS001FILEREF0000C1</string>
+				<string>SETP260TTS001FILEREF0000D1</string>
+				<string>SPBP261TTS001FILEREF0000E1</string>
+				<string>ANIM261TTS001FILEREF0000F1</string>
+				<string>KSD262TTS001FILEREF0000G1</string>
+				<string>AFS262TTS001FILEREF0000H1</string>
+				<string>LLMR264REL001FILEREF0000G1</string>
 			</array>
 			<key>isa</key>
 			<string>PBXGroup</string>
@@ -11137,6 +11270,7 @@
 			<key>targets</key>
 			<array>
 				<string>9079F7EC2F6EDE4900B4CE24</string>
+				<string>270C0008A0B04E5EA7B69C41</string>
 			</array>
 		</dict>
 		<key>9079F7E82F6EDE4900B4CE24</key>
@@ -11422,6 +11556,7 @@
 				<string>477F5B62D3B74227A45DE447</string>
 				<string>CD2AF72C5C174689A7722F60</string>
 				<string>03E0B079A3CE4218A45F03CB</string>
+				<string>270D22F2C0B74E5EA7B69C3E</string>
 				<string>D87FC3B36A604E15B4726F68</string>
 				<string>B242CEFD1F454A56BA6CA207</string>
 				<string>AFBEA4983C0842438E40978A</string>
@@ -11448,6 +11583,20 @@
 				<string>6E6FC37A89764F9095E8D62B</string>
 				<string>3F4FD0A86C9E44DBA9CBDCE5</string>
 				<string>C4D5E6F7A8B9C0D1E2F30001</string>
+				<string>FEF0E47CE4482732D721E146</string>
+				<string>DC5F81771FFF28C034BC97EE</string>
+				<string>BB9EAC91B940467C08515E14</string>
+				<string>A2FAC00690AED725FB48DB70</string>
+				<string>9BBF1A37FD6318EA8507988F</string>
+				<string>CVP258TTS001BUILDFILE000A1</string>
+				<string>SPTP258TTS001BUILDFILE00B1</string>
+				<string>VTS259TTS001BUILDFILE00C1</string>
+				<string>SETP260TTS001BUILDFILE00D1</string>
+				<string>SPBP261TTS001BUILDFILE00E1</string>
+				<string>ANIM261TTS001BUILDFILE00F1</string>
+				<string>KSD262TTS001BUILDFILE00G1</string>
+				<string>AFS262TTS001BUILDFILE00H1</string>
+				<string>LLMR264REL001BUILDFILE00G1</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -11734,11 +11883,189 @@
 			<key>sourceTree</key>
 			<string>BUILT_PRODUCTS_DIR</string>
 		</dict>
+		<key>270C0005A0B04E5EA7B69C3E</key>
+		<dict>
+			<key>children</key>
+			<array>
+				<string>270C0001A0B04E5EA7B69C3A</string>
+				<string>270C0002A0B04E5EA7B69C3B</string>
+			</array>
+			<key>isa</key>
+			<string>PBXGroup</string>
+			<key>name</key>
+			<string>MyTeamTests</string>
+			<key>path</key>
+			<string>../MyTeamTests</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>270C0006A0B04E5EA7B69C3F</key>
+		<dict>
+			<key>buildActionMask</key>
+			<string>2147483647</string>
+			<key>files</key>
+			<array>
+				<string>270C0003A0B04E5EA7B69C3C</string>
+				<string>270C0004A0B04E5EA7B69C3D</string>
+			</array>
+			<key>isa</key>
+			<string>PBXSourcesBuildPhase</string>
+			<key>runOnlyForDeploymentPostprocessing</key>
+			<string>0</string>
+		</dict>
+		<key>270C0007A0B04E5EA7B69C40</key>
+		<dict>
+			<key>buildActionMask</key>
+			<string>2147483647</string>
+			<key>files</key>
+			<array/>
+			<key>isa</key>
+			<string>PBXFrameworksBuildPhase</string>
+			<key>runOnlyForDeploymentPostprocessing</key>
+			<string>0</string>
+		</dict>
+		<key>270C00DEA0B04E5EA7B69C46</key>
+		<dict>
+			<key>containerPortal</key>
+			<string>9079F7E52F6EDE4900B4CE24</string>
+			<key>isa</key>
+			<string>PBXContainerItemProxy</string>
+			<key>proxyType</key>
+			<string>1</string>
+			<key>remoteGlobalIDString</key>
+			<string>9079F7EC2F6EDE4900B4CE24</string>
+			<key>remoteInfo</key>
+			<string>MyTeam</string>
+		</dict>
+		<key>270C00EFA0B04E5EA7B69C47</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXTargetDependency</string>
+			<key>target</key>
+			<string>9079F7EC2F6EDE4900B4CE24</string>
+			<key>targetProxy</key>
+			<string>270C00DEA0B04E5EA7B69C46</string>
+		</dict>
+		<key>270C0008A0B04E5EA7B69C41</key>
+		<dict>
+			<key>buildConfigurationList</key>
+			<string>270C00BAA0B04E5EA7B69C44</string>
+			<key>buildPhases</key>
+			<array>
+				<string>270C0006A0B04E5EA7B69C3F</string>
+				<string>270C0007A0B04E5EA7B69C40</string>
+			</array>
+			<key>buildRules</key>
+			<array/>
+			<key>dependencies</key>
+			<array>
+				<string>270C00EFA0B04E5EA7B69C47</string>
+			</array>
+			<key>isa</key>
+			<string>PBXNativeTarget</string>
+			<key>name</key>
+			<string>MyTeamTests</string>
+			<key>productName</key>
+			<string>MyTeamTests</string>
+			<key>productReference</key>
+			<string>270C00CAA0B04E5EA7B69C45</string>
+			<key>productType</key>
+			<string>com.apple.product-type.bundle.unit-test</string>
+		</dict>
+		<key>270C0009A0B04E5EA7B69C42</key>
+		<dict>
+			<key>buildSettings</key>
+			<dict>
+				<key>ALWAYS_SEARCH_USER_PATHS</key>
+				<string>NO</string>
+				<key>BUNDLE_LOADER</key>
+				<string>$(TEST_HOST)</string>
+				<key>CODE_SIGN_IDENTITY</key>
+				<string>-</string>
+				<key>CODE_SIGN_STYLE</key>
+				<string>Manual</string>
+				<key>FRAMEWORK_SEARCH_PATHS</key>
+				<array>
+					<string>$(inherited)</string>
+				</array>
+				<key>GENERATE_INFOPLIST_FILE</key>
+				<string>YES</string>
+				<key>MACOSX_DEPLOYMENT_TARGET</key>
+				<string>26.2</string>
+				<key>PRODUCT_BUNDLE_IDENTIFIER</key>
+				<string>com.urang.MyTeam.tests</string>
+				<key>PRODUCT_NAME</key>
+				<string>$(TARGET_NAME)</string>
+				<key>SWIFT_DEFAULT_ACTOR_ISOLATION</key>
+				<string>none</string>
+				<key>SWIFT_VERSION</key>
+				<string>5.0</string>
+				<key>TEST_HOST</key>
+				<string>$(BUILT_PRODUCTS_DIR)/MyTeam.app/Contents/MacOS/MyTeam</string>
+			</dict>
+			<key>isa</key>
+			<string>XCBuildConfiguration</string>
+			<key>name</key>
+			<string>Debug</string>
+		</dict>
+		<key>270C000AA0B04E5EA7B69C43</key>
+		<dict>
+			<key>buildSettings</key>
+			<dict>
+				<key>ALWAYS_SEARCH_USER_PATHS</key>
+				<string>NO</string>
+				<key>BUNDLE_LOADER</key>
+				<string>$(TEST_HOST)</string>
+				<key>CODE_SIGN_IDENTITY</key>
+				<string>-</string>
+				<key>CODE_SIGN_STYLE</key>
+				<string>Manual</string>
+				<key>FRAMEWORK_SEARCH_PATHS</key>
+				<array>
+					<string>$(inherited)</string>
+				</array>
+				<key>GENERATE_INFOPLIST_FILE</key>
+				<string>YES</string>
+				<key>MACOSX_DEPLOYMENT_TARGET</key>
+				<string>26.2</string>
+				<key>PRODUCT_BUNDLE_IDENTIFIER</key>
+				<string>com.urang.MyTeam.tests</string>
+				<key>PRODUCT_NAME</key>
+				<string>$(TARGET_NAME)</string>
+				<key>SWIFT_DEFAULT_ACTOR_ISOLATION</key>
+				<string>none</string>
+				<key>SWIFT_OPTIMIZATION_LEVEL</key>
+				<string>-Owholemodule</string>
+				<key>SWIFT_VERSION</key>
+				<string>5.0</string>
+				<key>TEST_HOST</key>
+				<string>$(BUILT_PRODUCTS_DIR)/MyTeam.app/Contents/MacOS/MyTeam</string>
+			</dict>
+			<key>isa</key>
+			<string>XCBuildConfiguration</string>
+			<key>name</key>
+			<string>Release</string>
+		</dict>
+		<key>270C00BAA0B04E5EA7B69C44</key>
+		<dict>
+			<key>buildConfigurations</key>
+			<array>
+				<string>270C0009A0B04E5EA7B69C42</string>
+				<string>270C000AA0B04E5EA7B69C43</string>
+			</array>
+			<key>defaultConfigurationIsVisible</key>
+			<string>0</string>
+			<key>defaultConfigurationName</key>
+			<string>Release</string>
+			<key>isa</key>
+			<string>XCConfigurationList</string>
+		</dict>
 		<key>9079F7EE2F6EDE4900B4CE24</key>
 		<dict>
 			<key>children</key>
 			<array>
 				<string>9079F7ED2F6EDE4900B4CE24</string>
+				<string>270C00CAA0B04E5EA7B69C45</string>
 			</array>
 			<key>isa</key>
 			<string>PBXGroup</string>
@@ -13105,6 +13432,13 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>9BBF1A37FD6318EA8507988F</key>
+		<dict>
+			<key>fileRef</key>
+			<string>68ACEE63E7ABABF7546ACAED</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
 		<key>9BC74BD0B69E037F2EB69C86</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -14051,6 +14385,13 @@
 			<string>CharacterVoiceConfig.swift</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
+		</dict>
+		<key>A2FAC00690AED725FB48DB70</key>
+		<dict>
+			<key>fileRef</key>
+			<string>25D185747AA34F44FB45A317</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
 		</dict>
 		<key>A33174037AB322FFB26C1BE4</key>
 		<dict>
@@ -16149,6 +16490,13 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>BB9EAC91B940467C08515E14</key>
+		<dict>
+			<key>fileRef</key>
+			<string>84398FD483899C65768B13BB</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
 		<key>BBC3BC1185C00D6D85F5F1A1</key>
 		<dict>
 			<key>fileRef</key>
@@ -18075,6 +18423,26 @@
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
+		<key>CVP258TTS001BUILDFILE000A1</key>
+		<dict>
+			<key>fileRef</key>
+			<string>CVP258TTS001FILEREF0000A1</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>CVP258TTS001FILEREF0000A1</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>CharacterVoiceProfile.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
 		<key>D00DF7A268169FADA918C6F3</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -19807,6 +20175,27 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>270C0003A0B04E5EA7B69C3C</key>
+		<dict>
+			<key>fileRef</key>
+			<string>270C0001A0B04E5EA7B69C3A</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>270C0004A0B04E5EA7B69C3D</key>
+		<dict>
+			<key>fileRef</key>
+			<string>270C0002A0B04E5EA7B69C3B</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>270D22F2C0B74E5EA7B69C3E</key>
+		<dict>
+			<key>fileRef</key>
+			<string>270D11F1C0B74E5EA7B69C3D</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
 		<key>D87FC3B36A604E15B4726F68</key>
 		<dict>
 			<key>fileRef</key>
@@ -19962,6 +20351,13 @@
 			<string>Resources/Sprites/치코/치코_confused_019.png</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
+		</dict>
+		<key>DC5F81771FFF28C034BC97EE</key>
+		<dict>
+			<key>fileRef</key>
+			<string>33EDF5FA35DC7782FF169FD1</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
 		</dict>
 		<key>DCFC38B53A14F02392E17141</key>
 		<dict>
@@ -23053,6 +23449,13 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>FEF0E47CE4482732D721E146</key>
+		<dict>
+			<key>fileRef</key>
+			<string>5A1C0A44C5F4FEF8122109B3</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
 		<key>FF199F6C1BA3F6C5F6DB48BF</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -23149,6 +23552,152 @@
 			<string>sourcecode.swift</string>
 			<key>path</key>
 			<string>CodeBlockView.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>SETP260TTS001BUILDFILE00D1</key>
+		<dict>
+			<key>fileRef</key>
+			<string>SETP260TTS001FILEREF0000D1</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>SETP260TTS001FILEREF0000D1</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>SupertonicExpressionTagPolicy.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>SPBP261TTS001BUILDFILE00E1</key>
+		<dict>
+			<key>fileRef</key>
+			<string>SPBP261TTS001FILEREF0000E1</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>SPBP261TTS001FILEREF0000E1</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>SupertonicSpeedProbe.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>ANIM261TTS001BUILDFILE00F1</key>
+		<dict>
+			<key>fileRef</key>
+			<string>ANIM261TTS001FILEREF0000F1</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>ANIM261TTS001FILEREF0000F1</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>AnimaleseSynthesizer.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>LLMR264REL001BUILDFILE00G1</key>
+		<dict>
+			<key>fileRef</key>
+			<string>LLMR264REL001FILEREF0000G1</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>LLMR264REL001FILEREF0000G1</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>LLMModelRegistry.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>KSD262TTS001BUILDFILE00G1</key>
+		<dict>
+			<key>fileRef</key>
+			<string>KSD262TTS001FILEREF0000G1</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>KSD262TTS001FILEREF0000G1</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>KoreanSyllableDecomposer.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>AFS262TTS001BUILDFILE00H1</key>
+		<dict>
+			<key>fileRef</key>
+			<string>AFS262TTS001FILEREF0000H1</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>AFS262TTS001FILEREF0000H1</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>AudioFeatureSnapshot.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>SPTP258TTS001BUILDFILE00B1</key>
+		<dict>
+			<key>fileRef</key>
+			<string>SPTP258TTS001FILEREF0000B1</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>SPTP258TTS001FILEREF0000B1</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>SupertonicProsodyTextProcessor.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>VTS259TTS001BUILDFILE00C1</key>
+		<dict>
+			<key>fileRef</key>
+			<string>VTS259TTS001FILEREF0000C1</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>VTS259TTS001FILEREF0000C1</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>VoiceTuningState.swift</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>

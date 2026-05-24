@@ -1,12 +1,101 @@
 import AppKit
 import SwiftUI
 
+enum PanelTuckEdge: String, Codable, CaseIterable, Sendable {
+    case left
+    case right
+    case top
+    case bottom
+
+    var menuTitle: String {
+        switch self {
+        case .left: return "왼쪽에 숨기기"
+        case .right: return "오른쪽에 숨기기"
+        case .top: return "상단에 숨기기"
+        case .bottom: return "Dock 위에 숨기기"
+        }
+    }
+}
+
+enum PanelTuckState: Equatable, Sendable {
+    case expanded
+    case minimizedBar
+    case tucked(PanelTuckEdge)
+
+    var tuckedEdge: PanelTuckEdge? {
+        if case .tucked(let edge) = self { return edge }
+        return nil
+    }
+}
+
+enum PanelTuckGeometry {
+    nonisolated static let snapThreshold: CGFloat = 32
+    nonisolated static let revealThickness: CGFloat = 22
+    nonisolated static let allowedPanelIDs: Set<String> = [
+        "chat_single",
+        "status_window",
+        "settings_window",
+        "agent_settings_window",
+        "swap_window"
+    ]
+
+    nonisolated static func isTuckAllowed(agentID: String) -> Bool {
+        agentID != "team" && allowedPanelIDs.contains(agentID)
+    }
+
+    nonisolated static func nearestTuckEdge(
+        frame: NSRect,
+        visibleFrame: NSRect,
+        threshold: CGFloat = snapThreshold
+    ) -> PanelTuckEdge? {
+        let distances: [(PanelTuckEdge, CGFloat)] = [
+            (.left, max(0, frame.minX - visibleFrame.minX)),
+            (.right, max(0, visibleFrame.maxX - frame.maxX)),
+            (.top, max(0, visibleFrame.maxY - frame.maxY)),
+            (.bottom, max(0, frame.minY - visibleFrame.minY))
+        ]
+        guard let nearest = distances.min(by: { $0.1 < $1.1 }), nearest.1 <= threshold else {
+            return nil
+        }
+        return nearest.0
+    }
+
+    nonisolated static func tuckedFrame(
+        for frame: NSRect,
+        edge: PanelTuckEdge,
+        visibleFrame: NSRect,
+        revealThickness: CGFloat = revealThickness
+    ) -> NSRect {
+        var next = clampedExpandedFrame(frame, visibleFrame: visibleFrame)
+        switch edge {
+        case .left:
+            next.origin.x = visibleFrame.minX - next.width + revealThickness
+        case .right:
+            next.origin.x = visibleFrame.maxX - revealThickness
+        case .top:
+            next.origin.y = visibleFrame.maxY - revealThickness
+        case .bottom:
+            next.origin.y = visibleFrame.minY - next.height + revealThickness
+        }
+        return next
+    }
+
+    nonisolated static func clampedExpandedFrame(_ frame: NSRect, visibleFrame: NSRect) -> NSRect {
+        var next = frame
+        next.origin.x = min(max(next.origin.x, visibleFrame.minX + 8), visibleFrame.maxX - min(next.width, visibleFrame.width) - 8)
+        next.origin.y = min(max(next.origin.y, visibleFrame.minY + 8), visibleFrame.maxY - min(next.height, visibleFrame.height) - 8)
+        return next
+    }
+}
+
 // MARK: - FloatingPanel
 // NSPanel을 서브클래싱하여 투명하고 항상 최상단에 떠있는 창.
 // 마우스 이벤트를 직접 처리하여 창 이동 + 드래그 상태를 SwiftUI에 전달합니다.
 class FloatingPanel: NSPanel {
 
     var agentID: String = "team"
+    private(set) var tuckState: PanelTuckState = .expanded
+    private var expandedFrameBeforeTuck: NSRect?
 
     // 드래그 추적용 — 마우스 눌린 시점의 위치 기억
     private var dragStartMouseLocation: NSPoint?
@@ -51,6 +140,7 @@ class FloatingPanel: NSPanel {
 
         restorePosition()
         restoreSizeIfAvailable(defaultSize: size)
+        restoreTuckStateIfAvailable()
     }
 
     override var canBecomeKey: Bool  { true }
@@ -65,6 +155,11 @@ class FloatingPanel: NSPanel {
     // MARK: - 마우스 이벤트: 드래그로 창 이동
 
     override func mouseDown(with event: NSEvent) {
+        if tuckState.tuckedEdge != nil {
+            restoreFromTuck()
+            return
+        }
+
         // 클릭 위치가 NSScrollView 내부면 창 드래그 시작 안 함
         let pointInContent = contentView?.convert(event.locationInWindow, from: nil) ?? .zero
         var hitView: NSView? = contentView?.hitTest(pointInContent)
@@ -121,17 +216,52 @@ class FloatingPanel: NSPanel {
             }
         }
 
-        savePosition()
+        if !snapToEdgeIfNeeded() {
+            savePosition()
+        }
         super.mouseUp(with: event)
+    }
+
+    override func rightMouseDown(with event: NSEvent) {
+        guard PanelTuckGeometry.isTuckAllowed(agentID: agentID) else {
+            super.rightMouseDown(with: event)
+            return
+        }
+        let menu = NSMenu()
+        for edge in PanelTuckEdge.allCases {
+            let item = NSMenuItem(title: edge.menuTitle, action: #selector(tuckMenuItemSelected(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = edge.rawValue
+            menu.addItem(item)
+        }
+        if tuckState.tuckedEdge != nil {
+            menu.addItem(.separator())
+            let restore = NSMenuItem(title: "원래 위치로", action: #selector(restoreMenuItemSelected), keyEquivalent: "")
+            restore.target = self
+            menu.addItem(restore)
+        }
+        guard let menuView = contentView else { return }
+        NSMenu.popUpContextMenu(menu, with: event, for: menuView)
+    }
+
+    @objc private func tuckMenuItemSelected(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String,
+              let edge = PanelTuckEdge(rawValue: raw) else { return }
+        tuck(to: edge)
+    }
+
+    @objc private func restoreMenuItemSelected() {
+        restoreFromTuck()
     }
 
     // MARK: - 위치 저장/복원
     func savePosition() {
-        UserDefaults.standard.set(self.frame.origin.x, forKey: "\(agentID)_x")
-        UserDefaults.standard.set(self.frame.origin.y, forKey: "\(agentID)_y")
+        let frameToPersist = expandedFrameBeforeTuck ?? self.frame
+        UserDefaults.standard.set(frameToPersist.origin.x, forKey: "\(agentID)_x")
+        UserDefaults.standard.set(frameToPersist.origin.y, forKey: "\(agentID)_y")
         if persistencePolicy.persistSize {
-            UserDefaults.standard.set(self.frame.size.width, forKey: "\(agentID)_w")
-            UserDefaults.standard.set(self.frame.size.height, forKey: "\(agentID)_h")
+            UserDefaults.standard.set(frameToPersist.size.width, forKey: "\(agentID)_w")
+            UserDefaults.standard.set(frameToPersist.size.height, forKey: "\(agentID)_h")
         } else {
             UserDefaults.standard.removeObject(forKey: "\(agentID)_w")
             UserDefaults.standard.removeObject(forKey: "\(agentID)_h")
@@ -145,6 +275,33 @@ class FloatingPanel: NSPanel {
             self.setFrameOrigin(NSPoint(x: x, y: y))
         }
         keepInsideVisibleScreen()
+    }
+
+    func tuck(to edge: PanelTuckEdge) {
+        guard PanelTuckGeometry.isTuckAllowed(agentID: agentID),
+              let screen = NSScreen.screens.first(where: { $0.visibleFrame.intersects(frame) }) ?? NSScreen.main else {
+            return
+        }
+        if tuckState.tuckedEdge == nil {
+            expandedFrameBeforeTuck = frame
+        }
+        let hidden = PanelTuckGeometry.tuckedFrame(for: expandedFrameBeforeTuck ?? frame, edge: edge, visibleFrame: screen.visibleFrame)
+        tuckState = .tucked(edge)
+        persistTuckState(edge: edge)
+        setFrame(hidden, display: true, animate: true)
+    }
+
+    func restoreFromTuck() {
+        guard let edge = tuckState.tuckedEdge else { return }
+        let restored = expandedFrameBeforeTuck ?? restoreExpandedFrameFromDefaults() ?? frame
+        let visible = NSScreen.screens.first(where: { $0.visibleFrame.intersects(restored) })?.visibleFrame ?? NSScreen.main?.visibleFrame
+        let finalFrame = visible.map { PanelTuckGeometry.clampedExpandedFrame(restored, visibleFrame: $0) } ?? restored
+        tuckState = .expanded
+        expandedFrameBeforeTuck = nil
+        UserDefaults.standard.removeObject(forKey: "\(agentID)_tuckEdge")
+        setFrame(finalFrame, display: true, animate: true)
+        savePosition()
+        AppLog.debug("[FloatingPanel] restored from \(edge.rawValue) edge id=\(agentID)")
     }
 
     private var persistencePolicy: PersistencePolicy {
@@ -179,9 +336,51 @@ class FloatingPanel: NSPanel {
         var frame = self.frame
         guard let screen = NSScreen.screens.first(where: { $0.visibleFrame.intersects(frame) }) ?? NSScreen.main else { return }
         let visible = screen.visibleFrame
-        frame.origin.x = min(max(frame.origin.x, visible.minX + 8), visible.maxX - min(frame.width, visible.width) - 8)
-        frame.origin.y = min(max(frame.origin.y, visible.minY + 8), visible.maxY - min(frame.height, visible.height) - 8)
+        frame = PanelTuckGeometry.clampedExpandedFrame(frame, visibleFrame: visible)
         self.setFrameOrigin(frame.origin)
+    }
+
+    private func snapToEdgeIfNeeded() -> Bool {
+        guard PanelTuckGeometry.isTuckAllowed(agentID: agentID),
+              tuckState.tuckedEdge == nil,
+              let screen = NSScreen.screens.first(where: { $0.visibleFrame.intersects(frame) }) ?? NSScreen.main,
+              let edge = PanelTuckGeometry.nearestTuckEdge(frame: frame, visibleFrame: screen.visibleFrame) else {
+            return false
+        }
+        tuck(to: edge)
+        return true
+    }
+
+    private func persistTuckState(edge: PanelTuckEdge) {
+        let expanded = expandedFrameBeforeTuck ?? frame
+        UserDefaults.standard.set(edge.rawValue, forKey: "\(agentID)_tuckEdge")
+        UserDefaults.standard.set(expanded.origin.x, forKey: "\(agentID)_expanded_x")
+        UserDefaults.standard.set(expanded.origin.y, forKey: "\(agentID)_expanded_y")
+        UserDefaults.standard.set(expanded.size.width, forKey: "\(agentID)_expanded_w")
+        UserDefaults.standard.set(expanded.size.height, forKey: "\(agentID)_expanded_h")
+    }
+
+    private func restoreTuckStateIfAvailable() {
+        guard PanelTuckGeometry.isTuckAllowed(agentID: agentID),
+              let raw = UserDefaults.standard.string(forKey: "\(agentID)_tuckEdge"),
+              let edge = PanelTuckEdge(rawValue: raw),
+              let screen = NSScreen.main else { return }
+        expandedFrameBeforeTuck = restoreExpandedFrameFromDefaults() ?? frame
+        tuckState = .tucked(edge)
+        let hidden = PanelTuckGeometry.tuckedFrame(for: expandedFrameBeforeTuck ?? frame, edge: edge, visibleFrame: screen.visibleFrame)
+        setFrame(hidden, display: false)
+    }
+
+    private func restoreExpandedFrameFromDefaults() -> NSRect? {
+        let width = UserDefaults.standard.double(forKey: "\(agentID)_expanded_w")
+        let height = UserDefaults.standard.double(forKey: "\(agentID)_expanded_h")
+        guard width > 0, height > 0 else { return nil }
+        return NSRect(
+            x: UserDefaults.standard.double(forKey: "\(agentID)_expanded_x"),
+            y: UserDefaults.standard.double(forKey: "\(agentID)_expanded_y"),
+            width: width,
+            height: height
+        )
     }
 
 }
