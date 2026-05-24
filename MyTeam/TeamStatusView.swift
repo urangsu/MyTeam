@@ -625,6 +625,7 @@ struct TeamStatusView: View {
                     .padding(12)
                 }
                 .background(WindowDragBlocker())
+                .frame(maxHeight: .infinity)
                 .onChange(of: manager.teamChatLogs.count) { _, _ in
                     if let last = manager.teamChatLogs.last {
                         withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
@@ -644,23 +645,25 @@ struct TeamStatusView: View {
             }
 
             // ── 하단: 입력창 (팀 채팅 + 첨부파일) ──
-            Divider().background(textColor.opacity(0.08))
+            // layoutPriority(1): ScrollView보다 우선 공간 확보 → 잘림 방지
+            VStack(spacing: 0) {
+                Divider().background(textColor.opacity(0.08))
 
-            // 첨부파일 미리보기
-            if !pendingAttachments.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(pendingAttachments) { attachment in
-                            AttachmentChip(attachment: attachment) {
-                                pendingAttachments.removeAll { $0.id == attachment.id }
+                // 첨부파일 미리보기
+                if !pendingAttachments.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(pendingAttachments) { attachment in
+                                AttachmentChip(attachment: attachment) {
+                                    pendingAttachments.removeAll { $0.id == attachment.id }
+                                }
                             }
                         }
+                        .padding(.horizontal, 10).padding(.vertical, 4)
                     }
-                    .padding(.horizontal, 10).padding(.vertical, 4)
                 }
-            }
 
-            HStack(spacing: 8) {
+                HStack(spacing: 8) {
                 Button(action: openTeamFilePicker) {
                     Image(systemName: "paperclip")
                         .font(.system(size: 14))
@@ -714,6 +717,8 @@ struct TeamStatusView: View {
                 }
                 return true
             }
+            }
+            .layoutPriority(1)
         }
     }
 
