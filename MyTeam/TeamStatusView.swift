@@ -257,11 +257,45 @@ struct TeamStatusView: View {
 
             // ── 하단 컨트롤 바 ──
             HStack {
+                // 좌측: 소리 + 음성모드
+                HStack(spacing: 6) {
+                    headerIconButton(
+                        systemName: manager.isSilentMode ? "speaker.slash.fill" : "speaker.wave.2.fill",
+                        tint: manager.isSilentMode ? .red.opacity(0.75) : textColor.opacity(0.42),
+                        label: manager.isSilentMode ? "소리 켜기" : "무음 모드",
+                        action: { manager.isSilentMode.toggle() }
+                    )
+                    headerIconButton(
+                        systemName: "waveform",
+                        tint: manager.isVoiceMode ? .blue.opacity(0.85) : textColor.opacity(0.30),
+                        label: manager.isVoiceMode ? "음성 모드 끄기" : "음성 모드 켜기",
+                        action: { manager.isVoiceMode.toggle() }
+                    )
+                }
+
                 Spacer()
-                headerControlStrip
-                Spacer()
+
+                // 우측: 다크모드 + 설정
+                HStack(spacing: 6) {
+                    headerIconButton(
+                        systemName: manager.isDarkMode ? "moon.stars.fill" : "sun.max.fill",
+                        tint: manager.isDarkMode ? .yellow.opacity(0.86) : .orange.opacity(0.78),
+                        label: manager.isDarkMode ? "라이트 모드로 전환" : "다크 모드로 전환",
+                        action: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                manager.isDarkMode.toggle()
+                            }
+                        }
+                    )
+                    headerIconButton(
+                        systemName: "gearshape.fill",
+                        tint: textColor.opacity(0.36),
+                        label: "설정 열기",
+                        action: { manager.showSettingsWindow() }
+                    )
+                }
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 16)
             .padding(.vertical, 8)
         }
     }
