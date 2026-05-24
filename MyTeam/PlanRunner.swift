@@ -36,6 +36,9 @@ final class PlanRunner {
             manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "planRunner.started")
         }
 
+        // Round 274: RoomContextBuilder로 room 대화 이력 주입 (WorkflowOrchestrator와 동일 패턴)
+        let roomContext = RoomContextBuilder.build(manager: manager, roomID: roomID)
+
         var context = ExecutionContextBag()
         context.set(request.userMessage, for: "user_message")
         context.set(request.title, for: "document_title")
@@ -78,7 +81,7 @@ final class PlanRunner {
                     let generated = try await AIService.shared.getResponse(
                         text: prompt,
                         agentID: "planner",
-                        chatHistory: []
+                        chatHistory: roomContext.contextualChatHistory
                     )
                     draftMarkdown = generated.text
                     context.set(draftMarkdown, for: "draft_markdown")
@@ -118,7 +121,7 @@ final class PlanRunner {
                             let repaired = try await AIService.shared.getResponse(
                                 text: prompt,
                                 agentID: "planner",
-                                chatHistory: []
+                                chatHistory: roomContext.contextualChatHistory
                             )
                             draftMarkdown = repaired.text
                             context.set(draftMarkdown, for: "draft_markdown")
