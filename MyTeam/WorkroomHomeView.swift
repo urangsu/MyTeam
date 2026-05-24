@@ -54,6 +54,8 @@ struct WorkroomHomeView: View {
                 .padding(.horizontal, 14)
                 .padding(.top, 12)
 
+                trustStrip
+
                 if manager.isBeginnerMode {
                     // ─────────────────────────────────────────
                     // MARK: - BEGINNER MODE LAYER
@@ -147,15 +149,20 @@ struct WorkroomHomeView: View {
                                 Button(action: {
                                     onPrimaryActionTapped?(action)
                                 }) {
-                                    VStack(spacing: 4) {
+                                    HStack(spacing: 8) {
                                         Image(systemName: action.iconName)
                                             .font(.system(size: 16, weight: .semibold))
+                                            .frame(width: 20)
                                         Text(action.title)
-                                            .font(.system(size: 10, weight: .medium))
-                                            .lineLimit(1)
+                                            .font(.system(size: 11, weight: .medium))
+                                            .lineLimit(2)
+                                            .multilineTextAlignment(.leading)
+                                            .minimumScaleFactor(0.9)
+                                        Spacer(minLength: 0)
                                     }
                                     .frame(maxWidth: .infinity)
-                                    .frame(height: 60)
+                                    .frame(minHeight: 64)
+                                    .padding(.horizontal, 10)
                                     .foregroundColor(.blue)
                                     .background(
                                         RoundedRectangle(cornerRadius: 8)
@@ -192,6 +199,43 @@ struct WorkroomHomeView: View {
     }
 
     // MARK: - Shared Sub-sections
+
+    private var trustStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                trustPill(
+                    icon: "rectangle.3.group",
+                    text: manager.roomProfileSummary(roomID: model.roomID).contains("콘텐츠 초안") ? "콘텐츠 보조" : "업무 워크룸"
+                )
+                trustPill(icon: "cpu", text: AIModelPolicy.modelFamily)
+                trustPill(icon: "wrench.and.screwdriver", text: "도구 자동")
+                if let active = model.activeTaskSummary, !active.isEmpty {
+                    trustPill(icon: "bolt.fill", text: active)
+                }
+            }
+            .padding(.horizontal, 14)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("워크룸 상태")
+    }
+
+    private func trustPill(icon: String, text: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 9, weight: .semibold))
+            Text(text)
+                .font(.system(size: 9, weight: .medium))
+                .lineLimit(1)
+        }
+        .foregroundColor(.mtTextSecondary)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 4)
+        .background(
+            Capsule()
+                .fill(Color.mtCardBackground)
+                .overlay(Capsule().strokeBorder(Color.mtCardBorder, lineWidth: 0.5))
+        )
+    }
 
     @ViewBuilder
     private func recentDocumentsSection(label: String) -> some View {

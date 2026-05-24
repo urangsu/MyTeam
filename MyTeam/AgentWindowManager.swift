@@ -1238,6 +1238,7 @@ class AgentWindowManager: ObservableObject {
     // MARK: - 창 크기 동적 조절 (SwiftUI에서 호출)
     func updateStatusWindowSize(width: CGFloat, height: CGFloat) {
         guard let panel = statusPanel else { return }
+        if panel.tuckState.tuckedEdge != nil { panel.restoreFromTuck() }
         var frame = panel.frame
         let heightDiff = height - frame.size.height
         frame.origin.y -= heightDiff
@@ -1248,6 +1249,7 @@ class AgentWindowManager: ObservableObject {
     
     func updateChatWindowWidth(id: String, width: CGFloat) {
         guard let panel = chatPanels["chat_single"] else { return }
+        if panel.tuckState.tuckedEdge != nil { panel.restoreFromTuck() }
         var frame = panel.frame
         frame.size.width = width
         panel.setFrame(frame, display: true, animate: true)
@@ -1255,6 +1257,7 @@ class AgentWindowManager: ObservableObject {
 
     func updateChatWindowSize(id: String, width: CGFloat, height: CGFloat, minSize: NSSize? = nil) {
         guard let panel = chatPanels["chat_single"] else { return }
+        if panel.tuckState.tuckedEdge != nil { panel.restoreFromTuck() }
         if let minSize { panel.minSize = minSize }
         var frame = panel.frame
         // y 좌표를 조정해서 창이 위로 줄어들지 않고 아래쪽이 고정되게
@@ -1262,6 +1265,14 @@ class AgentWindowManager: ObservableObject {
         frame.origin.y -= heightDiff
         frame.size = NSSize(width: width, height: height)
         panel.setFrame(frame, display: true, animate: true)
+    }
+
+    func tuckChatWindow(edge: PanelTuckEdge = .bottom) {
+        chatPanels["chat_single"]?.tuck(to: edge)
+    }
+
+    func restoreChatWindowFromTuck() {
+        chatPanels["chat_single"]?.restoreFromTuck()
     }
 
     func savedChatWindowSize() -> NSSize? {
@@ -1772,10 +1783,6 @@ class AgentWindowManager: ObservableObject {
     func renameRoom(id: UUID, newName: String) {
         guard let index = rooms.firstIndex(where: { $0.id == id }) else { return }
         rooms[index].name = newName
-        if rooms[index].profile?.mode != .blogWriting,
-           inferredRoomProfile(for: newName).mode == .blogWriting {
-            rooms[index].profile = .blogWriting(sourceURLs: rooms[index].profile?.sourceURLs ?? [])
-        }
     }
 
     func applyRoomTemplate(_ mode: RoomMode, to roomID: UUID) {
@@ -1930,7 +1937,7 @@ class AgentWindowManager: ObservableObject {
     // MARK: - Room-Scoped Artifact Facade (Round 137A)
 
     /// 특정 방의 최근 artifact만 반환한다.
-    /// RecentArtifactIndex(room-scoped) 우선 조회 → index 미기록 시 currentRoomID 한정 global fallback.
+    /// RecentArtifactIndex(room-scoped) 우선 조회 → index 미기록 시 roomID 메타데이터 일치 항목만 허용.
     @MainActor
     func recentArtifacts(for roomID: UUID) -> [IndexedArtifact] {
         let indexEntries = recentArtifactIndexEntries(for: roomID)
@@ -1939,11 +1946,9 @@ class AgentWindowManager: ObservableObject {
             let filtered = recentArtifacts.filter { idSet.contains($0.id) }
             if !filtered.isEmpty { return filtered }
         }
-        // Fallback: 현재 방인 경우에만 전역 목록 허용 (다른 방에 오염 방지)
-        if roomID == currentRoomID {
-            return recentArtifacts
+        return recentArtifacts.filter { artifact in
+            artifact.roomID == roomID.uuidString
         }
-        return []
     }
 
     /// room-scoped artifact lookup by ID

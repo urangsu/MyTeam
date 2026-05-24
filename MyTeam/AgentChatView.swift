@@ -9,13 +9,15 @@ import UniformTypeIdentifiers
 // tool-capable provider (Claude, OpenAI)를 우선 라우팅하기 위해 사용.
 enum ToolNeedClassifier {
     /// 한국어 + 영어 키워드로 tool-use 의도를 추론한다.
-    nonisolated static func needsTool(_ text: String) -> Bool {
+    nonisolated static func needsTool(_ text: String, hasAttachments: Bool = false) -> Bool {
+        if hasAttachments { return true }
+        let normalized = text.lowercased()
         let keywords = [
             "검색", "찾아", "파일", "실행", "열어", "계산", "웹",
             "search", "find", "file", "run", "execute", "open", "calculate", "web",
             "코드 실행", "터미널", "code run"
         ]
-        return keywords.contains { text.contains($0) }
+        return keywords.contains { normalized.contains($0.lowercased()) }
     }
 }
 
@@ -247,6 +249,8 @@ struct AgentChatView: View {
                         .foregroundColor(subTextColor)
                 }
                 .buttonStyle(PlainButtonStyle())
+                .help("채팅창 펼치기")
+                .accessibilityLabel("채팅창 펼치기")
 
                 // 닫기
                 Button(action: onClose) {
@@ -255,6 +259,8 @@ struct AgentChatView: View {
                         .foregroundColor(subTextColor.opacity(0.6))
                 }
                 .buttonStyle(PlainButtonStyle())
+                .help("채팅창 닫기")
+                .accessibilityLabel("채팅창 닫기")
             }
         }
         .padding(.horizontal, 12)
@@ -356,6 +362,16 @@ struct AgentChatView: View {
                     .disabled(speechManager.isStarting)
                 }
 
+                Button(action: {
+                    manager.tuckChatWindow(edge: .bottom)
+                }) {
+                    Image(systemName: "dock.rectangle")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(subTextColor.opacity(0.8))
+                }
+                .help("Dock 위에 살짝 숨기기")
+                .accessibilityLabel("채팅창 숨기기")
+
                 // 최소화 (팀 협업창 스타일)
                 Button(action: {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
@@ -366,6 +382,8 @@ struct AgentChatView: View {
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(subTextColor)
                 }
+                .help("작은 바로 최소화")
+                .accessibilityLabel("채팅창 최소화")
 
                 // 닫기
                 Button(action: onClose) {
@@ -373,6 +391,8 @@ struct AgentChatView: View {
                         .font(.system(size: 13, weight: .bold))
                         .foregroundColor(subTextColor.opacity(0.6))
                 }
+                .help("채팅창 닫기")
+                .accessibilityLabel("채팅창 닫기")
             }
             .buttonStyle(PlainButtonStyle())
         }
@@ -507,15 +527,6 @@ struct AgentChatView: View {
                                     .font(.system(size: 11, weight: isSelected ? .bold : .medium))
                                     .foregroundColor(isSelected ? currentAgent.color : textColor.opacity(0.7))
                                     .lineLimit(1)
-                                    // 텍스트에만 직접 더블탭을 붙여서 Button에 이벤트가 먹히는 것을 우회
-                                    .onTapGesture(count: 2) {
-                                        guard !isSidebarCollapsed && !isEditingProjects else { return }
-                                        renameText = room.name
-                                        renamingRoomID = room.id
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                                            isRenameFieldFocused = true
-                                        }
-                                    }
                             }
                             // Round 241A: 개인 대화 사이드바 message preview 금지
                             // 내용 노출 없이 방 이름만 표시
@@ -537,14 +548,6 @@ struct AgentChatView: View {
                     }
             }
             .contentShape(Rectangle()) // 빈공간도 클릭하게
-            .onTapGesture(count: 2) {
-                guard !isSidebarCollapsed && !isEditingProjects else { return }
-                renameText = room.name
-                renamingRoomID = room.id
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                    isRenameFieldFocused = true
-                }
-            }
             .onTapGesture(count: 1) {
                 guard !isEditingProjects else { return }
                 withAnimation(.easeInOut(duration: 0.15)) { agentRoomID = room.id }
@@ -869,6 +872,8 @@ struct AgentChatView: View {
                             .foregroundColor(subTextColor)
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .help("파일 첨부")
+                    .accessibilityLabel("파일 첨부")
 
                     TextField("\(currentAgent.name)에게 메시지...", text: $inputText)
                         .textFieldStyle(PlainTextFieldStyle())
@@ -893,6 +898,8 @@ struct AgentChatView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                     .disabled(inputText.isEmpty && pendingAttachments.isEmpty)
+                    .help("메시지 보내기")
+                    .accessibilityLabel("메시지 보내기")
                 }
                 if let errorMsg = speechManager.sttError {
                     Text(errorMsg).font(.system(size: 10)).foregroundColor(.red)
@@ -1122,6 +1129,10 @@ struct AgentChatView: View {
                     // DirectChat evidence gate — 명확한 외부 정보 요청일 때만 evidence gather 허용
                     // 조건: URL 포함 / 외부 키워드 / 첨부파일 있음
                     let toolPolicy = ToolPolicy.evaluate(fullText)
+                    let requiresToolUse = toolPolicy.needsTool || ToolNeedClassifier.needsTool(
+                        fullText,
+                        hasAttachments: !attachments.isEmpty
+                    )
                     let needsEvidence = Self.directChatNeedsEvidence(fullText, hasAttachments: !attachments.isEmpty)
                     let toolEvidence: ToolEvidenceResult
                     if needsEvidence {
@@ -1164,7 +1175,7 @@ struct AgentChatView: View {
                         let tokenStream = AIService.shared.getResponseStream(
                             text: groundedText, agentID: targetIDAtSend,
                             chatHistory: history, agentConfig: agentConfig,
-                            requiresToolUse: ToolNeedClassifier.needsTool(groundedText)
+                            requiresToolUse: requiresToolUse
                         )
                         AppLog.debug("[DirectChat] silent getResponseStream opened targetAgentID=\(targetIDAtSend)")
                         var accumulated = ""
@@ -1184,7 +1195,7 @@ struct AgentChatView: View {
                         // TTS에는 별도 proxy stream을 넘긴다. TTS chunk truncation이 채팅 로그를 훼손하면 안 된다.
                         let sourceStream = AIService.shared.getResponseStream(
                             text: groundedText, agentID: targetIDAtSend, chatHistory: history, agentConfig: agentConfig,
-                            requiresToolUse: ToolNeedClassifier.needsTool(groundedText)
+                            requiresToolUse: requiresToolUse
                         )
                         let ttsStream = AsyncThrowingStream<String, Error> { continuation in
                             let relayTask = Task {

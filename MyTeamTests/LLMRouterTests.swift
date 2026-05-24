@@ -59,6 +59,21 @@ final class LLMRouterTests: XCTestCase {
         }
     }
 
+    func test_toolNeedClassifier_usesUserTextNotGroundedContext() {
+        XCTAssertFalse(
+            ToolNeedClassifier.needsTool("오늘 회의록 정리해줘"),
+            "일반 문서 요청은 도구 라우팅으로 과잉 분류하면 안 됨"
+        )
+        XCTAssertTrue(
+            ToolNeedClassifier.needsTool("웹에서 최신 자료 찾아서 정리해줘"),
+            "명시적 웹/검색 요청은 tool-capable provider 후보를 우선해야 함"
+        )
+        XCTAssertTrue(
+            ToolNeedClassifier.needsTool("첨부한 내용 요약해줘", hasAttachments: true),
+            "첨부가 있으면 파일/자료 처리 능력이 있는 경로를 우선해야 함"
+        )
+    }
+
     // MARK: - Test 3: ResolvedLLMCall displayDescription 정확성
 
     func test_resolvedLLMCall_displayDescription() {
@@ -135,5 +150,125 @@ final class LLMRouterTests: XCTestCase {
         XCTAssertTrue(roomBTexts.contains("Room B 메시지"))
         XCTAssertFalse(roomATexts.contains("Room B 메시지"))
         XCTAssertFalse(roomBTexts.contains("Room A 메시지"))
+    }
+
+    @MainActor
+    func test_roomContextBuilder_readsActualRoomOnly() {
+        let manager = AgentWindowManager.shared
+        let oldRooms = manager.rooms
+        let oldCurrentRoomID = manager.currentRoomID
+        let oldArtifacts = manager.recentArtifacts
+        defer {
+            manager.rooms = oldRooms
+            manager.currentRoomID = oldCurrentRoomID
+            manager.recentArtifacts = oldArtifacts
+        }
+
+        let roomAID = UUID()
+        let roomBID = UUID()
+        let roomAMessage = AgentWindowManager.ChatLog(
+            id: UUID(), agentID: "user", agentName: "수석님",
+            text: "Room A 실제 대화", isUser: true, timestamp: Date()
+        )
+        let roomBMessage = AgentWindowManager.ChatLog(
+            id: UUID(), agentID: "user", agentName: "수석님",
+            text: "Room B 실제 대화", isUser: true, timestamp: Date()
+        )
+        let systemMessage = AgentWindowManager.ChatLog(
+            id: UUID(), agentID: "system", agentName: "시스템",
+            text: "내부 진행 메시지", isUser: false, timestamp: Date(), isSystem: true
+        )
+        manager.rooms = [
+            AgentWindowManager.ChatRoom(
+                id: roomAID,
+                name: "Room A",
+                messages: [systemMessage, roomAMessage],
+                agentIDs: ["team_all"],
+                createdAt: Date()
+            ),
+            AgentWindowManager.ChatRoom(
+                id: roomBID,
+                name: "Room B",
+                messages: [roomBMessage],
+                agentIDs: ["team_all"],
+                createdAt: Date()
+            )
+        ]
+
+        let ctx = RoomContextBuilder.build(manager: manager, roomID: roomAID)
+        let texts = ctx.contextualChatHistory.map(\.text)
+        XCTAssertTrue(texts.contains("Room A 실제 대화"))
+        XCTAssertFalse(texts.contains("Room B 실제 대화"))
+        XCTAssertFalse(texts.contains("내부 진행 메시지"))
+    }
+
+    @MainActor
+    func test_recentArtifacts_requiresRoomIDMatchWithoutGlobalFallback() {
+        let manager = AgentWindowManager.shared
+        let oldRooms = manager.rooms
+        let oldCurrentRoomID = manager.currentRoomID
+        let oldArtifacts = manager.recentArtifacts
+        defer {
+            manager.rooms = oldRooms
+            manager.currentRoomID = oldCurrentRoomID
+            manager.recentArtifacts = oldArtifacts
+        }
+
+        let roomAID = UUID()
+        let roomBID = UUID()
+        manager.rooms = [
+            AgentWindowManager.ChatRoom(id: roomAID, name: "Room A", messages: [], agentIDs: ["team_all"], createdAt: Date()),
+            AgentWindowManager.ChatRoom(id: roomBID, name: "Room B", messages: [], agentIDs: ["team_all"], createdAt: Date())
+        ]
+        manager.currentRoomID = roomAID
+        manager.recentArtifacts = [
+            IndexedArtifact(
+                id: "a",
+                workflowID: "wf-a",
+                title: "A 문서",
+                type: .text,
+                filename: "a.md",
+                relativePath: "a.md",
+                preview: "",
+                createdAt: "now",
+                roomID: roomAID.uuidString
+            ),
+            IndexedArtifact(
+                id: "legacy",
+                workflowID: "wf-legacy",
+                title: "전역 레거시",
+                type: .text,
+                filename: "legacy.md",
+                relativePath: "legacy.md",
+                preview: "",
+                createdAt: "now"
+            )
+        ]
+
+        let artifacts = manager.recentArtifacts(for: roomAID)
+        XCTAssertEqual(artifacts.map(\.id), ["a"])
+        XCTAssertTrue(manager.recentArtifacts(for: roomBID).isEmpty)
+    }
+
+    func test_panelTuckGeometry_edgesAndTeamExclusion() {
+        let visible = NSRect(x: 0, y: 40, width: 1440, height: 860)
+        let frame = NSRect(x: 4, y: 120, width: 420, height: 360)
+        XCTAssertEqual(PanelTuckGeometry.nearestTuckEdge(frame: frame, visibleFrame: visible), .left)
+        XCTAssertEqual(
+            PanelTuckGeometry.nearestTuckEdge(
+                frame: NSRect(x: -80, y: 120, width: 420, height: 360),
+                visibleFrame: visible
+            ),
+            .left,
+            "가장자리 밖으로 밀어 넣은 창도 tuck 의도로 처리해야 함"
+        )
+        XCTAssertFalse(PanelTuckGeometry.isTuckAllowed(agentID: "team"))
+        XCTAssertTrue(PanelTuckGeometry.isTuckAllowed(agentID: "chat_single"))
+
+        let tucked = PanelTuckGeometry.tuckedFrame(for: frame, edge: .left, visibleFrame: visible)
+        XCTAssertEqual(tucked.maxX, visible.minX + PanelTuckGeometry.revealThickness, accuracy: 0.001)
+
+        let bottom = PanelTuckGeometry.tuckedFrame(for: frame, edge: .bottom, visibleFrame: visible)
+        XCTAssertEqual(bottom.maxY, visible.minY + PanelTuckGeometry.revealThickness, accuracy: 0.001)
     }
 }

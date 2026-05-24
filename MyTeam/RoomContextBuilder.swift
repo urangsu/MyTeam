@@ -66,12 +66,15 @@ enum RoomContextBuilder {
                 recentArtifactSummaries: []
             )
         }
-        let recentMessages = Array(room.messages.suffix(maxMessages))
+        let recentMessages = Array(room.messages.filter { !$0.isSystem }.suffix(maxMessages))
+        let artifactSummaries = manager.recentArtifacts(for: roomID)
+            .prefix(5)
+            .map { "\($0.title) (\($0.filename))" }
         return RoomContext(
             roomID: roomID,
             roomPurpose: room.name,
             recentMessages: recentMessages,
-            recentArtifactSummaries: []
+            recentArtifactSummaries: Array(artifactSummaries)
         )
     }
 }

@@ -75,12 +75,16 @@ struct TeamStatusView: View {
                 Spacer()
                 
                 HStack(spacing: 14) {
+                    headerControlStrip
+
                     // 탭 전환 버튼
                     Button(action: { selectedTab = (selectedTab == 0 ? 1 : 0) }) {
                         Image(systemName: selectedTab == 0 ? "bubble.left.and.bubble.right.fill" : "person.3.fill")
                             .font(.system(size: 12))
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .help(selectedTab == 0 ? "팀 워크룸 보기" : "협업 상태 보기")
+                    .accessibilityLabel(selectedTab == 0 ? "팀 워크룸 보기" : "협업 상태 보기")
 
                     Button(action: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -90,12 +94,16 @@ struct TeamStatusView: View {
                         Image(systemName: isCollapsed ? "arrow.up.left.and.arrow.down.right" : "arrow.down.right.and.arrow.up.left")
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .help(isCollapsed ? "펼치기" : "접기")
+                    .accessibilityLabel(isCollapsed ? "펼치기" : "접기")
 
                     Button(action: { manager.hideStatusWindow() }) {
                         Image(systemName: "xmark")
                             .font(.system(size: 12, weight: .bold))
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .help("협업창 닫기")
+                    .accessibilityLabel("협업창 닫기")
                 }
                 .foregroundColor(manager.isDarkMode ? .white.opacity(0.5) : .gray.opacity(0.6))
             }
@@ -160,12 +168,6 @@ struct TeamStatusView: View {
             }
         )
         // schedulePopupCard 오버레이 제거됨 (WP5: 사이드바 단일 진입점)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !isCollapsed {
-                footerView
-                    .padding(.top, 2)
-            }
-        }
         .sheet(isPresented: $isFileIntakeSheetPresented) {
             FileIntakeView(
                 onResult: { result in
@@ -1059,52 +1061,71 @@ struct TeamStatusView: View {
         }
     }
 
-    // MARK: - 하위 뷰 (패널 통합형 컨트롤 바)
-    private var footerView: some View {
-        VStack(spacing: 0) {
-            Divider().opacity(manager.isDarkMode ? 0.2 : 0.15)
-            HStack(spacing: 10) {
-                // 음소거
-                Button(action: { manager.isSilentMode.toggle() }) {
-                    Image(systemName: manager.isSilentMode ? "speaker.slash.fill" : "speaker.wave.2.fill")
-                        .font(.system(size: 11))
-                        .foregroundColor(manager.isSilentMode ? .red.opacity(0.7) : textColor.opacity(0.35))
-                }
-                .buttonStyle(PlainButtonStyle())
-                .help(manager.isSilentMode ? "무음 모드" : "소리 켜기")
+    // MARK: - 하위 뷰 (헤더 통합형 컨트롤)
+    private var headerControlStrip: some View {
+        HStack(spacing: 6) {
+            headerIconButton(
+                systemName: manager.isSilentMode ? "speaker.slash.fill" : "speaker.wave.2.fill",
+                tint: manager.isSilentMode ? .red.opacity(0.75) : textColor.opacity(0.42),
+                label: manager.isSilentMode ? "소리 켜기" : "무음 모드",
+                action: { manager.isSilentMode.toggle() }
+            )
 
-                // 음성 모드
-                Button(action: { manager.isVoiceMode.toggle() }) {
-                    Image(systemName: "waveform")
-                        .font(.system(size: 11))
-                        .foregroundColor(manager.isVoiceMode ? .blue.opacity(0.8) : textColor.opacity(0.25))
-                }
-                .buttonStyle(PlainButtonStyle())
-                .help(manager.isVoiceMode ? "음성 모드 켜짐" : "음성 모드 꺼짐")
+            headerIconButton(
+                systemName: "waveform",
+                tint: manager.isVoiceMode ? .blue.opacity(0.85) : textColor.opacity(0.30),
+                label: manager.isVoiceMode ? "음성 모드 끄기" : "음성 모드 켜기",
+                action: { manager.isVoiceMode.toggle() }
+            )
 
-                Spacer()
-
-                // 다크모드 토글
-                Button(action: { withAnimation(.easeInOut(duration: 0.2)) { manager.isDarkMode.toggle() } }) {
-                    Image(systemName: manager.isDarkMode ? "moon.stars.fill" : "sun.max.fill")
-                        .font(.system(size: 11))
-                        .foregroundColor(manager.isDarkMode ? .yellow.opacity(0.8) : .orange.opacity(0.7))
+            headerIconButton(
+                systemName: manager.isDarkMode ? "moon.stars.fill" : "sun.max.fill",
+                tint: manager.isDarkMode ? .yellow.opacity(0.86) : .orange.opacity(0.78),
+                label: manager.isDarkMode ? "라이트 모드로 전환" : "다크 모드로 전환",
+                action: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        manager.isDarkMode.toggle()
+                    }
                 }
-                .buttonStyle(PlainButtonStyle())
-                .help(manager.isDarkMode ? "라이트 모드로 전환" : "다크 모드로 전환")
+            )
 
-                // 설정
-                Button(action: { manager.showSettingsWindow() }) {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 11))
-                        .foregroundColor(textColor.opacity(0.3))
-                }
-                .buttonStyle(PlainButtonStyle())
-                .help("설정")
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 8)
+            headerIconButton(
+                systemName: "gearshape.fill",
+                tint: textColor.opacity(0.36),
+                label: "설정 열기",
+                action: { manager.showSettingsWindow() }
+            )
+
+            Rectangle()
+                .fill(textColor.opacity(0.12))
+                .frame(width: 1, height: 14)
+                .padding(.leading, 3)
         }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 4)
+        .background(
+            Capsule()
+                .fill(manager.isDarkMode ? Color.white.opacity(0.045) : Color.black.opacity(0.045))
+                .overlay(Capsule().stroke(textColor.opacity(0.08), lineWidth: 1))
+        )
+    }
+
+    private func headerIconButton(
+        systemName: String,
+        tint: Color,
+        label: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(tint)
+                .frame(width: 20, height: 20)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .help(label)
+        .accessibilityLabel(label)
     }
 
     private func handleFileIntakeResult(_ result: FileIntakeResult) {

@@ -6,6 +6,42 @@
 
 ---
 
+## 2026-05-24 (Round 271 — ROUTER-REALITY + CONTEXT-INTEGRITY + EDGE-TUCK-UX)
+
+### 완료 (2026-05-24)
+
+**Edge-Tuck 최소화 UX**
+- **FloatingPanel.swift**: `PanelTuckState`, `PanelTuckEdge`, `PanelTuckGeometry` 추가
+- `chat_single`, `status_window`, `settings_window`, `agent_settings_window`, `swap_window`에 edge tuck 적용
+- `team` 패널은 edge tuck 대상에서 제외
+- 좌/우/상/하단 Dock 위 tuck frame 계산, reveal tab 클릭 복원, context menu tuck/restore 액션 추가
+- expanded frame과 tucked edge를 panel별 UserDefaults에 저장
+
+**Router Reality**
+- **AIService.swift**: Gemini/Claude/OpenAI/OpenRouter stream, metadata, quickSummary, privacyTerms가 `ResolvedLLMCall` resolver를 공유
+- OpenAI stream에서 pinned model을 먼저 넘겨 discovery를 우회하던 경로 제거
+- `metadata.modelID`를 cache 추정이 아니라 실제 resolver 결과로 기록
+- **AgentChatView.swift**: `ToolNeedClassifier`가 grounded context가 아니라 원문 사용자 입력과 첨부 여부를 기준으로 판단
+
+**Room/Artifact Integrity**
+- **RoomContextBuilder.swift**: system message 제외, room-scoped artifact summaries 포함
+- **AgentWindowManager.swift**: `recentArtifacts(for:)`의 currentRoom global fallback 제거
+- 방 이름 변경이 profile 자동 변경을 유발하지 않도록 분리
+- 루트 `test_*` 실행 파일 정리 및 `.gitignore`/preflight 방어 추가
+
+**Workroom UI Polish**
+- **WorkroomHomeView.swift**: Trust Strip 추가 — room type, provider/model source, tool/evidence 상태, active workflow 표시
+- action 카드의 고정 60pt/1줄 레이아웃을 한국어 2줄 안정 레이아웃으로 변경
+- 개인방 row double-click rename 제거, 이름 변경은 context menu/pencil 계열 명시 액션으로 유지
+
+### 검증 결과
+- `scripts/preflight_round270b_router_truth.sh`: 12/12 PASS
+- `scripts/preflight_round270d_room_context.sh`: 8/8 PASS
+- `scripts/preflight_round271_edge_tuck_router_context.sh`: 14/14 PASS
+- `xcodebuild test -scheme MyTeamTests`: 8/8 PASSED
+
+---
+
 ## 2026-05-24 (Round 270A-D — TRUE-WARNING-ZERO + ROUTER-TRUTH + XCTEST + ROOM-CONTEXT)
 
 ### 완료 (2026-05-24)

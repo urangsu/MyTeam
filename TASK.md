@@ -67,6 +67,33 @@ MyTeam은 Mac 안에서 사용자의 자연어 요청을 받아, 문서/파일/�
 
 ### Now
 
+#### Round 271 — Router Reality, Context Integrity, Edge-Tuck UX — 완료 (2026-05-24)
+
+라우터 실제 모델 선택, room/artifact 격리, floating panel 방해 최소화 UX를 보강했다.
+
+- non-team floating panel edge tuck 추가
+  - 적용: `chat_single`, `status_window`, `settings_window`, `agent_settings_window`, `swap_window`
+  - 제외: `team`
+  - 좌/우/상/하단 tuck, reveal tab 복원, context menu, UserDefaults frame persistence
+- router resolver 통합
+  - Gemini/Claude/OpenAI/OpenRouter stream + metadata + quickSummary + privacyTerms가 `ResolvedLLMCall`을 공유
+  - OpenAI stream의 pinned-model discovery 우회 제거
+  - `metadata.modelID`는 실제 resolver 결과만 기록
+- context integrity 보강
+  - `RoomContextBuilder` 실제 manager A/B 격리 XCTest 추가
+  - `recentArtifacts(for:)` currentRoom global fallback 제거
+  - 방 이름 변경과 profile 변경 분리
+  - 루트 `test_*` 실행 파일 제거 및 preflight 방어 추가
+- Workroom UI polish
+  - Trust Strip 추가
+  - action card 2줄 한국어 안정 레이아웃
+  - 개인방 row single/double click 충돌 제거
+- 검증:
+  - `preflight_round270b_router_truth`: 12/12 PASS
+  - `preflight_round270d_room_context`: 8/8 PASS
+  - `preflight_round271_edge_tuck_router_context`: 14/14 PASS
+  - `xcodebuild test -scheme MyTeamTests`: 8/8 PASSED
+
 #### Round 264-267-RELIABILITY — 완료 (2026-05-24)
 
 대화 신뢰성 기반 강화 + LLM model registry + TTS agentID 전파 + Swift 6 경고 제거.

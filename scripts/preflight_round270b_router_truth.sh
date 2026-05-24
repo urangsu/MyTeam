@@ -101,11 +101,17 @@ else
 fi
 
 # 12. getResponseStream에 requiresToolUse 파라미터 전달 (AgentChatView)
-COUNT_TOOL_USE=$(grep -c 'requiresToolUse: ToolNeedClassifier' "$ACV" || true)
-if [ "$COUNT_TOOL_USE" -ge 2 ]; then
-    ok "requiresToolUse 전달 (${COUNT_TOOL_USE}곳)"
+# Round 271부터 ToolNeedClassifier는 groundedText가 아니라 원문 입력과 첨부 여부를 보고,
+# 계산된 requiresToolUse 값을 스트림 호출 두 곳에 전달한다.
+COUNT_TOOL_USE=$(grep -c 'requiresToolUse: requiresToolUse' "$ACV" || true)
+if grep -q 'let requiresToolUse = toolPolicy.needsTool || ToolNeedClassifier.needsTool(' "$ACV" \
+    && grep -A4 'let requiresToolUse = toolPolicy.needsTool || ToolNeedClassifier.needsTool(' "$ACV" | grep -q 'fullText' \
+    && grep -A4 'let requiresToolUse = toolPolicy.needsTool || ToolNeedClassifier.needsTool(' "$ACV" | grep -q 'hasAttachments: !attachments.isEmpty' \
+    && [ "$COUNT_TOOL_USE" -ge 2 ] \
+    && ! grep -q 'ToolNeedClassifier.needsTool(groundedText' "$ACV"; then
+    ok "requiresToolUse 원문 기반 계산 및 전달 (${COUNT_TOOL_USE}곳)"
 else
-    fail "requiresToolUse 전달 부족 (${COUNT_TOOL_USE}곳, 최소 2 필요)"
+    fail "requiresToolUse 원문 기반 계산/전달 부족 (${COUNT_TOOL_USE}곳, 최소 2 필요)"
 fi
 
 echo

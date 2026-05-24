@@ -152,19 +152,22 @@ final class AIService {
         text: String,
         agentID: String,
         chatHistory: [AgentWindowManager.ChatLog],
-        agentConfig: AgentWindowManager.AgentConfig?
+        agentConfig: AgentWindowManager.AgentConfig?,
+        resolvedCall: ResolvedLLMCall? = nil
     ) -> AsyncThrowingStream<String, Error> {
         switch provider {
         case .gemini:
-            return geminiStream(text: text, agentID: agentID, chatHistory: chatHistory)
+            return geminiStream(text: text, agentID: agentID, chatHistory: chatHistory, resolvedCall: resolvedCall)
         case .openAI:
-            let modelId = AIModelPolicy.resolvedModelID(
-                provider: .openAI,
-                configuredModelID: UserDefaults.standard.string(forKey: "openAIModelId")
+            return openAIStream(
+                text: text,
+                agentID: agentID,
+                chatHistory: chatHistory,
+                configuredModelID: UserDefaults.standard.string(forKey: "openAIModelId"),
+                resolvedCall: resolvedCall
             )
-            return openAIStream(text: text, agentID: agentID, chatHistory: chatHistory, modelId: modelId)
         case .claude:
-            return claudeStream(text: text, agentID: agentID, chatHistory: chatHistory)
+            return claudeStream(text: text, agentID: agentID, chatHistory: chatHistory, resolvedCall: resolvedCall)
         case .openRouter:
             let modelId = AIModelPolicy.resolvedModelID(
                 provider: .openRouter,
@@ -206,6 +209,86 @@ final class AIService {
     private func isCacheExpired(_ cacheDate: Date?) -> Bool {
         guard let d = cacheDate else { return true }
         return Date().timeIntervalSince(d) > modelCacheMaxAge
+    }
+
+    private func resolveLLMCall(
+        for provider: LLMProvider,
+        apiKey: String? = nil,
+        configuredModelID: String? = nil
+    ) async -> ResolvedLLMCall {
+        let trimmedConfigured = configuredModelID?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if AIModelPolicy.modelOverrideAllowed,
+           !trimmedConfigured.isEmpty,
+           !LLMModelRegistry.isKnownBroken(trimmedConfigured) {
+            return ResolvedLLMCall(provider: provider, modelID: trimmedConfigured, source: .floor(trimmedConfigured))
+        }
+
+        switch provider {
+        case .gemini:
+            let floor = AIModelPolicy.pinnedModelID(for: .gemini)
+            guard AIModelPolicy.dynamicModelDiscoveryAllowed else {
+                return ResolvedLLMCall(provider: provider, modelID: floor, source: .floor(floor))
+            }
+            if let cached = cachedGeminiModelId,
+               !isGeminiModelCoolingDown(cached),
+               !isCacheExpired(cachedGeminiModelIdAt) {
+                return ResolvedLLMCall(provider: provider, modelID: cached, source: .cached(cached))
+            }
+            cachedGeminiModelId = nil
+            cachedGeminiModelIdAt = nil
+            let key = apiKey ?? KeychainManager.load(key: keychainKey(for: .gemini)) ?? ""
+            if !key.isEmpty,
+               let discovered = try? await discoverLatestGeminiModel(apiKey: key),
+               !isGeminiModelCoolingDown(discovered) {
+                cachedGeminiModelId = discovered
+                cachedGeminiModelIdAt = Date()
+                return ResolvedLLMCall(provider: provider, modelID: discovered, source: .discovered(discovered))
+            }
+            return ResolvedLLMCall(provider: provider, modelID: floor, source: .floor(floor))
+
+        case .claude:
+            let floor = AIModelPolicy.pinnedModelID(for: .claude)
+            guard AIModelPolicy.dynamicModelDiscoveryAllowed else {
+                return ResolvedLLMCall(provider: provider, modelID: floor, source: .floor(floor))
+            }
+            if let cached = cachedClaudeModelId, !isCacheExpired(cachedClaudeModelIdAt) {
+                return ResolvedLLMCall(provider: provider, modelID: cached, source: .cached(cached))
+            }
+            cachedClaudeModelId = nil
+            cachedClaudeModelIdAt = nil
+            let key = apiKey ?? KeychainManager.load(key: keychainKey(for: .claude)) ?? ""
+            if !key.isEmpty,
+               let discovered = try? await discoverLatestClaudeModel(apiKey: key) {
+                cachedClaudeModelId = discovered
+                cachedClaudeModelIdAt = Date()
+                return ResolvedLLMCall(provider: provider, modelID: discovered, source: .discovered(discovered))
+            }
+            return ResolvedLLMCall(provider: provider, modelID: floor, source: .floor(floor))
+
+        case .openAI:
+            let floor = AIModelPolicy.pinnedModelID(for: .openAI)
+            guard AIModelPolicy.dynamicModelDiscoveryAllowed else {
+                return ResolvedLLMCall(provider: provider, modelID: floor, source: .floor(floor))
+            }
+            if let cached = cachedOpenAIModelId, !isCacheExpired(cachedOpenAIModelIdAt) {
+                return ResolvedLLMCall(provider: provider, modelID: cached, source: .cached(cached))
+            }
+            cachedOpenAIModelId = nil
+            cachedOpenAIModelIdAt = nil
+            let key = apiKey ?? KeychainManager.load(key: keychainKey(for: .openAI)) ?? ""
+            if !key.isEmpty,
+               let discovered = try? await discoverLatestOpenAIModel(apiKey: key) {
+                cachedOpenAIModelId = discovered
+                cachedOpenAIModelIdAt = Date()
+                return ResolvedLLMCall(provider: provider, modelID: discovered, source: .discovered(discovered))
+            }
+            return ResolvedLLMCall(provider: provider, modelID: floor, source: .floor(floor))
+
+        case .openRouter:
+            let resolved = LLMModelRegistry.OpenRouter.resolve(configured: trimmedConfigured)
+            let model = LLMModelRegistry.isKnownBroken(resolved) ? LLMModelRegistry.OpenRouter.primary : resolved
+            return ResolvedLLMCall(provider: provider, modelID: model, source: .floor(model))
+        }
     }
 
     /// 모델별 429 쿨다운 — [modelId: 만료 시각]
@@ -484,6 +567,7 @@ final class AIService {
         text: String,
         agentID: String,
         chatHistory: [AgentWindowManager.ChatLog],
+        resolvedCall: ResolvedLLMCall? = nil,
         retryCount: Int = 0
     ) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
@@ -513,29 +597,13 @@ final class AIService {
                     return
                 }
 
-                // ── 모델 선택 (Release는 pinned, DEBUG는 쿨다운 중 모델 제외) ──
-                let fallbackFlash = AIModelPolicy.pinnedModelID(for: .gemini)
-                let modelToUse: String
-                if AIModelPolicy.dynamicModelDiscoveryAllowed {  // Round 270B: Release도 동적 디스커버리 허용 (modelOverrideAllowed는 DEBUG-only였음)
-                    if let cached = cachedGeminiModelId,
-                       !isGeminiModelCoolingDown(cached),
-                       !isCacheExpired(cachedGeminiModelIdAt) {
-                        modelToUse = cached
-                    } else {
-                        cachedGeminiModelId = nil
-                        cachedGeminiModelIdAt = nil
-                        if let discoveredModel = try? await discoverLatestGeminiModel(apiKey: apiKey),
-                           !isGeminiModelCoolingDown(discoveredModel) {
-                            modelToUse = discoveredModel
-                            cachedGeminiModelId = discoveredModel
-                            cachedGeminiModelIdAt = Date()
-                        } else {
-                            modelToUse = fallbackFlash
-                        }
-                    }
+                let resolved: ResolvedLLMCall
+                if let resolvedCall {
+                    resolved = resolvedCall
                 } else {
-                    modelToUse = fallbackFlash
+                    resolved = await resolveLLMCall(for: .gemini, apiKey: apiKey)
                 }
+                let modelToUse = resolved.modelID
 
                 guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(modelToUse):streamGenerateContent?key=\(apiKey)&alt=sse") else {
                     continuation.finish(throwing: AIServiceError.invalidResponse)
@@ -640,7 +708,8 @@ final class AIService {
     private func claudeStream(
         text: String,
         agentID: String,
-        chatHistory: [AgentWindowManager.ChatLog]
+        chatHistory: [AgentWindowManager.ChatLog],
+        resolvedCall: ResolvedLLMCall? = nil
     ) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             Task {
@@ -664,22 +733,13 @@ final class AIService {
                 request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
                 request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
 
-                let claudeModel: String
-                if AIModelPolicy.dynamicModelDiscoveryAllowed {  // Round 270B: Release도 동적 디스커버리 허용 (modelOverrideAllowed는 DEBUG-only였음)
-                    if let cached = cachedClaudeModelId, !isCacheExpired(cachedClaudeModelIdAt) {
-                        claudeModel = cached
-                    } else if let discovered = try? await discoverLatestClaudeModel(apiKey: apiKey) {
-                        claudeModel = discovered
-                        cachedClaudeModelId = discovered
-                        cachedClaudeModelIdAt = Date()
-                    } else {
-                        cachedClaudeModelId = nil
-                        cachedClaudeModelIdAt = nil
-                        claudeModel = AIModelPolicy.pinnedModelID(for: .claude)
-                    }
+                let resolved: ResolvedLLMCall
+                if let resolvedCall {
+                    resolved = resolvedCall
                 } else {
-                    claudeModel = AIModelPolicy.pinnedModelID(for: .claude)
+                    resolved = await resolveLLMCall(for: .claude, apiKey: apiKey)
                 }
+                let claudeModel = resolved.modelID
 
                 let messages = buildAnthropicMessages(text: text, chatHistory: chatHistory)
                 let systemPrompt = buildSystemPrompt(agentID: agentID)
@@ -745,7 +805,8 @@ final class AIService {
         text: String,
         agentID: String,
         chatHistory: [AgentWindowManager.ChatLog],
-        modelId: String
+        configuredModelID: String?,
+        resolvedCall: ResolvedLLMCall? = nil
     ) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             Task {
@@ -758,26 +819,17 @@ final class AIService {
                     return
                 }
 
-                let resolvedModel: String
-                if AIModelPolicy.dynamicModelDiscoveryAllowed {  // Round 270B: Release도 동적 디스커버리 허용 (modelOverrideAllowed는 DEBUG-only였음)
-                    var model = modelId.isEmpty ? "" : modelId
-                    if model.isEmpty {
-                        if let cached = cachedOpenAIModelId, !isCacheExpired(cachedOpenAIModelIdAt) {
-                            model = cached
-                        } else if let discovered = try? await discoverLatestOpenAIModel(apiKey: apiKey) {
-                            model = discovered
-                            cachedOpenAIModelId = discovered
-                            cachedOpenAIModelIdAt = Date()
-                        } else {
-                            cachedOpenAIModelId = nil
-                            cachedOpenAIModelIdAt = nil
-                            model = AIModelPolicy.pinnedModelID(for: .openAI)
-                        }
-                    }
-                    resolvedModel = model
+                let resolved: ResolvedLLMCall
+                if let resolvedCall {
+                    resolved = resolvedCall
                 } else {
-                    resolvedModel = AIModelPolicy.pinnedModelID(for: .openAI)
+                    resolved = await resolveLLMCall(
+                        for: .openAI,
+                        apiKey: apiKey,
+                        configuredModelID: configuredModelID
+                    )
                 }
+                let resolvedModel = resolved.modelID
 
                 guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else {
                     continuation.finish(throwing: AIServiceError.invalidResponse)
@@ -983,30 +1035,21 @@ final class AIService {
         for (idx, provider) in candidates.enumerated() {
             do {
                 var fullText = ""
+                let resolvedCall = await resolveLLMCall(
+                    for: provider,
+                    configuredModelID: provider == .openRouter
+                        ? (agentConfig?.openRouterModelId ?? UserDefaults.standard.string(forKey: "openRouterModelId"))
+                        : nil
+                )
                 let stream = streamForProvider(
                     provider, text: text, agentID: agentID,
-                    chatHistory: chatHistory, agentConfig: agentConfig
+                    chatHistory: chatHistory, agentConfig: agentConfig,
+                    resolvedCall: resolvedCall
                 )
                 for try await token in stream { fullText += token }
-                // Round 270B: 실제 discovery 결과를 사용 (pinnedModelID 버그 수정)
-                // 스트림 완료 후 캐시된 모델 ID가 설정되어 있으면 그것이 실제 사용된 모델
-                let actualModelID: String
-                switch provider {
-                case .gemini:
-                    actualModelID = cachedGeminiModelId ?? AIModelPolicy.pinnedModelID(for: provider)
-                case .claude:
-                    actualModelID = cachedClaudeModelId ?? AIModelPolicy.pinnedModelID(for: provider)
-                case .openAI:
-                    actualModelID = cachedOpenAIModelId ?? AIModelPolicy.pinnedModelID(for: provider)
-                case .openRouter:
-                    actualModelID = AIModelPolicy.resolvedModelID(
-                        provider: .openRouter,
-                        configuredModelID: agentConfig?.openRouterModelId ?? UserDefaults.standard.string(forKey: "openRouterModelId")
-                    )
-                }
                 let metadata = LLMResponseMetadata(
                     provider: provider,
-                    modelID: actualModelID,
+                    modelID: resolvedCall.modelID,
                     fallbackChain: candidates,
                     usedFallback: idx > 0
                 )
@@ -1094,10 +1137,11 @@ final class AIService {
             let apiKey = KeychainManager.load(key: keychainKey(for: provider)) ?? ""
             guard !apiKey.isEmpty else { continue }
             do {
+                let resolved = await resolveLLMCall(for: provider, apiKey: apiKey)
                 switch provider {
-                case .gemini:   return try await geminiQuickCall(prompt: prompt, apiKey: apiKey)
-                case .claude:   return try await claudeQuickCall(prompt: prompt, apiKey: apiKey)
-                case .openAI:   return try await openAIQuickCall(prompt: prompt, apiKey: apiKey)
+                case .gemini:   return try await geminiQuickCall(prompt: prompt, apiKey: apiKey, modelId: resolved.modelID)
+                case .claude:   return try await claudeQuickCall(prompt: prompt, apiKey: apiKey, modelId: resolved.modelID)
+                case .openAI:   return try await openAIQuickCall(prompt: prompt, apiKey: apiKey, modelId: resolved.modelID)
                 case .openRouter: continue
                 }
             } catch { continue }
@@ -1105,14 +1149,7 @@ final class AIService {
         return "(요약 실패: 사용 가능한 API 키가 없습니다)"
     }
 
-    private func geminiQuickCall(prompt: String, apiKey: String) async throws -> String {
-        let modelId: String
-        if AIModelPolicy.modelOverrideAllowed,
-           let cached = cachedGeminiModelId, !isCacheExpired(cachedGeminiModelIdAt) {
-            modelId = cached
-        } else {
-            modelId = AIModelPolicy.pinnedModelID(for: .gemini)
-        }
+    private func geminiQuickCall(prompt: String, apiKey: String, modelId: String) async throws -> String {
         guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(modelId):generateContent?key=\(apiKey)") else {
             throw AIServiceError.invalidResponse
         }
@@ -1130,15 +1167,8 @@ final class AIService {
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func claudeQuickCall(prompt: String, apiKey: String) async throws -> String {
+    private func claudeQuickCall(prompt: String, apiKey: String, modelId: String) async throws -> String {
         guard let url = URL(string: "https://api.anthropic.com/v1/messages") else { throw AIServiceError.invalidResponse }
-        let modelId: String
-        if AIModelPolicy.modelOverrideAllowed,
-           let cached = cachedClaudeModelId, !isCacheExpired(cachedClaudeModelIdAt) {
-            modelId = cached
-        } else {
-            modelId = AIModelPolicy.pinnedModelID(for: .claude)
-        }
         let body: [String: Any] = ["model": modelId, "max_tokens": 512,
                                     "messages": [["role": "user", "content": prompt]]]
         var req = URLRequest(url: url)
@@ -1154,9 +1184,8 @@ final class AIService {
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func openAIQuickCall(prompt: String, apiKey: String) async throws -> String {
+    private func openAIQuickCall(prompt: String, apiKey: String, modelId: String) async throws -> String {
         guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else { throw AIServiceError.invalidResponse }
-        let modelId = AIModelPolicy.pinnedModelID(for: .openAI)
         let body: [String: Any] = ["model": modelId, "max_tokens": 512,
                                     "messages": [["role": "user", "content": prompt]]]
         var req = URLRequest(url: url)
@@ -1189,11 +1218,12 @@ final class AIService {
             let apiKey = KeychainManager.load(key: keychainKey(for: provider)) ?? ""
             guard !apiKey.isEmpty else { continue }
             do {
+                let resolved = await resolveLLMCall(for: provider, apiKey: apiKey)
                 let result: String
                 switch provider {
-                case .gemini:   result = try await geminiQuickCall(prompt: prompt, apiKey: apiKey)
-                case .claude:   result = try await claudeQuickCall(prompt: prompt, apiKey: apiKey)
-                case .openAI:   result = try await openAIQuickCall(prompt: prompt, apiKey: apiKey)
+                case .gemini:   result = try await geminiQuickCall(prompt: prompt, apiKey: apiKey, modelId: resolved.modelID)
+                case .claude:   result = try await claudeQuickCall(prompt: prompt, apiKey: apiKey, modelId: resolved.modelID)
+                case .openAI:   result = try await openAIQuickCall(prompt: prompt, apiKey: apiKey, modelId: resolved.modelID)
                 case .openRouter: continue
                 }
                 AppLog.info("[PrivacyTermsGen] LLM 생성 완료 (\(provider.displayName))")

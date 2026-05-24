@@ -50,3 +50,6 @@ Backup_claude_worktrees/
 # Legacy tools (kept in tools/legacy/)
 tools/legacy/
 *.xcuserstate
+
+# Local Swift spike binaries
+test_*
