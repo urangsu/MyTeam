@@ -198,180 +198,49 @@ enum KSkillAssistRuntime {
         return nil
     }
 
-    // MARK: - Response Builder
+    // MARK: - Response Builder (JSON-based)
 
     static func buildAssistResponse(intent: KSkillAssistIntent, userMessage: String) -> KSkillAssistResponse {
-        switch intent {
-
-        case .transportationBookingAssist:
-            return KSkillAssistResponse(
-                intent: intent,
-                title: "Transportation Booking Helper",
-                message: "I don't handle booking confirmation or payment. I'll help you organize your travel criteria and create a pre-booking checklist.",
-                checklist: [
-                    "Origin and destination confirmed",
-                    "Travel date and preferred time (early/midday/evening)",
-                    "Number of passengers and seat type (economy/business)",
-                    "Account login status verified beforehand",
-                    "Cancellation & change policies reviewed",
-                    "Special offers and discounts checked"
-                ],
-                nextActions: [
-                    "Search and book directly on your preferred platform (Skytrain, Booking.com, official carrier sites)",
-                    "Share your travel details and I can help organize your booking checklist"
-                ],
-                hardBlockedActions: [
-                    "Auto login handling",
-                    "Automatic seat selection confirmation",
-                    "Payment information processing",
-                    "CAPTCHA bypass"
-                ],
-                requiredUserInputs: ["Origin", "Destination", "Date", "Preferred time", "Passengers"]
-            )
-
-        case .accommodationAssist:
-            return KSkillAssistResponse(
-                intent: intent,
-                title: "Accommodation Planning Helper",
-                message: "I don't handle booking confirmation or payment. I'll help you organize your accommodation criteria and create a pre-booking checklist.",
-                checklist: [
-                    "Purpose of stay and number of guests confirmed",
-                    "Check-in/check-out dates and times",
-                    "Budget range per night",
-                    "Location & proximity to transit/attractions",
-                    "Room type and amenities (WiFi, kitchen, etc)",
-                    "Cancellation and modification policies reviewed"
-                ],
-                nextActions: [
-                    "Search on Google Maps, Booking.com, or local property sites",
-                    "Share your requirements and I can help organize comparison criteria"
-                ],
-                hardBlockedActions: [
-                    "Automatic booking confirmation",
-                    "Payment information processing",
-                    "Uploading personal documents"
-                ],
-                requiredUserInputs: ["Destination", "Dates", "Budget", "Guest count"]
-            )
-
-        case .investmentResearchAssist:
-            return KSkillAssistResponse(
-                intent: intent,
-                title: "Investment Research Helper",
-                message: "I don't provide buy/sell recommendations or guarantee returns. I'll help you organize analysis criteria and create a due diligence checklist.",
-                checklist: [
-                    "Company fundamentals (sector, market cap, P/E, P/B)",
-                    "Recent financial results and earnings reports",
-                    "Valuation metrics (P/E, P/B, ROE, dividend yield)",
-                    "52-week high/low vs current price",
-                    "Key risk factors and competitive landscape",
-                    "Analyst reports and news sentiment"
-                ],
-                nextActions: [
-                    "Research on Yahoo Finance, Google Finance, or SEC Edgar",
-                    "Share company details or reports and I can help summarize key metrics"
-                ],
-                hardBlockedActions: [
-                    "Definitive buy/sell recommendations",
-                    "Profit guarantees",
-                    "Acting as registered investment advisor"
-                ],
-                requiredUserInputs: ["Company or ticker", "Research objective", "Investment timeline"]
-            )
-
-        case .newsResearchAssist:
-            return KSkillAssistResponse(
-                intent: intent,
-                title: "News Research Helper",
-                message: "I don't fetch real-time news. Share article links or content and I'll help summarize and organize key facts.",
-                checklist: [
-                    "Source and publication date verified",
-                    "Distinguish facts from opinions/claims",
-                    "Cross-reference with other credible sources",
-                    "Check citations and attributions",
-                    "Identify bias or sponsored content",
-                    "Evaluate author credibility"
-                ],
-                nextActions: [
-                    "Search on Reuters, AP, BBC, or Google News",
-                    "Share article links or text and I can summarize key points"
-                ],
-                hardBlockedActions: [
-                    "Fabricating real-time search results",
-                    "Creating content without source material"
-                ],
-                requiredUserInputs: ["Article link or text", "Research topic"]
-            )
-
-        case .travelPlanningAssist:
-            return KSkillAssistResponse(
-                intent: intent,
-                title: "Travel Planning Helper",
-                message: "I don't search maps or book directly. Share your destination and preferences, and I'll help organize your itinerary and research checklist.",
-                checklist: [
-                    "Destination and travel dates confirmed",
-                    "Travel budget (flights, accommodation, activities)",
-                    "Visa requirements and travel documents",
-                    "Local transportation options",
-                    "Must-see attractions and experiences",
-                    "Weather and seasonal considerations",
-                    "Currency and local customs"
-                ],
-                nextActions: [
-                    "Use Google Maps, TripAdvisor, or local tourism sites for research",
-                    "Share destination details and I can help organize an itinerary framework"
-                ],
-                hardBlockedActions: [
-                    "Fabricating attraction rankings",
-                    "Generating fake reviews"
-                ],
-                requiredUserInputs: ["Destination", "Travel dates", "Budget range", "Interests"]
-            )
-
-        case .businessDocumentAssist:
-            return KSkillAssistResponse(
-                intent: intent,
-                title: "Business Document Helper",
-                message: "Share documents or text and I'll help extract action items, improve clarity, and organize key findings.",
-                checklist: [
-                    "Document type identified (meeting notes/report/proposal)",
-                    "Review objective clearly stated",
-                    "Sensitive information (accounts/PII) identified",
-                    "Key stakeholders and deadlines noted"
-                ],
-                nextActions: [
-                    "Paste text or upload document content here",
-                    "I can extract action items, improve tone, or reorganize structure"
-                ],
-                hardBlockedActions: [
-                    "Modifying original files without approval",
-                    "Uploading to external services without permission"
-                ],
-                requiredUserInputs: ["Document text or content", "Review purpose"]
-            )
-
-        case .fileProcessingAssist:
-            return KSkillAssistResponse(
-                intent: intent,
-                title: "File Processing Helper",
-                message: "Upload or paste file content and I'll help organize, summarize, or extract key information.",
-                checklist: [
-                    "File type identified (PDF/image/spreadsheet/text)",
-                    "Sensitive or confidential information noted",
-                    "Processing goal clarified (summarize/extract/convert)",
-                    "Expected output format determined"
-                ],
-                nextActions: [
-                    "Upload content or paste text here",
-                    "Specify the processing goal and I'll help extract what you need"
-                ],
-                hardBlockedActions: [
-                    "Uploading to external cloud storage without explicit permission",
-                    "Automatic deletion or permanent disposal"
-                ],
-                requiredUserInputs: ["File content or text", "Processing objective"]
-            )
+        // Find skill ID by intent
+        guard let skillID = intentToSkillID(intent) else {
+            return fallbackResponse(for: intent)
         }
+
+        // Load from JSON
+        if let response = SkillResourceLoader.shared.toKSkillAssistResponse(skillID: skillID) {
+            return response
+        }
+
+        // Fallback if JSON loading fails
+        return fallbackResponse(for: intent)
+    }
+
+    // MARK: - Intent to Skill ID Mapping
+
+    private static func intentToSkillID(_ intent: KSkillAssistIntent) -> String? {
+        switch intent {
+        case .transportationBookingAssist: return "transportation-booking"
+        case .accommodationAssist: return "accommodation-planning"
+        case .investmentResearchAssist: return "investment-research"
+        case .newsResearchAssist: return "news-research"
+        case .travelPlanningAssist: return "travel-planning"
+        case .businessDocumentAssist: return "business-document"
+        case .fileProcessingAssist: return "file-processing"
+        }
+    }
+
+    // MARK: - Fallback Response (if JSON unavailable)
+
+    private static func fallbackResponse(for intent: KSkillAssistIntent) -> KSkillAssistResponse {
+        return KSkillAssistResponse(
+            intent: intent,
+            title: "Skill Helper",
+            message: "I'm here to help. Please share your request and I'll provide guidance without taking action on your behalf.",
+            checklist: ["Clarify your objective"],
+            nextActions: ["Share details for personalized guidance"],
+            hardBlockedActions: ["Automated actions without your direct approval"],
+            requiredUserInputs: ["Request details"]
+        )
     }
 
     // MARK: - Markdown Formatter

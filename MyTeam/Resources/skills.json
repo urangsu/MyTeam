@@ -1,0 +1,225 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2026-05-25",
+  "skills": {
+    "transportation-booking": {
+      "intent": "transportationBookingAssist",
+      "title": "Transportation Booking Helper",
+      "message": "I don't handle booking confirmation or payment. I'll help you organize your travel criteria and create a pre-booking checklist.",
+      "checklist": [
+        "Origin and destination confirmed",
+        "Travel date and preferred time (early/midday/evening)",
+        "Number of passengers and seat type (economy/business)",
+        "Account login status verified beforehand",
+        "Cancellation & change policies reviewed",
+        "Special offers and discounts checked"
+      ],
+      "requiredInputs": [
+        "Origin",
+        "Destination",
+        "Date",
+        "Preferred time",
+        "Passengers"
+      ],
+      "nextActions": [
+        "Search and book directly on your preferred platform (Skytrain, Booking.com, official carrier sites)",
+        "Share your travel details and I can help organize your booking checklist"
+      ],
+      "hardBlockedActions": [
+        "Auto login handling",
+        "Automatic seat selection confirmation",
+        "Payment information processing",
+        "CAPTCHA bypass"
+      ],
+      "keywords": {
+        "ko": ["기차", "열차", "버스", "항공", "비행기", "예약"],
+        "en": ["train", "bus", "flight", "booking", "transportation"],
+        "ja": ["電車", "バス", "航空", "予約"]
+      }
+    },
+    "accommodation-planning": {
+      "intent": "accommodationAssist",
+      "title": "Accommodation Planning Helper",
+      "message": "I don't handle booking confirmation or payment. I'll help you organize your accommodation criteria and create a pre-booking checklist.",
+      "checklist": [
+        "Purpose of stay and number of guests confirmed",
+        "Check-in/check-out dates and times",
+        "Budget range per night",
+        "Location & proximity to transit/attractions",
+        "Room type and amenities (WiFi, kitchen, etc)",
+        "Cancellation and modification policies reviewed"
+      ],
+      "requiredInputs": [
+        "Destination",
+        "Dates",
+        "Budget",
+        "Guest count"
+      ],
+      "nextActions": [
+        "Search on Google Maps, Booking.com, or local property sites",
+        "Share your requirements and I can help organize comparison criteria"
+      ],
+      "hardBlockedActions": [
+        "Automatic booking confirmation",
+        "Payment information processing",
+        "Uploading personal documents"
+      ],
+      "keywords": {
+        "ko": ["숙박", "호텔", "에어비앤비"],
+        "en": ["hotel", "accommodation", "airbnb", "lodging"],
+        "ja": ["ホテル", "宿泊", "エアビーアンドビー"]
+      }
+    },
+    "investment-research": {
+      "intent": "investmentResearchAssist",
+      "title": "Investment Research Helper",
+      "message": "I don't provide buy/sell recommendations or guarantee returns. I'll help you organize analysis criteria and create a due diligence checklist.",
+      "checklist": [
+        "Company fundamentals (sector, market cap, P/E, P/B)",
+        "Recent financial results and earnings reports",
+        "Valuation metrics (P/E, P/B, ROE, dividend yield)",
+        "52-week high/low vs current price",
+        "Key risk factors and competitive landscape",
+        "Analyst reports and news sentiment"
+      ],
+      "requiredInputs": [
+        "Company or ticker",
+        "Research objective",
+        "Investment timeline"
+      ],
+      "nextActions": [
+        "Research on Yahoo Finance, Google Finance, or SEC Edgar",
+        "Share company details or reports and I can help summarize key metrics"
+      ],
+      "hardBlockedActions": [
+        "Definitive buy/sell recommendations",
+        "Profit guarantees",
+        "Acting as registered investment advisor"
+      ],
+      "keywords": {
+        "ko": ["주가", "주식", "투자", "종목", "시세"],
+        "en": ["stock", "investment", "equity", "finance", "trading"],
+        "ja": ["株", "投資", "ファイナンス"]
+      }
+    },
+    "news-research": {
+      "intent": "newsResearchAssist",
+      "title": "News Research Helper",
+      "message": "I don't fetch real-time news. Share article links or content and I'll help summarize and organize key facts.",
+      "checklist": [
+        "Source and publication date verified",
+        "Distinguish facts from opinions/claims",
+        "Cross-reference with other credible sources",
+        "Check citations and attributions",
+        "Identify bias or sponsored content",
+        "Evaluate author credibility"
+      ],
+      "requiredInputs": [
+        "Article link or text",
+        "Research topic"
+      ],
+      "nextActions": [
+        "Search on Reuters, AP, BBC, or Google News",
+        "Share article links or text and I can summarize key points"
+      ],
+      "hardBlockedActions": [
+        "Fabricating real-time search results",
+        "Creating content without source material"
+      ],
+      "keywords": {
+        "ko": ["뉴스", "기사", "리서치", "검색"],
+        "en": ["news", "article", "research", "media"],
+        "ja": ["ニュース", "記事", "メディア"]
+      }
+    },
+    "travel-planning": {
+      "intent": "travelPlanningAssist",
+      "title": "Travel Planning Helper",
+      "message": "I don't search maps or book directly. Share your destination and preferences, and I'll help organize your itinerary and research checklist.",
+      "checklist": [
+        "Destination and travel dates confirmed",
+        "Travel budget (flights, accommodation, activities)",
+        "Visa requirements and travel documents",
+        "Local transportation options",
+        "Must-see attractions and experiences",
+        "Weather and seasonal considerations",
+        "Currency and local customs"
+      ],
+      "requiredInputs": [
+        "Destination",
+        "Travel dates",
+        "Budget range",
+        "Interests"
+      ],
+      "nextActions": [
+        "Use Google Maps, TripAdvisor, or local tourism sites for research",
+        "Share destination details and I can help organize an itinerary framework"
+      ],
+      "hardBlockedActions": [
+        "Fabricating attraction rankings",
+        "Generating fake reviews"
+      ],
+      "keywords": {
+        "ko": ["여행", "관광", "지도", "여행계획"],
+        "en": ["travel", "trip", "tourism", "vacation"],
+        "ja": ["旅行", "観光", "トリップ"]
+      }
+    },
+    "business-document": {
+      "intent": "businessDocumentAssist",
+      "title": "Business Document Helper",
+      "message": "Share documents or text and I'll help extract action items, improve clarity, and organize key findings.",
+      "checklist": [
+        "Document type identified (meeting notes/report/proposal)",
+        "Review objective clearly stated",
+        "Sensitive information (accounts/PII) identified",
+        "Key stakeholders and deadlines noted"
+      ],
+      "requiredInputs": [
+        "Document text or content",
+        "Review purpose"
+      ],
+      "nextActions": [
+        "Paste text or upload document content here",
+        "I can extract action items, improve tone, or reorganize structure"
+      ],
+      "hardBlockedActions": [
+        "Modifying original files without approval",
+        "Uploading to external services without permission"
+      ],
+      "keywords": {
+        "ko": ["회의록", "보고서", "문서", "회의"],
+        "en": ["report", "document", "meeting", "proposal"],
+        "ja": ["会議", "報告書", "ドキュメント"]
+      }
+    },
+    "file-processing": {
+      "intent": "fileProcessingAssist",
+      "title": "File Processing Helper",
+      "message": "Upload or paste file content and I'll help organize, summarize, or extract key information.",
+      "checklist": [
+        "File type identified (PDF/image/spreadsheet/text)",
+        "Sensitive or confidential information noted",
+        "Processing goal clarified (summarize/extract/convert)",
+        "Expected output format determined"
+      ],
+      "requiredInputs": [
+        "File content or text",
+        "Processing objective"
+      ],
+      "nextActions": [
+        "Upload content or paste text here",
+        "Specify the processing goal and I'll help extract what you need"
+      ],
+      "hardBlockedActions": [
+        "Uploading to external cloud storage without explicit permission",
+        "Automatic deletion or permanent disposal"
+      ],
+      "keywords": {
+        "ko": ["파일", "이미지", "정리", "처리"],
+        "en": ["file", "image", "process", "upload"],
+        "ja": ["ファイル", "画像", "処理"]
+      }
+    }
+  }
+}
