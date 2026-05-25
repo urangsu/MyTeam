@@ -76,6 +76,8 @@ enum FileIntakeService {
                 extracted = try PDFFileExtractor.extractMarkdown(from: request.fileURL)
             } else if ext == "hwp" || ext == "hwpx" {
                 extracted = try HWPFileExtractor.extractMarkdown(from: request.fileURL)
+            } else if ext == "xlsx" {
+                extracted = try XLSXFileExtractor.extractMarkdown(from: request.fileURL)
             } else {
                 let data = try Data(contentsOf: request.fileURL)
                 extracted = String(data: data, encoding: .utf8)
@@ -116,6 +118,13 @@ enum FileIntakeService {
                 request: request,
                 extractedText: nil,
                 userMessage: "HWP 파일을 읽을 수 없습니다: \(error.localizedDescription ?? "Unknown error")"
+            )
+        } catch let error as XLSXExtractionError {
+            return FileIntakeResult(
+                status: .readFailed,
+                request: request,
+                extractedText: nil,
+                userMessage: "Excel 파일을 읽을 수 없습니다: \(error.localizedDescription ?? "Unknown error")"
             )
         } catch {
             return FileIntakeResult(

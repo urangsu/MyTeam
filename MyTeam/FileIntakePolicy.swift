@@ -16,11 +16,11 @@ enum FileIntakePolicy {
     static let maxFileSizeBytes: Int64 = 2 * 1024 * 1024
 
     static let readableExtensions: Set<String> = [
-        "txt", "md", "markdown", "csv", "pdf", "hwp", "hwpx"
+        "txt", "md", "markdown", "csv", "pdf", "hwp", "hwpx", "xlsx"
     ]
 
     static let plannedExtensions: Set<String> = [
-        "docx", "xlsx", "pptx"
+        "docx", "pptx"
     ]
 
     static let blockedExtensions: Set<String> = [
@@ -54,8 +54,6 @@ enum FileIntakePolicy {
         switch ext {
         case "docx":
             return "Word 문서 읽기는 준비 중입니다. 지금은 내용을 텍스트로 복사해 붙여 넣으면 문서화할 수 있습니다."
-        case "xlsx":
-            return "Excel 파일 분석은 준비 중입니다. 현재는 CSV를 먼저 지원합니다."
         case "pptx":
             return "PowerPoint 읽기는 준비 중입니다. 지금은 슬라이드 내용을 텍스트로 붙여 넣어 요약할 수 있습니다."
         default:
