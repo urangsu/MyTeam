@@ -67,14 +67,24 @@ enum FileIntakeService {
             }
         }
 
-        do {
-            let data = try Data(contentsOf: request.fileURL)
-            let text = String(data: data, encoding: .utf8)
-                ?? String(data: data, encoding: .utf16)
-                ?? String(data: data, encoding: .utf16LittleEndian)
-                ?? String(data: data, encoding: .utf16BigEndian)
+        let ext = request.fileExtension.lowercased()
 
-            guard var extracted = text?.trimmingCharacters(in: .whitespacesAndNewlines), !extracted.isEmpty else {
+        do {
+            let extracted: String?
+
+            if ext == "pdf" {
+                extracted = try PDFFileExtractor.extractMarkdown(from: request.fileURL)
+            } else if ext == "hwp" || ext == "hwpx" {
+                extracted = try HWPFileExtractor.extractMarkdown(from: request.fileURL)
+            } else {
+                let data = try Data(contentsOf: request.fileURL)
+                extracted = String(data: data, encoding: .utf8)
+                    ?? String(data: data, encoding: .utf16)
+                    ?? String(data: data, encoding: .utf16LittleEndian)
+                    ?? String(data: data, encoding: .utf16BigEndian)
+            }
+
+            guard var text = extracted?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else {
                 return FileIntakeResult(
                     status: .empty,
                     request: request,
@@ -83,15 +93,29 @@ enum FileIntakeService {
                 )
             }
 
-            if extracted.count > maxExtractedCharacters {
-                extracted = String(extracted.prefix(maxExtractedCharacters))
+            if text.count > maxExtractedCharacters {
+                text = String(text.prefix(maxExtractedCharacters))
             }
 
             return FileIntakeResult(
                 status: .ready,
                 request: request,
-                extractedText: extracted,
+                extractedText: text,
                 userMessage: "파일을 읽었습니다."
+            )
+        } catch let error as PDFExtractionError {
+            return FileIntakeResult(
+                status: .readFailed,
+                request: request,
+                extractedText: nil,
+                userMessage: "PDF를 읽을 수 없습니다: \(error.localizedDescription ?? "Unknown error")"
+            )
+        } catch let error as HWPExtractionError {
+            return FileIntakeResult(
+                status: .readFailed,
+                request: request,
+                extractedText: nil,
+                userMessage: "HWP 파일을 읽을 수 없습니다: \(error.localizedDescription ?? "Unknown error")"
             )
         } catch {
             return FileIntakeResult(
