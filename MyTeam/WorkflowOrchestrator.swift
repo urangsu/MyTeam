@@ -895,7 +895,7 @@ final class WorkflowOrchestrator {
                         roomID: roomID,
                         agentID: "system",
                         agentName: "스킬",
-                        text: "먼저 txt, md, csv 파일을 읽어주세요.",
+                        text: "먼저 txt, md, csv, PDF, XLSX, DOCX, PPTX 파일을 읽어주세요.",
                         isUser: false,
                         isSystem: true
                     )
@@ -904,7 +904,7 @@ final class WorkflowOrchestrator {
             }
 
             guard recentFileIntakeResult.status == .ready,
-                  let sourceText = recentFileIntakeResult.extractedText,
+                  let sourceText = recentFileIntakeResult.normalizedText ?? recentFileIntakeResult.extractedText,
                   let documentType = GoalContextEngine.documentTypeFromFileRequest(userMessage) else {
                 _ = await MainActor.run {
                     manager.addChatLog(
@@ -915,7 +915,7 @@ final class WorkflowOrchestrator {
                             || recentFileIntakeResult.status == .blocked
                             || recentFileIntakeResult.status == .tooLarge
                             || recentFileIntakeResult.status == .readFailed
-                            ? "이 파일은 아직 문서 생성에 사용할 수 없습니다. txt, md, csv 파일을 먼저 지원합니다."
+                            ? "이 파일은 아직 문서 생성에 사용할 수 없습니다. 현재는 txt, md, csv, PDF, XLSX, DOCX, PPTX를 지원합니다."
                             : "파일에서 문서 유형을 더 구체적으로 알려주세요. 예: 요약, 보고서, 표, 체크리스트",
                         isUser: false,
                         isSystem: true

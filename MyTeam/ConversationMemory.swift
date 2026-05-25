@@ -1,6 +1,5 @@
 import Foundation
 import AppKit
-import PDFKit
 
 // MARK: - ConversationMemory
 // CrewAI Scoped Memory 패턴 — 팀/에이전트별 대화 기억 관리
@@ -1055,35 +1054,9 @@ struct FileContentExtractor {
         case .text:
             return try? String(contentsOf: url, encoding: .utf8)
         case .pdf:
-            return extractPDFText(from: url)
+            return FileIntakeService.extractAttachmentText(from: url)
         default:
             return nil
         }
-    }
-
-    /// PDF에서 텍스트 추출 (PDFKit 사용)
-    private static func extractPDFText(from url: URL) -> String? {
-        guard let pdfDoc = PDFDocumentWrapper(url: url) else { return nil }
-        return pdfDoc.string
-    }
-
-}
-
-// MARK: - PDF 래퍼 (PDFKit 의존성 분리)
-
-import PDFKit
-
-struct PDFDocumentWrapper {
-    let string: String?
-
-    init?(url: URL) {
-        guard let doc = PDFDocument(url: url) else { return nil }
-        var text = ""
-        for i in 0..<min(doc.pageCount, 20) {
-            if let page = doc.page(at: i), let pageText = page.string {
-                text += pageText + "\n"
-            }
-        }
-        self.string = text.isEmpty ? nil : String(text.prefix(5000))
     }
 }

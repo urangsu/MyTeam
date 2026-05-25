@@ -4,7 +4,7 @@ import Foundation
 
 struct ReadFileTool: WorkflowTool {
     let name = "read_file"
-    let description = "Workspace 내 텍스트 파일을 읽어 내용을 반환한다"
+    let description = "Workspace 내 지원 파일(txt/md/csv/pdf/xlsx/docx/pptx)을 읽어 정규화된 내용을 반환한다"
     let riskLevel: ToolRiskLevel = .safe
     let scope: ToolScope = .workspaceRead
     let inputSchema: [String: String] = [
@@ -29,7 +29,16 @@ struct ReadFileTool: WorkflowTool {
                 error: intakeDecision.message
             )
         }
-        let content = try String(contentsOf: url, encoding: .utf8)
+        let result = FileIntakeService.readText(from: intakeRequest)
+        guard result.status == .ready, let content = result.normalizedText ?? result.extractedText else {
+            return ToolResult(
+                status: .blocked,
+                output: "",
+                artifactPath: nil,
+                error: result.userMessage
+            )
+        }
+
         return ToolResult(status: .succeeded, output: content, artifactPath: filename, error: nil)
     }
 }

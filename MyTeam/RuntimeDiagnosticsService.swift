@@ -199,6 +199,9 @@ struct RuntimeDiagnosticsSnapshot {
     let lastFileIntakeFilename: String?
     let lastFileIntakeHasExtractedText: Bool
     let lastFileIntakeExtractedCharacterCount: Int
+    let lastFileIntakeFormat: String?
+    let lastFileIntakeWarningCount: Int
+    let lastFileIntakeMetadataSummary: String?
     let fileIntakeToDocumentAvailable: Bool
 
     // Local Scheduler Command
@@ -700,7 +703,10 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("executionContract: available=\(executionContractAvailable) contextBag=\(executionContextBagAvailable) verifier=\(executionVerifierAvailable) aligned=\(planPipelineContractAligned) fallbackAware=\(legacyFallbackOutcomeAware)")
         lines.append("fileIntake: available=\(fileIntakeAvailable) readable=\(fileIntakeReadableExtensions.joined(separator: ",")) planned=\(fileIntakePlannedExtensions.joined(separator: ",")) max=\(fileIntakeMaxFileSizeMB)MB")
         if let lastFileIntakeStatus {
-            lines.append("fileIntakeLast: status=\(lastFileIntakeStatus) file=\(lastFileIntakeFilename ?? "nil") text=\(lastFileIntakeHasExtractedText) chars=\(lastFileIntakeExtractedCharacterCount)")
+            lines.append("fileIntakeLast: status=\(lastFileIntakeStatus) file=\(lastFileIntakeFilename ?? "nil") format=\(lastFileIntakeFormat ?? "nil") text=\(lastFileIntakeHasExtractedText) chars=\(lastFileIntakeExtractedCharacterCount) warnings=\(lastFileIntakeWarningCount)")
+            if let lastFileIntakeMetadataSummary {
+                lines.append("fileIntakeMeta: \(lastFileIntakeMetadataSummary)")
+            }
         }
         lines.append("fileIntakeToDocument: available=\(fileIntakeToDocumentAvailable)")
         lines.append("localSchedulerCommand: available=\(localSchedulerCommandAvailable) tasks=\(automationTaskCount) pending=\(pendingApprovalTaskCount) next=\(nextScheduledTaskTime ?? "none")")
@@ -858,6 +864,9 @@ final class RuntimeDiagnosticsService {
         let lastFileIntakeFilename = currentFileIntakeResult?.request.originalFilename
         let lastFileIntakeHasExtractedText = currentFileIntakeResult?.extractedText?.isEmpty == false
         let lastFileIntakeExtractedCharacterCount = currentFileIntakeResult?.extractedText?.count ?? 0
+        let lastFileIntakeFormat = currentFileIntakeResult?.detectedFormat?.rawValue
+        let lastFileIntakeWarningCount = currentFileIntakeResult?.extractionWarnings.count ?? 0
+        let lastFileIntakeMetadataSummary = currentFileIntakeResult?.metadataSummary
         let fileIntakeToDocumentAvailable = currentFileIntakeResult?.status == .ready && lastFileIntakeHasExtractedText
         let activeTaskRoomCount = manager.activeWorkflowTaskCount()
 
@@ -1331,6 +1340,9 @@ final class RuntimeDiagnosticsService {
             lastFileIntakeFilename: lastFileIntakeFilename,
             lastFileIntakeHasExtractedText: lastFileIntakeHasExtractedText,
             lastFileIntakeExtractedCharacterCount: lastFileIntakeExtractedCharacterCount,
+            lastFileIntakeFormat: lastFileIntakeFormat,
+            lastFileIntakeWarningCount: lastFileIntakeWarningCount,
+            lastFileIntakeMetadataSummary: lastFileIntakeMetadataSummary,
             fileIntakeToDocumentAvailable: fileIntakeToDocumentAvailable,
             localSchedulerCommandAvailable: localSchedulerCommandAvailable,
             automationTaskCount: automationTaskCount,

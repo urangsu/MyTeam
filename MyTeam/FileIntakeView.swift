@@ -10,7 +10,7 @@ struct FileIntakeView: View {
     @State private var isImporting = false
     @State private var isDropTargeted = false
     @State private var lastResult: FileIntakeResult?
-    @State private var statusMessage = "txt, md, csv 파일을 먼저 지원합니다."
+    @State private var statusMessage = "txt, md, csv, PDF, XLSX, DOCX, PPTX 파일을 지원합니다."
 
     init(
         onResult: @escaping (FileIntakeResult) -> Void,
@@ -30,7 +30,7 @@ struct FileIntakeView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("파일로 작업하기")
                         .font(.system(size: 17, weight: .semibold))
-                    Text("txt, md, csv 파일을 먼저 지원합니다.")
+                    Text("txt, md, csv, PDF, XLSX, DOCX, PPTX 파일을 지원합니다.")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                 }
@@ -61,7 +61,7 @@ struct FileIntakeView: View {
                                 .foregroundStyle(.secondary)
                             Text("파일을 여기에 놓기")
                                 .font(.system(size: 12, weight: .medium))
-                            Text("PDF, Word, Excel, PPT는 준비 중입니다.")
+                            Text("PDF, XLSX, Word, PowerPoint를 바로 읽습니다.")
                                 .font(.system(size: 11))
                                 .foregroundStyle(.secondary)
                         }
@@ -103,7 +103,7 @@ struct FileIntakeView: View {
                     HStack(spacing: 8) {
                         Text("상태: \(result.status.rawValue)")
                         Text("크기: \(ByteCountFormatter.string(fromByteCount: result.request.fileSizeBytes, countStyle: .file))")
-                        if let extractedText = result.extractedText {
+                        if let extractedText = result.normalizedText ?? result.extractedText {
                             Text("문자 수: \(extractedText.count)")
                         }
                     }
@@ -116,7 +116,7 @@ struct FileIntakeView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
 
-                    if result.status == .ready, let extractedText = result.extractedText, !extractedText.isEmpty {
+                    if result.status == .ready, let extractedText = result.normalizedText ?? result.extractedText, !extractedText.isEmpty {
                         let previewText = String(extractedText.prefix(500))
                         ScrollView {
                             Text(previewText)
@@ -202,6 +202,10 @@ struct FileIntakeView: View {
                 status: .readFailed,
                 request: request,
                 extractedText: nil,
+                normalizedText: nil,
+                detectedFormat: nil,
+                extractionWarnings: [],
+                metadataSummary: nil,
                 userMessage: fallbackMessage
             )
             lastResult = result
