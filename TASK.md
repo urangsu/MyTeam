@@ -67,7 +67,27 @@ MyTeam은 Mac 안에서 사용자의 자연어 요청을 받아, 문서/파일/�
 
 ### Now
 
-#### Round 266A-CLOUD-VERIFY — 완료 (2026-05-21)
+#### Round 278-APPSTORE-SUBMISSION (진행 중, 2026-05-25)
+
+App Store 제출 준비 — 메타데이터 + 스크린샷 + 수동 QA
+
+**Phase 1: Cloud Metadata Prep - 완료 (2026-05-25)**
+- `docs/AppStoreConnectSubmissionGuide.md` 신규 — 최종 제출 워크플로우 (5 파트)
+  - 파트 1: Entitlements linking (Xcode, 2분)
+  - 파트 2: Manual QA execution (6 테스트, 20분)
+  - 파트 3: Screenshots & metadata (30분)
+  - 파트 4: Final checklist (코드 + 메타데이터 + App Store Connect)
+  - 파트 5: Submission process (App Store web)
+- `scripts/generate_appstore_screenshots.sh` 신규 — 스크린샷 캡처 가이드
+- Round 277 merge to main 완료 ✅
+
+**다음 단계 (Phase 2-5, 로컬 실행)**
+- Phase 2: Entitlements linking in Xcode (macOS 필수)
+- Phase 3: Manual QA — 6 tests (app 실행, ~20분)
+- Phase 4: Screenshots capture (3-5 per language, ~30분)
+- Phase 5: App Store Connect upload + submit
+
+#### Round 277-KOREAN-HWP-INTAKE (완료, 2026-05-25)
 
 AssistOnly Governance Cloud Static Verification + Mac Handoff Pack
 
