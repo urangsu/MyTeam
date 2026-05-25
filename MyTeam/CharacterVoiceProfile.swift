@@ -33,6 +33,12 @@ struct CharacterVoiceProfile: Sendable, Identifiable {
     let sampleLine: String               // 샘플 발화 문장
 }
 
+extension CharacterVoiceProfile {
+    var localizedDisplayName: String {
+        CharacterDisplayNameResolver.displayName(for: displayName)
+    }
+}
+
 // MARK: - CharacterVoiceProfileCatalog
 
 enum CharacterVoiceProfileCatalog {

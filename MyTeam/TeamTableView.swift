@@ -208,7 +208,7 @@ struct TeamTableView: View {
                     Menu {
                         ForEach(Array(manager.activeAgents.enumerated()), id: \.offset) { index, agent in
                             Button(action: { manager.showSwapWindow(replaceIndex: index) }) {
-                                Label("\(index + 1)번 — \(agent.name) 교체", systemImage: "arrow.triangle.2.circlepath")
+                                Label("\(index + 1)번 — \(agent.displayName) 교체", systemImage: "arrow.triangle.2.circlepath")
                             }
                         }
                     } label: {
@@ -217,7 +217,7 @@ struct TeamTableView: View {
                     Menu {
                         ForEach(manager.activeAgents) { agent in
                             Button(action: { manager.setTeamLeader(agentID: agent.id) }) {
-                                Label(agent.name, systemImage: manager.teamLeader()?.id == agent.id ? "crown.fill" : "person.fill")
+                                Label(agent.displayName, systemImage: manager.teamLeader()?.id == agent.id ? "crown.fill" : "person.fill")
                             }
                         }
                     } label: {
@@ -232,7 +232,7 @@ struct TeamTableView: View {
                         let text = "오늘 너무 고생하셨습니다. 앱을 곧 종료할게요!"
                         // Round 241C: selectedTeamWorkroomID 기준 (currentRoomID 사용 금지)
                         if let rid = manager.selectedTeamWorkroomID ?? manager.currentRoomID {
-                            manager.addChatLog(roomID: rid, agentID: agent.id, agentName: agent.name, text: text, isUser: false, isSystem: true)
+                            manager.addChatLog(roomID: rid, agentID: agent.id, agentName: agent.displayName, text: text, isUser: false, isSystem: true)
                         }
                         if !manager.isSilentMode { SpeechManager.shared.speak(text: text) }
                         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
@@ -272,13 +272,13 @@ struct TeamTableView: View {
             // 드래그 시작 시 랜덤 에이전트 1명만 말함
             if let agent = manager.activeAgents.randomElement() {
                 let fallback = ["어?! 잠깐만요!", "으아아!", "헉!"]
-                let line = CharacterDialogues.randomLine(for: agent.name, state: .drag) ?? fallback.randomElement()!
+                let line = CharacterDialogues.randomLine(for: agent.displayName, state: .drag) ?? fallback.randomElement()!
                 if let rid = manager.currentRoomID {
-                    manager.addChatLog(roomID: rid, agentID: agent.id, agentName: agent.name, text: line, isUser: false, isSystem: true)
+                    manager.addChatLog(roomID: rid, agentID: agent.id, agentName: agent.displayName, text: line, isUser: false, isSystem: true)
                 }
                 if !manager.isSilentMode {
                     manager.setAgentSpeaking(agentID: agent.id, text: line)
-                    SpeechManager.shared.speak(text: line, agentID: agent.id, characterName: agent.name)
+                    SpeechManager.shared.speak(text: line, agentID: agent.id, characterName: agent.displayName)
                 }
             }
         }
@@ -302,13 +302,13 @@ struct TeamTableView: View {
 
             if let agent = manager.activeAgents.randomElement() {
                 let fallback = ["휴, 다시 돌아왔네요.", "무사히 착지!"]
-                let line = CharacterDialogues.randomLine(for: agent.name, state: .landing) ?? fallback.randomElement()!
+                let line = CharacterDialogues.randomLine(for: agent.displayName, state: .landing) ?? fallback.randomElement()!
                 if let rid = manager.currentRoomID {
-                    manager.addChatLog(roomID: rid, agentID: agent.id, agentName: agent.name, text: line, isUser: false, isSystem: true)
+                    manager.addChatLog(roomID: rid, agentID: agent.id, agentName: agent.displayName, text: line, isUser: false, isSystem: true)
                 }
                 if !manager.isSilentMode {
                     manager.setAgentSpeaking(agentID: agent.id, text: line)
-                    SpeechManager.shared.speak(text: line, agentID: agent.id, characterName: agent.name)
+                    SpeechManager.shared.speak(text: line, agentID: agent.id, characterName: agent.displayName)
                 }
             }
         }

@@ -16,6 +16,7 @@ struct TeamStatusView: View {
     
     @State private var inputText: String = ""
     @State private var pendingAttachments: [ChatAttachment] = []
+    @State private var attachmentError: String? = nil
     @State private var isTargetedForDrop: Bool = false
     @State private var scheduleDraftTime: String = "09:00"
     @State private var scheduleDraftPrompt: String = ""
@@ -55,7 +56,7 @@ struct TeamStatusView: View {
             latestEventTimestamp: latestEventTimestamp,
             idleIndex: collaborationStatusTick,
             currentTask: manager.currentMainTask,
-            activeAgentNames: manager.activeAgents.map(\.name)
+            activeAgentNames: manager.activeAgents.map(\.displayName)
         )
     }
     
@@ -464,148 +465,18 @@ struct TeamStatusView: View {
 
     // MARK: - 빠른 기능 메뉴 (두루마리 아이콘 팝오버)
     private var quickActionMenuView: some View {
-        let isDark = manager.isDarkMode
-        let bg = isDark ? Color(white: 0.12) : Color(white: 0.97)
-        let dividerColor = isDark ? Color.white.opacity(0.08) : Color.black.opacity(0.08)
-
-        return ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-
-                // ── 헤더 ──
-                HStack(spacing: 6) {
-                    Image(systemName: "scroll")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.blue)
-                    Text("할 수 있는 것")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(isDark ? .white : .primary)
-                    Spacer()
-                }
-                .padding(.horizontal, 14)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
-
-                Divider().background(dividerColor).padding(.horizontal, 8)
-
-                // ── 섹션 1: 문서 만들기 ──
-                quickMenuSection(
-                    label: "문서 만들기",
-                    isDark: isDark,
-                    items: [
-                        ("doc.text",            "회의록",        "회의 내용 → 회의록 자동 정리",   "회의록 만들어줘"),
-                        ("checkmark.square",    "체크리스트",     "할 일 목록을 체크리스트로",       "체크리스트 만들어줘"),
-                        ("doc.badge.plus",      "보고서 초안",    "목적·배경 → 보고서 형태로",       "보고서 초안 만들어줘"),
-                    ]
-                )
-
-                Divider().background(dividerColor).padding(.horizontal, 8)
-
-                // ── 섹션 2: 파일 & 정보 ──
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("파일 & 정보")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal, 14)
-                        .padding(.top, 8)
-                        .padding(.bottom, 4)
-
-                    // "파일 읽기" → FileIntakeView 시트 직접 열기
-                    Button(action: {
-                        isQuickActionMenuPresented = false
-                        isFileIntakeSheetPresented = true
-                    }) {
-                        HStack(spacing: 10) {
-                            Image(systemName: "folder")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.blue.opacity(0.85))
-                                .frame(width: 22)
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text("파일 읽기")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(isDark ? .white : .primary)
-                                Text("첨부 파일을 분석·요약")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(1)
-                            }
-                            Spacer()
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 9, weight: .semibold))
-                                .foregroundColor(.secondary.opacity(0.4))
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(PlainButtonStyle())
-
-                    // "오늘 할 일" → 워크룸 프롬프트 디스패치
-                    Button(action: {
-                        isQuickActionMenuPresented = false
-                        guard let roomID = manager.selectedTeamWorkroomID else { return }
-                        dispatchWorkroomPrompt("오늘 할 일 정리해줘", roomID: roomID)
-                    }) {
-                        HStack(spacing: 10) {
-                            Image(systemName: "calendar.badge.checkmark")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.blue.opacity(0.85))
-                                .frame(width: 22)
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text("오늘 할 일")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(isDark ? .white : .primary)
-                                Text("지금 이어서 할 일 정리")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(1)
-                            }
-                            Spacer()
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 9, weight: .semibold))
-                                .foregroundColor(.secondary.opacity(0.4))
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
-
-                Divider().background(dividerColor).padding(.horizontal, 8)
-
-                // ── 섹션 3: 변환 ──
-                quickMenuSection(
-                    label: "변환",
-                    isDark: isDark,
-                    items: [
-                        ("text.alignleft",  "요약하기",       "최근 문서를 핵심만 요약",        "방금 만든 문서 요약해줘"),
-                        ("tablecells",      "표로 바꾸기",    "내용을 표 형태로 재정리",         "방금 만든 문서 표로 바꿔줘"),
-                        ("checklist",       "체크리스트 변환","내용을 체크리스트로 변환",        "방금 만든 문서 체크리스트로 바꿔줘"),
-                    ]
-                )
-
-                Divider().background(dividerColor).padding(.horizontal, 8)
-
-                // ── 섹션 4: 예시 ──
-                quickMenuSection(
-                    label: "예시로 시작하기",
-                    isDark: isDark,
-                    items: [
-                        ("play.circle.fill", "샘플 회의록", "샘플 회의 내용으로 회의록 바로 만들기", BeginnerTaskCard.exampleMeetingPrompt),
-                    ]
-                )
-
-                // ── 하단 힌트 ──
-                Text("💡 메시지 창에 직접 입력해도 됩니다")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary.opacity(0.7))
-                    .padding(.horizontal, 14)
-                    .padding(.top, 8)
-                    .padding(.bottom, 12)
+        QuickActionMenuContent(
+            isDark: manager.isDarkMode,
+            onPrompt: { prompt in
+                isQuickActionMenuPresented = false
+                inputText = prompt
+                sendTeamMessage()
+            },
+            onFileIntake: {
+                isQuickActionMenuPresented = false
+                isFileIntakeSheetPresented = true
             }
-        }
-        .frame(width: 280, height: 440)
-        .background(bg)
+        )
     }
 
     @ViewBuilder
@@ -856,16 +727,17 @@ struct TeamStatusView: View {
             // ── 하단: 입력창 (팀 채팅 + 첨부파일) ──
             // layoutPriority(1): ScrollView보다 우선 공간 확보 → 잘림 방지
             VStack(spacing: 0) {
+                let isTeamActive = manager.isWorkflowRunning || (manager.teamRuntimeState?.isActive == true)
                 // Round 278 1-F: 작업 중 인디케이터 — Claude/Gemini 수준 "동작 중" 표시
                 // 1) 상단 1px 슬라이딩 진행 바
-                if manager.isWorkflowRunning {
+                if isTeamActive {
                     WorkflowProgressBarView(accentColor: .blue)
                 }
 
                 Divider().background(textColor.opacity(0.08))
 
                 // Round 278 1-F: 2) 상태 텍스트 + 점 애니메이션 인디케이터
-                if manager.isWorkflowRunning,
+                if isTeamActive,
                    let statusText = TeamRuntimeStatusCopy.displayText(
                        workflowStatusText: manager.workflowStatusText,
                        teamState: manager.teamRuntimeState
@@ -892,6 +764,15 @@ struct TeamStatusView: View {
                         }
                         .padding(.horizontal, 10).padding(.vertical, 4)
                     }
+                }
+
+                if let attachmentError {
+                    Text(attachmentError)
+                        .font(.system(size: 10))
+                        .foregroundColor(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 12)
+                        .padding(.top, 4)
                 }
 
                 HStack(spacing: 8) {
@@ -954,7 +835,12 @@ struct TeamStatusView: View {
                     _ = provider.loadObject(ofClass: URL.self) { url, _ in
                         guard let url = url else { return }
                         Task { @MainActor in
-                            if let a = await loadTeamAttachment(from: url) { pendingAttachments.append(a) }
+                            if let a = await loadTeamAttachment(from: url) {
+                                pendingAttachments.append(a)
+                                attachmentError = nil
+                            } else {
+                                attachmentError = "첨부를 읽지 못했어요. 파일 권한이나 형식을 확인해 주세요."
+                            }
                         }
                     }
                 }
@@ -1126,13 +1012,13 @@ struct TeamStatusView: View {
             return task.scheduleText
         }
         let status = manager.activeAgents.contains(where: { $0.id == assignedID }) ? "" : " 없음"
-        return "\(task.scheduleText) · \(agent.name)\(status)"
+        return "\(task.scheduleText) · \(agent.displayName)\(status)"
     }
 
     private func scheduleAgentMenuLabel(for agent: AgentWindowManager.AgentConfig) -> String {
         manager.activeAgents.contains(where: { $0.id == agent.id })
-            ? agent.name
-            : "\(agent.name) 없음"
+            ? agent.displayName
+            : "\(agent.displayName) 없음"
     }
 
     private func addScheduleFromPanel() {
@@ -1228,12 +1114,20 @@ struct TeamStatusView: View {
         panel.allowsMultipleSelection = true
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
+        panel.allowedContentTypes = Self.allowedAttachmentContentTypes
         panel.begin { response in
             guard response == .OK else { return }
             Task {
                 for url in panel.urls {
                     if let a = await loadTeamAttachment(from: url) {
-                        await MainActor.run { pendingAttachments.append(a) }
+                        await MainActor.run {
+                            pendingAttachments.append(a)
+                            attachmentError = nil
+                        }
+                    } else {
+                        await MainActor.run {
+                            attachmentError = "첨부를 읽지 못했어요. 파일 권한이나 형식을 확인해 주세요."
+                        }
                     }
                 }
             }
@@ -1241,13 +1135,25 @@ struct TeamStatusView: View {
     }
 
     private func loadTeamAttachment(from url: URL) async -> ChatAttachment? {
-        guard url.startAccessingSecurityScopedResource() else { return nil }
-        defer { url.stopAccessingSecurityScopedResource() }
+        let didStartSecurityScope = url.startAccessingSecurityScopedResource()
+        defer {
+            if didStartSecurityScope {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
         let fileName = url.lastPathComponent
         let type = ChatAttachment.AttachmentType.from(fileName: fileName)
         let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-        let textContent = FileContentExtractor.extractText(from: url)
+        let textContent = FileIntakeService.extractAttachmentText(from: url)
+            ?? FileContentExtractor.extractText(from: url)
         return ChatAttachment(fileName: fileName, fileSize: fileSize, type: type, textContent: textContent, localPath: url.path)
+    }
+
+    private static var allowedAttachmentContentTypes: [UTType] {
+        var types: [UTType] = [.text, .plainText, .pdf, .image, .data]
+        let extensions = ["md", "markdown", "csv", "xlsx", "docx", "pptx", "hwp", "hwpx"]
+        types.append(contentsOf: extensions.compactMap { UTType(filenameExtension: $0) })
+        return types
     }
 
     private func sendTeamMessage() {
@@ -1542,6 +1448,152 @@ struct TeamStatusView: View {
     // handleFirstResultAction 제거 — WP6: AgentChatView에서만 처리
 }
 
+// MARK: - QuickActionMenuContent
+struct QuickActionMenuContent: View {
+    let isDark: Bool
+    let onPrompt: (String) -> Void
+    let onFileIntake: () -> Void
+
+    private var bg: Color { isDark ? Color(white: 0.12) : Color(white: 0.97) }
+    private var dividerColor: Color { isDark ? Color.white.opacity(0.08) : Color.black.opacity(0.08) }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 6) {
+                    Image(systemName: "scroll")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.blue)
+                    Text("할 수 있는 것")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(isDark ? .white : .primary)
+                    Spacer()
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
+
+                Divider().background(dividerColor).padding(.horizontal, 8)
+
+                quickMenuSection(
+                    label: "문서 만들기",
+                    items: [
+                        ("doc.text", "회의록", "회의 내용 정리", "회의록 만들어줘"),
+                        ("checkmark.square", "체크리스트", "할 일을 목록으로 정리", "체크리스트 만들어줘"),
+                        ("doc.badge.plus", "보고서 초안", "보고서 형태로 정리", "보고서 초안 만들어줘")
+                    ]
+                )
+
+                Divider().background(dividerColor).padding(.horizontal, 8)
+
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("파일 & 정보")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 14)
+                        .padding(.top, 8)
+                        .padding(.bottom, 4)
+
+                    quickMenuButton(
+                        icon: "folder",
+                        title: "파일 읽기",
+                        desc: "첨부 파일을 분석·요약",
+                        action: onFileIntake
+                    )
+
+                    quickMenuButton(
+                        icon: "calendar.badge.checkmark",
+                        title: "오늘 할 일",
+                        desc: "지금 이어서 할 일 정리",
+                        action: { onPrompt("오늘 할 일 정리해줘") }
+                    )
+                }
+
+                Divider().background(dividerColor).padding(.horizontal, 8)
+
+                quickMenuSection(
+                    label: "변환",
+                    items: [
+                        ("text.alignleft", "요약하기", "핵심만 짧게 정리", "방금 만든 문서 요약해줘"),
+                        ("tablecells", "표로 바꾸기", "내용을 표 형태로 재정리", "방금 만든 문서 표로 바꿔줘"),
+                        ("checklist", "체크리스트 변환", "내용을 체크리스트로 변환", "방금 만든 문서 체크리스트로 바꿔줘")
+                    ]
+                )
+
+                Divider().background(dividerColor).padding(.horizontal, 8)
+
+                quickMenuSection(
+                    label: "예시로 시작하기",
+                    items: [
+                        ("play.circle.fill", "샘플 회의록", "샘플 회의 내용으로 시작", BeginnerTaskCard.exampleMeetingPrompt)
+                    ]
+                )
+
+                Text("메시지 창에 직접 입력해도 됩니다")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary.opacity(0.7))
+                    .padding(.horizontal, 14)
+                    .padding(.top, 8)
+                    .padding(.bottom, 12)
+            }
+        }
+        .frame(width: 280, height: 440)
+        .background(bg)
+    }
+
+    @ViewBuilder
+    private func quickMenuSection(
+        label: String,
+        items: [(icon: String, title: String, desc: String, prompt: String)]
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(label)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 14)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+
+            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                quickMenuButton(
+                    icon: item.icon,
+                    title: item.title,
+                    desc: item.desc,
+                    action: { onPrompt(item.prompt) }
+                )
+            }
+        }
+    }
+
+    private func quickMenuButton(icon: String, title: String, desc: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.blue.opacity(0.85))
+                    .frame(width: 22)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(isDark ? .white : .primary)
+                    Text(desc)
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundColor(.secondary.opacity(0.4))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
 // MARK: - StatusAgentRow
 struct StatusAgentRow: View {
     let agent: AgentWindowManager.AgentConfig
@@ -1566,7 +1618,7 @@ struct StatusAgentRow: View {
             }
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(agent.name).font(.system(size: 13, weight: .semibold)).foregroundColor(.mtTextPrimary)
+                Text(agent.displayName).font(.system(size: 13, weight: .semibold)).foregroundColor(.mtTextPrimary)
                 Text(agent.status).font(.system(size: 10)).foregroundColor(.mtTextSecondary)
             }
             Spacer()

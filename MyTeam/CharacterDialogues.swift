@@ -236,7 +236,9 @@ struct CharacterDialogues {
     ///   - state: 감정/애니메이션 상태 (예:.joy)
     ///   - userTitle: 사용자가 설정한 칭호 (예: "대표", "팀장"). 대사 내 "{title}" 치환.
     static func randomLine(for name: String, state: AnimationState, userTitle: String? = nil) -> String? {
-        guard let stateDict = lines[name],
+        let canonical = CharacterDisplayNameResolver.canonicalID(for: name)
+        let localizedName = CharacterDisplayNameResolver.displayName(for: canonical)
+        guard let stateDict = lines[name] ?? lines[localizedName] ?? lines[canonical],
               let dialogueArray = stateDict[state],
              !dialogueArray.isEmpty else {
             return nil
@@ -264,6 +266,32 @@ struct CharacterDialogues {
         }
 
         let title = userTitle ?? UserDefaults.standard.string(forKey: "userTitle") ?? "사용자"
-        return rawLine.replacingOccurrences(of: "{title}", with: title)
+        let line = rawLine.replacingOccurrences(of: "{title}", with: title)
+        return sanitizedUserFirstLine(line, for: state, userTitle: title)
+    }
+
+    private static func sanitizedUserFirstLine(_ line: String, for state: AnimationState, userTitle: String) -> String {
+        let blockedFragments = [
+            "KPI", "세무", "증빙", "클라이언트", "고객사", "고객", "내부 일정", "일정", "스케줄", "팀원", "바빠",
+            "스트레스", "머리 싸매", "회의 때", "회의록 양식", "일정 조율", "컨펌",
+            "반려", "퇴근", "야근", "잠 못", "피곤", "우울", "속상", "고민 중",
+            "회의 늦", "계약", "매출", "실적", "제안", "도장", "거래", "협상", "술 한잔"
+        ]
+        guard blockedFragments.contains(where: { line.localizedCaseInsensitiveContains($0) }) else {
+            return line
+        }
+
+        switch state {
+        case .typing:
+            return "\(userTitle), 요청하신 내용을 차분히 정리하고 있어요."
+        case .joy:
+            return "\(userTitle), 바로 도와드릴게요."
+        case .drag, .landing:
+            return "\(userTitle), 필요한 곳에 두시면 바로 이어서 도와드릴게요."
+        case .greeting:
+            return "\(userTitle), 오늘 필요한 일부터 같이 정리해볼게요."
+        default:
+            return "\(userTitle), 무엇을 도와드릴까요?"
+        }
     }
 }

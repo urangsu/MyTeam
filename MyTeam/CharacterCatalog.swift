@@ -24,6 +24,90 @@ enum CharacterIDNormalizer: Sendable {
     }
 }
 
+enum CharacterDisplayNameResolver: Sendable {
+    private struct LocalizedName: Sendable {
+        let korean: String
+        let english: String
+    }
+
+    private static let localizedNames: [String: LocalizedName] = [
+        "leo": .init(korean: "레오", english: "Leo"),
+        "luna": .init(korean: "루나", english: "Luna"),
+        "moko": .init(korean: "모코", english: "Moko"),
+        "pin": .init(korean: "핀", english: "Pin"),
+        "chiko": .init(korean: "치코", english: "Chiko"),
+        "rex": .init(korean: "렉스", english: "Rex"),
+        "kei": .init(korean: "케이", english: "Kay"),
+        "lucky": .init(korean: "래키", english: "Lacky"),
+        "pola": .init(korean: "폴라", english: "Pola"),
+        "mongmong": .init(korean: "몽몽", english: "Mongmong"),
+        "oliver": .init(korean: "올리버", english: "Oliver"),
+        "sena": .init(korean: "세나", english: "Sena"),
+        "kai": .init(korean: "카이", english: "Kai"),
+        "yuna": .init(korean: "유나", english: "Yuna"),
+        "servi": .init(korean: "서비", english: "Servi"),
+        "peter": .init(korean: "피터", english: "Peter")
+    ]
+
+    private static let nameAliases: [String: String] = [
+        "레오": "leo", "leo": "leo",
+        "루나": "luna", "luna": "luna",
+        "모코": "moko", "moko": "moko",
+        "핀": "pin", "pin": "pin",
+        "치코": "chiko", "chiko": "chiko",
+        "렉스": "rex", "rex": "rex",
+        "케이": "kei", "kay": "kei", "kei": "kei",
+        "래키": "lucky", "lacky": "lucky", "lucky": "lucky",
+        "폴라": "pola", "pola": "pola",
+        "몽몽": "mongmong", "mongmong": "mongmong",
+        "올리버": "oliver", "oliver": "oliver",
+        "세나": "sena", "sena": "sena",
+        "카이": "kai", "kai": "kai",
+        "유나": "yuna", "yuna": "yuna",
+        "서비": "servi", "servi": "servi",
+        "피터": "peter", "peter": "peter"
+    ]
+
+    static func canonicalID(for rawNameOrID: String) -> String {
+        let trimmed = rawNameOrID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lowered = trimmed.lowercased()
+        return nameAliases[trimmed] ?? nameAliases[lowered] ?? CharacterIDNormalizer.canonicalID(trimmed)
+    }
+
+    static func displayName(for rawNameOrID: String) -> String {
+        let canonical = canonicalID(for: rawNameOrID)
+        guard let localized = localizedNames[canonical] else {
+            return rawNameOrID.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return isEnglishUI ? localized.english : localized.korean
+    }
+
+    static func displayName(for canonicalID: String, fallbackName: String? = nil) -> String {
+        let canonical = CharacterIDNormalizer.canonicalID(canonicalID)
+        if let localized = localizedNames[canonical] {
+            return isEnglishUI ? localized.english : localized.korean
+        }
+        if let fallbackName {
+            return displayName(for: fallbackName)
+        }
+        return canonicalID
+    }
+
+    static func localizedAliases(for rawNameOrID: String) -> [String] {
+        let canonical = canonicalID(for: rawNameOrID)
+        guard let localized = localizedNames[canonical] else {
+            return [rawNameOrID]
+        }
+        return [localized.korean, localized.english]
+    }
+
+    static var isEnglishUI: Bool {
+        let raw = UserDefaults.standard.string(forKey: "appLanguage")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "한국어"
+        let lowered = raw.lowercased()
+        return lowered.contains("english") || lowered == "en" || lowered.contains("영어")
+    }
+}
+
 enum CharacterCatalog {
     static let builtIn: [CharacterDLC] = [
         makeBuiltIn(id: "leo", agentID: "agent_1", name: "레오", subtitle: "시장과 수익 구조를 먼저 보는 전략가", portrait: "레오_profile", sprite: "leo_placeholder", bundledSkillIDs: ["korean.weather", "korean.dart"]),

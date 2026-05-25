@@ -66,18 +66,18 @@ class IntentRouter {
     ) async throws -> IntentResult {
         let resolvedToolPolicy = toolPolicy ?? ToolPolicy.evaluate(message)
         
-        let agentContext = activeAgents.map { "- \($0.id): \($0.name) (\($0.role))" }.joined(separator: "\n")
+        let agentContext = activeAgents.map { "- \($0.id): \($0.displayName) (\($0.role))" }.joined(separator: "\n")
         let leaderContext: String
         if let leaderAgent {
-            leaderContext = "\(leaderAgent.id): \(leaderAgent.name) (\(leaderAgent.role))"
+            leaderContext = "\(leaderAgent.id): \(leaderAgent.displayName) (\(leaderAgent.role))"
         } else {
             leaderContext = "미지정. 현재 팀의 첫 번째 에이전트를 임시 진행자로 사용."
         }
         let mentionContext: String
         if let addressedAgent {
-            mentionContext = "사용자가 '\(addressedAgent.name)'을 직접 불렀습니다. 가능하면 첫 응답 또는 첫 작업 지시를 이 에이전트에게 배정하세요."
+            mentionContext = "사용자가 '\(addressedAgent.displayName)'을 직접 불렀습니다. 가능하면 첫 응답 또는 첫 작업 지시를 이 에이전트에게 배정하세요."
         } else if let unavailableMentionedAgent {
-            mentionContext = "사용자가 '\(unavailableMentionedAgent.name)'을 직접 불렀지만 현재 팀에 없습니다. 팀 리더가 부재를 짧게 알리고 대신 진행해야 합니다."
+            mentionContext = "사용자가 '\(unavailableMentionedAgent.displayName)'을 직접 불렀지만 현재 팀에 없습니다. 팀 리더가 부재를 짧게 알리고 대신 진행해야 합니다."
         } else {
             mentionContext = "직접 지명된 캐릭터 없음."
         }
@@ -116,15 +116,17 @@ class IntentRouter {
         
         [지침]
         1. 단순 인사와 감정 리액션은 CHITCHAT, 짧은 사실 답변은 QUICK_ANSWER로 분류하세요.
-        2. 복합적인 작업인 경우, 최대 3명의 에이전트에게 순차적인 workOrders를 부여할 수 있습니다.
-        3. 각 에이전트의 [role]을 고려하여 가장 완벽한 전문가 조합을 구성하세요.
-        4. 사용자가 지정한 팀 리더는 회의 진행자입니다. 첫 멘트와 최종 정리는 가능하면 리더가 맡게 하세요.
-        5. 실제 전문 답변은 리더가 아니라도 가장 적합한 에이전트에게 배정하세요.
-        6. 최신 정보, 가격, 뉴스, 웹페이지 확인이 필요하면 needsWeb을 true로 설정하세요.
-        7. 법률/보안/결제/개인정보/출시 판단은 riskLevel을 MEDIUM 이상으로 설정하고 requiresFinalSummary를 true로 설정하세요.
-        8. 사용자가 현재 팀에 있는 캐릭터 이름을 직접 부르면, 그 캐릭터가 먼저 말하거나 첫 workOrder를 맡도록 우선권을 주세요.
-        9. 도구 정책의 needsFinance가 true이면 RESEARCH로 분류하고, 투자 조언처럼 단정하지 말고 시세/뉴스/실적 출처 확인이 필요하다고 판단하세요.
-        10. 도구 정책의 recommendedTools에 포함된 도구가 있으면 needsTool을 true로 설정하세요.
+        2. CHITCHAT/QUICK_ANSWER는 기본 turnBudget 1입니다. 사용자가 "다들", "각자", "여러 명 의견"처럼 명시할 때만 2 이상을 허용하세요.
+        3. 복합적인 작업인 경우, 최대 3명의 에이전트에게 순차적인 workOrders를 부여할 수 있습니다.
+        4. 각 에이전트의 [role]을 고려하여 가장 완벽한 전문가 조합을 구성하세요.
+        5. 사용자가 지정한 팀 리더는 회의 진행자입니다. 첫 멘트와 최종 정리는 가능하면 리더가 맡게 하세요.
+        6. 실제 전문 답변은 리더가 아니라도 가장 적합한 에이전트에게 배정하세요.
+        7. 최신 정보, 가격, 뉴스, 웹페이지 확인이 필요하면 needsWeb을 true로 설정하세요.
+        8. 법률/보안/결제/개인정보/출시 판단은 riskLevel을 MEDIUM 이상으로 설정하고 requiresFinalSummary를 true로 설정하세요.
+        9. 사용자가 현재 팀에 있는 캐릭터 이름을 직접 부르면, 그 캐릭터가 먼저 말하거나 첫 workOrder를 맡도록 우선권을 주세요.
+        10. 도구 정책의 needsFinance가 true이면 RESEARCH로 분류하고, 투자 조언처럼 단정하지 말고 시세/뉴스/실적 출처 확인이 필요하다고 판단하세요.
+        11. 도구 정책의 recommendedTools에 포함된 도구가 있으면 needsTool을 true로 설정하세요.
+        12. 사용자가 준 사실이 아닌 KPI, 세무 증빙, 내부 일정, 클라이언트, 에이전트의 오프스크린 작업 상황을 만들지 마세요.
         """
         
         // AIService를 통해 JSON 응답 강제 (SSE 스트림을 collect하여 반환)
@@ -166,7 +168,7 @@ extension IntentResult {
         workOrders: nil,
         proactiveMessage: nil,
         responseDepth: .short,
-        turnBudget: 2,
+        turnBudget: 1,
         needsTool: false,
         needsWeb: false,
         riskLevel: .low,

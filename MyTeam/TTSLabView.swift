@@ -46,12 +46,12 @@ struct TTSLabView: View {
     @State private var expressionTagSpeakingID: String? = nil
 
     // MARK: - Round 261TTS: Speed Probe State
-    @State private var speedProbeText: String = "안녕하세요. 오늘도 같이 작업해봐요."
+    @State private var speedProbeText: String = "안녕하세요. 오늘은 짧은 문장, 긴 한국어 문장, 숫자와 English가 섞인 문장을 순서대로 끊기지 않게 확인합니다."
     @State private var speedProbeResults: [SupertonicSpeedProbeResult] = []
     @State private var speedProbeRunning: Bool = false
 
     // MARK: - Round 261TTS: Animalese State
-    @State private var animaleseText: String = "안녕하세요! 오늘도 같이 해봐요!"
+    @State private var animaleseText: String = "안녕하세요! 쉼표, 느낌표, 물음표가 있어도 앞부분이 사라지면 안 됩니다."
     @State private var animaleseProfile: AnimaleseVoiceProfile = .cute
     @State private var animaleseSpeed: Double = 1.0
     @State private var animalesePitchOffset: Double = 0.0
@@ -59,7 +59,7 @@ struct TTSLabView: View {
     @State private var animaleseSnapshot: AudioFeatureSnapshot? = nil
 
     // MARK: - ONNX Spike State (Round 249TTS)
-    @State private var spikeInputText: String = "안녕하세요. 테스트입니다."
+    @State private var spikeInputText: String = "첫 문장이 유실되지 않는지 확인합니다. 두 번째 문장은 80자 안팎의 한국어 문장으로 자연스럽게 이어지고, 세 번째 문장은 2026년 Q2, API, TTS 같은 숫자와 영문을 섞어 테스트합니다."
     @State private var spikeSynthesisResult: Supertonic3SynthesisResult? = nil
     @State private var spikeSynthesisError: String? = nil
     @State private var spikeIsSynthesizing: Bool = false
@@ -74,7 +74,7 @@ struct TTSLabView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 10) {
                 headerSection
                 officialEngineStatusSection
                 supertonicNoticeSection
@@ -85,7 +85,7 @@ struct TTSLabView: View {
                 onnxSpikeSection
                 policyNoticeSection
             }
-            .padding()
+            .padding(10)
         }
         .scrollIndicators(.visible)
         .navigationTitle("TTS 실험실")
@@ -320,7 +320,7 @@ struct TTSLabView: View {
                         let isSpeaking = voiceDirectorSpeakingID == "char_\(profile.agentID)"
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(spacing: 8) {
-                                Text(profile.displayName)
+                                Text(profile.localizedDisplayName)
                                     .font(.caption.bold())
                                     .frame(width: 44, alignment: .leading)
                                 Text(profile.preset)
@@ -348,11 +348,11 @@ struct TTSLabView: View {
                                                 text: charLine, preset: charPreset,
                                                 pitch: p, rate: r, speed: s,
                                                 emotion: charEmotion, agentID: charAgentID,
-                                                label: profile.displayName
+                                                label: profile.localizedDisplayName
                                             )
                                             await MainActor.run {
                                                 voiceDirectorSpeakingID = nil
-                                                if output == nil { voiceDirectorError = "재생 실패 — \(profile.displayName)" }
+                                                if output == nil { voiceDirectorError = "재생 실패 — \(profile.localizedDisplayName)" }
                                             }
                                         }
                                     } else {
@@ -424,7 +424,7 @@ struct TTSLabView: View {
                 }
                 Picker("캐릭터", selection: $emotionPreviewAgentID) {
                     ForEach(CharacterVoiceProfileCatalog.profiles) { profile in
-                        Text(profile.displayName).tag(profile.agentID)
+                        Text(profile.localizedDisplayName).tag(profile.agentID)
                     }
                 }
                 .pickerStyle(.menu)

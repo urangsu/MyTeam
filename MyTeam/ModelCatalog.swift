@@ -35,6 +35,12 @@ enum ModelCatalog {
     ]
 
     static func policy(for characterName: String) -> CharacterTTSPolicy? {
-        characterPolicies.first { $0.characterName == characterName }
+        let canonical = CharacterDisplayNameResolver.canonicalID(for: characterName)
+        let localizedName = CharacterDisplayNameResolver.displayName(for: canonical)
+        return characterPolicies.first { policy in
+            policy.characterName == characterName
+                || policy.characterName == localizedName
+                || CharacterDisplayNameResolver.canonicalID(for: policy.characterName) == canonical
+        }
     }
 }

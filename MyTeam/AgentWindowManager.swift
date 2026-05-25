@@ -15,17 +15,17 @@ class AgentWindowManager: ObservableObject {
     //   - 완성된 캐릭터: "sloth", "dog" (스프라이트 사용)
     //   - 미완성 캐릭터: nil (이모지 폴백)
     let allAvailableAgents: [AgentConfig] = [
-        AgentConfig(id: "agent_1",  name: "레오",   role: "비지니스 전략가",    emoji: "🦊", color: .orange, isPremium: false, status: "시장 전략 분석 중",         spriteName: nil, fallbackImageName: "레오_profile", dragEmoji: "😤", dragRotation: -12, dragSoundName: "Pop",   dropSoundName: "Funk"),
-        AgentConfig(id: "agent_2",  name: "루나",   role: "마케터/콘텐츠 기획", emoji: "🐰", color: .pink,   isPremium: false, status: "바이럴 캠페인 기획 중",    spriteName: nil, fallbackImageName: "루나_profile", dragEmoji: "😆", dragRotation:  10, dragSoundName: "Blow",  dropSoundName: "Pop"),
-        AgentConfig(id: "agent_3",  name: "모코",   role: "프로젝트 매니저",    emoji: "🐹", color: .purple, isPremium: false, status: "이미 다 계획해둔 마스터",  spriteName: nil, fallbackImageName: "모코_profile", dragEmoji: "😵", dragRotation:  -8, dragSoundName: "Morse", dropSoundName: "Funk"),
-        AgentConfig(id: "agent_4",  name: "핀",     role: "UI 디자이너",        emoji: "🐧", color: .cyan,   isPremium: false, status: "픽셀 하나에 30분째 고민", spriteName: nil, fallbackImageName: "핀_profile", dragEmoji: "😱", dragRotation:  12, dragSoundName: "Ping",  dropSoundName: "Pop"),
-        AgentConfig(id: "agent_5",  name: "치코",   role: "UX 디자이너 & 온보딩 도우미", emoji: "🐿️", color: Color(red:0.6, green:0.4, blue:0.2), isPremium: false, status: "UX와 온보딩을 도와주는 중", spriteName: "치코", fallbackImageName: "치코_profile", dragEmoji: "🤯", dragRotation: -10, dragSoundName: "Pop",   dropSoundName: "Funk"),
-        AgentConfig(id: "agent_6",  name: "렉스",   role: "법률 전문가",        emoji: "🦥", color: .green,  isPremium: true,  status: "계약서 검토 중 (천천히)", spriteName: nil, fallbackImageName: "렉스_profile", dragEmoji: "😴", dragRotation:  14, dragSoundName: "Blow",  dropSoundName: "Pop"),
-        AgentConfig(id: "agent_7",  name: "케이",   role: "보안/데이터 전문가", emoji: "🐕", color: .blue,   isPremium: true,  status: "보안 로그 분석 중",       spriteName: nil, fallbackImageName: "케이_profile", dragEmoji: "😐", dragRotation:  -5, dragSoundName: "Morse", dropSoundName: "Funk"),
-        AgentConfig(id: "agent_8",  name: "래키",   role: "백엔드 개발자",      emoji: "🦝", color: .gray,   isPremium: true,  status: "밤새워 API 디버깅 중",    spriteName: nil, fallbackImageName: "래키_profile", dragEmoji: "😵‍💫", dragRotation:   8, dragSoundName: "Ping",  dropSoundName: "Pop"),
-        AgentConfig(id: "agent_9",  name: "폴라",   role: "세일즈/BD",          emoji: "🐻‍❄️", color: Color(red:0.2, green:0.6, blue:0.9), isPremium: true, status: "아무도 거절 못 하는 딜 클로징", spriteName: nil, fallbackImageName: "폴라_profile", dragEmoji: "😊", dragRotation: -6, dragSoundName: "Pop",   dropSoundName: "Funk"),
-        AgentConfig(id: "agent_10", name: "몽몽",   role: "고객 서비스",        emoji: "🐩", color: Color(red:1.0, green:0.7, blue:0.0), isPremium: true, status: "고객을 팬으로 만드는 중",  spriteName: nil, fallbackImageName: "몽몽_profile", dragEmoji: "🥰", dragRotation:  10, dragSoundName: "Blow",  dropSoundName: "Pop"),
-        AgentConfig(id: "agent_11", name: "올리버", role: "QA 엔지니어",        emoji: "🐷", color: .red,    isPremium: true,  status: "버그 사냥 중",            spriteName: nil, fallbackImageName: "올리버_profile", dragEmoji: "😤", dragRotation:  -9, dragSoundName: "Morse", dropSoundName: "Funk"),
+        AgentConfig(id: "agent_1",  name: "레오",   role: "비지니스 전략가",    emoji: "🦊", color: .orange, isPremium: false, status: "전략 판단 도와드릴 준비",         spriteName: nil, fallbackImageName: "레오_profile", dragEmoji: "😤", dragRotation: -12, dragSoundName: "Pop",   dropSoundName: "Funk"),
+        AgentConfig(id: "agent_2",  name: "루나",   role: "마케터/콘텐츠 기획", emoji: "🐰", color: .pink,   isPremium: false, status: "콘텐츠 초안 도와드릴 준비",    spriteName: nil, fallbackImageName: "루나_profile", dragEmoji: "😆", dragRotation:  10, dragSoundName: "Blow",  dropSoundName: "Pop"),
+        AgentConfig(id: "agent_3",  name: "모코",   role: "프로젝트 매니저",    emoji: "🐹", color: .purple, isPremium: false, status: "일 정리 도와드릴 준비",  spriteName: nil, fallbackImageName: "모코_profile", dragEmoji: "😵", dragRotation:  -8, dragSoundName: "Morse", dropSoundName: "Funk"),
+        AgentConfig(id: "agent_4",  name: "핀",     role: "UI 디자이너",        emoji: "🐧", color: .cyan,   isPremium: false, status: "화면 개선 도와드릴 준비", spriteName: nil, fallbackImageName: "핀_profile", dragEmoji: "😱", dragRotation:  12, dragSoundName: "Ping",  dropSoundName: "Pop"),
+        AgentConfig(id: "agent_5",  name: "치코",   role: "UX 디자이너 & 온보딩 도우미", emoji: "🐿️", color: Color(red:0.6, green:0.4, blue:0.2), isPremium: false, status: "사용성 점검 도와드릴 준비", spriteName: "치코", fallbackImageName: "치코_profile", dragEmoji: "🤯", dragRotation: -10, dragSoundName: "Pop",   dropSoundName: "Funk"),
+        AgentConfig(id: "agent_6",  name: "렉스",   role: "법률 전문가",        emoji: "🦥", color: .green,  isPremium: true,  status: "리스크 검토 도와드릴 준비", spriteName: nil, fallbackImageName: "렉스_profile", dragEmoji: "😴", dragRotation:  14, dragSoundName: "Blow",  dropSoundName: "Pop"),
+        AgentConfig(id: "agent_7",  name: "케이",   role: "보안/데이터 전문가", emoji: "🐕", color: .blue,   isPremium: true,  status: "데이터 점검 도와드릴 준비",       spriteName: nil, fallbackImageName: "케이_profile", dragEmoji: "😐", dragRotation:  -5, dragSoundName: "Morse", dropSoundName: "Funk"),
+        AgentConfig(id: "agent_8",  name: "래키",   role: "백엔드 개발자",      emoji: "🦝", color: .gray,   isPremium: true,  status: "구현 검토 도와드릴 준비",    spriteName: nil, fallbackImageName: "래키_profile", dragEmoji: "😵‍💫", dragRotation:   8, dragSoundName: "Ping",  dropSoundName: "Pop"),
+        AgentConfig(id: "agent_9",  name: "폴라",   role: "세일즈/BD",          emoji: "🐻‍❄️", color: Color(red:0.2, green:0.6, blue:0.9), isPremium: true, status: "제안 정리 도와드릴 준비", spriteName: nil, fallbackImageName: "폴라_profile", dragEmoji: "😊", dragRotation: -6, dragSoundName: "Pop",   dropSoundName: "Funk"),
+        AgentConfig(id: "agent_10", name: "몽몽",   role: "고객 서비스",        emoji: "🐩", color: Color(red:1.0, green:0.7, blue:0.0), isPremium: true, status: "응대 정리 도와드릴 준비",  spriteName: nil, fallbackImageName: "몽몽_profile", dragEmoji: "🥰", dragRotation:  10, dragSoundName: "Blow",  dropSoundName: "Pop"),
+        AgentConfig(id: "agent_11", name: "올리버", role: "QA 엔지니어",        emoji: "🐷", color: .red,    isPremium: true,  status: "품질 검증 도와드릴 준비",            spriteName: nil, fallbackImageName: "올리버_profile", dragEmoji: "😤", dragRotation:  -9, dragSoundName: "Morse", dropSoundName: "Funk"),
     ]
     
     // ── 전역 설정 ──
@@ -866,10 +866,10 @@ class AgentWindowManager: ObservableObject {
         guard let agent = activeAgents.first else { return }
 
         let state = kind.animationState
-        let line = CharacterDialogues.randomLine(for: agent.name, state: state) ?? text
+        let line = CharacterDialogues.randomLine(for: agent.displayName, state: state) ?? text
         // 채팅 로그 추가 없음 — TTS만
         setAgentSpeaking(agentID: agent.id, text: line)
-        SpeechManager.shared.speak(text: line, agentID: agent.id, characterName: agent.name)
+        SpeechManager.shared.speak(text: line, agentID: agent.id, characterName: agent.displayName)
     }
 
     // MARK: - 팀 테이블 창 열기
@@ -1041,8 +1041,8 @@ class AgentWindowManager: ObservableObject {
         // 교체 TTS — 동기적 flush 후 즉시 실행 (딜레이 없음)
         if !isSilentMode {
             SpeechManager.shared.stopSpeaking()
-            let greeting = swapGreeting(for: routedAgent.name)
-            SpeechManager.shared.speak(text: greeting, agentID: routedAgent.id, characterName: routedAgent.name)
+            let greeting = swapGreeting(for: routedAgent.displayName)
+            SpeechManager.shared.speak(text: greeting, agentID: routedAgent.id, characterName: routedAgent.displayName)
         }
     }
 
@@ -1109,7 +1109,9 @@ class AgentWindowManager: ObservableObject {
             .sorted { $0.name.count > $1.name.count }
 
         guard let mentioned = candidates.first(where: { agent in
-            normalizedMessage.contains(agent.name.lowercased())
+            CharacterDisplayNameResolver.localizedAliases(for: agent.name).contains(where: {
+                normalizedMessage.contains($0.replacingOccurrences(of: " ", with: "").lowercased())
+            })
         }) else {
             return nil
         }
@@ -1120,20 +1122,23 @@ class AgentWindowManager: ObservableObject {
 
     /// 캐릭터별 교체 인사 — 성격 반영, 짧고 빠르게
     private func swapGreeting(for name: String) -> String {
-        let greetings: [String: [String]] = [
-            "레오": ["전략가 레오, 투입.", "레오 출근.", "분석 시작.", "준비 완료.", "배치 확인."],
-            "루나": ["안녕! 보고싶었지?!", "루나 등장!", "텐션 업!", "나왔다!", "기다렸지?!"],
-            "치코": ["반가워요!", "이쁘게 해줄게!", "디자인 시작!", "안녕!", "기대해요!"],
-            "렉스": ["...왔습니다.", "...배치 완료.", "...시작하죠.", "...렉스입니다.", "...조용히 하겠습니다."],
-            "케이": ["보안 점검.", "케이 투입.", "감시 시작.", "이상 없음.", "배치 확인."],
-            "모코": ["일정 확인!", "모코 출근!", "시작합시다.", "준비됐습니다.", "체크리스트!"],
-            "핀": ["핀 등장!", "그려볼까!", "안녕안녕!", "준비 끝!", "시작이다!"],
-            "래키": ["래키 왔어!", "달려볼까!", "안녕!", "출발!", "기대돼!"],
-            "폴라": ["폴라입니다.", "시작하죠.", "안녕.", "준비됐어요.", "배치 완료."],
-            "몽몽": ["몽몽 왔어!", "안녕!", "놀자!", "준비 끝!", "기다렸어!"],
-            "올리버": ["올리버 출근.", "안녕하세요.", "시작합시다.", "준비됐습니다.", "잘 부탁해요."],
-        ]
-        let options = greetings[name] ?? ["안녕!"]
+        let canonical = CharacterDisplayNameResolver.canonicalID(for: name)
+        let localizedName = CharacterDisplayNameResolver.displayName(for: canonical)
+        let options: [String]
+        switch canonical {
+        case "leo": options = ["\(localizedName) 투입.", "\(localizedName) 출근.", "분석 시작.", "준비 완료.", "배치 확인."]
+        case "luna": options = ["안녕! 보고싶었지?!", "\(localizedName) 등장!", "텐션 업!", "나왔다!", "기다렸지?!"]
+        case "chiko": options = ["반가워요!", "이쁘게 해줄게!", "디자인 시작!", "안녕!", "기대해요!"]
+        case "rex": options = ["...왔습니다.", "...배치 완료.", "...시작하죠.", "...\(localizedName)입니다.", "...조용히 하겠습니다."]
+        case "kei": options = ["보안 점검.", "\(localizedName) 투입.", "감시 시작.", "이상 없음.", "배치 확인."]
+        case "moko": options = ["일정 확인!", "\(localizedName) 출근!", "시작합시다.", "준비됐습니다.", "체크리스트!"]
+        case "pin": options = ["\(localizedName) 등장!", "그려볼까!", "안녕안녕!", "준비 끝!", "시작이다!"]
+        case "lucky": options = ["\(localizedName) 왔어!", "달려볼까!", "안녕!", "출발!", "기대돼!"]
+        case "pola": options = ["\(localizedName)입니다.", "시작하죠.", "안녕.", "준비됐어요.", "배치 완료."]
+        case "mongmong": options = ["\(localizedName) 왔어!", "안녕!", "놀자!", "준비 끝!", "기다렸어!"]
+        case "oliver": options = ["\(localizedName) 출근.", "안녕하세요.", "시작합시다.", "준비됐습니다.", "잘 부탁해요."]
+        default: options = ["안녕!"]
+        }
         return options.randomElement() ?? "안녕!"
     }
     
@@ -1217,8 +1222,8 @@ class AgentWindowManager: ObservableObject {
         }
         
         let screenRect = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 800, height: 600)
-        let width: CGFloat = 460
-        let height: CGFloat = 520
+        let width: CGFloat = 760
+        let height: CGFloat = 720
         
         let panel = FloatingPanel(
             agentID: "settings_window",
@@ -1231,6 +1236,7 @@ class AgentWindowManager: ObservableObject {
         // 설정 창은 일반 창처럼 상호작용해야 하므로 키 윈도우 지원
         panel.level = .floating
         panel.isMovableByWindowBackground = true
+        panel.minSize = NSSize(width: 640, height: 520)
         
         let view = SettingsView()
             .environmentObject(self)
@@ -1588,8 +1594,8 @@ class AgentWindowManager: ObservableObject {
                 let substitute = activeAssignee ?? fallbackTeamLeader(for: targetRoomID)
 
                 if let assignedAgent, activeAssignee == nil, let substitute, let rid = targetRoomID {
-                    addChatLog(roomID: rid, agentID: substitute.id, agentName: substitute.name,
-                               text: "\(assignedAgent.name)은 지금 팀에 없어서 제가 대신 할게요.",
+                    addChatLog(roomID: rid, agentID: substitute.id, agentName: substitute.displayName,
+                               text: "\(assignedAgent.displayName)은 지금 팀에 없어서 제가 대신 할게요.",
                                isUser: false)
                 }
 
@@ -1598,9 +1604,9 @@ class AgentWindowManager: ObservableObject {
                 } else if let roomID = targetRoomID {
                     let scheduledPrompt: String
                     if let activeAssignee {
-                        scheduledPrompt = "\(activeAssignee.name)가 담당해서 수행해줘. \(task.prompt)"
+                        scheduledPrompt = "\(activeAssignee.displayName)가 담당해서 수행해줘. \(task.prompt)"
                     } else if let substitute {
-                        scheduledPrompt = "\(substitute.name)가 담당해서 수행해줘. \(task.prompt)"
+                        scheduledPrompt = "\(substitute.displayName)가 담당해서 수행해줘. \(task.prompt)"
                     } else {
                         scheduledPrompt = task.prompt
                     }

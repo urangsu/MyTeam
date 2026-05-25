@@ -87,3 +87,15 @@ extension AgentWindowManager {
     }
 
 }
+
+extension AgentWindowManager.AgentConfig {
+    var displayName: String {
+        CharacterDisplayNameResolver.displayName(for: name)
+    }
+}
+
+extension CharacterDLC {
+    var displayName: String {
+        CharacterDisplayNameResolver.displayName(for: name)
+    }
+}

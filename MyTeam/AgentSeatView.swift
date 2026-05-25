@@ -77,7 +77,7 @@ struct AgentSeatView: View {
 
                 if isHovered && !isDragging {
                     VStack(spacing: 2) {
-                        Text(config.name).font(.system(size: 11, weight: .bold))
+                        Text(config.displayName).font(.system(size: 11, weight: .bold))
                         Text(config.role).font(.system(size: 9))
                     }
                     .foregroundColor(.white).padding(.horizontal, 8).padding(.vertical, 4)
@@ -136,13 +136,13 @@ struct AgentSeatView: View {
         .onHover { h in isHovered = h }
         .onTapGesture(count: 2) {
             let fallback = ["안녕하세요!", "네, 불렀나요?", "무엇을 도와드릴까요?", "여기 있습니다!"]
-            let text = CharacterDialogues.randomLine(for: config.name, state: .greeting) ?? fallback.randomElement()!
+            let text = CharacterDialogues.randomLine(for: config.displayName, state: .greeting) ?? fallback.randomElement()!
             if let rid = AgentWindowManager.shared.currentRoomID {
-                AgentWindowManager.shared.addChatLog(roomID: rid, agentID: config.id, agentName: config.name, text: text, isUser: false, isSystem: true)
+                AgentWindowManager.shared.addChatLog(roomID: rid, agentID: config.id, agentName: config.displayName, text: text, isUser: false, isSystem: true)
             }
             if !AgentWindowManager.shared.isSilentMode {
                 AgentWindowManager.shared.setAgentSpeaking(agentID: config.id, text: text)
-                SpeechManager.shared.speak(text: text, agentID: config.id, characterName: config.name)
+                SpeechManager.shared.speak(text: text, agentID: config.id, characterName: config.displayName)
             }
         }
         .onTapGesture { onTap() }

@@ -15,11 +15,13 @@ enum CharacterVoiceConfig {
 
     // MARK: - 캐릭터 13명
 
-    static let allCharacters = [
-        "레오", "루나", "치코", "렉스", "케이",
-        "래키", "모코", "핀", "폴라", "몽몽",
-        "올리버", "서비", "피터"
-    ]
+    static var allCharacters: [String] {
+        [
+            "레오", "루나", "치코", "렉스", "케이",
+            "래키", "모코", "핀", "폴라", "몽몽",
+            "올리버", "서비", "피터"
+        ].map { CharacterDisplayNameResolver.displayName(for: $0) }
+    }
 
     // MARK: - 감정 상태별 Chatterbox 파라미터
 
@@ -106,7 +108,14 @@ enum CharacterVoiceConfig {
 
     /// 캐릭터의 음성 특성 조회
     static func voiceTrait(for characterName: String) -> CharacterVoiceTrait? {
-        return characterTraits[characterName]
+        let aliases = CharacterDisplayNameResolver.localizedAliases(for: characterName)
+        for alias in aliases {
+            if let trait = characterTraits[alias] {
+                return trait
+            }
+        }
+        let canonical = CharacterDisplayNameResolver.canonicalID(for: characterName)
+        return characterTraits[canonical]
     }
 
     // MARK: - 다국어 지원

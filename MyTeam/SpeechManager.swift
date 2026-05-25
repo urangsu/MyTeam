@@ -65,6 +65,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         currentStreamTask = Task.detached(priority: .userInitiated) { [weak self] in
             guard let self else { return }
             var sentenceBuffer = ""
+            let playbackStreamID = UUID().uuidString
 
             do {
                 for try await token in tokenStream {
@@ -85,6 +86,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                                 text: ttsChunk,
                                 characterName: characterName,
                                 agentID: agentID,
+                                streamId: playbackStreamID,
                                 onPlaybackStarted: {
                                     // 이 클로저는 playerNode.play() 직후 AudioPlaybackService가 호출
                                     // ← 이 시점이 텍스트가 화면에 나타나야 하는 정확한 순간
@@ -103,6 +105,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                         text: ttsRemainder,
                         characterName: characterName,
                         agentID: agentID,
+                        streamId: playbackStreamID,
                         onPlaybackStarted: { onAudioPlaybackStarted(ttsRemainder) }
                     )
                 }
@@ -120,6 +123,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         text: String,
         characterName: String,
         agentID: String? = nil,
+        streamId: String? = nil,
         onPlaybackStarted: @escaping @Sendable () -> Void
     ) async {
         // ── TTSRoutingPolicy 기반 provider 선택 (Round 256TTS-OFFICIAL-ENGINE) ──
@@ -163,7 +167,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 await playback.playFloatSamples(
                     samples: result.wavSamples,
                     sampleRate: result.sampleRate,
-                    streamId: UUID().uuidString,
+                    streamId: streamId ?? UUID().uuidString,
                     characterName: characterName,
                     pitch: pitch,
                     rate: rate,
@@ -234,7 +238,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
     }
 
     private nonisolated static func normalizedTTSChunk(_ text: String) -> String? {
-        var normalized = text
+        let normalized = text
             .replacingOccurrences(of: "\n", with: " ")
             .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
             .replacingOccurrences(of: "[!?]{2,}", with: "!", options: .regularExpression)
@@ -243,10 +247,6 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
 
         guard normalized.contains(where: { $0.isTTSMeaningfulCharacter }) else {
             return nil
-        }
-
-        if normalized.count > 90 {
-            normalized = String(normalized.prefix(90)).trimmingCharacters(in: .whitespacesAndNewlines)
         }
 
         return normalized.isEmpty ? nil : normalized
@@ -624,7 +624,15 @@ private enum VoiceStyleCatalog {
         guard UserDefaults.standard.bool(forKey: "useAnimalCrossingTTS") else {
             return .neutral
         }
-        return (styles[characterName] ?? .neutral).clamped
+        let aliases = CharacterDisplayNameResolver.localizedAliases(for: characterName)
+        for alias in aliases {
+            if let style = styles[alias] {
+                return style.clamped
+            }
+        }
+        let canonical = CharacterDisplayNameResolver.canonicalID(for: characterName)
+        let localizedName = CharacterDisplayNameResolver.displayName(for: canonical)
+        return (styles[characterName] ?? styles[localizedName] ?? .neutral).clamped
     }
 
     private static let styles: [String: VoicePlaybackStyle] = [

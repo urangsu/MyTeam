@@ -357,34 +357,35 @@ enum TeamCollaborationStatusProvider {
     }
 
     private static func idleLine(for agentName: String?, index: Int) -> String {
+        let canonical = agentName.map { CharacterDisplayNameResolver.canonicalID(for: $0) }
         let genericLines = [
             "대기중",
-            "치코가 픽셀 하나를 30분째 고민 중",
-            "렉스가 리스크를 노려보는 중",
-            "핀은 색상 간격을 맞추는 중",
-            "모코가 다음 할 일을 정리하는 중",
-            "루나가 문장 톤을 고르는 중",
-            "레오가 우선순위를 다듬는 중",
-            "래키가 세부 조건을 체크하는 중",
-            "폴라가 결과를 조용히 정리하는 중",
-            "올리버가 흐름을 맞추는 중",
-            "몽몽이 마감선을 확인하는 중",
-            "케이가 구조를 다듬는 중"
+            "\(CharacterDisplayNameResolver.displayName(for: "chiko"))가 픽셀 하나를 30분째 고민 중",
+            "\(CharacterDisplayNameResolver.displayName(for: "rex"))가 리스크를 노려보는 중",
+            "\(CharacterDisplayNameResolver.displayName(for: "pin"))은 색상 간격을 맞추는 중",
+            "\(CharacterDisplayNameResolver.displayName(for: "moko"))가 다음 할 일을 정리하는 중",
+            "\(CharacterDisplayNameResolver.displayName(for: "luna"))가 문장 톤을 고르는 중",
+            "\(CharacterDisplayNameResolver.displayName(for: "leo"))가 우선순위를 다듬는 중",
+            "\(CharacterDisplayNameResolver.displayName(for: "lucky"))가 세부 조건을 체크하는 중",
+            "\(CharacterDisplayNameResolver.displayName(for: "pola"))가 결과를 조용히 정리하는 중",
+            "\(CharacterDisplayNameResolver.displayName(for: "oliver"))가 흐름을 맞추는 중",
+            "\(CharacterDisplayNameResolver.displayName(for: "mongmong"))이 마감선을 확인하는 중",
+            "\(CharacterDisplayNameResolver.displayName(for: "kei"))가 구조를 다듬는 중"
         ]
 
-        if let agentName {
-            switch agentName.lowercased() {
-            case "치코": return "치코가 픽셀 하나를 30분째 고민 중"
-            case "렉스": return "렉스가 리스크를 노려보는 중"
-            case "핀": return "핀은 색상 간격을 맞추는 중"
-            case "모코": return "모코가 다음 할 일을 정리하는 중"
-            case "루나": return "루나가 문장 톤을 고르는 중"
-            case "레오": return "레오가 우선순위를 다듬는 중"
-            case "래키": return "래키가 세부 조건을 체크하는 중"
-            case "폴라": return "폴라가 결과를 조용히 정리하는 중"
-            case "올리버": return "올리버가 흐름을 맞추는 중"
-            case "몽몽": return "몽몽이 마감선을 확인하는 중"
-            case "케이": return "케이가 구조를 다듬는 중"
+        if let canonical {
+            switch canonical {
+            case "chiko": return "\(CharacterDisplayNameResolver.displayName(for: "chiko"))가 픽셀 하나를 30분째 고민 중"
+            case "rex": return "\(CharacterDisplayNameResolver.displayName(for: "rex"))가 리스크를 노려보는 중"
+            case "pin": return "\(CharacterDisplayNameResolver.displayName(for: "pin"))은 색상 간격을 맞추는 중"
+            case "moko": return "\(CharacterDisplayNameResolver.displayName(for: "moko"))가 다음 할 일을 정리하는 중"
+            case "luna": return "\(CharacterDisplayNameResolver.displayName(for: "luna"))가 문장 톤을 고르는 중"
+            case "leo": return "\(CharacterDisplayNameResolver.displayName(for: "leo"))가 우선순위를 다듬는 중"
+            case "lucky": return "\(CharacterDisplayNameResolver.displayName(for: "lucky"))가 세부 조건을 체크하는 중"
+            case "pola": return "\(CharacterDisplayNameResolver.displayName(for: "pola"))가 결과를 조용히 정리하는 중"
+            case "oliver": return "\(CharacterDisplayNameResolver.displayName(for: "oliver"))가 흐름을 맞추는 중"
+            case "mongmong": return "\(CharacterDisplayNameResolver.displayName(for: "mongmong"))이 마감선을 확인하는 중"
+            case "kei": return "\(CharacterDisplayNameResolver.displayName(for: "kei"))가 구조를 다듬는 중"
             default: break
             }
         }
