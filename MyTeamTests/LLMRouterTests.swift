@@ -1,4 +1,6 @@
 import XCTest
+import AppKit
+import PDFKit
 @testable import MyTeam
 
 // MARK: - LLMRouterTests
@@ -270,5 +272,279 @@ final class LLMRouterTests: XCTestCase {
 
         let bottom = PanelTuckGeometry.tuckedFrame(for: frame, edge: .bottom, visibleFrame: visible)
         XCTAssertEqual(bottom.maxY, visible.minY + PanelTuckGeometry.revealThickness, accuracy: 0.001)
+    }
+
+    func test_fileIntake_readsPDFIntoStructuredMarkdown() throws {
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("codex-file-intake-test.pdf")
+        try makeSamplePDF(at: tempURL, text: "회의 목적\n이번 주 우선순위를 정리합니다.")
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        let request = try FileIntakeService.makeRequest(fileURL: tempURL, source: .filePicker)
+        let result = FileIntakeService.readText(from: request)
+
+        XCTAssertEqual(result.status, .ready)
+        XCTAssertEqual(result.detectedFormat, .pdf)
+        XCTAssertTrue(result.normalizedText?.contains("## 문서 개요") == true)
+        XCTAssertTrue(result.normalizedText?.contains("## 페이지 1") == true)
+        XCTAssertTrue(result.normalizedText?.contains("이번 주 우선순위") == true)
+    }
+
+    func test_fileIntake_readsXLSXIntoStructuredMarkdown() throws {
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("codex-file-intake-test.xlsx")
+        let plan = WorkbookPlan(
+            format: "xlsx-plan-v1",
+            title: "매출현황",
+            sheets: [
+                SheetPlan(
+                    name: "매출현황",
+                    headers: ["월", "매출", "비고"],
+                    rows: [["1월", "1200000", "프로모션 포함"], ["2월", "980000", ""]],
+                    summary: nil
+                )
+            ]
+        )
+        _ = try XLSXWriter().write(plan: plan, to: tempURL)
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        let request = try FileIntakeService.makeRequest(fileURL: tempURL, source: .filePicker)
+        let result = FileIntakeService.readText(from: request)
+
+        XCTAssertEqual(result.status, .ready)
+        XCTAssertEqual(result.detectedFormat, .xlsx)
+        XCTAssertTrue(result.normalizedText?.contains("## 시트: 매출현황") == true)
+        XCTAssertTrue(result.normalizedText?.contains("| 월 | 매출 | 비고 |") == true)
+        XCTAssertTrue(result.normalizedText?.contains("프로모션 포함") == true)
+    }
+
+    func test_fileIntake_readsDOCXIntoStructuredMarkdown() throws {
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("codex-file-intake-test.docx")
+        try makeSampleDOCX(
+            at: tempURL,
+            headerText: "MyTeam 주간 회의",
+            footerText: "Confidential",
+            paragraphs: ["회의 목적", "이번 주 우선순위를 정리합니다."],
+            listItems: ["API QA 정리", "배포 체크"],
+            tableRows: [["담당", "할 일"], ["치코", "QA 정리"]]
+        )
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        let request = try FileIntakeService.makeRequest(fileURL: tempURL, source: .filePicker)
+        let result = FileIntakeService.readText(from: request)
+
+        XCTAssertEqual(result.status, .ready)
+        XCTAssertEqual(result.detectedFormat, .docx)
+        XCTAssertTrue(result.normalizedText?.contains("## 문서 개요") == true)
+        XCTAssertTrue(result.normalizedText?.contains("## 머리말/꼬리말") == true)
+        XCTAssertTrue(result.normalizedText?.contains("MyTeam 주간 회의") == true)
+        XCTAssertTrue(result.normalizedText?.contains("Confidential") == true)
+        XCTAssertTrue(result.normalizedText?.contains("회의 목적") == true)
+        XCTAssertTrue(result.normalizedText?.contains("- API QA 정리") == true)
+        XCTAssertTrue(result.normalizedText?.contains("| 담당 | 할 일 |") == true)
+        XCTAssertTrue(result.normalizedText?.contains("QA 정리") == true)
+    }
+
+    func test_fileIntake_readsPPTXIntoStructuredMarkdown() throws {
+        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("codex-file-intake-test.pptx")
+        try makeSamplePPTXWithNotesAndTable(at: tempURL)
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        let request = try FileIntakeService.makeRequest(fileURL: tempURL, source: .filePicker)
+        let result = FileIntakeService.readText(from: request)
+
+        XCTAssertEqual(result.status, .ready)
+        XCTAssertEqual(result.detectedFormat, .pptx)
+        XCTAssertTrue(result.normalizedText?.contains("## 슬라이드 1") == true)
+        XCTAssertTrue(result.normalizedText?.contains("이번 주 목표") == true)
+        XCTAssertTrue(result.normalizedText?.contains("### 표 1") == true)
+        XCTAssertTrue(result.normalizedText?.contains("| 담당 | 상태 |") == true)
+        XCTAssertTrue(result.normalizedText?.contains("### 발표자 노트") == true)
+        XCTAssertTrue(result.normalizedText?.contains("데모에서 일정 언급") == true)
+    }
+
+    private func makeSamplePDF(at url: URL, text: String) throws {
+        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 500, height: 500))
+        textView.string = text
+        textView.font = .systemFont(ofSize: 16)
+        let pdfData = textView.dataWithPDF(inside: textView.bounds)
+        try pdfData.write(to: url)
+    }
+
+    private func makeSampleDOCX(
+        at url: URL,
+        headerText: String,
+        footerText: String,
+        paragraphs: [String],
+        listItems: [String],
+        tableRows: [[String]]
+    ) throws {
+        let zip = MiniZipWriter()
+        let bodyParagraphs = paragraphs.map {
+            "<w:p><w:r><w:t>\(escapedXML($0))</w:t></w:r></w:p>"
+        }.joined()
+        let bodyListItems = listItems.map {
+            """
+            <w:p>
+              <w:pPr>
+                <w:pStyle w:val="ListParagraph"/>
+                <w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr>
+              </w:pPr>
+              <w:r><w:t>\(escapedXML($0))</w:t></w:r>
+            </w:p>
+            """
+        }.joined()
+        let tableXML: String
+        if tableRows.isEmpty {
+            tableXML = ""
+        } else {
+            let rows = tableRows.map { row in
+                let cells = row.map { value in
+                    "<w:tc><w:p><w:r><w:t>\(escapedXML(value))</w:t></w:r></w:p></w:tc>"
+                }.joined()
+                return "<w:tr>\(cells)</w:tr>"
+            }.joined()
+            tableXML = "<w:tbl>\(rows)</w:tbl>"
+        }
+
+        zip.addEntry(name: "[Content_Types].xml", utf8: """
+        <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+          <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+          <Default Extension="xml" ContentType="application/xml"/>
+          <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+        </Types>
+        """)
+        zip.addEntry(name: "_rels/.rels", utf8: """
+        <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+          <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+        </Relationships>
+        """)
+        zip.addEntry(name: "word/_rels/document.xml.rels", utf8: """
+        <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+          <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>
+          <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>
+        </Relationships>
+        """)
+        zip.addEntry(name: "word/document.xml", utf8: """
+        <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            \(bodyParagraphs)
+            \(bodyListItems)
+            \(tableXML)
+          </w:body>
+        </w:document>
+        """)
+        zip.addEntry(name: "word/header1.xml", utf8: """
+        <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        <w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:p><w:r><w:t>\(escapedXML(headerText))</w:t></w:r></w:p>
+        </w:hdr>
+        """)
+        zip.addEntry(name: "word/footer1.xml", utf8: """
+        <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        <w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:p><w:r><w:t>\(escapedXML(footerText))</w:t></w:r></w:p>
+        </w:ftr>
+        """)
+
+        try zip.build().write(to: url)
+    }
+
+    private func escapedXML(_ text: String) -> String {
+        text
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+    }
+
+    private func makeSamplePPTXWithNotesAndTable(at url: URL) throws {
+        let zip = MiniZipWriter()
+        zip.addEntry(name: "[Content_Types].xml", utf8: """
+        <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+          <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+          <Default Extension="xml" ContentType="application/xml"/>
+          <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
+          <Override PartName="/ppt/slides/slide1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>
+          <Override PartName="/ppt/notesSlides/notesSlide1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml"/>
+        </Types>
+        """)
+        zip.addEntry(name: "_rels/.rels", utf8: """
+        <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+          <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/>
+        </Relationships>
+        """)
+        zip.addEntry(name: "ppt/presentation.xml", utf8: """
+        <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        <p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+                        xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+          <p:sldIdLst><p:sldId id="256" r:id="rId1"/></p:sldIdLst>
+        </p:presentation>
+        """)
+        zip.addEntry(name: "ppt/_rels/presentation.xml.rels", utf8: """
+        <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+          <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>
+        </Relationships>
+        """)
+        zip.addEntry(name: "ppt/slides/slide1.xml", utf8: """
+        <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        <p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+               xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+               xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+          <p:cSld>
+            <p:spTree>
+              <p:sp>
+                <p:txBody>
+                  <a:bodyPr/><a:lstStyle/>
+                  <a:p><a:r><a:t>이번 주 목표</a:t></a:r></a:p>
+                </p:txBody>
+              </p:sp>
+              <p:graphicFrame>
+                <a:graphic>
+                  <a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table">
+                    <a:tbl>
+                      <a:tr>
+                        <a:tc><a:txBody><a:bodyPr/><a:p><a:r><a:t>담당</a:t></a:r></a:p></a:txBody></a:tc>
+                        <a:tc><a:txBody><a:bodyPr/><a:p><a:r><a:t>상태</a:t></a:r></a:p></a:txBody></a:tc>
+                      </a:tr>
+                      <a:tr>
+                        <a:tc><a:txBody><a:bodyPr/><a:p><a:r><a:t>치코</a:t></a:r></a:p></a:txBody></a:tc>
+                        <a:tc><a:txBody><a:bodyPr/><a:p><a:r><a:t>진행중</a:t></a:r></a:p></a:txBody></a:tc>
+                      </a:tr>
+                    </a:tbl>
+                  </a:graphicData>
+                </a:graphic>
+              </p:graphicFrame>
+            </p:spTree>
+          </p:cSld>
+        </p:sld>
+        """)
+        zip.addEntry(name: "ppt/slides/_rels/slide1.xml.rels", utf8: """
+        <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+          <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" Target="../notesSlides/notesSlide1.xml"/>
+        </Relationships>
+        """)
+        zip.addEntry(name: "ppt/notesSlides/notesSlide1.xml", utf8: """
+        <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+        <p:notes xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
+                 xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+          <p:cSld>
+            <p:spTree>
+              <p:sp>
+                <p:txBody>
+                  <a:bodyPr/><a:lstStyle/>
+                  <a:p><a:r><a:t>데모에서 일정 언급</a:t></a:r></a:p>
+                </p:txBody>
+              </p:sp>
+            </p:spTree>
+          </p:cSld>
+        </p:notes>
+        """)
+        try zip.build().write(to: url)
     }
 }
