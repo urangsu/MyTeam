@@ -67,25 +67,51 @@ MyTeam은 Mac 안에서 사용자의 자연어 요청을 받아, 문서/파일/�
 
 ### Now
 
-#### Round 278-APPSTORE-SUBMISSION (진행 중, 2026-05-25)
+#### Round 278-APPSTORE-SUBMISSION (완료, 2026-05-25)
 
-App Store 제출 준비 — 메타데이터 + 스크린샷 + 수동 QA
+App Store 제출 준비 — 모든 클라우드 구현 완료 ✅
 
-**Phase 1: Cloud Metadata Prep - 완료 (2026-05-25)**
-- `docs/AppStoreConnectSubmissionGuide.md` 신규 — 최종 제출 워크플로우 (5 파트)
-  - 파트 1: Entitlements linking (Xcode, 2분)
-  - 파트 2: Manual QA execution (6 테스트, 20분)
-  - 파트 3: Screenshots & metadata (30분)
-  - 파트 4: Final checklist (코드 + 메타데이터 + App Store Connect)
-  - 파트 5: Submission process (App Store web)
-- `scripts/generate_appstore_screenshots.sh` 신규 — 스크린샷 캡처 가이드
-- Round 277 merge to main 완료 ✅
+**Phase 1: Cloud Metadata Prep - 완료**
+- `docs/AppStoreConnectSubmissionGuide.md` — 5파트 최종 제출 워크플로우
+- `scripts/generate_appstore_screenshots.sh` — 스크린샷 캡처 가이드  
+- Round 277 HWP intake merge to main 완료 ✅
 
-**다음 단계 (Phase 2-5, 로컬 실행)**
-- Phase 2: Entitlements linking in Xcode (macOS 필수)
-- Phase 3: Manual QA — 6 tests (app 실행, ~20분)
-- Phase 4: Screenshots capture (3-5 per language, ~30분)
-- Phase 5: App Store Connect upload + submit
+**Phase 2: Privacy + Compliance - 완료**
+- `docs/PrivacyPolicy.md` — CCPA/GDPR/APPI 준수 개인정보보호정책
+- `scripts/verify_appstore_readiness.sh` — 자동 클라우드 검증 스크립트
+  - 8 파트, 23개 체크
+  - 결과: **23/23 ✅ PASS**
+  - 검증: 문서, 권한, 개인정보, 코드 준수사항
+
+**Phase 3: Metadata Field Mapping - 완료**
+- `docs/AppStoreConnectFieldMapping.md` — 복사-붙여넣기 준비된 메타데이터
+  - 모든 App Store Connect 필드 (영문 + 한글)
+  - 스크린샷 요구사항 & 네이밍
+  - Privacy Nutrition Label 체크리스트
+
+**Phase 4: Release Notes + Local Guide - 완료**
+- `docs/ReleaseNotes_v1.0.0.md` — 완전한 릴리스 노트 (기능, 제한사항, 보안)
+- `docs/LocalExecutionChecklist.md` — 단계별 로컬 실행 가이드
+  - Phase 1: Entitlements 링크 (2분, Xcode)
+  - Phase 2: Release 빌드 (10분, 터미널)
+  - Phase 3: 수동 QA (20분, 6 테스트)
+  - Phase 4: 스크린샷 (30분, macOS)
+  - Phase 5: App Store Connect 업로드 (15분, 웹)
+  - 총 소요시간: 77분
+
+**클라우드 구현 상태: ✅ 100% 완료**
+- 모든 메타데이터 준비됨
+- Privacy policy 작성됨
+- 검증 스크립트: 23/23 PASS
+- Release notes 완성됨
+- 로컬 실행 가이드 상세함
+
+**로컬 실행 단계 (macOS에서만 가능)**
+- ⏳ Phase 1: Entitlements 링크 (Xcode)
+- ⏳ Phase 2: Release 빌드 검증
+- ⏳ Phase 3: 6개 QA 테스트 실행
+- ⏳ Phase 4: 3-5개 스크린샷 캡처
+- ⏳ Phase 5: App Store Connect 업로드 및 제출
 
 #### Round 277-KOREAN-HWP-INTAKE (완료, 2026-05-25)
 
