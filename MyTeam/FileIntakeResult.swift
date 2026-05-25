@@ -6,6 +6,7 @@ enum DocumentIngestionFormat: String, Codable, Equatable {
     case xlsx
     case docx
     case pptx
+    case hwp    // Round 277: HWP/HWPX (한글과컴퓨터)
 }
 
 enum DocumentIngestionWarning: String, Codable, Equatable {

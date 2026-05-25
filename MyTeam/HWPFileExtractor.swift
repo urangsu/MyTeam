@@ -127,14 +127,13 @@ enum HWPFileExtractor {
         }
 
         do {
-            if let archive = Archive(url: url, accessMode: .read) {
-                for entry in archive {
-                    var entryData = Data()
-                    _ = try archive.extract(entry) { chunk in
-                        entryData.append(chunk)
-                    }
-                    entries[entry.path] = entryData
+            let archive = try Archive(url: url, accessMode: .read)
+            for entry in archive {
+                var entryData = Data()
+                _ = try archive.extract(entry) { chunk in
+                    entryData.append(chunk)
                 }
+                entries[entry.path] = entryData
             }
         } catch {
             throw HWPExtractionError.invalidZipArchive
@@ -226,7 +225,7 @@ private final class HWPXMLParser: NSObject, XMLParserDelegate {
         }
     }
 
-    func parser(_ parser: XMLParser, parseErrorOccurred parseError: NSError) {
-        parsingError = parseError
+    func parser(_ parser: XMLParser, parseErrorOccurred parseError: Error) {
+        parsingError = parseError as NSError
     }
 }
