@@ -16,7 +16,7 @@ enum FileIntakePolicy {
     static let maxFileSizeBytes: Int64 = 2 * 1024 * 1024
 
     static let readableExtensions: Set<String> = [
-        "txt", "md", "markdown", "csv", "pdf", "xlsx", "docx", "pptx"
+        "txt", "md", "markdown", "csv", "pdf", "xlsx", "docx", "pptx", "hwp", "hwpx"
     ]
 
     static let plannedExtensions: Set<String> = []

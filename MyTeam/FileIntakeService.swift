@@ -147,6 +147,8 @@ enum FileIntakeService {
             return ingestDOCX(request)
         case "pptx":
             return ingestPPTX(request)
+        case "hwp", "hwpx":
+            return ingestHWP(request)
         default:
             return DocumentIngestionResult(
                 status: .unsupported,
@@ -633,6 +635,53 @@ enum FileIntakeService {
                 warnings: [],
                 metadataSummary: "pptx readFailed",
                 userMessage: "파일을 열 수 없습니다. 암호가 걸렸거나 지원하지 않는 PowerPoint 문서일 수 있습니다."
+            )
+        }
+    }
+
+    private static func ingestHWP(_ request: FileIntakeRequest) -> DocumentIngestionResult {
+        do {
+            let markdown = try HWPFileExtractor.extractMarkdown(from: request.fileURL)
+            guard !markdown.isEmpty else {
+                return DocumentIngestionResult(
+                    status: .empty,
+                    format: .hwp,
+                    normalizedText: nil,
+                    warnings: [],
+                    metadataSummary: "hwp empty",
+                    userMessage: "파일에서 텍스트를 찾지 못했습니다."
+                )
+            }
+
+            var warnings: [DocumentIngestionWarning] = []
+            var normalized = markdown
+
+            if normalized.count > maxExtractedCharacters {
+                normalized = String(normalized.prefix(maxExtractedCharacters))
+                warnings.append(.truncated)
+            }
+
+            let metadataSummary = "hwp chars=\(normalized.count) warnings=\(warnings.count)"
+            let userMessage: String = warnings.isEmpty
+                ? "HWP 파일을 마크다운으로 변환했습니다."
+                : "HWP 파일을 읽었습니다. 긴 문서라 일부만 사용합니다."
+
+            return DocumentIngestionResult(
+                status: .ready,
+                format: .hwp,
+                normalizedText: normalized,
+                warnings: warnings,
+                metadataSummary: metadataSummary,
+                userMessage: userMessage
+            )
+        } catch {
+            return DocumentIngestionResult(
+                status: .readFailed,
+                format: .hwp,
+                normalizedText: nil,
+                warnings: [],
+                metadataSummary: "hwp readFailed",
+                userMessage: "HWP 파일을 열 수 없습니다. \(error.localizedDescription)"
             )
         }
     }
