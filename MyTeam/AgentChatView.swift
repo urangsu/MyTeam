@@ -39,6 +39,8 @@ struct AgentChatView: View {
     // 첨부파일
     @State private var pendingAttachments: [ChatAttachment] = []
     @State private var isTargetedForDrop: Bool = false
+    @State private var attachmentError: String? = nil
+    @State private var isQuickActionMenuPresented: Bool = false
 
     // 삭제/편집 모드
     @State private var isEditingProjects: Bool = false
@@ -885,6 +887,30 @@ struct AgentChatView: View {
                     .help("파일 첨부")
                     .accessibilityLabel("파일 첨부")
 
+                    Button(action: { isQuickActionMenuPresented.toggle() }) {
+                        Image(systemName: "scroll")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(currentAgent.color)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .popover(isPresented: $isQuickActionMenuPresented, arrowEdge: .bottom) {
+                        QuickActionMenuContent(
+                            isDark: manager.isDarkMode,
+                            onPrompt: { prompt in
+                                isQuickActionMenuPresented = false
+                                inputText = prompt
+                                sendMessage()
+                            },
+                            onFileIntake: {
+                                isQuickActionMenuPresented = false
+                                openFilePicker()
+                            }
+                        )
+                        .frame(width: 300, height: 420)
+                    }
+                    .help("빠른 지시")
+                    .accessibilityLabel("빠른 지시")
+
                     TextField("\(currentAgent.name)에게 메시지...", text: $inputText)
                         .textFieldStyle(PlainTextFieldStyle())
                         .foregroundColor(textColor)
@@ -914,6 +940,9 @@ struct AgentChatView: View {
                 if let errorMsg = speechManager.sttError {
                     Text(errorMsg).font(.system(size: 10)).foregroundColor(.red)
                 }
+                if let attachmentError {
+                    Text(attachmentError).font(.system(size: 10)).foregroundColor(.red)
+                }
             }
             .padding(.horizontal, 14).padding(.vertical, 12).background(bgColor)
         }
@@ -925,6 +954,9 @@ struct AgentChatView: View {
                     Task { @MainActor in
                         if let attachment = await loadAttachment(from: url) {
                             pendingAttachments.append(attachment)
+                            attachmentError = nil
+                        } else {
+                            attachmentError = "첨부를 읽지 못했어요. 파일 권한이나 형식을 확인해 주세요."
                         }
                     }
                 }
@@ -940,7 +972,7 @@ struct AgentChatView: View {
         panel.allowsMultipleSelection = true
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
-        panel.allowedContentTypes = [.text, .pdf, .image, .plainText, .data]
+        panel.allowedContentTypes = Self.allowedAttachmentContentTypes
         panel.begin { response in
             guard response == .OK else { return }
             Task {
@@ -948,6 +980,11 @@ struct AgentChatView: View {
                     if let attachment = await loadAttachment(from: url) {
                         _ = await MainActor.run {
                             pendingAttachments.append(attachment)
+                            attachmentError = nil
+                        }
+                    } else {
+                        _ = await MainActor.run {
+                            attachmentError = "첨부를 읽지 못했어요. 파일 권한이나 형식을 확인해 주세요."
                         }
                     }
                 }
@@ -956,13 +993,18 @@ struct AgentChatView: View {
     }
 
     private func loadAttachment(from url: URL) async -> ChatAttachment? {
-        guard url.startAccessingSecurityScopedResource() else { return nil }
-        defer { url.stopAccessingSecurityScopedResource() }
+        let didStartSecurityScope = url.startAccessingSecurityScopedResource()
+        defer {
+            if didStartSecurityScope {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
 
         let fileName = url.lastPathComponent
         let type = ChatAttachment.AttachmentType.from(fileName: fileName)
         let fileSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-        let textContent = FileContentExtractor.extractText(from: url)
+        let textContent = FileIntakeService.extractAttachmentText(from: url)
+            ?? FileContentExtractor.extractText(from: url)
 
         return ChatAttachment(
             fileName: fileName,
@@ -971,6 +1013,13 @@ struct AgentChatView: View {
             textContent: textContent,
             localPath: url.path
         )
+    }
+
+    private static var allowedAttachmentContentTypes: [UTType] {
+        var types: [UTType] = [.text, .plainText, .pdf, .image, .data]
+        let extensions = ["md", "markdown", "csv", "xlsx", "docx", "pptx", "hwp", "hwpx"]
+        types.append(contentsOf: extensions.compactMap { UTType(filenameExtension: $0) })
+        return types
     }
 
     // MARK: - DirectChat Evidence Gate

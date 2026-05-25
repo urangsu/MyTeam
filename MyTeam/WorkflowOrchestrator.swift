@@ -73,6 +73,11 @@ final class WorkflowOrchestrator {
             guard manager.activeWorkflowTask(for: roomID) != nil else { return }
             manager.cancelActiveWorkflowTask(roomID: roomID)
             manager.typingAgentIDs.removeAll()
+            manager.workflowStatusText = nil
+            manager.teamRuntimeState = TeamRuntimeState.discussionFailed(
+                roomID: roomID,
+                detail: "작업을 중지했습니다."
+            )
             manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0
             manager.addChatLog(
                 roomID: roomID, agentID: "system", agentName: "작업봇",

@@ -183,16 +183,19 @@ struct SettingsView: View {
         VStack(spacing: 0) {
             // ── 탭 세그먼트 + X 버튼 (같은 라인)
             HStack(spacing: 8) {
-                Picker("", selection: $currentTab) {
-                    Text("사용자 설정").tag(0)
-                    Text("API 설정").tag(1)
-                    Text("데스크 라우팅").tag(2)
-                    Text("스킬").tag(3)
-                    Text("캐릭터").tag(4)
-                    Text("TTS Lab").tag(5)
+                ScrollView(.horizontal, showsIndicators: true) {
+                    Picker("", selection: $currentTab) {
+                        Text("사용자 설정").tag(0)
+                        Text("API 설정").tag(1)
+                        Text("데스크 라우팅").tag(2)
+                        Text("스킬").tag(3)
+                        Text("캐릭터").tag(4)
+                        Text("TTS Lab").tag(5)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(minWidth: 520)
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
 
                 Button(action: { manager.hideSettingsWindow() }) {
                     Image(systemName: "xmark.circle.fill")
@@ -222,7 +225,8 @@ struct SettingsView: View {
             }
         }
         .preferredColorScheme(manager.isDarkMode ? .dark : .light)
-        .frame(width: 500, height: currentTab == 5 ? 700 : 600)
+        .frame(minWidth: 640, minHeight: 520)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear {
             TeamNameplateAppearanceSettings.migrateLegacyValuesIfNeeded()
