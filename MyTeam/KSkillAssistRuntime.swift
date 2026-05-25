@@ -7,17 +7,13 @@ import Foundation
 // MARK: - Intent
 
 enum KSkillAssistIntent: String, Codable, Sendable {
-    case ktxBookingAssist
-    case mapPlaceAssist
-    case reservationPreparation
-    case stockInfoAssist
-    case dartDisclosureAssist
-    case naverNewsAssist
-    case naverBlogResearchAssist
-    case lawSearchAssist
-    case scholarshipAssist
-    case officeReviewAssist
-    case fileImageAssist
+    case transportationBookingAssist  // 기차/버스/항공 예매
+    case accommodationAssist          // 숙박 예약 준비
+    case investmentResearchAssist     // 주가/투자 정보 조회
+    case newsResearchAssist           // 뉴스 리서치
+    case travelPlanningAssist         // 여행 준비
+    case businessDocumentAssist       // 사무 문서 검토
+    case fileProcessingAssist         // 파일/이미지 처리
 }
 
 // MARK: - Response
@@ -50,17 +46,13 @@ enum KSkillAssistRuntime {
     // MARK: - Skill ID Registry
 
     private static let assistSkillIDs: Set<String> = [
-        "korean.ktx-booking",
-        "korean.map-place",
-        "korean.reservation-preparation",
-        "korean.stock-info",
-        "korean.dart",
-        "korean.naver-news",
-        "korean.naver-blog-research",
-        "korean.law-search",
-        "korean.scholarship",
-        "korean.office-review-assist",
-        "korean.file-image-assist"
+        "transportation-booking",
+        "accommodation-planning",
+        "investment-research",
+        "news-research",
+        "travel-planning",
+        "business-document",
+        "file-processing"
     ]
 
     static func isAssistSkillID(_ skillID: String) -> Bool {
@@ -141,46 +133,68 @@ enum KSkillAssistRuntime {
 
         if let skillID {
             switch skillID {
-            case "korean.ktx-booking", "ktx-booking-assist": return .ktxBookingAssist
-            case "korean.dart", "dart-disclosure-assist": return .dartDisclosureAssist
-            case "korean.stock", "stock-info-assist": return .stockInfoAssist
-            case "korean.naver-news": return .naverNewsAssist
-            case "korean.naver-blog-research": return .naverBlogResearchAssist
-            case "korean.law-search": return .lawSearchAssist
-            case "korean.scholarship": return .scholarshipAssist
-            case "map-place-assist", "reservation-preparation": return .mapPlaceAssist
+            case "transportation-booking": return .transportationBookingAssist
+            case "accommodation-planning": return .accommodationAssist
+            case "investment-research": return .investmentResearchAssist
+            case "news-research": return .newsResearchAssist
+            case "travel-planning": return .travelPlanningAssist
+            case "business-document": return .businessDocumentAssist
+            case "file-processing": return .fileProcessingAssist
             default: break
             }
         }
 
-        // Natural language detection
-        if lower.contains("ktx") || lower.contains("srt") || lower.contains("기차 예매") || lower.contains("열차 예매") {
-            return .ktxBookingAssist
+        // Natural language detection (multilingual: Korean, English, Japanese)
+        // Transportation
+        if lower.contains("기차") || lower.contains("열차") || lower.contains("버스") ||
+           lower.contains("항공") || lower.contains("비행기") || lower.contains("예약") ||
+           lower.contains("train") || lower.contains("bus") || lower.contains("flight") ||
+           lower.contains("電車") || lower.contains("バス") || lower.contains("航空") {
+            return .transportationBookingAssist
         }
-        if lower.contains("주가") || lower.contains("주식") || lower.contains("종목") || lower.contains("시세") {
-            return .stockInfoAssist
+
+        // Accommodation
+        if lower.contains("숙박") || lower.contains("호텔") || lower.contains("에어비앤비") ||
+           lower.contains("hotel") || lower.contains("accommodation") || lower.contains("airbnb") ||
+           lower.contains("ホテル") || lower.contains("宿泊") {
+            return .accommodationAssist
         }
-        if lower.contains("dart") || lower.contains("공시") || lower.contains("사업보고서") {
-            return .dartDisclosureAssist
+
+        // Investment
+        if lower.contains("주가") || lower.contains("주식") || lower.contains("투자") || lower.contains("종목") ||
+           lower.contains("stock") || lower.contains("investment") || lower.contains("equity") ||
+           lower.contains("株") || lower.contains("投資") {
+            return .investmentResearchAssist
         }
-        if lower.contains("네이버 뉴스") || lower.contains("naver 뉴스") || lower.contains("뉴스 검색") {
-            return .naverNewsAssist
+
+        // News
+        if lower.contains("뉴스") || lower.contains("기사") || lower.contains("리서치") ||
+           lower.contains("news") || lower.contains("article") || lower.contains("research") ||
+           lower.contains("ニュース") || lower.contains("記事") {
+            return .newsResearchAssist
         }
-        if lower.contains("블로그") || lower.contains("리뷰") || lower.contains("후기 조사") {
-            return .naverBlogResearchAssist
+
+        // Travel planning
+        if lower.contains("여행") || lower.contains("관광") || lower.contains("지도") ||
+           lower.contains("travel") || lower.contains("trip") || lower.contains("tourism") ||
+           lower.contains("旅行") || lower.contains("観光") {
+            return .travelPlanningAssist
         }
-        if lower.contains("법령") || lower.contains("법률") || lower.contains("판례") || lower.contains("법원") {
-            return .lawSearchAssist
+
+        // Business documents
+        if lower.contains("회의록") || lower.contains("보고서") || lower.contains("문서") ||
+           lower.contains("report") || lower.contains("document") || lower.contains("meeting") ||
+           lower.contains("会議") || lower.contains("報告書") {
+            return .businessDocumentAssist
         }
-        if lower.contains("장학금") || lower.contains("국가장학") || lower.contains("복지급여") {
-            return .scholarshipAssist
+
+        // File processing
+        if lower.contains("파일") || lower.contains("이미지") || lower.contains("정리") ||
+           lower.contains("file") || lower.contains("image") || lower.contains("process") ||
+           lower.contains("ファイル") || lower.contains("画像") {
+            return .fileProcessingAssist
         }
-        if lower.contains("맛집") || lower.contains("식당 예약") || lower.contains("숙박 예약") || lower.contains("장소 찾아줘") {
-            return .mapPlaceAssist
-        }
-        if lower.contains("예약") || lower.contains("reservat") {
-            return .reservationPreparation
-        }
+
         return nil
     }
 
@@ -189,239 +203,173 @@ enum KSkillAssistRuntime {
     static func buildAssistResponse(intent: KSkillAssistIntent, userMessage: String) -> KSkillAssistResponse {
         switch intent {
 
-        case .ktxBookingAssist:
+        case .transportationBookingAssist:
             return KSkillAssistResponse(
                 intent: intent,
-                title: "KTX / SRT 예매 도우미",
-                message: "KTX 예매 확정이나 결제는 대신하지 않습니다. 출발·도착·날짜·시간대 조건을 정리하고 예매 전 확인할 체크리스트를 만들어드릴게요.",
+                title: "Transportation Booking Helper",
+                message: "I don't handle booking confirmation or payment. I'll help you organize your travel criteria and create a pre-booking checklist.",
                 checklist: [
-                    "출발역과 도착역 확인",
-                    "여행 날짜와 희망 시간대 (아침/오전/오후/저녁)",
-                    "인원수와 좌석 종류 (일반/특실)",
-                    "Korail 회원 로그인 상태 사전 확인",
-                    "환불·변경 규정 확인 (출발 전 1일 이내 수수료)",
-                    "특가/할인 적용 조건 확인"
+                    "Origin and destination confirmed",
+                    "Travel date and preferred time (early/midday/evening)",
+                    "Number of passengers and seat type (economy/business)",
+                    "Account login status verified beforehand",
+                    "Cancellation & change policies reviewed",
+                    "Special offers and discounts checked"
                 ],
                 nextActions: [
-                    "Korail 앱(코레일톡) 또는 SRT 앱에서 직접 조회 및 예매",
-                    "예매 조건 정리가 필요하면 출발역·도착역·날짜·인원을 알려주세요"
+                    "Search and book directly on your preferred platform (Skytrain, Booking.com, official carrier sites)",
+                    "Share your travel details and I can help organize your booking checklist"
                 ],
                 hardBlockedActions: [
-                    "자동 로그인 대행",
-                    "자동 좌석 예매 확정",
-                    "결제 정보 처리",
-                    "캡차 우회"
+                    "Auto login handling",
+                    "Automatic seat selection confirmation",
+                    "Payment information processing",
+                    "CAPTCHA bypass"
                 ],
-                requiredUserInputs: ["출발역", "도착역", "날짜", "시간대", "인원수"]
+                requiredUserInputs: ["Origin", "Destination", "Date", "Preferred time", "Passengers"]
             )
 
-        case .mapPlaceAssist, .reservationPreparation:
+        case .accommodationAssist:
             return KSkillAssistResponse(
                 intent: intent,
-                title: "장소·예약 준비 도우미",
-                message: "지도 직접 검색은 아직 연결 전입니다. 장소명이나 링크를 주시면 비교 기준과 예약 전 체크리스트로 정리해드릴게요.",
+                title: "Accommodation Planning Helper",
+                message: "I don't handle booking confirmation or payment. I'll help you organize your accommodation criteria and create a pre-booking checklist.",
                 checklist: [
-                    "방문 목적과 인원 확인",
-                    "영업 시간 및 정기 휴무일 확인",
-                    "예약 필수 여부 (전화/온라인/앱)",
-                    "주차 가능 여부",
-                    "위치·교통편 확인",
-                    "취소·변경 정책 확인"
+                    "Purpose of stay and number of guests confirmed",
+                    "Check-in/check-out dates and times",
+                    "Budget range per night",
+                    "Location & proximity to transit/attractions",
+                    "Room type and amenities (WiFi, kitchen, etc)",
+                    "Cancellation and modification policies reviewed"
                 ],
                 nextActions: [
-                    "네이버 지도 또는 카카오맵에서 직접 검색",
-                    "장소명이나 링크를 주시면 비교 기준을 정리해드릴 수 있습니다"
+                    "Search on Google Maps, Booking.com, or local property sites",
+                    "Share your requirements and I can help organize comparison criteria"
                 ],
                 hardBlockedActions: [
-                    "자동 예약 확정",
-                    "결제 정보 처리",
-                    "개인정보 제출"
+                    "Automatic booking confirmation",
+                    "Payment information processing",
+                    "Uploading personal documents"
                 ],
-                requiredUserInputs: ["장소명 또는 링크", "방문 일시", "인원수"]
+                requiredUserInputs: ["Destination", "Dates", "Budget", "Guest count"]
             )
 
-        case .stockInfoAssist:
+        case .investmentResearchAssist:
             return KSkillAssistResponse(
                 intent: intent,
-                title: "주가 정보 도우미",
-                message: "실시간 시세 조회는 아직 연결 전입니다. 종목명과 자료를 주시면 확인할 지표와 리스크 체크리스트를 정리해드릴게요.",
+                title: "Investment Research Helper",
+                message: "I don't provide buy/sell recommendations or guarantee returns. I'll help you organize analysis criteria and create a due diligence checklist.",
                 checklist: [
-                    "종목 기본 정보 확인 (업종, 시가총액)",
-                    "최근 실적 및 공시 확인 (DART)",
-                    "PER / PBR / ROE 등 밸류에이션 지표",
-                    "52주 고가/저가 대비 현재 위치",
-                    "주요 리스크 요인 파악",
-                    "배당 여부 및 배당수익률 확인"
+                    "Company fundamentals (sector, market cap, P/E, P/B)",
+                    "Recent financial results and earnings reports",
+                    "Valuation metrics (P/E, P/B, ROE, dividend yield)",
+                    "52-week high/low vs current price",
+                    "Key risk factors and competitive landscape",
+                    "Analyst reports and news sentiment"
                 ],
                 nextActions: [
-                    "네이버 증권 또는 HTS에서 직접 시세 확인",
-                    "공시 자료나 기사를 붙여주시면 요약해드릴 수 있습니다"
+                    "Research on Yahoo Finance, Google Finance, or SEC Edgar",
+                    "Share company details or reports and I can help summarize key metrics"
                 ],
                 hardBlockedActions: [
-                    "매수/매도 확정 추천",
-                    "수익 보장",
-                    "투자자문 확정 표현"
+                    "Definitive buy/sell recommendations",
+                    "Profit guarantees",
+                    "Acting as registered investment advisor"
                 ],
-                requiredUserInputs: ["종목명 또는 티커", "분석 목적 (단기/장기/배당)"]
+                requiredUserInputs: ["Company or ticker", "Research objective", "Investment timeline"]
             )
 
-        case .dartDisclosureAssist:
+        case .newsResearchAssist:
             return KSkillAssistResponse(
                 intent: intent,
-                title: "DART 공시 도우미",
-                message: "DART 직접 조회는 아직 연결 전입니다. 공시 PDF, 사업보고서 내용, 공시 링크를 주시면 요약 형식으로 정리해드릴 수 있어요.",
+                title: "News Research Helper",
+                message: "I don't fetch real-time news. Share article links or content and I'll help summarize and organize key facts.",
                 checklist: [
-                    "공시 종류 확인 (사업보고서/분기보고서/수시공시)",
-                    "보고 기간 및 작성일 확인",
-                    "주요 재무지표 (매출/영업이익/순이익)",
-                    "주요 위험 요인 섹션",
-                    "관계회사 및 특수관계인 거래",
-                    "감사인 의견"
+                    "Source and publication date verified",
+                    "Distinguish facts from opinions/claims",
+                    "Cross-reference with other credible sources",
+                    "Check citations and attributions",
+                    "Identify bias or sponsored content",
+                    "Evaluate author credibility"
                 ],
                 nextActions: [
-                    "dart.fss.or.kr에서 직접 공시 검색",
-                    "공시 PDF나 내용을 붙여주시면 요약·분석 기준으로 정리해드릴 수 있습니다"
+                    "Search on Reuters, AP, BBC, or Google News",
+                    "Share article links or text and I can summarize key points"
                 ],
                 hardBlockedActions: [
-                    "실제 DART API 조회한 척하기",
-                    "투자자문 확정 표현"
+                    "Fabricating real-time search results",
+                    "Creating content without source material"
                 ],
-                requiredUserInputs: ["종목명 또는 기업명", "공시 내용 또는 링크"]
+                requiredUserInputs: ["Article link or text", "Research topic"]
             )
 
-        case .naverNewsAssist:
+        case .travelPlanningAssist:
             return KSkillAssistResponse(
                 intent: intent,
-                title: "뉴스 리서치 도우미",
-                message: "실시간 네이버 검색은 아직 연결 전입니다. 링크나 본문을 주시면 요약·비교로 정리해드릴게요.",
+                title: "Travel Planning Helper",
+                message: "I don't search maps or book directly. Share your destination and preferences, and I'll help organize your itinerary and research checklist.",
                 checklist: [
-                    "출처 및 보도 날짜 확인",
-                    "핵심 사실과 주장 구분",
-                    "복수 매체 교차 확인",
-                    "인용 출처 확인",
-                    "광고성/편향 여부 파악"
+                    "Destination and travel dates confirmed",
+                    "Travel budget (flights, accommodation, activities)",
+                    "Visa requirements and travel documents",
+                    "Local transportation options",
+                    "Must-see attractions and experiences",
+                    "Weather and seasonal considerations",
+                    "Currency and local customs"
                 ],
                 nextActions: [
-                    "네이버 뉴스에서 직접 검색",
-                    "기사 링크나 본문을 붙여주시면 요약·정리해드릴 수 있습니다"
+                    "Use Google Maps, TripAdvisor, or local tourism sites for research",
+                    "Share destination details and I can help organize an itinerary framework"
                 ],
                 hardBlockedActions: [
-                    "실시간 검색 결과 꾸며내기",
-                    "원문 없는 기사 내용 인용"
+                    "Fabricating attraction rankings",
+                    "Generating fake reviews"
                 ],
-                requiredUserInputs: ["기사 링크 또는 본문"]
+                requiredUserInputs: ["Destination", "Travel dates", "Budget range", "Interests"]
             )
 
-        case .naverBlogResearchAssist:
+        case .businessDocumentAssist:
             return KSkillAssistResponse(
                 intent: intent,
-                title: "블로그 리서치 도우미",
-                message: "실시간 네이버 검색은 아직 연결 전입니다. 링크나 본문을 주시면 요약·블로그 초안으로 정리해드릴게요.",
+                title: "Business Document Helper",
+                message: "Share documents or text and I'll help extract action items, improve clarity, and organize key findings.",
                 checklist: [
-                    "조사 주제와 목적 명확히 하기",
-                    "참고할 키워드 목록 작성",
-                    "신뢰할 출처 기준 정하기",
-                    "블로그 글 구조 (도입/본론/결론) 계획"
+                    "Document type identified (meeting notes/report/proposal)",
+                    "Review objective clearly stated",
+                    "Sensitive information (accounts/PII) identified",
+                    "Key stakeholders and deadlines noted"
                 ],
                 nextActions: [
-                    "네이버 블로그 또는 인플루언서 검색에서 직접 조사",
-                    "참고할 링크나 본문을 주시면 구조화하고 초안을 만들어드릴 수 있습니다"
+                    "Paste text or upload document content here",
+                    "I can extract action items, improve tone, or reorganize structure"
                 ],
                 hardBlockedActions: [
-                    "순위/최신성 꾸며내기",
-                    "원문 없는 후기 생성"
+                    "Modifying original files without approval",
+                    "Uploading to external services without permission"
                 ],
-                requiredUserInputs: ["주제", "참고 링크 또는 본문 (선택)"]
+                requiredUserInputs: ["Document text or content", "Review purpose"]
             )
 
-        case .lawSearchAssist:
+        case .fileProcessingAssist:
             return KSkillAssistResponse(
                 intent: intent,
-                title: "법령·정부정보 도우미",
-                message: "직접 최신 조회는 아직 연결 전입니다. 공고문이나 링크를 주시면 자격조건·준비서류·주의사항을 정리해드릴게요.",
+                title: "File Processing Helper",
+                message: "Upload or paste file content and I'll help organize, summarize, or extract key information.",
                 checklist: [
-                    "적용 법령의 시행일 확인",
-                    "관할 기관 및 문의처 확인",
-                    "예외 조항 및 특례 여부",
-                    "최신 개정 여부 확인 (law.go.kr)",
-                    "실제 사례 적용 시 전문가 상담 권장"
+                    "File type identified (PDF/image/spreadsheet/text)",
+                    "Sensitive or confidential information noted",
+                    "Processing goal clarified (summarize/extract/convert)",
+                    "Expected output format determined"
                 ],
                 nextActions: [
-                    "국가법령정보센터(law.go.kr)에서 직접 확인",
-                    "관련 공문서나 안내문을 붙여주시면 핵심 내용을 정리해드릴 수 있습니다"
+                    "Upload content or paste text here",
+                    "Specify the processing goal and I'll help extract what you need"
                 ],
                 hardBlockedActions: [
-                    "법률 자문 확정 표현",
-                    "최신 법령 조회한 척하기",
-                    "판례 내용 꾸며내기"
+                    "Uploading to external cloud storage without explicit permission",
+                    "Automatic deletion or permanent disposal"
                 ],
-                requiredUserInputs: ["법령명 또는 안내문", "질문 내용"]
-            )
-
-        case .scholarshipAssist:
-            return KSkillAssistResponse(
-                intent: intent,
-                title: "장학금·복지급여 도우미",
-                message: "직접 최신 조회는 아직 연결 전입니다. 공고문이나 링크를 주시면 자격조건·준비서류·주의사항을 정리해드릴게요.",
-                checklist: [
-                    "지원 자격 조건 (소득분위/학점/재학 여부)",
-                    "신청 기간 및 접수처 확인",
-                    "제출 서류 목록",
-                    "지급 방식과 금액",
-                    "중복 수혜 제한 여부",
-                    "연장 신청 조건"
-                ],
-                nextActions: [
-                    "한국장학재단(kosaf.go.kr) 또는 복지로(bokjiro.go.kr) 직접 확인",
-                    "공고문을 붙여주시면 자격조건과 서류 목록을 정리해드릴 수 있습니다"
-                ],
-                hardBlockedActions: [
-                    "지원 가능 여부 확정",
-                    "최신 공고 존재한다고 단정"
-                ],
-                requiredUserInputs: ["장학금/급여 종류", "공고문 또는 링크 (선택)"]
-            )
-
-        case .officeReviewAssist:
-            return KSkillAssistResponse(
-                intent: intent,
-                title: "사무 검토 도우미",
-                message: "검토할 파일이나 텍스트를 주시면 회의록 액션아이템, 파일명 정리, 보고서 말투 정리를 바로 도와드릴 수 있어요.",
-                checklist: [
-                    "검토 대상 문서 확인 (회의록/보고서/파일명 목록)",
-                    "검토 기준 및 목적 명확히 하기",
-                    "민감 정보(계좌/개인정보) 포함 여부 확인"
-                ],
-                nextActions: [
-                    "문서 내용을 붙여주시거나 파일을 올려주세요",
-                    "회의록 → 액션아이템 추출, 보고서 → 말투 정리, 파일 → 네이밍 제안"
-                ],
-                hardBlockedActions: [
-                    "원본 파일 자동 수정",
-                    "외부 업로드"
-                ],
-                requiredUserInputs: ["검토 문서 또는 텍스트"]
-            )
-
-        case .fileImageAssist:
-            return KSkillAssistResponse(
-                intent: intent,
-                title: "파일·이미지 도우미",
-                message: "파일을 이 방으로 끌어다 놓거나 텍스트를 붙여넣으시면 정리·요약·검토 기준을 잡아드릴게요.",
-                checklist: [
-                    "파일 형식 확인 (PDF/텍스트/이미지/스프레드시트)",
-                    "파일 내 민감 정보 여부 확인",
-                    "처리 목적 결정 (요약/검토/변환)"
-                ],
-                nextActions: [
-                    "파일을 이 방에 드래그하거나 텍스트를 붙여넣어 주세요",
-                    "처리 목적을 말씀해 주시면 빠르게 시작할 수 있습니다"
-                ],
-                hardBlockedActions: [
-                    "파일 외부 업로드",
-                    "자동 삭제"
-                ],
-                requiredUserInputs: ["파일 또는 텍스트", "처리 목적"]
+                requiredUserInputs: ["File content or text", "Processing objective"]
             )
         }
     }
