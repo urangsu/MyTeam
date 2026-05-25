@@ -89,6 +89,20 @@ class TeamOrchestrator {
                 )
             }
             let turnBudget = min(max(routing.turnBudget ?? 3, 1), 5)
+
+            // Round 278 1-A: IntentRouter 파싱 실패 fallback 시 사용자에게 한 줄 안내
+            if routing.isFallback == true, precomputedRouting == nil {
+                _ = await MainActor.run {
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "시스템",
+                        text: "요청을 정확히 이해하지 못했어요. 잠깐 가볍게 답하고, 다시 한 번 말씀해 주시면 정식 작업을 시작할게요.",
+                        isUser: false
+                    )
+                }
+            }
+
             let alreadySpoke = await emitUnavailableMentionNoticeIfNeeded(
                 unavailableAgent: unavailableMentionedAgent,
                 leader: leader,
@@ -135,11 +149,41 @@ class TeamOrchestrator {
             // 필요 시 별도 요약 로직으로 대체 가능
             
         } catch {
-            print("Orchestration Error: \(error)")
+            // Round 278 1-D: raw 에러 노출 금지. 카테고리 매핑으로 친화 메시지 표시.
+            AppLog.error("[TeamOrchestrator] runTeamDiscussion error: \(error.localizedDescription)")
+            let friendly = Self.friendlyErrorMessage(for: error)
             _ = await MainActor.run {
-                manager.addChatLog(roomID: roomID, agentID: "system", agentName: "시스템", text: "팀 업무 수행 중 오류가 발생했습니다: \(error.localizedDescription)", isUser: false)
+                manager.addChatLog(roomID: roomID, agentID: "system", agentName: "시스템", text: friendly, isUser: false)
             }
         }
+    }
+
+    // MARK: - Round 278 1-D: 친화 에러 메시지 매핑
+    // 카테고리: network(URL/네트워크) / parse(JSON·decode) / budget(429/rate) / auth(401·403·key) / 기타
+    nonisolated static func friendlyErrorMessage(for error: Error) -> String {
+        let desc = error.localizedDescription.lowercased()
+        let nsError = error as NSError
+        // network
+        if nsError.domain == NSURLErrorDomain {
+            return "지금 네트워크가 불안정해요. 잠시 후 다시 시도해 주세요."
+        }
+        if desc.contains("연결") || desc.contains("timeout") || desc.contains("network") || desc.contains("offline") {
+            return "지금 네트워크가 불안정해요. 잠시 후 다시 시도해 주세요."
+        }
+        // budget / rate limit
+        if desc.contains("429") || desc.contains("rate") || desc.contains("사용량") || desc.contains("quota") || desc.contains("limit") {
+            return "요청이 빠르게 들어오고 있어요. 진행 중인 작업이 끝나면 이어서 처리할게요."
+        }
+        // auth
+        if desc.contains("401") || desc.contains("403") || desc.contains("unauthorized") || desc.contains("forbidden") || desc.contains("api key") || desc.contains("키") {
+            return "AI 키 설정에 문제가 있어요. 설정 → AI 키에서 키를 확인해 주세요."
+        }
+        // parse / decode
+        if desc.contains("decode") || desc.contains("json") || desc.contains("parse") || desc.contains("형식") {
+            return "팀이 요청을 정확히 이해하지 못했어요. 한 번만 더 다른 표현으로 말씀해 주세요."
+        }
+        // default
+        return "작업 중 일시적인 문제가 생겼어요. 다시 한 번 시도해 주세요."
     }
 
     // MARK: - 수다 전용 진입점 (IntentRouter 없음)
@@ -253,7 +297,11 @@ class TeamOrchestrator {
         }
 
         // 1. 팀 리더의 주도적 제안 (Routing에 명시된 경우)
-        if let firstAgent = preferredFirstSpeaker ?? leader ?? orders.first.flatMap({ order in agents.first(where: { $0.id == order.agentID }) }),
+        // Round 278 1-E: TASK 인텐트는 군더더기 개요를 스킵하고 첫 작업자 즉시 투입.
+        //                research/decision/chitchat은 도입부가 자연스러움 → 현행 유지.
+        let allowProactiveOpening = routing.intent != .task
+        if allowProactiveOpening,
+           let firstAgent = preferredFirstSpeaker ?? leader ?? orders.first.flatMap({ order in agents.first(where: { $0.id == order.agentID }) }),
            let proposal = routing.proactiveMessage {
             await AgentEventBus.shared.publish(
                 .speakerSelectionCompleted(
@@ -299,6 +347,16 @@ class TeamOrchestrator {
             let history = manager.rooms.first(where: { $0.id == roomID })?.messages.suffix(10) ?? []
             let historyText = history.map { "[\($0.agentName)] \($0.text)" }.joined(separator: "\n")
 
+            // Round 278 1-B: responseDepth에 따라 답변 길이 강제를 분기.
+            // short → 3~5문장, normal → 5~8문장, deep → 길이 제한 없음 (깊은 분석/리뷰 등).
+            let lengthDirective: String = {
+                switch routing.responseDepth ?? .normal {
+                case .short:  return "답변은 3~5문장 이내로 핵심만 명확하게 전달하세요."
+                case .normal: return "답변은 5~8문장 정도로 핵심을 충분히 전달하세요."
+                case .deep:   return "깊이 있는 분석이 필요한 작업입니다. 길이를 제한하지 말고, 필요한 만큼 충분히 자세하게 작성하세요. 단, 불필요한 반복은 피하세요."
+                }
+            }()
+
             let taskPrompt = """
             당신은 시스템 팀장으로부터 특정 업무를 하달받은 전문가 '\(agent.name)'입니다.
             분야: \(routing.taskCategory ?? "일반") / 성격: \(agent.role)
@@ -314,7 +372,7 @@ class TeamOrchestrator {
             [지시]
             시스템의 지시서에 따라 귀하의 전문성을 발휘하여 답변하세요.
             절대 본인이 팀장인 것처럼 행동하지 말고, 배정받은 '전문가'로서의 역할에 충실하세요.
-            답변은 3~5문장 이내로 핵심만 명확하게 전달하세요.
+            \(lengthDirective)
 
             [업무 규칙]
             1. 절대 약하거나 모호한 결과를 통과시키지 마세요 (Don't pass through weak results).
@@ -499,7 +557,7 @@ class TeamOrchestrator {
             await AgentEventBus.shared.publish(
                 .speakerSelectionStarted(roomID: roomID, message: "다음 담당자를 선택하는 중입니다.")
             )
-            let selection: SpeakerSelection?
+            var selection: SpeakerSelection?
             if turn == 0, let preferredID = preferredFirstSpeaker?.id {
                 selection = SpeakerSelection(
                     agentID: preferredID,
@@ -514,6 +572,15 @@ class TeamOrchestrator {
                 )
             } else {
                 selection = await selectNextSpeaker(history: history, agents: agents, lastSpeakerID: lastSpeakerID, userMessage: userMessage)
+            }
+            // Round 278 1-C: selection nil이면 deterministicFallbackSpeaker로 강제 채움 (조기 break 방지).
+            if selection?.agentID == nil {
+                AppLog.warning("[TeamOrchestrator] speaker selection nil → deterministic fallback 강제 사용")
+                selection = deterministicFallbackSpeaker(
+                    agents: agents,
+                    lastSpeakerID: lastSpeakerID,
+                    userMessage: userMessage
+                )
             }
             guard let nextAgentID = selection?.agentID else { break }
             guard let agent = agents.first(where: { $0.id == nextAgentID }) else { break }

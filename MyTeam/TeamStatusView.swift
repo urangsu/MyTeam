@@ -847,7 +847,29 @@ struct TeamStatusView: View {
             // ── 하단: 입력창 (팀 채팅 + 첨부파일) ──
             // layoutPriority(1): ScrollView보다 우선 공간 확보 → 잘림 방지
             VStack(spacing: 0) {
+                // Round 278 1-F: 작업 중 인디케이터 — Claude/Gemini 수준 "동작 중" 표시
+                // 1) 상단 1px 슬라이딩 진행 바
+                if manager.isWorkflowRunning {
+                    WorkflowProgressBarView(accentColor: .blue)
+                }
+
                 Divider().background(textColor.opacity(0.08))
+
+                // Round 278 1-F: 2) 상태 텍스트 + 점 애니메이션 인디케이터
+                if manager.isWorkflowRunning,
+                   let statusText = TeamRuntimeStatusCopy.displayText(
+                       workflowStatusText: manager.workflowStatusText,
+                       teamState: manager.teamRuntimeState
+                   ) {
+                    WorkflowProgressIndicatorView(
+                        statusText: statusText,
+                        accentColor: .blue
+                    )
+                    .padding(.horizontal, 10)
+                    .padding(.top, 6)
+                    .padding(.bottom, 2)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                }
 
                 // 첨부파일 미리보기
                 if !pendingAttachments.isEmpty {

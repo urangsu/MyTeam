@@ -48,6 +48,8 @@ struct IntentResult: Codable {
     let needsWeb: Bool?
     let riskLevel: RiskLevel?
     let requiresFinalSummary: Bool?
+    // Round 278: 분류 실패로 fallback이 사용되었는지 표시. TeamOrchestrator가 친화 메시지를 추가하는 데 사용.
+    var isFallback: Bool? = nil
 }
 
 class IntentRouter {
@@ -142,7 +144,8 @@ class IntentRouter {
             let result = try JSONDecoder().decode(IntentResult.self, from: data)
             return result
         } catch {
-            print("IntentRouter Parsing Error: \(error). Falling back to CHITCHAT.")
+            // Round 278 1-A: 파싱 실패는 영구 로그 + fallback 플래그. raw error는 사용자에게 노출 금지.
+            AppLog.warning("[IntentRouter] JSON 파싱 실패, CHITCHAT fallback. error=\(error.localizedDescription)")
             return IntentResult.fallback
         }
     }
@@ -167,6 +170,7 @@ extension IntentResult {
         needsTool: false,
         needsWeb: false,
         riskLevel: .low,
-        requiresFinalSummary: false
+        requiresFinalSummary: false,
+        isFallback: true   // Round 278 1-A: 분류 실패 시 친화 안내를 위해 표시
     )
 }

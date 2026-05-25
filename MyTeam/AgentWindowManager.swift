@@ -103,6 +103,9 @@ class AgentWindowManager: ObservableObject {
     @Published var currentWorkflowID: UUID? = nil
     /// 현재 팀 협업 런타임 상태 — 팀 토론/화자 선택/턴 진행을 UI에 반영.
     @Published var teamRuntimeState: TeamRuntimeState? = nil
+    /// Round 278 1-F: WorkflowOrchestrator 진행 단계 한 줄 설명 ("계획 수립 중…", "초안 작성 중…" 등).
+    /// 작업 완료/실패/취소 시 nil로 리셋. UI 인디케이터가 표시.
+    @Published var workflowStatusText: String? = nil
     /// room별 마지막 turn profile — /why, /last, diagnostics용 읽기 전용 상태.
     @Published var lastTurnProfileByRoom: [UUID: TurnProfile] = [:]
     /// room별 마지막 goal interpretation — 관측용 상태.
@@ -388,6 +391,14 @@ class AgentWindowManager: ObservableObject {
             activeWorkflowStep: activeWorkflowStep,
             recentArtifactID: recentArtifactID
         )
+        // Round 278 1-F: activeWorkflowStep이 nil(=완료)이면 인디케이터 해제,
+        //                매핑이 있으면 한글 상태 텍스트로 자동 갱신.
+        if let step = activeWorkflowStep {
+            workflowStatusText = TeamRuntimeStatusCopy.koreanStatus(forWorkflowStep: step)
+        } else {
+            // nil step 전달은 명시적 완료 신호 — 인디케이터 즉시 해제
+            workflowStatusText = nil
+        }
     }
 
     @MainActor
