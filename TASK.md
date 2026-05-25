@@ -67,6 +67,35 @@ MyTeam은 Mac 안에서 사용자의 자연어 요청을 받아, 문서/파일/�
 
 ### Now
 
+#### Round 277-KOREAN-HWP-INTAKE (Phase 1A) — 진행 중 (2026-05-25)
+
+HWP/HWPX 파일 읽기 기초 + 고유명사/숫자 정규화 + K-skills 캐릭터 톤 + TTSLabView A/B 비교 UI
+
+**Phase 1A: HWP 파일 읽기 기초 - 완료 (2026-05-25)**
+
+- `docs/HWPFormatSpecification.md` 신규 — HWP 파일 구조, ZIP 기반 패키지, 1차 구현 전략
+- `MyTeam/HWPFileExtractor.swift` 신규
+  - `extractText()` / `extractMarkdown()` 함수
+  - `HWPXMLParser` delegate 기반 content.xml 파싱
+  - `unpackArchive()` ZIP 언팩 (ZIPFoundation 활용)
+  - `HWPExtractionError` 오류 처리 + Sendable 준수
+- `MyTeam/FileIntakeService.swift` 확장
+  - `case "hwp", "hwpx"` ingest 라우팅 추가
+  - `ingestHWP()` 함수 추가 — markdown 변환 + 경고 처리 + 길이 제한
+- `MyTeam/FileIntakePolicy.swift` 업데이트
+  - `readableExtensions`에 "hwp", "hwpx" 추가
+- `scripts/preflight_round277_hwp_intake.sh` 신규 — 12개 체크
+  - 문서: HWPFormatSpecification 확인
+  - 코드: extractor/service/policy 통합 확인
+  - 기능: Sendable, 오류처리, ZIP 언팩 확인
+- 검증: preflight 12/12 PASS ✅
+
+**다음 단계 (Phase 1B 예정)**
+- 고유명사 사전 (이름/회사/지역)
+- 영문/숫자 정규화
+- K-skills 캐릭터별 톤 제어
+- TTSLabView 캐릭터 A/B 비교 UI
+
 #### Round 271 — Router Reality, Context Integrity, Edge-Tuck UX — 완료 (2026-05-24)
 
 라우터 실제 모델 선택, room/artifact 격리, floating panel 방해 최소화 UX를 보강했다.

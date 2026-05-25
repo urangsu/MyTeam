@@ -6,6 +6,37 @@
 
 ---
 
+## 2026-05-25 (Round 277-KOREAN-HWP-INTAKE: Phase 1A — HWP 파일 읽기 기초)
+
+### 완료 (2026-05-25)
+
+HWP/HWPX 파일 읽기 기초 인프라 구현 완료. ZIP 기반 패키지 분석 및 XML 파싱으로 텍스트 추출 후 마크다운 변환.
+
+**새로운 파일 (2개):**
+- `docs/HWPFormatSpecification.md` — HWP 포맷 명세, 구조, 추출 전략, 테스트 케이스
+- `MyTeam/HWPFileExtractor.swift` — ZIP 언팩 + XML 파싱 + 마크다운 변환 (232줄)
+
+**수정된 파일 (2개):**
+- `MyTeam/FileIntakeService.swift` — `ingestHWP()` 함수 추가, case 라우팅
+- `MyTeam/FileIntakePolicy.swift` — readableExtensions에 "hwp", "hwpx" 추가
+
+**테스트 (1개):**
+- `scripts/preflight_round277_hwp_intake.sh` — 12/12 PASS ✅
+
+**핵심 기능:**
+- 1차 구현: 텍스트만 추출 (서식 무시)
+- 마크다운 변환: Heading → ##, 목록 → -, 본문 → 단락
+- 오류 처리: HWPExtractionError (8가지)
+- 동시성: Sendable 준수 (HWPParagraph, error enum)
+- 한글 UTF-8 안정성 확보
+
+**다음 단계:**
+- Phase 1B: 고유명사/숫자 정규화 (3-4일)
+- Phase 2: K-skills 캐릭터 톤 제어 (4-5일)
+- Phase 3: TTSLabView A/B 비교 UI (3-5일)
+
+---
+
 ## 2026-05-24 (Round 271 — ROUTER-REALITY + CONTEXT-INTEGRITY + EDGE-TUCK-UX)
 
 ### 완료 (2026-05-24)
