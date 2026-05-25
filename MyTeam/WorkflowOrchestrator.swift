@@ -1862,7 +1862,9 @@ final class WorkflowOrchestrator {
             }
         case .success(let plan):
             guard !Task.isCancelled else { return }  // finalStatus = .cancelled 유지
-            let context = ToolExecutionContext.current(workflowID: workflowID, roomID: roomID)
+            // Round 278 2-A: originalUserMessage 주입 → PendingApprovalRequest 재실행 경로용
+            var context = ToolExecutionContext.current(workflowID: workflowID, roomID: roomID)
+            context.originalUserMessage = userMessage
             let result = await WorkflowEngine.shared.run(plan: plan, context: context, allowedScopes: allowedScopes)
             guard !Task.isCancelled else { return }  // finalStatus = .cancelled 유지
             finalStatus = result.failedSteps.isEmpty ? .completed : .failed

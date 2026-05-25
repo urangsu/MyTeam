@@ -182,10 +182,34 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
     }
 
     // MARK: - 권한 요청
+    // Round 278 3-A: 거부 시 사용자에게 보여줄 안내(throttle 적용)를 함께 반환.
+    private static var lastDenialNoticeShownAt: Date? = nil
+    private static let denialThrottleSeconds: TimeInterval = 300  // 5분
+    private static let micDenialGuidance =
+        "음성 입력 권한이 꺼져 있어요. 시스템 설정 → 개인정보 보호 → 마이크에서 MyTeam을 켜주세요."
+
+    /// 기존 호출자 호환 — granted만 반환.
     func requestAuthorization(completion: @escaping (Bool) -> Void) {
+        requestAuthorization { granted, _ in completion(granted) }
+    }
+
+    /// Round 278 3-A: 거부 시 안내 메시지를 함께 전달. throttle 후엔 guidance == nil.
+    func requestAuthorization(completion: @escaping (_ granted: Bool, _ guidance: String?) -> Void) {
         Task {
             let granted = await PermissionsManager.shared.requestAllAudioPermissions()
-            await MainActor.run { completion(granted) }
+            var guidance: String? = nil
+            if !granted {
+                let now = Date()
+                let throttled: Bool = {
+                    guard let last = Self.lastDenialNoticeShownAt else { return false }
+                    return now.timeIntervalSince(last) < Self.denialThrottleSeconds
+                }()
+                if !throttled {
+                    guidance = Self.micDenialGuidance
+                    Self.lastDenialNoticeShownAt = now
+                }
+            }
+            await MainActor.run { completion(granted, guidance) }
         }
     }
 

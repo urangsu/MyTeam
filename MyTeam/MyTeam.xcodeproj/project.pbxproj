@@ -9862,6 +9862,7 @@
 				<string>D2500000000000000000030A</string>
 				<string>D2500000000000000000031A</string>
 				<string>D2500000000000000000032A</string>
+				<string>D2500000000000000000033A</string>
 				<string>D2400000000000000000000D</string>
 				<string>D24000000000000000000010</string>
 				<string>D2400000000000000000000E</string>
@@ -11493,6 +11494,7 @@
 				<string>D2500000000000000000020A</string>
 				<string>D2500000000000000000021A</string>
 				<string>D2500000000000000000022A</string>
+				<string>D2500000000000000000023A</string>
 				<string>D2400000000000000000001D</string>
 				<string>D24000000000000000000020</string>
 				<string>D2400000000000000000001E</string>
@@ -19371,6 +19373,13 @@
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
+		<key>D2500000000000000000023A</key>
+		<dict>
+			<key>fileRef</key>
+			<string>D2500000000000000000033A</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
 		<key>D2500000000000000000002B</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -19472,6 +19481,19 @@
 			<string>sourcecode.swift</string>
 			<key>path</key>
 			<string>WorkflowProgressIndicatorView.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>D2500000000000000000033A</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>ApprovalCopy.swift</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>

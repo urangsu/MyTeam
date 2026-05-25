@@ -9,6 +9,8 @@ struct ToolExecutionContext: Sendable {
     /// 응답을 기록할 roomID (WorkflowRunStore 기록에 사용)
     let roomID: UUID
     let isDryRun: Bool
+    /// Round 278 2-A: 원본 사용자 메시지 — PendingApprovalRequest 재실행 경로용. nil이면 재실행 비활성.
+    var originalUserMessage: String? = nil
 
     /// 하위 호환용 String sessionID (WorkflowEngine 내 ArtifactIndex에 사용)
     var sessionID: String { workflowID.uuidString }

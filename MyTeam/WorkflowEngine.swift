@@ -114,7 +114,8 @@ final class WorkflowEngine {
                             : rawErr,
                         createdAt: Date(),
                         expiresAt: Calendar.current.date(byAdding: .hour, value: 24, to: Date()),
-                        status: .pending
+                        status: .pending,
+                        originalUserMessage: context.originalUserMessage   // Round 278 2-A
                     )
                     approvalRequiredRequests.append(approvalRequest)
                     AppLog.info("[WorkflowEngine] approvalRequired: '\(executedStep.title)'")

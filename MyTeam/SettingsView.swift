@@ -33,6 +33,8 @@ private enum ValidationStatus {
 private class LocationHelper: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var locationText: String = ""
     @Published var isLoading: Bool = false
+    // Round 278 3-B: 거부 상태 캐싱 — 시스템 창 반복 표시 방지 + UI에서 설정 링크 노출
+    @Published var isPermissionDenied: Bool = false
 
     private let mgr = CLLocationManager()
 
@@ -40,17 +42,30 @@ private class LocationHelper: NSObject, ObservableObject, CLLocationManagerDeleg
         super.init()
         mgr.delegate = self
         mgr.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        // 초기 권한 상태 동기화
+        isPermissionDenied = (mgr.authorizationStatus == .denied || mgr.authorizationStatus == .restricted)
     }
 
     func request() {
-        isLoading = true
+        // Round 278 3-B: 거부/제한 상태면 권한 요청 호출 자체를 스킵하고 시스템 설정 열기.
         switch mgr.authorizationStatus {
         case .notDetermined:
+            isLoading = true
             mgr.requestWhenInUseAuthorization()
         case .authorized, .authorizedAlways:
+            isLoading = true
+            isPermissionDenied = false
             mgr.requestLocation()
-        default:
-            locationText = "위치 권한 없음"
+        case .denied, .restricted:
+            isPermissionDenied = true
+            locationText = "위치 권한이 꺼져 있어요. 시스템 설정에서 켜주세요."
+            isLoading = false
+            // 시스템 설정 > 개인정보 보호 > 위치 서비스 직접 열기
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices") {
+                NSWorkspace.shared.open(url)
+            }
+        @unknown default:
+            locationText = "위치 권한 상태를 확인할 수 없어요."
             isLoading = false
         }
     }
@@ -115,10 +130,12 @@ private class LocationHelper: NSObject, ObservableObject, CLLocationManagerDeleg
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in
             let status = CLLocationManager().authorizationStatus
-            if status == .authorizedAlways {
+            // Round 278 3-B: isPermissionDenied도 함께 동기화
+            self.isPermissionDenied = (status == .denied || status == .restricted)
+            if status == .authorizedAlways || status == .authorized {
                 self.mgr.requestLocation()
             } else if status == .denied || status == .restricted {
-                self.locationText = "위치 권한 없음"
+                self.locationText = "위치 권한이 꺼져 있어요."
                 self.isLoading = false
             }
         }

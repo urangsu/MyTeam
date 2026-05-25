@@ -29,7 +29,7 @@ enum CapabilityAwareRouter {
                 goal: goal.goalType,
                 missingCapabilities: goal.requiredCapabilities,
                 blockedCapabilities: blocked,
-                message: "이 작업은 안전 정책상 자동 실행하지 않습니다."
+                message: ApprovalCopy.message(for: .blocked)
             )
         }
 
@@ -39,7 +39,7 @@ enum CapabilityAwareRouter {
                 goal: goal.goalType,
                 missingCapabilities: goal.requiredCapabilities.filter { $0.accessTier != .available },
                 blockedCapabilities: [],
-                message: "이 작업은 승인이 필요합니다. 자동 실행하지 않고 승인 대기로 남겨둘게요."
+                message: ApprovalCopy.message(for: .requiresApproval)
             )
         }
 
@@ -49,7 +49,7 @@ enum CapabilityAwareRouter {
                 goal: goal.goalType,
                 missingCapabilities: future,
                 blockedCapabilities: [],
-                message: "이 기능은 준비 중입니다. 현재 지원되는 기능으로 먼저 도와드릴게요."
+                message: ApprovalCopy.message(for: .future)
             )
         }
 
@@ -59,7 +59,7 @@ enum CapabilityAwareRouter {
                 goal: goal.goalType,
                 missingCapabilities: [],
                 blockedCapabilities: [],
-                message: "현재 앱 capability로 처리할 수 있습니다."
+                message: ApprovalCopy.message(for: .available)
             )
         }
 
@@ -68,7 +68,7 @@ enum CapabilityAwareRouter {
             goal: goal.goalType,
             missingCapabilities: goal.requiredCapabilities,
             blockedCapabilities: [],
-            message: "이 기능은 아직 사용할 수 없습니다. 현재는 로컬 파일/문서 기능을 사용할 수 있습니다."
+            message: ApprovalCopy.message(for: .unavailable)
         )
     }
 }

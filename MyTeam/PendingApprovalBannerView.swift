@@ -98,6 +98,8 @@ struct PendingApprovalBannerView: View {
 
 extension Notification.Name {
     static let approvalDraftOnlyRequested = Notification.Name("approvalDraftOnlyRequested")
+    // Round 278 2-A: 승인 후 재실행 신호. userInfo: roomID, requestID, originalUserMessage
+    static let approvalApprovedRerunRequested = Notification.Name("approvalApprovedRerunRequested")
 }
 
 // MARK: - Preview

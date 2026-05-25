@@ -88,9 +88,22 @@ struct ApprovalRequiredCardView: View {
                     .foregroundColor(.secondary)
                     .buttonStyle(.plain)
 
-                    // 승인 대기 등록 (246B: 상태 변경만)
-                    Button("승인 대기 등록") {
+                    // Round 278 2-A: 승인 시 originalUserMessage가 있으면 재실행 트리거.
+                    // 없으면 (legacy 호출) 상태 변경만.
+                    let canRerun = (request.originalUserMessage?.isEmpty == false)
+                    Button(canRerun ? "승인하고 진행" : "승인 표시") {
                         onApprove?(request.id)
+                        if canRerun, let msg = request.originalUserMessage {
+                            NotificationCenter.default.post(
+                                name: .approvalApprovedRerunRequested,
+                                object: nil,
+                                userInfo: [
+                                    "roomID": request.roomID,
+                                    "requestID": request.id,
+                                    "originalUserMessage": msg
+                                ]
+                            )
+                        }
                     }
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.white)
@@ -101,12 +114,6 @@ struct ApprovalRequiredCardView: View {
                     .buttonStyle(.plain)
                 }
                 .padding(.top, 2)
-
-                // 246B notice
-                Text("승인 후 실행 미리보기 연결은 다음 단계에서 진행됩니다.")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary.opacity(0.6))
-                    .italic()
             }
         }
         .padding(12)

@@ -341,10 +341,20 @@ struct AgentChatView: View {
                         if speechManager.isRecording {
                             speechManager.stopRecording()
                         } else {
-                            speechManager.requestAuthorization { authorized in
+                            // Round 278 3-A: 거부 시 안내 메시지 표시
+                            speechManager.requestAuthorization { authorized, guidance in
                                 if authorized {
                                     self.preRecordText = self.inputText
                                     speechManager.startRecording()
+                                } else if let guidance,
+                                          let roomID = manager.currentRoomID {
+                                    manager.addChatLog(
+                                        roomID: roomID,
+                                        agentID: "system",
+                                        agentName: "시스템",
+                                        text: guidance,
+                                        isUser: false
+                                    )
                                 }
                             }
                         }

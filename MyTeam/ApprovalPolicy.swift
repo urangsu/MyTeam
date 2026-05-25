@@ -20,6 +20,8 @@ struct PendingApprovalRequest: Identifiable, Sendable {
     let createdAt: Date
     let expiresAt: Date?
     var status: ApprovalStatus
+    // Round 278 2-A: 승인 후 재실행에 사용할 원본 사용자 메시지. nil(legacy) 시 상태 변경만.
+    var originalUserMessage: String? = nil
 }
 
 /// 246B에서 구현: 승인된 request를 재실행
@@ -38,15 +40,16 @@ enum ApprovalDecision: Equatable {
 
 enum ApprovalPolicy {
     static func decision(for scope: DelegationContract.Scope) -> ApprovalDecision {
+        // Round 278 2-B: ApprovalCopy의 통일된 문구 사용
         switch scope {
         case .answerOnly, .localSkill, .llmSkill, .artifactCreation:
             return .autoAllowed
         case .toolExecution:
-            return .requiresApproval(reason: "도구 실행은 작업 내용에 따라 확인이 필요합니다.")
+            return .requiresApproval(reason: ApprovalCopy.approvalNeededToolExecution)
         case .externalWrite:
-            return .requiresApproval(reason: "외부 전송은 실행 전 확인이 필요합니다.")
+            return .requiresApproval(reason: ApprovalCopy.approvalNeededExternalWrite)
         case .payment, .login, .destructive:
-            return .blocked(reason: "이 작업은 안전 정책상 자동 실행하지 않습니다.")
+            return .blocked(reason: ApprovalCopy.blockedSafetyPolicy)
         }
     }
 

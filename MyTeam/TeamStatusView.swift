@@ -192,6 +192,15 @@ struct TeamStatusView: View {
             collaborationStatusRefreshTask?.cancel()
             collaborationStatusRefreshTask = nil
         }
+        // Round 278 2-A: 승인 후 재실행 — ApprovalRequiredCardView가 발행한 알림 수신
+        .onReceive(NotificationCenter.default.publisher(for: .approvalApprovedRerunRequested)) { notification in
+            guard let userInfo = notification.userInfo,
+                  let notifRoomID = userInfo["roomID"] as? UUID,
+                  let originalMessage = userInfo["originalUserMessage"] as? String,
+                  notifRoomID == manager.selectedTeamWorkroomID else { return }
+            // 원본 메시지를 다시 워크룸 프롬프트로 디스패치 → WorkflowOrchestrator 재실행
+            dispatchWorkroomPrompt(originalMessage, roomID: notifRoomID)
+        }
     }
     
     // MARK: - 하위 뷰 (에이전트 리스트)

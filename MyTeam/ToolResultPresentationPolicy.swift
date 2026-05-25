@@ -28,7 +28,8 @@ enum ToolResultPresentationPolicy {
         for result: ToolResult,
         toolName: String,
         roomID: UUID,
-        input: ToolInput
+        input: ToolInput,
+        originalUserMessage: String? = nil   // Round 278 2-A: 승인 후 재실행 경로용
     ) -> ToolResultPresentation {
         switch result.status {
 
@@ -66,7 +67,8 @@ enum ToolResultPresentationPolicy {
                 reason: result.error ?? "이 작업은 실행 전 확인이 필요합니다: \(toolName)",
                 createdAt: Date(),
                 expiresAt: Calendar.current.date(byAdding: .hour, value: 24, to: Date()),
-                status: .pending
+                status: .pending,
+                originalUserMessage: originalUserMessage   // Round 278 2-A
             )
             return .approvalRequired(request)
 

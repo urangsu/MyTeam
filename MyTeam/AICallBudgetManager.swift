@@ -59,7 +59,9 @@ final class AICallBudgetManager {
     // MARK: - Rolling window (전체 LLM 호출량 분당 제한)
     private var rollingCallLog: [Date] = []
     private let rollingWindowSeconds: TimeInterval = 60
-    private let rollingWindowLimit: Int = 10  // 246A: 5→10 완화 (실무 사무 검토 1건 = 5~7 호출)
+    private let rollingWindowLimit: Int = 15  // 246A: 5→10, Round 278 2-C: 10→15 완화
+                                              // 사유: 사무 검토 1건이 5~7회, 사용자가 "다시" 1~2번이면 10회 도달.
+                                              // 15회면 두 번까지 자연스럽게 허용.
 
     /// 마지막 차단이 rolling limit 때문이었는지 여부 (blockedMessage 분기용)
     private var lastBlockWasRolling = false
@@ -129,7 +131,12 @@ final class AICallBudgetManager {
     /// 차단 시 표시할 사용자 메시지
     func blockedMessage(for type: AICallType) -> String {
         if lastBlockWasRolling {
-            return "⚠️ 요청이 너무 빠릅니다. \(Int(rollingWindowSeconds))초 후 다시 시도해 주세요."
+            // Round 278 2-C: 정확한 남은 쿨다운(가장 오래된 호출이 윈도우를 벗어나기까지)을 표시.
+            let now = Date()
+            let oldest = rollingCallLog.min() ?? now
+            let elapsed = now.timeIntervalSince(oldest)
+            let remaining = max(1, Int(ceil(rollingWindowSeconds - elapsed)))
+            return "지금 작업이 빠르게 들어오고 있어요. 진행 중인 일이 끝나면 이어서 처리할게요 (약 \(remaining)초)."
         }
         switch type {
         case .workflowPlan, .workflowRepair:
