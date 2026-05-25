@@ -11206,6 +11206,7 @@
 			<array>
 				<string>AAAA0001BBBB2222CCCC0003</string>
 				<string>B82E0410E8DA0C1ED3DD6B94</string>
+				<string>C0A1E003C0A1E003C0A1E003</string>
 				<string>C0DE0001FEED1111CAFE0003</string>
 			</array>
 			<key>preferredProjectObjectVersion</key>
@@ -11612,6 +11613,7 @@
 				<string>AAAA0001BBBB2222CCCC0001</string>
 				<string>4B5D90E2F128DDB37123EBA0</string>
 				<string>A211C82ACA31A4AC2C64C248</string>
+				<string>C0A1E001C0A1E001C0A1E001</string>
 				<string>69E812CEC45FBF7724577CC1</string>
 				<string>7F36831F7C78808E4E3D74AD</string>
 				<string>4DB960E0107CA5235607ED11</string>
@@ -11862,6 +11864,7 @@
 				<string>AAAA0001BBBB2222CCCC0002</string>
 				<string>9BCEB15ED70DC75AB67DA76A</string>
 				<string>5B9D55BA2C66AEF21781A6F7</string>
+				<string>C0A1E002C0A1E002C0A1E002</string>
 			</array>
 			<key>productName</key>
 			<string>MyTeam</string>
@@ -13462,6 +13465,36 @@
 			<string>B82E0410E8DA0C1ED3DD6B94</string>
 			<key>productName</key>
 			<string>MLXNN</string>
+		</dict>
+		<key>C0A1E001C0A1E001C0A1E001</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>productRef</key>
+			<string>C0A1E002C0A1E002C0A1E002</string>
+		</dict>
+		<key>C0A1E002C0A1E002C0A1E002</key>
+		<dict>
+			<key>isa</key>
+			<string>XCSwiftPackageProductDependency</string>
+			<key>package</key>
+			<string>C0A1E003C0A1E003C0A1E003</string>
+			<key>productName</key>
+			<string>CoreXLSX</string>
+		</dict>
+		<key>C0A1E003C0A1E003C0A1E003</key>
+		<dict>
+			<key>isa</key>
+			<string>XCRemoteSwiftPackageReference</string>
+			<key>repositoryURL</key>
+			<string>https://github.com/CoreOffice/CoreXLSX.git</string>
+			<key>requirement</key>
+			<dict>
+				<key>kind</key>
+				<string>upToNextMinorVersion</string>
+				<key>minimumVersion</key>
+				<string>0.14.1</string>
+			</dict>
 		</dict>
 		<key>9C1FF2DA743C1E52C2FFAF32</key>
 		<dict>

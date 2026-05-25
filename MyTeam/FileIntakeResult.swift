@@ -1,5 +1,24 @@
 import Foundation
 
+enum DocumentIngestionFormat: String, Codable, Equatable {
+    case plainText
+    case pdf
+    case xlsx
+    case docx
+    case pptx
+}
+
+enum DocumentIngestionWarning: String, Codable, Equatable {
+    case truncated
+    case imageOnlyPDF
+    case encryptedFile
+    case unsupportedStructure
+    case sparseSheetCompacted
+    case sheetLimitReached
+    case rowLimitReached
+    case cellLimitReached
+}
+
 struct FileIntakeResult: Equatable {
     enum Status: String, Codable {
         case ready
@@ -14,5 +33,9 @@ struct FileIntakeResult: Equatable {
     let status: Status
     let request: FileIntakeRequest
     let extractedText: String?
+    let normalizedText: String?
+    let detectedFormat: DocumentIngestionFormat?
+    let extractionWarnings: [String]
+    let metadataSummary: String?
     let userMessage: String
 }
