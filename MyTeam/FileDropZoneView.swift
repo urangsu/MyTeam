@@ -7,50 +7,80 @@ struct FileDropZoneView: View {
     @State private var result: FileIntakeResult?
     @State private var isProcessing = false
     @State private var errorMessage: String?
+    @State private var showActionMenu = false
+    @State private var isFilePickerShown = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack {
-                Text("파일 처리")
-                    .font(.system(size: 18, weight: .semibold))
-                Spacer()
-                if let error = errorMessage {
-                    HStack(spacing: 6) {
-                        Image(systemName: "exclamationmark.circle.fill")
-                            .foregroundColor(.red)
-                        Text(error)
-                            .font(.system(size: 12))
-                            .foregroundColor(.red)
+        ZStack {
+            // Main content
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Text("파일 처리")
+                        .font(.system(size: 18, weight: .semibold))
+                    Spacer()
+                    if let error = errorMessage {
+                        HStack(spacing: 6) {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .foregroundColor(.red)
+                            Text(error)
+                                .font(.system(size: 12))
+                                .foregroundColor(.red)
+                        }
+                        .padding(8)
+                        .background(Color.red.opacity(0.1))
+                        .cornerRadius(6)
                     }
-                    .padding(8)
-                    .background(Color.red.opacity(0.1))
-                    .cornerRadius(6)
                 }
+                .padding(16)
+                .background(Color(.controlBackgroundColor))
+
+                Divider()
+
+                // Main content
+                ZStack {
+                    // Drop zone
+                    dropZoneView
+                        .onDrop(of: [.fileURL], isTargeted: $isTargeted) { providers in
+                            handleDrop(providers: providers)
+                            return true
+                        }
+
+                    // Result view
+                    if let result = result {
+                        resultView(for: result)
+                            .transition(.opacity)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .padding(16)
             .background(Color(.controlBackgroundColor))
 
-            Divider()
-
-            // Main content
-            ZStack {
-                // Drop zone
-                dropZoneView
-                    .onDrop(of: [.fileURL], isTargeted: $isTargeted) { providers in
-                        handleDrop(providers: providers)
-                        return true
-                    }
-
-                // Result view (overlays drop zone if file processed)
-                if let result = result {
-                    resultView(for: result)
-                        .transition(.opacity)
+            // Floating action menu (위로 떠오르기)
+            VStack {
+                if showActionMenu {
+                    actionMenu
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .bottom).combined(with: .opacity),
+                            removal: .move(edge: .bottom).combined(with: .opacity)
+                        ))
                 }
+                Spacer()
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            .padding(.bottom, 16)
+            .pointerInteraction(.automatic)
+
+            // + Button (하단)
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    plusButton
+                }
+                .padding(16)
+            }
         }
-        .background(Color(.controlBackgroundColor))
     }
 
     // MARK: - Drop Zone View
@@ -93,6 +123,97 @@ struct FileDropZoneView: View {
             Color.teal.opacity(isTargeted ? 0.05 : 0.01)
         )
         .padding(16)
+    }
+
+    // MARK: - Action Menu (떠오르는 메뉴)
+
+    private var actionMenu: some View {
+        VStack(spacing: 8) {
+            // K-Skills
+            menuItem(
+                icon: "sparkles",
+                label: "K-Skills 도우미",
+                color: .purple,
+                action: { openKSkills() }
+            )
+
+            // 클립보드 붙이기
+            menuItem(
+                icon: "doc.on.clipboard",
+                label: "클립보드 붙이기",
+                color: .blue,
+                action: { pasteFromClipboard() }
+            )
+
+            // 파일 열기
+            menuItem(
+                icon: "folder",
+                label: "파일 선택...",
+                color: .orange,
+                action: { isFilePickerShown = true }
+            )
+
+            // 이미지 인식
+            menuItem(
+                icon: "photo",
+                label: "이미지 만들기",
+                color: .cyan,
+                action: { openImageCreator() }
+            )
+        }
+        .padding(12)
+        .background(Color(.controlBackgroundColor))
+        .cornerRadius(12)
+        .shadow(radius: 8, y: 2)
+    }
+
+    private func menuItem(
+        icon: String,
+        label: String,
+        color: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: {
+            action()
+            showActionMenu = false
+        }) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(color)
+                    .frame(width: 24)
+
+                Text(label)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.primary)
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.secondary)
+            }
+            .padding(10)
+            .background(Color(.controlBackgroundColor))
+            .cornerRadius(8)
+            .hoverEffect(.lift)
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Plus Button
+
+    private var plusButton: some View {
+        Button(action: { withAnimation(.easeInOut(duration: 0.2)) { showActionMenu.toggle() } }) {
+            Image(systemName: "plus")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(width: 56, height: 56)
+                .background(Circle().fill(Color.teal))
+                .shadow(radius: 4, y: 2)
+        }
+        .buttonStyle(.plain)
+        .help("옵션 메뉴 열기")
     }
 
     // MARK: - Result View
@@ -241,22 +362,18 @@ struct FileDropZoneView: View {
 
         Task {
             do {
-                // Create intake request
                 let request = try FileIntakeService.makeRequest(
                     fileURL: url,
                     source: .dragAndDrop
                 )
 
-                // Read and process file
                 let intakeResult = FileIntakeService.readText(from: request)
 
-                // Update UI
                 DispatchQueue.main.async {
                     self.processingFile = request
                     self.result = intakeResult
                     self.isProcessing = false
 
-                    // Show error if processing failed
                     if intakeResult.status == .readFailed {
                         self.errorMessage = intakeResult.userMessage
                     }
@@ -280,6 +397,41 @@ struct FileDropZoneView: View {
         guard let text = result?.extractedText else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
+    }
+
+    // MARK: - Menu Actions
+
+    private func pasteFromClipboard() {
+        guard let string = NSPasteboard.general.string(forType: .string) else {
+            errorMessage = "클립보드에 텍스트가 없습니다"
+            return
+        }
+
+        isProcessing = true
+        errorMessage = nil
+        result = nil
+
+        // 임시 파일로 저장 후 처리
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("clipboard_\(UUID().uuidString).txt")
+
+        do {
+            try string.write(to: tempURL, atomically: true, encoding: .utf8)
+            processFile(url: tempURL)
+        } catch {
+            errorMessage = "클립보드 처리 실패: \(error.localizedDescription)"
+            isProcessing = false
+        }
+    }
+
+    private func openKSkills() {
+        // TODO: K-Skills 패널 열기
+        print("K-Skills 도우미 열기")
+    }
+
+    private func openImageCreator() {
+        // TODO: 이미지 인식 기능
+        print("이미지 인식 열기")
     }
 
     // MARK: - Helpers
