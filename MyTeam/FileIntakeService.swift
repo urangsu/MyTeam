@@ -819,7 +819,7 @@ enum FileIntakeService {
 
     private static func renderPPTXTable(_ table: [[String]], index: Int) -> String {
         guard !table.isEmpty else { return "" }
-        var headers = sanitizeHeaderRow(table[0].map(singleLine))
+        var headers = sanitizeHeaderRow(table[0].map { singleLine($0) })
         let maxColumns = max(headers.count, table.map(\.count).max() ?? 0)
         if headers.count < maxColumns {
             headers += (headers.count..<maxColumns).map { "열\($0 + 1)" }
@@ -828,7 +828,7 @@ enum FileIntakeService {
         lines.append(markdownTableRow(headers))
         lines.append(markdownTableRow(Array(repeating: "---", count: headers.count)))
         for row in table.dropFirst() {
-            lines.append(markdownTableRow(padRow(row.map(singleLine), to: headers.count)))
+            lines.append(markdownTableRow(padRow(row.map { singleLine($0) }, to: headers.count)))
         }
         return lines.joined(separator: "\n")
     }

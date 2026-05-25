@@ -492,14 +492,75 @@ struct TeamStatusView: View {
                 Divider().background(dividerColor).padding(.horizontal, 8)
 
                 // ── 섹션 2: 파일 & 정보 ──
-                quickMenuSection(
-                    label: "파일 & 정보",
-                    isDark: isDark,
-                    items: [
-                        ("folder",                    "파일 읽기",   "첨부 파일을 분석·요약",       "파일 읽기"),
-                        ("calendar.badge.checkmark",  "오늘 할 일", "지금 이어서 할 일 정리",       "오늘 할 일 정리해줘"),
-                    ]
-                )
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("파일 & 정보")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 14)
+                        .padding(.top, 8)
+                        .padding(.bottom, 4)
+
+                    // "파일 읽기" → FileIntakeView 시트 직접 열기
+                    Button(action: {
+                        isQuickActionMenuPresented = false
+                        isFileIntakeSheetPresented = true
+                    }) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "folder")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.blue.opacity(0.85))
+                                .frame(width: 22)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("파일 읽기")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(isDark ? .white : .primary)
+                                Text("첨부 파일을 분석·요약")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
+                            Spacer()
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundColor(.secondary.opacity(0.4))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(PlainButtonStyle())
+
+                    // "오늘 할 일" → 워크룸 프롬프트 디스패치
+                    Button(action: {
+                        isQuickActionMenuPresented = false
+                        guard let roomID = manager.selectedTeamWorkroomID else { return }
+                        dispatchWorkroomPrompt("오늘 할 일 정리해줘", roomID: roomID)
+                    }) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "calendar.badge.checkmark")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.blue.opacity(0.85))
+                                .frame(width: 22)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("오늘 할 일")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundColor(isDark ? .white : .primary)
+                                Text("지금 이어서 할 일 정리")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
+                            Spacer()
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundColor(.secondary.opacity(0.4))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
 
                 Divider().background(dividerColor).padding(.horizontal, 8)
 
