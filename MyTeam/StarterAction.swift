@@ -28,6 +28,7 @@ struct StarterAction: Identifiable, Equatable, Sendable {
 
 enum StarterActionType: Equatable, Sendable {
     case userMessage(String)  // 사용자 메시지로 dispatch
+    case prefillInput(String) // 입력칸에 넣고 사용자가 대상/내용을 보완하게 함
     case fileIntakeOpen       // File intake 패널 열기
 }
 
@@ -37,16 +38,16 @@ enum StarterActionProvider {
     static let meetingMinutesAction = StarterAction(
         id: "starter_meeting_minutes",
         title: "회의록 양식",
-        description: "바로 쓸 수 있는 회의록 초안을 만듭니다.",
-        actionType: .userMessage("회의록 양식 만들어줘"),
+        description: "회의 메모를 붙여넣어 회의록으로 정리합니다.",
+        actionType: .prefillInput("아래 회의 메모를 회의록으로 정리해줘.\n\n"),
         emoji: "📋"
     )
 
     static let checklistAction = StarterAction(
         id: "starter_checklist",
         title: "체크리스트",
-        description: "업무 준비 요소를 체크리스트로 정리합니다.",
-        actionType: .userMessage("앱 출시 체크리스트 만들어줘"),
+        description: "주제나 항목을 받아 체크리스트로 정리합니다.",
+        actionType: .prefillInput("아래 내용으로 체크리스트를 만들어줘.\n\n"),
         emoji: "✅"
     )
 
@@ -82,29 +83,29 @@ enum StarterActionProvider {
             StarterAction(
                 id: "first_result_summary",
                 title: "요약하기",
-                description: "방금 만든 문서를 요약합니다.",
-                actionType: .userMessage("방금 만든 문서 요약해줘"),
+                description: "요약할 내용이나 파일을 지정합니다.",
+                actionType: .prefillInput("요약할 내용이나 파일을 지정해서 요약해줘.\n\n"),
                 emoji: "📝"
             ),
             StarterAction(
                 id: "first_result_table",
                 title: "표로 바꾸기",
-                description: "내용을 표 형식으로 정리합니다.",
-                actionType: .userMessage("방금 만든 문서 표로 바꿔줘"),
+                description: "표로 바꿀 내용이나 파일을 지정합니다.",
+                actionType: .prefillInput("표로 바꿀 내용이나 파일을 지정해서 정리해줘.\n\n"),
                 emoji: "📊"
             ),
             StarterAction(
                 id: "first_result_checklist",
                 title: "체크리스트로 바꾸기",
-                description: "내용을 체크리스트로 변환합니다.",
-                actionType: .userMessage("방금 만든 문서 체크리스트로 바꿔줘"),
+                description: "체크리스트로 바꿀 내용을 지정합니다.",
+                actionType: .prefillInput("체크리스트로 바꿀 내용이나 파일을 지정해서 정리해줘.\n\n"),
                 emoji: "☑️"
             ),
             StarterAction(
                 id: "first_result_open_finder",
                 title: "Finder에서 보기",
-                description: "파일을 Finder에서 엽니다.",
-                actionType: .userMessage("Finder에서 열어줘"),
+                description: "열 파일이나 결과물을 지정합니다.",
+                actionType: .prefillInput("Finder에서 열 파일이나 결과물을 지정해줘.\n\n"),
                 emoji: "🔍"
             )
         ]

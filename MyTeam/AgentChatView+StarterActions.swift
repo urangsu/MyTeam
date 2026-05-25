@@ -37,6 +37,8 @@ extension AgentChatView {
                     manager: manager
                 )
             }
+        case .prefillInput(let template):
+            _prefillStarterPrompt(template)
         case .fileIntakeOpen:
             _openFileIntake()
         }

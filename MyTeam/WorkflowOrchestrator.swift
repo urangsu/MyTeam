@@ -1012,7 +1012,7 @@ final class WorkflowOrchestrator {
                         roomID: roomID,
                         agentID: "system",
                         agentName: "스킬",
-                        text: "최근 다시 사용할 수 있는 문서를 찾을 수 없습니다. 먼저 문서를 하나 만든 뒤 \"방금 만든 문서 요약해줘\"처럼 요청해 주세요.",
+                        text: "최근 다시 사용할 수 있는 문서를 찾을 수 없습니다. 요약할 문서나 파일을 선택하거나 내용을 붙여넣어 주세요.",
                         isUser: false,
                         isSystem: true
                     )
@@ -1106,7 +1106,7 @@ final class WorkflowOrchestrator {
                     roomID: roomID,
                     agentID: "system",
                     agentName: "스킬",
-                    text: "최근 다시 사용할 수 있는 문서를 찾을 수 없습니다. 먼저 문서를 하나 만든 뒤 \"방금 만든 문서 요약해줘\"처럼 요청해 주세요.",
+                    text: "최근 다시 사용할 수 있는 문서를 찾을 수 없습니다. 요약할 문서나 파일을 선택하거나 내용을 붙여넣어 주세요.",
                     isUser: false,
                     isSystem: true
                 )

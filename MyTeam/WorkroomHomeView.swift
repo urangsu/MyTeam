@@ -9,6 +9,7 @@ struct WorkroomHomeView: View {
     var onPrimaryActionTapped: ((WorkroomPrimaryAction) -> Void)?
     var onNextActionTapped: ((WorkroomNextAction) -> Void)?
     var onPromptDispatched: ((String) -> Void)?  // 초보자 카드 / 가이드 메시지에서 직접 프롬프트 dispatch
+    var onPromptPrefilled: ((String) -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -67,7 +68,7 @@ struct WorkroomHomeView: View {
                         isDarkMode: isDarkMode
                     ) { prompt in
                         if let p = prompt {
-                            onPromptDispatched?(p)
+                            onPromptPrefilled?(p)
                         } else {
                             // prompt=nil → 파일 선택 안내 (파일 없으면 createDocument로 fallback)
                             onPrimaryActionTapped?(.createDocument)
@@ -98,7 +99,7 @@ struct WorkroomHomeView: View {
 
                     // 최근 만든 문서 (beginner-friendly 제목)
                     if !model.recentArtifacts.isEmpty {
-                        recentDocumentsSection(label: "방금 만든 문서")
+                        recentDocumentsSection(label: "최근 결과물")
                     }
 
                     // 다음 액션 (artifact 있을 때만)
@@ -293,14 +294,18 @@ struct WorkroomHomeView: View {
             return
         }
 
-        // 그 외 카드: 프롬프트 dispatch
-        let prompt = card.dispatchPrompt
-        onPromptDispatched?(prompt)
-
-        // Character reaction
-        let workflowType = card == .fileSummary ? "fileSummary" : "universalDocument"
-        CharacterReactionEventSink.shared.notifyDocumentGenerationStarted(
-            workflowType: workflowType, roomID: roomID)
+        switch card {
+        case .meetingMinutes, .checklist, .reportDraft:
+            onPromptPrefilled?(card.inputTemplate)
+        case .fileSummary:
+            onPrimaryActionTapped?(.handoffFile)
+        case .todayPlan:
+            onPromptDispatched?(card.dispatchPrompt)
+            CharacterReactionEventSink.shared.notifyDocumentGenerationStarted(
+                workflowType: "universalDocument", roomID: roomID)
+        case .tryExample:
+            break
+        }
     }
 
     /// 현재 상태에 맞는 치코 안내 메시지

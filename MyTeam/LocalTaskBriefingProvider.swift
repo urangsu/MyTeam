@@ -74,7 +74,7 @@ enum LocalTaskBriefingProvider {
                         id: UUID(),
                         kind: .suggestedNextAction,
                         title: "다음 액션",
-                        detail: "“방금 만든 문서 표로 바꿔줘”라고 입력하면 최근 문서를 다시 정리할 수 있습니다.",
+                        detail: "최근 결과물을 지정해 표, 요약, 체크리스트로 다시 정리할 수 있습니다.",
                         priority: .low,
                         createdAt: now
                     )

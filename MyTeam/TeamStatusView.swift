@@ -470,7 +470,6 @@ struct TeamStatusView: View {
             onPrompt: { prompt in
                 isQuickActionMenuPresented = false
                 inputText = prompt
-                sendTeamMessage()
             },
             onFileIntake: {
                 isQuickActionMenuPresented = false
@@ -605,6 +604,9 @@ struct TeamStatusView: View {
                                 onPromptDispatched: { prompt in
                                     guard let roomID = manager.selectedTeamWorkroomID else { return }
                                     dispatchWorkroomPrompt(prompt, roomID: roomID)
+                                },
+                                onPromptPrefilled: { prompt in
+                                    inputText = prompt
                                 }
                             )
                             .padding(.bottom, manager.teamChatLogs.isEmpty ? 0 : 8)
@@ -1399,15 +1401,9 @@ struct TeamStatusView: View {
 
         switch action {
         case .createDocument:
-            // Character reaction: documentGenerationStarted → .typing
-            CharacterReactionEventSink.shared.notifyDocumentGenerationStarted(
-                workflowType: "universalDocument", roomID: roomID)
-            dispatchWorkroomPrompt(action.dispatchPrompt, roomID: roomID)
+            inputText = action.dispatchPrompt
         case .handoffFile:
-            // Character reaction: fileReadStarted → .thinking(fallback)
-            CharacterReactionEventSink.shared.notifyArtifactReuseRequested(
-                artifactID: "fileIntake", roomID: roomID)
-            dispatchWorkroomPrompt(action.dispatchPrompt, roomID: roomID)
+            isFileIntakeSheetPresented = true
         case .organizeToday:
             CharacterReactionEventSink.shared.notifyDocumentGenerationStarted(
                 workflowType: "universalDocument", roomID: roomID)
@@ -1418,12 +1414,8 @@ struct TeamStatusView: View {
     /// Workroom next action dispatch (reuse recent artifacts)
     private func handleWorkroomNextAction(_ action: WorkroomNextAction) {
         // Round 241A: selectedTeamWorkroomID 기준
-        guard let roomID = manager.selectedTeamWorkroomID else { return }
-
-        // Character reaction: promptSubmitted → .thinking
-        CharacterReactionEventSink.shared.notifyDocumentGenerationStarted(
-            workflowType: "universalDocument", roomID: roomID)
-        dispatchWorkroomPrompt(action.dispatchPrompt, roomID: roomID)
+        guard manager.selectedTeamWorkroomID != nil else { return }
+        inputText = action.dispatchPrompt
     }
 
     /// Helper: dispatch Workroom prompt through WorkflowOrchestrator
@@ -1478,9 +1470,9 @@ struct QuickActionMenuContent: View {
                 quickMenuSection(
                     label: "문서 만들기",
                     items: [
-                        ("doc.text", "회의록", "회의 내용 정리", "회의록 만들어줘"),
-                        ("checkmark.square", "체크리스트", "할 일을 목록으로 정리", "체크리스트 만들어줘"),
-                        ("doc.badge.plus", "보고서 초안", "보고서 형태로 정리", "보고서 초안 만들어줘")
+                        ("doc.text", "회의록", "회의 내용 정리", "아래 회의 메모를 회의록으로 정리해줘.\n\n"),
+                        ("checkmark.square", "체크리스트", "할 일을 목록으로 정리", "아래 내용으로 체크리스트를 만들어줘.\n\n"),
+                        ("doc.badge.plus", "보고서 초안", "보고서 형태로 정리", "아래 주제와 자료로 보고서 초안을 만들어줘.\n\n")
                     ]
                 )
 
@@ -1514,9 +1506,9 @@ struct QuickActionMenuContent: View {
                 quickMenuSection(
                     label: "변환",
                     items: [
-                        ("text.alignleft", "요약하기", "핵심만 짧게 정리", "방금 만든 문서 요약해줘"),
-                        ("tablecells", "표로 바꾸기", "내용을 표 형태로 재정리", "방금 만든 문서 표로 바꿔줘"),
-                        ("checklist", "체크리스트 변환", "내용을 체크리스트로 변환", "방금 만든 문서 체크리스트로 바꿔줘")
+                        ("text.alignleft", "요약하기", "핵심만 짧게 정리", "요약할 내용이나 파일을 지정해서 요약해줘.\n\n"),
+                        ("tablecells", "표로 바꾸기", "내용을 표 형태로 재정리", "표로 바꿀 내용이나 파일을 지정해서 정리해줘.\n\n"),
+                        ("checklist", "체크리스트 변환", "내용을 체크리스트로 변환", "체크리스트로 바꿀 내용이나 파일을 지정해서 정리해줘.\n\n")
                     ]
                 )
 

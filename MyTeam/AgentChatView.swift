@@ -899,7 +899,6 @@ struct AgentChatView: View {
                             onPrompt: { prompt in
                                 isQuickActionMenuPresented = false
                                 inputText = prompt
-                                sendMessage()
                             },
                             onFileIntake: {
                                 isQuickActionMenuPresented = false
@@ -1089,6 +1088,10 @@ struct AgentChatView: View {
     func _sendStarterPrompt(_ prompt: String) {
         inputText = prompt
         sendMessage()
+    }
+
+    func _prefillStarterPrompt(_ prompt: String) {
+        inputText = prompt
     }
 
     func _openFileIntake() {

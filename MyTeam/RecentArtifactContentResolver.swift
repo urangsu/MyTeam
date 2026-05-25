@@ -21,7 +21,7 @@ enum RecentArtifactReuseFailureReason: Equatable {
     var message: String {
         switch self {
         case .noRecentArtifacts:
-            return "최근 다시 사용할 수 있는 문서가 없습니다.\n먼저 문서를 하나 만든 뒤 \"방금 만든 문서 요약해줘\"처럼 요청해 주세요."
+            return "최근 다시 사용할 수 있는 문서가 없습니다.\n요약할 문서나 파일을 선택하거나 내용을 붙여넣어 주세요."
         case .fileNotFound:
             return "최근 문서를 다시 읽을 수 없습니다.\n파일이 이동되었거나 삭제되었을 수 있습니다."
         case .hashMismatch:

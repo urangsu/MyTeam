@@ -70,6 +70,14 @@ struct TTSLabView: View {
 
     private let availableLanguages = ["auto", "ko", "en", "ja"]
 
+    private var presetColumns: [GridItem] {
+        [GridItem(.adaptive(minimum: 48, maximum: 64), spacing: 4)]
+    }
+
+    private var compactActionColumns: [GridItem] {
+        [GridItem(.adaptive(minimum: 86, maximum: 118), spacing: 6)]
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -86,6 +94,7 @@ struct TTSLabView: View {
                 policyNoticeSection
             }
             .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .scrollIndicators(.visible)
         .navigationTitle("TTS 실험실")
@@ -121,7 +130,7 @@ struct TTSLabView: View {
                 Divider()
                 let routing = TTSRoutingPolicy.availabilitySummary()[.supertonic3]
                 let isReady = TTSRoutingPolicy.isSupertonic3Available
-                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
+                Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 4) {
                     GridRow {
                         Text("공식 엔진").font(.caption).foregroundStyle(.secondary)
                         Text("Supertonic3").font(.caption.bold())
@@ -162,8 +171,10 @@ struct TTSLabView: View {
                     }
                     GridRow {
                         Text("routing").font(.caption).foregroundStyle(.secondary)
-                        Text(isReady ? "✅ supertonic3" : "⏸ \(routing?.rawValue ?? "unavailable")")
+                        Text(isReady ? "supertonic3" : (routing?.rawValue ?? "unavailable"))
                             .font(.system(.caption, design: .monospaced))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
                             .foregroundStyle(isReady ? .green : .orange)
                     }
                 }
@@ -179,6 +190,7 @@ struct TTSLabView: View {
             Text("Supertonic3 엔진 / 자동 재생 OFF / 수동 말하기만 허용")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             Divider()
         }
     }
@@ -252,7 +264,7 @@ struct TTSLabView: View {
 
                     let presets = ["M1", "M2", "M3", "M4", "M5", "F1", "F2", "F3", "F4", "F5"]
                     let sampleText = "안녕하세요. 제 목소리는 이 톤이에요."
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 5), spacing: 6) {
+                    LazyVGrid(columns: presetColumns, spacing: 4) {
                         ForEach(presets, id: \.self) { preset in
                             let isSpeaking = voiceDirectorSpeakingID == "preset_\(preset)"
                             Button(action: {
@@ -292,9 +304,10 @@ struct TTSLabView: View {
                                         .font(.system(.caption, design: .monospaced).bold())
                                 }
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 6)
+                                .padding(.vertical, 4)
                             }
                             .buttonStyle(.bordered)
+                            .controlSize(.small)
                             .tint(preset.hasPrefix("M") ? .blue : .pink)
                             .disabled(voiceDirectorSpeakingID != nil || !modelCheck.isAvailable || !noticeAccepted)
                         }
@@ -441,7 +454,7 @@ struct TTSLabView: View {
                 (.animalCrossing,"안녕하세요! 오늘도 같이 해봐요!", .pink)
             ]
 
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+            LazyVGrid(columns: compactActionColumns, spacing: 6) {
                 ForEach(emotionItems, id: \.0.rawValue) { (emotion, sampleText, color) in
                     let speakID = "emotion_\(emotionPreviewAgentID)_\(emotion.rawValue)"
                     let isSpeaking = voiceDirectorSpeakingID == speakID
@@ -480,18 +493,19 @@ struct TTSLabView: View {
                                 Image(systemName: useTuningOverride ? "slider.horizontal.3" : "waveform")
                                     .font(.caption2)
                             }
-                            Text(emotion.rawValue)
+                            Text(emotionShortLabel(emotion))
                                 .font(.system(.caption2, design: .monospaced).bold())
                             if emotion == .animalCrossing {
-                                Text("테스트 전용")
+                                Text("test")
                                     .font(.system(size: 8))
                                     .foregroundStyle(.secondary)
                             }
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
+                        .padding(.vertical, 4)
                     }
                     .buttonStyle(.bordered)
+                    .controlSize(.small)
                     .tint(color)
                     .disabled(voiceDirectorSpeakingID != nil || !modelCheck.isAvailable || !noticeAccepted)
                 }
@@ -720,7 +734,7 @@ struct TTSLabView: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+            LazyVGrid(columns: compactActionColumns, spacing: 6) {
                 expressionTagCell(emotion: .friendly,       tags: [.breath], sample: "확인했어요. 제가 차근차근 도와드릴게요.", color: .green)
                 expressionTagCell(emotion: .excited,        tags: [.laugh],  sample: "좋아요! 이건 바로 한번 만들어볼 수 있겠어요.", color: .yellow)
                 expressionTagCell(emotion: .careful,        tags: [.breath], sample: "조심스럽게 확인해보고, 필요한 부분만 말씀드릴게요.", color: .orange)
@@ -803,6 +817,7 @@ struct TTSLabView: View {
             .padding(.horizontal, 5).padding(.vertical, 3)
         }
         .buttonStyle(.bordered)
+        .controlSize(.small)
         .tint(color)
         .disabled(isDisabled)
     }
@@ -863,16 +878,18 @@ struct TTSLabView: View {
                         .font(.subheadline.bold())
                 }
 
-                Text("S 0.70 > 1.00 > 1.30 > 2.00 순으로 duration 감소 확인")
+                Text("S 0.70 > 1.00 > 1.30 > 2.00 duration 감소 확인")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 // 테스트 문장
-                HStack {
-                    Text("문장").font(.caption2).foregroundStyle(.secondary).frame(width: 36, alignment: .leading)
-                    TextField("계측 문장", text: $speedProbeText)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("문장").font(.caption2).foregroundStyle(.secondary)
+                    TextField("계측 문장", text: $speedProbeText, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
                         .font(.caption)
+                        .lineLimit(2)
                 }
 
                 // Preset 표시
@@ -904,10 +921,11 @@ struct TTSLabView: View {
                         } else {
                             Image(systemName: "chart.xyaxis.line")
                         }
-                        Text(speedProbeRunning ? "계측 중..." : "S 0.70 / 1.00 / 1.30 / 2.00 계측")
+                        Text(speedProbeRunning ? "계측 중..." : "계측")
                     }
                 }
                 .buttonStyle(.bordered)
+                .controlSize(.small)
                 .disabled(speedProbeRunning)
 
                 // 결과 표
@@ -964,13 +982,15 @@ struct TTSLabView: View {
                 Text("음절 단위 procedural speech effect (앱 내부 파형 생성)")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 // 테스트 문장
-                HStack {
-                    Text("문장").font(.caption2).foregroundStyle(.secondary).frame(width: 36, alignment: .leading)
-                    TextField("Animalese 테스트 문장", text: $animaleseText)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("문장").font(.caption2).foregroundStyle(.secondary)
+                    TextField("Animalese 테스트 문장", text: $animaleseText, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
                         .font(.caption)
+                        .lineLimit(2)
                 }
 
                 // Profile Picker
@@ -981,7 +1001,8 @@ struct TTSLabView: View {
                             Text(p.displayName).tag(p)
                         }
                     }
-                    .pickerStyle(.segmented)
+                    .pickerStyle(.menu)
+                    .frame(maxWidth: 180, alignment: .leading)
                     .font(.caption)
                 }
 
@@ -1038,6 +1059,7 @@ struct TTSLabView: View {
                     }
                 }
                 .buttonStyle(.bordered)
+                .controlSize(.small)
                 .tint(.purple)
                 .disabled(animalesePlaying)
 
@@ -1259,6 +1281,7 @@ struct TTSLabView: View {
                         Text("[실험용] Swift ONNX Runtime 직접 호출 · Developer Lab 전용")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer()
                     Label("SPIKE", systemImage: "flask.fill")
@@ -1279,6 +1302,8 @@ struct TTSLabView: View {
                          ? "모델 준비됨 (\(modelCheck.totalFoundSizeBytes / 1_048_576) MB)"
                          : "모델 없음 — ~/.cache/supertonic3/onnx/ 필요")
                         .font(.caption)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
                 }
 
                 // RTF gauge (if measured)
@@ -1301,6 +1326,8 @@ struct TTSLabView: View {
                             Spacer()
                             Text(String(format: "%.1f ms → %.2f s 오디오", result.elapsedMs, result.durationSec))
                                 .font(.system(.caption, design: .monospaced))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                         }
                         HStack {
                             Text("텍스트")
@@ -1309,6 +1336,8 @@ struct TTSLabView: View {
                             Spacer()
                             Text("\(result.textLength) 토큰 · L=\(result.latentFrameCount) 프레임 · \(result.presetUsed)")
                                 .font(.system(.caption, design: .monospaced))
+                                .lineLimit(1)
+                                .truncationMode(.tail)
                         }
                         HStack {
                             Text("샘플")
@@ -1317,6 +1346,8 @@ struct TTSLabView: View {
                             Spacer()
                             Text("\(result.wavSamples.count) samples @ \(result.sampleRate) Hz")
                                 .font(.system(.caption, design: .monospaced))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                         }
                         if let wavPath = spikeWavOutputPath {
                             HStack {
@@ -1373,12 +1404,13 @@ struct TTSLabView: View {
                     } label: {
                         if spikeIsSynthesizing {
                             ProgressView().scaleEffect(0.7)
-                            Text("합성 중...")
+                            Text("합성 중")
                         } else {
-                            Label("ONNX 합성 실행", systemImage: "waveform.badge.plus")
+                            Label("합성", systemImage: "waveform.badge.plus")
                         }
                     }
                     .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
                     .tint(.orange)
                     .disabled(spikeIsSynthesizing || !modelCheck.isAvailable || spikeInputText.isEmpty || !noticeAccepted)
                     .font(.caption)
@@ -1387,7 +1419,7 @@ struct TTSLabView: View {
 
                     // Readiness summary
                     let readiness = SupertonicProductReadiness()
-                    Text(readiness.isProductionReady ? "✅ 프로덕션 준비됨" : "⬜ 스파이크 단계")
+                    Text(readiness.isProductionReady ? "준비됨" : "스파이크")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -1396,6 +1428,7 @@ struct TTSLabView: View {
                 Text("※ 이 기능은 스파이크 전용입니다. 프로덕션 TTS 경로(SpeechManager)에 연결되어 있지 않습니다.")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(8)
         } label: {
@@ -1458,6 +1491,13 @@ struct TTSLabView: View {
     }
 
     // MARK: - Helpers
+
+    private func emotionShortLabel(_ emotion: SupertonicEmotionStyle) -> String {
+        switch emotion {
+        case .animalCrossing: return "animal"
+        default: return emotion.rawValue
+        }
+    }
 
     private func readinessBadge(_ readiness: Supertonic3Readiness) -> String {
         switch readiness {

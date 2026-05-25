@@ -110,9 +110,9 @@ enum BriefingActionSuggestionProvider {
                 BriefingActionSuggestion(
                     id: UUID(),
                     kind: .reuseRecentArtifactAsTable,
-                    title: "방금 문서 표로 바꾸기",
+                    title: "최근 결과물 표로 바꾸기",
                     subtitle: "최근 문서를 표로 다시 정리합니다.",
-                    prompt: "방금 만든 문서 표로 바꿔줘",
+                    prompt: "최근 결과물을 표로 바꿔줘",
                     systemActionID: nil,
                     executionMode: .promptRoute,
                     priority: 340,
@@ -332,9 +332,9 @@ enum BriefingActionSuggestionProvider {
         BriefingActionSuggestion(
             id: UUID(),
             kind: .reuseRecentArtifactAsTable,
-            title: "방금 문서 표로 바꾸기",
+            title: "최근 결과물 표로 바꾸기",
             subtitle: "최근 문서를 표로 다시 정리합니다.",
-            prompt: "방금 만든 문서 표로 바꿔줘",
+            prompt: "최근 결과물을 표로 바꿔줘",
             systemActionID: nil,
             executionMode: .promptRoute,
             priority: 340,

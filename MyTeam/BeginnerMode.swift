@@ -105,6 +105,24 @@ enum BeginnerTaskCard: String, CaseIterable, Codable, Sendable {
         }
     }
 
+    /// 사용자가 대상 내용을 직접 지정하도록 입력창에 먼저 채울 템플릿
+    var inputTemplate: String {
+        switch self {
+        case .meetingMinutes:
+            return "아래 회의 메모를 회의록으로 정리해줘.\n\n"
+        case .checklist:
+            return "아래 내용으로 체크리스트를 만들어줘.\n\n"
+        case .reportDraft:
+            return "아래 주제와 자료로 보고서 초안을 만들어줘.\n\n"
+        case .fileSummary:
+            return "요약할 파일을 선택하거나, 아래에 내용을 붙여넣어 요약해줘.\n\n"
+        case .todayPlan:
+            return dispatchPrompt
+        case .tryExample:
+            return BeginnerTaskCard.exampleMeetingPrompt
+        }
+    }
+
     /// 예시로 시작하기 — 샘플 회의 내용
     static let exampleMeetingPrompt: String = """
     아래 회의 내용으로 회의록 양식을 만들어줘.
@@ -144,9 +162,9 @@ struct BeginnerGuidanceMessage: Codable, Equatable, Sendable {
     /// 앱 첫 실행 안내
     static let firstLaunch = BeginnerGuidanceMessage(
         title: "처음이신가요?",
-        body: "회의록 양식부터 만들어볼까요?\n내용이 없어도 괜찮아요. 바로 쓸 수 있는 틀을 먼저 만들어드릴게요.",
-        primaryActionTitle: "회의록 양식 만들기",
-        prompt: "회의록 양식 만들어줘"
+        body: "회의 내용을 붙여넣으면 회의록으로 정리해드려요.\n원하는 형식도 같이 적을 수 있어요.",
+        primaryActionTitle: "회의록 입력하기",
+        prompt: "아래 회의 메모를 회의록으로 정리해줘.\n\n"
     )
 
     /// 파일 감지 안내
@@ -154,7 +172,7 @@ struct BeginnerGuidanceMessage: Codable, Equatable, Sendable {
         title: "이 파일은 읽을 수 있어요.",
         body: "요약할까요, 표로 정리할까요, 체크리스트로 바꿀까요?",
         primaryActionTitle: "요약하기",
-        prompt: "파일 요약해줘"
+        prompt: "요약할 파일이나 내용을 지정해서 요약해줘.\n\n"
     )
 
     /// artifact 생성 완료
@@ -162,7 +180,7 @@ struct BeginnerGuidanceMessage: Codable, Equatable, Sendable {
         title: "문서가 만들어졌어요.",
         body: "요약, 표 변환, 체크리스트로 바꿀 수 있어요.",
         primaryActionTitle: "요약하기",
-        prompt: "방금 만든 문서 요약해줘"
+        prompt: "요약할 문서나 내용을 지정해서 요약해줘.\n\n"
     )
 
     /// 실패/오류 안내
