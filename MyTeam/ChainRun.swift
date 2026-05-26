@@ -77,4 +77,21 @@ struct ChainRun: Identifiable, Codable, Sendable {
             return "차단"
         }
     }
+
+    var sourceSummary: String {
+        guard !sources.isEmpty else { return "출처 없음" }
+        let providers = Array(Set(sources.map(\.provider))).sorted()
+        let providerText = providers.prefix(3).joined(separator: " · ")
+        return "\(sources.count)개 출처\(providerText.isEmpty ? "" : " · \(providerText)")"
+    }
+
+    var actionSummary: String {
+        guard !actions.isEmpty else { return "다음 액션 없음" }
+        return "\(actions.count)개 액션"
+    }
+
+    var artifactSummary: String {
+        guard !artifacts.isEmpty else { return "artifact 없음" }
+        return "\(artifacts.count)개 artifact"
+    }
 }

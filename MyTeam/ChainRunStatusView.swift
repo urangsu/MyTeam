@@ -16,6 +16,12 @@ struct ChainRunStatusView: View {
                     .foregroundStyle(statusColor(chainRun.status))
             }
 
+            HStack(spacing: 8) {
+                pill(chainRun.sourceSummary, color: .blue)
+                pill(chainRun.actionSummary, color: .purple)
+                pill(chainRun.artifactSummary, color: .green)
+            }
+
             VStack(alignment: .leading, spacing: 6) {
                 ForEach(Array(chainRun.steps.enumerated()), id: \.element.id) { index, step in
                     HStack(alignment: .top, spacing: 8) {
@@ -66,6 +72,17 @@ struct ChainRunStatusView: View {
         case .skipped:
             return .orange
         }
+    }
+
+    private func pill(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.system(size: 9, weight: .medium))
+            .foregroundStyle(color)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(color.opacity(0.12))
+            .cornerRadius(999)
+            .lineLimit(1)
     }
 
     private func statusColor(_ status: ChainStatus) -> Color {

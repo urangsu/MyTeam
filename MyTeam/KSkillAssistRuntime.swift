@@ -793,7 +793,8 @@ enum KSkillRunEngine {
             mode: mode,
             health: health,
             evidence: evidence,
-            attachments: attachments
+            attachments: attachments,
+            chainID: chainID
         )
         let baseSuggestions = actionSuggestions(for: intent, evidence: evidence, attachments: attachments)
         let postTurnSuggestions = await PostTurnIntelligenceEngine.shared.suggestNextActions(
@@ -1050,20 +1051,79 @@ enum KSkillRunEngine {
         mode: SkillExecutionMode,
         health: ConnectorHealth,
         evidence: ToolEvidenceResult,
-        attachments: [ChatAttachment]
+        attachments: [ChatAttachment],
+        chainID: SkillChainID
     ) -> SkillVerification {
-        if !evidence.sources.isEmpty {
-            return mode == .readOnlyLookup
-                ? .verified(sourceCount: evidence.sources.count)
-                : .partiallyVerified(sourceCount: evidence.sources.count)
-        }
-        if !attachments.isEmpty {
-            return .partiallyVerified(sourceCount: attachments.count)
-        }
-        if mode == .readOnlyLookup {
+        switch chainID {
+        case .stockMoveAnalysis:
+            let quoteSource = evidence.sources.contains { isQuoteSource($0) }
+            let marketSource = evidence.sources.contains { isMarketSource($0) }
+            if quoteSource && marketSource && evidence.sources.count >= 2 {
+                return .verified(sourceCount: evidence.sources.count)
+            }
+            if quoteSource || marketSource {
+                return .partiallyVerified(sourceCount: evidence.sources.count)
+            }
+            return mode == .readOnlyLookup ? .connectorUnavailable : .userInputRequired
+
+        case .mailAction, .documentAction:
+            let usefulAttachments = attachments.filter { hasUsableAttachmentText($0) }
+            if !usefulAttachments.isEmpty {
+                return .partiallyVerified(sourceCount: usefulAttachments.count)
+            }
+            if !attachments.isEmpty {
+                return .partiallyVerified(sourceCount: attachments.count)
+            }
+            if !evidence.sources.isEmpty {
+                return .partiallyVerified(sourceCount: evidence.sources.count)
+            }
+            return mode == .readOnlyLookup ? .connectorUnavailable : .userInputRequired
+
+        case .tripPlanning:
+            if health.trainSearch == .available || health.mapsSearch == .available {
+                return evidence.sources.isEmpty ? .partiallyVerified(sourceCount: 1) : .partiallyVerified(sourceCount: evidence.sources.count)
+            }
+            return .connectorUnavailable
+
+        case .accountReview:
+            if !attachments.isEmpty {
+                return .partiallyVerified(sourceCount: attachments.count)
+            }
+            return mode == .readOnlyLookup ? .connectorUnavailable : .userInputRequired
+
+        case .research:
+            if evidence.sources.count >= 2 {
+                return .verified(sourceCount: evidence.sources.count)
+            }
+            if !evidence.sources.isEmpty {
+                return .partiallyVerified(sourceCount: evidence.sources.count)
+            }
             return .connectorUnavailable
         }
-        return .userInputRequired
+    }
+
+    private static func hasUsableAttachmentText(_ attachment: ChatAttachment) -> Bool {
+        guard let text = attachment.textContent?.trimmingCharacters(in: .whitespacesAndNewlines) else {
+            return false
+        }
+        return !text.isEmpty
+    }
+
+    private static func isQuoteSource(_ source: AgentWindowManager.SourceReference) -> Bool {
+        let title = source.title.lowercased()
+        let provider = source.provider.lowercased()
+        return provider.contains("naver") || provider.contains("yahoo") || provider.contains("finance") || title.contains("주가") || title.contains("quote")
+    }
+
+    private static func isMarketSource(_ source: AgentWindowManager.SourceReference) -> Bool {
+        let title = source.title.lowercased()
+        let provider = source.provider.lowercased()
+        return provider.contains("news")
+            || provider.contains("dart")
+            || provider.contains("duckduckgo")
+            || provider.contains("google")
+            || title.contains("공시")
+            || title.contains("뉴스")
     }
 
     private static func attachmentAgentSources(_ attachments: [ChatAttachment]) -> [AgentWindowManager.SourceReference] {
