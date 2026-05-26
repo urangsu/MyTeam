@@ -67,7 +67,7 @@ struct ChainRunStatusView: View {
                                     .lineLimit(1)
                             }
                             if let failureDetail = step.failureDetail, !failureDetail.isEmpty {
-                                Text(failureDetail)
+                                Text(ChainRun.userFacingFailureMessage(for: failureDetail))
                                     .font(.system(size: 9))
                                     .foregroundStyle(.red)
                                     .lineLimit(1)

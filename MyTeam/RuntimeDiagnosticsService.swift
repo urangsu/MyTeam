@@ -654,6 +654,7 @@ struct RuntimeDiagnosticsSnapshot {
         }
         lines.append("recentRouteTraceCount: \(recentRouteTraceCount)")
         lines.append("validation: router \(routerBurnInPassed)/\(routerBurnInTotal) passed | tool contracts errors=\(toolContractErrors) warnings=\(toolContractWarnings)")
+        lines.append("chainSmoke: cases=\(ChainRuntimeSmokeSuite.cases.count)")
         if let delegationModeStatus {
             lines.append("delegation: \(delegationModeStatus) goal=\(activeDelegationGoal ?? "nil") steps=\(delegatedPlanStepCount)")
         } else {

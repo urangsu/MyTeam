@@ -87,7 +87,7 @@ struct ChainRun: Identifiable, Codable, Sendable {
                 pieces.append("output=\(summary)")
             }
             if let failureDetail = step.failureDetail, !failureDetail.isEmpty {
-                pieces.append("failure=\(failureDetail)")
+                pieces.append("failure=\(Self.userFacingFailureMessage(for: failureDetail))")
             }
             if !step.sourceIDs.isEmpty {
                 pieces.append("sources=\(step.sourceIDs.count)")
@@ -126,5 +126,189 @@ struct ChainRun: Identifiable, Codable, Sendable {
     var artifactSummary: String {
         guard !artifacts.isEmpty else { return "artifact 없음" }
         return "\(artifacts.count)개 artifact"
+    }
+
+    static func userFacingFailureMessage(for detail: String) -> String {
+        let normalized = detail.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        switch normalized {
+        case "quote_unverified":
+            return "시세 출처를 확인하지 못했어요."
+        case "quote_connector_unavailable":
+            return "시세 조회 커넥터를 아직 사용할 수 없어요."
+        case "news_unverified":
+            return "뉴스 근거를 아직 확인하지 못했어요."
+        case "news_connector_unavailable":
+            return "뉴스 검색 커넥터를 아직 사용할 수 없어요."
+        case "disclosure_unverified":
+            return "공시 근거를 아직 확인하지 못했어요."
+        case "disclosure_connector_unavailable":
+            return "공시 검색 커넥터를 아직 사용할 수 없어요."
+        case "insufficient_concrete_sources":
+            return "뉴스나 공시 근거가 부족해서 원인을 단정하지 않았어요."
+        case "insufficient_causal_sources":
+            return "원인 후보를 만들 근거가 충분하지 않아요."
+        case "market_context_unverified":
+            return "시장 맥락 출처를 확인하지 못했어요."
+        case "web_fetch_unavailable":
+            return "웹 조회 커넥터를 아직 사용할 수 없어요."
+        case "mail_body_ambiguous":
+            return "메일 원문으로 보기엔 짧아요. 본문인지 먼저 확인해야 해요."
+        case "mail_body_missing", "mail_source_missing":
+            return "메일 본문이 아직 없어요."
+        case "ocr_needed":
+            return "텍스트 추출이나 OCR이 필요해요."
+        case "document_type_unavailable":
+            return "문서 유형을 확정할 수 없어요."
+        case "no_attachment":
+            return "첨부 파일이 필요해요."
+        case "train_connector_unavailable":
+            return "열차 조회 커넥터를 아직 사용할 수 없어요."
+        case "map_connector_unavailable":
+            return "지도 이동 시간 커넥터를 아직 사용할 수 없어요."
+        case "trip_sources_unavailable":
+            return "이동 후보를 만들 근거가 충분하지 않아요."
+        case "no_public_sources":
+            return "공개 출처를 찾지 못했어요."
+        default:
+            return detail
+        }
+    }
+}
+
+struct ChainRuntimeSmokeCaseResult: Codable, Sendable, Hashable {
+    let name: String
+    let input: String
+    let chainID: String?
+    let chainStatus: String?
+    let verificationStatus: String?
+    let sourceTypes: [String]
+    let stepStatuses: [String]
+    let renderStockMoveCardSucceeded: Bool
+    let issues: [String]
+}
+
+enum ChainRuntimeSmokeSuite {
+    struct SmokeCase: Sendable {
+        let name: String
+        let message: String
+        let attachments: [ChatAttachment]
+    }
+
+    static let cases: [SmokeCase] = [
+        SmokeCase(name: "stock-drop", message: "삼성전자 왜 떨어졌어?", attachments: []),
+        SmokeCase(name: "stock-rally", message: "현대차 오늘 왜 올랐어?", attachments: []),
+        SmokeCase(name: "stock-impact", message: "엔비디아 관련해서 SK하이닉스 영향 있어?", attachments: []),
+        SmokeCase(name: "mail-ambiguous", message: "내일 3시에 회의 가능하실까요?", attachments: []),
+        SmokeCase(name: "mail-body", message: "이 메일 정리해줘", attachments: [
+            ChatAttachment(
+                fileName: "mail.txt",
+                fileSize: 128,
+                type: .text,
+                textContent: """
+                안녕하세요.
+                내일 3시에 회의 가능하실까요?
+                가능하시면 장소도 함께 알려주세요.
+                감사합니다.
+                """,
+                localPath: nil
+            )
+        ]),
+        SmokeCase(name: "document-no-text", message: "이 PDF 정리해줘", attachments: [
+            ChatAttachment(
+                fileName: "scan.pdf",
+                fileSize: 2048,
+                type: .pdf,
+                textContent: nil,
+                localPath: nil
+            )
+        ])
+    ]
+
+    static func run() async -> [ChainRuntimeSmokeCaseResult] {
+        var results: [ChainRuntimeSmokeCaseResult] = []
+        for testCase in cases {
+            let roomID = UUID()
+            guard let route = await KSkillRunEngine.runPrimary(
+                userMessage: testCase.message,
+                roomID: roomID,
+                attachments: testCase.attachments
+            ) else {
+                results.append(
+                    ChainRuntimeSmokeCaseResult(
+                        name: testCase.name,
+                        input: testCase.message,
+                        chainID: nil,
+                        chainStatus: nil,
+                        verificationStatus: nil,
+                        sourceTypes: [],
+                        stepStatuses: [],
+                        renderStockMoveCardSucceeded: false,
+                        issues: ["Skill route not matched"]
+                    )
+                )
+                continue
+            }
+
+            let chainRun = await MainActor.run { ChainRunStore.shared.latestRun(for: roomID) }
+            let sourceTypes = route.result.sourceRefs.map { $0.sourceType.rawValue }
+            let stepStatuses = chainRun?.stepStatusLines ?? []
+            let renderSucceeded: Bool
+            if let renderStep = chainRun?.steps.first(where: { $0.key == "renderStockMoveCard" }) {
+                renderSucceeded = renderStep.status == .succeeded
+            } else {
+                renderSucceeded = false
+            }
+
+            var issues: [String] = []
+            if testCase.name.hasPrefix("stock") {
+                if route.result.verification.status == "verified" && sourceTypes.filter({ $0 == "quote" }).isEmpty {
+                    issues.append("verified without quote source")
+                }
+                if renderSucceeded == false && (sourceTypes.contains("quote") || sourceTypes.contains("news") || sourceTypes.contains("disclosure")) {
+                    issues.append("stock card did not render")
+                }
+            }
+            if testCase.name == "mail-ambiguous" {
+                if route.result.sourceRefs.isEmpty == false {
+                    issues.append("ambiguous mail produced sources")
+                }
+                if route.result.verification.status == "verified" {
+                    issues.append("ambiguous mail was verified")
+                }
+            }
+            if testCase.name == "mail-body" {
+                if route.result.sourceRefs.isEmpty {
+                    issues.append("mail body was not recognized")
+                }
+                if route.result.verification.status == "blocked" {
+                    issues.append("mail body should not be blocked")
+                }
+            }
+            if testCase.name == "document-no-text" {
+                if let extractStep = chainRun?.steps.first(where: { $0.key == "extractText" }) {
+                    if extractStep.status != .failed(failureCode: "ocr_needed") &&
+                        extractStep.status != .failed(failureCode: "no_attachment") {
+                        issues.append("document without text unexpectedly succeeded")
+                    }
+                } else {
+                    issues.append("document without text unexpectedly succeeded")
+                }
+            }
+
+            results.append(
+                ChainRuntimeSmokeCaseResult(
+                    name: testCase.name,
+                    input: testCase.message,
+                    chainID: chainRun?.chainID.rawValue ?? route.result.skillID,
+                    chainStatus: chainRun?.status.rawValue,
+                    verificationStatus: route.result.verification.status,
+                    sourceTypes: Array(Set(sourceTypes)).sorted(),
+                    stepStatuses: stepStatuses,
+                    renderStockMoveCardSucceeded: renderSucceeded,
+                    issues: issues
+                )
+            )
+        }
+        return results
     }
 }
