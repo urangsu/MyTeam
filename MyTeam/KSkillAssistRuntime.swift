@@ -275,7 +275,7 @@ enum KSkillAssistRuntime {
             return KSkillAssistResponse(
                 intent: intent,
                 title: "장소·예약 준비 도우미",
-                message: "지도 직접 검색은 아직 연결 전입니다. 장소명이나 링크를 주시면 비교 기준과 예약 전 체크리스트로 정리해드릴게요.",
+                message: "제가 대신 예약하거나 개인정보를 제출하진 않아요. 장소명이나 링크를 주시면 비교 기준, 확인할 항목, 복사해서 쓸 검색 조건까지 정리해드릴게요.",
                 checklist: [
                     "방문 목적과 인원 확인",
                     "영업 시간 및 정기 휴무일 확인",
@@ -285,8 +285,8 @@ enum KSkillAssistRuntime {
                     "취소·변경 정책 확인"
                 ],
                 nextActions: [
-                    "네이버 지도 또는 카카오맵에서 직접 검색",
-                    "장소명이나 링크를 주시면 비교 기준을 정리해드릴 수 있습니다"
+                    "장소명·방문일·인원수를 알려주시면 지도앱에 바로 넣을 검색 조건으로 정리",
+                    "링크를 주시면 장단점과 예약 전 확인 항목을 카드로 정리"
                 ],
                 hardBlockedActions: [
                     "자동 예약 확정",
@@ -300,7 +300,7 @@ enum KSkillAssistRuntime {
             return KSkillAssistResponse(
                 intent: intent,
                 title: "주가 정보 도우미",
-                message: "실시간 시세 조회는 아직 연결 전입니다. 종목명과 자료를 주시면 확인할 지표와 리스크 체크리스트를 정리해드릴게요.",
+                message: "매수·매도 판단을 대신 확정하지는 않아요. 종목명, 기사, 공시, PDF를 주시면 숫자·이슈·리스크를 분리해서 검토 카드로 정리해드릴게요.",
                 checklist: [
                     "종목 기본 정보 확인 (업종, 시가총액)",
                     "최근 실적 및 공시 확인 (DART)",
@@ -310,8 +310,8 @@ enum KSkillAssistRuntime {
                     "배당 여부 및 배당수익률 확인"
                 ],
                 nextActions: [
-                    "네이버 증권 또는 HTS에서 직접 시세 확인",
-                    "공시 자료나 기사를 붙여주시면 요약해드릴 수 있습니다"
+                    "종목명만 주시면 확인해야 할 시세·실적·공시 체크 항목을 카드로 정리",
+                    "기사나 공시를 붙여주시면 핵심 사실, 숫자, 리스크를 요약"
                 ],
                 hardBlockedActions: [
                     "매수/매도 확정 추천",
@@ -325,7 +325,7 @@ enum KSkillAssistRuntime {
             return KSkillAssistResponse(
                 intent: intent,
                 title: "DART 공시 도우미",
-                message: "DART 직접 조회는 아직 연결 전입니다. 공시 PDF, 사업보고서 내용, 공시 링크를 주시면 요약 형식으로 정리해드릴 수 있어요.",
+                message: "공시를 조회한 척하지 않고, 사용자가 준 공시 PDF·본문·링크 기준으로만 정리합니다. 자료를 주시면 공시 종류, 핵심 숫자, 위험 포인트를 카드로 남겨드릴게요.",
                 checklist: [
                     "공시 종류 확인 (사업보고서/분기보고서/수시공시)",
                     "보고 기간 및 작성일 확인",
@@ -335,8 +335,8 @@ enum KSkillAssistRuntime {
                     "감사인 의견"
                 ],
                 nextActions: [
-                    "dart.fss.or.kr에서 직접 공시 검색",
-                    "공시 PDF나 내용을 붙여주시면 요약·분석 기준으로 정리해드릴 수 있습니다"
+                    "공시 PDF나 본문을 첨부하면 사업보고서/분기보고서/수시공시로 분류",
+                    "숫자·날짜·위험요인을 따로 뽑아 후속 질문할 수 있게 저장"
                 ],
                 hardBlockedActions: [
                     "실제 DART API 조회한 척하기",
@@ -349,7 +349,7 @@ enum KSkillAssistRuntime {
             return KSkillAssistResponse(
                 intent: intent,
                 title: "뉴스 리서치 도우미",
-                message: "실시간 네이버 검색은 아직 연결 전입니다. 링크나 본문을 주시면 요약·비교로 정리해드릴게요.",
+                message: "검색 결과를 꾸며내지 않습니다. 기사 링크나 본문을 주시면 핵심 사실, 주장, 확인이 필요한 대목을 분리해 정리해드릴게요.",
                 checklist: [
                     "출처 및 보도 날짜 확인",
                     "핵심 사실과 주장 구분",
@@ -358,8 +358,8 @@ enum KSkillAssistRuntime {
                     "광고성/편향 여부 파악"
                 ],
                 nextActions: [
-                    "네이버 뉴스에서 직접 검색",
-                    "기사 링크나 본문을 붙여주시면 요약·정리해드릴 수 있습니다"
+                    "기사 링크나 본문을 붙여넣으면 요약 카드로 정리",
+                    "여러 기사를 주시면 공통 사실과 서로 다른 주장을 비교"
                 ],
                 hardBlockedActions: [
                     "실시간 검색 결과 꾸며내기",
@@ -372,7 +372,7 @@ enum KSkillAssistRuntime {
             return KSkillAssistResponse(
                 intent: intent,
                 title: "블로그 리서치 도우미",
-                message: "실시간 네이버 검색은 아직 연결 전입니다. 링크나 본문을 주시면 요약·블로그 초안으로 정리해드릴게요.",
+                message: "후기나 순위를 임의로 만들지 않습니다. 참고 링크나 본문을 주시면 공통 포인트를 뽑고 블로그 초안 구조로 정리해드릴게요.",
                 checklist: [
                     "조사 주제와 목적 명확히 하기",
                     "참고할 키워드 목록 작성",
@@ -394,7 +394,7 @@ enum KSkillAssistRuntime {
             return KSkillAssistResponse(
                 intent: intent,
                 title: "법령·정부정보 도우미",
-                message: "직접 최신 조회는 아직 연결 전입니다. 공고문이나 링크를 주시면 자격조건·준비서류·주의사항을 정리해드릴게요.",
+                message: "최신 법령을 확인한 것처럼 단정하지 않습니다. 법령명, 공고문, 안내문을 주시면 자격조건·준비서류·주의사항을 분리해 정리해드릴게요.",
                 checklist: [
                     "적용 법령의 시행일 확인",
                     "관할 기관 및 문의처 확인",
@@ -418,7 +418,7 @@ enum KSkillAssistRuntime {
             return KSkillAssistResponse(
                 intent: intent,
                 title: "장학금·복지급여 도우미",
-                message: "직접 최신 조회는 아직 연결 전입니다. 공고문이나 링크를 주시면 자격조건·준비서류·주의사항을 정리해드릴게요.",
+                message: "최신 공고를 본 것처럼 단정하지 않습니다. 공고문이나 링크를 주시면 자격조건, 신청기간, 준비서류, 놓치기 쉬운 조건을 카드로 정리해드릴게요.",
                 checklist: [
                     "지원 자격 조건 (소득분위/학점/재학 여부)",
                     "신청 기간 및 접수처 확인",
@@ -604,5 +604,84 @@ enum KSkillRunEngine {
             markdown: KSkillAssistRuntime.formatMarkdown(response),
             requiredInputs: response.requiredUserInputs
         )
+    }
+
+    @MainActor
+    static func writeResultArtifact(
+        _ result: KSkillRunResult,
+        roomID: UUID,
+        manager: AgentWindowManager
+    ) async -> IndexedArtifact? {
+        let workflowID = manager.currentWorkflowID ?? UUID()
+        let markdown = result.markdown.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !markdown.isEmpty else { return nil }
+
+        let filename = outputFilename(for: result)
+        let fileURL: URL
+        do {
+            fileURL = try safeWritableWorkspaceURL(
+                filename: filename,
+                context: ToolExecutionContext.current(workflowID: workflowID, roomID: roomID)
+            )
+            try markdown.write(to: fileURL, atomically: true, encoding: .utf8)
+        } catch {
+            AppLog.error("[KSkillRunEngine] skill card artifact write failed: \(error.localizedDescription)")
+            return nil
+        }
+
+        let savedFilename = fileURL.lastPathComponent
+        let contentHash = StableContentHash.sha256Hex(markdown)
+        let preview = String(markdown.prefix(220))
+            .replacingOccurrences(of: "\n", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let artifact = IndexedArtifact(
+            id: UUID().uuidString,
+            workflowID: workflowID.uuidString,
+            title: result.title,
+            type: .text,
+            filename: savedFilename,
+            relativePath: savedFilename,
+            preview: preview,
+            createdAt: ISO8601DateFormatter().string(from: Date()),
+            contentHash: contentHash,
+            fileSizeBytes: Int64(markdown.utf8.count),
+            roomID: roomID.uuidString
+        )
+
+        await ArtifactStore.shared.registerArtifact(artifact)
+        manager.addRecentArtifactIndexEntry(
+            RecentArtifactIndexEntry(
+                artifactID: artifact.id,
+                roomID: roomID,
+                filename: savedFilename,
+                artifactType: artifact.type.rawValue,
+                createdAt: Date(),
+                contentHash: contentHash,
+                fileSizeBytes: Int64(markdown.utf8.count)
+            )
+        )
+        NotificationCenter.default.post(
+            name: .workflowCompleted,
+            object: nil,
+            userInfo: [
+                "workflowID": workflowID.uuidString,
+                "roomID": roomID.uuidString,
+                "artifacts": [artifact]
+            ]
+        )
+        return artifact
+    }
+
+    private static func outputFilename(for result: KSkillRunResult) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        let stamp = formatter.string(from: Date())
+        let skillStem = result.skillID
+            .replacingOccurrences(of: "korean.", with: "")
+            .replacingOccurrences(of: ".", with: "-")
+            .replacingOccurrences(of: "_", with: "-")
+        return "skill-card-\(skillStem)-\(stamp).md"
     }
 }

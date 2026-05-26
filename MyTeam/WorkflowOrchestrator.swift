@@ -556,6 +556,23 @@ final class WorkflowOrchestrator {
 
         if let skillRun = KSkillRunEngine.run(userMessage: userMessage, matchedSkills: enabledSkills) {
             AppLog.info("[SkillRunEngine] handled \(skillRun.skillID)")
+            let artifact = await KSkillRunEngine.writeResultArtifact(
+                skillRun,
+                roomID: roomID,
+                manager: manager
+            )
+            let responseText: String
+            if let artifact {
+                responseText = """
+                \(skillRun.markdown)
+
+                ---
+                결과 카드를 이 방에 저장했습니다.
+                파일: \(artifact.filename)
+                """
+            } else {
+                responseText = skillRun.markdown
+            }
             await MainActor.run {
                 self.recordRouteTrace(
                     manager: manager,
@@ -579,7 +596,7 @@ final class WorkflowOrchestrator {
                     roomID: roomID,
                     agentID: "system",
                     agentName: skillRun.title,
-                    text: skillRun.markdown,
+                    text: responseText,
                     isUser: false,
                     isSystem: false,
                     skillID: skillRun.skillID
