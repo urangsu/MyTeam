@@ -257,26 +257,44 @@ final class WorkflowOrchestrator {
         let disabledSkills = SkillRegistry.shared.matchAllSkills(for: userMessage)
             .filter { !SkillRegistry.shared.isSkillEnabled(id: $0.id) }
 
-        // Round 246B / 249A: SkillAvailabilityResolver 연결 — assistOnly 스킬 감지
-        // KSkillAssistRuntime이 intent를 감지하면 구조화된 체크리스트 응답 생성
-        // 그 외 assistOnly는 기존 directChat fallback
+        // KSkill primary route: 스킬이 잡히면 일반 대화보다 먼저 카드/근거/artifact 루프를 실행한다.
         if let assistOnlySkill = enabledSkills.first(where: {
             SkillAvailabilityResolver.availability(for: $0) == .assistOnly
         }) {
-            if let intent = KSkillAssistRuntime.detectIntent(userMessage: userMessage, skillID: assistOnlySkill.id) {
-                let response = KSkillAssistRuntime.buildAssistResponse(intent: intent, userMessage: userMessage)
-                let markdown = KSkillAssistRuntime.formatMarkdown(response)
+            if let skillRoute = await KSkillRunEngine.runPrimary(
+                userMessage: userMessage,
+                roomID: roomID,
+                matchedSkills: [assistOnlySkill]
+            ) {
+                let artifact = await KSkillRunEngine.writeResultArtifact(
+                    skillRoute.result,
+                    roomID: roomID,
+                    manager: manager
+                )
+                let responseText: String
+                if let artifact {
+                    responseText = """
+                    \(skillRoute.result.markdown)
+
+                    ---
+                    결과 카드를 이 방에 저장했습니다.
+                    파일: \(artifact.filename)
+                    """
+                } else {
+                    responseText = skillRoute.result.markdown
+                }
                 await MainActor.run {
                     manager.addChatLog(
                         roomID: roomID,
                         agentID: "system",
-                        agentName: response.title,
-                        text: markdown,
+                        agentName: skillRoute.result.title,
+                        text: responseText,
                         isUser: false,
                         isSystem: false,
-                        skillID: assistOnlySkill.id
+                        sources: skillRoute.evidence.sources,
+                        skillID: skillRoute.result.skillID
                     )
-                    CharacterReactionEventSink.shared.notifyTaskCompleted(skillID: assistOnlySkill.id, roomID: roomID)
+                    CharacterReactionEventSink.shared.notifyTaskCompleted(skillID: skillRoute.result.skillID, roomID: roomID)
                 }
                 return
             }
@@ -554,7 +572,8 @@ final class WorkflowOrchestrator {
             break
         }
 
-        if let skillRun = KSkillRunEngine.run(userMessage: userMessage, roomID: roomID, matchedSkills: enabledSkills) {
+        if let skillRoute = await KSkillRunEngine.runPrimary(userMessage: userMessage, roomID: roomID, matchedSkills: enabledSkills) {
+            let skillRun = skillRoute.result
             AppLog.info("[SkillRunEngine] handled \(skillRun.skillID)")
             let artifact = await KSkillRunEngine.writeResultArtifact(
                 skillRun,
@@ -599,6 +618,7 @@ final class WorkflowOrchestrator {
                     text: responseText,
                     isUser: false,
                     isSystem: false,
+                    sources: skillRoute.evidence.sources,
                     skillID: skillRun.skillID
                 )
                 CharacterReactionEventSink.shared.notifyTaskCompleted(skillID: skillRun.skillID, roomID: roomID)

@@ -1192,6 +1192,40 @@ struct AgentChatView: View {
                 // (선택) 여전히 30개 초과 요약 로직이 있다면 태우되, 보통 5개면 안 탐
                 history = await ConversationMemory.compactHistory(messages: history)
 
+                let matchedSkills = SkillRegistry.shared.matchEnabledSkills(for: fullText)
+                if let skillRoute = await KSkillRunEngine.runPrimary(
+                    userMessage: fullText,
+                    roomID: roomID,
+                    matchedSkills: matchedSkills
+                ) {
+                    let artifact = await KSkillRunEngine.writeResultArtifact(
+                        skillRoute.result,
+                        roomID: roomID,
+                        manager: manager
+                    )
+                    var responseText = skillRoute.result.markdown
+                    if let artifact {
+                        responseText += """
+
+                        ---
+                        결과 카드를 이 방에 저장했습니다.
+                        파일: \(artifact.filename)
+                        """
+                    }
+                    _ = await MainActor.run {
+                        manager.addChatLog(
+                            roomID: roomID,
+                            agentID: "system",
+                            agentName: skillRoute.result.title,
+                            text: responseText,
+                            isUser: false,
+                            sources: skillRoute.evidence.sources,
+                            skillID: skillRoute.result.skillID
+                        )
+                    }
+                    return
+                }
+
                 do {
                     // DirectChat evidence gate — 명확한 외부 정보 요청일 때만 evidence gather 허용
                     // 조건: URL 포함 / 외부 키워드 / 첨부파일 있음
