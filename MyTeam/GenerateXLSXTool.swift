@@ -22,14 +22,15 @@ struct GenerateXLSXTool: WorkflowTool {
         let outputURL = try safeWritableWorkspaceURL(filename: outputFilename, context: context)
 
         let result = try DocumentGenerationService.generateXLSX(planURL: planURL, outputURL: outputURL)
+        let savedFilename = result.artifactPath
 
         await ArtifactStore.shared.registerArtifact(IndexedArtifact(
             id:         UUID().uuidString,
             workflowID: context.sessionID,
             title:      result.title,
             type:       .spreadsheet,
-            filename:   outputFilename,
-            relativePath: outputFilename,
+            filename:   savedFilename,
+            relativePath: savedFilename,
             preview:    "\(result.pageCount)행 데이터",
             createdAt:  ISO8601DateFormatter().string(from: Date()),
             roomID:     context.roomID.uuidString
@@ -37,8 +38,8 @@ struct GenerateXLSXTool: WorkflowTool {
 
         return ToolResult(
             status:       .succeeded,
-            output:       "\(outputFilename) 생성 완료 (\(result.pageCount)행)",
-            artifactPath: outputFilename,
+            output:       "\(savedFilename) 생성 완료 (\(result.pageCount)행)",
+            artifactPath: savedFilename,
             error:        nil
         )
     }

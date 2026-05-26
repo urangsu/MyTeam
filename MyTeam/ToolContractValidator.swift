@@ -163,7 +163,7 @@ enum ToolContractValidator {
         validateOfficeReviewInputPolicy(issues: &issues)
         validateAutomaticExternalUploadBlockedPolicy(issues: &issues)
 
-        // Round 245A-P0: Artifact Contract
+        // Round 245A-P0 / 280: Artifact Contract
         validateWriteTextFileArtifactPathPolicy(issues: &issues)
 
         // Round 246A: UNBLOCK
@@ -1342,13 +1342,32 @@ enum ToolContractValidator {
     }
 
     private static func validateWriteTextFileArtifactPathPolicy(issues: inout [ToolContractValidationIssue]) {
-        do {
-            let sourceFile = try String(contentsOfFile: "MyTeam/WriteTextFileTool.swift", encoding: .utf8)
-            if sourceFile.contains("artifactPath: filename") && !sourceFile.contains("let savedFilename = url.lastPathComponent") {
-                issues.append(issue(.error, "WriteTextFileTool: artifactPath가 입력 filename을 그대로 반환합니다. 실제 저장된 파일명(url.lastPathComponent)으로 반환해야 합니다."))
+        let savingTools = [
+            "WriteTextFileTool.swift",
+            "CreateMarkdownReportTool.swift",
+            "CreatePresentationPlanTool.swift",
+            "CreateSpreadsheetPlanTool.swift",
+            "GeneratePPTXTool.swift",
+            "GenerateXLSXTool.swift"
+        ]
+
+        for filename in savingTools {
+            do {
+                let sourceFile = try String(contentsOfFile: "MyTeam/\(filename)", encoding: .utf8)
+                let returnsInputFilename = sourceFile.contains("artifactPath: filename")
+                    || sourceFile.contains("artifactPath: outputFilename")
+                let usesSavedFilename = sourceFile.contains("url.lastPathComponent")
+                    || sourceFile.contains("result.artifactPath")
+                if returnsInputFilename && !usesSavedFilename {
+                    issues.append(issue(.error, "\(filename): artifactPath가 입력 filename을 그대로 반환합니다. 실제 저장된 파일명(url.lastPathComponent 또는 result.artifactPath)으로 반환해야 합니다."))
+                }
+                if sourceFile.contains("filename:   outputFilename")
+                    || sourceFile.contains("relativePath: outputFilename") {
+                    issues.append(issue(.error, "\(filename): IndexedArtifact가 입력 outputFilename을 그대로 저장합니다. 충돌 처리 후 실제 저장된 파일명을 사용해야 합니다."))
+                }
+            } catch {
+                issues.append(issue(.warning, "\(filename) 소스 검증 불가"))
             }
-        } catch {
-            issues.append(issue(.warning, "WriteTextFileTool 소스 검증 불가"))
         }
     }
 
