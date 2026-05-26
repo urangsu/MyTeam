@@ -65,11 +65,57 @@ struct SkillVerification: Codable, Sendable {
     let failureCode: String?
     let message: String
 
+    static func verified(sourceCount: Int) -> SkillVerification {
+        SkillVerification(
+            status: "verified",
+            failureCode: nil,
+            message: "외부 근거 \(sourceCount)개를 확인해 카드에 반영했습니다. 금융/투자 판단은 참고 정보이며 최종 결정은 사용자가 확인해야 합니다."
+        )
+    }
+
     static let userInputRequired = SkillVerification(
         status: "blocked",
         failureCode: "user_input_required",
         message: "사용자 자료 또는 조건이 필요합니다. 확인되지 않은 외부 조회 결과는 만들지 않았습니다."
     )
+}
+
+enum SkillExecutionMode: String, Codable, Sendable {
+    case assistOnly
+    case readOnlyLookup
+    case userProvidedSourceAnalysis
+    case approvalRequiredAction
+}
+
+struct ConnectorHealth: Codable, Sendable {
+    enum Status: String, Codable, Sendable {
+        case available
+        case unavailable
+        case approvalRequired
+    }
+
+    let stockQuote: Status
+    let newsSearch: Status
+    let dartSearch: Status
+    let mailRead: Status
+    let calendarWrite: Status
+    let mapsSearch: Status
+    let ktxLookup: Status
+
+    static func current() -> ConnectorHealth {
+        let hasGemini = !(KeychainManager.load(key: "geminiAPIKey") ?? "").isEmpty
+        let hasOpenAI = !(KeychainManager.load(key: "openaiAPIKey") ?? "").isEmpty
+        let webSearch: Status = (hasGemini || hasOpenAI) ? .available : .unavailable
+        return ConnectorHealth(
+            stockQuote: .available,
+            newsSearch: webSearch,
+            dartSearch: webSearch,
+            mailRead: .unavailable,
+            calendarWrite: .approvalRequired,
+            mapsSearch: webSearch,
+            ktxLookup: .unavailable
+        )
+    }
 }
 
 // MARK: - Parsed Sections
@@ -633,28 +679,68 @@ struct KSkillRunResult: Sendable {
 
 enum KSkillRunEngine {
     static func run(userMessage: String, roomID: UUID, matchedSkills: [SkillManifest] = []) -> KSkillRunResult? {
-        let matchedIntent = matchedSkills
-            .compactMap { KSkillAssistRuntime.detectIntent(userMessage: userMessage, skillID: $0.id) }
-            .first
-        guard let intent = matchedIntent ?? KSkillAssistRuntime.detectIntent(userMessage: userMessage) else {
+        guard let intent = detectIntent(userMessage: userMessage, matchedSkills: matchedSkills) else {
             return nil
         }
 
         let response = KSkillAssistRuntime.buildAssistResponse(intent: intent, userMessage: userMessage)
-        let card = card(for: response)
+        let card = card(for: response, evidence: .empty)
         return KSkillRunResult(
             roomID: roomID,
             intent: intent,
             skillID: KSkillAssistRuntime.skillID(for: intent),
             title: response.title,
             card: card,
-            sourceRefs: sourceRefs(for: response),
+            sourceRefs: sourceRefs(for: response, evidence: .empty),
             verification: .userInputRequired,
             markdown: formatCardMarkdown(response: response, card: card),
             requiredInputs: response.requiredUserInputs,
             blockedActions: response.hardBlockedActions,
             artifactID: nil
         )
+    }
+
+    static func runPrimary(
+        userMessage: String,
+        roomID: UUID,
+        matchedSkills: [SkillManifest] = []
+    ) async -> (result: KSkillRunResult, evidence: ToolEvidenceResult)? {
+        guard let intent = detectIntent(userMessage: userMessage, matchedSkills: matchedSkills) else {
+            return nil
+        }
+
+        let response = KSkillAssistRuntime.buildAssistResponse(intent: intent, userMessage: userMessage)
+        let mode = executionMode(for: intent)
+        let health = ConnectorHealth.current()
+        let shouldGatherEvidence = shouldGatherEvidence(for: intent, mode: mode, health: health)
+        let policy = ToolPolicy.evaluate(userMessage)
+        let evidence = shouldGatherEvidence ? await ToolEvidenceService.gather(for: userMessage, policy: policy) : .empty
+        let verification: SkillVerification = evidence.sources.isEmpty
+            ? .userInputRequired
+            : .verified(sourceCount: evidence.sources.count)
+        let card = card(for: response, evidence: evidence)
+        let markdown = formatCardMarkdown(
+            response: response,
+            card: card,
+            evidence: evidence,
+            verification: verification,
+            mode: mode,
+            health: health
+        )
+        let result = KSkillRunResult(
+            roomID: roomID,
+            intent: intent,
+            skillID: KSkillAssistRuntime.skillID(for: intent),
+            title: response.title,
+            card: card,
+            sourceRefs: sourceRefs(for: response, evidence: evidence),
+            verification: verification,
+            markdown: markdown,
+            requiredInputs: response.requiredUserInputs,
+            blockedActions: response.hardBlockedActions,
+            artifactID: nil
+        )
+        return (result, evidence)
     }
 
     @MainActor
@@ -736,11 +822,53 @@ enum KSkillRunEngine {
         return "skill-card-\(skillStem)-\(stamp).md"
     }
 
-    private static func card(for response: KSkillAssistResponse) -> SkillResultCard {
-        SkillResultCard(
+    private static func detectIntent(userMessage: String, matchedSkills: [SkillManifest]) -> KSkillAssistIntent? {
+        let matchedIntent = matchedSkills
+            .compactMap { KSkillAssistRuntime.detectIntent(userMessage: userMessage, skillID: $0.id) }
+            .first
+        return matchedIntent ?? KSkillAssistRuntime.detectIntent(userMessage: userMessage)
+    }
+
+    private static func executionMode(for intent: KSkillAssistIntent) -> SkillExecutionMode {
+        switch intent {
+        case .stockInfoAssist, .dartDisclosureAssist, .naverNewsAssist, .naverBlogResearchAssist:
+            return .readOnlyLookup
+        case .mailSummaryAssist, .fileImageAssist, .accountReviewAssist, .officeReviewAssist:
+            return .userProvidedSourceAnalysis
+        case .ktxBookingAssist, .mapPlaceAssist, .reservationPreparation:
+            return .assistOnly
+        case .lawSearchAssist, .scholarshipAssist:
+            return .readOnlyLookup
+        }
+    }
+
+    private static func shouldGatherEvidence(
+        for intent: KSkillAssistIntent,
+        mode: SkillExecutionMode,
+        health: ConnectorHealth
+    ) -> Bool {
+        guard mode == .readOnlyLookup else { return false }
+        switch intent {
+        case .stockInfoAssist:
+            return health.stockQuote == .available
+        case .dartDisclosureAssist:
+            return health.dartSearch == .available
+        case .naverNewsAssist, .naverBlogResearchAssist, .lawSearchAssist, .scholarshipAssist:
+            return health.newsSearch == .available
+        default:
+            return false
+        }
+    }
+
+    private static func card(for response: KSkillAssistResponse, evidence: ToolEvidenceResult) -> SkillResultCard {
+        var summary = [response.message]
+        if !evidence.promptContext.isEmpty {
+            summary.append("확인한 외부 근거를 바탕으로 원인 후보와 다음 확인 포인트를 분리했습니다.")
+        }
+        return SkillResultCard(
             type: cardType(for: response.intent),
             title: response.title,
-            summary: [response.message],
+            summary: summary,
             actionItems: response.requiredUserInputs.map { "\($0) 알려주기" },
             cautions: response.hardBlockedActions,
             nextActionButtons: nextActionButtons(for: response.intent)
@@ -768,8 +896,12 @@ enum KSkillRunEngine {
         }
     }
 
-    private static func sourceRefs(for response: KSkillAssistResponse) -> [SourceReference] {
-        [
+    private static func sourceRefs(for response: KSkillAssistResponse, evidence: ToolEvidenceResult) -> [SourceReference] {
+        let evidenceRefs = evidence.sources.map {
+            SourceReference(title: $0.title, kind: $0.provider, note: $0.url)
+        }
+        if !evidenceRefs.isEmpty { return evidenceRefs }
+        return [
             SourceReference(
                 title: "사용자 입력",
                 kind: "user_message",
@@ -801,9 +933,20 @@ enum KSkillRunEngine {
         }
     }
 
-    private static func formatCardMarkdown(response: KSkillAssistResponse, card: SkillResultCard) -> String {
+    private static func formatCardMarkdown(
+        response: KSkillAssistResponse,
+        card: SkillResultCard,
+        evidence: ToolEvidenceResult = .empty,
+        verification: SkillVerification = .userInputRequired,
+        mode: SkillExecutionMode = .assistOnly,
+        health: ConnectorHealth = .current()
+    ) -> String {
         var lines = KSkillAssistRuntime.formatMarkdown(response)
             .components(separatedBy: "\n")
+
+        lines.append("")
+        lines.append("### 실행 모드")
+        lines.append("- \(mode.rawValue)")
 
         lines.append("")
         lines.append("### 카드 결과")
@@ -819,9 +962,29 @@ enum KSkillRunEngine {
 
         lines.append("")
         lines.append("### 검증 상태")
-        lines.append("- 상태: blocked")
-        lines.append("- 사유: user_input_required")
-        lines.append("- 확인되지 않은 외부 조회 결과는 만들지 않았습니다.")
+        lines.append("- 상태: \(verification.status)")
+        if let failureCode = verification.failureCode {
+            lines.append("- 사유: \(failureCode)")
+        }
+        lines.append("- \(verification.message)")
+
+        if !evidence.promptContext.isEmpty {
+            lines.append("")
+            lines.append("### 확인한 근거")
+            lines.append(String(evidence.promptContext.prefix(2_000)))
+        } else if mode == .readOnlyLookup {
+            lines.append("")
+            lines.append("### 대체 실행")
+            lines.append("- 현재 사용 가능한 공개 조회 커넥터가 충분하지 않습니다.")
+            lines.append("- 자료를 붙여주면 같은 카드 구조로 숫자·이슈·리스크를 분리해 이어서 처리합니다.")
+        }
+
+        lines.append("")
+        lines.append("### 커넥터 상태")
+        lines.append("- stockQuote: \(health.stockQuote.rawValue)")
+        lines.append("- newsSearch: \(health.newsSearch.rawValue)")
+        lines.append("- dartSearch: \(health.dartSearch.rawValue)")
+        lines.append("- calendarWrite: \(health.calendarWrite.rawValue)")
 
         return lines.joined(separator: "\n")
     }
