@@ -43,6 +43,7 @@ enum UniversalDocumentArtifactWriter {
             throw error
         }
 
+        let savedFilename = fileURL.lastPathComponent
         let preview = String(markdown.prefix(200))
             .replacingOccurrences(of: "\n", with: " ")
             .trimmingCharacters(in: .whitespaces)
@@ -52,8 +53,8 @@ enum UniversalDocumentArtifactWriter {
             workflowID: workflowID.uuidString,
             title: title,
             type: .text,
-            filename: filename,
-            relativePath: filename,
+            filename: savedFilename,
+            relativePath: savedFilename,
             preview: preview,
             createdAt: ISO8601DateFormatter().string(from: Date()),
             contentHash: StableContentHash.sha256Hex(markdown),
@@ -70,7 +71,7 @@ enum UniversalDocumentArtifactWriter {
             let entry = RecentArtifactIndexEntry(
                 artifactID: artifact.id,
                 roomID: roomID,
-                filename: filename,
+                filename: savedFilename,
                 artifactType: "text",
                 createdAt: Date(),
                 contentHash: contentHash,
@@ -78,9 +79,9 @@ enum UniversalDocumentArtifactWriter {
             )
             manager.addRecentArtifactIndexEntry(entry)
 
-            AppLog.info("[UniversalDocumentArtifactWriter] artifact 저장 & indexed & persisted: \(filename) workflowID=\(workflowID.uuidString.prefix(8)) roomID=\(roomID.uuidString.prefix(8))")
+            AppLog.info("[UniversalDocumentArtifactWriter] artifact 저장 & indexed & persisted: \(savedFilename) workflowID=\(workflowID.uuidString.prefix(8)) roomID=\(roomID.uuidString.prefix(8))")
         } else {
-            AppLog.info("[UniversalDocumentArtifactWriter] artifact 저장만 (no index): \(filename) status=\(resultStatus.rawValue)")
+            AppLog.info("[UniversalDocumentArtifactWriter] artifact 저장만 (no index): \(savedFilename) status=\(resultStatus.rawValue)")
         }
 
         return artifact

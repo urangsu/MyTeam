@@ -24,15 +24,20 @@ enum AppLaunchArtifactWriter {
 
         let finalMarkdown = addSafetyDisclaimer(to: content)
         let filename = AppLaunchSkillService.outputFilename(request)
-        let filePath = ArtifactStore.shared.workspaceURL.appendingPathComponent(filename).path
+        let fileURL = try safeWritableWorkspaceURL(
+            filename: filename,
+            context: ToolExecutionContext.current(workflowID: workflowID, roomID: roomID)
+        )
 
         do {
-            try finalMarkdown.write(toFile: filePath, atomically: true, encoding: .utf8)
+            try finalMarkdown.write(to: fileURL, atomically: true, encoding: .utf8)
         } catch {
             AppLog.error("[AppLaunchArtifactWriter] 파일 저장 실패: \(error.localizedDescription)")
             throw error
         }
 
+        let savedFilename = fileURL.lastPathComponent
+        let contentHash = StableContentHash.sha256Hex(finalMarkdown)
         let preview = String(finalMarkdown.prefix(200))
             .replacingOccurrences(of: "\n", with: " ")
             .trimmingCharacters(in: .whitespaces)
@@ -42,15 +47,17 @@ enum AppLaunchArtifactWriter {
             workflowID: workflowID.uuidString,
             title: "\(request.appName) \(request.skillType.displayName)",
             type: .text,
-            filename: filename,
-            relativePath: filename,
+            filename: savedFilename,
+            relativePath: savedFilename,
             preview: preview,
             createdAt: ISO8601DateFormatter().string(from: Date()),
+            contentHash: contentHash,
+            fileSizeBytes: Int64(finalMarkdown.utf8.count),
             roomID: roomID.uuidString
         )
 
         await ArtifactStore.shared.registerArtifact(artifact)
-        AppLog.info("[AppLaunchArtifactWriter] artifact 저장: \(filename) workflowID=\(workflowID.uuidString.prefix(8)) roomID=\(roomID.uuidString.prefix(8)) stepID=\(stepID)")
+        AppLog.info("[AppLaunchArtifactWriter] artifact 저장: \(savedFilename) workflowID=\(workflowID.uuidString.prefix(8)) roomID=\(roomID.uuidString.prefix(8)) stepID=\(stepID)")
         return artifact
     }
 

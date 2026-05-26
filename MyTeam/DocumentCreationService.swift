@@ -19,6 +19,18 @@ enum DocumentCreationService {
         let filename = sanitizeFilename("\(title)_\(type.skillType.filenameSuffix).md")
 
         let workflowID = UUID()
+        let fileURL: URL
+        do {
+            fileURL = try safeWritableWorkspaceURL(
+                filename: filename,
+                context: ToolExecutionContext.current(workflowID: workflowID, roomID: roomID)
+            )
+            try template.write(to: fileURL, atomically: true, encoding: .utf8)
+        } catch {
+            AppLog.error("[DocumentCreationService] local document write failed: \(error.localizedDescription)")
+            return nil
+        }
+        let savedFilename = fileURL.lastPathComponent
         let contentHash = StableContentHash.sha256Hex(template)
         let preview = String(template.prefix(200))
         let createdAtString = ISO8601DateFormatter().string(from: Date())
@@ -29,8 +41,8 @@ enum DocumentCreationService {
             workflowID: workflowID.uuidString,
             title: "\(title)",
             type: .text,
-            filename: filename,
-            relativePath: filename,
+            filename: savedFilename,
+            relativePath: savedFilename,
             preview: preview,
             createdAt: createdAtString,
             contentHash: contentHash,
@@ -45,7 +57,7 @@ enum DocumentCreationService {
         let entry = RecentArtifactIndexEntry(
             artifactID: artifact.id,
             roomID: roomID,
-            filename: filename,
+            filename: savedFilename,
             artifactType: "text",
             createdAt: Date(),
             contentHash: contentHash,
