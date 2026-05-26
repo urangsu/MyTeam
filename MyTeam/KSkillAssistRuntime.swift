@@ -45,6 +45,31 @@ enum SkillResultCardType: String, Codable, Sendable {
     case assist
 }
 
+enum SkillChainID: String, Codable, Sendable {
+    case stockMoveAnalysis = "stock.move.analysis"
+    case mailAction = "mail.action"
+    case documentAction = "document.action"
+    case tripPlanning = "trip.planning"
+    case accountReview = "account.review"
+    case research = "research.public"
+}
+
+struct ActionSuggestion: Identifiable, Codable, Sendable {
+    let id: UUID
+    let type: String
+    let title: String
+    let preview: String
+    let requiresApproval: Bool
+
+    init(type: String, title: String, preview: String, requiresApproval: Bool = false) {
+        self.id = UUID()
+        self.type = type
+        self.title = title
+        self.preview = preview
+        self.requiresApproval = requiresApproval
+    }
+}
+
 struct SkillResultCard: Codable, Sendable {
     let type: SkillResultCardType
     let title: String
@@ -72,6 +97,20 @@ struct SkillVerification: Codable, Sendable {
             message: "외부 근거 \(sourceCount)개를 확인해 카드에 반영했습니다. 금융/투자 판단은 참고 정보이며 최종 결정은 사용자가 확인해야 합니다."
         )
     }
+
+    static func partiallyVerified(sourceCount: Int) -> SkillVerification {
+        SkillVerification(
+            status: "partially_verified",
+            failureCode: nil,
+            message: "사용자가 제공한 자료 \(sourceCount)개를 근거로 카드화했습니다. 외부 시스템 조회나 자동 등록은 하지 않았습니다."
+        )
+    }
+
+    static let connectorUnavailable = SkillVerification(
+        status: "connector_unavailable",
+        failureCode: "connector_unavailable",
+        message: "필요한 외부 커넥터가 아직 사용할 수 없어, 지금 가능한 대체 실행과 다음 행동을 카드로 남겼습니다."
+    )
 
     static let userInputRequired = SkillVerification(
         status: "blocked",
@@ -293,7 +332,11 @@ enum KSkillAssistRuntime {
         if lower.contains("ktx") || lower.contains("srt") || lower.contains("기차 예매") || lower.contains("열차 예매") {
             return .ktxBookingAssist
         }
-        if lower.contains("주가") || lower.contains("주식") || lower.contains("종목") || lower.contains("시세") {
+        if lower.contains("주가") || lower.contains("주식") || lower.contains("종목") || lower.contains("시세")
+            || lower.contains("삼성전자") || lower.contains("삼전") || lower.contains("sk하이닉스")
+            || lower.contains("하이닉스") || lower.contains("엔비디아") || lower.contains("테슬라")
+            || lower.contains("애플") || lower.contains("왜 떨어") || lower.contains("왜 올랐")
+            || lower.contains("급락") || lower.contains("급등") {
             return .stockInfoAssist
         }
         if lower.contains("dart") || lower.contains("공시") || lower.contains("사업보고서") {
@@ -677,6 +720,24 @@ struct KSkillRunResult: Sendable {
     let artifactID: String?
 }
 
+enum SkillOrchestrator {
+    static func route(
+        message: String,
+        roomID: UUID,
+        attachments: [ChatAttachment] = [],
+        agentID: String? = nil,
+        matchedSkills: [SkillManifest] = []
+    ) async -> (result: KSkillRunResult, evidence: ToolEvidenceResult)? {
+        await KSkillRunEngine.runPrimary(
+            userMessage: message,
+            roomID: roomID,
+            attachments: attachments,
+            agentID: agentID,
+            matchedSkills: matchedSkills
+        )
+    }
+}
+
 enum KSkillRunEngine {
     static func run(userMessage: String, roomID: UUID, matchedSkills: [SkillManifest] = []) -> KSkillRunResult? {
         guard let intent = detectIntent(userMessage: userMessage, matchedSkills: matchedSkills) else {
@@ -703,6 +764,8 @@ enum KSkillRunEngine {
     static func runPrimary(
         userMessage: String,
         roomID: UUID,
+        attachments: [ChatAttachment] = [],
+        agentID: String? = nil,
         matchedSkills: [SkillManifest] = []
     ) async -> (result: KSkillRunResult, evidence: ToolEvidenceResult)? {
         guard let intent = detectIntent(userMessage: userMessage, matchedSkills: matchedSkills) else {
@@ -710,22 +773,32 @@ enum KSkillRunEngine {
         }
 
         let response = KSkillAssistRuntime.buildAssistResponse(intent: intent, userMessage: userMessage)
+        let chainID = chainID(for: intent)
         let mode = executionMode(for: intent)
         let health = ConnectorHealth.current()
         let shouldGatherEvidence = shouldGatherEvidence(for: intent, mode: mode, health: health)
-        let policy = ToolPolicy.evaluate(userMessage)
-        let evidence = shouldGatherEvidence ? await ToolEvidenceService.gather(for: userMessage, policy: policy) : .empty
-        let verification: SkillVerification = evidence.sources.isEmpty
-            ? .userInputRequired
-            : .verified(sourceCount: evidence.sources.count)
-        let card = card(for: response, evidence: evidence)
+        let lookupQuery = evidenceQuery(for: intent, userMessage: userMessage)
+        let policy = evidencePolicy(for: intent, userMessage: lookupQuery)
+        let gatheredEvidence = shouldGatherEvidence ? await ToolEvidenceService.gather(for: lookupQuery, policy: policy) : .empty
+        let evidence = mergeEvidence(gatheredEvidence, attachments: attachments)
+        let verification = verificationStatus(
+            intent: intent,
+            mode: mode,
+            health: health,
+            evidence: evidence,
+            attachments: attachments
+        )
+        let card = card(for: response, evidence: evidence, attachments: attachments, chainID: chainID)
         let markdown = formatCardMarkdown(
             response: response,
             card: card,
             evidence: evidence,
             verification: verification,
             mode: mode,
-            health: health
+            health: health,
+            chainID: chainID,
+            attachments: attachments,
+            actionSuggestions: actionSuggestions(for: intent, evidence: evidence, attachments: attachments)
         )
         let result = KSkillRunResult(
             roomID: roomID,
@@ -842,6 +915,23 @@ enum KSkillRunEngine {
         }
     }
 
+    private static func chainID(for intent: KSkillAssistIntent) -> SkillChainID {
+        switch intent {
+        case .stockInfoAssist, .dartDisclosureAssist:
+            return .stockMoveAnalysis
+        case .mailSummaryAssist:
+            return .mailAction
+        case .fileImageAssist, .officeReviewAssist:
+            return .documentAction
+        case .ktxBookingAssist, .mapPlaceAssist, .reservationPreparation:
+            return .tripPlanning
+        case .accountReviewAssist:
+            return .accountReview
+        case .naverNewsAssist, .naverBlogResearchAssist, .lawSearchAssist, .scholarshipAssist:
+            return .research
+        }
+    }
+
     private static func shouldGatherEvidence(
         for intent: KSkillAssistIntent,
         mode: SkillExecutionMode,
@@ -860,18 +950,126 @@ enum KSkillRunEngine {
         }
     }
 
-    private static func card(for response: KSkillAssistResponse, evidence: ToolEvidenceResult) -> SkillResultCard {
+    private static func evidenceQuery(for intent: KSkillAssistIntent, userMessage: String) -> String {
+        switch intent {
+        case .stockInfoAssist:
+            return "\(userMessage) 오늘 주가 등락률 관련 뉴스 공시 원인"
+        case .dartDisclosureAssist:
+            return "\(userMessage) DART 공시 최근 이슈"
+        case .naverNewsAssist, .naverBlogResearchAssist:
+            return "\(userMessage) 최신 뉴스 출처"
+        case .lawSearchAssist:
+            return "\(userMessage) 법령 조문 출처"
+        case .scholarshipAssist:
+            return "\(userMessage) 장학금 모집요강 출처"
+        default:
+            return userMessage
+        }
+    }
+
+    private static func evidencePolicy(for intent: KSkillAssistIntent, userMessage: String) -> ToolPolicyDecision {
+        let base = ToolPolicy.evaluate(userMessage)
+        switch intent {
+        case .stockInfoAssist:
+            return ToolPolicyDecision(
+                needsTool: true,
+                needsWeb: true,
+                needsFinance: true,
+                needsURLFetch: base.needsURLFetch,
+                needsCurrentTime: true,
+                recommendedTools: Array(Set(base.recommendedTools + ["finance_quote", "web_search", "disclosure_search"])).sorted(),
+                reason: "stock move analysis chain"
+            )
+        case .dartDisclosureAssist, .naverNewsAssist, .naverBlogResearchAssist, .lawSearchAssist, .scholarshipAssist:
+            return ToolPolicyDecision(
+                needsTool: true,
+                needsWeb: true,
+                needsFinance: base.needsFinance,
+                needsURLFetch: base.needsURLFetch,
+                needsCurrentTime: base.needsCurrentTime,
+                recommendedTools: Array(Set(base.recommendedTools + ["web_search"])).sorted(),
+                reason: "public research chain"
+            )
+        default:
+            return base
+        }
+    }
+
+    private static func mergeEvidence(_ evidence: ToolEvidenceResult, attachments: [ChatAttachment]) -> ToolEvidenceResult {
+        guard !attachments.isEmpty else { return evidence }
+        let attachmentSections = attachments.compactMap { attachment -> String? in
+            guard let text = attachment.textContent?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else {
+                return "[첨부자료]\n파일명: \(attachment.fileName)\n상태: 텍스트 추출 결과 없음"
+            }
+            return """
+            [첨부자료]
+            파일명: \(attachment.fileName)
+            내용 미리보기:
+            \(String(text.prefix(2_000)))
+            """
+        }
+        let attachmentContext = attachmentSections.joined(separator: "\n\n")
+        let context = [evidence.promptContext, attachmentContext]
+            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .joined(separator: "\n\n")
+        return ToolEvidenceResult(
+            promptContext: context,
+            sources: evidence.sources + attachmentAgentSources(attachments)
+        )
+    }
+
+    private static func verificationStatus(
+        intent: KSkillAssistIntent,
+        mode: SkillExecutionMode,
+        health: ConnectorHealth,
+        evidence: ToolEvidenceResult,
+        attachments: [ChatAttachment]
+    ) -> SkillVerification {
+        if !evidence.sources.isEmpty {
+            return mode == .readOnlyLookup
+                ? .verified(sourceCount: evidence.sources.count)
+                : .partiallyVerified(sourceCount: evidence.sources.count)
+        }
+        if !attachments.isEmpty {
+            return .partiallyVerified(sourceCount: attachments.count)
+        }
+        if mode == .readOnlyLookup {
+            return .connectorUnavailable
+        }
+        return .userInputRequired
+    }
+
+    private static func attachmentAgentSources(_ attachments: [ChatAttachment]) -> [AgentWindowManager.SourceReference] {
+        attachments.map {
+            AgentWindowManager.SourceReference(
+                title: $0.fileName,
+                url: $0.localPath ?? "attachment://\($0.id.uuidString)",
+                provider: "UserAttachment",
+                accessedAt: Date()
+            )
+        }
+    }
+
+    private static func card(
+        for response: KSkillAssistResponse,
+        evidence: ToolEvidenceResult,
+        attachments: [ChatAttachment] = [],
+        chainID: SkillChainID? = nil
+    ) -> SkillResultCard {
         var summary = [response.message]
         if !evidence.promptContext.isEmpty {
-            summary.append("확인한 외부 근거를 바탕으로 원인 후보와 다음 확인 포인트를 분리했습니다.")
+            summary.append("확인한 근거를 바탕으로 요약, 해야 할 일, 주의점을 분리했습니다.")
+        }
+        if !attachments.isEmpty {
+            summary.append("첨부 \(attachments.count)개를 이 방의 자료로 묶어 카드에 반영했습니다.")
         }
         return SkillResultCard(
             type: cardType(for: response.intent),
             title: response.title,
             summary: summary,
-            actionItems: response.requiredUserInputs.map { "\($0) 알려주기" },
+            actionItems: actionItems(for: response.intent, requiredInputs: response.requiredUserInputs, attachments: attachments),
             cautions: response.hardBlockedActions,
-            nextActionButtons: nextActionButtons(for: response.intent)
+            nextActionButtons: nextActionButtons(for: response.intent, chainID: chainID)
         )
     }
 
@@ -912,18 +1110,38 @@ enum KSkillRunEngine {
         ]
     }
 
-    private static func nextActionButtons(for intent: KSkillAssistIntent) -> [String] {
+    private static func actionItems(
+        for intent: KSkillAssistIntent,
+        requiredInputs: [String],
+        attachments: [ChatAttachment]
+    ) -> [String] {
+        if !attachments.isEmpty {
+            switch intent {
+            case .mailSummaryAssist:
+                return ["요청사항 추출", "날짜·시간 후보 확인", "답장 초안 만들기", "할 일 카드로 저장"]
+            case .fileImageAssist, .officeReviewAssist:
+                return ["핵심 요약", "숫자·날짜 추출", "마감·위험 포인트 확인", "문서 artifact 저장"]
+            case .accountReviewAssist:
+                return ["거래내역 정규화", "중복·이상 후보 표시", "증빙 필요 항목 정리", "정산 메일 초안"]
+            default:
+                break
+            }
+        }
+        return requiredInputs.map { "\($0) 알려주기" }
+    }
+
+    private static func nextActionButtons(for intent: KSkillAssistIntent, chainID: SkillChainID? = nil) -> [String] {
         switch intent {
         case .mailSummaryAssist:
-            return ["메일 붙여넣기", "캡처 올리기", "답장 초안"]
+            return ["캘린더 초안", "답장 초안", "할 일로 저장"]
         case .fileImageAssist:
-            return ["파일 올리기", "요약", "위험 포인트"]
+            return ["요약 카드", "마감 추출", "체크리스트"]
         case .stockInfoAssist:
-            return ["기사 붙여넣기", "공시 올리기", "리스크 정리"]
+            return ["원인 후보", "뉴스 근거", "공시 확인"]
         case .dartDisclosureAssist:
             return ["공시 PDF 올리기", "숫자 뽑기", "리스크 정리"]
         case .ktxBookingAssist:
-            return ["검색 조건 복사", "출발역 후보", "시간대 정리"]
+            return ["역 후보", "검색 조건 복사", "일정 초안"]
         case .mapPlaceAssist, .reservationPreparation:
             return ["장소 링크 붙여넣기", "비교 기준", "예약 체크"]
         case .accountReviewAssist:
@@ -939,10 +1157,22 @@ enum KSkillRunEngine {
         evidence: ToolEvidenceResult = .empty,
         verification: SkillVerification = .userInputRequired,
         mode: SkillExecutionMode = .assistOnly,
-        health: ConnectorHealth = .current()
+        health: ConnectorHealth = .current(),
+        chainID: SkillChainID? = nil,
+        attachments: [ChatAttachment] = [],
+        actionSuggestions: [ActionSuggestion] = []
     ) -> String {
         var lines = KSkillAssistRuntime.formatMarkdown(response)
             .components(separatedBy: "\n")
+
+        if let chainID {
+            lines.append("")
+            lines.append("### 실행 체인")
+            lines.append("- \(chainID.rawValue)")
+            for step in chainSteps(for: chainID) {
+                lines.append("☑ \(step)")
+            }
+        }
 
         lines.append("")
         lines.append("### 실행 모드")
@@ -960,6 +1190,15 @@ enum KSkillRunEngine {
             }
         }
 
+        if !actionSuggestions.isEmpty {
+            lines.append("")
+            lines.append("### 제안 액션")
+            for suggestion in actionSuggestions {
+                let approval = suggestion.requiresApproval ? "승인 필요" : "바로 초안 가능"
+                lines.append("- \(suggestion.title) [\(approval)]: \(suggestion.preview)")
+            }
+        }
+
         lines.append("")
         lines.append("### 검증 상태")
         lines.append("- 상태: \(verification.status)")
@@ -972,6 +1211,13 @@ enum KSkillRunEngine {
             lines.append("")
             lines.append("### 확인한 근거")
             lines.append(String(evidence.promptContext.prefix(2_000)))
+        } else if !attachments.isEmpty {
+            lines.append("")
+            lines.append("### 확인한 첨부")
+            for attachment in attachments {
+                let status = attachment.textContent?.isEmpty == false ? "텍스트 추출됨" : "텍스트 추출 없음"
+                lines.append("- \(attachment.fileName): \(status)")
+            }
         } else if mode == .readOnlyLookup {
             lines.append("")
             lines.append("### 대체 실행")
@@ -987,5 +1233,63 @@ enum KSkillRunEngine {
         lines.append("- calendarWrite: \(health.calendarWrite.rawValue)")
 
         return lines.joined(separator: "\n")
+    }
+
+    private static func chainSteps(for chainID: SkillChainID) -> [String] {
+        switch chainID {
+        case .stockMoveAnalysis:
+            return ["종목/질문 정규화", "시세 조회", "뉴스 근거 수집", "공시/시장 맥락 확인", "원인 후보 카드화"]
+        case .mailAction:
+            return ["메일 본문 읽기", "요청사항 추출", "날짜·시간 후보 추출", "답장/일정/할 일 제안"]
+        case .documentAction:
+            return ["첨부 텍스트 추출", "문서 유형 판단", "요약·숫자·날짜 추출", "체크리스트/문서화 제안"]
+        case .tripPlanning:
+            return ["출발/도착 조건 정리", "역·장소 후보 정리", "검색 조건 카드화", "일정 초안 제안"]
+        case .accountReview:
+            return ["거래 자료 읽기", "금액·날짜 정규화", "이상/중복 후보 표시", "증빙/정산 액션 제안"]
+        case .research:
+            return ["질문 정규화", "공개 출처 수집", "출처별 주장 분리", "확인 포인트 카드화"]
+        }
+    }
+
+    private static func actionSuggestions(
+        for intent: KSkillAssistIntent,
+        evidence: ToolEvidenceResult,
+        attachments: [ChatAttachment]
+    ) -> [ActionSuggestion] {
+        switch intent {
+        case .mailSummaryAssist:
+            return [
+                ActionSuggestion(type: "calendar_draft", title: "캘린더 초안 만들기", preview: "메일에서 발견한 날짜·시간 후보를 일정 초안으로 정리합니다.", requiresApproval: true),
+                ActionSuggestion(type: "reply_draft", title: "답장 초안 만들기", preview: "요청사항과 마감 기준으로 답장 초안을 만듭니다."),
+                ActionSuggestion(type: "todo_card", title: "할 일 카드로 저장", preview: "내가 해야 할 일을 이 방의 카드로 남깁니다.")
+            ]
+        case .fileImageAssist, .officeReviewAssist:
+            return [
+                ActionSuggestion(type: "deadline_extract", title: "마감·담당자 찾기", preview: "문서 안의 날짜, 담당, 제출물 후보를 뽑습니다."),
+                ActionSuggestion(type: "checklist", title: "체크리스트 만들기", preview: "문서 내용을 실행 항목으로 바꿉니다."),
+                ActionSuggestion(type: "document_artifact", title: "요약 문서 저장", preview: "카드 내용을 Markdown 문서로 저장합니다.")
+            ]
+        case .stockInfoAssist:
+            return [
+                ActionSuggestion(type: "stock_memo", title: "투자 메모로 저장", preview: "시세·뉴스·공시 근거와 확인 포인트를 방 안에 남깁니다."),
+                ActionSuggestion(type: "disclosure_followup", title: "공시 더 확인", preview: "최근 공시와 실적 관련 근거를 이어서 확인합니다.")
+            ]
+        case .ktxBookingAssist, .mapPlaceAssist:
+            return [
+                ActionSuggestion(type: "copy_search_conditions", title: "검색 조건 복사", preview: "출발/도착/날짜 조건을 코레일·지도에 붙여넣기 좋게 정리합니다."),
+                ActionSuggestion(type: "calendar_draft", title: "일정 초안 만들기", preview: "이동 후보를 일정 초안으로 만듭니다.", requiresApproval: true)
+            ]
+        case .accountReviewAssist:
+            return [
+                ActionSuggestion(type: "settlement_table", title: "정산표 만들기", preview: "거래내역을 금액·일자·증빙 상태로 정리합니다."),
+                ActionSuggestion(type: "evidence_mail", title: "증빙 요청 메일", preview: "누락 증빙을 요청하는 메일 초안을 만듭니다.")
+            ]
+        default:
+            if evidence.sources.isEmpty && attachments.isEmpty { return [] }
+            return [
+                ActionSuggestion(type: "save_card", title: "카드 저장", preview: "확인한 내용을 방 안에 결과 카드로 남깁니다.")
+            ]
+        }
     }
 }

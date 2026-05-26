@@ -1025,7 +1025,7 @@ enum BlogSourceProfileBuilder {
 
 // MARK: - ChatAttachment 모델
 
-struct ChatAttachment: Identifiable, Codable {
+struct ChatAttachment: Identifiable, Codable, Sendable {
     let id: UUID
     let fileName: String
     let fileSize: Int
@@ -1044,7 +1044,7 @@ struct ChatAttachment: Identifiable, Codable {
         self.timestamp = Date()
     }
 
-    enum AttachmentType: String, Codable {
+    enum AttachmentType: String, Codable, Sendable {
         case text       // .txt, .md, .swift, .py 등
         case image      // .png, .jpg, .gif 등
         case pdf        // .pdf
