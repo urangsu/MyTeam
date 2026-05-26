@@ -106,6 +106,10 @@ class AgentWindowManager: ObservableObject {
     /// Round 278 1-F: WorkflowOrchestrator 진행 단계 한 줄 설명 ("계획 수립 중…", "초안 작성 중…" 등).
     /// 작업 완료/실패/취소 시 nil로 리셋. UI 인디케이터가 표시.
     @Published var workflowStatusText: String? = nil
+    /// room별 workflow 진행 문구. UI는 현재 방 값을 먼저 읽어 방 간 진행 상태 오염을 막는다.
+    @Published private(set) var workflowStatusTextByRoom: [UUID: String] = [:]
+    /// room별 workflowID. 전역 currentWorkflowID는 레거시/진단 호환용으로만 남긴다.
+    @Published private(set) var currentWorkflowIDByRoom: [UUID: UUID] = [:]
     /// room별 마지막 turn profile — /why, /last, diagnostics용 읽기 전용 상태.
     @Published var lastTurnProfileByRoom: [UUID: TurnProfile] = [:]
     /// room별 마지막 goal interpretation — 관측용 상태.
@@ -394,9 +398,12 @@ class AgentWindowManager: ObservableObject {
         // Round 278 1-F: activeWorkflowStep이 nil(=완료)이면 인디케이터 해제,
         //                매핑이 있으면 한글 상태 텍스트로 자동 갱신.
         if let step = activeWorkflowStep {
-            workflowStatusText = TeamRuntimeStatusCopy.koreanStatus(forWorkflowStep: step)
+            let status = TeamRuntimeStatusCopy.koreanStatus(forWorkflowStep: step)
+            workflowStatusTextByRoom[roomID] = status
+            workflowStatusText = status
         } else {
             // nil step 전달은 명시적 완료 신호 — 인디케이터 즉시 해제
+            workflowStatusTextByRoom.removeValue(forKey: roomID)
             workflowStatusText = nil
         }
     }
@@ -428,6 +435,21 @@ class AgentWindowManager: ObservableObject {
     }
 
     @MainActor
+    func isWorkflowRunning(for roomID: UUID) -> Bool {
+        roomRuntimeStore.activeTask(for: roomID) != nil
+    }
+
+    @MainActor
+    func workflowStatusText(for roomID: UUID) -> String? {
+        workflowStatusTextByRoom[roomID]
+    }
+
+    @MainActor
+    func currentWorkflowID(for roomID: UUID) -> UUID? {
+        currentWorkflowIDByRoom[roomID]
+    }
+
+    @MainActor
     func activeWorkflowTask(for roomID: UUID) -> Task<Void, Never>? {
         roomRuntimeStore.activeTask(for: roomID)
     }
@@ -435,6 +457,23 @@ class AgentWindowManager: ObservableObject {
     @MainActor
     func setActiveWorkflowTask(_ task: Task<Void, Never>?, roomID: UUID) {
         roomRuntimeStore.setActiveTask(task, for: roomID)
+        if task == nil {
+            currentWorkflowIDByRoom.removeValue(forKey: roomID)
+            workflowStatusTextByRoom.removeValue(forKey: roomID)
+        }
+    }
+
+    @MainActor
+    func setCurrentWorkflowID(_ workflowID: UUID?, roomID: UUID) {
+        if let workflowID {
+            currentWorkflowIDByRoom[roomID] = workflowID
+            currentWorkflowID = workflowID
+        } else {
+            currentWorkflowIDByRoom.removeValue(forKey: roomID)
+            if selectedTeamWorkroomID == roomID || currentRoomID == roomID {
+                currentWorkflowID = nil
+            }
+        }
     }
 
     @MainActor

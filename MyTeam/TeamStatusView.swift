@@ -729,7 +729,9 @@ struct TeamStatusView: View {
             // ── 하단: 입력창 (팀 채팅 + 첨부파일) ──
             // layoutPriority(1): ScrollView보다 우선 공간 확보 → 잘림 방지
             VStack(spacing: 0) {
-                let isTeamActive = manager.isWorkflowRunning || (manager.teamRuntimeState?.isActive == true)
+                let activeRoomID = manager.selectedTeamWorkroomID
+                let isTeamActive = activeRoomID.map { manager.isWorkflowRunning(for: $0) } == true
+                    || (manager.teamRuntimeState?.roomID == activeRoomID && manager.teamRuntimeState?.isActive == true)
                 // Round 278 1-F: 작업 중 인디케이터 — Claude/Gemini 수준 "동작 중" 표시
                 // 1) 상단 1px 슬라이딩 진행 바
                 if isTeamActive {
@@ -741,8 +743,8 @@ struct TeamStatusView: View {
                 // Round 278 1-F: 2) 상태 텍스트 + 점 애니메이션 인디케이터
                 if isTeamActive,
                    let statusText = TeamRuntimeStatusCopy.displayText(
-                       workflowStatusText: manager.workflowStatusText,
-                       teamState: manager.teamRuntimeState
+                       workflowStatusText: activeRoomID.flatMap { manager.workflowStatusText(for: $0) },
+                       teamState: manager.teamRuntimeState?.roomID == activeRoomID ? manager.teamRuntimeState : nil
                    ) {
                     WorkflowProgressIndicatorView(
                         statusText: statusText,
