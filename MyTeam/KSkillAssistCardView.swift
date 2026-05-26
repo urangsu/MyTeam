@@ -39,20 +39,32 @@ struct KSkillAssistCardView: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(isDarkMode ? .white : .primary)
             Spacer()
-            localBadge
+            statusBadge
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
     }
 
-    private var localBadge: some View {
-        Text("로컬 처리")
+    private var statusBadge: some View {
+        Text(statusBadgeTitle)
             .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(.teal)
+            .foregroundStyle(statusBadgeColor)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(Color.teal.opacity(0.12))
+            .background(statusBadgeColor.opacity(0.12))
             .cornerRadius(4)
+    }
+
+    private var statusBadgeTitle: String {
+        if !sections.hardBlockedActions.isEmpty { return "안전 안내" }
+        if !sections.requiredInputs.isEmpty { return "입력 필요" }
+        return "스킬 안내"
+    }
+
+    private var statusBadgeColor: Color {
+        if !sections.hardBlockedActions.isEmpty { return .red }
+        if !sections.requiredInputs.isEmpty { return .blue }
+        return .teal
     }
 
     // MARK: - Content
