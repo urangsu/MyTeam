@@ -31,6 +31,15 @@ enum ConnectorStatus: Codable, Sendable, Equatable {
             return reason
         }
     }
+
+    var isOperational: Bool {
+        switch self {
+        case .available, .degraded, .approvalRequired:
+            return true
+        case .unavailable, .needsSetup:
+            return false
+        }
+    }
 }
 
 struct ConnectorHealth: Codable, Sendable, Equatable {
@@ -61,23 +70,44 @@ final class ConnectorRegistry: ObservableObject {
     static func defaultHealth() -> ConnectorHealth {
         ConnectorHealth(
             stockQuote: quoteConnectorStatus(),
-            newsSearch: .unavailable(reason: "공개 검색 커넥터가 아직 설정되지 않았습니다."),
-            disclosureSearch: .unavailable(reason: "공개 검색 커넥터가 아직 설정되지 않았습니다."),
-            webFetch: .unavailable(reason: "웹 조회 커넥터가 아직 설정되지 않았습니다."),
+            newsSearch: newsSearchStatus(),
+            disclosureSearch: disclosureSearchStatus(),
+            webFetch: webFetchStatus(),
             pdfText: .available,
             imageOCR: .available,
             mailRead: .needsSetup(reason: "메일 계정 연결이 필요합니다."),
             calendarDraft: .approvalRequired,
-            mapsSearch: .available,
+            mapsSearch: webFetchStatus(),
             trainSearch: .needsSetup(reason: "열차 조회 연동이 아직 설정되지 않았습니다.")
         )
     }
 
     private static func quoteConnectorStatus() -> ConnectorStatus {
-        let hasQuoteConnector = AgentToolRegistry.shared.tools["finance_quote"] != nil
-        return hasQuoteConnector
-            ? .available
+        let hasQuoteLookupTool = AgentToolRegistry.shared.tools["finance_quote"] != nil
+        return hasQuoteLookupTool
+            ? .degraded(reason: "시세 조회는 웹 폴백으로만 동작합니다.")
             : .needsSetup(reason: "시세 조회 커넥터가 설정되지 않았습니다.")
+    }
+
+    private static func newsSearchStatus() -> ConnectorStatus {
+        let hasWebSearchTool = AgentToolRegistry.shared.tools["web_search"] != nil
+        return hasWebSearchTool
+            ? .available
+            : .needsSetup(reason: "뉴스 검색용 웹 커넥터가 설정되지 않았습니다.")
+    }
+
+    private static func disclosureSearchStatus() -> ConnectorStatus {
+        let hasWebSearchTool = AgentToolRegistry.shared.tools["web_search"] != nil
+        return hasWebSearchTool
+            ? .degraded(reason: "공시는 DART/KIND 전용 커넥터가 없어 웹 폴백으로만 동작합니다.")
+            : .needsSetup(reason: "DART/KIND 공시 커넥터가 설정되지 않았습니다.")
+    }
+
+    private static func webFetchStatus() -> ConnectorStatus {
+        let hasWebSearchTool = AgentToolRegistry.shared.tools["web_search"] != nil
+        return hasWebSearchTool
+            ? .available
+            : .needsSetup(reason: "웹 조회 커넥터가 설정되지 않았습니다.")
     }
 
     func refresh() {
@@ -93,9 +123,9 @@ final class ConnectorRegistry: ObservableObject {
 
         return ConnectorHealth(
             stockQuote: Self.quoteConnectorStatus(),
-            newsSearch: hasWeb ? .available : .unavailable(reason: "웹 검색 모델 키가 없습니다."),
-            disclosureSearch: hasWeb ? .available : .unavailable(reason: "공시/뉴스 조회용 모델 키가 없습니다."),
-            webFetch: hasWeb ? .available : .unavailable(reason: "웹 조회 모델 키가 없습니다."),
+            newsSearch: Self.newsSearchStatus(),
+            disclosureSearch: Self.disclosureSearchStatus(),
+            webFetch: Self.webFetchStatus(),
             pdfText: .available,
             imageOCR: .available,
             mailRead: .needsSetup(reason: "Gmail 또는 Mail 읽기 연결이 필요합니다."),
