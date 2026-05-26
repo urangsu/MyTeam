@@ -15,7 +15,7 @@ enum ScheduledTaskApprovalResolver {
         roomID: UUID,
         manager: AgentWindowManager
     ) -> ScheduledTaskApprovalStatus {
-        guard task.roomID == nil || task.roomID == roomID else {
+        guard task.roomID == roomID else {
             return .none
         }
 
@@ -35,7 +35,7 @@ enum ScheduledTaskApprovalResolver {
         manager: AgentWindowManager
     ) -> Bool {
         manager.automationTasks.contains { task in
-            guard task.roomID == nil || task.roomID == roomID else { return false }
+            guard task.roomID == roomID else { return false }
             return manager.pendingApprovalTaskIDs.contains(task.id)
         }
     }
@@ -45,7 +45,7 @@ enum ScheduledTaskApprovalResolver {
         manager: AgentWindowManager
     ) -> Bool {
         manager.automationTasks.contains { task in
-            guard task.roomID == nil || task.roomID == roomID else { return false }
+            guard task.roomID == roomID else { return false }
             return task.requiresApproval
         }
     }

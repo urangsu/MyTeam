@@ -173,7 +173,7 @@ enum BriefingActionSuggestionProvider {
         return manager.automationTasks
             .filter { task in
                 guard task.isEnabled else { return false }
-                guard task.roomID == nil || task.roomID == roomID else { return false }
+                guard task.roomID == roomID else { return false }
                 guard calendar.isDate(task.nextRunAt, inSameDayAs: now) else { return false }
                 return true
             }

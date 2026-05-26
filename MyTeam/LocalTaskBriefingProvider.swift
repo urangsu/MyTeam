@@ -85,7 +85,7 @@ enum LocalTaskBriefingProvider {
         let todaysAutomationTasks = manager.automationTasks
             .filter { task in
                 guard task.isEnabled else { return false }
-                guard task.roomID == nil || task.roomID == roomID else { return false }
+                guard task.roomID == roomID else { return false }
                 return calendar.isDate(task.nextRunAt, inSameDayAs: now)
             }
             .sorted { lhs, rhs in lhs.nextRunAt < rhs.nextRunAt }

@@ -34,7 +34,7 @@ enum BriefingActionIntegrityPolicy {
         let calendar = Calendar.current
         return manager.automationTasks.contains { task in
             guard task.isEnabled else { return false }
-            guard task.roomID == nil || task.roomID == roomID else { return false }
+            guard task.roomID == roomID else { return false }
             return calendar.isDate(task.nextRunAt, inSameDayAs: now)
         }
     }

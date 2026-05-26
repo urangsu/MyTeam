@@ -353,6 +353,10 @@ class ConversationMemory {
             return true
 
         case "/schedule":
+            guard let commandRoomID = roomID else {
+                post("스케줄 업무를 등록할 방을 먼저 선택해 주세요.")
+                return true
+            }
             guard let parsed = parseSchedule(argument) else {
                 post("""
                 사용법:
@@ -375,13 +379,19 @@ class ConversationMemory {
                 prompt: parsed.prompt,
                 nextRunAt: parsed.nextRunAt,
                 repeatInterval: parsed.repeatInterval,
-                roomID: roomID
+                roomID: commandRoomID
             )
             post("스케줄 업무를 추가했습니다. \(task.scheduleText) · \(task.title)")
             return true
 
         case "/tasks":
-            let tasks = manager.automationTasks.sorted { $0.nextRunAt < $1.nextRunAt }
+            guard let commandRoomID = roomID else {
+                post("스케줄 업무를 볼 방을 먼저 선택해 주세요.")
+                return true
+            }
+            let tasks = manager.automationTasks
+                .filter { $0.roomID == commandRoomID }
+                .sorted { $0.nextRunAt < $1.nextRunAt }
             guard !tasks.isEmpty else {
                 post("등록된 스케줄 업무가 없습니다.")
                 return true
@@ -396,31 +406,43 @@ class ConversationMemory {
             return true
 
         case "/cancel":
+            guard let commandRoomID = roomID else {
+                post("스케줄 업무를 취소할 방을 먼저 선택해 주세요.")
+                return true
+            }
             guard let number = Int(argument.trimmingCharacters(in: .whitespacesAndNewlines)) else {
                 post("취소할 번호를 입력해 주세요. 예: /cancel 1")
                 return true
             }
-            post(manager.cancelAutomationTask(displayIndex: number) ? "스케줄 업무 \(number)번을 삭제했습니다." : "해당 번호의 스케줄 업무를 찾지 못했습니다.")
+            post(manager.cancelAutomationTask(displayIndex: number, roomID: commandRoomID) ? "스케줄 업무 \(number)번을 삭제했습니다." : "해당 번호의 스케줄 업무를 찾지 못했습니다.")
             return true
 
         case "/edit-task":
+            guard let commandRoomID = roomID else {
+                post("스케줄 업무를 수정할 방을 먼저 선택해 주세요.")
+                return true
+            }
             let editParts = argument.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
             guard editParts.count >= 2 else {
                 post("사용법: /edit-task {ID앞6자} {옵션}\n옵션: HH:MM | --disable | --enable | --approval on|off")
                 return true
             }
-            let taskResult = manager.editAutomationTask(idPrefix: String(editParts[0]), option: String(editParts[1]))
+            let taskResult = manager.editAutomationTask(idPrefix: String(editParts[0]), option: String(editParts[1]), roomID: commandRoomID)
             post(taskResult)
             return true
 
         case "/approve":
+            guard let commandRoomID = roomID else {
+                post("스케줄 업무를 승인할 방을 먼저 선택해 주세요.")
+                return true
+            }
             guard !argument.isEmpty else {
                 post("승인할 작업 ID를 입력해 주세요. 예: /approve abc123")
                 return true
             }
             let prefix = argument.lowercased()
-            if let task = manager.automationTasks.first(where: { $0.id.uuidString.lowercased().hasPrefix(prefix) }) {
-                manager.approveAutomationTask(id: task.id)
+            if let task = manager.automationTasks.first(where: { $0.roomID == commandRoomID && $0.id.uuidString.lowercased().hasPrefix(prefix) }) {
+                manager.approveAutomationTask(id: task.id, roomID: commandRoomID)
                 post("✅ '\(task.title)' 작업을 승인하고 실행합니다.")
             } else {
                 post("해당 ID의 승인 대기 작업을 찾지 못했습니다.")
@@ -428,13 +450,17 @@ class ConversationMemory {
             return true
 
         case "/skip":
+            guard let commandRoomID = roomID else {
+                post("스케줄 업무를 건너뛸 방을 먼저 선택해 주세요.")
+                return true
+            }
             guard !argument.isEmpty else {
                 post("건너뜔 작업 ID를 입력해 주세요. 예: /skip abc123")
                 return true
             }
             let prefix = argument.lowercased()
-            if let task = manager.automationTasks.first(where: { $0.id.uuidString.lowercased().hasPrefix(prefix) }) {
-                manager.skipAutomationTask(id: task.id)
+            if let task = manager.automationTasks.first(where: { $0.roomID == commandRoomID && $0.id.uuidString.lowercased().hasPrefix(prefix) }) {
+                manager.skipAutomationTask(id: task.id, roomID: commandRoomID)
                 post("⏭️ '\(task.title)' 이번 회차를 건너뜠습니다.")
             } else {
                 post("해당 ID의 작업을 찾지 못했습니다.")

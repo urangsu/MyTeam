@@ -1033,12 +1033,16 @@ struct TeamStatusView: View {
             scheduleDraftError = "시간은 09:00 형식으로 입력해 주세요."
             return
         }
+        guard let roomID = manager.selectedTeamWorkroomID else {
+            scheduleDraftError = "스케줄을 등록할 워크룸을 먼저 선택해 주세요."
+            return
+        }
 
         let assignedID = scheduleDraftAgentID == "auto" ? nil : scheduleDraftAgentID
         manager.addAutomationTask(
             prompt: prompt,
             nextRunAt: nextRunAt,
-            roomID: manager.selectedTeamWorkroomID,  // Round 241A
+            roomID: roomID,
             assignedAgentID: assignedID
         )
         scheduleDraftPrompt = ""

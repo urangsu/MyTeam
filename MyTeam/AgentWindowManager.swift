@@ -1440,8 +1440,13 @@ class AgentWindowManager: ObservableObject {
         automationTaskPolicies.removeValue(forKey: id)
     }
 
-    func cancelAutomationTask(displayIndex: Int) -> Bool {
-        let sorted = automationTasks.sorted { $0.nextRunAt < $1.nextRunAt }
+    func cancelAutomationTask(displayIndex: Int, roomID: UUID? = nil) -> Bool {
+        let sorted = automationTasks
+            .filter { task in
+                guard let roomID else { return true }
+                return task.roomID == roomID
+            }
+            .sorted { $0.nextRunAt < $1.nextRunAt }
         guard displayIndex > 0, displayIndex <= sorted.count else { return false }
         cancelAutomationTask(id: sorted[displayIndex - 1].id)
         return true
@@ -1451,9 +1456,13 @@ class AgentWindowManager: ObservableObject {
     /// - idPrefix: 작업 UUID 앞 6자 이상
     /// - options: "HH:MM" | "--disable" | "--enable" | "--approval on|off"
     /// - Returns: 사용자에게 보여줄 결과 메시지
-    func editAutomationTask(idPrefix: String, option: String) -> String {
+    func editAutomationTask(idPrefix: String, option: String, roomID: UUID? = nil) -> String {
         let prefix = idPrefix.lowercased()
-        guard let idx = automationTasks.firstIndex(where: { $0.id.uuidString.lowercased().hasPrefix(prefix) }) else {
+        guard let idx = automationTasks.firstIndex(where: { task in
+            guard task.id.uuidString.lowercased().hasPrefix(prefix) else { return false }
+            guard let roomID else { return true }
+            return task.roomID == roomID
+        }) else {
             return "작업 ID '\(idPrefix)'를 찾지 못했습니다. /tasks 로 목록을 확인하세요."
         }
         let opt = option.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -1491,31 +1500,38 @@ class AgentWindowManager: ObservableObject {
     @Published var pendingApprovalTaskIDs: Set<UUID> = []
 
     /// 승인 대기 중인 task를 승인하여 즉시 실행
-    func approveAutomationTask(id: UUID) {
-        pendingApprovalTaskIDs.remove(id)
+    func approveAutomationTask(id: UUID, roomID: UUID? = nil) {
         guard let task = automationTasks.first(where: { $0.id == id }) else { return }
+        if let roomID, task.roomID != roomID { return }
+        pendingApprovalTaskIDs.remove(id)
         executeApprovedTask(task)
     }
 
     /// 승인 대기 중인 task를 이번 회차 건너뜀 (다음 실행 시각으로 미룸)
-    func skipAutomationTask(id: UUID) {
-        pendingApprovalTaskIDs.remove(id)
+    func skipAutomationTask(id: UUID, roomID: UUID? = nil) {
         guard let idx = automationTasks.firstIndex(where: { $0.id == id }) else { return }
+        if let roomID, automationTasks[idx].roomID != roomID { return }
+        let title = automationTasks[idx].title
+        let taskRoomID = automationTasks[idx].roomID
+        pendingApprovalTaskIDs.remove(id)
         if let interval = automationTasks[idx].repeatInterval {
             automationTasks[idx].nextRunAt = Date().addingTimeInterval(interval)
         } else {
             automationTasks.remove(at: idx)
             automationTaskPolicies.removeValue(forKey: id)
         }
-        if let rid = currentRoomID {
+        if let rid = taskRoomID {
             addChatLog(roomID: rid, agentID: "system", agentName: "스케줄",
-                       text: "⏭️ '\(automationTasks.first(where: { $0.id == id })?.title ?? "작업")'을 건너뜠습니다.",
+                       text: "⏭️ '\(title)'을 건너뜠습니다.",
                        isUser: false)
         }
     }
 
     private func executeApprovedTask(_ task: AutomationTask) {
-        let targetRoomID = task.roomID ?? currentRoomID
+        guard let targetRoomID = task.roomID else {
+            AppLog.warning("[Schedule] roomID 없는 스케줄 업무 실행 차단: \(task.title)")
+            return
+        }
         Task { @MainActor in
             let substitute = self.activeAgents.first(where: { $0.id == task.assignedAgentID })
                 ?? self.teamLeader() ?? self.activeAgents.first
@@ -1527,7 +1543,7 @@ class AgentWindowManager: ObservableObject {
 
     private func runDueAutomationTasks() {
         let now = Date()
-        let dueTasks = automationTasks.filter { $0.isEnabled && $0.nextRunAt <= now }
+        let dueTasks = automationTasks.filter { $0.isEnabled && $0.roomID != nil && $0.nextRunAt <= now }
         guard !dueTasks.isEmpty else { return }
 
         for task in dueTasks {
@@ -1537,7 +1553,7 @@ class AgentWindowManager: ObservableObject {
             let (allowed, reason) = AutomationPolicy.isAllowed(task.prompt)
             guard allowed else {
                 AppLog.warning("[Schedule] 차단됨: \(task.title) — \(reason ?? "")")
-                if let rid = task.roomID ?? currentRoomID {
+                if let rid = task.roomID {
                     addChatLog(roomID: rid, agentID: "system", agentName: "스케줄",
                                text: "⚠️ 스케줄 업무 차단: \(reason ?? "정책 위반")",
                                isUser: false)
@@ -1545,17 +1561,18 @@ class AgentWindowManager: ObservableObject {
                 continue
             }
 
-            let targetRoomID = task.roomID ?? currentRoomID
+            guard let targetRoomID = task.roomID else {
+                AppLog.warning("[Schedule] roomID 없는 스케줄 업무 건너뜀: \(task.title)")
+                continue
+            }
 
             // 승인 대기 처리: requiresApproval=true이고 아직 대기 중이 아니면 승인 요청
             if task.requiresApproval && !pendingApprovalTaskIDs.contains(task.id) {
                 pendingApprovalTaskIDs.insert(task.id)
                 let shortId = String(task.id.uuidString.prefix(6))
-                if let rid = targetRoomID {
-                    addChatLog(roomID: rid, agentID: "system", agentName: "스케줄",
-                               text: "✋ 스케줄 업무 승인 요청: \"\(task.title)\"\n/approve \(shortId) — 승인 실행\n/skip \(shortId) — 이번 회차 건너뜀\n(2분 내 응답 없으면 자동 실행)",
-                               isUser: false)
-                }
+                addChatLog(roomID: targetRoomID, agentID: "system", agentName: "스케줄",
+                           text: "✋ 스케줄 업무 승인 요청: \"\(task.title)\"\n/approve \(shortId) — 승인 실행\n/skip \(shortId) — 이번 회차 건너뜀\n(2분 내 응답 없으면 자동 실행)",
+                           isUser: false)
                 // 2분 타임아웃 후 자동 실행
                 Task { @MainActor [weak self] in
                     try? await Task.sleep(nanoseconds: 120_000_000_000)
@@ -1574,11 +1591,9 @@ class AgentWindowManager: ObservableObject {
                 automationTaskPolicies.removeValue(forKey: task.id)
             }
 
-            if let rid = targetRoomID {
-                addChatLog(roomID: rid, agentID: "system", agentName: "스케줄",
-                           text: "스케줄 업무 실행: \(task.prompt)",
-                           isUser: false)
-            }
+            addChatLog(roomID: targetRoomID, agentID: "system", agentName: "스케줄",
+                       text: "스케줄 업무 실행: \(task.prompt)",
+                       isUser: false)
 
             Task {
                 let assignedAgent = task.assignedAgentID.flatMap { assignedID in
@@ -1589,15 +1604,15 @@ class AgentWindowManager: ObservableObject {
                 }
                 let substitute = activeAssignee ?? fallbackTeamLeader(for: targetRoomID)
 
-                if let assignedAgent, activeAssignee == nil, let substitute, let rid = targetRoomID {
-                    addChatLog(roomID: rid, agentID: substitute.id, agentName: substitute.displayName,
+                if let assignedAgent, activeAssignee == nil, let substitute {
+                    addChatLog(roomID: targetRoomID, agentID: substitute.id, agentName: substitute.displayName,
                                text: "\(assignedAgent.displayName)은 지금 팀에 없어서 제가 대신 할게요.",
                                isUser: false)
                 }
 
                 if task.prompt.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("/") {
                     _ = await ConversationMemory.handleChatCommand(task.prompt, roomID: targetRoomID, manager: self, currentAgent: substitute)
-                } else if let roomID = targetRoomID {
+                } else {
                     let scheduledPrompt: String
                     if let activeAssignee {
                         scheduledPrompt = "\(activeAssignee.displayName)가 담당해서 수행해줘. \(task.prompt)"
@@ -1608,7 +1623,7 @@ class AgentWindowManager: ObservableObject {
                     }
                     await TeamOrchestrator.shared.runTeamDiscussion(
                         userMessage: scheduledPrompt,
-                        roomID: roomID,
+                        roomID: targetRoomID,
                         manager: self
                     )
                 }
@@ -1922,7 +1937,7 @@ class AgentWindowManager: ObservableObject {
             keyFactPolicies = decoded
         }
         if let decoded = try? JSONDecoder().decode([AutomationTask].self, from: automationTasksData) {
-            automationTasks = decoded
+            automationTasks = decoded.filter { $0.roomID != nil }
         }
         if let decoded = try? JSONDecoder().decode([UUID: MemoryRetentionPolicy].self, from: automationTaskPoliciesData) {
             automationTaskPolicies = decoded
@@ -1931,7 +1946,8 @@ class AgentWindowManager: ObservableObject {
 
     private func persistAutomationTasks() {
         let persisted = automationTasks.filter { task in
-            automationTaskPolicies[task.id]?.canPersistInUserDefaults ?? true
+            guard task.roomID != nil else { return false }
+            return automationTaskPolicies[task.id]?.canPersistInUserDefaults ?? true
         }
         if let data = try? JSONEncoder().encode(persisted) {
             automationTasksData = data

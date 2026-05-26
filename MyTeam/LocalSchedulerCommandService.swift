@@ -175,10 +175,7 @@ enum LocalSchedulerCommandService {
         let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
 
         return manager.automationTasks.filter { task in
-            // Room-specific task has priority
-            if let taskRoomID = task.roomID, taskRoomID != roomID {
-                return false
-            }
+            guard task.roomID == roomID else { return false }
 
             // Task must be scheduled for today
             return task.nextRunAt >= today && task.nextRunAt < tomorrow
