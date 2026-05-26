@@ -61,14 +61,36 @@ struct ActionSuggestion: Identifiable, Codable, Sendable {
     let preview: String
     let requiresApproval: Bool
     let handlerID: ActionHandlerID?
+    let chainRunID: UUID?
 
-    init(type: String, title: String, preview: String, requiresApproval: Bool = false, handlerID: ActionHandlerID? = nil) {
-        self.id = UUID()
+    init(
+        id: UUID = UUID(),
+        type: String,
+        title: String,
+        preview: String,
+        requiresApproval: Bool = false,
+        handlerID: ActionHandlerID? = nil,
+        chainRunID: UUID? = nil
+    ) {
+        self.id = id
         self.type = type
         self.title = title
         self.preview = preview
         self.requiresApproval = requiresApproval
         self.handlerID = handlerID
+        self.chainRunID = chainRunID
+    }
+
+    func with(chainRunID: UUID?) -> ActionSuggestion {
+        ActionSuggestion(
+            id: id,
+            type: type,
+            title: title,
+            preview: preview,
+            requiresApproval: requiresApproval,
+            handlerID: handlerID,
+            chainRunID: chainRunID
+        )
     }
 }
 
@@ -85,6 +107,40 @@ struct SourceReference: Codable, Sendable {
     let title: String
     let kind: String
     let note: String
+    let sourceType: AgentWindowManager.SourceType
+
+    init(
+        title: String,
+        kind: String,
+        note: String,
+        sourceType: AgentWindowManager.SourceType? = nil
+    ) {
+        self.title = title
+        self.kind = kind
+        self.note = note
+        self.sourceType = sourceType ?? AgentWindowManager.inferredSourceType(provider: kind, title: title, url: note)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case title, kind, note, sourceType
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        title = try container.decode(String.self, forKey: .title)
+        kind = try container.decode(String.self, forKey: .kind)
+        note = try container.decode(String.self, forKey: .note)
+        sourceType = try container.decodeIfPresent(AgentWindowManager.SourceType.self, forKey: .sourceType)
+            ?? AgentWindowManager.inferredSourceType(provider: kind, title: title, url: note)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(title, forKey: .title)
+        try container.encode(kind, forKey: .kind)
+        try container.encode(note, forKey: .note)
+        try container.encode(sourceType, forKey: .sourceType)
+    }
 }
 
 struct SkillVerification: Codable, Sendable {
@@ -715,6 +771,7 @@ enum KSkillAssistRuntime {
 
 struct KSkillRunResult: Sendable {
     let roomID: UUID
+    let chainRunID: UUID?
     let intent: KSkillAssistIntent
     let skillID: String
     let title: String
@@ -755,11 +812,12 @@ enum KSkillRunEngine {
         let card = card(for: response, evidence: .empty)
         return KSkillRunResult(
             roomID: roomID,
+            chainRunID: nil,
             intent: intent,
             skillID: KSkillAssistRuntime.skillID(for: intent),
             title: response.title,
             card: card,
-            sourceRefs: sourceRefs(for: response, evidence: .empty),
+            sourceRefs: sourceRefs(for: response, evidence: .empty, userMessage: userMessage, attachments: []),
             verification: .userInputRequired,
             markdown: formatCardMarkdown(response: response, card: card),
             requiredInputs: response.requiredUserInputs,
@@ -789,12 +847,12 @@ enum KSkillRunEngine {
         let gatheredEvidence = shouldGatherEvidence ? await ToolEvidenceService.gather(for: lookupQuery, policy: policy) : .empty
         let evidence = mergeEvidence(gatheredEvidence, attachments: attachments)
         let verification = verificationStatus(
-            intent: intent,
             mode: mode,
             health: health,
             evidence: evidence,
             attachments: attachments,
-            chainID: chainID
+            chainID: chainID,
+            userMessage: userMessage
         )
         let baseSuggestions = actionSuggestions(for: intent, evidence: evidence, attachments: attachments)
         let postTurnSuggestions = await PostTurnIntelligenceEngine.shared.suggestNextActions(
@@ -829,11 +887,12 @@ enum KSkillRunEngine {
         )
         let result = KSkillRunResult(
             roomID: roomID,
+            chainRunID: chainRun.id,
             intent: intent,
             skillID: KSkillAssistRuntime.skillID(for: intent),
             title: response.title,
             card: card,
-            sourceRefs: sourceRefs(for: response, evidence: evidence),
+            sourceRefs: sourceRefs(for: response, evidence: evidence, userMessage: userMessage, attachments: attachments),
             verification: verification,
             markdown: markdown,
             requiredInputs: response.requiredUserInputs,
@@ -849,6 +908,10 @@ enum KSkillRunEngine {
         roomID: UUID,
         manager: AgentWindowManager
     ) async -> IndexedArtifact? {
+        guard let chainRunID = result.chainRunID else {
+            AppLog.error("[KSkillRunEngine] missing chainRunID for artifact write")
+            return nil
+        }
         let workflowID = manager.currentWorkflowID ?? UUID()
         let markdown = result.markdown.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !markdown.isEmpty else { return nil }
@@ -874,6 +937,7 @@ enum KSkillRunEngine {
         let artifact = IndexedArtifact(
             id: UUID().uuidString,
             workflowID: workflowID.uuidString,
+            chainRunID: chainRunID.uuidString,
             title: result.title,
             type: .text,
             filename: savedFilename,
@@ -886,7 +950,7 @@ enum KSkillRunEngine {
         )
 
         await ArtifactStore.shared.registerArtifact(artifact)
-        ChainRunStore.shared.appendArtifact(artifact.id, roomID: roomID)
+        ChainRunStore.shared.appendArtifact(artifact.id, chainRunID: chainRunID, roomID: roomID)
         manager.addRecentArtifactIndexEntry(
             RecentArtifactIndexEntry(
                 artifactID: artifact.id,
@@ -1047,17 +1111,17 @@ enum KSkillRunEngine {
     }
 
     private static func verificationStatus(
-        intent: KSkillAssistIntent,
         mode: SkillExecutionMode,
         health: ConnectorHealth,
         evidence: ToolEvidenceResult,
         attachments: [ChatAttachment],
-        chainID: SkillChainID
+        chainID: SkillChainID,
+        userMessage: String
     ) -> SkillVerification {
         switch chainID {
         case .stockMoveAnalysis:
-            let quoteSource = evidence.sources.contains { isQuoteSource($0) }
-            let marketSource = evidence.sources.contains { isMarketSource($0) }
+            let quoteSource = evidence.sources.contains { $0.resolvedSourceType == .quote }
+            let marketSource = evidence.sources.contains { isMarketSourceType($0.resolvedSourceType) }
             if quoteSource && marketSource && evidence.sources.count >= 2 {
                 return .verified(sourceCount: evidence.sources.count)
             }
@@ -1067,12 +1131,19 @@ enum KSkillRunEngine {
             return mode == .readOnlyLookup ? .connectorUnavailable : .userInputRequired
 
         case .mailAction, .documentAction:
-            let usefulAttachments = attachments.filter { hasUsableAttachmentText($0) }
+            let usefulAttachments = attachments.filter { hasTextAttachment($0) }
+            let inlineMailBody = looksLikeMailBody(userMessage: userMessage)
+            if chainID == .mailAction {
+                if !usefulAttachments.isEmpty || inlineMailBody {
+                    return .partiallyVerified(sourceCount: max(usefulAttachments.count, inlineMailBody ? 1 : 0))
+                }
+                return .userInputRequired
+            }
             if !usefulAttachments.isEmpty {
                 return .partiallyVerified(sourceCount: usefulAttachments.count)
             }
             if !attachments.isEmpty {
-                return .partiallyVerified(sourceCount: attachments.count)
+                return .userInputRequired
             }
             if !evidence.sources.isEmpty {
                 return .partiallyVerified(sourceCount: evidence.sources.count)
@@ -1081,49 +1152,71 @@ enum KSkillRunEngine {
 
         case .tripPlanning:
             if health.trainSearch == .available || health.mapsSearch == .available {
-                return evidence.sources.isEmpty ? .partiallyVerified(sourceCount: 1) : .partiallyVerified(sourceCount: evidence.sources.count)
+                let hasConcreteSource = evidence.sources.contains { isConcreteSource($0.resolvedSourceType) }
+                if hasConcreteSource {
+                    return .partiallyVerified(sourceCount: evidence.sources.count)
+                }
+                return .userInputRequired
             }
             return .connectorUnavailable
 
         case .accountReview:
+            let textAttachments = attachments.filter { hasTextAttachment($0) }
+            if !textAttachments.isEmpty {
+                return .partiallyVerified(sourceCount: textAttachments.count)
+            }
             if !attachments.isEmpty {
-                return .partiallyVerified(sourceCount: attachments.count)
+                return .userInputRequired
             }
             return mode == .readOnlyLookup ? .connectorUnavailable : .userInputRequired
 
         case .research:
-            if evidence.sources.count >= 2 {
+            let concreteSources = evidence.sources.filter { isConcreteSource($0.resolvedSourceType) }
+            if concreteSources.count >= 2 {
                 return .verified(sourceCount: evidence.sources.count)
             }
-            if !evidence.sources.isEmpty {
+            if !concreteSources.isEmpty {
                 return .partiallyVerified(sourceCount: evidence.sources.count)
             }
             return .connectorUnavailable
         }
     }
 
-    private static func hasUsableAttachmentText(_ attachment: ChatAttachment) -> Bool {
+    private static func hasTextAttachment(_ attachment: ChatAttachment) -> Bool {
         guard let text = attachment.textContent?.trimmingCharacters(in: .whitespacesAndNewlines) else {
             return false
         }
         return !text.isEmpty
     }
 
-    private static func isQuoteSource(_ source: AgentWindowManager.SourceReference) -> Bool {
-        let title = source.title.lowercased()
-        let provider = source.provider.lowercased()
-        return provider.contains("naver") || provider.contains("yahoo") || provider.contains("finance") || title.contains("주가") || title.contains("quote")
+    private static func looksLikeMailBody(userMessage: String) -> Bool {
+        let trimmed = userMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        let lower = trimmed.lowercased()
+        let lines = trimmed.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        if lines.count >= 4 { return true }
+        if lower.contains("subject:") || lower.contains("from:") || lower.contains("to:") || lower.contains("cc:") { return true }
+        if lower.contains("안녕하세요") || lower.contains("감사합니다") || lower.contains("첨부") || lower.contains("회의") { return true }
+        if lower.contains("@") && lower.contains(".") { return true }
+        return trimmed.count >= 120 && (trimmed.contains(".") || trimmed.contains("!") || trimmed.contains("?"))
     }
 
-    private static func isMarketSource(_ source: AgentWindowManager.SourceReference) -> Bool {
-        let title = source.title.lowercased()
-        let provider = source.provider.lowercased()
-        return provider.contains("news")
-            || provider.contains("dart")
-            || provider.contains("duckduckgo")
-            || provider.contains("google")
-            || title.contains("공시")
-            || title.contains("뉴스")
+    private static func isConcreteSource(_ sourceType: AgentWindowManager.SourceType) -> Bool {
+        switch sourceType {
+        case .quote, .news, .disclosure, .marketIndex, .webPage:
+            return true
+        case .userAttachment, .unknown:
+            return false
+        }
+    }
+
+    private static func isMarketSourceType(_ sourceType: AgentWindowManager.SourceType) -> Bool {
+        switch sourceType {
+        case .news, .disclosure, .marketIndex, .webPage:
+            return true
+        case .quote, .userAttachment, .unknown:
+            return false
+        }
     }
 
     private static func attachmentAgentSources(_ attachments: [ChatAttachment]) -> [AgentWindowManager.SourceReference] {
@@ -1132,7 +1225,8 @@ enum KSkillRunEngine {
                 title: $0.fileName,
                 url: $0.localPath ?? "attachment://\($0.id.uuidString)",
                 provider: "UserAttachment",
-                accessedAt: Date()
+                accessedAt: Date(),
+                sourceType: .userAttachment
             )
         }
     }
@@ -1181,18 +1275,27 @@ enum KSkillRunEngine {
         }
     }
 
-    private static func sourceRefs(for response: KSkillAssistResponse, evidence: ToolEvidenceResult) -> [SourceReference] {
+    private static func sourceRefs(
+        for response: KSkillAssistResponse,
+        evidence: ToolEvidenceResult,
+        userMessage: String,
+        attachments: [ChatAttachment]
+    ) -> [SourceReference] {
         let evidenceRefs = evidence.sources.map {
-            SourceReference(title: $0.title, kind: $0.provider, note: $0.url)
+            SourceReference(title: $0.title, kind: $0.provider, note: $0.url, sourceType: $0.resolvedSourceType)
         }
         if !evidenceRefs.isEmpty { return evidenceRefs }
+        if response.intent == .mailSummaryAssist && !looksLikeMailBody(userMessage: userMessage) && attachments.isEmpty {
+            return []
+        }
         return [
             SourceReference(
                 title: "사용자 입력",
                 kind: "user_message",
                 note: response.requiredUserInputs.isEmpty
                     ? "현재 요청만으로 안내 카드를 생성했습니다."
-                    : "자료나 조건이 들어오면 같은 방에서 실행 결과 카드로 이어집니다."
+                    : "자료나 조건이 들어오면 같은 방에서 실행 결과 카드로 이어집니다.",
+                sourceType: .unknown
             )
         ]
     }
