@@ -554,7 +554,7 @@ final class WorkflowOrchestrator {
             break
         }
 
-        if let skillRun = KSkillRunEngine.run(userMessage: userMessage, matchedSkills: enabledSkills) {
+        if let skillRun = KSkillRunEngine.run(userMessage: userMessage, roomID: roomID, matchedSkills: enabledSkills) {
             AppLog.info("[SkillRunEngine] handled \(skillRun.skillID)")
             let artifact = await KSkillRunEngine.writeResultArtifact(
                 skillRun,
@@ -1901,7 +1901,7 @@ final class WorkflowOrchestrator {
         // ── workflowID 생성 (이번 workflow의 추적 키) ──
         let workflowID = UUID()
         await MainActor.run {
-            manager.currentWorkflowID = workflowID
+            manager.setCurrentWorkflowID(workflowID, roomID: roomID)
             WorkflowRunStore.shared.begin(workflowID: workflowID, roomID: roomID, userMessage: userMessage)
         }
 
@@ -2234,7 +2234,7 @@ final class WorkflowOrchestrator {
 
         let workflowID = UUID()
         await MainActor.run {
-            manager.currentWorkflowID = workflowID
+            manager.setCurrentWorkflowID(workflowID, roomID: roomID)
             WorkflowRunStore.shared.begin(workflowID: workflowID, roomID: roomID, userMessage: userMessage)
         }
 
@@ -2357,7 +2357,7 @@ final class WorkflowOrchestrator {
 
         let workflowID = UUID()
         await MainActor.run {
-            manager.currentWorkflowID = workflowID
+            manager.setCurrentWorkflowID(workflowID, roomID: roomID)
             WorkflowRunStore.shared.begin(workflowID: workflowID, roomID: roomID, userMessage: userMessage)
         }
 
@@ -2617,7 +2617,7 @@ final class WorkflowOrchestrator {
 
         let workflowID = UUID()
         await MainActor.run {
-            manager.currentWorkflowID = workflowID
+            manager.setCurrentWorkflowID(workflowID, roomID: roomID)
             WorkflowRunStore.shared.begin(workflowID: workflowID, roomID: roomID, userMessage: userMessage)
         }
 
@@ -2779,7 +2779,7 @@ final class WorkflowOrchestrator {
 
         let workflowID = UUID()
         await MainActor.run {
-            manager.currentWorkflowID = workflowID
+            manager.setCurrentWorkflowID(workflowID, roomID: roomID)
             WorkflowRunStore.shared.begin(workflowID: workflowID, roomID: roomID, userMessage: userMessage)
         }
 

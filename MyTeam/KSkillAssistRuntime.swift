@@ -34,6 +34,44 @@ struct KSkillAssistResponse: Sendable {
     let requiredUserInputs: [String]
 }
 
+enum SkillResultCardType: String, Codable, Sendable {
+    case mailSummary
+    case pdfSummary
+    case stock
+    case disclosure
+    case ktx
+    case map
+    case accountReview
+    case assist
+}
+
+struct SkillResultCard: Codable, Sendable {
+    let type: SkillResultCardType
+    let title: String
+    let summary: [String]
+    let actionItems: [String]
+    let cautions: [String]
+    let nextActionButtons: [String]
+}
+
+struct SourceReference: Codable, Sendable {
+    let title: String
+    let kind: String
+    let note: String
+}
+
+struct SkillVerification: Codable, Sendable {
+    let status: String
+    let failureCode: String?
+    let message: String
+
+    static let userInputRequired = SkillVerification(
+        status: "blocked",
+        failureCode: "user_input_required",
+        message: "사용자 자료 또는 조건이 필요합니다. 확인되지 않은 외부 조회 결과는 만들지 않았습니다."
+    )
+}
+
 // MARK: - Parsed Sections
 
 struct KSkillAssistParsedSections: Sendable {
@@ -580,15 +618,21 @@ enum KSkillAssistRuntime {
 // MARK: - Skill Run Engine
 
 struct KSkillRunResult: Sendable {
+    let roomID: UUID
     let intent: KSkillAssistIntent
     let skillID: String
     let title: String
+    let card: SkillResultCard
+    let sourceRefs: [SourceReference]
+    let verification: SkillVerification
     let markdown: String
     let requiredInputs: [String]
+    let blockedActions: [String]
+    let artifactID: String?
 }
 
 enum KSkillRunEngine {
-    static func run(userMessage: String, matchedSkills: [SkillManifest] = []) -> KSkillRunResult? {
+    static func run(userMessage: String, roomID: UUID, matchedSkills: [SkillManifest] = []) -> KSkillRunResult? {
         let matchedIntent = matchedSkills
             .compactMap { KSkillAssistRuntime.detectIntent(userMessage: userMessage, skillID: $0.id) }
             .first
@@ -597,12 +641,19 @@ enum KSkillRunEngine {
         }
 
         let response = KSkillAssistRuntime.buildAssistResponse(intent: intent, userMessage: userMessage)
+        let card = card(for: response)
         return KSkillRunResult(
+            roomID: roomID,
             intent: intent,
             skillID: KSkillAssistRuntime.skillID(for: intent),
             title: response.title,
-            markdown: KSkillAssistRuntime.formatMarkdown(response),
-            requiredInputs: response.requiredUserInputs
+            card: card,
+            sourceRefs: sourceRefs(for: response),
+            verification: .userInputRequired,
+            markdown: formatCardMarkdown(response: response, card: card),
+            requiredInputs: response.requiredUserInputs,
+            blockedActions: response.hardBlockedActions,
+            artifactID: nil
         )
     }
 
@@ -683,5 +734,95 @@ enum KSkillRunEngine {
             .replacingOccurrences(of: ".", with: "-")
             .replacingOccurrences(of: "_", with: "-")
         return "skill-card-\(skillStem)-\(stamp).md"
+    }
+
+    private static func card(for response: KSkillAssistResponse) -> SkillResultCard {
+        SkillResultCard(
+            type: cardType(for: response.intent),
+            title: response.title,
+            summary: [response.message],
+            actionItems: response.requiredUserInputs.map { "\($0) 알려주기" },
+            cautions: response.hardBlockedActions,
+            nextActionButtons: nextActionButtons(for: response.intent)
+        )
+    }
+
+    private static func cardType(for intent: KSkillAssistIntent) -> SkillResultCardType {
+        switch intent {
+        case .mailSummaryAssist:
+            return .mailSummary
+        case .fileImageAssist, .officeReviewAssist:
+            return .pdfSummary
+        case .stockInfoAssist:
+            return .stock
+        case .dartDisclosureAssist:
+            return .disclosure
+        case .ktxBookingAssist:
+            return .ktx
+        case .mapPlaceAssist, .reservationPreparation:
+            return .map
+        case .accountReviewAssist:
+            return .accountReview
+        default:
+            return .assist
+        }
+    }
+
+    private static func sourceRefs(for response: KSkillAssistResponse) -> [SourceReference] {
+        [
+            SourceReference(
+                title: "사용자 입력",
+                kind: "user_message",
+                note: response.requiredUserInputs.isEmpty
+                    ? "현재 요청만으로 안내 카드를 생성했습니다."
+                    : "자료나 조건이 들어오면 같은 방에서 실행 결과 카드로 이어집니다."
+            )
+        ]
+    }
+
+    private static func nextActionButtons(for intent: KSkillAssistIntent) -> [String] {
+        switch intent {
+        case .mailSummaryAssist:
+            return ["메일 붙여넣기", "캡처 올리기", "답장 초안"]
+        case .fileImageAssist:
+            return ["파일 올리기", "요약", "위험 포인트"]
+        case .stockInfoAssist:
+            return ["기사 붙여넣기", "공시 올리기", "리스크 정리"]
+        case .dartDisclosureAssist:
+            return ["공시 PDF 올리기", "숫자 뽑기", "리스크 정리"]
+        case .ktxBookingAssist:
+            return ["검색 조건 복사", "출발역 후보", "시간대 정리"]
+        case .mapPlaceAssist, .reservationPreparation:
+            return ["장소 링크 붙여넣기", "비교 기준", "예약 체크"]
+        case .accountReviewAssist:
+            return ["거래내역 올리기", "이상 후보", "증빙 목록"]
+        default:
+            return ["자료 붙여넣기", "카드로 저장", "체크리스트"]
+        }
+    }
+
+    private static func formatCardMarkdown(response: KSkillAssistResponse, card: SkillResultCard) -> String {
+        var lines = KSkillAssistRuntime.formatMarkdown(response)
+            .components(separatedBy: "\n")
+
+        lines.append("")
+        lines.append("### 카드 결과")
+        lines.append("유형: \(card.type.rawValue)")
+
+        if !card.nextActionButtons.isEmpty {
+            lines.append("")
+            lines.append("### 다음 버튼")
+            for button in card.nextActionButtons {
+                lines.append("- \(button)")
+            }
+        }
+
+        lines.append("")
+        lines.append("### 검증 상태")
+        lines.append("- 상태: blocked")
+        lines.append("- 사유: user_input_required")
+        lines.append("- 확인되지 않은 외부 조회 결과는 만들지 않았습니다.")
+
+        return lines.joined(separator: "\n")
     }
 }
