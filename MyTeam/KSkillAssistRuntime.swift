@@ -60,13 +60,15 @@ struct ActionSuggestion: Identifiable, Codable, Sendable {
     let title: String
     let preview: String
     let requiresApproval: Bool
+    let handlerID: ActionHandlerID?
 
-    init(type: String, title: String, preview: String, requiresApproval: Bool = false) {
+    init(type: String, title: String, preview: String, requiresApproval: Bool = false, handlerID: ActionHandlerID? = nil) {
         self.id = UUID()
         self.type = type
         self.title = title
         self.preview = preview
         self.requiresApproval = requiresApproval
+        self.handlerID = handlerID
     }
 }
 
@@ -126,37 +128,6 @@ enum SkillExecutionMode: String, Codable, Sendable {
     case approvalRequiredAction
 }
 
-struct ConnectorHealth: Codable, Sendable {
-    enum Status: String, Codable, Sendable {
-        case available
-        case unavailable
-        case approvalRequired
-    }
-
-    let stockQuote: Status
-    let newsSearch: Status
-    let dartSearch: Status
-    let mailRead: Status
-    let calendarWrite: Status
-    let mapsSearch: Status
-    let ktxLookup: Status
-
-    static func current() -> ConnectorHealth {
-        let hasGemini = !(KeychainManager.load(key: "geminiAPIKey") ?? "").isEmpty
-        let hasOpenAI = !(KeychainManager.load(key: "openaiAPIKey") ?? "").isEmpty
-        let webSearch: Status = (hasGemini || hasOpenAI) ? .available : .unavailable
-        return ConnectorHealth(
-            stockQuote: .available,
-            newsSearch: webSearch,
-            dartSearch: webSearch,
-            mailRead: .unavailable,
-            calendarWrite: .approvalRequired,
-            mapsSearch: webSearch,
-            ktxLookup: .unavailable
-        )
-    }
-}
-
 // MARK: - Parsed Sections
 
 struct KSkillAssistParsedSections: Sendable {
@@ -165,6 +136,10 @@ struct KSkillAssistParsedSections: Sendable {
     let checklist: [String]
     let requiredInputs: [String]
     let nextActions: [String]
+    let chainStatusLines: [String]
+    let actionSuggestionLines: [String]
+    let connectorStatusLines: [String]
+    let attachmentStatusLines: [String]
     let hardBlockedActions: [String]
 }
 
@@ -234,9 +209,13 @@ enum KSkillAssistRuntime {
         var checklist: [String] = []
         var requiredInputs: [String] = []
         var nextActions: [String] = []
+        var chainStatusLines: [String] = []
+        var actionSuggestionLines: [String] = []
+        var connectorStatusLines: [String] = []
+        var attachmentStatusLines: [String] = []
         var hardBlockedActions: [String] = []
 
-        enum Section { case none, message, checklist, required, next, blocked }
+        enum Section { case none, message, checklist, required, next, blocked, chain, actions, connectors, attachments }
         var currentSection: Section = .none
 
         for line in lines {
@@ -249,6 +228,14 @@ enum KSkillAssistRuntime {
                 currentSection = .required
             } else if line == "### 다음에 할 일" || line == "### 다음 단계" {
                 currentSection = .next
+            } else if line == "### 실행 체인" {
+                currentSection = .chain
+            } else if line == "### 제안 액션" {
+                currentSection = .actions
+            } else if line == "### 커넥터 상태" {
+                currentSection = .connectors
+            } else if line == "### 확인한 첨부" {
+                currentSection = .attachments
             } else if line == "### 직접 진행이 필요한 작업" || line == "### 직접 대신하지 않는 항목" {
                 currentSection = .blocked
             } else {
@@ -265,6 +252,22 @@ enum KSkillAssistRuntime {
                 case .next:
                     if let dotRange = line.range(of: ". "), line.first?.isNumber == true {
                         nextActions.append(String(line[dotRange.upperBound...]))
+                    }
+                case .chain:
+                    if !line.isEmpty {
+                        chainStatusLines.append(line)
+                    }
+                case .actions:
+                    if !line.isEmpty {
+                        actionSuggestionLines.append(line)
+                    }
+                case .connectors:
+                    if !line.isEmpty {
+                        connectorStatusLines.append(line)
+                    }
+                case .attachments:
+                    if !line.isEmpty {
+                        attachmentStatusLines.append(line)
                     }
                 case .blocked:
                     if line.hasPrefix("⚠️ ") { hardBlockedActions.append(String(line.dropFirst(3))) }
@@ -288,6 +291,10 @@ enum KSkillAssistRuntime {
             checklist: checklist,
             requiredInputs: requiredInputs,
             nextActions: nextActions,
+            chainStatusLines: chainStatusLines,
+            actionSuggestionLines: actionSuggestionLines,
+            connectorStatusLines: connectorStatusLines,
+            attachmentStatusLines: attachmentStatusLines,
             hardBlockedActions: hardBlockedActions
         )
     }
@@ -788,6 +795,24 @@ enum KSkillRunEngine {
             evidence: evidence,
             attachments: attachments
         )
+        let baseSuggestions = actionSuggestions(for: intent, evidence: evidence, attachments: attachments)
+        let postTurnSuggestions = await PostTurnIntelligenceEngine.shared.suggestNextActions(
+            roomID: roomID,
+            latestUserText: userMessage,
+            assistantText: response.message,
+            chainRun: nil,
+            connectorHealth: health
+        )
+        let mergedSuggestions = dedupeActionSuggestions(baseSuggestions + postTurnSuggestions)
+        let chainRun = await ChainOrchestrator.makeRun(
+            roomID: roomID,
+            chainID: chainID,
+            userMessage: userMessage,
+            attachments: attachments,
+            evidence: evidence,
+            actions: mergedSuggestions,
+            health: health
+        )
         let card = card(for: response, evidence: evidence, attachments: attachments, chainID: chainID)
         let markdown = formatCardMarkdown(
             response: response,
@@ -798,7 +823,8 @@ enum KSkillRunEngine {
             health: health,
             chainID: chainID,
             attachments: attachments,
-            actionSuggestions: actionSuggestions(for: intent, evidence: evidence, attachments: attachments)
+            actionSuggestions: mergedSuggestions,
+            chainRun: chainRun
         )
         let result = KSkillRunResult(
             roomID: roomID,
@@ -859,6 +885,7 @@ enum KSkillRunEngine {
         )
 
         await ArtifactStore.shared.registerArtifact(artifact)
+        ChainRunStore.shared.appendArtifact(artifact.id, roomID: roomID)
         manager.addRecentArtifactIndexEntry(
             RecentArtifactIndexEntry(
                 artifactID: artifact.id,
@@ -1160,7 +1187,8 @@ enum KSkillRunEngine {
         health: ConnectorHealth = .current(),
         chainID: SkillChainID? = nil,
         attachments: [ChatAttachment] = [],
-        actionSuggestions: [ActionSuggestion] = []
+        actionSuggestions: [ActionSuggestion] = [],
+        chainRun: ChainRun? = nil
     ) -> String {
         var lines = KSkillAssistRuntime.formatMarkdown(response)
             .components(separatedBy: "\n")
@@ -1169,8 +1197,15 @@ enum KSkillRunEngine {
             lines.append("")
             lines.append("### 실행 체인")
             lines.append("- \(chainID.rawValue)")
-            for step in chainSteps(for: chainID) {
-                lines.append("☑ \(step)")
+            if let chainRun {
+                lines.append("- 상태: \(chainRun.statusSummary)")
+                for line in chainRun.stepStatusLines {
+                    lines.append(line)
+                }
+            } else {
+                for step in chainSteps(for: chainID) {
+                    lines.append("☑ \(step)")
+                }
             }
         }
 
@@ -1227,12 +1262,23 @@ enum KSkillRunEngine {
 
         lines.append("")
         lines.append("### 커넥터 상태")
-        lines.append("- stockQuote: \(health.stockQuote.rawValue)")
-        lines.append("- newsSearch: \(health.newsSearch.rawValue)")
-        lines.append("- dartSearch: \(health.dartSearch.rawValue)")
-        lines.append("- calendarWrite: \(health.calendarWrite.rawValue)")
+        lines.append("- stockQuote: \(health.stockQuote.label)")
+        lines.append("- newsSearch: \(health.newsSearch.label)")
+        lines.append("- dartSearch: \(health.dartSearch.label)")
+        lines.append("- calendarWrite: \(health.calendarWrite.label)")
 
         return lines.joined(separator: "\n")
+    }
+
+    private static func dedupeActionSuggestions(_ suggestions: [ActionSuggestion]) -> [ActionSuggestion] {
+        var seen = Set<String>()
+        var result: [ActionSuggestion] = []
+        for suggestion in suggestions {
+            if seen.insert(suggestion.type).inserted {
+                result.append(suggestion)
+            }
+        }
+        return result
     }
 
     private static func chainSteps(for chainID: SkillChainID) -> [String] {
@@ -1260,35 +1306,35 @@ enum KSkillRunEngine {
         switch intent {
         case .mailSummaryAssist:
             return [
-                ActionSuggestion(type: "calendar_draft", title: "캘린더 초안 만들기", preview: "메일에서 발견한 날짜·시간 후보를 일정 초안으로 정리합니다.", requiresApproval: true),
-                ActionSuggestion(type: "reply_draft", title: "답장 초안 만들기", preview: "요청사항과 마감 기준으로 답장 초안을 만듭니다."),
-                ActionSuggestion(type: "todo_card", title: "할 일 카드로 저장", preview: "내가 해야 할 일을 이 방의 카드로 남깁니다.")
+                ActionSuggestion(type: "calendar_draft", title: "캘린더 초안 만들기", preview: "메일에서 발견한 날짜·시간 후보를 일정 초안으로 정리합니다.", requiresApproval: true, handlerID: .calendarDraft),
+                ActionSuggestion(type: "reply_draft", title: "답장 초안 만들기", preview: "요청사항과 마감 기준으로 답장 초안을 만듭니다.", handlerID: .replyDraft),
+                ActionSuggestion(type: "todo_card", title: "할 일 카드로 저장", preview: "내가 해야 할 일을 이 방의 카드로 남깁니다.", handlerID: .todoCreate)
             ]
         case .fileImageAssist, .officeReviewAssist:
             return [
-                ActionSuggestion(type: "deadline_extract", title: "마감·담당자 찾기", preview: "문서 안의 날짜, 담당, 제출물 후보를 뽑습니다."),
-                ActionSuggestion(type: "checklist", title: "체크리스트 만들기", preview: "문서 내용을 실행 항목으로 바꿉니다."),
-                ActionSuggestion(type: "document_artifact", title: "요약 문서 저장", preview: "카드 내용을 Markdown 문서로 저장합니다.")
+                ActionSuggestion(type: "deadline_extract", title: "마감·담당자 찾기", preview: "문서 안의 날짜, 담당, 제출물 후보를 뽑습니다.", handlerID: .summarizeArtifact),
+                ActionSuggestion(type: "checklist", title: "체크리스트 만들기", preview: "문서 내용을 실행 항목으로 바꿉니다.", handlerID: .createDocument),
+                ActionSuggestion(type: "document_artifact", title: "요약 문서 저장", preview: "카드 내용을 Markdown 문서로 저장합니다.", handlerID: .createDocument)
             ]
         case .stockInfoAssist:
             return [
-                ActionSuggestion(type: "stock_memo", title: "투자 메모로 저장", preview: "시세·뉴스·공시 근거와 확인 포인트를 방 안에 남깁니다."),
-                ActionSuggestion(type: "disclosure_followup", title: "공시 더 확인", preview: "최근 공시와 실적 관련 근거를 이어서 확인합니다.")
+                ActionSuggestion(type: "stock_memo", title: "투자 메모로 저장", preview: "시세·뉴스·공시 근거와 확인 포인트를 방 안에 남깁니다.", handlerID: .saveMemo),
+                ActionSuggestion(type: "disclosure_followup", title: "공시 더 확인", preview: "최근 공시와 실적 관련 근거를 이어서 확인합니다.", handlerID: .summarizeArtifact)
             ]
         case .ktxBookingAssist, .mapPlaceAssist:
             return [
-                ActionSuggestion(type: "copy_search_conditions", title: "검색 조건 복사", preview: "출발/도착/날짜 조건을 코레일·지도에 붙여넣기 좋게 정리합니다."),
-                ActionSuggestion(type: "calendar_draft", title: "일정 초안 만들기", preview: "이동 후보를 일정 초안으로 만듭니다.", requiresApproval: true)
+                ActionSuggestion(type: "copy_search_conditions", title: "검색 조건 복사", preview: "출발/도착/날짜 조건을 코레일·지도에 붙여넣기 좋게 정리합니다.", handlerID: .openBooking),
+                ActionSuggestion(type: "calendar_draft", title: "일정 초안 만들기", preview: "이동 후보를 일정 초안으로 만듭니다.", requiresApproval: true, handlerID: .calendarDraft)
             ]
         case .accountReviewAssist:
             return [
-                ActionSuggestion(type: "settlement_table", title: "정산표 만들기", preview: "거래내역을 금액·일자·증빙 상태로 정리합니다."),
-                ActionSuggestion(type: "evidence_mail", title: "증빙 요청 메일", preview: "누락 증빙을 요청하는 메일 초안을 만듭니다.")
+                ActionSuggestion(type: "settlement_table", title: "정산표 만들기", preview: "거래내역을 금액·일자·증빙 상태로 정리합니다.", handlerID: .createDocument),
+                ActionSuggestion(type: "evidence_mail", title: "증빙 요청 메일", preview: "누락 증빙을 요청하는 메일 초안을 만듭니다.", handlerID: .replyDraft)
             ]
         default:
             if evidence.sources.isEmpty && attachments.isEmpty { return [] }
             return [
-                ActionSuggestion(type: "save_card", title: "카드 저장", preview: "확인한 내용을 방 안에 결과 카드로 남깁니다.")
+                ActionSuggestion(type: "save_card", title: "카드 저장", preview: "확인한 내용을 방 안에 결과 카드로 남깁니다.", handlerID: .saveMemo)
             ]
         }
     }
