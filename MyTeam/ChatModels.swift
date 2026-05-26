@@ -135,12 +135,112 @@ extension AgentWindowManager {
         )
     }
 
+    enum SourceType: String, Codable, Hashable, Sendable {
+        case quote
+        case news
+        case disclosure
+        case marketIndex
+        case userAttachment
+        case webPage
+        case unknown
+    }
+
+    static func inferredSourceType(provider: String, title: String, url: String) -> SourceType {
+        let providerLower = provider.lowercased()
+        let titleLower = title.lowercased()
+        let urlLower = url.lowercased()
+
+        if providerLower.contains("naver")
+            || providerLower.contains("yahoo")
+            || providerLower.contains("finance")
+            || titleLower.contains("quote")
+            || titleLower.contains("주가")
+            || titleLower.contains("시세") {
+            return .quote
+        }
+        if providerLower.contains("news")
+            || titleLower.contains("뉴스")
+            || titleLower.contains("기사") {
+            return .news
+        }
+        if providerLower.contains("dart")
+            || titleLower.contains("공시")
+            || titleLower.contains("사업보고서")
+            || titleLower.contains("분기보고서")
+            || titleLower.contains("반기보고서") {
+            return .disclosure
+        }
+        if titleLower.contains("index")
+            || titleLower.contains("지수")
+            || titleLower.contains("market")
+            || titleLower.contains("kospi")
+            || titleLower.contains("kosdaq") {
+            return .marketIndex
+        }
+        if providerLower.contains("attachment")
+            || providerLower.contains("user")
+            || urlLower.hasPrefix("attachment://") {
+            return .userAttachment
+        }
+        if providerLower.contains("http")
+            || urlLower.hasPrefix("http") {
+            return .webPage
+        }
+        return .unknown
+    }
+
     struct SourceReference: Identifiable, Codable, Hashable {
         var id: UUID = UUID()
         let title: String
         let url: String
         let provider: String
         let accessedAt: Date
+        let sourceType: SourceType
+
+        init(
+            id: UUID = UUID(),
+            title: String,
+            url: String,
+            provider: String,
+            accessedAt: Date,
+            sourceType: SourceType? = nil
+        ) {
+            self.id = id
+            self.title = title
+            self.url = url
+            self.provider = provider
+            self.accessedAt = accessedAt
+            self.sourceType = sourceType ?? AgentWindowManager.inferredSourceType(provider: provider, title: title, url: url)
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case id, title, url, provider, accessedAt, sourceType
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+            title = try container.decode(String.self, forKey: .title)
+            url = try container.decode(String.self, forKey: .url)
+            provider = try container.decode(String.self, forKey: .provider)
+            accessedAt = try container.decode(Date.self, forKey: .accessedAt)
+            sourceType = try container.decodeIfPresent(SourceType.self, forKey: .sourceType)
+                ?? AgentWindowManager.inferredSourceType(provider: provider, title: title, url: url)
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(id, forKey: .id)
+            try container.encode(title, forKey: .title)
+            try container.encode(url, forKey: .url)
+            try container.encode(provider, forKey: .provider)
+            try container.encode(accessedAt, forKey: .accessedAt)
+            try container.encode(sourceType, forKey: .sourceType)
+        }
+
+        var resolvedSourceType: SourceType {
+            sourceType == .unknown ? AgentWindowManager.inferredSourceType(provider: provider, title: title, url: url) : sourceType
+        }
     }
 
     struct AutomationTask: Identifiable, Codable, Hashable {

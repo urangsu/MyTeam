@@ -237,6 +237,7 @@ enum ArtifactType: String, Codable {
 struct IndexedArtifact: Codable, Sendable {
     let id: String
     let workflowID: String
+    let chainRunID: String?
     let title: String
     let type: ArtifactType
     let filename: String
@@ -252,6 +253,7 @@ struct IndexedArtifact: Codable, Sendable {
     nonisolated init(
         id: String,
         workflowID: String,
+        chainRunID: String? = nil,
         title: String,
         type: ArtifactType,
         filename: String,
@@ -266,6 +268,7 @@ struct IndexedArtifact: Codable, Sendable {
     ) {
         self.id = id
         self.workflowID = workflowID
+        self.chainRunID = chainRunID
         self.title = title
         self.type = type
         self.filename = filename
@@ -280,13 +283,14 @@ struct IndexedArtifact: Codable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, workflowID, title, type, filename, relativePath, path, preview, createdAt, updatedAt, contentHash, fileSizeBytes, roomID, healthStatus
+        case id, workflowID, chainRunID, title, type, filename, relativePath, path, preview, createdAt, updatedAt, contentHash, fileSizeBytes, roomID, healthStatus
     }
 
     nonisolated init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(String.self, forKey: .id)
         workflowID = try container.decode(String.self, forKey: .workflowID)
+        chainRunID = try container.decodeIfPresent(String.self, forKey: .chainRunID)
         title = try container.decode(String.self, forKey: .title)
         type = try container.decode(ArtifactType.self, forKey: .type)
         filename = try container.decode(String.self, forKey: .filename)
@@ -308,6 +312,7 @@ struct IndexedArtifact: Codable, Sendable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
         try container.encode(workflowID, forKey: .workflowID)
+        try container.encodeIfPresent(chainRunID, forKey: .chainRunID)
         try container.encode(title, forKey: .title)
         try container.encode(type, forKey: .type)
         try container.encode(filename, forKey: .filename)
@@ -511,11 +516,11 @@ actor ArtifactStore {
         let (relativePath, pathStatus) = Self.normalizeStoredPath(artifact.relativePath, workspaceURL: workspaceURL)
         let resolvedRelativePath = relativePath.isEmpty ? artifact.relativePath : relativePath
         guard let url = Self.fileURL(for: resolvedRelativePath, workspaceURL: workspaceURL) else {
-            return IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: "", preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: artifact.contentHash, fileSizeBytes: artifact.fileSizeBytes, roomID: artifact.roomID, healthStatus: pathStatus == .valid ? .invalidRelativePath : pathStatus)
+            return IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, chainRunID: artifact.chainRunID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: "", preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: artifact.contentHash, fileSizeBytes: artifact.fileSizeBytes, roomID: artifact.roomID, healthStatus: pathStatus == .valid ? .invalidRelativePath : pathStatus)
         }
 
         guard FileManager.default.fileExists(atPath: url.path) else {
-            return IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: resolvedRelativePath, preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: artifact.contentHash, fileSizeBytes: artifact.fileSizeBytes, roomID: artifact.roomID, healthStatus: .missingFile)
+            return IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, chainRunID: artifact.chainRunID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: resolvedRelativePath, preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: artifact.contentHash, fileSizeBytes: artifact.fileSizeBytes, roomID: artifact.roomID, healthStatus: .missingFile)
         }
 
         let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
@@ -526,14 +531,14 @@ actor ArtifactStore {
         }()
 
         if let expectedHash = artifact.contentHash, let contentHash, expectedHash != contentHash {
-            return IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: resolvedRelativePath, preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: expectedHash, fileSizeBytes: size, roomID: artifact.roomID, healthStatus: .hashMismatch)
+            return IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, chainRunID: artifact.chainRunID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: resolvedRelativePath, preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: expectedHash, fileSizeBytes: size, roomID: artifact.roomID, healthStatus: .hashMismatch)
         }
 
         if artifact.contentHash == nil {
-            return IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: resolvedRelativePath, preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: contentHash, fileSizeBytes: size, roomID: artifact.roomID, healthStatus: .metadataOnly)
+            return IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, chainRunID: artifact.chainRunID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: resolvedRelativePath, preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: contentHash, fileSizeBytes: size, roomID: artifact.roomID, healthStatus: .metadataOnly)
         }
 
-        return IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: resolvedRelativePath, preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: contentHash ?? artifact.contentHash, fileSizeBytes: size, roomID: artifact.roomID, healthStatus: pathStatus == .valid ? .valid : pathStatus)
+        return IndexedArtifact(id: artifact.id, workflowID: artifact.workflowID, chainRunID: artifact.chainRunID, title: artifact.title, type: artifact.type, filename: artifact.filename, relativePath: resolvedRelativePath, preview: artifact.preview, createdAt: artifact.createdAt, updatedAt: artifact.updatedAt, contentHash: contentHash ?? artifact.contentHash, fileSizeBytes: size, roomID: artifact.roomID, healthStatus: pathStatus == .valid ? .valid : pathStatus)
     }
 
     private func compactActionLogIfNeeded() async {
@@ -693,6 +698,7 @@ private extension IndexedArtifact {
         IndexedArtifact(
             id: id,
             workflowID: workflowID,
+            chainRunID: chainRunID,
             title: title,
             type: type,
             filename: filename,
