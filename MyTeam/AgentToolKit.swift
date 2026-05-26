@@ -31,7 +31,7 @@ struct ToolEvidenceResult: Sendable {
 }
 
 enum ToolPolicy {
-    static func evaluate(_ message: String) -> ToolPolicyDecision {
+    nonisolated static func evaluate(_ message: String) -> ToolPolicyDecision {
         let lowered = message.lowercased()
         let compact = lowered.replacingOccurrences(of: " ", with: "")
 
@@ -61,13 +61,39 @@ enum ToolPolicy {
             "티커", "종목", "실적", "배당", "비트코인", "코인",
             "stock", "ticker", "nasdaq", "nyse", "price", "earnings", "crypto", "bitcoin"
         ]) || containsStockTicker(in: message)
+        let needsTransit = containsAny(compact, [
+            "ktx", "srt", "기차", "열차", "고속철", "승차권", "기차표", "열차시간", "기차시간"
+        ])
+        let needsMap = containsAny(compact, [
+            "지도", "길찾기", "경로", "소요시간", "거리", "맛집", "장소", "위치", "가는길",
+            "map", "route", "directions", "place"
+        ])
+        let needsDisclosure = containsAny(compact, [
+            "공시", "dart", "사업보고서", "분기보고서", "반기보고서", "감사보고서", "전자공시"
+        ])
+        let needsDocumentRead = containsAny(compact, [
+            "pdf", "문서요약", "문서정리", "파일요약", "파일정리", "첨부요약", "첨부정리",
+            "docx", "pptx", "xlsx", "hwp", "이미지읽", "ocr", "캡처읽"
+        ])
+        let needsMail = containsAny(compact, [
+            "메일", "이메일", "받은메일", "메일요약", "메일정리", "email", "gmail"
+        ])
+        let needsAccountReview = containsAny(compact, [
+            "계좌", "거래내역", "카드내역", "입출금", "정산", "영수증", "증빙"
+        ])
 
-        let needsWeb = needsURLFetch || needsNews || needsSearch || needsFinance || needsCurrentTime
+        let needsWeb = needsURLFetch || needsNews || needsSearch || needsFinance || needsCurrentTime || needsTransit || needsMap || needsDisclosure
         var tools: [String] = []
         if needsCurrentTime { tools.append("get_current_time") }
         if needsURLFetch { tools.append("fetch_url") }
         if needsNews || needsSearch || needsFinance { tools.append("web_search") }
         if needsFinance { tools.append("finance_quote") }
+        if needsTransit { tools.append("kskill_ktx_assist") }
+        if needsMap { tools.append("kskill_map_assist") }
+        if needsDisclosure { tools.append("kskill_dart_disclosure_assist") }
+        if needsDocumentRead { tools.append("file_reader") }
+        if needsMail { tools.append("mail_summary") }
+        if needsAccountReview { tools.append("account_review") }
 
         var reasons: [String] = []
         if needsNews { reasons.append("최신 뉴스/이슈 질문") }
@@ -75,6 +101,12 @@ enum ToolPolicy {
         if needsURLFetch { reasons.append("URL 내용 확인 필요") }
         if needsSearch { reasons.append("외부 검색/출처 요구") }
         if needsCurrentTime { reasons.append("현재 시점 의존 질문") }
+        if needsTransit { reasons.append("KTX/SRT/열차 일정 확인") }
+        if needsMap { reasons.append("지도/장소/경로 확인") }
+        if needsDisclosure { reasons.append("공시/DART 확인") }
+        if needsDocumentRead { reasons.append("문서/첨부 파일 읽기") }
+        if needsMail { reasons.append("메일 요약/정리") }
+        if needsAccountReview { reasons.append("계좌/증빙/거래내역 검토") }
 
         return ToolPolicyDecision(
             needsTool: !tools.isEmpty,
@@ -87,15 +119,15 @@ enum ToolPolicy {
         )
     }
 
-    private static func containsAny(_ text: String, _ keywords: [String]) -> Bool {
+    nonisolated private static func containsAny(_ text: String, _ keywords: [String]) -> Bool {
         keywords.contains { text.contains($0.lowercased()) }
     }
 
-    private static func containsURL(in text: String) -> Bool {
+    nonisolated private static func containsURL(in text: String) -> Bool {
         text.range(of: #"https?://[^\s]+"#, options: .regularExpression) != nil
     }
 
-    private static func containsStockTicker(in text: String) -> Bool {
+    nonisolated private static func containsStockTicker(in text: String) -> Bool {
         text.range(of: #"\$[A-Z]{1,5}\b|[A-Z]{1,5}\.(KS|KQ)|\b(AAPL|TSLA|NVDA|MSFT|GOOGL|GOOG|AMZN|META|AMD|NFLX|BTC|ETH)\b"#, options: .regularExpression) != nil
     }
 }
