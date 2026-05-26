@@ -41,12 +41,42 @@ struct ChainRunStatusView: View {
                                 Text(step.status.label)
                                     .font(.system(size: 9))
                                     .foregroundStyle(statusColor(step.status))
-                                if let detail = step.detail, !detail.isEmpty {
-                                    Text(detail)
+                                if let connectorID = step.connectorID, !connectorID.isEmpty {
+                                    Text(connectorID)
                                         .font(.system(size: 9))
                                         .foregroundStyle(.secondary)
                                         .lineLimit(1)
                                 }
+                                if let durationText = step.durationText {
+                                    Text(durationText)
+                                        .font(.system(size: 9))
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+                                if let summary = step.outputSummary, !summary.isEmpty {
+                                    Text(summary)
+                                        .font(.system(size: 9))
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+                            }
+                            if let detail = step.detail, !detail.isEmpty {
+                                Text(detail)
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                            if let failureDetail = step.failureDetail, !failureDetail.isEmpty {
+                                Text(failureDetail)
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.red)
+                                    .lineLimit(1)
+                            }
+                            if !step.sourceIDs.isEmpty {
+                                Text("sources \(step.sourceIDs.count)")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
                             }
                         }
                         Spacer()

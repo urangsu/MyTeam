@@ -56,18 +56,29 @@ struct ConnectorHealth: Codable, Sendable, Equatable {
 final class ConnectorRegistry: ObservableObject {
     static let shared = ConnectorRegistry()
 
-    @Published private(set) var lastHealth: ConnectorHealth = ConnectorHealth(
-        stockQuote: .available,
-        newsSearch: .unavailable(reason: "공개 검색 커넥터가 아직 설정되지 않았습니다."),
-        disclosureSearch: .unavailable(reason: "공개 검색 커넥터가 아직 설정되지 않았습니다."),
-        webFetch: .unavailable(reason: "웹 조회 커넥터가 아직 설정되지 않았습니다."),
-        pdfText: .available,
-        imageOCR: .available,
-        mailRead: .needsSetup(reason: "메일 계정 연결이 필요합니다."),
-        calendarDraft: .approvalRequired,
-        mapsSearch: .available,
-        trainSearch: .needsSetup(reason: "열차 조회 연동이 아직 설정되지 않았습니다.")
-    )
+    @Published private(set) var lastHealth: ConnectorHealth = ConnectorRegistry.defaultHealth()
+
+    static func defaultHealth() -> ConnectorHealth {
+        ConnectorHealth(
+            stockQuote: quoteConnectorStatus(),
+            newsSearch: .unavailable(reason: "공개 검색 커넥터가 아직 설정되지 않았습니다."),
+            disclosureSearch: .unavailable(reason: "공개 검색 커넥터가 아직 설정되지 않았습니다."),
+            webFetch: .unavailable(reason: "웹 조회 커넥터가 아직 설정되지 않았습니다."),
+            pdfText: .available,
+            imageOCR: .available,
+            mailRead: .needsSetup(reason: "메일 계정 연결이 필요합니다."),
+            calendarDraft: .approvalRequired,
+            mapsSearch: .available,
+            trainSearch: .needsSetup(reason: "열차 조회 연동이 아직 설정되지 않았습니다.")
+        )
+    }
+
+    private static func quoteConnectorStatus() -> ConnectorStatus {
+        let hasQuoteConnector = AgentToolRegistry.shared.tools["finance_quote"] != nil
+        return hasQuoteConnector
+            ? .available
+            : .needsSetup(reason: "시세 조회 커넥터가 설정되지 않았습니다.")
+    }
 
     func refresh() {
         lastHealth = currentHealth()
@@ -81,7 +92,7 @@ final class ConnectorRegistry: ObservableObject {
         let hasWeb = hasGemini || hasOpenAI || hasClaude || hasOpenRouter
 
         return ConnectorHealth(
-            stockQuote: .available,
+            stockQuote: Self.quoteConnectorStatus(),
             newsSearch: hasWeb ? .available : .unavailable(reason: "웹 검색 모델 키가 없습니다."),
             disclosureSearch: hasWeb ? .available : .unavailable(reason: "공시/뉴스 조회용 모델 키가 없습니다."),
             webFetch: hasWeb ? .available : .unavailable(reason: "웹 조회 모델 키가 없습니다."),

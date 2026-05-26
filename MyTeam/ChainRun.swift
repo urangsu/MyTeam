@@ -6,6 +6,23 @@ struct ChainSourceReference: Identifiable, Codable, Sendable, Hashable {
     let provider: String
     let url: String
     let accessedAt: Date
+    let sourceType: AgentWindowManager.SourceType
+
+    init(
+        id: UUID = UUID(),
+        title: String,
+        provider: String,
+        url: String,
+        accessedAt: Date,
+        sourceType: AgentWindowManager.SourceType? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.provider = provider
+        self.url = url
+        self.accessedAt = accessedAt
+        self.sourceType = sourceType ?? AgentWindowManager.inferredSourceType(provider: provider, title: title, url: url)
+    }
 }
 
 struct ChainRun: Identifiable, Codable, Sendable {
@@ -59,7 +76,23 @@ struct ChainRun: Identifiable, Codable, Sendable {
             case .skipped:
                 prefix = "↷"
             }
-            return "\(index + 1). \(prefix) \(step.title) [\(step.status.label)]"
+            var pieces = ["\(index + 1). \(prefix) \(step.title) [\(step.status.label)]"]
+            if let connectorID = step.connectorID, !connectorID.isEmpty {
+                pieces.append("connector=\(connectorID)")
+            }
+            if let durationText = step.durationText {
+                pieces.append("duration=\(durationText)")
+            }
+            if let summary = step.outputSummary, !summary.isEmpty {
+                pieces.append("output=\(summary)")
+            }
+            if let failureDetail = step.failureDetail, !failureDetail.isEmpty {
+                pieces.append("failure=\(failureDetail)")
+            }
+            if !step.sourceIDs.isEmpty {
+                pieces.append("sources=\(step.sourceIDs.count)")
+            }
+            return pieces.joined(separator: " · ")
         }
     }
 
@@ -80,9 +113,9 @@ struct ChainRun: Identifiable, Codable, Sendable {
 
     var sourceSummary: String {
         guard !sources.isEmpty else { return "출처 없음" }
-        let providers = Array(Set(sources.map(\.provider))).sorted()
-        let providerText = providers.prefix(3).joined(separator: " · ")
-        return "\(sources.count)개 출처\(providerText.isEmpty ? "" : " · \(providerText)")"
+        let sourceTypes = Array(Set(sources.map(\.sourceType.rawValue))).sorted()
+        let sourceText = sourceTypes.prefix(3).joined(separator: " · ")
+        return "\(sources.count)개 출처\(sourceText.isEmpty ? "" : " · \(sourceText)")"
     }
 
     var actionSummary: String {
