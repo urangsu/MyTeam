@@ -13,9 +13,9 @@ final class WorkflowOrchestrator {
         manager.activeWorkflowTaskCount()
     }
 
-    private func beginBudgetSession() async {
+    private func beginBudgetSession(roomID: UUID, workflowID: UUID? = nil, tier: AICallBudgetTier) async {
         await MainActor.run {
-            AICallBudgetManager.shared.beginSession()
+            AICallBudgetManager.shared.beginSession(roomID: roomID, workflowID: workflowID, tier: tier)
         }
     }
 
@@ -28,6 +28,39 @@ final class WorkflowOrchestrator {
     private func blockedBudgetMessage(for type: AICallType) async -> String {
         await MainActor.run {
             AICallBudgetManager.shared.blockedMessage(for: type)
+        }
+    }
+
+    private func budgetTier(for goal: GoalInterpretation, route: RouteDecision? = nil, userMessage: String) -> AICallBudgetTier {
+        let lower = userMessage.lowercased()
+        if lower.contains("깊게") || lower.contains("상세") || lower.contains("검토") || lower.contains("분석") {
+            return .deepWork
+        }
+        if lower.contains("pdf") || lower.contains("문서") || lower.contains("보고서") || lower.contains("회의록") || lower.contains("ppt") || lower.contains("엑셀") {
+            return .documentTask
+        }
+        if lower.contains("공시") || lower.contains("계약") || lower.contains("세무") || lower.contains("회계") || lower.contains("리스크") {
+            return .officeReview
+        }
+        if let route {
+            switch route.kind {
+            case .directChat, .teamDiscussion:
+                return .chatLight
+            case .localSkill, .disabledSkill, .blocked, .capabilityFuture, .capabilityRequiresApproval, .capabilityUnavailable, .fallback:
+                return .quickTask
+            default:
+                return .documentTask
+            }
+        }
+        switch goal.goalType {
+        case .directAnswer, .teamDiscussion:
+            return .chatLight
+        case .documentWork, .fileCreation, .mailBriefing, .mailAction, .appLaunch, .privacyTerms:
+            return .documentTask
+        case .dailyBriefing, .calendarBriefing, .calendarAction:
+            return .officeReview
+        default:
+            return .quickTask
         }
     }
 
@@ -172,6 +205,7 @@ final class WorkflowOrchestrator {
 
         let interpretedGoal = GoalInterpreter.interpret(userMessage)
         let capabilityDecision = CapabilityAwareRouter.evaluate(goal: interpretedGoal)
+        await beginBudgetSession(roomID: roomID, tier: budgetTier(for: interpretedGoal, userMessage: userMessage))
         await MainActor.run {
             manager.recordGoalInterpretation(interpretedGoal, decision: capabilityDecision, roomID: roomID)
             manager.updateRoomGoalContext(roomID: roomID, goal: interpretedGoal, activeWorkflowStep: "routing")
@@ -520,6 +554,41 @@ final class WorkflowOrchestrator {
             break
         }
 
+        if let skillRun = KSkillRunEngine.run(userMessage: userMessage, matchedSkills: enabledSkills) {
+            AppLog.info("[SkillRunEngine] handled \(skillRun.skillID)")
+            await MainActor.run {
+                self.recordRouteTrace(
+                    manager: manager,
+                    roomID: roomID,
+                    step: .localSkillHandled,
+                    message: "kskill run engine handled: \(skillRun.skillID)"
+                )
+                self.recordTurnProfile(
+                    manager: manager,
+                    roomID: roomID,
+                    userMessage: userMessage,
+                    route: .localSkill,
+                    reason: "kskill run engine handled: \(skillRun.skillID)",
+                    matchedSkills: enabledSkills.filter { $0.id == skillRun.skillID },
+                    effectiveScopes: effectiveScopes,
+                    expectedOutput: "structured skill card",
+                    requiresApproval: false,
+                    blockedTools: []
+                )
+                manager.addChatLog(
+                    roomID: roomID,
+                    agentID: "system",
+                    agentName: skillRun.title,
+                    text: skillRun.markdown,
+                    isUser: false,
+                    isSystem: false,
+                    skillID: skillRun.skillID
+                )
+                CharacterReactionEventSink.shared.notifyTaskCompleted(skillID: skillRun.skillID, roomID: roomID)
+            }
+            return
+        }
+
         if let notice = await MainActor.run(body: { self.capabilityGateNotice(for: routeDecision) }) {
             await MainActor.run {
                 self.recordTurnProfile(
@@ -545,9 +614,6 @@ final class WorkflowOrchestrator {
             }
             return
         }
-
-        // ── 새 요청 → 세션 예산 리셋 ──
-        await beginBudgetSession()
 
         // ── App Launch Pack 스킬: 앱스토어 설명문/온보딩/체크리스트/수익화 점검표 ──
         if let launchType = AppLaunchSkillService.detectSkillType(from: userMessage),

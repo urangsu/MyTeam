@@ -28,6 +28,35 @@ enum AICallBudgetTier {
     case deepWork       // 복합 분석: 30회
 }
 
+// MARK: - AICallBudgetSession
+
+struct AICallBudgetSessionKey: Hashable, Sendable, CustomStringConvertible {
+    let roomID: UUID?
+    let workflowID: UUID?
+    let requestID: String
+
+    init(roomID: UUID? = nil, workflowID: UUID? = nil, requestID: String = UUID().uuidString) {
+        self.roomID = roomID
+        self.workflowID = workflowID
+        self.requestID = requestID
+    }
+
+    var description: String {
+        [
+            roomID.map { "room=\($0.uuidString)" },
+            workflowID.map { "workflow=\($0.uuidString)" },
+            "request=\(requestID)"
+        ].compactMap { $0 }.joined(separator: " ")
+    }
+}
+
+private struct AICallBudgetSession {
+    let key: AICallBudgetSessionKey
+    let tier: AICallBudgetTier
+    var counts: [AICallType: Int] = [:]
+    let startedAt: Date = Date()
+}
+
 // MARK: - AICallBudgetManager
 // 세션(사용자 요청 1건) 단위로 LLM 호출 횟수를 추적하고
 // 정책을 초과한 호출을 차단한다.
@@ -39,11 +68,11 @@ final class AICallBudgetManager {
     private init() {}
 
     // MARK: - 세션 카운터
-    private var counts: [AICallType: Int] = [:]
-    private var sessionID: String = ""
+    private var sessions: [AICallBudgetSessionKey: AICallBudgetSession] = [:]
+    private var activeSessionKey = AICallBudgetSessionKey(requestID: "default")
 
     // MARK: - 정책 (요청당 최대 허용 횟수) [246A: chitchat 2→3 완화]
-    private let limits: [AICallType: Int] = [
+    private let baseLimits: [AICallType: Int] = [
         .intentClassify:  1,   // 파일 생성 요청에서는 0 (dispatch에서 스킵됨)
         .workflowPlan:    1,
         .workflowRepair:  1,
@@ -55,6 +84,48 @@ final class AICallBudgetManager {
         .universalDocumentGen: 1,
         .universalDocumentRepair: 1
     ]
+
+    private func limits(for tier: AICallBudgetTier) -> [AICallType: Int] {
+        var result = baseLimits
+        switch tier {
+        case .chatLight:
+            result[.chitchat] = 2
+            result[.selector] = 2
+        case .quickTask:
+            result[.workflowPlan] = 2
+            result[.workflowRepair] = 1
+            result[.universalDocumentGen] = 2
+            result[.universalDocumentRepair] = 1
+        case .documentTask:
+            result[.workflowPlan] = 3
+            result[.workflowRepair] = 2
+            result[.universalDocumentGen] = 3
+            result[.universalDocumentRepair] = 2
+            result[.privacyTermsGen] = 2
+            result[.appLaunchPack] = 2
+        case .officeReview:
+            result[.workflowPlan] = 3
+            result[.workflowRepair] = 2
+            result[.universalDocumentGen] = 4
+            result[.universalDocumentRepair] = 2
+        case .codeLite:
+            result[.workflowPlan] = 4
+            result[.workflowRepair] = 3
+            result[.universalDocumentGen] = 6
+            result[.universalDocumentRepair] = 3
+            result[.selector] = 4
+        case .deepWork:
+            result[.workflowPlan] = 5
+            result[.workflowRepair] = 4
+            result[.universalDocumentGen] = 8
+            result[.universalDocumentRepair] = 4
+            result[.privacyTermsGen] = 3
+            result[.appLaunchPack] = 3
+            result[.selector] = 5
+            result[.chitchat] = 4
+        }
+        return result
+    }
 
     // MARK: - Rolling window (전체 LLM 호출량 분당 제한)
     private var rollingCallLog: [Date] = []
@@ -72,15 +143,31 @@ final class AICallBudgetManager {
     //    초기화하면 사용자가 연속 요청할 때마다 카운터가 리셋되어 rate limit이 무력화된다.
 
     func beginSession(id: String = UUID().uuidString) {
-        beginSession(id: id, tier: .chatLight)
+        beginSession(key: AICallBudgetSessionKey(requestID: id), tier: .chatLight)
     }
 
     // Round 246A: tier 파라미터 추가. 라우터 전면 연결은 246B/C.
     func beginSession(id: String = UUID().uuidString, tier: AICallBudgetTier) {
-        sessionID = id
-        counts = [:]
+        beginSession(key: AICallBudgetSessionKey(requestID: id), tier: tier)
+    }
+
+    func beginSession(
+        roomID: UUID?,
+        workflowID: UUID? = nil,
+        requestID: String = UUID().uuidString,
+        tier: AICallBudgetTier
+    ) {
+        beginSession(
+            key: AICallBudgetSessionKey(roomID: roomID, workflowID: workflowID, requestID: requestID),
+            tier: tier
+        )
+    }
+
+    func beginSession(key: AICallBudgetSessionKey, tier: AICallBudgetTier) {
+        activeSessionKey = key
+        sessions[key] = AICallBudgetSession(key: key, tier: tier)
         // rollingCallLog — 초기화 금지 (rolling window는 세션 경계와 독립)
-        AppLog.info("[Budget] 세션 시작: \(id) tier=\(tier)")
+        AppLog.info("[Budget] 세션 시작: \(key.description) tier=\(tier)")
     }
 
     // MARK: - Rolling window 체크
@@ -108,6 +195,11 @@ final class AICallBudgetManager {
     /// true = 호출 허용, false = 예산 초과로 차단 (세션 한도 또는 rolling 한도)
     @discardableResult
     func requestCall(_ type: AICallType) -> Bool {
+        requestCall(type, key: activeSessionKey)
+    }
+
+    @discardableResult
+    func requestCall(_ type: AICallType, key: AICallBudgetSessionKey) -> Bool {
         // 매 호출마다 플래그 초기화 — 세션 한도 차단 메시지가 rolling 메시지로 오염되지 않게
         lastBlockWasRolling = false
 
@@ -116,15 +208,25 @@ final class AICallBudgetManager {
         guard checkRollingLimit(for: type) else { return false }
 
         // 2) 세션 내 호출 횟수 체크 (여기까지 왔으면 rolling은 통과 — lastBlockWasRolling = false)
-        let current = counts[type, default: 0]
+        if sessions[key] == nil {
+            sessions[key] = AICallBudgetSession(key: key, tier: .chatLight)
+            activeSessionKey = key
+            AppLog.warning("[Budget] 누락된 세션 자동 생성: \(key.description)")
+        }
+
+        guard var session = sessions[key] else { return false }
+        let limits = limits(for: session.tier)
+        let current = session.counts[type, default: 0]
         let limit   = limits[type, default: 1]
 
         if current >= limit {
-            AppLog.warning("[Budget] 🚫 \(type.rawValue) 세션 한도 초과 (사용: \(current)/\(limit))")
+            AppLog.warning("[Budget] 🚫 \(type.rawValue) 세션 한도 초과 key=\(key.description) (사용: \(current)/\(limit))")
             return false
         }
-        counts[type] = current + 1
-        AppLog.info("[Budget] ✅ \(type.rawValue) (\(current + 1)/\(limit))")
+        session.counts[type] = current + 1
+        sessions[key] = session
+        activeSessionKey = key
+        AppLog.info("[Budget] ✅ \(type.rawValue) key=\(key.description) (\(current + 1)/\(limit))")
         return true
     }
 
@@ -165,13 +267,17 @@ final class AICallBudgetManager {
     func usageDescription() -> String {
         let now = Date()
         let rollingCount = rollingCallLog.filter { now.timeIntervalSince($0) < rollingWindowSeconds }.count
+        guard let activeSession = sessions[activeSessionKey] else {
+            return "0 calls | rolling: \(rollingCount)/\(rollingWindowLimit)"
+        }
+        let limits = limits(for: activeSession.tier)
         let sessionLines = AICallType.allCases.compactMap { type -> String? in
-            guard let count = counts[type], count > 0 else { return nil }
+            guard let count = activeSession.counts[type], count > 0 else { return nil }
             let limit = limits[type, default: 1]
             return "\(type.rawValue): \(count)/\(limit == .max ? "∞" : "\(limit)")"
         }
         let sessionDesc = sessionLines.isEmpty ? "0 calls" : sessionLines.joined(separator: ", ")
-        return "\(sessionDesc) | rolling: \(rollingCount)/\(rollingWindowLimit)"
+        return "\(sessionDesc) | sessions: \(sessions.count) | rolling: \(rollingCount)/\(rollingWindowLimit)"
     }
 }
 

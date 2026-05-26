@@ -18,6 +18,8 @@ enum KSkillAssistIntent: String, Codable, Sendable {
     case scholarshipAssist
     case officeReviewAssist
     case fileImageAssist
+    case mailSummaryAssist
+    case accountReviewAssist
 }
 
 // MARK: - Response
@@ -60,11 +62,44 @@ enum KSkillAssistRuntime {
         "korean.law-search",
         "korean.scholarship",
         "korean.office-review-assist",
-        "korean.file-image-assist"
+        "korean.file-image-assist",
+        "korean.mail-summary-assist",
+        "korean.account-review-assist"
     ]
 
     static func isAssistSkillID(_ skillID: String) -> Bool {
         assistSkillIDs.contains(skillID)
+    }
+
+    nonisolated static func skillID(for intent: KSkillAssistIntent) -> String {
+        switch intent {
+        case .ktxBookingAssist:
+            return "korean.ktx-booking"
+        case .mapPlaceAssist:
+            return "korean.map-place"
+        case .reservationPreparation:
+            return "korean.reservation-preparation"
+        case .stockInfoAssist:
+            return "korean.stock-info"
+        case .dartDisclosureAssist:
+            return "korean.dart"
+        case .naverNewsAssist:
+            return "korean.naver-news"
+        case .naverBlogResearchAssist:
+            return "korean.naver-blog-research"
+        case .lawSearchAssist:
+            return "korean.law-search"
+        case .scholarshipAssist:
+            return "korean.scholarship"
+        case .officeReviewAssist:
+            return "korean.office-review-assist"
+        case .fileImageAssist:
+            return "korean.file-image-assist"
+        case .mailSummaryAssist:
+            return "korean.mail-summary-assist"
+        case .accountReviewAssist:
+            return "korean.account-review-assist"
+        }
     }
 
     // MARK: - Section Parser
@@ -136,7 +171,7 @@ enum KSkillAssistRuntime {
 
     // MARK: - Detection
 
-    static func detectIntent(userMessage: String, skillID: String? = nil) -> KSkillAssistIntent? {
+    nonisolated static func detectIntent(userMessage: String, skillID: String? = nil) -> KSkillAssistIntent? {
         let lower = userMessage.lowercased()
 
         if let skillID {
@@ -148,12 +183,29 @@ enum KSkillAssistRuntime {
             case "korean.naver-blog-research": return .naverBlogResearchAssist
             case "korean.law-search": return .lawSearchAssist
             case "korean.scholarship": return .scholarshipAssist
+            case "korean.office-review-assist": return .officeReviewAssist
+            case "korean.file-image-assist": return .fileImageAssist
+            case "korean.mail-summary-assist", "korean.mail-summary", "mail-summary-assist": return .mailSummaryAssist
+            case "korean.account-review-assist", "korean.account-review", "account-review-assist": return .accountReviewAssist
             case "map-place-assist", "reservation-preparation": return .mapPlaceAssist
             default: break
             }
         }
 
         // Natural language detection
+        if lower.contains("메일") || lower.contains("이메일") || lower.contains("email") || lower.contains("gmail")
+            || lower.contains("받은편지") || lower.contains("받은 메일") {
+            return .mailSummaryAssist
+        }
+        if lower.contains("계좌") || lower.contains("거래내역") || lower.contains("카드내역") || lower.contains("입출금")
+            || lower.contains("정산") || lower.contains("영수증") || lower.contains("증빙") || lower.contains("세무") {
+            return .accountReviewAssist
+        }
+        if lower.contains("pdf") || lower.contains("docx") || lower.contains("pptx") || lower.contains("xlsx")
+            || lower.contains("hwp") || lower.contains("첨부") || lower.contains("파일") || lower.contains("문서 요약")
+            || lower.contains("문서요약") || lower.contains("방금 문서") || lower.contains("이미지 읽") || lower.contains("ocr") {
+            return .fileImageAssist
+        }
         if lower.contains("ktx") || lower.contains("srt") || lower.contains("기차 예매") || lower.contains("열차 예매") {
             return .ktxBookingAssist
         }
@@ -180,6 +232,10 @@ enum KSkillAssistRuntime {
         }
         if lower.contains("예약") || lower.contains("reservat") {
             return .reservationPreparation
+        }
+        if lower.contains("회의록") || lower.contains("액션아이템") || lower.contains("보고서") || lower.contains("파일명")
+            || lower.contains("요약해") || lower.contains("정리해") {
+            return .officeReviewAssist
         }
         return nil
     }
@@ -407,21 +463,72 @@ enum KSkillAssistRuntime {
             return KSkillAssistResponse(
                 intent: intent,
                 title: "파일·이미지 도우미",
-                message: "파일을 이 방으로 끌어다 놓거나 텍스트를 붙여넣으시면 정리·요약·검토 기준을 잡아드릴게요.",
+                message: "요약할 대상을 먼저 지목해야 합니다. 파일을 올리거나, 최근 생성 문서 중 어떤 것을 볼지 말해주시면 그 대상 기준으로 요약·검토를 진행할게요.",
                 checklist: [
                     "파일 형식 확인 (PDF/텍스트/이미지/스프레드시트)",
+                    "대상 파일 또는 최근 문서명 확인",
                     "파일 내 민감 정보 여부 확인",
-                    "처리 목적 결정 (요약/검토/변환)"
+                    "처리 목적 결정 (요약/검토/변환/표 추출)"
                 ],
                 nextActions: [
-                    "파일을 이 방에 드래그하거나 텍스트를 붙여넣어 주세요",
-                    "처리 목적을 말씀해 주시면 빠르게 시작할 수 있습니다"
+                    "요약할 파일을 첨부하거나 문서명을 알려주세요",
+                    "요약, 표 추출, 핵심 리스크 검토처럼 원하는 결과 형태를 같이 말해주세요"
                 ],
                 hardBlockedActions: [
+                    "대상 없는 상태에서 '방금 문서'라고 단정",
                     "파일 외부 업로드",
                     "자동 삭제"
                 ],
                 requiredUserInputs: ["파일 또는 텍스트", "처리 목적"]
+            )
+
+        case .mailSummaryAssist:
+            return KSkillAssistResponse(
+                intent: intent,
+                title: "메일 요약 도우미",
+                message: "메일함에 자동 접속한 척하지 않습니다. 메일 본문, 캡처, eml/txt 파일, 또는 복사한 대화 내용을 주시면 핵심 요약과 해야 할 일 카드로 정리합니다.",
+                checklist: [
+                    "보낸 사람, 날짜, 제목 확인",
+                    "요청 사항과 마감일 분리",
+                    "첨부파일/링크 여부 확인",
+                    "답장 필요 여부와 톤 결정",
+                    "개인정보나 계약 정보 포함 여부 확인"
+                ],
+                nextActions: [
+                    "메일 본문을 붙여넣거나 파일로 첨부해주세요",
+                    "요약만 필요한지, 답장 초안까지 필요한지 같이 말해주세요"
+                ],
+                hardBlockedActions: [
+                    "메일 계정 자동 로그인",
+                    "받은편지함 임의 조회",
+                    "사용자 확인 없는 메일 발송"
+                ],
+                requiredUserInputs: ["메일 본문 또는 파일", "원하는 결과 (요약/할 일/답장 초안)"]
+            )
+
+        case .accountReviewAssist:
+            return KSkillAssistResponse(
+                intent: intent,
+                title: "계좌·증빙 검토 도우미",
+                message: "계좌나 세무 자료를 실제로 조회한 척하지 않습니다. 거래내역 CSV/XLSX, 영수증 이미지, 정산표를 주시면 이상 거래 후보와 정리 기준을 표시합니다.",
+                checklist: [
+                    "기간과 계좌/카드 범위 확인",
+                    "입금, 출금, 수수료, 환불 항목 분리",
+                    "중복 결제 또는 누락 후보 확인",
+                    "증빙 필요 항목 표시",
+                    "세무 판단은 전문가 확인 대상으로 분리"
+                ],
+                nextActions: [
+                    "거래내역 파일이나 표를 첨부해주세요",
+                    "개인정보가 있으면 가린 뒤 올려도 됩니다",
+                    "목표를 알려주세요: 정산, 누락 확인, 증빙 목록, 이상 거래 후보"
+                ],
+                hardBlockedActions: [
+                    "은행/카드 계정 자동 로그인",
+                    "세무 신고 대행",
+                    "최종 세무 판단 확정"
+                ],
+                requiredUserInputs: ["거래내역 또는 영수증 자료", "검토 기간", "검토 목적"]
             )
         }
     }
@@ -467,5 +574,35 @@ enum KSkillAssistRuntime {
         }
 
         return lines.joined(separator: "\n")
+    }
+}
+
+// MARK: - Skill Run Engine
+
+struct KSkillRunResult: Sendable {
+    let intent: KSkillAssistIntent
+    let skillID: String
+    let title: String
+    let markdown: String
+    let requiredInputs: [String]
+}
+
+enum KSkillRunEngine {
+    static func run(userMessage: String, matchedSkills: [SkillManifest] = []) -> KSkillRunResult? {
+        let matchedIntent = matchedSkills
+            .compactMap { KSkillAssistRuntime.detectIntent(userMessage: userMessage, skillID: $0.id) }
+            .first
+        guard let intent = matchedIntent ?? KSkillAssistRuntime.detectIntent(userMessage: userMessage) else {
+            return nil
+        }
+
+        let response = KSkillAssistRuntime.buildAssistResponse(intent: intent, userMessage: userMessage)
+        return KSkillRunResult(
+            intent: intent,
+            skillID: KSkillAssistRuntime.skillID(for: intent),
+            title: response.title,
+            markdown: KSkillAssistRuntime.formatMarkdown(response),
+            requiredInputs: response.requiredUserInputs
+        )
     }
 }
