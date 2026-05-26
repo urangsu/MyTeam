@@ -184,6 +184,61 @@ enum SkillExecutionMode: String, Codable, Sendable {
     case approvalRequiredAction
 }
 
+enum MailSourceAssessment: Sendable, Equatable {
+    case confirmedBody
+    case ambiguous
+    case missing
+}
+
+private func kSkillHasTextAttachment(_ attachment: ChatAttachment) -> Bool {
+    guard let text = attachment.textContent?.trimmingCharacters(in: .whitespacesAndNewlines) else {
+        return false
+    }
+    return !text.isEmpty
+}
+
+private func kSkillLooksLikeMailBody(_ userMessage: String) -> Bool {
+    let trimmed = userMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return false }
+    let lower = trimmed.lowercased()
+    let lines = trimmed.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    if lines.count >= 4 { return true }
+    if lower.contains("subject:") || lower.contains("from:") || lower.contains("to:") || lower.contains("cc:") { return true }
+    if lower.contains("@") && lower.contains(".") { return true }
+    let greeting = lower.contains("안녕하세요") || lower.contains("감사합니다")
+    let sentenceMarks = trimmed.contains(".") || trimmed.contains("!") || trimmed.contains("?")
+    let requestLanguage = [
+        "회신", "답장", "부탁", "가능하실까요", "확인 부탁", "보내주", "공유해", "전달해"
+    ].contains { lower.contains($0) }
+    if greeting && (sentenceMarks || requestLanguage) { return true }
+    if trimmed.count >= 120 && sentenceMarks { return true }
+    if lower.contains("첨부") && (trimmed.count >= 60 || sentenceMarks) { return true }
+    return false
+}
+
+private func kSkillEvaluateMailSource(userMessage: String, attachments: [ChatAttachment]) -> MailSourceAssessment {
+    if attachments.contains(where: kSkillHasTextAttachment) {
+        return .confirmedBody
+    }
+
+    let trimmed = userMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return .missing }
+    if kSkillLooksLikeMailBody(trimmed) {
+        return .confirmedBody
+    }
+
+    let lower = trimmed.lowercased()
+    let ambiguitySignals = [
+        "가능하실까요", "회의", "일정", "회신", "답장", "부탁", "내일", "오늘", "오전", "오후", "언제", "확인"
+    ]
+    let hasAmbiguitySignal = ambiguitySignals.contains { lower.contains($0) }
+    let hasQuestionTone = trimmed.contains("?") || lower.contains("문의") || lower.contains("요청")
+    if hasAmbiguitySignal && hasQuestionTone && trimmed.count <= 120 {
+        return .ambiguous
+    }
+    return .missing
+}
+
 // MARK: - Parsed Sections
 
 struct KSkillAssistParsedSections: Sendable {
@@ -432,7 +487,11 @@ enum KSkillAssistRuntime {
 
     // MARK: - Response Builder
 
-    static func buildAssistResponse(intent: KSkillAssistIntent, userMessage: String) -> KSkillAssistResponse {
+    static func buildAssistResponse(
+        intent: KSkillAssistIntent,
+        userMessage: String,
+        attachments: [ChatAttachment] = []
+    ) -> KSkillAssistResponse {
         switch intent {
 
         case .ktxBookingAssist:
@@ -673,27 +732,80 @@ enum KSkillAssistRuntime {
             )
 
         case .mailSummaryAssist:
+            let mailState = kSkillEvaluateMailSource(userMessage: userMessage, attachments: attachments)
             return KSkillAssistResponse(
                 intent: intent,
                 title: "메일 요약 도우미",
-                message: "메일함에 자동 접속한 척하지 않습니다. 메일 본문, 캡처, eml/txt 파일, 또는 복사한 대화 내용을 주시면 핵심 요약과 해야 할 일 카드로 정리합니다.",
-                checklist: [
-                    "보낸 사람, 날짜, 제목 확인",
-                    "요청 사항과 마감일 분리",
-                    "첨부파일/링크 여부 확인",
-                    "답장 필요 여부와 톤 결정",
-                    "개인정보나 계약 정보 포함 여부 확인"
-                ],
-                nextActions: [
-                    "메일 본문을 붙여넣거나 파일로 첨부해주세요",
-                    "요약만 필요한지, 답장 초안까지 필요한지 같이 말해주세요"
-                ],
+                message: {
+                    switch mailState {
+                    case .confirmedBody:
+                        return "메일함에 자동 접속한 척하지 않습니다. 메일 본문, 캡처, eml/txt 파일, 또는 복사한 대화를 주시면 핵심 요약과 해야 할 일 카드로 정리합니다."
+                    case .ambiguous:
+                        return "메일 원문이 아직 없는 것 같아요. 아래 문장을 메일 본문으로 보고 정리할까요?"
+                    case .missing:
+                        return "메일 원문이 아직 없는 것 같아요. 메일 본문, 캡처, eml/txt 파일, 또는 복사한 대화를 주시면 핵심 요약과 해야 할 일 카드로 정리합니다."
+                    }
+                }(),
+                checklist: {
+                    switch mailState {
+                    case .confirmedBody:
+                        return [
+                            "보낸 사람, 날짜, 제목 확인",
+                            "요청 사항과 마감일 분리",
+                            "첨부파일/링크 여부 확인",
+                            "답장 필요 여부와 톤 결정",
+                            "개인정보나 계약 정보 포함 여부 확인"
+                        ]
+                    case .ambiguous:
+                        return [
+                            "이 문장이 메일 본문인지 먼저 확인",
+                            "짧은 문장이라면 메일 입력인지 질문인지 구분",
+                            "원문이 맞다면 요약·할 일·답장 초안으로 이어가기"
+                        ]
+                    case .missing:
+                        return [
+                            "메일 본문 또는 캡처/파일 준비",
+                            "요약만 필요한지, 답장 초안까지 필요한지 선택",
+                            "개인정보가 있으면 가린 뒤 올려도 됩니다"
+                        ]
+                    }
+                }(),
+                nextActions: {
+                    switch mailState {
+                    case .confirmedBody:
+                        return [
+                            "메일 본문을 붙여넣거나 파일로 첨부해주세요",
+                            "요약만 필요한지, 답장 초안까지 필요한지 같이 말해주세요"
+                        ]
+                    case .ambiguous:
+                        return [
+                            "메일 본문으로 처리",
+                            "메일 붙여넣기",
+                            "캡처/파일 올리기"
+                        ]
+                    case .missing:
+                        return [
+                            "메일 본문 붙여넣기",
+                            "캡처/파일 올리기",
+                            "요약/답장 초안 중 원하는 결과 말하기"
+                        ]
+                    }
+                }(),
                 hardBlockedActions: [
                     "메일 계정 자동 로그인",
                     "받은편지함 임의 조회",
                     "사용자 확인 없는 메일 발송"
                 ],
-                requiredUserInputs: ["메일 본문 또는 파일", "원하는 결과 (요약/할 일/답장 초안)"]
+                requiredUserInputs: {
+                    switch mailState {
+                    case .confirmedBody:
+                        return ["메일 본문 또는 파일", "원하는 결과 (요약/할 일/답장 초안)"]
+                    case .ambiguous:
+                        return ["이 문장을 메일 본문으로 볼지 선택", "메일 본문 또는 파일"]
+                    case .missing:
+                        return ["메일 본문 또는 파일", "원하는 결과 (요약/할 일/답장 초안)"]
+                    }
+                }()
             )
 
         case .accountReviewAssist:
@@ -808,7 +920,7 @@ enum KSkillRunEngine {
             return nil
         }
 
-        let response = KSkillAssistRuntime.buildAssistResponse(intent: intent, userMessage: userMessage)
+        let response = KSkillAssistRuntime.buildAssistResponse(intent: intent, userMessage: userMessage, attachments: [])
         let card = card(for: response, evidence: .empty)
         return KSkillRunResult(
             roomID: roomID,
@@ -837,7 +949,7 @@ enum KSkillRunEngine {
             return nil
         }
 
-        let response = KSkillAssistRuntime.buildAssistResponse(intent: intent, userMessage: userMessage)
+        let response = KSkillAssistRuntime.buildAssistResponse(intent: intent, userMessage: userMessage, attachments: attachments)
         let chainID = chainID(for: intent)
         let mode = executionMode(for: intent)
         let health = ConnectorHealth.current()
@@ -1182,23 +1294,53 @@ enum KSkillRunEngine {
         }
     }
 
-    private static func hasTextAttachment(_ attachment: ChatAttachment) -> Bool {
+    nonisolated private static func hasTextAttachment(_ attachment: ChatAttachment) -> Bool {
         guard let text = attachment.textContent?.trimmingCharacters(in: .whitespacesAndNewlines) else {
             return false
         }
         return !text.isEmpty
     }
 
-    private static func looksLikeMailBody(userMessage: String) -> Bool {
+    nonisolated private static func looksLikeMailBody(userMessage: String) -> Bool {
         let trimmed = userMessage.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
         let lower = trimmed.lowercased()
         let lines = trimmed.components(separatedBy: .newlines).filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
         if lines.count >= 4 { return true }
         if lower.contains("subject:") || lower.contains("from:") || lower.contains("to:") || lower.contains("cc:") { return true }
-        if lower.contains("안녕하세요") || lower.contains("감사합니다") || lower.contains("첨부") || lower.contains("회의") { return true }
         if lower.contains("@") && lower.contains(".") { return true }
-        return trimmed.count >= 120 && (trimmed.contains(".") || trimmed.contains("!") || trimmed.contains("?"))
+        let greeting = lower.contains("안녕하세요") || lower.contains("감사합니다")
+        let sentenceMarks = trimmed.contains(".") || trimmed.contains("!") || trimmed.contains("?")
+        let requestLanguage = [
+            "회신", "답장", "부탁", "가능하실까요", "확인 부탁", "보내주", "공유해", "전달해"
+        ].contains { lower.contains($0) }
+        if greeting && (sentenceMarks || requestLanguage) { return true }
+        if trimmed.count >= 120 && sentenceMarks { return true }
+        if lower.contains("첨부") && (trimmed.count >= 60 || sentenceMarks) { return true }
+        return false
+    }
+
+    nonisolated static func evaluateMailSource(userMessage: String, attachments: [ChatAttachment]) -> MailSourceAssessment {
+        if attachments.contains(where: hasTextAttachment) {
+            return .confirmedBody
+        }
+
+        let trimmed = userMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return .missing }
+        if looksLikeMailBody(userMessage: trimmed) {
+            return .confirmedBody
+        }
+
+        let lower = trimmed.lowercased()
+        let ambiguitySignals = [
+            "가능하실까요", "회의", "일정", "회신", "답장", "부탁", "내일", "오늘", "오전", "오후", "언제", "확인"
+        ]
+        let hasAmbiguitySignal = ambiguitySignals.contains { lower.contains($0) }
+        let hasQuestionTone = trimmed.contains("?") || lower.contains("문의") || lower.contains("요청")
+        if hasAmbiguitySignal && hasQuestionTone && trimmed.count <= 120 {
+            return .ambiguous
+        }
+        return .missing
     }
 
     private static func isConcreteSource(_ sourceType: AgentWindowManager.SourceType) -> Bool {
@@ -1285,7 +1427,7 @@ enum KSkillRunEngine {
             SourceReference(title: $0.title, kind: $0.provider, note: $0.url, sourceType: $0.resolvedSourceType)
         }
         if !evidenceRefs.isEmpty { return evidenceRefs }
-        if response.intent == .mailSummaryAssist && !looksLikeMailBody(userMessage: userMessage) && attachments.isEmpty {
+        if response.intent == .mailSummaryAssist && kSkillEvaluateMailSource(userMessage: userMessage, attachments: attachments) != .confirmedBody {
             return []
         }
         return [
@@ -1308,11 +1450,11 @@ enum KSkillRunEngine {
         if !attachments.isEmpty {
             switch intent {
             case .mailSummaryAssist:
-                return ["요청사항 추출", "날짜·시간 후보 확인", "답장 초안 만들기", "할 일 카드로 저장"]
+                return ["요청사항 추출", "날짜·시간 후보 확인", "답장 초안을 문서로 저장", "할 일 카드로 저장"]
             case .fileImageAssist, .officeReviewAssist:
                 return ["핵심 요약", "숫자·날짜 추출", "마감·위험 포인트 확인", "문서 artifact 저장"]
             case .accountReviewAssist:
-                return ["거래내역 정규화", "중복·이상 후보 표시", "증빙 필요 항목 정리", "정산 메일 초안"]
+                return ["거래내역 정규화", "중복·이상 후보 표시", "증빙 필요 항목 정리", "정산 메일 초안을 문서로 저장"]
             default:
                 break
             }
@@ -1323,7 +1465,7 @@ enum KSkillRunEngine {
     private static func nextActionButtons(for intent: KSkillAssistIntent, chainID: SkillChainID? = nil) -> [String] {
         switch intent {
         case .mailSummaryAssist:
-            return ["캘린더 초안", "답장 초안", "할 일로 저장"]
+            return ["메일 본문으로 처리", "메일 붙여넣기", "캡처/파일 올리기"]
         case .fileImageAssist:
             return ["요약 카드", "마감 추출", "체크리스트"]
         case .stockInfoAssist:
@@ -1392,8 +1534,8 @@ enum KSkillRunEngine {
             lines.append("")
             lines.append("### 제안 액션")
             for suggestion in actionSuggestions {
-                let approval = suggestion.requiresApproval ? "승인 필요" : "바로 초안 가능"
-                lines.append("- \(suggestion.title) [\(approval)]: \(suggestion.preview)")
+                let scope = actionScopeLabel(for: suggestion)
+                lines.append("- \(suggestion.title) [\(scope)]: \(suggestion.preview)")
             }
         }
 
@@ -1469,14 +1611,14 @@ enum KSkillRunEngine {
         switch intent {
         case .mailSummaryAssist:
             return [
-                ActionSuggestion(type: "calendar_draft", title: "캘린더 초안 만들기", preview: "메일에서 발견한 날짜·시간 후보를 일정 초안으로 정리합니다.", requiresApproval: true, handlerID: .calendarDraft),
-                ActionSuggestion(type: "reply_draft", title: "답장 초안 만들기", preview: "요청사항과 마감 기준으로 답장 초안을 만듭니다.", handlerID: .replyDraft),
-                ActionSuggestion(type: "todo_card", title: "할 일 카드로 저장", preview: "내가 해야 할 일을 이 방의 카드로 남깁니다.", handlerID: .todoCreate)
+                ActionSuggestion(type: "calendar_draft", title: "캘린더 초안 카드 만들기", preview: "메일에서 발견한 날짜·시간 후보를 일정 카드로 정리합니다.", requiresApproval: true, handlerID: .calendarDraft),
+                ActionSuggestion(type: "reply_draft", title: "답장 초안을 문서로 저장", preview: "요청사항과 마감 기준으로 답장 초안을 이 방의 문서 artifact로 저장합니다.", handlerID: .replyDraft),
+                ActionSuggestion(type: "todo_card", title: "할 일을 카드로 저장", preview: "내가 해야 할 일을 이 방의 카드로 남깁니다.", handlerID: .todoCreate)
             ]
         case .fileImageAssist, .officeReviewAssist:
             return [
-                ActionSuggestion(type: "deadline_extract", title: "마감·담당자 찾기", preview: "문서 안의 날짜, 담당, 제출물 후보를 뽑습니다.", handlerID: .summarizeArtifact),
-                ActionSuggestion(type: "checklist", title: "체크리스트 만들기", preview: "문서 내용을 실행 항목으로 바꿉니다.", handlerID: .createDocument),
+                ActionSuggestion(type: "deadline_extract", title: "마감·담당자 추출", preview: "문서 안의 날짜, 담당, 제출물 후보를 뽑습니다.", handlerID: .summarizeArtifact),
+                ActionSuggestion(type: "checklist", title: "체크리스트 카드 만들기", preview: "문서 내용을 실행 항목으로 바꿉니다.", handlerID: .createDocument),
                 ActionSuggestion(type: "document_artifact", title: "요약 문서 저장", preview: "카드 내용을 Markdown 문서로 저장합니다.", handlerID: .createDocument)
             ]
         case .stockInfoAssist:
@@ -1487,18 +1629,36 @@ enum KSkillRunEngine {
         case .ktxBookingAssist, .mapPlaceAssist:
             return [
                 ActionSuggestion(type: "copy_search_conditions", title: "검색 조건 복사", preview: "출발/도착/날짜 조건을 코레일·지도에 붙여넣기 좋게 정리합니다.", handlerID: .openBooking),
-                ActionSuggestion(type: "calendar_draft", title: "일정 초안 만들기", preview: "이동 후보를 일정 초안으로 만듭니다.", requiresApproval: true, handlerID: .calendarDraft)
+                ActionSuggestion(type: "calendar_draft", title: "일정 초안 카드 만들기", preview: "이동 후보를 방 안의 일정 카드로 만듭니다.", requiresApproval: true, handlerID: .calendarDraft)
             ]
         case .accountReviewAssist:
             return [
-                ActionSuggestion(type: "settlement_table", title: "정산표 만들기", preview: "거래내역을 금액·일자·증빙 상태로 정리합니다.", handlerID: .createDocument),
-                ActionSuggestion(type: "evidence_mail", title: "증빙 요청 메일", preview: "누락 증빙을 요청하는 메일 초안을 만듭니다.", handlerID: .replyDraft)
+                ActionSuggestion(type: "settlement_table", title: "정산표 카드 만들기", preview: "거래내역을 금액·일자·증빙 상태로 정리합니다.", handlerID: .createDocument),
+                ActionSuggestion(type: "evidence_mail", title: "증빙 요청 메일 초안을 문서로 저장", preview: "누락 증빙을 요청하는 메일 초안을 이 방의 문서 artifact로 저장합니다.", handlerID: .replyDraft)
             ]
         default:
             if evidence.sources.isEmpty && attachments.isEmpty { return [] }
             return [
                 ActionSuggestion(type: "save_card", title: "카드 저장", preview: "확인한 내용을 방 안에 결과 카드로 남깁니다.", handlerID: .saveMemo)
             ]
+        }
+    }
+
+    private static func actionScopeLabel(for suggestion: ActionSuggestion) -> String {
+        if suggestion.requiresApproval {
+            return "승인 필요"
+        }
+        switch suggestion.handlerID {
+        case .replyDraft, .todoCreate, .saveMemo, .createDocument, .summarizeArtifact:
+            return "방 안의 문서/카드"
+        case .calendarDraft:
+            return "승인 필요"
+        case .openMap:
+            return "지도 열기"
+        case .openBooking:
+            return "조건 준비"
+        case .none:
+            return "방 안의 카드"
         }
     }
 }

@@ -41,7 +41,7 @@ enum ActionRuntime {
             ) else {
                 return .failed("artifact 저장에 실패했습니다.", handlerID: handlerID, failureCode: "artifact_write_failed")
             }
-            return .completed("답장 초안을 방 안의 artifact로 저장했습니다.", handlerID: handlerID, artifactID: artifactID)
+            return .completed("답장 초안을 방 안의 문서 artifact로 저장했습니다.", handlerID: handlerID, artifactID: artifactID)
 
         case .todoCreate:
             guard let artifactID = await persistDraftArtifact(
@@ -133,20 +133,16 @@ enum ActionRuntime {
 
         case .calendarDraft:
             return .approvalNeeded(
-                "캘린더 초안은 승인 후 진행됩니다.",
-                prompt: action.preview,
+                "캘린더 초안 카드는 승인 후 진행됩니다.",
+                prompt: action.title,
                 handlerID: handlerID
             )
 
         case .openMap:
-            return .queued("지도 열기 액션을 준비했습니다.", prompt: action.preview, handlerID: handlerID)
+            return .queued("지도 검색어를 준비했습니다.", prompt: action.preview, handlerID: handlerID)
 
         case .openBooking:
-            return .approvalNeeded(
-                "예약/예매는 승인 후 진행됩니다.",
-                prompt: action.preview,
-                handlerID: handlerID
-            )
+            return .completed("검색 조건을 준비했습니다.", handlerID: handlerID)
         }
     }
 

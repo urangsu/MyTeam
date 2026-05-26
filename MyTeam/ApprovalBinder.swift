@@ -14,9 +14,11 @@ enum ActionHandlerID: String, Codable, Sendable {
 enum ApprovalBinder {
     static func requiresApproval(for handlerID: ActionHandlerID) -> Bool {
         switch handlerID {
-        case .calendarDraft, .openBooking:
+        case .calendarDraft:
             return true
         case .replyDraft, .todoCreate, .openMap, .saveMemo, .createDocument, .summarizeArtifact:
+            return false
+        case .openBooking:
             return false
         }
     }
