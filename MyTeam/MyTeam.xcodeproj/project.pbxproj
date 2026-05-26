@@ -9880,6 +9880,9 @@
 				<string>E30000000000000000000009</string>
 				<string>E3000000000000000000000A</string>
 				<string>E3000000000000000000000B</string>
+				<string>E3000000000000000000000C</string>
+				<string>E3000000000000000000000D</string>
+				<string>E3000000000000000000000E</string>
 				<string>D28000000000000000000008</string>
 				<string>D28000000000000000000009</string>
 				<string>D2800000000000000000000A</string>
@@ -11470,6 +11473,9 @@
 				<string>E30100000000000000000009</string>
 				<string>E3010000000000000000000A</string>
 				<string>E3010000000000000000000B</string>
+				<string>E3010000000000000000000C</string>
+				<string>E3010000000000000000000D</string>
+				<string>E3010000000000000000000E</string>
 				<string>D28000000000000000000026</string>
 				<string>D28000000000000000000028</string>
 				<string>D28000000000000000000029</string>
@@ -19185,6 +19191,51 @@
 			<key>sourceTree</key>
 			<string>SOURCE_ROOT</string>
 		</dict>
+		<key>E3000000000000000000000C</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>KoreanStockSymbolResolver.swift</string>
+			<key>path</key>
+			<string>KoreanStockSymbolResolver.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E3000000000000000000000D</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>StockEvidenceCollector.swift</string>
+			<key>path</key>
+			<string>StockEvidenceCollector.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E3000000000000000000000E</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>StockMoveAnalysisCard.swift</string>
+			<key>path</key>
+			<string>StockMoveAnalysisCard.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
 		<key>D24000000000000000000011</key>
 		<dict>
 			<key>fileRef</key>
@@ -19343,6 +19394,27 @@
 		<dict>
 			<key>fileRef</key>
 			<string>E3000000000000000000000B</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E3010000000000000000000C</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E3000000000000000000000C</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E3010000000000000000000D</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E3000000000000000000000D</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E3010000000000000000000E</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E3000000000000000000000E</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
