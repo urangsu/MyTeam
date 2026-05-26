@@ -35,7 +35,7 @@ enum CapabilityFallbackService {
 
         case .assistOnly:
             let notice = skillID.flatMap { SkillAvailabilityResolver.assistOnlyMessage(for: $0) }
-                ?? "직접 실행은 아직 연결 전입니다. 자료를 주시면 정리·초안·검토 형태로 도와드릴게요."
+                ?? "제가 실제로 확인한 것처럼 꾸미지 않습니다. 자료를 주시면 정리·초안·검토 형태로 바로 도와드릴게요."
             return .directChat(message: notice)
 
         case .draftOnly:

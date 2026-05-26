@@ -70,21 +70,21 @@ enum SkillAvailabilityResolver {
     static func assistOnlyMessage(for skillID: String) -> String {
         switch skillID {
         case "korean.dart":
-            return "DART API 직접 조회는 아직 연결 전입니다. 종목명, 공시 PDF, 사업보고서 내용을 주시면 공시 요약 형식으로 정리해드릴 수 있어요."
+            return "제가 DART를 조회한 척하지는 않아요. 공시 PDF, 사업보고서 본문, 링크를 주시면 핵심 숫자와 위험 포인트를 카드로 정리해드릴게요."
         case "korean.law-search":
-            return "법령 검색 API는 아직 연결 전입니다. 법령명이나 조항 내용을 주시면 분석·정리해드릴 수 있어요."
+            return "최신 법령을 확인한 것처럼 단정하지 않습니다. 법령명이나 조항 내용을 주시면 쟁점과 확인할 부분을 정리해드릴게요."
         case "korean.naver-news", "korean.naver-blog-research":
-            return "뉴스/블로그 API는 아직 연결 전입니다. 기사 내용을 붙여 주시면 요약·분석해드릴 수 있어요."
+            return "검색 결과를 꾸며내지 않습니다. 기사나 블로그 본문을 붙여주시면 요약·비교·초안으로 정리해드릴게요."
         case "korean.ktx-booking":
-            return "KTX/SRT 자동 예매는 지원하지 않습니다. 조건을 알려주시면 예매 전 체크리스트를 만들어드릴게요."
+            return "제가 대신 로그인하거나 결제하진 않아요. 출발·도착·날짜·인원을 알려주시면 코레일톡에 바로 넣을 조건 카드로 정리해드릴게요."
         case "korean.map-place", "korean.reservation-preparation":
-            return "지도 직접 검색은 아직 연결 전입니다. 장소명이나 링크를 주시면 비교 기준과 예약 체크리스트를 정리해드릴게요."
+            return "제가 대신 예약하거나 개인정보를 제출하진 않아요. 장소명이나 링크를 주시면 비교 기준과 예약 전 확인 항목을 정리해드릴게요."
         case "korean.stock-info":
-            return "실시간 시세 조회는 아직 연결 전입니다. 종목명과 자료를 주시면 지표 체크리스트를 정리해드릴게요."
+            return "매수·매도 판단을 확정하지는 않아요. 종목명, 기사, 공시를 주시면 숫자·이슈·리스크를 분리해 카드로 정리해드릴게요."
         case "korean.scholarship":
-            return "복지로/장학금나라 직접 조회는 아직 연결 전입니다. 자격 조건과 서류 체크리스트를 정리해드릴 수 있어요."
+            return "최신 공고를 본 것처럼 단정하지 않습니다. 공고문이나 링크를 주시면 자격 조건과 준비 서류를 정리해드릴게요."
         default:
-            return "직접 실행은 아직 연결 전입니다. 자료를 주시면 정리·초안·검토 형태로 도와드릴게요."
+            return "제가 실제로 확인한 것처럼 꾸미지 않습니다. 자료를 주시면 정리·초안·검토 형태로 바로 도와드릴게요."
         }
     }
 }

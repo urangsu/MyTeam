@@ -258,8 +258,8 @@ enum BuiltInKoreanSkills {
         outputType: .chat,
         isBuiltIn: true,
         // Round 246A: assistOnly — DART Open API 미연결, LLM 보조만 가능
-        // 사용자 응답: "DART API 직접 조회는 아직 연결 전입니다.
-        //   종목명, 공시 PDF, 사업보고서 내용을 주시면 공시 요약 형식으로 정리해드릴 수 있어요."
+        // 사용자 응답: "제가 DART를 조회한 척하지는 않아요.
+        //   공시 PDF, 사업보고서 본문, 링크를 주시면 핵심 숫자와 위험 포인트를 카드로 정리해드릴게요."
         // featureAvailability: .assistOnly
         defaultEnabled: true,   // 스킬 매칭은 되지만 외부 API 없이 LLM 보조
         requiresApprovalEveryRun: false,
@@ -269,7 +269,7 @@ enum BuiltInKoreanSkills {
             "투자 조언 아님 — 공시 데이터 요약",
             "수치 미확인 시 추측 금지",
             "[246A] featureAvailability=assistOnly: DART Open API 미연결, LLM 보조만",
-            "사용자에게: 'API 직접 조회는 아직 연결 전, 자료 주시면 공시 형식으로 정리'"
+            "사용자에게: '제가 조회한 척하지 않고, 사용자가 준 자료 기준으로 공시 카드 정리'"
         ]
     )
 
