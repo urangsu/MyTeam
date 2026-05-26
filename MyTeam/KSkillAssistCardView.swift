@@ -147,6 +147,74 @@ struct KSkillAssistCardView: View {
                 )
             }
 
+            if !sections.chainStatusLines.isEmpty {
+                sectionBlock(
+                    icon: "arrow.triangle.branch",
+                    iconColor: .blue,
+                    title: "실행 체인",
+                    content: {
+                        VStack(alignment: .leading, spacing: 3) {
+                            ForEach(Array(sections.chainStatusLines.enumerated()), id: \.offset) { _, line in
+                                Text(line)
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(isDarkMode ? .white.opacity(0.88) : .primary)
+                            }
+                        }
+                    }
+                )
+            }
+
+            if !sections.actionSuggestionLines.isEmpty {
+                sectionBlock(
+                    icon: "sparkles",
+                    iconColor: .purple,
+                    title: "제안 액션",
+                    content: {
+                        VStack(alignment: .leading, spacing: 3) {
+                            ForEach(Array(sections.actionSuggestionLines.enumerated()), id: \.offset) { _, line in
+                                Text(line)
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(isDarkMode ? .white.opacity(0.88) : .primary)
+                            }
+                        }
+                    }
+                )
+            }
+
+            if !sections.connectorStatusLines.isEmpty {
+                sectionBlock(
+                    icon: "link",
+                    iconColor: .orange,
+                    title: "커넥터 상태",
+                    content: {
+                        VStack(alignment: .leading, spacing: 3) {
+                            ForEach(Array(sections.connectorStatusLines.enumerated()), id: \.offset) { _, line in
+                                Text(line)
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(isDarkMode ? .white.opacity(0.82) : .primary)
+                            }
+                        }
+                    }
+                )
+            }
+
+            if !sections.attachmentStatusLines.isEmpty {
+                sectionBlock(
+                    icon: "paperclip",
+                    iconColor: .green,
+                    title: "확인한 첨부",
+                    content: {
+                        VStack(alignment: .leading, spacing: 3) {
+                            ForEach(Array(sections.attachmentStatusLines.enumerated()), id: \.offset) { _, line in
+                                Text(line)
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(isDarkMode ? .white.opacity(0.82) : .primary)
+                            }
+                        }
+                    }
+                )
+            }
+
             if !sections.hardBlockedActions.isEmpty {
                 hardBlockedSection
             }

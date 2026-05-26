@@ -146,6 +146,7 @@ private class LocationHelper: NSObject, ObservableObject, CLLocationManagerDeleg
 struct SettingsView: View {
     @EnvironmentObject var manager: AgentWindowManager
     @ObservedObject private var appEntitlementManager = AppEntitlementManager.shared
+    @ObservedObject private var connectorRegistry = ConnectorRegistry.shared
 
     // ── 사용자 설정
     @AppStorage("userTitle")              private var userTitle: String = "수석님"
@@ -231,6 +232,7 @@ struct SettingsView: View {
         .onAppear {
             TeamNameplateAppearanceSettings.migrateLegacyValuesIfNeeded()
             loadSettings()
+            connectorRegistry.refresh()
         }
         .onChange(of: gps.locationText) { _, newVal in
             if !newVal.isEmpty { userLocation = newVal }
@@ -378,6 +380,15 @@ struct SettingsView: View {
                 AssistantConnectorCenterView(onGoogleCalendarConnectionChanged: {
                     dailyBriefingRefreshToken = UUID()
                 })
+            }
+
+            Section("커넥터 상태") {
+                ConnectorStatusView(
+                    health: connectorRegistry.lastHealth,
+                    onRefresh: {
+                        connectorRegistry.refresh()
+                    }
+                )
             }
 
             Section("오늘 브리핑") {

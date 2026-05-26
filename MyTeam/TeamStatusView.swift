@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 // 고도화: 팀 전체 채팅방(Logs) + 사운드/무음 모드 토글 + 다크모드
 struct TeamStatusView: View {
     @EnvironmentObject var manager: AgentWindowManager
+    @ObservedObject private var chainRunStore = ChainRunStore.shared
     @State private var isCollapsed = false
     @State private var selectedTab: Int = 0
     @State private var isDeleteMode = false
@@ -610,6 +611,15 @@ struct TeamStatusView: View {
                                 }
                             )
                             .padding(.bottom, manager.teamChatLogs.isEmpty ? 0 : 8)
+                        }
+
+                        if let teamRoomID = manager.selectedTeamWorkroomID,
+                           let latestChainRun = chainRunStore.latestRun(for: teamRoomID) {
+                            ChainRunStatusView(
+                                chainRun: latestChainRun,
+                                isDarkMode: manager.isDarkMode
+                            )
+                            .padding(.bottom, 4)
                         }
 
                         if manager.teamChatLogs.isEmpty && !manager.isBeginnerMode {
