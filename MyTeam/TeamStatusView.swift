@@ -1345,8 +1345,28 @@ struct TeamStatusView: View {
             message = """
             파일을 읽었습니다.
             파일: \(result.request.originalFilename)
-            다음 단계에서 “이 파일 요약해줘”, “이 파일 보고서로 만들어줘”, “이 파일 체크리스트 만들어줘”, “이 파일 내용을 표로 정리해줘”라고 이어서 요청할 수 있습니다.
+            먼저 요약/해야 할 일/주의할 점 카드로 남기고 있습니다.
             """
+            Task { @MainActor in
+                if let artifact = await FileIntakeService.writeFirstResultCard(
+                    from: result,
+                    roomID: roomID,
+                    manager: manager
+                ) {
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "파일",
+                        text: """
+                        요약 카드를 만들었습니다.
+                        파일: \(artifact.filename)
+                        이어서 “답장 초안 만들어줘”, “체크리스트로 바꿔줘”, “보고서로 만들어줘”처럼 요청할 수 있습니다.
+                        """,
+                        isUser: false,
+                        isSystem: true
+                    )
+                }
+            }
         case .planned:
             message = """
             이 파일 형식은 아직 준비 중입니다.

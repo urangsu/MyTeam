@@ -125,6 +125,74 @@ enum FileIntakeService {
         """
     }
 
+    @MainActor
+    static func writeFirstResultCard(
+        from result: FileIntakeResult,
+        roomID: UUID,
+        manager: AgentWindowManager
+    ) async -> IndexedArtifact? {
+        guard result.status == .ready,
+              let sourceText = result.normalizedText ?? result.extractedText,
+              !sourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+
+        let workflowID = manager.currentWorkflowID ?? UUID()
+        let markdown = buildFirstResultCardMarkdown(result: result, sourceText: sourceText)
+        let filename = firstResultCardFilename(for: result)
+        let fileURL: URL
+        do {
+            fileURL = try safeWritableWorkspaceURL(
+                filename: filename,
+                context: ToolExecutionContext.current(workflowID: workflowID, roomID: roomID)
+            )
+            try markdown.write(to: fileURL, atomically: true, encoding: .utf8)
+        } catch {
+            AppLog.error("[FileIntakeService] first result card 저장 실패: \(error.localizedDescription)")
+            return nil
+        }
+
+        let savedFilename = fileURL.lastPathComponent
+        let artifact = IndexedArtifact(
+            id: UUID().uuidString,
+            workflowID: workflowID.uuidString,
+            title: firstResultCardTitle(for: result),
+            type: .text,
+            filename: savedFilename,
+            relativePath: savedFilename,
+            preview: markdownPreview(markdown),
+            createdAt: ISO8601DateFormatter().string(from: Date()),
+            contentHash: StableContentHash.sha256Hex(markdown),
+            fileSizeBytes: Int64(markdown.utf8.count),
+            roomID: roomID.uuidString
+        )
+
+        await ArtifactStore.shared.registerArtifact(artifact)
+        manager.addRecentArtifactIndexEntry(
+            RecentArtifactIndexEntry(
+                artifactID: artifact.id,
+                roomID: roomID,
+                filename: savedFilename,
+                artifactType: artifact.type.rawValue,
+                createdAt: Date(),
+                contentHash: artifact.contentHash,
+                fileSizeBytes: artifact.fileSizeBytes
+            )
+        )
+
+        NotificationCenter.default.post(
+            name: .workflowCompleted,
+            object: nil,
+            userInfo: [
+                "workflowID": workflowID.uuidString,
+                "roomID": roomID,
+                "artifacts": [artifact]
+            ]
+        )
+
+        return artifact
+    }
+
     static func extractAttachmentText(from url: URL) -> String? {
         do {
             let request = try makeRequest(fileURL: url, source: .filePicker)
@@ -133,6 +201,161 @@ enum FileIntakeService {
         } catch {
             return nil
         }
+    }
+
+    private static func buildFirstResultCardMarkdown(
+        result: FileIntakeResult,
+        sourceText: String
+    ) -> String {
+        let filename = result.request.originalFilename
+        let kind = intakeKind(result: result, sourceText: sourceText)
+        let summary = summaryBullets(from: sourceText, limit: 4)
+        let actionItems = actionItemBullets(from: sourceText, kind: kind)
+        let cautionItems = cautionBullets(from: result, sourceText: sourceText, kind: kind)
+        let nextActions = nextActionBullets(kind: kind)
+        let metadata = [
+            result.detectedFormat.map { "- 형식: \($0.rawValue)" },
+            result.metadataSummary.map { "- 추출 정보: \($0)" },
+            result.extractionWarnings.isEmpty ? nil : "- 경고: \(result.extractionWarnings.joined(separator: ", "))"
+        ].compactMap { $0 }
+
+        return """
+        # \(firstResultCardTitle(for: result))
+
+        원본: \(filename)
+
+        ## 요약
+        \(summary.map { "- \($0)" }.joined(separator: "\n"))
+
+        ## 해야 할 일
+        \(actionItems.map { "- \($0)" }.joined(separator: "\n"))
+
+        ## 주의할 점
+        \(cautionItems.map { "- \($0)" }.joined(separator: "\n"))
+
+        ## 다음 버튼
+        \(nextActions.map { "- \($0)" }.joined(separator: "\n"))
+
+        ## 처리 정보
+        \(metadata.isEmpty ? "- 로컬 파일 읽기 결과로 만든 첫 카드입니다." : metadata.joined(separator: "\n"))
+        """
+    }
+
+    private enum IntakeKind {
+        case mail
+        case spreadsheet
+        case document
+    }
+
+    private static func intakeKind(result: FileIntakeResult, sourceText: String) -> IntakeKind {
+        if result.detectedFormat == .xlsx { return .spreadsheet }
+        let lower = (result.request.originalFilename + "\n" + sourceText.prefix(1_000)).lowercased()
+        if lower.contains("from:") || lower.contains("subject:") || lower.contains("보낸사람")
+            || lower.contains("받는사람") || lower.contains("메일") || lower.contains("이메일") {
+            return .mail
+        }
+        return .document
+    }
+
+    private static func summaryBullets(from text: String, limit: Int) -> [String] {
+        let candidates = text
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { line in
+                guard line.count >= 12 else { return false }
+                guard !line.hasPrefix("#"), !line.hasPrefix("|"), !line.hasPrefix("- 형식:") else { return false }
+                return true
+            }
+
+        let bullets = candidates.prefix(limit).map { compactLine($0, maxLength: 120) }
+        return bullets.isEmpty ? ["파일 내용을 읽었지만 자동 요약할 충분한 문장을 찾지 못했습니다."] : Array(bullets)
+    }
+
+    private static func actionItemBullets(from text: String, kind: IntakeKind) -> [String] {
+        let lines = text
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        let actionKeywords = ["요청", "확인", "검토", "회신", "답장", "제출", "마감", "기한", "필요", "해야", "보내", "공유"]
+        let matches = lines.filter { line in
+            actionKeywords.contains { line.localizedCaseInsensitiveContains($0) }
+        }
+        let extracted = matches.prefix(4).map { compactLine($0, maxLength: 110) }
+        if !extracted.isEmpty { return Array(extracted) }
+
+        switch kind {
+        case .mail:
+            return ["메일 요청사항을 확인하고 답장 필요 여부를 결정하세요.", "마감일이나 첨부 요청이 있는지 한 번 더 확인하세요."]
+        case .spreadsheet:
+            return ["핵심 수치와 이상값을 확인하세요.", "필요하면 표 요약이나 이상 후보 검토를 이어서 요청하세요."]
+        case .document:
+            return ["중요한 날짜, 금액, 담당자, 의사결정 항목을 확인하세요.", "필요하면 체크리스트나 보고서 초안으로 변환하세요."]
+        }
+    }
+
+    private static func cautionBullets(
+        from result: FileIntakeResult,
+        sourceText: String,
+        kind: IntakeKind
+    ) -> [String] {
+        var cautions: [String] = []
+        if result.extractionWarnings.contains(DocumentIngestionWarning.truncated.rawValue) {
+            cautions.append("문서가 길어 일부만 읽었습니다. 중요한 뒷부분이 있으면 파일을 나눠 다시 올려주세요.")
+        }
+        if result.extractionWarnings.contains(DocumentIngestionWarning.imageOnlyPDF.rawValue) {
+            cautions.append("스캔 이미지나 배치 요소는 빠졌을 수 있습니다. 이미지 OCR/캡처도 함께 확인하는 것이 좋습니다.")
+        }
+        if sourceText.count < 200 {
+            cautions.append("읽은 텍스트가 짧습니다. 원본이 이미지 중심이면 추출이 부족할 수 있습니다.")
+        }
+        if kind == .mail {
+            cautions.append("메일 발송이나 삭제는 자동으로 하지 않습니다. 답장 초안은 확인 후 직접 보내세요.")
+        }
+        return cautions.isEmpty ? ["이 카드는 로컬 추출 결과 기반입니다. 법률·세무·투자 판단은 원문과 함께 확인하세요."] : cautions
+    }
+
+    private static func nextActionBullets(kind: IntakeKind) -> [String] {
+        switch kind {
+        case .mail:
+            return ["답장 초안 만들기", "해야 할 일만 체크리스트로 만들기", "마감일과 담당자만 뽑기"]
+        case .spreadsheet:
+            return ["표로 다시 정리하기", "이상한 수치 후보 찾기", "요약 보고서 만들기"]
+        case .document:
+            return ["핵심 요약 더 짧게 만들기", "회의록/보고서 형식으로 바꾸기", "할 일 체크리스트 만들기"]
+        }
+    }
+
+    private static func firstResultCardTitle(for result: FileIntakeResult) -> String {
+        let name = result.request.originalFilename
+        switch intakeKind(result: result, sourceText: result.normalizedText ?? result.extractedText ?? "") {
+        case .mail: return "메일 할 일 카드"
+        case .spreadsheet: return "표 요약 카드"
+        case .document: return "\(name) 요약 카드"
+        }
+    }
+
+    private static func firstResultCardFilename(for result: FileIntakeResult) -> String {
+        let stem = result.request.originalFilename
+            .replacingOccurrences(of: ".", with: "_")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: ":", with: "_")
+        return "\(String(stem.prefix(40)))_요약카드.md"
+    }
+
+    private static func compactLine(_ line: String, maxLength: Int) -> String {
+        let collapsed = line
+            .replacingOccurrences(of: "\t", with: " ")
+            .replacingOccurrences(of: "  ", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard collapsed.count > maxLength else { return collapsed }
+        return String(collapsed.prefix(maxLength - 1)) + "..."
+    }
+
+    private static func markdownPreview(_ markdown: String) -> String {
+        String(markdown.prefix(200))
+            .replacingOccurrences(of: "\n", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private static func ingest(_ request: FileIntakeRequest) -> DocumentIngestionResult {
