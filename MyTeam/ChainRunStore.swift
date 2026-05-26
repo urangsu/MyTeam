@@ -6,10 +6,12 @@ final class ChainRunStore: ObservableObject {
     static let shared = ChainRunStore()
 
     @Published private(set) var latestRunByRoomID: [UUID: ChainRun] = [:]
+    @Published private(set) var latestRunByID: [UUID: ChainRun] = [:]
     @Published private(set) var recentRunsByRoomID: [UUID: [ChainRun]] = [:]
 
     func upsert(_ run: ChainRun) {
         latestRunByRoomID[run.roomID] = run
+        latestRunByID[run.id] = run
         var runs = recentRunsByRoomID[run.roomID, default: []]
         if let idx = runs.firstIndex(where: { $0.id == run.id }) {
             runs[idx] = run
@@ -23,12 +25,13 @@ final class ChainRunStore: ObservableObject {
         latestRunByRoomID[roomID]
     }
 
-    func appendArtifact(_ artifactID: String, roomID: UUID) {
-        guard var latestRun = latestRunByRoomID[roomID] else { return }
-        if !latestRun.artifacts.contains(artifactID) {
-            latestRun.artifacts.append(artifactID)
-            latestRun.updatedAt = Date()
-            upsert(latestRun)
+    func appendArtifact(_ artifactID: String, chainRunID: UUID, roomID: UUID) {
+        guard var run = latestRunByID[chainRunID] ?? latestRunByRoomID[roomID] else { return }
+        guard run.id == chainRunID, run.roomID == roomID else { return }
+        if !run.artifacts.contains(artifactID) {
+            run.artifacts.append(artifactID)
+            run.updatedAt = Date()
+            upsert(run)
         }
     }
 }
