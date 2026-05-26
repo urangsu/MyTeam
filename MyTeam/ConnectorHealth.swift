@@ -70,14 +70,14 @@ final class ConnectorRegistry: ObservableObject {
     static func defaultHealth() -> ConnectorHealth {
         ConnectorHealth(
             stockQuote: quoteConnectorStatus(),
-            newsSearch: newsSearchStatus(),
-            disclosureSearch: disclosureSearchStatus(),
-            webFetch: webFetchStatus(),
+            newsSearch: newsSearchStatus(hasGroundedSearch: false, hasLocalWebFallback: true),
+            disclosureSearch: disclosureSearchStatus(hasGroundedSearch: false, hasLocalWebFallback: true),
+            webFetch: webFetchStatus(hasGroundedSearch: false, hasLocalWebFallback: true),
             pdfText: .available,
             imageOCR: .available,
             mailRead: .needsSetup(reason: "메일 계정 연결이 필요합니다."),
             calendarDraft: .approvalRequired,
-            mapsSearch: webFetchStatus(),
+            mapsSearch: webFetchStatus(hasGroundedSearch: false, hasLocalWebFallback: true),
             trainSearch: .needsSetup(reason: "열차 조회 연동이 아직 설정되지 않았습니다.")
         )
     }
@@ -85,29 +85,45 @@ final class ConnectorRegistry: ObservableObject {
     private static func quoteConnectorStatus() -> ConnectorStatus {
         let hasQuoteLookupTool = AgentToolRegistry.shared.tools["finance_quote"] != nil
         return hasQuoteLookupTool
-            ? .degraded(reason: "시세 조회는 웹 폴백으로만 동작합니다.")
+            ? .available
             : .needsSetup(reason: "시세 조회 커넥터가 설정되지 않았습니다.")
     }
 
-    private static func newsSearchStatus() -> ConnectorStatus {
-        let hasWebSearchTool = AgentToolRegistry.shared.tools["web_search"] != nil
-        return hasWebSearchTool
-            ? .available
+    private static func newsSearchStatus(hasGroundedSearch: Bool, hasLocalWebFallback: Bool) -> ConnectorStatus {
+        if hasGroundedSearch {
+            return .available
+        }
+        return hasLocalWebFallback
+            ? .degraded(reason: "뉴스 검색은 로컬 웹 폴백으로만 동작해 최신성 검증이 약합니다.")
             : .needsSetup(reason: "뉴스 검색용 웹 커넥터가 설정되지 않았습니다.")
     }
 
-    private static func disclosureSearchStatus() -> ConnectorStatus {
-        let hasWebSearchTool = AgentToolRegistry.shared.tools["web_search"] != nil
-        return hasWebSearchTool
-            ? .degraded(reason: "공시는 DART/KIND 전용 커넥터가 없어 웹 폴백으로만 동작합니다.")
+    private static func disclosureSearchStatus(hasGroundedSearch: Bool, hasLocalWebFallback: Bool) -> ConnectorStatus {
+        if hasGroundedSearch {
+            return .degraded(reason: "DART/KIND 전용 커넥터가 없어 웹 검색으로 공시 출처를 확인합니다.")
+        }
+        return hasLocalWebFallback
+            ? .degraded(reason: "공시는 DART/KIND 전용 커넥터가 없어 로컬 웹 폴백으로만 동작합니다.")
             : .needsSetup(reason: "DART/KIND 공시 커넥터가 설정되지 않았습니다.")
     }
 
-    private static func webFetchStatus() -> ConnectorStatus {
-        let hasWebSearchTool = AgentToolRegistry.shared.tools["web_search"] != nil
-        return hasWebSearchTool
-            ? .available
+    private static func webFetchStatus(hasGroundedSearch: Bool, hasLocalWebFallback: Bool) -> ConnectorStatus {
+        if hasGroundedSearch {
+            return .available
+        }
+        return hasLocalWebFallback
+            ? .degraded(reason: "웹 조회는 로컬 폴백으로만 동작합니다.")
             : .needsSetup(reason: "웹 조회 커넥터가 설정되지 않았습니다.")
+    }
+
+    private static func hasGroundedSearchProvider() -> Bool {
+        let hasGemini = !(KeychainManager.load(key: "geminiAPIKey") ?? "").isEmpty
+        let hasOpenAI = !(KeychainManager.load(key: "openAIAPIKey") ?? "").isEmpty
+        return hasGemini || hasOpenAI
+    }
+
+    private static func hasLocalWebFallback() -> Bool {
+        AgentToolRegistry.shared.tools["web_search"] != nil
     }
 
     func refresh() {
@@ -115,22 +131,19 @@ final class ConnectorRegistry: ObservableObject {
     }
 
     func currentHealth() -> ConnectorHealth {
-        let hasGemini = !(KeychainManager.load(key: "geminiAPIKey") ?? "").isEmpty
-        let hasOpenAI = !(KeychainManager.load(key: "openAIAPIKey") ?? "").isEmpty
-        let hasClaude = !(KeychainManager.load(key: "claudeAPIKey") ?? "").isEmpty
-        let hasOpenRouter = !(KeychainManager.load(key: "openRouterAPIKey") ?? "").isEmpty
-        let hasWeb = hasGemini || hasOpenAI || hasClaude || hasOpenRouter
+        let hasGroundedSearch = Self.hasGroundedSearchProvider()
+        let hasLocalWebFallback = Self.hasLocalWebFallback()
 
         return ConnectorHealth(
             stockQuote: Self.quoteConnectorStatus(),
-            newsSearch: Self.newsSearchStatus(),
-            disclosureSearch: Self.disclosureSearchStatus(),
-            webFetch: Self.webFetchStatus(),
+            newsSearch: Self.newsSearchStatus(hasGroundedSearch: hasGroundedSearch, hasLocalWebFallback: hasLocalWebFallback),
+            disclosureSearch: Self.disclosureSearchStatus(hasGroundedSearch: hasGroundedSearch, hasLocalWebFallback: hasLocalWebFallback),
+            webFetch: Self.webFetchStatus(hasGroundedSearch: hasGroundedSearch, hasLocalWebFallback: hasLocalWebFallback),
             pdfText: .available,
             imageOCR: .available,
             mailRead: .needsSetup(reason: "Gmail 또는 Mail 읽기 연결이 필요합니다."),
             calendarDraft: .approvalRequired,
-            mapsSearch: hasWeb ? .available : .degraded(reason: "지도 검색은 가능하지만 출처 검증이 약합니다."),
+            mapsSearch: Self.webFetchStatus(hasGroundedSearch: hasGroundedSearch, hasLocalWebFallback: hasLocalWebFallback),
             trainSearch: .needsSetup(reason: "열차 조회 API 또는 공식 검색 연결이 필요합니다.")
         )
     }
