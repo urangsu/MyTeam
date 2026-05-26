@@ -76,6 +76,10 @@ struct KSkillAssistCardView: View {
                     .font(.system(size: 12))
             }
 
+            if isMailAmbiguityCard {
+                mailAmbiguityChoiceCard
+            }
+
             if !sections.checklist.isEmpty {
                 sectionBlock(
                     icon: "checkmark.square",
@@ -252,6 +256,47 @@ struct KSkillAssistCardView: View {
         .overlay(
             RoundedRectangle(cornerRadius: 6)
                 .stroke(Color.red.opacity(0.25), lineWidth: 1)
+        )
+    }
+
+    private var isMailAmbiguityCard: Bool {
+        skillID == "korean.mail-summary-assist"
+            && sections.message.contains("메일 본문으로 보고")
+            && sections.nextActions.contains("메일 본문으로 처리")
+    }
+
+    private var mailAmbiguityChoiceCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "questionmark.bubble.fill")
+                    .foregroundStyle(.blue)
+                    .font(.system(size: 12))
+                Text("메일로 처리할지 확인")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(isDarkMode ? .white : .primary)
+            }
+            Text("이 문장이 메일 본문인지, 그냥 질문인지 애매해요. 메일 본문으로 보고 요약할까요?")
+                .font(.system(size: 12))
+                .foregroundStyle(isDarkMode ? .white.opacity(0.86) : .primary.opacity(0.86))
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 6)], alignment: .leading, spacing: 6) {
+                ForEach(["메일 본문으로 처리", "메일 본문 붙여넣기", "캡처/파일 올리기"], id: \.self) { title in
+                    Text(title)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.blue)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.blue.opacity(isDarkMode ? 0.16 : 0.08))
+                        .cornerRadius(6)
+                }
+            }
+        }
+        .padding(9)
+        .background(Color.blue.opacity(isDarkMode ? 0.10 : 0.05))
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.blue.opacity(0.22), lineWidth: 1)
         )
     }
 
