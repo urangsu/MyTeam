@@ -1419,3 +1419,100 @@ final class AIService {
         NSError(domain: "AIService", code: 401, userInfo: [NSLocalizedDescriptionKey: message])
     }
 }
+
+// MARK: - AgentModelService
+// 업무 실행용 모델 어댑터. AIService는 일반 채팅/스트리밍을 유지하고,
+// 여기서는 schema 기반 JSON 산출물을 요구하는 호출만 모은다.
+
+final class AgentModelService {
+    static let shared = AgentModelService()
+    private init() {}
+
+    struct StructuredRequest: Sendable {
+        let instruction: String
+        let schemaDescription: String
+        let userMessage: String
+        let agentID: String
+        let chatHistory: [AgentWindowManager.ChatLog]
+        let requiresToolUse: Bool
+    }
+
+    func generateJSON<T: Decodable>(
+        _ type: T.Type,
+        request: StructuredRequest
+    ) async throws -> T {
+        let prompt = """
+        \(request.instruction)
+
+        반드시 아래 스키마에 맞는 JSON 객체만 반환하세요. 설명 문장, 마크다운 코드펜스, 접두사/접미사를 붙이지 마세요.
+
+        [스키마]
+        \(request.schemaDescription)
+
+        [사용자 요청]
+        \(request.userMessage)
+        """
+
+        let response = try await AIService.shared.getResponse(
+            text: prompt,
+            agentID: request.agentID,
+            chatHistory: request.chatHistory,
+            requiresToolUse: request.requiresToolUse
+        )
+        let jsonText = extractJSONObject(from: response.text)
+        guard let data = jsonText.data(using: .utf8) else {
+            throw NSError(domain: "AgentModelService", code: 1, userInfo: [NSLocalizedDescriptionKey: "JSON 인코딩에 실패했습니다."])
+        }
+        return try JSONDecoder().decode(T.self, from: data)
+    }
+
+    func summarizeArtifact(
+        userMessage: String,
+        artifactText: String,
+        chatHistory: [AgentWindowManager.ChatLog]
+    ) async throws -> StructuredArtifactSummary {
+        let request = StructuredRequest(
+            instruction: "첨부/산출물 내용을 근거로만 요약하세요. 없는 사실을 만들지 말고, 사용자 요청에서 요구한 관점이 있으면 그 관점만 우선하세요.",
+            schemaDescription: StructuredArtifactSummary.schemaDescription,
+            userMessage: """
+            요청: \(userMessage)
+
+            산출물 내용:
+            \(artifactText)
+            """,
+            agentID: "artifact-summarizer",
+            chatHistory: chatHistory,
+            requiresToolUse: false
+        )
+        return try await generateJSON(StructuredArtifactSummary.self, request: request)
+    }
+
+    private func extractJSONObject(from text: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("{"), trimmed.hasSuffix("}") { return trimmed }
+        guard
+            let start = trimmed.firstIndex(of: "{"),
+            let end = trimmed.lastIndex(of: "}"),
+            start <= end
+        else {
+            return trimmed
+        }
+        return String(trimmed[start...end])
+    }
+}
+
+struct StructuredArtifactSummary: Codable, Sendable {
+    let title: String
+    let summary: [String]
+    let actionItems: [String]
+    let caveats: [String]
+
+    static let schemaDescription = """
+    {
+      "title": "짧은 제목",
+      "summary": ["근거 기반 핵심 요약 1", "근거 기반 핵심 요약 2"],
+      "actionItems": ["사용자가 다음에 할 수 있는 일"],
+      "caveats": ["자료에 없어서 확정할 수 없는 점"]
+    }
+    """
+}
