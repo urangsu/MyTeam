@@ -463,8 +463,6 @@ class AgentWindowManager: ObservableObject {
         if let rid = roomID { facts += keyFactsScoped["room_\(rid.uuidString)"] ?? [] }
         // 3. 캐릭터별 기억
         facts += keyFactsScoped["char_\(agentName)"] ?? []
-        // 4. 레거시 전역 기억 (V1 keyFacts — 마이그레이션 전까지 포함)
-        facts += keyFacts
         // 중복 제거
         facts = NSOrderedSet(array: facts).array.compactMap { $0 as? String }
         guard !facts.isEmpty else { return "" }
@@ -663,14 +661,12 @@ class AgentWindowManager: ObservableObject {
             }
 
             Task {
-                let all = await ArtifactStore.shared.loadArtifacts()
-                let recent: [IndexedArtifact]
-                if let wid = workflowID {
-                    recent = all.filter { $0.workflowID == wid }
-                } else {
-                    AppLog.warning("[AgentWindowManager] workflowCompleted에 workflowID 없음 — suffix(5) fallback (데이터 오염 위험)")
-                    recent = Array(all.suffix(5))
+                guard let wid = workflowID else {
+                    AppLog.warning("[AgentWindowManager] workflowCompleted에 workflowID 없음 — recentArtifacts 업데이트 생략")
+                    return
                 }
+                let all = await ArtifactStore.shared.loadArtifacts()
+                let recent = all.filter { $0.workflowID == wid }
                 // Task.yield: 현재 layout pass 완료 후 업데이트 — layout recursion 방지
                 await Task.yield()
                 await MainActor.run { self.recentArtifacts = recent }
