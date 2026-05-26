@@ -5,10 +5,11 @@ enum ActionRuntime {
     static func execute(
         _ action: ActionSuggestion,
         roomID: UUID,
-        manager: AgentWindowManager
+        manager: AgentWindowManager,
+        chainRunID: UUID? = nil
     ) async -> ActionExecutionResult {
         guard let handlerID = action.handlerID else {
-            return .queued("핸들러가 연결되지 않은 액션입니다.", prompt: action.title)
+            return .failed("핸들러가 연결되지 않은 액션입니다.", failureCode: "missing_handler")
         }
 
         if ApprovalBinder.requiresApproval(for: handlerID) || action.requiresApproval {
@@ -21,8 +22,9 @@ enum ActionRuntime {
 
         switch handlerID {
         case .replyDraft:
-            let artifactID = await persistDraftArtifact(
+            guard let artifactID = await persistDraftArtifact(
                 roomID: roomID,
+                chainRunID: chainRunID ?? action.chainRunID,
                 manager: manager,
                 title: action.title,
                 stem: "reply-draft",
@@ -36,12 +38,15 @@ enum ActionRuntime {
                 - 수신자/기한 확인
                 - 승인 후 발송
                 """
-            )
+            ) else {
+                return .failed("artifact 저장에 실패했습니다.", handlerID: handlerID, failureCode: "artifact_write_failed")
+            }
             return .completed("답장 초안을 방 안의 artifact로 저장했습니다.", handlerID: handlerID, artifactID: artifactID)
 
         case .todoCreate:
-            let artifactID = await persistDraftArtifact(
+            guard let artifactID = await persistDraftArtifact(
                 roomID: roomID,
+                chainRunID: chainRunID ?? action.chainRunID,
                 manager: manager,
                 title: action.title,
                 stem: "todo-card",
@@ -55,12 +60,15 @@ enum ActionRuntime {
                 - 마감이 있으면 캘린더 제안
                 - 완료 후 상태 갱신
                 """
-            )
+            ) else {
+                return .failed("artifact 저장에 실패했습니다.", handlerID: handlerID, failureCode: "artifact_write_failed")
+            }
             return .completed("할 일 카드를 방 안의 artifact로 저장했습니다.", handlerID: handlerID, artifactID: artifactID)
 
         case .saveMemo:
-            let artifactID = await persistDraftArtifact(
+            guard let artifactID = await persistDraftArtifact(
                 roomID: roomID,
+                chainRunID: chainRunID ?? action.chainRunID,
                 manager: manager,
                 title: action.title,
                 stem: "memo",
@@ -73,12 +81,15 @@ enum ActionRuntime {
                 - 방 안에서 다시 불러올 수 있도록 저장
                 - 다음 질문에서 이어서 사용
                 """
-            )
+            ) else {
+                return .failed("artifact 저장에 실패했습니다.", handlerID: handlerID, failureCode: "artifact_write_failed")
+            }
             return .completed("메모를 방 안의 artifact로 저장했습니다.", handlerID: handlerID, artifactID: artifactID)
 
         case .createDocument:
-            let artifactID = await persistDraftArtifact(
+            guard let artifactID = await persistDraftArtifact(
                 roomID: roomID,
+                chainRunID: chainRunID ?? action.chainRunID,
                 manager: manager,
                 title: action.title,
                 stem: "document",
@@ -93,12 +104,15 @@ enum ActionRuntime {
                 - 주의점
                 - 승인 후 배포
                 """
-            )
+            ) else {
+                return .failed("artifact 저장에 실패했습니다.", handlerID: handlerID, failureCode: "artifact_write_failed")
+            }
             return .completed("문서 초안을 방 안의 artifact로 저장했습니다.", handlerID: handlerID, artifactID: artifactID)
 
         case .summarizeArtifact:
-            let artifactID = await persistDraftArtifact(
+            guard let artifactID = await persistDraftArtifact(
                 roomID: roomID,
+                chainRunID: chainRunID ?? action.chainRunID,
                 manager: manager,
                 title: action.title,
                 stem: "summary",
@@ -112,7 +126,9 @@ enum ActionRuntime {
                 - 수치/날짜 재점검
                 - 후속 액션 제안
                 """
-            )
+            ) else {
+                return .failed("artifact 저장에 실패했습니다.", handlerID: handlerID, failureCode: "artifact_write_failed")
+            }
             return .completed("요약 카드를 방 안의 artifact로 저장했습니다.", handlerID: handlerID, artifactID: artifactID)
 
         case .calendarDraft:
@@ -136,11 +152,13 @@ enum ActionRuntime {
 
     private static func persistDraftArtifact(
         roomID: UUID,
+        chainRunID: UUID?,
         manager: AgentWindowManager,
         title: String,
         stem: String,
         body: String
     ) async -> String? {
+        guard let chainRunID else { return nil }
         let workflowID = manager.currentWorkflowID ?? UUID()
         let context = ToolExecutionContext.current(workflowID: workflowID, roomID: roomID)
         let timestamp = DateFormatter.localizedString(
@@ -168,6 +186,7 @@ enum ActionRuntime {
             let artifact = IndexedArtifact(
                 id: UUID().uuidString,
                 workflowID: workflowID.uuidString,
+                chainRunID: chainRunID.uuidString,
                 title: title,
                 type: .text,
                 filename: savedFilename,
@@ -180,6 +199,7 @@ enum ActionRuntime {
             )
 
             await ArtifactStore.shared.registerArtifact(artifact)
+            ChainRunStore.shared.appendArtifact(artifact.id, chainRunID: chainRunID, roomID: roomID)
             manager.addRecentArtifactIndexEntry(
                 RecentArtifactIndexEntry(
                     artifactID: artifact.id,
@@ -191,7 +211,6 @@ enum ActionRuntime {
                     fileSizeBytes: artifact.fileSizeBytes
                 )
             )
-            ChainRunStore.shared.appendArtifact(artifact.id, roomID: roomID)
             return artifact.id
         } catch {
             AppLog.error("[ActionRuntime] artifact write failed: \(error.localizedDescription)")
