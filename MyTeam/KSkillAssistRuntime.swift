@@ -741,7 +741,7 @@ enum KSkillAssistRuntime {
                     case .confirmedBody:
                         return "메일함에 자동 접속한 척하지 않습니다. 메일 본문, 캡처, eml/txt 파일, 또는 복사한 대화를 주시면 핵심 요약과 해야 할 일 카드로 정리합니다."
                     case .ambiguous:
-                        return "메일 원문이 아직 없는 것 같아요. 아래 문장을 메일 본문으로 보고 정리할까요?"
+                        return "이 문장이 메일 본문인지, 그냥 질문인지 애매해요. 메일 본문으로 보고 요약할까요?"
                     case .missing:
                         return "메일 원문이 아직 없는 것 같아요. 메일 본문, 캡처, eml/txt 파일, 또는 복사한 대화를 주시면 핵심 요약과 해야 할 일 카드로 정리합니다."
                     }
@@ -780,7 +780,7 @@ enum KSkillAssistRuntime {
                     case .ambiguous:
                         return [
                             "메일 본문으로 처리",
-                            "메일 붙여넣기",
+                            "메일 본문 붙여넣기",
                             "캡처/파일 올리기"
                         ]
                     case .missing:
@@ -956,7 +956,20 @@ enum KSkillRunEngine {
         let shouldGatherEvidence = shouldGatherEvidence(for: intent, mode: mode, health: health)
         let lookupQuery = evidenceQuery(for: intent, userMessage: userMessage)
         let policy = evidencePolicy(for: intent, userMessage: lookupQuery)
-        let gatheredEvidence = shouldGatherEvidence ? await ToolEvidenceService.gather(for: lookupQuery, policy: policy) : .empty
+        let gatheredEvidence: ToolEvidenceResult
+        if shouldGatherEvidence && intent == .stockInfoAssist {
+            gatheredEvidence = await StockEvidenceCollector.collect(
+                StockEvidenceRequest(
+                    rawQuery: userMessage,
+                    companyName: KoreanStockSymbolResolver.resolve(userMessage)?.companyName,
+                    ticker: KoreanStockSymbolResolver.resolve(userMessage)?.ticker,
+                    dateRange: nil
+                ),
+                health: health
+            )
+        } else {
+            gatheredEvidence = shouldGatherEvidence ? await ToolEvidenceService.gather(for: lookupQuery, policy: policy) : .empty
+        }
         let evidence = mergeEvidence(gatheredEvidence, attachments: attachments)
         let verification = verificationStatus(
             mode: mode,
@@ -1144,11 +1157,14 @@ enum KSkillRunEngine {
         guard mode == .readOnlyLookup else { return false }
         switch intent {
         case .stockInfoAssist:
-            return health.stockQuote == .available
+            return health.stockQuote.isOperational
+                || health.newsSearch.isOperational
+                || health.disclosureSearch.isOperational
+                || health.webFetch.isOperational
         case .dartDisclosureAssist:
-            return health.dartSearch == .available
+            return health.disclosureSearch.isOperational || health.webFetch.isOperational
         case .naverNewsAssist, .naverBlogResearchAssist, .lawSearchAssist, .scholarshipAssist:
-            return health.newsSearch == .available
+            return health.newsSearch.isOperational || health.webFetch.isOperational
         default:
             return false
         }
@@ -1232,15 +1248,23 @@ enum KSkillRunEngine {
     ) -> SkillVerification {
         switch chainID {
         case .stockMoveAnalysis:
-            let quoteSource = evidence.sources.contains { $0.resolvedSourceType == .quote }
-            let marketSource = evidence.sources.contains { isMarketSourceType($0.resolvedSourceType) }
-            if quoteSource && marketSource && evidence.sources.count >= 2 {
+            let hasQuote = evidence.sources.contains { $0.resolvedSourceType == .quote }
+            let hasNarrative = evidence.sources.contains { isExternalNarrativeSource($0.resolvedSourceType) }
+            let hasMarketIndex = evidence.sources.contains { isMarketIndexSource($0.resolvedSourceType) }
+            guard hasQuote else {
+                return mode == .readOnlyLookup ? .connectorUnavailable : .userInputRequired
+            }
+            if hasNarrative && hasMarketIndex {
                 return .verified(sourceCount: evidence.sources.count)
             }
-            if quoteSource || marketSource {
+            if hasNarrative {
                 return .partiallyVerified(sourceCount: evidence.sources.count)
             }
-            return mode == .readOnlyLookup ? .connectorUnavailable : .userInputRequired
+            return SkillVerification(
+                status: "quote_only",
+                failureCode: "stock_quote_only",
+                message: "시세 출처는 확인했지만 뉴스나 공시 근거가 부족해 원인을 단정하지 않았습니다."
+            )
 
         case .mailAction, .documentAction:
             let usefulAttachments = attachments.filter { hasTextAttachment($0) }
@@ -1352,11 +1376,15 @@ enum KSkillRunEngine {
         }
     }
 
-    private static func isMarketSourceType(_ sourceType: AgentWindowManager.SourceType) -> Bool {
+    private static func isMarketIndexSource(_ sourceType: AgentWindowManager.SourceType) -> Bool {
+        sourceType == .marketIndex
+    }
+
+    private static func isExternalNarrativeSource(_ sourceType: AgentWindowManager.SourceType) -> Bool {
         switch sourceType {
-        case .news, .disclosure, .marketIndex, .webPage:
+        case .news, .disclosure, .webPage:
             return true
-        case .quote, .userAttachment, .unknown:
+        case .quote, .marketIndex, .userAttachment, .unknown:
             return false
         }
     }
@@ -1465,7 +1493,7 @@ enum KSkillRunEngine {
     private static func nextActionButtons(for intent: KSkillAssistIntent, chainID: SkillChainID? = nil) -> [String] {
         switch intent {
         case .mailSummaryAssist:
-            return ["메일 본문으로 처리", "메일 붙여넣기", "캡처/파일 올리기"]
+            return ["메일 본문으로 처리", "메일 본문 붙여넣기", "캡처/파일 올리기"]
         case .fileImageAssist:
             return ["요약 카드", "마감 추출", "체크리스트"]
         case .stockInfoAssist:
