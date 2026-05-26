@@ -147,6 +147,8 @@ struct ChainRun: Identifiable, Codable, Sendable {
             return "뉴스나 공시 근거가 부족해서 원인을 단정하지 않았어요."
         case "insufficient_causal_sources":
             return "원인 후보를 만들 근거가 충분하지 않아요."
+        case "stock_quote_only":
+            return "시세는 확인했지만 뉴스나 공시 근거가 부족해 원인을 단정하지 않았어요."
         case "market_context_unverified":
             return "시장 맥락 출처를 확인하지 못했어요."
         case "web_fetch_unavailable":
@@ -195,9 +197,13 @@ enum ChainRuntimeSmokeSuite {
     }
 
     static let cases: [SmokeCase] = [
+        SmokeCase(name: "stock-degraded-connector", message: "삼성전자 왜 떨어졌어?", attachments: []),
+        SmokeCase(name: "stock-no-quote-source", message: "이 종목 왜 떨어졌어?", attachments: []),
+        SmokeCase(name: "stock-quote-news", message: "현대차 오늘 왜 올랐어?", attachments: []),
         SmokeCase(name: "stock-drop", message: "삼성전자 왜 떨어졌어?", attachments: []),
         SmokeCase(name: "stock-rally", message: "현대차 오늘 왜 올랐어?", attachments: []),
         SmokeCase(name: "stock-impact", message: "엔비디아 관련해서 SK하이닉스 영향 있어?", attachments: []),
+        SmokeCase(name: "mail-command-only", message: "이 메일 정리해줘", attachments: []),
         SmokeCase(name: "mail-ambiguous", message: "내일 3시에 회의 가능하실까요?", attachments: []),
         SmokeCase(name: "mail-body", message: "이 메일 정리해줘", attachments: [
             ChatAttachment(
@@ -221,7 +227,27 @@ enum ChainRuntimeSmokeSuite {
                 textContent: nil,
                 localPath: nil
             )
-        ])
+        ]),
+        SmokeCase(name: "document-image-no-ocr", message: "이 캡처 정리해줘", attachments: [
+            ChatAttachment(
+                fileName: "capture.png",
+                fileSize: 2048,
+                type: .image,
+                textContent: nil,
+                localPath: nil
+            )
+        ]),
+        SmokeCase(name: "document-pdf-with-text", message: "이 PDF 정리해줘", attachments: [
+            ChatAttachment(
+                fileName: "notice.pdf",
+                fileSize: 4096,
+                type: .pdf,
+                textContent: "제출 마감은 2026년 6월 10일이며 담당자는 운영팀입니다. 총 금액은 120,000원입니다.",
+                localPath: nil
+            )
+        ]),
+        SmokeCase(name: "action-artifact-write-fail", message: "메일 답장 초안 만들어줘", attachments: []),
+        SmokeCase(name: "action-chain-run-id-missing", message: "할 일 카드로 저장해줘", attachments: [])
     ]
 
     static func run() async -> [ChainRuntimeSmokeCaseResult] {
@@ -264,16 +290,21 @@ enum ChainRuntimeSmokeSuite {
                 if route.result.verification.status == "verified" && sourceTypes.filter({ $0 == "quote" }).isEmpty {
                     issues.append("verified without quote source")
                 }
+                if route.result.verification.status == "verified" &&
+                    (sourceTypes.filter({ $0 == "news" || $0 == "disclosure" }).isEmpty ||
+                     sourceTypes.filter({ $0 == "marketIndex" }).isEmpty) {
+                    issues.append("verified without narrative or market source")
+                }
                 if renderSucceeded == false && (sourceTypes.contains("quote") || sourceTypes.contains("news") || sourceTypes.contains("disclosure")) {
                     issues.append("stock card did not render")
                 }
             }
-            if testCase.name == "mail-ambiguous" {
+            if testCase.name == "mail-command-only" || testCase.name == "mail-ambiguous" {
                 if route.result.sourceRefs.isEmpty == false {
-                    issues.append("ambiguous mail produced sources")
+                    issues.append("mail without confirmed body produced sources")
                 }
                 if route.result.verification.status == "verified" {
-                    issues.append("ambiguous mail was verified")
+                    issues.append("mail without confirmed body was verified")
                 }
             }
             if testCase.name == "mail-body" {
@@ -293,6 +324,19 @@ enum ChainRuntimeSmokeSuite {
                 } else {
                     issues.append("document without text unexpectedly succeeded")
                 }
+            }
+            if testCase.name == "document-image-no-ocr" {
+                if chainRun?.steps.first(where: { $0.key == "extractText" })?.status != .failed(failureCode: "ocr_needed") {
+                    issues.append("image without OCR text unexpectedly succeeded")
+                }
+            }
+            if testCase.name == "document-pdf-with-text" {
+                if chainRun?.steps.first(where: { $0.key == "extractText" })?.status != .succeeded {
+                    issues.append("text PDF did not reach extractText success")
+                }
+            }
+            if testCase.name.hasPrefix("action-") {
+                issues.append("manual action runtime smoke case: verify ActionRuntime directly")
             }
 
             results.append(

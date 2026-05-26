@@ -63,7 +63,8 @@ enum ChainOrchestrator {
         let quoteSources = evidence.sources.filter { $0.resolvedSourceType == .quote }
         let newsSources = evidence.sources.filter { $0.resolvedSourceType == .news }
         let disclosureSources = evidence.sources.filter { $0.resolvedSourceType == .disclosure }
-        let marketSources = evidence.sources.filter { isMarketSourceType($0.resolvedSourceType) }
+        let marketSources = evidence.sources.filter { isMarketIndexSource($0.resolvedSourceType) }
+        let narrativeSources = evidence.sources.filter { isExternalNarrativeSource($0.resolvedSourceType) }
         let concreteSources = evidence.sources.filter { isConcreteSource($0.resolvedSourceType) }
         let allSourceIDs = evidence.sources.map(\.id.uuidString)
         let quoteSourceIDs = quoteSources.map(\.id.uuidString)
@@ -134,29 +135,34 @@ enum ChainOrchestrator {
                 step(
                     key: "analyzeCause",
                     title: "원인 후보 분석",
-                    status: !quoteSources.isEmpty && (!newsSources.isEmpty || !disclosureSources.isEmpty || !marketSources.isEmpty)
+                    status: !quoteSources.isEmpty && (!newsSources.isEmpty || !disclosureSources.isEmpty)
                         ? .succeeded
                         : .failed(failureCode: "insufficient_causal_sources"),
-                    outputSummary: !quoteSources.isEmpty ? "원인 후보 생성 준비됨" : "시세 미확인",
+                    outputSummary: !quoteSources.isEmpty && !narrativeSources.isEmpty ? "원인 후보 생성 준비됨" : "원인 단정 금지",
                     sourceIDs: allSourceIDs
                 ),
                 step(
                     key: "verifySources",
                     title: "근거 검증",
-                    status: !quoteSources.isEmpty && (!newsSources.isEmpty || !disclosureSources.isEmpty) && concreteSources.count >= 2
+                    status: !quoteSources.isEmpty && (!newsSources.isEmpty || !disclosureSources.isEmpty) && !marketSources.isEmpty && concreteSources.count >= 3
                         ? .succeeded
                         : .failed(failureCode: "insufficient_concrete_sources"),
                     outputSummary: "\(concreteSources.count)개 concrete source",
                     sourceIDs: allSourceIDs,
-                    failureDetail: concreteSources.count < 2 ? "sourceCount-only verification blocked" : nil
+                    failureDetail: stockVerificationFailureDetail(
+                        quoteCount: quoteSources.count,
+                        newsCount: newsSources.count,
+                        disclosureCount: disclosureSources.count,
+                        marketCount: marketSources.count
+                    )
                 ),
                 step(
                     key: "renderStockMoveCard",
                     title: "원인 카드 생성",
-                    status: !quoteSources.isEmpty && (!newsSources.isEmpty || !disclosureSources.isEmpty) && concreteSources.count >= 2
+                    status: !quoteSources.isEmpty && (!newsSources.isEmpty || !disclosureSources.isEmpty)
                         ? .succeeded
                         : .failed(failureCode: "insufficient_concrete_sources"),
-                    outputSummary: concreteSources.count >= 2 ? "검증 카드 생성" : "검증 대기",
+                    outputSummary: !quoteSources.isEmpty && !narrativeSources.isEmpty ? "부분 근거 카드 생성" : "검증 대기",
                     sourceIDs: allSourceIDs
                 )
             ]
@@ -395,13 +401,29 @@ enum ChainOrchestrator {
         }
     }
 
-    private static func isMarketSourceType(_ sourceType: AgentWindowManager.SourceType) -> Bool {
+    private static func isMarketIndexSource(_ sourceType: AgentWindowManager.SourceType) -> Bool {
+        sourceType == .marketIndex
+    }
+
+    private static func isExternalNarrativeSource(_ sourceType: AgentWindowManager.SourceType) -> Bool {
         switch sourceType {
-        case .news, .disclosure, .marketIndex, .webPage:
+        case .news, .disclosure, .webPage:
             return true
-        case .quote, .userAttachment, .unknown:
+        case .quote, .marketIndex, .userAttachment, .unknown:
             return false
         }
+    }
+
+    private static func stockVerificationFailureDetail(
+        quoteCount: Int,
+        newsCount: Int,
+        disclosureCount: Int,
+        marketCount: Int
+    ) -> String? {
+        if quoteCount == 0 { return "quote source missing" }
+        if newsCount == 0 && disclosureCount == 0 { return "news/disclosure source missing" }
+        if marketCount == 0 { return "market index source missing" }
+        return nil
     }
 
     private static func step(
