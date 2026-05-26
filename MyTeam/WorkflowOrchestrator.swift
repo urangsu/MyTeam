@@ -261,8 +261,8 @@ final class WorkflowOrchestrator {
         if let assistOnlySkill = enabledSkills.first(where: {
             SkillAvailabilityResolver.availability(for: $0) == .assistOnly
         }) {
-            if let skillRoute = await KSkillRunEngine.runPrimary(
-                userMessage: userMessage,
+            if let skillRoute = await SkillOrchestrator.route(
+                message: userMessage,
                 roomID: roomID,
                 matchedSkills: [assistOnlySkill]
             ) {
@@ -572,7 +572,7 @@ final class WorkflowOrchestrator {
             break
         }
 
-        if let skillRoute = await KSkillRunEngine.runPrimary(userMessage: userMessage, roomID: roomID, matchedSkills: enabledSkills) {
+        if let skillRoute = await SkillOrchestrator.route(message: userMessage, roomID: roomID, matchedSkills: enabledSkills) {
             let skillRun = skillRoute.result
             AppLog.info("[SkillRunEngine] handled \(skillRun.skillID)")
             let artifact = await KSkillRunEngine.writeResultArtifact(

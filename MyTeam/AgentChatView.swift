@@ -1193,9 +1193,11 @@ struct AgentChatView: View {
                 history = await ConversationMemory.compactHistory(messages: history)
 
                 let matchedSkills = SkillRegistry.shared.matchEnabledSkills(for: fullText)
-                if let skillRoute = await KSkillRunEngine.runPrimary(
-                    userMessage: fullText,
+                if let skillRoute = await SkillOrchestrator.route(
+                    message: fullText,
                     roomID: roomID,
+                    attachments: attachments,
+                    agentID: targetID,
                     matchedSkills: matchedSkills
                 ) {
                     let artifact = await KSkillRunEngine.writeResultArtifact(
