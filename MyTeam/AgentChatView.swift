@@ -1169,13 +1169,48 @@ struct AgentChatView: View {
 
         Task {
             if targetID == "team_all" {
-                // ── 팀 채팅: TeamOrchestrator (LLM Selector 기반 유기적 토의) ──
-                // activeAgents(화면의 4명)만 참여
+                let matchedSkills = SkillRegistry.shared.matchEnabledSkills(for: fullText)
+                let skillRoute = await SkillOrchestrator.route(
+                    message: fullText,
+                    roomID: roomID,
+                    attachments: attachments,
+                    agentID: targetID,
+                    matchedSkills: matchedSkills
+                )
+                if let skillRoute {
+                    let artifact = await KSkillRunEngine.writeResultArtifact(
+                        skillRoute.result,
+                        roomID: roomID,
+                        manager: manager
+                    )
+                    var responseText = skillRoute.result.markdown
+                    if let artifact {
+                        responseText += """
+
+                        ---
+                        결과 카드를 이 방에 저장했습니다.
+                        파일: \(artifact.filename)
+                        """
+                    }
+                    _ = await MainActor.run {
+                        manager.addChatLog(
+                            roomID: roomID,
+                            agentID: "system",
+                            agentName: skillRoute.result.title,
+                            text: responseText,
+                            isUser: false,
+                            sources: skillRoute.evidence.sources,
+                            skillID: skillRoute.result.skillID
+                        )
+                    }
+                }
                 await TeamOrchestrator.shared.runTeamDiscussion(
                     userMessage: fullText,
                     roomID: roomID,
                     manager: manager,
-                    currentUserMessageID: userMessageID
+                    currentUserMessageID: userMessageID,
+                    chainRunID: skillRoute?.result.chainRunID,
+                    chainEvidence: skillRoute?.evidence
                 )
             } else {
                 // ── 개별 채팅: 해당 에이전트 단독 응답 ──

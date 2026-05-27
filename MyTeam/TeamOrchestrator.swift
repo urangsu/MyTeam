@@ -49,7 +49,9 @@ class TeamOrchestrator {
         manager: AgentWindowManager,
         maxTurns: Int = 6,
         precomputedRouting: IntentResult? = nil,
-        currentUserMessageID: UUID? = nil
+        currentUserMessageID: UUID? = nil,
+        chainRunID: UUID? = nil,
+        chainEvidence: ToolEvidenceResult? = nil
     ) async {
         // 디바운싱: 마지막 토의로부터 2초 이상 경과해야만 진행
         let now = Date()
@@ -68,11 +70,18 @@ class TeamOrchestrator {
             let addressedAgent = mention?.activeAgent
             let unavailableMentionedAgent = (mention?.isActive == false) ? mention?.mentionedAgent : nil
             let toolPolicy = ToolPolicy.evaluate(userMessage)
-            let toolEvidence = await ToolEvidenceService.gather(for: userMessage, policy: toolPolicy)
+            let toolEvidence: ToolEvidenceResult
+            if let chainEvidence {
+                toolEvidence = chainEvidence
+            } else {
+                toolEvidence = await ToolEvidenceService.gather(for: userMessage, policy: toolPolicy)
+            }
+            let chainContext = Self.chainContext(chainRunID: chainRunID, roomID: roomID)
             let groundedUserMessage = userMessage
                 + manager.roomProfileContext(roomID: roomID)
                 + manager.scopedMemoryContext(agentName: leader?.name ?? "팀", roomID: roomID)
                 + toolEvidence.promptContext
+                + chainContext
 
             // 1. 의도 분류 및 리더 추천 (Intent Router)
             let routing: IntentResult
@@ -184,6 +193,30 @@ class TeamOrchestrator {
         }
         // default
         return "작업 중 일시적인 문제가 생겼어요. 다시 한 번 시도해 주세요."
+    }
+
+    @MainActor
+    private static func chainContext(chainRunID: UUID?, roomID: UUID) -> String {
+        let run: ChainRun?
+        if let chainRunID {
+            run = ChainRunStore.shared.latestRunByID[chainRunID]
+        } else {
+            run = ChainRunStore.shared.latestRun(for: roomID)
+        }
+        guard let run else { return "" }
+        let steps = run.stepStatusLines.prefix(8).joined(separator: "\n")
+        let sources = run.sources.prefix(6).map {
+            "- \($0.sourceType.rawValue): \($0.title) (\($0.provider))"
+        }.joined(separator: "\n")
+        return """
+
+        [체인 실행 결과]
+        - chainID: \(run.chainID.rawValue)
+        - status: \(run.status.rawValue)
+        - sources: \(run.sourceSummary)
+        \(steps.isEmpty ? "" : "\n[체인 단계]\n\(steps)")
+        \(sources.isEmpty ? "" : "\n[체인 출처]\n\(sources)")
+        """
     }
 
     nonisolated private static func resolvedTurnBudget(for routing: IntentResult, userMessage: String) -> Int {

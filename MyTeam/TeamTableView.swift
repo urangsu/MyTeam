@@ -346,11 +346,48 @@ struct TeamTableView: View {
         let userMessageID = manager.addChatLog(roomID: roomID, agentID: "user", agentName: "나", text: text, isUser: true)
 
         Task {
+            let matchedSkills = SkillRegistry.shared.matchEnabledSkills(for: text)
+            let skillRoute = await SkillOrchestrator.route(
+                message: text,
+                roomID: roomID,
+                attachments: [],
+                agentID: "team_all",
+                matchedSkills: matchedSkills
+            )
+            if let skillRoute {
+                let artifact = await KSkillRunEngine.writeResultArtifact(
+                    skillRoute.result,
+                    roomID: roomID,
+                    manager: manager
+                )
+                var responseText = skillRoute.result.markdown
+                if let artifact {
+                    responseText += """
+
+                    ---
+                    결과 카드를 이 방에 저장했습니다.
+                    파일: \(artifact.filename)
+                    """
+                }
+                _ = await MainActor.run {
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: skillRoute.result.title,
+                        text: responseText,
+                        isUser: false,
+                        sources: skillRoute.evidence.sources,
+                        skillID: skillRoute.result.skillID
+                    )
+                }
+            }
             await TeamOrchestrator.shared.runTeamDiscussion(
                 userMessage: text,
                 roomID: roomID,
                 manager: manager,
-                currentUserMessageID: userMessageID
+                currentUserMessageID: userMessageID,
+                chainRunID: skillRoute?.result.chainRunID,
+                chainEvidence: skillRoute?.evidence
             )
         }
     }
