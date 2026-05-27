@@ -2,6 +2,7 @@ import Foundation
 
 enum ActionExecutionStatus: String, Codable, Sendable {
     case completed
+    case prepared
     case approvalRequired
     case queued
     case failed
@@ -36,6 +37,18 @@ struct ActionExecutionResult: Codable, Sendable, Equatable {
             followUpPrompt: prompt,
             artifactID: nil,
             actionHandlerID: handlerID.rawValue,
+            failureCode: nil
+        )
+    }
+
+    static func prepared(_ message: String, prompt: String, handlerID: ActionHandlerID? = nil) -> ActionExecutionResult {
+        ActionExecutionResult(
+            status: .prepared,
+            message: message,
+            requiresApproval: false,
+            followUpPrompt: prompt,
+            artifactID: nil,
+            actionHandlerID: handlerID?.rawValue,
             failureCode: nil
         )
     }

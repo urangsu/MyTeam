@@ -142,7 +142,7 @@ enum ActionRuntime {
             return .queued("지도 검색어를 준비했습니다.", prompt: action.preview, handlerID: handlerID)
 
         case .openBooking:
-            return .completed("검색 조건을 준비했습니다.", handlerID: handlerID)
+            return .prepared("예매를 완료한 것이 아니라, 검색 조건을 준비했습니다.", prompt: action.preview, handlerID: handlerID)
         }
     }
 
