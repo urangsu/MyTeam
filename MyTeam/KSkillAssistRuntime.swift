@@ -979,24 +979,31 @@ enum KSkillRunEngine {
             chainID: chainID,
             userMessage: userMessage
         )
-        let baseSuggestions = actionSuggestions(for: intent, evidence: evidence, attachments: attachments)
-        let postTurnSuggestions = await PostTurnIntelligenceEngine.shared.suggestNextActions(
-            roomID: roomID,
-            latestUserText: userMessage,
-            assistantText: response.message,
-            chainRun: nil,
-            connectorHealth: health
-        )
-        let mergedSuggestions = dedupeActionSuggestions(baseSuggestions + postTurnSuggestions)
         let chainRun = await ChainOrchestrator.makeRun(
             roomID: roomID,
             chainID: chainID,
             userMessage: userMessage,
             attachments: attachments,
             evidence: evidence,
-            actions: mergedSuggestions,
+            actions: [],
             health: health
         )
+        let mergedSuggestions = dedupeActionSuggestions(
+            await PostTurnIntelligenceEngine.shared.suggestNextActions(
+                roomID: roomID,
+                latestUserText: userMessage,
+                assistantText: response.message,
+                chainRun: chainRun,
+                connectorHealth: health
+            )
+        )
+        let attachedSuggestions = mergedSuggestions.map { $0.with(chainRunID: chainRun.id) }
+        var updatedChainRun = chainRun
+        updatedChainRun.actions = attachedSuggestions
+        updatedChainRun.updatedAt = Date()
+        await MainActor.run {
+            ChainRunStore.shared.upsert(updatedChainRun)
+        }
         let card = card(for: response, evidence: evidence, attachments: attachments, chainID: chainID)
         let markdown = formatCardMarkdown(
             response: response,
@@ -1007,12 +1014,12 @@ enum KSkillRunEngine {
             health: health,
             chainID: chainID,
             attachments: attachments,
-            actionSuggestions: mergedSuggestions,
-            chainRun: chainRun
+            actionSuggestions: attachedSuggestions,
+            chainRun: updatedChainRun
         )
         let result = KSkillRunResult(
             roomID: roomID,
-            chainRunID: chainRun.id,
+            chainRunID: updatedChainRun.id,
             intent: intent,
             skillID: KSkillAssistRuntime.skillID(for: intent),
             title: response.title,
@@ -1287,7 +1294,7 @@ enum KSkillRunEngine {
             return mode == .readOnlyLookup ? .connectorUnavailable : .userInputRequired
 
         case .tripPlanning:
-            if health.trainSearch == .available || health.mapsSearch == .available {
+            if health.trainSearch.isOperational || health.mapsSearch.isOperational {
                 let hasConcreteSource = evidence.sources.contains { isConcreteSource($0.resolvedSourceType) }
                 if hasConcreteSource {
                     return .partiallyVerified(sourceCount: evidence.sources.count)
