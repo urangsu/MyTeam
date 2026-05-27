@@ -652,6 +652,7 @@ struct SettingsView: View {
 
                 Section("시스템 진단") {
                     RuntimeDiagnosticsPlaceholder(manager: manager)
+                    ChainRuntimeSmokeDiagnosticsView()
                 }
             }
             .formStyle(.grouped)
@@ -932,6 +933,85 @@ private struct DiagnosticRow: View {
                 .font(.caption)
                 .fontWeight(.semibold)
             Spacer()
+        }
+    }
+}
+
+private struct ChainRuntimeSmokeDiagnosticsView: View {
+    @State private var isRunning = false
+    @State private var results: [ChainRuntimeSmokeCaseResult] = []
+
+    private var failedResults: [ChainRuntimeSmokeCaseResult] {
+        results.filter { !$0.issues.isEmpty }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label("Chain Runtime Smoke", systemImage: "checklist.checked")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                Spacer()
+                Button {
+                    runSmoke()
+                } label: {
+                    if isRunning {
+                        ProgressView().scaleEffect(0.75)
+                    } else {
+                        Text("실행")
+                    }
+                }
+                .controlSize(.small)
+                .disabled(isRunning)
+            }
+
+            if results.isEmpty {
+                Text("주가·메일·문서·액션 체인 안전 경로를 온디맨드로 점검합니다.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                DiagnosticRow(
+                    label: "Smoke",
+                    value: failedResults.isEmpty ? "\(results.count)건 통과" : "\(failedResults.count)/\(results.count)건 확인 필요"
+                )
+
+                ForEach(results, id: \.name) { result in
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Image(systemName: result.issues.isEmpty ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                                .font(.caption2)
+                                .foregroundStyle(result.issues.isEmpty ? .green : .orange)
+                            Text(result.name)
+                                .font(.caption)
+                                .fontWeight(.medium)
+                            Spacer()
+                            Text(result.verificationStatus ?? "no-route")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        if !result.issues.isEmpty {
+                            ForEach(result.issues, id: \.self) { issue in
+                                Text(issue)
+                                    .font(.caption2)
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 3)
+                }
+            }
+        }
+        .padding(.vertical, 8)
+    }
+
+    private func runSmoke() {
+        isRunning = true
+        Task {
+            let smokeResults = await ChainRuntimeSmokeSuite.run()
+            await MainActor.run {
+                results = smokeResults
+                isRunning = false
+            }
         }
     }
 }
