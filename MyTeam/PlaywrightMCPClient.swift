@@ -1,6 +1,45 @@
 import Foundation
 
+// MARK: - LineBuffer
+final class LineBuffer: @unchecked Sendable {
+    private var pendingData = Data()
+    private let lock = NSLock()
+    
+    func appendAndExtractLines(_ data: Data) -> [String] {
+        lock.lock()
+        defer { lock.unlock() }
+        
+        pendingData.append(data)
+        var lines: [String] = []
+        
+        while let newlineIndex = pendingData.firstIndex(of: 0x0a) { // '\n'
+            let lineData = pendingData.subdata(in: 0..<newlineIndex)
+            if let line = String(data: lineData, encoding: .utf8) {
+                lines.append(line)
+            }
+            pendingData.removeSubrange(0...newlineIndex)
+        }
+        
+        return lines
+    }
+    
+    func clear() {
+        lock.lock()
+        pendingData = Data()
+        lock.unlock()
+    }
+}
 
+// MARK: - MCPResponse Struct
+struct MCPResponse: Sendable {
+    let id: Int
+    let ok: Bool
+    let text: String
+    let toolNames: [String]?
+    let error: String?
+}
+
+// MARK: - PlaywrightMCPClient Actor
 actor PlaywrightMCPClient {
     static let shared = PlaywrightMCPClient()
 
@@ -9,41 +48,20 @@ actor PlaywrightMCPClient {
     private var outputPipe: Pipe?
     private var errorPipe: Pipe?
 
-    final class BufferBox: @unchecked Sendable {
-        var data = Data()
-        let lock = NSLock()
-        func append(_ chunk: Data) {
-            lock.lock()
-            data.append(chunk)
-            lock.unlock()
-        }
-        func string() -> String {
-            lock.lock()
-            defer { lock.unlock() }
-            return String(data: data, encoding: .utf8) ?? ""
-        }
-        func clear() {
-            lock.lock()
-            data = Data()
-            lock.unlock()
-        }
-    }
-
-    private let output = BufferBox()
-    private let error = BufferBox()
+    private let stdoutBuffer = LineBuffer()
+    private var lastErrorLog = ""
 
     private var nextRequestID = 10
     private var isInitialized = false
     private var cachedCapabilities: CapabilityProbe?
 
+    // Continuation map for pending async JSON-RPC requests
+    private var pending: [Int: CheckedContinuation<MCPResponse, Error>] = [:]
+
     private init() {}
 
     deinit {
-        outputPipe?.fileHandleForReading.readabilityHandler = nil
-        errorPipe?.fileHandleForReading.readabilityHandler = nil
-        if let process = process, process.isRunning {
-            process.terminate()
-        }
+        terminateProcess()
     }
 
     private func terminateProcess() {
@@ -56,17 +74,50 @@ actor PlaywrightMCPClient {
         inputPipe = nil
         outputPipe = nil
         errorPipe = nil
-        output.clear()
-        error.clear()
+        stdoutBuffer.clear()
         isInitialized = false
+        
+        let remaining = pending
+        pending.removeAll()
+        for (_, continuation) in remaining {
+            continuation.resume(throwing: NSError(
+                domain: "PlaywrightMCPClient",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "Process terminated or restarted"]
+            ))
+        }
     }
 
-    private func ensureProcessRunning(timeout: TimeInterval = 6) async -> Bool {
+    private func handleStdoutData(_ chunk: Data) {
+        let lines = stdoutBuffer.appendAndExtractLines(chunk)
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            
+            AppLog.debug("MCP STDOUT: \(trimmed)", .legacy)
+            
+            if let response = parseLine(trimmed) {
+                if let continuation = pending.removeValue(forKey: response.id) {
+                    continuation.resume(returning: response)
+                }
+            }
+        }
+    }
+
+    private func handleStderrData(_ chunk: Data) {
+        if let str = String(data: chunk, encoding: .utf8) {
+            AppLog.warning("MCP STDERR: \(str)", .legacy)
+            lastErrorLog = String((lastErrorLog + str).suffix(4096))
+        }
+    }
+
+    private func ensureProcessRunning() async -> Bool {
         if let process = process, process.isRunning, isInitialized {
             return true
         }
 
         terminateProcess()
+        lastErrorLog = ""
 
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/usr/bin/env")
@@ -80,15 +131,24 @@ actor PlaywrightMCPClient {
         proc.standardError = errPipe
 
         outPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
-            self?.output.append(handle.availableData)
+            let chunk = handle.availableData
+            guard !chunk.isEmpty else { return }
+            Task { [weak self] in
+                await self?.handleStdoutData(chunk)
+            }
         }
         errPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
-            self?.error.append(handle.availableData)
+            let chunk = handle.availableData
+            guard !chunk.isEmpty else { return }
+            Task { [weak self] in
+                await self?.handleStderrData(chunk)
+            }
         }
 
         do {
             try proc.run()
         } catch {
+            AppLog.error("Failed to run Playwright MCP process: \(error)", .legacy)
             return false
         }
 
@@ -97,34 +157,95 @@ actor PlaywrightMCPClient {
         outputPipe = outPipe
         errorPipe = errPipe
 
-        let initialize = """
-        {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"MyTeam","version":"1.0"}}}
-        """
-        let initializedNotification = #"{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}"#
-        let payload = [initialize, initializedNotification].joined(separator: "\n") + "\n"
-        if let data = payload.data(using: .utf8) {
-            inPipe.fileHandleForWriting.write(data)
-        }
-
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            let response = output.string()
-            if response.contains(#""id":1"#) || response.contains(#""id": 1"#) {
-                isInitialized = true
-                return true
+        do {
+            let _ = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<MCPResponse, Error>) in
+                pending[1] = continuation
+                let initialize = """
+                {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"MyTeam","version":"1.0"}}}
+                \n
+                """
+                if let data = initialize.data(using: .utf8) {
+                    inPipe.fileHandleForWriting.write(data)
+                } else {
+                    pending.removeValue(forKey: 1)
+                    continuation.resume(throwing: NSError(domain: "PlaywrightMCPClient", code: -4, userInfo: [NSLocalizedDescriptionKey: "Invalid payload"]))
+                }
             }
-            try? await Task.sleep(nanoseconds: 50_000_000)
+
+            // Send initialized notification
+            let initializedNotification = #"{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}"# + "\n"
+            if let data = initializedNotification.data(using: .utf8) {
+                inPipe.fileHandleForWriting.write(data)
+            }
+
+            isInitialized = true
+            return true
+        } catch {
+            AppLog.error("MCP initialize failed: \(error)", .legacy)
+            terminateProcess()
+            return false
+        }
+    }
+
+    private func sendRequest(method: String, params: [String: Any]) async throws -> MCPResponse {
+        let success = await ensureProcessRunning()
+        guard success, let inPipe = inputPipe else {
+            throw NSError(domain: "PlaywrightMCPClient", code: -2, userInfo: [NSLocalizedDescriptionKey: "Process not running"])
         }
 
-        terminateProcess()
-        return false
+        let requestID = nextRequestID
+        nextRequestID += 1
+
+        let request: [String: Any] = [
+            "jsonrpc": "2.0",
+            "id": requestID,
+            "method": method,
+            "params": params
+        ]
+
+        guard JSONSerialization.isValidJSONObject(request),
+              let data = try? JSONSerialization.data(withJSONObject: request),
+              let line = String(data: data, encoding: .utf8) else {
+            throw NSError(domain: "PlaywrightMCPClient", code: -3, userInfo: [NSLocalizedDescriptionKey: "Invalid request serialization"])
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            pending[requestID] = continuation
+
+            let payload = line + "\n"
+            if let payloadData = payload.data(using: .utf8) {
+                inPipe.fileHandleForWriting.write(payloadData)
+            } else {
+                pending.removeValue(forKey: requestID)
+                continuation.resume(throwing: NSError(domain: "PlaywrightMCPClient", code: -4, userInfo: [NSLocalizedDescriptionKey: "Invalid payload encoding"]))
+            }
+        }
     }
 
     func probeHealth(timeout: TimeInterval = 6) async -> PlaywrightMCPHealth {
         async let node = PlaywrightMCPProcess.run(executable: "node", arguments: ["--version"], timeout: 2)
         async let npx = PlaywrightMCPProcess.run(executable: "npx", arguments: ["--version"], timeout: 3)
+        async let versionResult = PlaywrightMCPProcess.run(
+            executable: "npx",
+            arguments: ["--no-install", "@playwright/mcp", "--version"],
+            timeout: 3
+        )
+        
         let nodeResult = await node
         let npxResult = await npx
+        let versionRes = await versionResult
+
+        let mcpVersion: String?
+        if versionRes.exitCode == 0 {
+            let output = versionRes.combinedOutput.trimmingCharacters(in: .whitespacesAndNewlines)
+            if output.lowercased().hasPrefix("version ") {
+                mcpVersion = String(output.dropFirst(8)).trimmingCharacters(in: .whitespacesAndNewlines)
+            } else {
+                mcpVersion = output
+            }
+        } else {
+            mcpVersion = nil
+        }
 
         guard nodeResult.exitCode == 0 else {
             return health(
@@ -137,7 +258,8 @@ actor PlaywrightMCPClient {
                 clickCapable: false,
                 screenshotCapable: false,
                 toolNames: [],
-                lastError: "node 실행 실패: \(nodeResult.combinedOutput.trimmingCharacters(in: .whitespacesAndNewlines))"
+                lastError: "node 실행 실패: \(nodeResult.combinedOutput.trimmingCharacters(in: .whitespacesAndNewlines))",
+                version: mcpVersion
             )
         }
         guard npxResult.exitCode == 0 else {
@@ -151,7 +273,8 @@ actor PlaywrightMCPClient {
                 clickCapable: false,
                 screenshotCapable: false,
                 toolNames: [],
-                lastError: "npx 실행 실패: \(npxResult.combinedOutput.trimmingCharacters(in: .whitespacesAndNewlines))"
+                lastError: "npx 실행 실패: \(npxResult.combinedOutput.trimmingCharacters(in: .whitespacesAndNewlines))",
+                version: mcpVersion
             )
         }
 
@@ -172,7 +295,8 @@ actor PlaywrightMCPClient {
                 clickCapable: false,
                 screenshotCapable: false,
                 toolNames: [],
-                lastError: reason.isEmpty ? "Playwright MCP 실행 확인에 실패했습니다." : reason
+                lastError: reason.isEmpty ? "Playwright MCP 실행 확인에 실패했습니다." : reason,
+                version: mcpVersion
             )
         }
 
@@ -188,7 +312,8 @@ actor PlaywrightMCPClient {
                 clickCapable: capability.hasClick,
                 screenshotCapable: capability.hasScreenshot,
                 toolNames: capability.toolNames,
-                lastError: capability.error
+                lastError: capability.error,
+                version: mcpVersion
             )
         }
 
@@ -202,7 +327,8 @@ actor PlaywrightMCPClient {
             clickCapable: false,
             screenshotCapable: false,
             toolNames: [],
-            lastError: "Playwright MCP는 실행 가능하지만 initialize/tools/list 검증에 실패했습니다."
+            lastError: "Playwright MCP는 실행 가능하지만 initialize/tools/list 검증에 실패했습니다.",
+            version: mcpVersion
         )
     }
 
@@ -216,7 +342,8 @@ actor PlaywrightMCPClient {
         clickCapable: Bool,
         screenshotCapable: Bool,
         toolNames: [String],
-        lastError: String?
+        lastError: String?,
+        version: String?
     ) -> PlaywrightMCPHealth {
         PlaywrightMCPHealth(
             nodeAvailable: nodeAvailable,
@@ -229,7 +356,8 @@ actor PlaywrightMCPClient {
             screenshotCapable: screenshotCapable,
             toolNames: toolNames.sorted(),
             checkedAt: Date(),
-            lastError: lastError?.isEmpty == true ? nil : lastError
+            lastError: lastError?.isEmpty == true ? nil : lastError,
+            version: version
         )
     }
 
@@ -248,135 +376,103 @@ actor PlaywrightMCPClient {
         if let cached = cachedCapabilities {
             return cached
         }
-        let success = await ensureProcessRunning(timeout: timeout)
-        guard success, let inPipe = inputPipe else {
-            return CapabilityProbe(initialized: false, toolNames: [], error: error.string())
+        let success = await ensureProcessRunning()
+        guard success else {
+            return CapabilityProbe(initialized: false, toolNames: [], error: lastErrorLog)
         }
 
-        let listTools = #"{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}"#
-        if let data = (listTools + "\n").data(using: .utf8) {
-            inPipe.fileHandleForWriting.write(data)
+        do {
+            let response = try await sendRequest(method: "tools/list", params: [:])
+            let cap = CapabilityProbe(initialized: true, toolNames: response.toolNames ?? [], error: response.error)
+            cachedCapabilities = cap
+            return cap
+        } catch {
+            return CapabilityProbe(initialized: false, toolNames: [], error: error.localizedDescription)
         }
-
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            let response = output.string()
-            if response.contains(#""id":2"#) || response.contains(#""id": 2"#) {
-                let toolNames = extractToolNames(from: response)
-                let cap = CapabilityProbe(initialized: true, toolNames: toolNames, error: nil)
-                cachedCapabilities = cap
-                return cap
-            }
-            try? await Task.sleep(nanoseconds: 50_000_000)
-        }
-        return nil
     }
 
     func navigateAndSnapshot(url: URL, timeout: TimeInterval = 18) async -> PlaywrightMCPToolCallResult {
-        let success = await ensureProcessRunning(timeout: 6)
-        guard success, let inPipe = inputPipe else {
+        let success = await ensureProcessRunning()
+        guard success else {
             return PlaywrightMCPToolCallResult(ok: false, text: "", error: "Playwright MCP 프로세스가 준비되지 않았습니다.")
         }
 
-        let navigateID = nextRequestID
-        nextRequestID += 1
-        let snapshotID = nextRequestID
-        nextRequestID += 1
+        do {
+            // Step 1: Navigate
+            let navigateResponse = try await sendRequest(
+                method: "tools/call",
+                params: [
+                    "name": PlaywrightMCPToolName.navigate.rawValue,
+                    "arguments": ["url": url.absoluteString]
+                ]
+            )
 
-        let navigateCall: [String: Any] = [
-            "jsonrpc": "2.0",
-            "id": navigateID,
-            "method": "tools/call",
-            "params": [
-                "name": PlaywrightMCPToolName.navigate.rawValue,
-                "arguments": ["url": url.absoluteString]
-            ]
-        ]
-        let snapshotCall: [String: Any] = [
-            "jsonrpc": "2.0",
-            "id": snapshotID,
-            "method": "tools/call",
-            "params": [
-                "name": PlaywrightMCPToolName.snapshot.rawValue,
-                "arguments": [:]
-            ]
-        ]
-
-        let payloadObjects = [navigateCall, snapshotCall]
-        let lines = payloadObjects.compactMap { object -> String? in
-            guard JSONSerialization.isValidJSONObject(object),
-                  let data = try? JSONSerialization.data(withJSONObject: object),
-                  let line = String(data: data, encoding: .utf8) else {
-                return nil
+            guard navigateResponse.ok else {
+                return PlaywrightMCPToolCallResult(ok: false, text: "", error: navigateResponse.error ?? "browser_navigate 실패")
             }
-            return line
-        }
 
-        output.clear()
+            // Step 2: Snapshot (Only if navigate succeeded!)
+            let snapshotResponse = try await sendRequest(
+                method: "tools/call",
+                params: [
+                    "name": PlaywrightMCPToolName.snapshot.rawValue,
+                    "arguments": [:]
+                ]
+            )
 
-        if let data = (lines.joined(separator: "\n") + "\n").data(using: .utf8) {
-            inPipe.fileHandleForWriting.write(data)
-        }
-
-        let deadline = Date().addingTimeInterval(timeout)
-        var response = ""
-        while Date() < deadline {
-            response = output.string()
-            if response.contains(#""id":\#(snapshotID)"#) || response.contains(#""id": \#(snapshotID)"#) {
-                break
+            guard snapshotResponse.ok else {
+                return PlaywrightMCPToolCallResult(ok: false, text: "", error: snapshotResponse.error ?? "browser_snapshot 실패")
             }
-            try? await Task.sleep(nanoseconds: 80_000_000)
-        }
 
-        response = output.string()
-        let errorText = error.string().trimmingCharacters(in: .whitespacesAndNewlines)
-        guard response.contains(#""id":\#(snapshotID)"#) || response.contains(#""id": \#(snapshotID)"#) else {
-            terminateProcess()
-            return PlaywrightMCPToolCallResult(ok: false, text: "", error: errorText.isEmpty ? "browser_snapshot 응답 없음" : errorText)
-        }
+            let text = snapshotResponse.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else {
+                return PlaywrightMCPToolCallResult(ok: false, text: "", error: "DOM snapshot text가 비어 있습니다.")
+            }
 
-        let text = extractMCPTextPayloads(from: response).joined(separator: "\n\n")
-        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return PlaywrightMCPToolCallResult(ok: false, text: "", error: "DOM snapshot text가 비어 있습니다.")
+            return PlaywrightMCPToolCallResult(ok: true, text: text, error: nil)
+
+        } catch {
+            return PlaywrightMCPToolCallResult(ok: false, text: "", error: error.localizedDescription)
         }
-        return PlaywrightMCPToolCallResult(ok: true, text: text, error: nil)
     }
 }
 
-nonisolated private func extractToolNames(from text: String) -> [String] {
-    let pattern = #""name"\s*:\s*"([^"]+)""#
-    guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
-    let range = NSRange(text.startIndex..<text.endIndex, in: text)
-    return regex.matches(in: text, range: range).compactMap { match in
-        guard let matchRange = Range(match.range(at: 1), in: text) else { return nil }
-        return String(text[matchRange])
+// MARK: - JSON-RPC Parser Helper
+nonisolated private func parseLine(_ line: String) -> MCPResponse? {
+    guard let data = line.data(using: .utf8),
+          let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+        return nil
     }
-}
 
-nonisolated private func extractMCPTextPayloads(from text: String) -> [String] {
-    let lines = text.components(separatedBy: .newlines)
-    var payloads: [String] = []
-    for line in lines where line.contains(#""text""#) {
-        guard let data = line.data(using: .utf8),
-              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let result = object["result"] as? [String: Any],
-              let content = result["content"] as? [[String: Any]] else {
-            continue
+    guard let id = json["id"] as? Int else {
+        return nil
+    }
+
+    if let errorObj = json["error"] as? [String: Any] {
+        let msg = errorObj["message"] as? String ?? "Unknown MCP error"
+        return MCPResponse(id: id, ok: false, text: "", toolNames: nil, error: msg)
+    }
+
+    if let result = json["result"] as? [String: Any] {
+        // tools/list response
+        if let tools = result["tools"] as? [[String: Any]] {
+            let names = tools.compactMap { $0["name"] as? String }
+            return MCPResponse(id: id, ok: true, text: "", toolNames: names, error: nil)
         }
-        for item in content {
-            if let itemText = item["text"] as? String {
-                payloads.append(itemText)
+
+        // tools/call response
+        if let content = result["content"] as? [[String: Any]] {
+            var texts: [String] = []
+            for item in content {
+                if let type = item["type"] as? String, type == "text", let text = item["text"] as? String {
+                    texts.append(text)
+                }
             }
+            return MCPResponse(id: id, ok: true, text: texts.joined(separator: "\n\n"), toolNames: nil, error: nil)
         }
-    }
-    if !payloads.isEmpty { return payloads }
 
-    let pattern = #""text"\s*:\s*"((?:\\"|[^"])*)""#
-    guard let regex = try? NSRegularExpression(pattern: pattern) else { return [] }
-    let range = NSRange(text.startIndex..<text.endIndex, in: text)
-    return regex.matches(in: text, range: range).compactMap { match in
-        guard let matchRange = Range(match.range(at: 1), in: text) else { return nil }
-        let raw = String(text[matchRange])
-        return raw.replacingOccurrences(of: #"\""#, with: #"""#)
+        return MCPResponse(id: id, ok: true, text: "", toolNames: nil, error: nil)
     }
+
+    return nil
 }

@@ -1019,6 +1019,7 @@ private struct ChainRuntimeSmokeDiagnosticsView: View {
 
 private struct PlaywrightMCPStatusView: View {
     @ObservedObject private var playwright = PlaywrightMCPManager.shared
+    @State private var showCopied = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -1043,12 +1044,44 @@ private struct PlaywrightMCPStatusView: View {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 6) {
                 DiagnosticRow(label: "Node", value: playwright.health.nodeAvailable ? "ok" : "missing")
                 DiagnosticRow(label: "npx", value: playwright.health.npxAvailable ? "ok" : "missing")
-                DiagnosticRow(label: "MCP", value: playwright.health.mcpLaunchable ? "launchable" : "needs setup")
-                DiagnosticRow(label: "snapshot", value: playwright.health.snapshotCapable ? "available" : "unavailable")
+                DiagnosticRow(label: "설치 상태", value: playwright.health.mcpLaunchable ? "설치됨" : "미설치")
+                DiagnosticRow(label: "버전", value: playwright.health.version ?? "알 수 없음")
+            }
+
+            if !playwright.health.mcpLaunchable {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("안정적인 브라우저 근거 수집을 위해 패키지 설치가 필요합니다.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    
+                    HStack(spacing: 8) {
+                        Text("npm install -D @playwright/mcp@0.0.75")
+                            .font(.system(.caption2, design: .monospaced))
+                            .padding(4)
+                            .background(Color.primary.opacity(0.06))
+                            .cornerRadius(4)
+                        
+                        Button {
+                            let pb = NSPasteboard.general
+                            pb.clearContents()
+                            pb.setString("npm install -D @playwright/mcp@0.0.75", forType: .string)
+                            showCopied = true
+                            Task {
+                                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                                showCopied = false
+                            }
+                        } label: {
+                            Text(showCopied ? "복사됨" : "복사")
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.mini)
+                    }
+                }
+                .padding(.top, 4)
             }
 
             if !playwright.health.toolNames.isEmpty {
-                Text(playwright.health.toolNames.prefix(8).joined(separator: ", "))
+                Text("도구: " + playwright.health.toolNames.prefix(8).joined(separator: ", "))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)

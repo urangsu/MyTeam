@@ -12,6 +12,7 @@ struct PlaywrightMCPHealth: Codable, Sendable, Equatable {
     let toolNames: [String]
     let checkedAt: Date
     let lastError: String?
+    let version: String?
 
     static let notChecked = PlaywrightMCPHealth(
         nodeAvailable: false,
@@ -24,7 +25,8 @@ struct PlaywrightMCPHealth: Codable, Sendable, Equatable {
         screenshotCapable: false,
         toolNames: [],
         checkedAt: .distantPast,
-        lastError: "Playwright MCP 상태를 아직 확인하지 않았습니다."
+        lastError: "Playwright MCP 상태를 아직 확인하지 않았습니다.",
+        version: nil
     )
 
     var isDOMOperational: Bool {

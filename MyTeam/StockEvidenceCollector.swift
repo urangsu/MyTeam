@@ -48,7 +48,8 @@ enum StockEvidenceCollector {
             sourceType: .quote,
             roomID: request.roomID,
             chainRunID: request.chainRunID,
-            enabled: health.browserSearch.isOperational || health.browserDOM.isOperational
+            enabled: health.browserSearch.isOperational || health.browserDOM.isOperational,
+            ticker: ticker
         )
         async let newsEvidence = gatherWeb(
             query: "\(company) 하락 상승 이유 뉴스 오늘",
@@ -205,16 +206,42 @@ enum StockEvidenceCollector {
         sourceType: AgentWindowManager.SourceType,
         roomID: UUID,
         chainRunID: UUID,
-        enabled: Bool
+        enabled: Bool,
+        ticker: String? = nil
     ) async -> (sources: [AgentWindowManager.SourceReference], warnings: [String]) {
         guard enabled else { return ([], []) }
-        let result = await BrowserEvidenceConnector.searchAndExtract(
-            query: query,
-            provider: provider,
-            expectedType: sourceType,
-            roomID: roomID,
-            chainRunID: chainRunID
-        )
+
+        let result: BrowserEvidenceResult
+        if provider == .naverFinance, let ticker = ticker, !ticker.isEmpty {
+            let directURL = URL(string: "https://finance.naver.com/item/main.naver?code=\(ticker)")!
+            let directResult = await BrowserEvidenceConnector.openAndExtract(
+                url: directURL,
+                provider: provider,
+                expectedType: sourceType,
+                roomID: roomID,
+                chainRunID: chainRunID
+            )
+            if directResult.status == .succeeded || directResult.status == .partial {
+                result = directResult
+            } else {
+                result = await BrowserEvidenceConnector.searchAndExtract(
+                    query: query,
+                    provider: provider,
+                    expectedType: sourceType,
+                    roomID: roomID,
+                    chainRunID: chainRunID
+                )
+            }
+        } else {
+            result = await BrowserEvidenceConnector.searchAndExtract(
+                query: query,
+                provider: provider,
+                expectedType: sourceType,
+                roomID: roomID,
+                chainRunID: chainRunID
+            )
+        }
+
         guard result.status == .succeeded || result.status == .partial else {
             return ([], result.failureCode.map { ["브라우저 근거 수집 실패: \($0)"] } ?? [])
         }

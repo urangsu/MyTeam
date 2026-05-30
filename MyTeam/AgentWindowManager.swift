@@ -129,7 +129,7 @@ class AgentWindowManager: ObservableObject {
     /// room별 pending delegated execution request.
     @Published var pendingDelegatedExecutionRequestsByRoom: [UUID: DelegatedExecutionRequest] = [:]
     /// 최근 완료된 workflow artifact 목록 — 전역 fallback용. 직접 참조 대신 recentArtifacts(for:) 사용 권장.
-    @Published private(set) var recentArtifacts: [IndexedArtifact] = []
+    @Published internal(set) var recentArtifacts: [IndexedArtifact] = []
     
     // ── 지능형 기억 보호 (Key Fact Buffer) ──
     // V1: 단일 전역 배열 (하위 호환 유지)

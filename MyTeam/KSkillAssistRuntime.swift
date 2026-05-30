@@ -1398,9 +1398,9 @@ enum KSkillRunEngine {
 
         case .tripPlanning:
             if health.trainSearch.isOperational || health.mapsSearch.isOperational {
-                let hasConcreteSource = evidence.sources.contains { isConcreteSource($0.resolvedSourceType) }
-                if hasConcreteSource {
-                    return .partiallyVerified(sourceCount: evidence.sources.count)
+                let concreteSources = evidence.sources.filter { isConcreteSource($0.resolvedSourceType) }
+                if !concreteSources.isEmpty {
+                    return .partiallyVerified(sourceCount: concreteSources.count)
                 }
                 return .userInputRequired
             }
@@ -1419,10 +1419,10 @@ enum KSkillRunEngine {
         case .research:
             let concreteSources = evidence.sources.filter { isConcreteSource($0.resolvedSourceType) }
             if concreteSources.count >= 2 {
-                return .verified(sourceCount: evidence.sources.count)
+                return .verified(sourceCount: concreteSources.count)
             }
             if !concreteSources.isEmpty {
-                return .partiallyVerified(sourceCount: evidence.sources.count)
+                return .partiallyVerified(sourceCount: concreteSources.count)
             }
             return .connectorUnavailable
         }

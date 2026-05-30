@@ -259,6 +259,49 @@ enum ChainRuntimeSmokeSuite {
 
     static func run() async -> [ChainRuntimeSmokeCaseResult] {
         var results: [ChainRuntimeSmokeCaseResult] = []
+
+        // Playwright MCP direct validation case
+        var playwrightIssues: [String] = []
+        let healthState = await MainActor.run { PlaywrightMCPManager.shared.health }
+        if !healthState.mcpLaunchable {
+            playwrightIssues.append("Playwright MCP is not launchable/configured")
+        } else {
+            let invalidURL = URL(string: "https://invalid-url-that-fails-to-resolve-12345.com")!
+            let playwrightResult = await PlaywrightMCPClient.shared.navigateAndSnapshot(url: invalidURL)
+            if playwrightResult.ok {
+                playwrightIssues.append("Expected navigation to invalid URL to fail, but it succeeded")
+            }
+
+            // Verify concurrency thread safety / request mapping
+            let testURL1 = URL(string: "https://finance.naver.com/item/main.naver?code=005930")!
+            let testURL2 = URL(string: "https://finance.naver.com/item/main.naver?code=000660")!
+            
+            async let task1 = PlaywrightMCPClient.shared.navigateAndSnapshot(url: testURL1)
+            async let task2 = PlaywrightMCPClient.shared.navigateAndSnapshot(url: testURL2)
+            
+            let (res1, res2) = await (task1, task2)
+            if !res1.ok {
+                playwrightIssues.append("Concurrent request 1 (Samsung) failed: \(res1.error ?? "unknown")")
+            }
+            if !res2.ok {
+                playwrightIssues.append("Concurrent request 2 (Hynix) failed: \(res2.error ?? "unknown")")
+            }
+        }
+
+        results.append(
+            ChainRuntimeSmokeCaseResult(
+                name: "playwright-mcp-integration",
+                input: "Direct Playwright MCP validation",
+                chainID: "playwright_mcp",
+                chainStatus: playwrightIssues.isEmpty ? "succeeded" : "failed",
+                verificationStatus: playwrightIssues.isEmpty ? "verified" : "unverified",
+                sourceTypes: ["browserDOM"],
+                stepStatuses: ["check_health", "check_navigate_fail", "check_concurrent"],
+                renderStockMoveCardSucceeded: false,
+                issues: playwrightIssues
+            )
+        )
+
         for testCase in cases {
             let roomID = UUID()
             guard let route = await KSkillRunEngine.runPrimary(

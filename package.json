@@ -1,0 +1,8 @@
+{
+  "name": "myteam-playwright-mcp",
+  "version": "1.2.0",
+  "private": true,
+  "devDependencies": {
+    "@playwright/mcp": "0.0.75"
+  }
+}
