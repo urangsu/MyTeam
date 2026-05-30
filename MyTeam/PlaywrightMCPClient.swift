@@ -76,6 +76,7 @@ actor PlaywrightMCPClient {
         errorPipe = nil
         stdoutBuffer.clear()
         isInitialized = false
+        initTask = nil
         
         let remaining = pending
         pending.removeAll()
@@ -111,11 +112,45 @@ actor PlaywrightMCPClient {
         }
     }
 
+    // MARK: - Initialization guard
+
+    /// In-flight initialization task, shared by concurrent callers.
+    ///
+    /// Root cause of "invalid reuse after initialization failure":
+    /// multiple concurrent callers (e.g. `probeHealth` + `navigateAndSnapshot`)
+    /// each saw `isInitialized == false` and raced to call `terminateProcess()`,
+    /// killing each other's pending continuations.
+    /// Solution: store one shared Task; every additional caller awaits its value
+    /// instead of starting a competing initialization.
+    private var initTask: Task<Bool, Never>?
+
     private func ensureProcessRunning() async -> Bool {
+        // Fast path: already running and fully initialized.
         if let process = process, process.isRunning, isInitialized {
             return true
         }
 
+        // If another caller already started initialization, share that result.
+        if let existing = initTask {
+            return await existing.value
+        }
+
+        // Slow path: no process yet — kick off initialization.
+        // initTask is cleared by terminateProcess() or by us after the task completes.
+        let task = Task<Bool, Never> { [weak self] in
+            guard let self else { return false }
+            return await self._doInitialize()
+        }
+        initTask = task
+        let result = await task.value
+        // Only clear if terminateProcess() hasn't already reset initTask.
+        if initTask != nil {
+            initTask = nil
+        }
+        return result
+    }
+
+    private func _doInitialize() async -> Bool {
         terminateProcess()
         lastErrorLog = ""
 
