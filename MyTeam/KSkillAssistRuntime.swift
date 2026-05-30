@@ -952,7 +952,7 @@ enum KSkillRunEngine {
         let response = KSkillAssistRuntime.buildAssistResponse(intent: intent, userMessage: userMessage, attachments: attachments)
         let chainID = chainID(for: intent)
         let mode = executionMode(for: intent)
-        let health = ConnectorHealth.current()
+        let health = await MainActor.run { ConnectorHealth.current() }
         let shouldGatherEvidence = shouldGatherEvidence(for: intent, mode: mode, health: health)
         let lookupQuery = evidenceQuery(for: intent, userMessage: userMessage)
         let policy = evidencePolicy(for: intent, userMessage: lookupQuery)
@@ -963,12 +963,16 @@ enum KSkillRunEngine {
                     rawQuery: userMessage,
                     companyName: KoreanStockSymbolResolver.resolve(userMessage)?.companyName,
                     ticker: KoreanStockSymbolResolver.resolve(userMessage)?.ticker,
-                    dateRange: nil
+                    dateRange: nil,
+                    roomID: roomID,
+                    chainRunID: nil
                 ),
                 health: health
             )
         } else {
-            gatheredEvidence = shouldGatherEvidence ? await ToolEvidenceService.gather(for: lookupQuery, policy: policy) : .empty
+            let baseEvidence = shouldGatherEvidence ? await ToolEvidenceService.gather(for: lookupQuery, policy: policy) : .empty
+            let browserEvidence = shouldGatherEvidence ? await browserEvidence(for: intent, query: lookupQuery, roomID: roomID) : .empty
+            gatheredEvidence = mergeToolEvidence(baseEvidence, browserEvidence)
         }
         let evidence = mergeEvidence(gatheredEvidence, attachments: attachments)
         let verification = verificationStatus(
@@ -1133,7 +1137,7 @@ enum KSkillRunEngine {
         case .mailSummaryAssist, .fileImageAssist, .accountReviewAssist, .officeReviewAssist:
             return .userProvidedSourceAnalysis
         case .ktxBookingAssist, .mapPlaceAssist, .reservationPreparation:
-            return .assistOnly
+            return .readOnlyLookup
         case .lawSearchAssist, .scholarshipAssist:
             return .readOnlyLookup
         }
@@ -1168,13 +1172,80 @@ enum KSkillRunEngine {
                 || health.newsSearch.isOperational
                 || health.disclosureSearch.isOperational
                 || health.webFetch.isOperational
+                || health.browserSearch.isOperational
         case .dartDisclosureAssist:
-            return health.disclosureSearch.isOperational || health.webFetch.isOperational
+            return health.disclosureSearch.isOperational || health.webFetch.isOperational || health.browserSearch.isOperational
         case .naverNewsAssist, .naverBlogResearchAssist, .lawSearchAssist, .scholarshipAssist:
-            return health.newsSearch.isOperational || health.webFetch.isOperational
+            return health.newsSearch.isOperational || health.webFetch.isOperational || health.browserSearch.isOperational
+        case .ktxBookingAssist, .mapPlaceAssist, .reservationPreparation:
+            return health.trainSearch.isOperational || health.mapsSearch.isOperational || health.browserSearch.isOperational
         default:
             return false
         }
+    }
+
+    private static func browserEvidence(for intent: KSkillAssistIntent, query: String, roomID: UUID) async -> ToolEvidenceResult {
+        let provider: BrowserSearchProvider
+        let forcedType: AgentWindowManager.SourceType
+        switch intent {
+        case .dartDisclosureAssist:
+            provider = .dart
+            forcedType = .disclosure
+        case .naverNewsAssist, .naverBlogResearchAssist:
+            provider = .naverNews
+            forcedType = .news
+        case .ktxBookingAssist:
+            provider = .korail
+            forcedType = .trainSchedule
+        case .mapPlaceAssist, .reservationPreparation:
+            provider = .kakaoMap
+            forcedType = .mapRoute
+        case .lawSearchAssist, .scholarshipAssist:
+            provider = .naverSearch
+            forcedType = .browserDOM
+        default:
+            return .empty
+        }
+
+        let result = await BrowserEvidenceConnector.searchAndExtract(
+            query: query,
+            provider: provider,
+            roomID: roomID,
+            chainRunID: nil
+        )
+        guard result.status == .succeeded || result.status == .partial else {
+            let failure = result.failureCode ?? "browser_evidence_unavailable"
+            return ToolEvidenceResult(
+                promptContext: "\n\n[브라우저 근거 수집]\n- 실패: \(failure)",
+                sources: []
+            )
+        }
+        let sources = result.sourceRefs.map {
+            AgentWindowManager.SourceReference(
+                id: $0.id,
+                title: $0.title,
+                url: $0.url,
+                provider: $0.provider,
+                accessedAt: $0.accessedAt,
+                sourceType: forcedType
+            )
+        }
+        let context = sources.isEmpty
+            ? ""
+            : "\n\n[브라우저 근거 수집]\n" + sources.map { "- \($0.title)\n  \($0.url)" }.joined(separator: "\n")
+        return ToolEvidenceResult(promptContext: context, sources: sources)
+    }
+
+    private static func mergeToolEvidence(_ lhs: ToolEvidenceResult, _ rhs: ToolEvidenceResult) -> ToolEvidenceResult {
+        let prompt = [lhs.promptContext, rhs.promptContext]
+            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .joined(separator: "\n\n")
+        var seen = Set<String>()
+        let sources = (lhs.sources + rhs.sources).filter { source in
+            let key = "\(source.resolvedSourceType.rawValue)|\(source.url)|\(source.title)"
+            return seen.insert(key).inserted
+        }
+        return ToolEvidenceResult(promptContext: prompt, sources: sources)
     }
 
     private static func evidenceQuery(for intent: KSkillAssistIntent, userMessage: String) -> String {
@@ -1376,9 +1447,9 @@ enum KSkillRunEngine {
 
     private static func isConcreteSource(_ sourceType: AgentWindowManager.SourceType) -> Bool {
         switch sourceType {
-        case .quote, .news, .disclosure, .marketIndex, .webPage:
+        case .quote, .news, .disclosure, .marketIndex, .webPage, .trainSchedule, .mapRoute, .browserDOM:
             return true
-        case .userAttachment, .unknown:
+        case .userAttachment, .screenshot, .unknown:
             return false
         }
     }
@@ -1391,7 +1462,7 @@ enum KSkillRunEngine {
         switch sourceType {
         case .news, .disclosure, .webPage:
             return true
-        case .quote, .marketIndex, .userAttachment, .unknown:
+        case .quote, .marketIndex, .userAttachment, .trainSchedule, .mapRoute, .browserDOM, .screenshot, .unknown:
             return false
         }
     }
@@ -1524,7 +1595,7 @@ enum KSkillRunEngine {
         evidence: ToolEvidenceResult = .empty,
         verification: SkillVerification = .userInputRequired,
         mode: SkillExecutionMode = .assistOnly,
-        health: ConnectorHealth = .current(),
+        health: ConnectorHealth = .unconfigured,
         chainID: SkillChainID? = nil,
         attachments: [ChatAttachment] = [],
         actionSuggestions: [ActionSuggestion] = [],

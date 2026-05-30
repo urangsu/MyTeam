@@ -202,6 +202,28 @@ struct KSkillAssistCardView: View {
                 )
             }
 
+            if !browserQuickActions.isEmpty {
+                sectionBlock(
+                    icon: "globe",
+                    iconColor: .orange,
+                    title: "브라우저 액션",
+                    content: {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 6)], alignment: .leading, spacing: 6) {
+                            ForEach(browserQuickActions, id: \.self) { action in
+                                Text(action)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(.orange)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 5)
+                                    .frame(maxWidth: .infinity)
+                                    .background(Color.orange.opacity(isDarkMode ? 0.16 : 0.08))
+                                    .cornerRadius(6)
+                            }
+                        }
+                    }
+                )
+            }
+
             if !sections.attachmentStatusLines.isEmpty {
                 sectionBlock(
                     icon: "paperclip",
@@ -263,6 +285,17 @@ struct KSkillAssistCardView: View {
         skillID == "korean.mail-summary-assist"
             && sections.message.contains("메일 본문으로 보고")
             && sections.nextActions.contains("메일 본문으로 처리")
+    }
+
+    private var browserQuickActions: [String] {
+        switch skillID {
+        case "korean.stock-info", "korean.dart", "korean.naver-news", "korean.naver-blog-research":
+            return ["브라우저로 확인", "다시 조회", "페이지 열기"]
+        case "korean.ktx-booking", "korean.map-place", "korean.reservation-preparation":
+            return ["브라우저로 확인", "검색 조건 다시 확인", "페이지 열기"]
+        default:
+            return []
+        }
     }
 
     private var mailAmbiguityChoiceCard: some View {

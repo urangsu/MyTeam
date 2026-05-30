@@ -394,9 +394,9 @@ enum ChainOrchestrator {
 
     private static func isConcreteSource(_ sourceType: AgentWindowManager.SourceType) -> Bool {
         switch sourceType {
-        case .quote, .news, .disclosure, .marketIndex, .webPage:
+        case .quote, .news, .disclosure, .marketIndex, .webPage, .trainSchedule, .mapRoute, .browserDOM:
             return true
-        case .userAttachment, .unknown:
+        case .userAttachment, .screenshot, .unknown:
             return false
         }
     }
@@ -409,7 +409,7 @@ enum ChainOrchestrator {
         switch sourceType {
         case .news, .disclosure, .webPage:
             return true
-        case .quote, .marketIndex, .userAttachment, .unknown:
+        case .quote, .marketIndex, .userAttachment, .trainSchedule, .mapRoute, .browserDOM, .screenshot, .unknown:
             return false
         }
     }

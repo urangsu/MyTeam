@@ -34,6 +34,11 @@ struct ConnectorStatusView: View {
                 connectorRow(title: "캘린더 초안", status: health.calendarDraft)
                 connectorRow(title: "지도", status: health.mapsSearch)
                 connectorRow(title: "열차", status: health.trainSearch)
+                connectorRow(title: "Playwright MCP", status: health.playwrightMCP)
+                connectorRow(title: "브라우저 DOM", status: health.browserDOM)
+                connectorRow(title: "브라우저 검색", status: health.browserSearch)
+                connectorRow(title: "브라우저 클릭", status: health.browserClick)
+                connectorRow(title: "브라우저 캡처", status: health.browserScreenshot)
             }
         }
         .padding(12)

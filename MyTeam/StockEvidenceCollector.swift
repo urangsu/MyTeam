@@ -5,6 +5,8 @@ struct StockEvidenceRequest: Sendable {
     let companyName: String?
     let ticker: String?
     let dateRange: DateInterval?
+    let roomID: UUID
+    let chainRunID: UUID?
 }
 
 struct StockEvidenceBundle: Sendable {
@@ -40,27 +42,67 @@ enum StockEvidenceCollector {
         let canSearchMarketContext = health.webFetch.isOperational
 
         async let quoteEvidence = gatherQuote(company: company, ticker: ticker, health: health)
+        async let browserQuoteEvidence = gatherBrowser(
+            query: "\(company) \(ticker ?? "") 주가 현재가 등락률 거래량",
+            provider: .naverFinance,
+            sourceType: .quote,
+            roomID: request.roomID,
+            chainRunID: request.chainRunID,
+            enabled: health.browserSearch.isOperational || health.browserDOM.isOperational
+        )
         async let newsEvidence = gatherWeb(
             query: "\(company) 하락 상승 이유 뉴스 오늘",
             sourceType: .news,
             enabled: canSearchNews
         )
+        async let browserNewsEvidence = gatherBrowser(
+            query: "\(company) 하락 상승 이유 뉴스 오늘",
+            provider: .naverNews,
+            sourceType: .news,
+            roomID: request.roomID,
+            chainRunID: request.chainRunID,
+            enabled: health.browserSearch.isOperational || health.browserDOM.isOperational
+        )
         async let disclosureEvidence = gatherDisclosure(company: company, health: health)
+        async let browserDisclosureEvidence = gatherBrowser(
+            query: "\(company) DART KIND 공시 최근",
+            provider: .dart,
+            sourceType: .disclosure,
+            roomID: request.roomID,
+            chainRunID: request.chainRunID,
+            enabled: health.browserSearch.isOperational || health.browserDOM.isOperational
+        )
         async let marketEvidence = gatherWeb(
             query: "\(company) 업종 지수 환율 코스피 코스닥 영향",
             sourceType: .marketIndex,
             enabled: canSearchMarketContext
         )
+        async let browserMarketEvidence = gatherBrowser(
+            query: "\(company) 업종 지수 환율 코스피 코스닥 영향",
+            provider: .naverSearch,
+            sourceType: .marketIndex,
+            roomID: request.roomID,
+            chainRunID: request.chainRunID,
+            enabled: health.browserSearch.isOperational || health.browserDOM.isOperational
+        )
 
         let quoteResult = await quoteEvidence
-        let news = await newsEvidence
-        let disclosures = await disclosureEvidence
-        let market = await marketEvidence
+        let browserQuote = await browserQuoteEvidence
+        let newsResult = await newsEvidence
+        let browserNews = await browserNewsEvidence
+        let browserDisclosure = await browserDisclosureEvidence
+        let disclosureResult = await disclosureEvidence
+        let marketResult = await marketEvidence
+        let browserMarket = await browserMarketEvidence
+        let news = newsResult + browserNews.sources
+        let disclosures = disclosureResult + browserDisclosure.sources
+        let market = marketResult + browserMarket.sources
 
         if ticker == nil {
             warnings.append("종목 코드를 확정하지 못해 시세 조회 정확도가 낮습니다.")
         }
-        if quoteResult.quote == nil {
+        let quote = quoteResult.quote ?? browserQuote.sources.first(where: { $0.resolvedSourceType == .quote })
+        if quote == nil {
             warnings.append("시세 출처를 확인하지 못했습니다. 오늘 변동은 단정하지 않습니다.")
         }
         if news.isEmpty && disclosures.isEmpty {
@@ -68,11 +110,16 @@ enum StockEvidenceCollector {
         }
 
         let bundle = StockEvidenceBundle(
-            quote: quoteResult.quote,
+            quote: quote,
             news: news,
             disclosures: disclosures,
             marketContext: market,
-            warnings: warnings + quoteResult.warnings
+            warnings: warnings
+                + quoteResult.warnings
+                + browserQuote.warnings
+                + browserNews.warnings
+                + browserDisclosure.warnings
+                + browserMarket.warnings
         )
 
         return ToolEvidenceResult(
@@ -150,6 +197,37 @@ enum StockEvidenceCollector {
                 sourceType: sourceType
             )
         }
+    }
+
+    private static func gatherBrowser(
+        query: String,
+        provider: BrowserSearchProvider,
+        sourceType: AgentWindowManager.SourceType,
+        roomID: UUID,
+        chainRunID: UUID?,
+        enabled: Bool
+    ) async -> (sources: [AgentWindowManager.SourceReference], warnings: [String]) {
+        guard enabled else { return ([], []) }
+        let result = await BrowserEvidenceConnector.searchAndExtract(
+            query: query,
+            provider: provider,
+            roomID: roomID,
+            chainRunID: chainRunID
+        )
+        guard result.status == .succeeded || result.status == .partial else {
+            return ([], result.failureCode.map { ["브라우저 근거 수집 실패: \($0)"] } ?? [])
+        }
+        let typed = result.sourceRefs.map { source in
+            AgentWindowManager.SourceReference(
+                id: source.id,
+                title: source.title,
+                url: source.url,
+                provider: source.provider,
+                accessedAt: source.accessedAt,
+                sourceType: sourceType
+            )
+        }
+        return (typed, [])
     }
 
     private static func dedupe(_ sources: [AgentWindowManager.SourceReference]) -> [AgentWindowManager.SourceReference] {

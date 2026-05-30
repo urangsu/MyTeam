@@ -20,6 +20,25 @@ struct ChainRunStatusView: View {
                 pill(chainRun.sourceSummary, color: .blue)
                 pill(chainRun.actionSummary, color: .purple)
                 pill(chainRun.artifactSummary, color: .green)
+                if browserSourceCount > 0 {
+                    pill("브라우저 \(browserSourceCount)", color: .orange)
+                }
+            }
+
+            if !browserSources.isEmpty {
+                VStack(alignment: .leading, spacing: 3) {
+                    ForEach(browserSources.prefix(3), id: \.id) { source in
+                        HStack(spacing: 5) {
+                            Image(systemName: "globe")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.orange)
+                            Text(source.title)
+                                .font(.system(size: 9))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                }
             }
 
             VStack(alignment: .leading, spacing: 6) {
@@ -102,6 +121,19 @@ struct ChainRunStatusView: View {
         case .skipped:
             return .orange
         }
+    }
+
+    private var browserSources: [ChainSourceReference] {
+        chainRun.sources.filter { source in
+            source.provider.lowercased().contains("playwright")
+                || source.sourceType == .browserDOM
+                || source.sourceType == .trainSchedule
+                || source.sourceType == .mapRoute
+        }
+    }
+
+    private var browserSourceCount: Int {
+        browserSources.count
     }
 
     private func pill(_ text: String, color: Color) -> some View {

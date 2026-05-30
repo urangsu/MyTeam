@@ -9883,6 +9883,15 @@
 				<string>E3000000000000000000000C</string>
 				<string>E3000000000000000000000D</string>
 				<string>E3000000000000000000000E</string>
+				<string>E3000000000000000000000F</string>
+				<string>E30000000000000000000010</string>
+				<string>E30000000000000000000011</string>
+				<string>E30000000000000000000012</string>
+				<string>E30000000000000000000013</string>
+				<string>E30000000000000000000014</string>
+				<string>E30000000000000000000015</string>
+				<string>E30000000000000000000016</string>
+				<string>E30000000000000000000017</string>
 				<string>D28000000000000000000008</string>
 				<string>D28000000000000000000009</string>
 				<string>D2800000000000000000000A</string>
@@ -11476,6 +11485,15 @@
 				<string>E3010000000000000000000C</string>
 				<string>E3010000000000000000000D</string>
 				<string>E3010000000000000000000E</string>
+				<string>E3010000000000000000000F</string>
+				<string>E30100000000000000000010</string>
+				<string>E30100000000000000000011</string>
+				<string>E30100000000000000000012</string>
+				<string>E30100000000000000000013</string>
+				<string>E30100000000000000000014</string>
+				<string>E30100000000000000000015</string>
+				<string>E30100000000000000000016</string>
+				<string>E30100000000000000000017</string>
 				<string>D28000000000000000000026</string>
 				<string>D28000000000000000000028</string>
 				<string>D28000000000000000000029</string>
@@ -19236,6 +19254,141 @@
 			<key>sourceTree</key>
 			<string>SOURCE_ROOT</string>
 		</dict>
+		<key>E3000000000000000000000F</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>PlaywrightMCPResult.swift</string>
+			<key>path</key>
+			<string>PlaywrightMCPResult.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E30000000000000000000010</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>PlaywrightMCPToolCall.swift</string>
+			<key>path</key>
+			<string>PlaywrightMCPToolCall.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E30000000000000000000011</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>PlaywrightMCPProcess.swift</string>
+			<key>path</key>
+			<string>PlaywrightMCPProcess.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E30000000000000000000012</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>PlaywrightMCPClient.swift</string>
+			<key>path</key>
+			<string>PlaywrightMCPClient.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E30000000000000000000013</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>PlaywrightMCPManager.swift</string>
+			<key>path</key>
+			<string>PlaywrightMCPManager.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E30000000000000000000014</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>BrowserActionPolicy.swift</string>
+			<key>path</key>
+			<string>BrowserActionPolicy.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E30000000000000000000015</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>BrowserSnapshot.swift</string>
+			<key>path</key>
+			<string>BrowserSnapshot.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E30000000000000000000016</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>BrowserExtractedSource.swift</string>
+			<key>path</key>
+			<string>BrowserExtractedSource.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E30000000000000000000017</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>BrowserEvidenceConnector.swift</string>
+			<key>path</key>
+			<string>BrowserEvidenceConnector.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
 		<key>D24000000000000000000011</key>
 		<dict>
 			<key>fileRef</key>
@@ -19415,6 +19568,69 @@
 		<dict>
 			<key>fileRef</key>
 			<string>E3000000000000000000000E</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E3010000000000000000000F</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E3000000000000000000000F</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E30100000000000000000010</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E30000000000000000000010</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E30100000000000000000011</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E30000000000000000000011</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E30100000000000000000012</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E30000000000000000000012</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E30100000000000000000013</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E30000000000000000000013</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E30100000000000000000014</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E30000000000000000000014</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E30100000000000000000015</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E30000000000000000000015</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E30100000000000000000016</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E30000000000000000000016</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E30100000000000000000017</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E30000000000000000000017</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>

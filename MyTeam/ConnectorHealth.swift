@@ -8,7 +8,7 @@ enum ConnectorStatus: Codable, Sendable, Equatable {
     case approvalRequired
     case degraded(reason: String)
 
-    var label: String {
+    nonisolated var label: String {
         switch self {
         case .available:
             return "available"
@@ -23,7 +23,7 @@ enum ConnectorStatus: Codable, Sendable, Equatable {
         }
     }
 
-    var reason: String? {
+    nonisolated var reason: String? {
         switch self {
         case .available, .approvalRequired:
             return nil
@@ -32,7 +32,7 @@ enum ConnectorStatus: Codable, Sendable, Equatable {
         }
     }
 
-    var isOperational: Bool {
+    nonisolated var isOperational: Bool {
         switch self {
         case .available, .degraded, .approvalRequired:
             return true
@@ -53,15 +53,40 @@ struct ConnectorHealth: Codable, Sendable, Equatable {
     let calendarDraft: ConnectorStatus
     let mapsSearch: ConnectorStatus
     let trainSearch: ConnectorStatus
+    let playwrightMCP: ConnectorStatus
+    let browserDOM: ConnectorStatus
+    let browserSearch: ConnectorStatus
+    let browserClick: ConnectorStatus
+    let browserScreenshot: ConnectorStatus
 
     var dartSearch: ConnectorStatus { disclosureSearch }
     var calendarWrite: ConnectorStatus { calendarDraft }
 
+    static let unconfigured = ConnectorHealth(
+        stockQuote: .needsSetup(reason: "시세 조회 커넥터가 설정되지 않았습니다."),
+        newsSearch: .needsSetup(reason: "뉴스 검색용 웹 커넥터가 설정되지 않았습니다."),
+        disclosureSearch: .needsSetup(reason: "DART/KIND 공시 커넥터가 설정되지 않았습니다."),
+        webFetch: .needsSetup(reason: "웹 조회 커넥터가 설정되지 않았습니다."),
+        pdfText: .available,
+        imageOCR: .available,
+        mailRead: .needsSetup(reason: "메일 계정 연결이 필요합니다."),
+        calendarDraft: .approvalRequired,
+        mapsSearch: .needsSetup(reason: "지도 조회 커넥터가 설정되지 않았습니다."),
+        trainSearch: .needsSetup(reason: "열차 조회 커넥터가 설정되지 않았습니다."),
+        playwrightMCP: .needsSetup(reason: "Playwright MCP 상태를 아직 확인하지 않았습니다."),
+        browserDOM: .needsSetup(reason: "Playwright MCP snapshot tool을 확인하지 못했습니다."),
+        browserSearch: .needsSetup(reason: "Playwright MCP navigate/snapshot tool이 필요합니다."),
+        browserClick: .needsSetup(reason: "Playwright MCP click tool을 확인하지 못했습니다."),
+        browserScreenshot: .needsSetup(reason: "Playwright MCP screenshot tool을 확인하지 못했습니다.")
+    )
+
+    @MainActor
     static func current() -> ConnectorHealth {
         ConnectorRegistry.shared.currentHealth()
     }
 }
 
+@MainActor
 final class ConnectorRegistry: ObservableObject {
     static let shared = ConnectorRegistry()
 
@@ -78,7 +103,12 @@ final class ConnectorRegistry: ObservableObject {
             mailRead: .needsSetup(reason: "메일 계정 연결이 필요합니다."),
             calendarDraft: .approvalRequired,
             mapsSearch: webFetchStatus(hasGroundedSearch: false, hasLocalWebFallback: true),
-            trainSearch: .needsSetup(reason: "열차 조회 연동이 아직 설정되지 않았습니다.")
+            trainSearch: .needsSetup(reason: "열차 조회 연동이 아직 설정되지 않았습니다."),
+            playwrightMCP: playwrightMCPStatus(.notChecked),
+            browserDOM: browserDOMStatus(.notChecked),
+            browserSearch: browserSearchStatus(.notChecked),
+            browserClick: browserClickStatus(.notChecked),
+            browserScreenshot: browserScreenshotStatus(.notChecked)
         )
     }
 
@@ -116,6 +146,46 @@ final class ConnectorRegistry: ObservableObject {
             : .needsSetup(reason: "웹 조회 커넥터가 설정되지 않았습니다.")
     }
 
+    private static func playwrightMCPStatus(_ health: PlaywrightMCPHealth) -> ConnectorStatus {
+        if health.mcpLaunchable && health.initialized {
+            return .available
+        }
+        if !health.nodeAvailable {
+            return .needsSetup(reason: health.lastError ?? "Node.js가 필요합니다.")
+        }
+        if !health.npxAvailable {
+            return .needsSetup(reason: health.lastError ?? "npx 실행 환경이 필요합니다.")
+        }
+        if !health.mcpLaunchable {
+            return .needsSetup(reason: health.lastError ?? "@playwright/mcp 실행 확인이 필요합니다.")
+        }
+        return .unavailable(reason: health.lastError ?? "Playwright MCP initialize에 실패했습니다.")
+    }
+
+    private static func browserDOMStatus(_ health: PlaywrightMCPHealth) -> ConnectorStatus {
+        health.isDOMOperational
+            ? .available
+            : .needsSetup(reason: health.lastError ?? "Playwright MCP snapshot tool을 확인하지 못했습니다.")
+    }
+
+    private static func browserSearchStatus(_ health: PlaywrightMCPHealth) -> ConnectorStatus {
+        health.isSearchOperational
+            ? .available
+            : .needsSetup(reason: health.lastError ?? "Playwright MCP navigate/snapshot tool이 필요합니다.")
+    }
+
+    private static func browserClickStatus(_ health: PlaywrightMCPHealth) -> ConnectorStatus {
+        health.isDOMOperational && health.clickCapable
+            ? .available
+            : .needsSetup(reason: health.lastError ?? "Playwright MCP click tool을 확인하지 못했습니다.")
+    }
+
+    private static func browserScreenshotStatus(_ health: PlaywrightMCPHealth) -> ConnectorStatus {
+        health.mcpLaunchable && health.initialized && health.screenshotCapable
+            ? .available
+            : .needsSetup(reason: health.lastError ?? "Playwright MCP screenshot tool을 확인하지 못했습니다.")
+    }
+
     private static func hasGroundedSearchProvider() -> Bool {
         let hasGemini = !(KeychainManager.load(key: "geminiAPIKey") ?? "").isEmpty
         let hasOpenAI = !(KeychainManager.load(key: "openAIAPIKey") ?? "").isEmpty
@@ -128,9 +198,21 @@ final class ConnectorRegistry: ObservableObject {
 
     func refresh() {
         lastHealth = currentHealth()
+        Task { @MainActor in
+            PlaywrightMCPManager.shared.refreshHealth()
+        }
+    }
+
+    @MainActor
+    func refreshWithBrowserHealth(_ browserHealth: PlaywrightMCPHealth) {
+        lastHealth = currentHealth(browserHealth: browserHealth)
     }
 
     func currentHealth() -> ConnectorHealth {
+        currentHealth(browserHealth: PlaywrightMCPManager.shared.health)
+    }
+
+    func currentHealth(browserHealth: PlaywrightMCPHealth) -> ConnectorHealth {
         let hasGroundedSearch = Self.hasGroundedSearchProvider()
         let hasLocalWebFallback = Self.hasLocalWebFallback()
 
@@ -144,7 +226,14 @@ final class ConnectorRegistry: ObservableObject {
             mailRead: .needsSetup(reason: "Gmail 또는 Mail 읽기 연결이 필요합니다."),
             calendarDraft: .approvalRequired,
             mapsSearch: Self.webFetchStatus(hasGroundedSearch: hasGroundedSearch, hasLocalWebFallback: hasLocalWebFallback),
-            trainSearch: .needsSetup(reason: "열차 조회 API 또는 공식 검색 연결이 필요합니다.")
+            trainSearch: browserHealth.isSearchOperational
+                ? .degraded(reason: "열차 조회는 Playwright 브라우저 검색으로만 동작합니다.")
+                : .needsSetup(reason: "열차 조회 API 또는 공식 검색 연결이 필요합니다."),
+            playwrightMCP: Self.playwrightMCPStatus(browserHealth),
+            browserDOM: Self.browserDOMStatus(browserHealth),
+            browserSearch: Self.browserSearchStatus(browserHealth),
+            browserClick: Self.browserClickStatus(browserHealth),
+            browserScreenshot: Self.browserScreenshotStatus(browserHealth)
         )
     }
 }

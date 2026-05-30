@@ -389,6 +389,7 @@ struct SettingsView: View {
                         connectorRegistry.refresh()
                     }
                 )
+                PlaywrightMCPStatusView()
             }
 
             Section("오늘 브리핑") {
@@ -1013,6 +1014,54 @@ private struct ChainRuntimeSmokeDiagnosticsView: View {
                 isRunning = false
             }
         }
+    }
+}
+
+private struct PlaywrightMCPStatusView: View {
+    @ObservedObject private var playwright = PlaywrightMCPManager.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label("Playwright MCP", systemImage: "globe")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                Spacer()
+                Button {
+                    playwright.refreshHealth()
+                } label: {
+                    if playwright.isRefreshing {
+                        ProgressView().scaleEffect(0.75)
+                    } else {
+                        Text("검사")
+                    }
+                }
+                .controlSize(.small)
+                .disabled(playwright.isRefreshing)
+            }
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 6) {
+                DiagnosticRow(label: "Node", value: playwright.health.nodeAvailable ? "ok" : "missing")
+                DiagnosticRow(label: "npx", value: playwright.health.npxAvailable ? "ok" : "missing")
+                DiagnosticRow(label: "MCP", value: playwright.health.mcpLaunchable ? "launchable" : "needs setup")
+                DiagnosticRow(label: "snapshot", value: playwright.health.snapshotCapable ? "available" : "unavailable")
+            }
+
+            if !playwright.health.toolNames.isEmpty {
+                Text(playwright.health.toolNames.prefix(8).joined(separator: ", "))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+
+            if let error = playwright.health.lastError, !error.isEmpty {
+                Text(error)
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .lineLimit(3)
+            }
+        }
+        .padding(.vertical, 8)
     }
 }
 

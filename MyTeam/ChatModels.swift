@@ -142,6 +142,10 @@ extension AgentWindowManager {
         case marketIndex
         case userAttachment
         case webPage
+        case trainSchedule
+        case mapRoute
+        case browserDOM
+        case screenshot
         case unknown
     }
 
@@ -185,6 +189,9 @@ extension AgentWindowManager {
         if providerLower.contains("http")
             || urlLower.hasPrefix("http") {
             return .webPage
+        }
+        if providerLower.contains("playwright") || providerLower.contains("browser") {
+            return .browserDOM
         }
         return .unknown
     }
