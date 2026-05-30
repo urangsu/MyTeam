@@ -57,10 +57,7 @@ enum SupertonicProsodyTextProcessor {
 
         // 2. animalCrossing 스타일 → 텍스트 변환 없음 (pitch/rate/speed로 처리)
         if effectiveStyle == .animalCrossing {
-            var result = normalizeWhitespace(text, truncate: true)
-            if useExpressionTags {
-                result = SupertonicExpressionTagPolicy.apply(emotion: effectiveStyle, to: result)
-            }
+            let result = normalizeWhitespace(text, truncate: true)
             return result
         }
 
@@ -75,11 +72,6 @@ enum SupertonicProsodyTextProcessor {
         // 5. 감정 스타일별 소프트 변환 (friendly, 짧은 텍스트만)
         if effectiveStyle == .friendly && result.count < 80 {
             result = applyFriendlyTransforms(result)
-        }
-
-        // 6. Expression tags (TTS Lab 테스트 전용)
-        if useExpressionTags {
-            result = SupertonicExpressionTagPolicy.apply(emotion: effectiveStyle, to: result)
         }
 
         return result

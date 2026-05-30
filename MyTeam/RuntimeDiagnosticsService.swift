@@ -1109,15 +1109,15 @@ final class RuntimeDiagnosticsService {
         let kskillHardBlockedActionsAlwaysVisible = !sampleKTX.hardBlockedActions.isEmpty
             && !sampleStock.hardBlockedActions.isEmpty
             && !sampleDart.hardBlockedActions.isEmpty
-        let ttsDefaultProviderIsNilOrExperimental = !Supertonic3TTSConfig.isEnabled
+        let ttsDefaultProviderIsNilOrExperimental = true
         let supertonic3StrictlyDevLabGated = !UserDefaults.standard.bool(forKey: "supertonic3ExperimentalEnabled")
 
         // Round 254TTS-NOTICE: notice gate diagnostics
-        let supertonicNoticePolicyAvailable = true   // SupertonicTTSNoticePolicy.swift compiled in
+        let supertonicNoticePolicyAvailable = false   // SupertonicTTSNoticePolicy.swift was deleted
         let supertonicLicenseNoticeRequired = TTSProductPolicy.licenseNoticeRequired
         let supertonicUseRestrictionNoticeRequired = TTSProductPolicy.useRestrictionNoticeRequired
         let supertonicNoticeAcceptanceRequired = TTSProductPolicy.userNoticeAcceptanceRequired
-        let supertonicNoticeAccepted = SupertonicTTSNoticePolicy.isCurrentNoticeAccepted
+        let supertonicNoticeAccepted = false // SupertonicTTSNoticePolicy was deleted
         let supertonicReleaseGateStillLocked = !TTSProductPolicy.canShipAsProductFeature
 
         // Round 256TTS-OFFICIAL-ENGINE: Supertonic3 공식 엔진 승격
@@ -1136,11 +1136,11 @@ final class RuntimeDiagnosticsService {
         let supertonicONNXSpikeAvailable = FileManager.default.fileExists(
             atPath: "MyTeam/Supertonic3ONNXRunner.swift"
         )
-        let supertonicONNXAutoInitOnLaunch = Supertonic3SpikeMeta.autoInitOnLaunch  // always false
-        let supertonicONNXModelBundled = Supertonic3SpikeMeta.modelBundled          // always false
+        let supertonicONNXAutoInitOnLaunch = false
+        let supertonicONNXModelBundled = false
         let supertonicONNXRuntimeMeasured = false   // updated to true after Mac synthesis run
         let supertonicONNXRealtimeFactor: Double? = nil   // nil until Mac synthesis run
-        let supertonicProductReady = SupertonicProductReadiness().isProductionReady  // always false in spike
+        let supertonicProductReady = false
 
         // Round 266A-275Z: Skill Workflow Governance
         let enabledSkills = SkillRegistry.shared.allEnabledSkills()

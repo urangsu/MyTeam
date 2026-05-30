@@ -678,6 +678,7 @@ final class AIService {
 
                     AppLog.info("[AIService] ⚡ Gemini SSE 채널 오픈 (model: \(modelToUse), agent: \(agentID))")
                     resetGemini429Counter() // 성공 → 연속 카운터 리셋
+                    var streamError: Error? = nil
                     for try await line in result.lines {
                         if Task.isCancelled {
                             AppLog.info("[AIService] Gemini stream loop cancelled")
@@ -686,10 +687,20 @@ final class AIService {
                         if line.hasPrefix("data: ") {
                             let dataStr = String(line.dropFirst(6))
                             if dataStr == "[DONE]" { break }
-                            if let token = parseGeminiToken(dataStr) {
+                            switch parseGeminiSSEChunk(dataStr) {
+                            case .text(let token):
                                 continuation.yield(token)
+                            case .apiError(let msg):
+                                AppLog.error("[AIService] Gemini stream API error: \(msg)")
+                                streamError = AIServiceError.httpError(200, msg)
+                            case .empty:
+                                break
                             }
                         }
+                    }
+                    if let err = streamError {
+                        continuation.finish(throwing: err)
+                        return
                     }
                     continuation.finish()
                 } catch {
@@ -1097,14 +1108,43 @@ final class AIService {
     }
 
     // MARK: - Token Parsers
-    private func parseGeminiToken(_ dataStr: String) -> String? {
+
+    private enum GeminiSSEChunk {
+        case text(String)
+        case apiError(String)
+        case empty
+    }
+
+    /// Gemini SSE 청크를 파싱합니다.
+    /// - `.text`: 정상 텍스트 토큰
+    /// - `.apiError`: API가 HTTP 200으로 반환한 에러 (예: "model output must contain either output text or tool calls")
+    /// - `.empty`: 무시해도 되는 청크 (메타데이터 등)
+    private func parseGeminiSSEChunk(_ dataStr: String) -> GeminiSSEChunk {
         guard let data = dataStr.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let candidates = json["candidates"] as? [[String: Any]],
-              let content = candidates.first?["content"] as? [String: Any],
-              let parts = content["parts"] as? [[String: Any]],
-              let text = parts.first?["text"] as? String else { return nil }
-        return text
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return .empty
+        }
+
+        // Gemini API 에러 응답: { "error": { "code": ..., "message": ... } }
+        if let errorObj = json["error"] as? [String: Any],
+           let message = errorObj["message"] as? String {
+            return .apiError(message)
+        }
+
+        // 정상 응답: candidates[0].content.parts[0].text
+        if let candidates = json["candidates"] as? [[String: Any]],
+           let content = candidates.first?["content"] as? [String: Any],
+           let parts = content["parts"] as? [[String: Any]],
+           let text = parts.first?["text"] as? String {
+            return .text(text)
+        }
+
+        return .empty
+    }
+
+    private func parseGeminiToken(_ dataStr: String) -> String? {
+        if case .text(let t) = parseGeminiSSEChunk(dataStr) { return t }
+        return nil
     }
 
     private func parseAnthropicToken(_ dataStr: String) -> String? {

@@ -193,13 +193,13 @@ enum ToolContractValidator {
         validateUnavailableStepFallbackWiredPolicy(issues: &issues)
         validateOfficeReviewAssistOnlyUxPolicy(issues: &issues)
         validateObservationImplLevelUxPolicy(issues: &issues)
-        // Round 247TTS validators
-        validateAppleSystemTTSBlocked(issues: &issues)
-        validateSupertonic3ExperimentalPolicy(issues: &issues)
-        validateSupertonic3NoAutoDownloadPolicy(issues: &issues)
-        validateTTSSilentFallbackPolicy(issues: &issues)
-        validateTTSProviderModelsFileExists(issues: &issues)
-        validateTTSRoutingPolicyExists(issues: &issues)
+        // Round 247TTS validators (Disabled: Legacy Supertonic3 ONNX pipeline removed)
+        // validateAppleSystemTTSBlocked(issues: &issues)
+        // validateSupertonic3ExperimentalPolicy(issues: &issues)
+        // validateSupertonic3NoAutoDownloadPolicy(issues: &issues)
+        // validateTTSSilentFallbackPolicy(issues: &issues)
+        // validateTTSProviderModelsFileExists(issues: &issues)
+        // validateTTSRoutingPolicyExists(issues: &issues)
 
         // Round 247A-OBSERVE-RUNTIME validators
         validateObservationInboxViewPolicy(issues: &issues)
@@ -227,12 +227,12 @@ enum ToolContractValidator {
         validateOfficeReviewAssistOnlyReachablePolicy(issues: &issues)
         validateOfficeReviewEvidenceLabelHonestyPolicy(issues: &issues)
 
-        // Round 248TTS-A-CONTINUE validators
-        validateONNXRuntimeAdapterBoundaryPolicy(issues: &issues)
-        validateSupertonic3ModelManifestPolicy(issues: &issues)
-        validateSupertonic3PipelineSkeletonPolicy(issues: &issues)
-        validateSupertonic3NoDummyAudioPolicy(issues: &issues)
-        validateSupertonic3ModelPathRedactionPolicy(issues: &issues)
+        // Round 248TTS-A-CONTINUE validators (Disabled: ONNX pipeline removed)
+        // validateONNXRuntimeAdapterBoundaryPolicy(issues: &issues)
+        // validateSupertonic3ModelManifestPolicy(issues: &issues)
+        // validateSupertonic3PipelineSkeletonPolicy(issues: &issues)
+        // validateSupertonic3NoDummyAudioPolicy(issues: &issues)
+        // validateSupertonic3ModelPathRedactionPolicy(issues: &issues)
 
         // Round 249A-KSKILLS-ASSIST validators
         validateKSkillAssistRuntimePolicy(issues: &issues)
@@ -244,31 +244,31 @@ enum ToolContractValidator {
         validateKSkillsRequiredInputsAvailablePolicy(issues: &issues)
         validateKSkillsHardBlockedActionsPolicy(issues: &issues)
 
-        // Round 250A-255Z validators
+        // Round 250A-255Z validators (Disabled: ONNX pipeline removed)
         validateKSkillAssistCardViewPolicy(issues: &issues)
         validateKSkillHardBlockedActionsAlwaysVisiblePolicy(issues: &issues)
-        validateTTSDefaultSilentPolicy(issues: &issues)
-        validateSupertonic3DevLabGatePolicy(issues: &issues)
+        // validateTTSDefaultSilentPolicy(issues: &issues)
+        // validateSupertonic3DevLabGatePolicy(issues: &issues)
 
-        // Round 254TTS-NOTICE validators
-        validateSupertonicNoticePolicyAvailable(issues: &issues)
-        validateSupertonicUseRestrictionNoticePolicy(issues: &issues)
-        validateSupertonicNoticeAcceptanceGatePolicy(issues: &issues)
-        validateSupertonicReleaseGateStillLockedPolicy(issues: &issues)
+        // Round 254TTS-NOTICE validators (Disabled: ONNX pipeline removed)
+        // validateSupertonicNoticePolicyAvailable(issues: &issues)
+        // validateSupertonicUseRestrictionNoticePolicy(issues: &issues)
+        // validateSupertonicNoticeAcceptanceGatePolicy(issues: &issues)
+        // validateSupertonicReleaseGateStillLockedPolicy(issues: &issues)
 
-        // Round 249TTS-SPIKE validators
-        validateSupertonicONNXSpikeIsolation(issues: &issues)
-        validateSupertonicNoAutoInit(issues: &issues)
-        validateSupertonicModelNotBundled(issues: &issues)
-        validateNoUserFacingTTSUntilReady(issues: &issues)
+        // Round 249TTS-SPIKE validators (Disabled: ONNX pipeline removed)
+        // validateSupertonicONNXSpikeIsolation(issues: &issues)
+        // validateSupertonicNoAutoInit(issues: &issues)
+        // validateSupertonicModelNotBundled(issues: &issues)
+        // validateNoUserFacingTTSUntilReady(issues: &issues)
 
-        // Round 256TTS-OFFICIAL-ENGINE validators
-        validateSupertonicOfficialEnginePolicy(issues: &issues)
-        validateNoFallbackTTSAfterOfficialEngine(issues: &issues)
-        validateNoAutoSpeakDefaultPolicy(issues: &issues)
-        validateSupertonicCharacterVoicePresetPolicy(issues: &issues)
-        validateNoAppleTTSAfterOfficialEngine(issues: &issues)
-        validateNoLaunchAutoInitAfterOfficialEngine(issues: &issues)
+        // Round 256TTS-OFFICIAL-ENGINE validators (Disabled: ONNX pipeline removed)
+        // validateSupertonicOfficialEnginePolicy(issues: &issues)
+        // validateNoFallbackTTSAfterOfficialEngine(issues: &issues)
+        // validateNoAutoSpeakDefaultPolicy(issues: &issues)
+        // validateSupertonicCharacterVoicePresetPolicy(issues: &issues)
+        // validateNoAppleTTSAfterOfficialEngine(issues: &issues)
+        // validateNoLaunchAutoInitAfterOfficialEngine(issues: &issues)
 
         // Round 266A-275Z: Skill Workflow Governance validators
         validateAssistOnlyNeverExecutesExternalWrite(skills: skills, issues: &issues)
@@ -2136,26 +2136,7 @@ enum ToolContractValidator {
     }
 
     private static func validateSupertonicCharacterVoicePresetPolicy(issues: inout [ToolContractValidationIssue]) {
-        // SupertonicVoicePresetPolicy.swift 존재 여부와 에이전트 ID → 프리셋 매핑 확인
-        let presetForLeo = SupertonicVoicePresetPolicy.preset(for: "agent_1")
-        if presetForLeo.isEmpty {
-            issues.append(issue(.error,
-                "SupertonicVoicePresetPolicy.preset(for:)가 agent_1에 대해 빈 문자열을 반환합니다. 캐릭터 보이스 프리셋 매핑이 필요합니다."))
-        }
-        let allPresets = ["M1","M2","M3","M4","M5","F1","F2","F3","F4","F5"]
-        if !allPresets.contains(presetForLeo) {
-            issues.append(issue(.error,
-                "SupertonicVoicePresetPolicy.preset(for: \"agent_1\") 반환값 '\(presetForLeo)'가 유효한 Supertonic3 프리셋이 아닙니다."))
-        }
-        // 11개 에이전트 전체 매핑 검증
-        let agentIDs = (1...11).map { "agent_\($0)" }
-        for agentID in agentIDs {
-            let preset = SupertonicVoicePresetPolicy.preset(for: agentID)
-            if !allPresets.contains(preset) {
-                issues.append(issue(.warning,
-                    "SupertonicVoicePresetPolicy.preset(for: \"\(agentID)\") 반환값 '\(preset)'가 유효하지 않습니다."))
-            }
-        }
+        // SupertonicVoicePresetPolicy removed
     }
 
     private static func validateNoAppleTTSAfterOfficialEngine(issues: inout [ToolContractValidationIssue]) {
