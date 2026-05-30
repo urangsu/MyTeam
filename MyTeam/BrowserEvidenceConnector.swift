@@ -4,7 +4,7 @@ enum BrowserEvidenceConnector {
     static func openAndSnapshot(
         url: URL,
         roomID: UUID,
-        chainRunID: UUID?
+        chainRunID: UUID
     ) async -> BrowserEvidenceResult {
         let health = await MainActor.run { PlaywrightMCPManager.shared.health }
         guard health.isDOMOperational else {
@@ -22,22 +22,40 @@ enum BrowserEvidenceConnector {
             )
         }
 
-        let text = snapshot.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = snapshot.text.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
         guard !text.isEmpty else {
             return .unavailable("DOM snapshot이 비어 있습니다.", failureCode: "browser_dom_empty")
         }
         let title = firstUsefulLine(in: text) ?? url.host ?? url.absoluteString
+        let snapshotID = UUID()
+
+        let record = BrowserSnapshotRecord(
+            id: snapshotID,
+            roomID: roomID,
+            chainRunID: chainRunID,
+            url: url.absoluteString,
+            title: title,
+            text: text,
+            capturedAt: Date(),
+            sourceType: .browserDOM
+        )
+
+        await MainActor.run {
+            BrowserSnapshotStore.shared.save(record)
+        }
+
         let source = AgentWindowManager.SourceReference(
             title: title,
             url: url.absoluteString,
             provider: "PlaywrightMCP",
             accessedAt: Date(),
-            sourceType: .browserDOM
+            sourceType: .browserDOM,
+            snapshotID: snapshotID
         )
         return BrowserEvidenceResult(
             status: .succeeded,
             sourceRefs: [source],
-            snapshotID: UUID(),
+            snapshotID: snapshotID,
             title: title,
             url: url.absoluteString,
             extractedText: String(text.prefix(5_000)),
@@ -48,8 +66,9 @@ enum BrowserEvidenceConnector {
     static func searchAndExtract(
         query: String,
         provider: BrowserSearchProvider,
+        expectedType: AgentWindowManager.SourceType,
         roomID: UUID,
-        chainRunID: UUID?
+        chainRunID: UUID
     ) async -> BrowserEvidenceResult {
         let health = await MainActor.run { PlaywrightMCPManager.shared.health }
         guard health.isSearchOperational else {
@@ -80,31 +99,54 @@ enum BrowserEvidenceConnector {
             )
         }
 
-        let text = snapshot.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = snapshot.text.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
         guard !text.isEmpty else {
             return .unavailable("검색 결과 DOM이 비어 있습니다.", failureCode: "browser_search_dom_empty")
         }
 
         let inferredType = sourceType(for: provider, extractedText: text)
-        guard inferredType != .browserDOM || provider == .general || provider == .naverSearch || provider == .google else {
-            return .unavailable(
-                "DOM은 읽었지만 \(provider.rawValue) 근거로 분류할 수 있는 구체 신호가 없습니다.",
-                failureCode: "browser_source_type_unconfirmed"
+        guard inferredType == expectedType else {
+            return BrowserEvidenceResult(
+                status: .unavailable,
+                sourceRefs: [],
+                snapshotID: nil,
+                title: nil,
+                url: nil,
+                extractedText: nil,
+                failureCode: "browser_source_type_unconfirmed: browser source type mismatch: expected \(expectedType.rawValue), got \(inferredType.rawValue)"
             )
         }
 
         let title = firstUsefulLine(in: text) ?? query
+        let snapshotID = UUID()
+
+        let record = BrowserSnapshotRecord(
+            id: snapshotID,
+            roomID: roomID,
+            chainRunID: chainRunID,
+            url: url.absoluteString,
+            title: title,
+            text: text,
+            capturedAt: Date(),
+            sourceType: inferredType
+        )
+
+        await MainActor.run {
+            BrowserSnapshotStore.shared.save(record)
+        }
+
         let source = AgentWindowManager.SourceReference(
             title: title,
             url: url.absoluteString,
             provider: "PlaywrightMCP:\(provider.rawValue)",
             accessedAt: Date(),
-            sourceType: inferredType
+            sourceType: inferredType,
+            snapshotID: snapshotID
         )
         return BrowserEvidenceResult(
             status: .succeeded,
             sourceRefs: [source],
-            snapshotID: UUID(),
+            snapshotID: snapshotID,
             title: title,
             url: url.absoluteString,
             extractedText: String(text.prefix(5_000)),
@@ -122,9 +164,9 @@ enum BrowserEvidenceConnector {
         case .dart, .kind:
             return containsDisclosureSignal(lower) ? .disclosure : .browserDOM
         case .korail:
-            return .trainSchedule
+            return containsTrainScheduleSignal(lower) ? .trainSchedule : .browserDOM
         case .kakaoMap:
-            return .mapRoute
+            return containsMapRouteSignal(lower) ? .mapRoute : .browserDOM
         case .naverSearch, .google, .general:
             return .browserDOM
         }
@@ -145,6 +187,26 @@ enum BrowserEvidenceConnector {
             || text.contains("사업보고서")
             || text.contains("분기보고서")
             || text.contains("반기보고서")
+    }
+
+    private static func containsTrainScheduleSignal(_ text: String) -> Bool {
+        text.contains("출발역")
+            || text.contains("도착역")
+            || text.contains("출발 시간")
+            || text.contains("열차 번호")
+            || text.contains("열차번호")
+            || text.contains("ktx")
+            || text.contains("srt")
+            || text.contains("시간표")
+    }
+
+    private static func containsMapRouteSignal(_ text: String) -> Bool {
+        text.contains("소요시간")
+            || text.contains("길찾기")
+            || text.contains("추천 경로")
+            || text.contains("도보")
+            || text.contains("자동차 경로")
+            || text.contains("대중교통 경로")
     }
 
     private static func searchURL(for query: String, provider: BrowserSearchProvider) -> URL {

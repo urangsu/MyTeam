@@ -108,21 +108,24 @@ struct SourceReference: Codable, Sendable {
     let kind: String
     let note: String
     let sourceType: AgentWindowManager.SourceType
+    var snapshotID: UUID?
 
     init(
         title: String,
         kind: String,
         note: String,
-        sourceType: AgentWindowManager.SourceType? = nil
+        sourceType: AgentWindowManager.SourceType? = nil,
+        snapshotID: UUID? = nil
     ) {
         self.title = title
         self.kind = kind
         self.note = note
         self.sourceType = sourceType ?? AgentWindowManager.inferredSourceType(provider: kind, title: title, url: note)
+        self.snapshotID = snapshotID
     }
 
     private enum CodingKeys: String, CodingKey {
-        case title, kind, note, sourceType
+        case title, kind, note, sourceType, snapshotID
     }
 
     init(from decoder: Decoder) throws {
@@ -132,6 +135,7 @@ struct SourceReference: Codable, Sendable {
         note = try container.decode(String.self, forKey: .note)
         sourceType = try container.decodeIfPresent(AgentWindowManager.SourceType.self, forKey: .sourceType)
             ?? AgentWindowManager.inferredSourceType(provider: kind, title: title, url: note)
+        snapshotID = try container.decodeIfPresent(UUID.self, forKey: .snapshotID)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -140,6 +144,7 @@ struct SourceReference: Codable, Sendable {
         try container.encode(kind, forKey: .kind)
         try container.encode(note, forKey: .note)
         try container.encode(sourceType, forKey: .sourceType)
+        try container.encodeIfPresent(snapshotID, forKey: .snapshotID)
     }
 }
 
@@ -956,6 +961,17 @@ enum KSkillRunEngine {
         let shouldGatherEvidence = shouldGatherEvidence(for: intent, mode: mode, health: health)
         let lookupQuery = evidenceQuery(for: intent, userMessage: userMessage)
         let policy = evidencePolicy(for: intent, userMessage: lookupQuery)
+
+        let shell = await MainActor.run {
+            ChainOrchestrator.createShell(
+                roomID: roomID,
+                chainID: chainID,
+                userMessage: userMessage,
+                attachments: attachments
+            )
+        }
+        let chainRunID = shell.id
+
         let gatheredEvidence: ToolEvidenceResult
         if shouldGatherEvidence && intent == .stockInfoAssist {
             gatheredEvidence = await StockEvidenceCollector.collect(
@@ -965,13 +981,13 @@ enum KSkillRunEngine {
                     ticker: KoreanStockSymbolResolver.resolve(userMessage)?.ticker,
                     dateRange: nil,
                     roomID: roomID,
-                    chainRunID: nil
+                    chainRunID: chainRunID
                 ),
                 health: health
             )
         } else {
             let baseEvidence = shouldGatherEvidence ? await ToolEvidenceService.gather(for: lookupQuery, policy: policy) : .empty
-            let browserEvidence = shouldGatherEvidence ? await browserEvidence(for: intent, query: lookupQuery, roomID: roomID) : .empty
+            let browserEvidence = shouldGatherEvidence ? await browserEvidence(for: intent, query: lookupQuery, roomID: roomID, chainRunID: chainRunID) : .empty
             gatheredEvidence = mergeToolEvidence(baseEvidence, browserEvidence)
         }
         let evidence = mergeEvidence(gatheredEvidence, attachments: attachments)
@@ -983,15 +999,18 @@ enum KSkillRunEngine {
             chainID: chainID,
             userMessage: userMessage
         )
-        let chainRun = await ChainOrchestrator.makeRun(
-            roomID: roomID,
-            chainID: chainID,
-            userMessage: userMessage,
-            attachments: attachments,
-            evidence: evidence,
-            actions: [],
-            health: health
-        )
+        let chainRun = await MainActor.run {
+            ChainOrchestrator.updateRun(
+                runID: chainRunID,
+                roomID: roomID,
+                chainID: chainID,
+                userMessage: userMessage,
+                attachments: attachments,
+                evidence: evidence,
+                actions: [],
+                health: health
+            )
+        }
         let mergedSuggestions = dedupeActionSuggestions(
             await PostTurnIntelligenceEngine.shared.suggestNextActions(
                 roomID: roomID,
@@ -1184,7 +1203,7 @@ enum KSkillRunEngine {
         }
     }
 
-    private static func browserEvidence(for intent: KSkillAssistIntent, query: String, roomID: UUID) async -> ToolEvidenceResult {
+    private static func browserEvidence(for intent: KSkillAssistIntent, query: String, roomID: UUID, chainRunID: UUID) async -> ToolEvidenceResult {
         let provider: BrowserSearchProvider
         let forcedType: AgentWindowManager.SourceType
         switch intent {
@@ -1210,8 +1229,9 @@ enum KSkillRunEngine {
         let result = await BrowserEvidenceConnector.searchAndExtract(
             query: query,
             provider: provider,
+            expectedType: forcedType,
             roomID: roomID,
-            chainRunID: nil
+            chainRunID: chainRunID
         )
         guard result.status == .succeeded || result.status == .partial else {
             let failure = result.failureCode ?? "browser_evidence_unavailable"
@@ -1220,19 +1240,31 @@ enum KSkillRunEngine {
                 sources: []
             )
         }
-        let sources = result.sourceRefs.map {
-            AgentWindowManager.SourceReference(
-                id: $0.id,
-                title: $0.title,
-                url: $0.url,
-                provider: $0.provider,
-                accessedAt: $0.accessedAt,
-                sourceType: forcedType
+        var warnings: [String] = []
+        let sources = result.sourceRefs.compactMap { source -> AgentWindowManager.SourceReference? in
+            let actualType = source.resolvedSourceType
+            if actualType == .browserDOM && forcedType != .browserDOM {
+                warnings.append("DOM은 읽었지만 \(forcedType.rawValue) 신호가 없습니다.")
+                return nil
+            }
+            guard actualType == forcedType else {
+                warnings.append("근거 유형 불일치: 기대값=\(forcedType.rawValue), 실제값=\(actualType.rawValue)")
+                return nil
+            }
+            return AgentWindowManager.SourceReference(
+                id: source.id,
+                title: source.title,
+                url: source.url,
+                provider: source.provider,
+                accessedAt: source.accessedAt,
+                sourceType: actualType,
+                snapshotID: source.snapshotID
             )
         }
+        let warningText = warnings.isEmpty ? "" : "\n- 경고: " + warnings.joined(separator: ", ")
         let context = sources.isEmpty
-            ? ""
-            : "\n\n[브라우저 근거 수집]\n" + sources.map { "- \($0.title)\n  \($0.url)" }.joined(separator: "\n")
+            ? "\n\n[브라우저 근거 수집]\n- 비어 있음\(warningText)"
+            : "\n\n[브라우저 근거 수집]\n" + sources.map { "- \($0.title)\n  \($0.url)" }.joined(separator: "\n") + warningText
         return ToolEvidenceResult(promptContext: context, sources: sources)
     }
 
@@ -1447,9 +1479,9 @@ enum KSkillRunEngine {
 
     private static func isConcreteSource(_ sourceType: AgentWindowManager.SourceType) -> Bool {
         switch sourceType {
-        case .quote, .news, .disclosure, .marketIndex, .webPage, .trainSchedule, .mapRoute, .browserDOM:
+        case .quote, .news, .disclosure, .marketIndex, .webPage, .trainSchedule, .mapRoute:
             return true
-        case .userAttachment, .screenshot, .unknown:
+        case .browserDOM, .userAttachment, .screenshot, .unknown:
             return false
         }
     }
@@ -1530,7 +1562,13 @@ enum KSkillRunEngine {
         attachments: [ChatAttachment]
     ) -> [SourceReference] {
         let evidenceRefs = evidence.sources.map {
-            SourceReference(title: $0.title, kind: $0.provider, note: $0.url, sourceType: $0.resolvedSourceType)
+            SourceReference(
+                title: $0.title,
+                kind: $0.provider,
+                note: $0.url,
+                sourceType: $0.resolvedSourceType,
+                snapshotID: $0.snapshotID
+            )
         }
         if !evidenceRefs.isEmpty { return evidenceRefs }
         if response.intent == .mailSummaryAssist && kSkillEvaluateMailSource(userMessage: userMessage, attachments: attachments) != .confirmedBody {

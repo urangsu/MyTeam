@@ -5,6 +5,9 @@ struct ChainRunStatusView: View {
     let chainRun: ChainRun
     let isDarkMode: Bool
 
+    @State private var selectedSnapshot: BrowserSnapshotRecord? = nil
+    @State private var showMissingAlert = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
@@ -28,15 +31,32 @@ struct ChainRunStatusView: View {
             if !browserSources.isEmpty {
                 VStack(alignment: .leading, spacing: 3) {
                     ForEach(browserSources.prefix(3), id: \.id) { source in
-                        HStack(spacing: 5) {
-                            Image(systemName: "globe")
-                                .font(.system(size: 9))
-                                .foregroundStyle(.orange)
-                            Text(source.title)
-                                .font(.system(size: 9))
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
+                        Button {
+                            if let snapshotID = source.snapshotID {
+                                if let record = BrowserSnapshotStore.shared.get(snapshotID) {
+                                    selectedSnapshot = record
+                                } else {
+                                    showMissingAlert = true
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 5) {
+                                Image(systemName: "globe")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.orange)
+                                Text(source.title)
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                if source.snapshotID != nil {
+                                    Text("(DOM)")
+                                        .font(.system(size: 8, weight: .bold))
+                                        .foregroundStyle(.blue)
+                                }
+                            }
                         }
+                        .buttonStyle(.plain)
+                        .disabled(source.snapshotID == nil)
                     }
                 }
             }
@@ -106,6 +126,40 @@ struct ChainRunStatusView: View {
         .padding(10)
         .background(Color(NSColor.controlBackgroundColor).opacity(isDarkMode ? 0.35 : 0.55))
         .cornerRadius(10)
+        .sheet(item: $selectedSnapshot) { record in
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(record.title ?? "브라우저 스냅샷")
+                            .font(.headline)
+                        Text(record.url)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                    Button("닫기") {
+                        selectedSnapshot = nil
+                    }
+                }
+                .padding([.top, .horizontal])
+
+                Divider()
+
+                ScrollView {
+                    Text(record.text)
+                        .font(.system(.body, design: .monospaced))
+                        .padding()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .background(Color(NSColor.textBackgroundColor))
+            }
+            .frame(minWidth: 600, minHeight: 400)
+        }
+        .alert("스냅샷 없음", isPresented: $showMissingAlert) {
+            Button("확인", role: .cancel) {}
+        } message: {
+            Text("이 브라우저 snapshot은 현재 세션에 남아 있지 않습니다. 다시 조회해 주세요.")
+        }
     }
 
     private func statusColor(_ status: ChainStepStatus) -> Color {
@@ -125,7 +179,8 @@ struct ChainRunStatusView: View {
 
     private var browserSources: [ChainSourceReference] {
         chainRun.sources.filter { source in
-            source.provider.lowercased().contains("playwright")
+            source.snapshotID != nil
+                || source.provider.lowercased().contains("playwright")
                 || source.sourceType == .browserDOM
                 || source.sourceType == .trainSchedule
                 || source.sourceType == .mapRoute

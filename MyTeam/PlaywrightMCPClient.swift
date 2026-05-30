@@ -1,7 +1,124 @@
 import Foundation
 
+
 actor PlaywrightMCPClient {
     static let shared = PlaywrightMCPClient()
+
+    private var process: Process?
+    private var inputPipe: Pipe?
+    private var outputPipe: Pipe?
+    private var errorPipe: Pipe?
+
+    final class BufferBox: @unchecked Sendable {
+        var data = Data()
+        let lock = NSLock()
+        func append(_ chunk: Data) {
+            lock.lock()
+            data.append(chunk)
+            lock.unlock()
+        }
+        func string() -> String {
+            lock.lock()
+            defer { lock.unlock() }
+            return String(data: data, encoding: .utf8) ?? ""
+        }
+        func clear() {
+            lock.lock()
+            data = Data()
+            lock.unlock()
+        }
+    }
+
+    private let output = BufferBox()
+    private let error = BufferBox()
+
+    private var nextRequestID = 10
+    private var isInitialized = false
+    private var cachedCapabilities: CapabilityProbe?
+
+    private init() {}
+
+    deinit {
+        outputPipe?.fileHandleForReading.readabilityHandler = nil
+        errorPipe?.fileHandleForReading.readabilityHandler = nil
+        if let process = process, process.isRunning {
+            process.terminate()
+        }
+    }
+
+    private func terminateProcess() {
+        outputPipe?.fileHandleForReading.readabilityHandler = nil
+        errorPipe?.fileHandleForReading.readabilityHandler = nil
+        if let process = process, process.isRunning {
+            process.terminate()
+        }
+        process = nil
+        inputPipe = nil
+        outputPipe = nil
+        errorPipe = nil
+        output.clear()
+        error.clear()
+        isInitialized = false
+    }
+
+    private func ensureProcessRunning(timeout: TimeInterval = 6) async -> Bool {
+        if let process = process, process.isRunning, isInitialized {
+            return true
+        }
+
+        terminateProcess()
+
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        proc.arguments = ["npx", "--no-install", "@playwright/mcp", "--headless"]
+
+        let inPipe = Pipe()
+        let outPipe = Pipe()
+        let errPipe = Pipe()
+        proc.standardInput = inPipe
+        proc.standardOutput = outPipe
+        proc.standardError = errPipe
+
+        outPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
+            self?.output.append(handle.availableData)
+        }
+        errPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
+            self?.error.append(handle.availableData)
+        }
+
+        do {
+            try proc.run()
+        } catch {
+            return false
+        }
+
+        process = proc
+        inputPipe = inPipe
+        outputPipe = outPipe
+        errorPipe = errPipe
+
+        let initialize = """
+        {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"MyTeam","version":"1.0"}}}
+        """
+        let initializedNotification = #"{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}"#
+        let payload = [initialize, initializedNotification].joined(separator: "\n") + "\n"
+        if let data = payload.data(using: .utf8) {
+            inPipe.fileHandleForWriting.write(data)
+        }
+
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            let response = output.string()
+            if response.contains(#""id":1"#) || response.contains(#""id": 1"#) {
+                isInitialized = true
+                return true
+            }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+
+        terminateProcess()
+        return false
+    }
 
     func probeHealth(timeout: TimeInterval = 6) async -> PlaywrightMCPHealth {
         async let node = PlaywrightMCPProcess.run(executable: "node", arguments: ["--version"], timeout: 2)
@@ -40,13 +157,11 @@ actor PlaywrightMCPClient {
 
         let help = await PlaywrightMCPProcess.run(
             executable: "npx",
-            arguments: ["@playwright/mcp@latest", "--help"],
+            arguments: ["--no-install", "@playwright/mcp", "--help"],
             timeout: timeout
         )
         guard help.exitCode == 0 else {
-            let reason = help.timedOut
-                ? "Playwright MCP help probe timeout"
-                : help.combinedOutput.trimmingCharacters(in: .whitespacesAndNewlines)
+            let reason = help.combinedOutput.trimmingCharacters(in: .whitespacesAndNewlines)
             return health(
                 nodeAvailable: true,
                 npxAvailable: true,
@@ -130,99 +245,102 @@ actor PlaywrightMCPClient {
     }
 
     private func probeToolCapabilities(timeout: TimeInterval) async -> CapabilityProbe? {
-        await Task.detached(priority: .utility) {
-            probeToolCapabilitiesSync(timeout: timeout)
-        }.value
+        if let cached = cachedCapabilities {
+            return cached
+        }
+        let success = await ensureProcessRunning(timeout: timeout)
+        guard success, let inPipe = inputPipe else {
+            return CapabilityProbe(initialized: false, toolNames: [], error: error.string())
+        }
+
+        let listTools = #"{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}"#
+        if let data = (listTools + "\n").data(using: .utf8) {
+            inPipe.fileHandleForWriting.write(data)
+        }
+
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            let response = output.string()
+            if response.contains(#""id":2"#) || response.contains(#""id": 2"#) {
+                let toolNames = extractToolNames(from: response)
+                let cap = CapabilityProbe(initialized: true, toolNames: toolNames, error: nil)
+                cachedCapabilities = cap
+                return cap
+            }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        return nil
     }
 
     func navigateAndSnapshot(url: URL, timeout: TimeInterval = 18) async -> PlaywrightMCPToolCallResult {
-        await Task.detached(priority: .utility) {
-            navigateAndSnapshotSync(url: url, timeout: timeout)
-        }.value
-    }
-}
-
-nonisolated private func probeToolCapabilitiesSync(timeout: TimeInterval) -> PlaywrightMCPClient.CapabilityProbe? {
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-    process.arguments = ["npx", "@playwright/mcp@latest"]
-
-    let inputPipe = Pipe()
-    let outputPipe = Pipe()
-    let errorPipe = Pipe()
-    process.standardInput = inputPipe
-    process.standardOutput = outputPipe
-    process.standardError = errorPipe
-
-    final class BufferBox: @unchecked Sendable {
-        var data = Data()
-        let lock = NSLock()
-        func append(_ chunk: Data) {
-            lock.lock()
-            data.append(chunk)
-            lock.unlock()
+        let success = await ensureProcessRunning(timeout: 6)
+        guard success, let inPipe = inputPipe else {
+            return PlaywrightMCPToolCallResult(ok: false, text: "", error: "Playwright MCP 프로세스가 준비되지 않았습니다.")
         }
-        func string() -> String {
-            lock.lock()
-            defer { lock.unlock() }
-            return String(data: data, encoding: .utf8) ?? ""
+
+        let navigateID = nextRequestID
+        nextRequestID += 1
+        let snapshotID = nextRequestID
+        nextRequestID += 1
+
+        let navigateCall: [String: Any] = [
+            "jsonrpc": "2.0",
+            "id": navigateID,
+            "method": "tools/call",
+            "params": [
+                "name": PlaywrightMCPToolName.navigate.rawValue,
+                "arguments": ["url": url.absoluteString]
+            ]
+        ]
+        let snapshotCall: [String: Any] = [
+            "jsonrpc": "2.0",
+            "id": snapshotID,
+            "method": "tools/call",
+            "params": [
+                "name": PlaywrightMCPToolName.snapshot.rawValue,
+                "arguments": [:]
+            ]
+        ]
+
+        let payloadObjects = [navigateCall, snapshotCall]
+        let lines = payloadObjects.compactMap { object -> String? in
+            guard JSONSerialization.isValidJSONObject(object),
+                  let data = try? JSONSerialization.data(withJSONObject: object),
+                  let line = String(data: data, encoding: .utf8) else {
+                return nil
+            }
+            return line
         }
-    }
 
-    let output = BufferBox()
-    let error = BufferBox()
-    outputPipe.fileHandleForReading.readabilityHandler = { handle in
-        output.append(handle.availableData)
-    }
-    errorPipe.fileHandleForReading.readabilityHandler = { handle in
-        error.append(handle.availableData)
-    }
+        output.clear()
 
-    do {
-        try process.run()
-    } catch {
-        return PlaywrightMCPClient.CapabilityProbe(initialized: false, toolNames: [], error: error.localizedDescription)
-    }
+        if let data = (lines.joined(separator: "\n") + "\n").data(using: .utf8) {
+            inPipe.fileHandleForWriting.write(data)
+        }
 
-    let initialize = """
-    {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"MyTeam","version":"1.0"}}}
-    """
-    let initialized = #"{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}"#
-    let listTools = #"{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}"#
-    let payload = [initialize, initialized, listTools].joined(separator: "\n") + "\n"
-    if let data = payload.data(using: .utf8) {
-        inputPipe.fileHandleForWriting.write(data)
-    }
+        let deadline = Date().addingTimeInterval(timeout)
+        var response = ""
+        while Date() < deadline {
+            response = output.string()
+            if response.contains(#""id":\#(snapshotID)"#) || response.contains(#""id": \#(snapshotID)"#) {
+                break
+            }
+            try? await Task.sleep(nanoseconds: 80_000_000)
+        }
 
-    let deadline = Date().addingTimeInterval(timeout)
-    var response = ""
-    while Date() < deadline {
         response = output.string()
-        if response.contains(#""id":2"#) || response.contains(#""id": 2"#) {
-            break
+        let errorText = error.string().trimmingCharacters(in: .whitespacesAndNewlines)
+        guard response.contains(#""id":\#(snapshotID)"#) || response.contains(#""id": \#(snapshotID)"#) else {
+            terminateProcess()
+            return PlaywrightMCPToolCallResult(ok: false, text: "", error: errorText.isEmpty ? "browser_snapshot 응답 없음" : errorText)
         }
-        Thread.sleep(forTimeInterval: 0.05)
-    }
 
-    outputPipe.fileHandleForReading.readabilityHandler = nil
-    errorPipe.fileHandleForReading.readabilityHandler = nil
-    if process.isRunning {
-        process.terminate()
+        let text = extractMCPTextPayloads(from: response).joined(separator: "\n\n")
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return PlaywrightMCPToolCallResult(ok: false, text: "", error: "DOM snapshot text가 비어 있습니다.")
+        }
+        return PlaywrightMCPToolCallResult(ok: true, text: text, error: nil)
     }
-
-    response = output.string()
-    let errorText = error.string().trimmingCharacters(in: .whitespacesAndNewlines)
-    guard response.contains(#""id":1"#) || response.contains(#""id": 1"#) else {
-        return PlaywrightMCPClient.CapabilityProbe(initialized: false, toolNames: [], error: errorText.isEmpty ? "MCP initialize 응답 없음" : errorText)
-    }
-
-    let toolNames = extractToolNames(from: response)
-    let hasListResponse = response.contains(#""id":2"#) || response.contains(#""id": 2"#)
-    return PlaywrightMCPClient.CapabilityProbe(
-        initialized: hasListResponse,
-        toolNames: toolNames,
-        error: hasListResponse ? nil : (errorText.isEmpty ? "tools/list 응답 없음" : errorText)
-    )
 }
 
 nonisolated private func extractToolNames(from text: String) -> [String] {
@@ -233,125 +351,6 @@ nonisolated private func extractToolNames(from text: String) -> [String] {
         guard let matchRange = Range(match.range(at: 1), in: text) else { return nil }
         return String(text[matchRange])
     }
-}
-
-nonisolated private func navigateAndSnapshotSync(url: URL, timeout: TimeInterval) -> PlaywrightMCPToolCallResult {
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-    process.arguments = ["npx", "@playwright/mcp@latest", "--headless"]
-
-    let inputPipe = Pipe()
-    let outputPipe = Pipe()
-    let errorPipe = Pipe()
-    process.standardInput = inputPipe
-    process.standardOutput = outputPipe
-    process.standardError = errorPipe
-
-    final class BufferBox: @unchecked Sendable {
-        var data = Data()
-        let lock = NSLock()
-        func append(_ chunk: Data) {
-            lock.lock()
-            data.append(chunk)
-            lock.unlock()
-        }
-        func string() -> String {
-            lock.lock()
-            defer { lock.unlock() }
-            return String(data: data, encoding: .utf8) ?? ""
-        }
-    }
-
-    let output = BufferBox()
-    let error = BufferBox()
-    outputPipe.fileHandleForReading.readabilityHandler = { handle in
-        output.append(handle.availableData)
-    }
-    errorPipe.fileHandleForReading.readabilityHandler = { handle in
-        error.append(handle.availableData)
-    }
-
-    do {
-        try process.run()
-    } catch {
-        return PlaywrightMCPToolCallResult(ok: false, text: "", error: error.localizedDescription)
-    }
-
-    let payloadObjects: [[String: Any]] = [
-        [
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": [
-                "protocolVersion": "2024-11-05",
-                "capabilities": [:],
-                "clientInfo": ["name": "MyTeam", "version": "1.0"]
-            ]
-        ],
-        [
-            "jsonrpc": "2.0",
-            "method": "notifications/initialized",
-            "params": [:]
-        ],
-        [
-            "jsonrpc": "2.0",
-            "id": 3,
-            "method": "tools/call",
-            "params": [
-                "name": PlaywrightMCPToolName.navigate.rawValue,
-                "arguments": ["url": url.absoluteString]
-            ]
-        ],
-        [
-            "jsonrpc": "2.0",
-            "id": 4,
-            "method": "tools/call",
-            "params": [
-                "name": PlaywrightMCPToolName.snapshot.rawValue,
-                "arguments": [:]
-            ]
-        ]
-    ]
-
-    let lines = payloadObjects.compactMap { object -> String? in
-        guard JSONSerialization.isValidJSONObject(object),
-              let data = try? JSONSerialization.data(withJSONObject: object),
-              let line = String(data: data, encoding: .utf8) else {
-            return nil
-        }
-        return line
-    }
-    if let data = (lines.joined(separator: "\n") + "\n").data(using: .utf8) {
-        inputPipe.fileHandleForWriting.write(data)
-    }
-
-    let deadline = Date().addingTimeInterval(timeout)
-    var response = ""
-    while Date() < deadline {
-        response = output.string()
-        if response.contains(#""id":4"#) || response.contains(#""id": 4"#) {
-            break
-        }
-        Thread.sleep(forTimeInterval: 0.08)
-    }
-
-    outputPipe.fileHandleForReading.readabilityHandler = nil
-    errorPipe.fileHandleForReading.readabilityHandler = nil
-    if process.isRunning {
-        process.terminate()
-    }
-
-    response = output.string()
-    let errorText = error.string().trimmingCharacters(in: .whitespacesAndNewlines)
-    guard response.contains(#""id":4"#) || response.contains(#""id": 4"#) else {
-        return PlaywrightMCPToolCallResult(ok: false, text: "", error: errorText.isEmpty ? "browser_snapshot 응답 없음" : errorText)
-    }
-
-    let text = extractMCPTextPayloads(from: response).joined(separator: "\n\n")
-    guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-        return PlaywrightMCPToolCallResult(ok: false, text: "", error: "DOM snapshot text가 비어 있습니다.")
-    }
-    return PlaywrightMCPToolCallResult(ok: true, text: text, error: nil)
 }
 
 nonisolated private func extractMCPTextPayloads(from text: String) -> [String] {

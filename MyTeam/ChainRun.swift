@@ -7,6 +7,7 @@ struct ChainSourceReference: Identifiable, Codable, Sendable, Hashable {
     let url: String
     let accessedAt: Date
     let sourceType: AgentWindowManager.SourceType
+    var snapshotID: UUID?
 
     init(
         id: UUID = UUID(),
@@ -14,7 +15,8 @@ struct ChainSourceReference: Identifiable, Codable, Sendable, Hashable {
         provider: String,
         url: String,
         accessedAt: Date,
-        sourceType: AgentWindowManager.SourceType? = nil
+        sourceType: AgentWindowManager.SourceType? = nil,
+        snapshotID: UUID? = nil
     ) {
         self.id = id
         self.title = title
@@ -22,6 +24,7 @@ struct ChainSourceReference: Identifiable, Codable, Sendable, Hashable {
         self.url = url
         self.accessedAt = accessedAt
         self.sourceType = sourceType ?? AgentWindowManager.inferredSourceType(provider: provider, title: title, url: url)
+        self.snapshotID = snapshotID
     }
 }
 
@@ -165,8 +168,12 @@ struct ChainRun: Identifiable, Codable, Sendable {
             return "첨부 파일이 필요해요."
         case "train_connector_unavailable":
             return "열차 조회 커넥터를 아직 사용할 수 없어요."
+        case "train_schedule_unverified":
+            return "열차 시간표 출처를 확인하지 못했어요."
         case "map_connector_unavailable":
             return "지도 이동 시간 커넥터를 아직 사용할 수 없어요."
+        case "map_route_unverified":
+            return "지도 경로 출처를 확인하지 못했어요."
         case "trip_sources_unavailable":
             return "이동 후보를 만들 근거가 충분하지 않아요."
         case "no_public_sources":

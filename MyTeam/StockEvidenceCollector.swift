@@ -6,7 +6,7 @@ struct StockEvidenceRequest: Sendable {
     let ticker: String?
     let dateRange: DateInterval?
     let roomID: UUID
-    let chainRunID: UUID?
+    let chainRunID: UUID
 }
 
 struct StockEvidenceBundle: Sendable {
@@ -204,30 +204,34 @@ enum StockEvidenceCollector {
         provider: BrowserSearchProvider,
         sourceType: AgentWindowManager.SourceType,
         roomID: UUID,
-        chainRunID: UUID?,
+        chainRunID: UUID,
         enabled: Bool
     ) async -> (sources: [AgentWindowManager.SourceReference], warnings: [String]) {
         guard enabled else { return ([], []) }
         let result = await BrowserEvidenceConnector.searchAndExtract(
             query: query,
             provider: provider,
+            expectedType: sourceType,
             roomID: roomID,
             chainRunID: chainRunID
         )
         guard result.status == .succeeded || result.status == .partial else {
             return ([], result.failureCode.map { ["브라우저 근거 수집 실패: \($0)"] } ?? [])
         }
-        let typed = result.sourceRefs.map { source in
-            AgentWindowManager.SourceReference(
-                id: source.id,
-                title: source.title,
-                url: source.url,
-                provider: source.provider,
-                accessedAt: source.accessedAt,
-                sourceType: sourceType
-            )
+        var warnings: [String] = []
+        let typed = result.sourceRefs.compactMap { source -> AgentWindowManager.SourceReference? in
+            let actualType = source.resolvedSourceType
+            if actualType == .browserDOM {
+                warnings.append("DOM은 읽었지만 \(sourceType.rawValue) 신호가 없습니다.")
+                return nil
+            }
+            guard actualType == sourceType else {
+                warnings.append("근거 유형 불일치: 기대값=\(sourceType.rawValue), 실제값=\(actualType.rawValue)")
+                return nil
+            }
+            return source
         }
-        return (typed, [])
+        return (typed, warnings)
     }
 
     private static func dedupe(_ sources: [AgentWindowManager.SourceReference]) -> [AgentWindowManager.SourceReference] {

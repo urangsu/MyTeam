@@ -203,6 +203,7 @@ extension AgentWindowManager {
         let provider: String
         let accessedAt: Date
         let sourceType: SourceType
+        var snapshotID: UUID?
 
         init(
             id: UUID = UUID(),
@@ -210,7 +211,8 @@ extension AgentWindowManager {
             url: String,
             provider: String,
             accessedAt: Date,
-            sourceType: SourceType? = nil
+            sourceType: SourceType? = nil,
+            snapshotID: UUID? = nil
         ) {
             self.id = id
             self.title = title
@@ -218,10 +220,11 @@ extension AgentWindowManager {
             self.provider = provider
             self.accessedAt = accessedAt
             self.sourceType = sourceType ?? AgentWindowManager.inferredSourceType(provider: provider, title: title, url: url)
+            self.snapshotID = snapshotID
         }
 
         private enum CodingKeys: String, CodingKey {
-            case id, title, url, provider, accessedAt, sourceType
+            case id, title, url, provider, accessedAt, sourceType, snapshotID
         }
 
         init(from decoder: Decoder) throws {
@@ -233,6 +236,7 @@ extension AgentWindowManager {
             accessedAt = try container.decode(Date.self, forKey: .accessedAt)
             sourceType = try container.decodeIfPresent(SourceType.self, forKey: .sourceType)
                 ?? AgentWindowManager.inferredSourceType(provider: provider, title: title, url: url)
+            snapshotID = try container.decodeIfPresent(UUID.self, forKey: .snapshotID)
         }
 
         func encode(to encoder: Encoder) throws {
@@ -243,6 +247,7 @@ extension AgentWindowManager {
             try container.encode(provider, forKey: .provider)
             try container.encode(accessedAt, forKey: .accessedAt)
             try container.encode(sourceType, forKey: .sourceType)
+            try container.encodeIfPresent(snapshotID, forKey: .snapshotID)
         }
 
         var resolvedSourceType: SourceType {

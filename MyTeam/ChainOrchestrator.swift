@@ -2,7 +2,32 @@ import Foundation
 
 enum ChainOrchestrator {
     @MainActor
-    static func makeRun(
+    static func createShell(
+        roomID: UUID,
+        chainID: SkillChainID,
+        userMessage: String,
+        attachments: [ChatAttachment]
+    ) -> ChainRun {
+        let runID = UUID()
+        let run = ChainRun(
+            id: runID,
+            roomID: roomID,
+            chainID: chainID,
+            steps: [],
+            status: .running,
+            sources: [],
+            actions: [],
+            artifacts: [],
+            startedAt: Date(),
+            updatedAt: Date()
+        )
+        ChainRunStore.shared.upsert(run)
+        return run
+    }
+
+    @MainActor
+    static func updateRun(
+        runID: UUID,
         roomID: UUID,
         chainID: SkillChainID,
         userMessage: String,
@@ -10,8 +35,11 @@ enum ChainOrchestrator {
         evidence: ToolEvidenceResult,
         actions: [ActionSuggestion],
         health: ConnectorHealth
-    ) async -> ChainRun {
-        let runID = UUID()
+    ) -> ChainRun {
+        let existingRun = ChainRunStore.shared.latestRunByID[runID]
+        let startedAt = existingRun?.startedAt ?? Date()
+        let artifacts = existingRun?.artifacts ?? []
+
         let attachedActions = actions.map { $0.with(chainRunID: runID) }
         let steps = buildSteps(
             chainID: chainID,
@@ -29,22 +57,50 @@ enum ChainOrchestrator {
             status: status,
             sources: evidence.sources.map {
                 ChainSourceReference(
+                    id: $0.id,
                     title: $0.title,
                     provider: $0.provider,
                     url: $0.url,
                     accessedAt: $0.accessedAt,
-                    sourceType: $0.resolvedSourceType
+                    sourceType: $0.resolvedSourceType,
+                    snapshotID: $0.snapshotID
                 )
             },
             actions: attachedActions,
-            artifacts: [],
-            startedAt: Date(),
+            artifacts: artifacts,
+            startedAt: startedAt,
             updatedAt: Date()
         )
-        await MainActor.run {
-            ChainRunStore.shared.upsert(run)
-        }
+        ChainRunStore.shared.upsert(run)
         return run
+    }
+
+    @MainActor
+    static func makeRun(
+        roomID: UUID,
+        chainID: SkillChainID,
+        userMessage: String,
+        attachments: [ChatAttachment],
+        evidence: ToolEvidenceResult,
+        actions: [ActionSuggestion],
+        health: ConnectorHealth
+    ) async -> ChainRun {
+        let shell = createShell(
+            roomID: roomID,
+            chainID: chainID,
+            userMessage: userMessage,
+            attachments: attachments
+        )
+        return updateRun(
+            runID: shell.id,
+            roomID: roomID,
+            chainID: chainID,
+            userMessage: userMessage,
+            attachments: attachments,
+            evidence: evidence,
+            actions: actions,
+            health: health
+        )
     }
 
     @MainActor
@@ -288,12 +344,35 @@ enum ChainOrchestrator {
             ]
 
         case .tripPlanning:
+            let trainSources = evidence.sources.filter { $0.resolvedSourceType == .trainSchedule }
+            let mapSources = evidence.sources.filter { $0.resolvedSourceType == .mapRoute }
+
+            let trainStatus: ChainStepStatus
+            if !health.trainSearch.isOperational {
+                trainStatus = .failed(failureCode: "train_connector_unavailable")
+            } else if trainSources.isEmpty {
+                trainStatus = .failed(failureCode: "train_schedule_unverified")
+            } else {
+                trainStatus = .succeeded
+            }
+
+            let mapStatus: ChainStepStatus
+            if !health.mapsSearch.isOperational {
+                mapStatus = .failed(failureCode: "map_connector_unavailable")
+            } else if mapSources.isEmpty {
+                mapStatus = .failed(failureCode: "map_route_unverified")
+            } else {
+                mapStatus = .succeeded
+            }
+
+            let composeStatus: ChainStepStatus = (!trainSources.isEmpty || !mapSources.isEmpty) ? .succeeded : .failed(failureCode: "trip_sources_unavailable")
+
             return [
                 step(key: "normalizeRoute", title: "이동 조건 정리", status: .succeeded, outputSummary: "이동 조건 정리됨"),
                 step(key: "resolveStations", title: "역 후보 정리", connectorID: "train_search", status: health.trainSearch.isOperational ? .succeeded : .failed(failureCode: "train_connector_unavailable"), outputSummary: health.trainSearch.isOperational ? "역 후보 정리됨" : "역 후보 대기", failureDetail: health.trainSearch.reason),
-                step(key: "lookupTrain", title: "열차 조회", connectorID: "train_search", status: health.trainSearch.isOperational ? .succeeded : .failed(failureCode: "train_connector_unavailable"), outputSummary: health.trainSearch.isOperational ? "열차 조회 가능" : "열차 조회 불가", failureDetail: health.trainSearch.reason),
-                step(key: "lookupMapTravelTime", title: "지도 이동 시간 확인", connectorID: "maps_search", status: health.mapsSearch.isOperational ? .succeeded : .failed(failureCode: "map_connector_unavailable"), outputSummary: health.mapsSearch.isOperational ? "지도 이동 시간 확인 가능" : "지도 이동 시간 미확인"),
-                step(key: "composeItinerary", title: "이동 카드 생성", status: health.trainSearch.isOperational || health.mapsSearch.isOperational ? .succeeded : .failed(failureCode: "trip_sources_unavailable"), outputSummary: health.trainSearch.isOperational || health.mapsSearch.isOperational ? "이동 카드 준비됨" : "이동 카드 대기")
+                step(key: "lookupTrain", title: "열차 조회", connectorID: "train_search", status: trainStatus, outputSummary: trainStatus == .succeeded ? "열차 조회 가능" : "열차 조회 실패", sourceIDs: trainSources.map(\.id.uuidString), failureDetail: trainSources.isEmpty ? "train schedule source missing" : health.trainSearch.reason),
+                step(key: "lookupMapTravelTime", title: "지도 이동 시간 확인", connectorID: "maps_search", status: mapStatus, outputSummary: mapStatus == .succeeded ? "지도 이동 시간 확인 가능" : "지도 이동 시간 미확인", sourceIDs: mapSources.map(\.id.uuidString), failureDetail: mapSources.isEmpty ? "map route source missing" : nil),
+                step(key: "composeItinerary", title: "이동 카드 생성", status: composeStatus, outputSummary: composeStatus == .succeeded ? "이동 카드 준비됨" : "이동 카드 대기", sourceIDs: (trainSources + mapSources).map(\.id.uuidString))
             ]
 
         case .accountReview:
@@ -394,9 +473,9 @@ enum ChainOrchestrator {
 
     private static func isConcreteSource(_ sourceType: AgentWindowManager.SourceType) -> Bool {
         switch sourceType {
-        case .quote, .news, .disclosure, .marketIndex, .webPage, .trainSchedule, .mapRoute, .browserDOM:
+        case .quote, .news, .disclosure, .marketIndex, .webPage, .trainSchedule, .mapRoute:
             return true
-        case .userAttachment, .screenshot, .unknown:
+        case .browserDOM, .userAttachment, .screenshot, .unknown:
             return false
         }
     }
