@@ -31,6 +31,7 @@ enum ToolContractValidator {
         validateSkills(skills, issues: &issues)
 
         // Cloud round validators
+        validateAppStoreProfileSurfacePolicy(issues: &issues)
         validateReleaseVisibleConnectorPolicy(tools, issues: &issues)
         validateCharacterAssetPolicy(issues: &issues)
         validateStoreKitSurfacePolicy(issues: &issues)
@@ -411,6 +412,29 @@ enum ToolContractValidator {
     }
 
     // MARK: - Cloud Round Validators (Round 96C-115Z)
+
+    private static func validateAppStoreProfileSurfacePolicy(issues: inout [ToolContractValidationIssue]) {
+        let appStorePolicy = AppReleaseProfile.appStore.policy
+
+        if appStorePolicy.allowsExternalProcess {
+            issues.append(issue(.error, "App Store profile에서 external Process 실행이 허용되어 있습니다. npx/node/MCP 실행은 차단되어야 합니다."))
+        }
+        if appStorePolicy.allowsPlaywrightMCP {
+            issues.append(issue(.error, "App Store profile에서 Playwright MCP가 허용되어 있습니다. App Store 빌드는 MCP health check와 실행을 차단해야 합니다."))
+        }
+        if appStorePolicy.allowsExperimentalConnectors {
+            issues.append(issue(.error, "App Store profile에서 실험 커넥터가 노출됩니다. 심사 표면에서는 숨겨야 합니다."))
+        }
+        if appStorePolicy.allowsVoiceAPI {
+            issues.append(issue(.error, "App Store profile에서 외부 음성 API가 허용되어 있습니다. 라이선스 검증 전에는 차단해야 합니다."))
+        }
+        if appStorePolicy.showsDeveloperDiagnostics {
+            issues.append(issue(.error, "App Store profile에서 개발자 진단 UI가 노출됩니다. Release surface에서는 숨겨야 합니다."))
+        }
+        if !appStorePolicy.allowsUserProvidedAPIKeys {
+            issues.append(issue(.warning, "App Store profile에서 BYOK가 비활성화되어 있습니다. 서버 기본 모델이 없으면 온보딩이 막힐 수 있습니다."))
+        }
+    }
 
     private static func validateReleaseVisibleConnectorPolicy(_ tools: [WorkflowTool], issues: inout [ToolContractValidationIssue]) {
         // connectorRead scope는 officeLive로 통합됨 — officeLive read-only도 여기서 검사
