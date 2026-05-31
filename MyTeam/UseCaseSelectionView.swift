@@ -49,6 +49,85 @@ struct UseCaseSelectionView: View {
     }
 }
 
+// MARK: - FirstLaunchOnboardingFlowView
+
+/// 실제 첫 실행 플로우.
+/// Step 1에서 용도를 고르고, Step 2에서 첫 방 템플릿을 정한 뒤 바로 방을 생성/선택합니다.
+struct FirstLaunchOnboardingFlowView: View {
+    @ObservedObject var manager: AgentWindowManager
+    var onOpenSettings: () -> Void
+
+    @State private var step = 0
+    @State private var selectedUseCases: Set<OnboardingUseCase> = []
+    @State private var selectedTemplate: RoomTemplate? = .work
+
+    var body: some View {
+        VStack(spacing: 0) {
+            progressHeader
+
+            if step == 0 {
+                UseCaseSelectionView(selectedUseCases: $selectedUseCases) {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        selectedTemplate = RoomTemplate.recommended(for: selectedUseCases)
+                        step = 1
+                    }
+                }
+            } else {
+                FirstRoomTemplatePicker(
+                    selectedTemplate: $selectedTemplate,
+                    onStart: {
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            manager.completeFirstLaunchOnboarding(
+                                selectedUseCases: selectedUseCases,
+                                selectedTemplate: selectedTemplate
+                            )
+                        }
+                    },
+                    onConnectAPI: onOpenSettings
+                )
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(NSColor.controlBackgroundColor).opacity(0.86))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        )
+        .padding(.horizontal, 12)
+    }
+
+    private var progressHeader: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(step == 0 ? Color.accentColor : Color.secondary.opacity(0.35))
+                .frame(width: 7, height: 7)
+            Circle()
+                .fill(step == 1 ? Color.accentColor : Color.secondary.opacity(0.35))
+                .frame(width: 7, height: 7)
+
+            Text(step == 0 ? "첫 설정" : "첫 방 만들기")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            if step == 1 {
+                Button("이전") {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        step = 0
+                    }
+                }
+                .font(.system(size: 11, weight: .semibold))
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 14)
+    }
+}
+
 // MARK: - OnboardingUseCase
 
 enum OnboardingUseCase: String, CaseIterable, Hashable {

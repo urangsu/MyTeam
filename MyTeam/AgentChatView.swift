@@ -669,15 +669,9 @@ struct AgentChatView: View {
                                     )
 
                                     if firstLaunchState.shouldShowOnboarding {
-                                        // 온보딩 카드 1개만 (배너+카드 동시 표시 없음)
-                                        OnboardingCardView(
-                                            state: firstLaunchState,
-                                            onDismiss: {
-                                                FirstLaunchStateProvider.markOnboardingSeen()
-                                            },
-                                            onOpenSettings: {
-                                                manager.showSettingsWindow()
-                                            }
+                                        FirstLaunchOnboardingFlowView(
+                                            manager: manager,
+                                            onOpenSettings: { manager.showSettingsWindow() }
                                         )
                                     } else {
                                         // 온보딩 완료 후: 인사말 + 액션

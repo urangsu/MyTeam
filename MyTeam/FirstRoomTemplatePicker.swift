@@ -91,6 +91,16 @@ enum RoomTemplate: String, CaseIterable, Hashable {
         case .stock: return .orange
         }
     }
+
+    static func recommended(for useCases: Set<OnboardingUseCase>) -> RoomTemplate {
+        if useCases.contains(.stockAndNews) {
+            return .stock
+        }
+        if useCases.contains(.dailyAssistant) || useCases.contains(.weatherAndMove) {
+            return .life
+        }
+        return .work
+    }
 }
 
 // MARK: - RoomTemplateCard

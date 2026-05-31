@@ -122,16 +122,9 @@ struct TeamStatusView: View {
             if !isCollapsed {
                 // ── 첫 실행 온보딩 (WP1: 통합 카드, 팀 패널에서는 간결하게만) ──
                 if manager.firstLaunchState.shouldShowOnboarding {
-                    OnboardingCardView(
-                        state: manager.firstLaunchState,
-                        onDismiss: {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                manager.dismissFirstLaunchBanner()
-                            }
-                        },
-                        onOpenSettings: {
-                            manager.showSettingsWindow()
-                        }
+                    FirstLaunchOnboardingFlowView(
+                        manager: manager,
+                        onOpenSettings: { manager.showSettingsWindow() }
                     )
                     .transition(.move(edge: .top).combined(with: .opacity))
                 }

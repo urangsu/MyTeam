@@ -129,7 +129,7 @@ class AgentWindowManager: ObservableObject {
     /// room별 pending delegated execution request.
     @Published var pendingDelegatedExecutionRequestsByRoom: [UUID: DelegatedExecutionRequest] = [:]
     /// 최근 완료된 workflow artifact 목록 — 전역 fallback용. 직접 참조 대신 recentArtifacts(for:) 사용 권장.
-    @Published internal(set) var recentArtifacts: [IndexedArtifact] = []
+    @Published var recentArtifacts: [IndexedArtifact] = []
     
     // ── 지능형 기억 보호 (Key Fact Buffer) ──
     // V1: 단일 전역 배열 (하위 호환 유지)
@@ -364,7 +364,101 @@ class AgentWindowManager: ObservableObject {
     // MARK: - First Launch State Management
     @MainActor
     func dismissFirstLaunchBanner() {
+        FirstLaunchStateProvider.markOnboardingSeen()
         firstLaunchState = firstLaunchState.updated(hasSeenOnboarding: true)
+    }
+
+    @MainActor
+    func completeFirstLaunchOnboarding(
+        selectedUseCases: Set<OnboardingUseCase>,
+        selectedTemplate: RoomTemplate?
+    ) {
+        let template = selectedTemplate ?? RoomTemplate.recommended(for: selectedUseCases)
+        let roomID = prepareFirstLaunchRoom(template: template, selectedUseCases: selectedUseCases)
+        UserDefaults.standard.set(selectedUseCases.map(\.rawValue), forKey: "MyTeam.onboardingUseCases")
+        UserDefaults.standard.set(template.rawValue, forKey: "MyTeam.firstRoomTemplate")
+        FirstLaunchStateProvider.markOnboardingSeen()
+        firstLaunchState = firstLaunchState.updated(hasSeenOnboarding: true)
+        selectTeamWorkroom(roomID)
+    }
+
+    @MainActor
+    @discardableResult
+    private func prepareFirstLaunchRoom(
+        template: RoomTemplate,
+        selectedUseCases: Set<OnboardingUseCase>
+    ) -> UUID {
+        let roomName = firstLaunchRoomName(for: template)
+        let profile = firstLaunchRoomProfile(for: template, selectedUseCases: selectedUseCases)
+
+        if let selectedTeamWorkroomID,
+           let index = rooms.firstIndex(where: { $0.id == selectedTeamWorkroomID }),
+           rooms[index].computedRoomKind == .teamWorkroom,
+           rooms[index].messages.isEmpty {
+            rooms[index].name = roomName
+            rooms[index].profile = profile
+            return rooms[index].id
+        }
+
+        if let index = rooms.firstIndex(where: {
+            $0.computedRoomKind == .teamWorkroom &&
+            $0.messages.isEmpty &&
+            ($0.name == "워크룸 1" || $0.name == "팀 워크룸")
+        }) {
+            rooms[index].name = roomName
+            rooms[index].profile = profile
+            return rooms[index].id
+        }
+
+        var newRoom = ChatRoom(
+            id: UUID(),
+            name: roomName,
+            messages: [],
+            agentIDs: ["team_all"],
+            createdAt: Date()
+        )
+        newRoom.profile = profile
+        rooms.append(newRoom)
+        return newRoom.id
+    }
+
+    private func firstLaunchRoomName(for template: RoomTemplate) -> String {
+        switch template {
+        case .work:
+            return "업무 정리방"
+        case .life:
+            return "생활 도움방"
+        case .stock:
+            return "주식·뉴스 분석방"
+        }
+    }
+
+    private func firstLaunchRoomProfile(
+        for template: RoomTemplate,
+        selectedUseCases: Set<OnboardingUseCase>
+    ) -> RoomProfile {
+        var profile = RoomProfile.general()
+        profile.purpose = firstLaunchRoomName(for: template)
+        profile.systemInstruction = firstLaunchSystemInstruction(for: template, selectedUseCases: selectedUseCases)
+        profile.preferredOutputFormat = "요약 → 해야 할 일 → 주의할 점 → 다음 행동"
+        return profile
+    }
+
+    private func firstLaunchSystemInstruction(
+        for template: RoomTemplate,
+        selectedUseCases: Set<OnboardingUseCase>
+    ) -> String {
+        let selected = selectedUseCases.isEmpty
+            ? "사용자가 처음 맡기는 생활·사무 작업"
+            : selectedUseCases.map(\.rawValue).sorted().joined(separator: ", ")
+        switch template {
+        case .work:
+            return "이 방은 사용자의 업무 정리방입니다. 선택 용도: \(selected). 파일, 메일, 회의록, 체크리스트를 사용자가 준 자료와 실제 실행 결과에 근거해 카드/문서로 정리하세요. 에이전트끼리 가상의 업무 상황을 만들지 마세요."
+        case .life:
+            return "이 방은 사용자의 생활 도움방입니다. 선택 용도: \(selected). 일정, 이동, 메모, 할 일을 짧고 실행 가능한 카드로 정리하세요. 확인되지 않은 예약, 결제, 로그인 완료를 말하지 마세요."
+        case .stock:
+            return "이 방은 사용자의 주식·뉴스 분석방입니다. 선택 용도: \(selected). 시세, 뉴스, 공시 근거가 없으면 단정하지 말고, 확인된 출처와 부족한 출처를 분리해서 표시하세요. 투자 조언처럼 표현하지 마세요."
+        }
     }
 
     @MainActor
@@ -668,6 +762,11 @@ class AgentWindowManager: ObservableObject {
         }
         
         loadMemoryStores()
+        let hasAnyAPIKey = KeychainManager.load(key: "claudeAPIKey") != nil ||
+                           KeychainManager.load(key: "geminiAPIKey") != nil ||
+                           KeychainManager.load(key: "openAIAPIKey") != nil ||
+                           KeychainManager.load(key: "openRouterAPIKey") != nil
+        firstLaunchState = FirstLaunchStateProvider.currentState(hasAPIKey: hasAnyAPIKey)
 
         roomRuntimeStoreCancellable = roomRuntimeStore.objectWillChange
             .sink { [weak self] _ in
