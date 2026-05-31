@@ -145,7 +145,6 @@ private class LocationHelper: NSObject, ObservableObject, CLLocationManagerDeleg
 // MARK: - SettingsView
 struct SettingsView: View {
     @EnvironmentObject var manager: AgentWindowManager
-    @ObservedObject private var appEntitlementManager = AppEntitlementManager.shared
     @ObservedObject private var connectorRegistry = ConnectorRegistry.shared
 
     // ── 사용자 설정
@@ -187,7 +186,7 @@ struct SettingsView: View {
                 ScrollView(.horizontal, showsIndicators: true) {
                     Picker("", selection: $currentTab) {
                         Text("사용자 설정").tag(0)
-                        Text("API 설정").tag(1)
+                        Text("연결 센터").tag(1)
                         Text("데스크 라우팅").tag(2)
                         Text("스킬").tag(3)
                         Text("캐릭터").tag(4)
@@ -215,7 +214,7 @@ struct SettingsView: View {
             Group {
                 switch currentTab {
                 case 0: userSettingsTab
-                case 1: apiSettingsTab
+                case 1: connectionCenterTab
                 case 2: deskRoutingTab
                 case 3: skillsTab
                 case 4: charactersTab
@@ -366,7 +365,78 @@ struct SettingsView: View {
         .scrollContentBackground(.hidden)
     }
 
-    // MARK: - Tab 2: API 설정
+    // MARK: - Tab 2: 연결 센터
+    private var connectionCenterTab: some View {
+        VStack(spacing: 0) {
+            ConnectionCenterView()
+
+            // 커넥터 상태 + 브리핑 (개발자/고급 기능)
+            if AppReleaseProfile.current.policy.showsDeveloperDiagnostics {
+                Divider()
+                Form {
+                    Section("커넥터 상태") {
+                        ConnectorStatusView(
+                            health: connectorRegistry.lastHealth,
+                            onRefresh: { connectorRegistry.refresh() }
+                        )
+                        PlaywrightMCPStatusView()
+                    }
+
+                    Section("오늘 브리핑") {
+                        DailyBriefingCardView(
+                            briefing: dailyBriefingPreview,
+                            onActionTap: handleBriefingAction
+                        )
+                    }
+
+                    Section("기본 제공자") {
+                        Picker("제공자", selection: $selectedProvider) {
+                            Text("Gemini").tag(LLMProvider.gemini)
+                            Text("OpenAI").tag(LLMProvider.openAI)
+                            Text("Claude").tag(LLMProvider.claude)
+                            Text("OpenRouter").tag(LLMProvider.openRouter)
+                        }
+                        .pickerStyle(.segmented)
+                        .onChange(of: selectedProvider) { _, _ in validationStatus = .idle }
+                    }
+
+                    if AIModelPolicy.modelOverrideAllowed {
+                        Section {
+                            DisclosureGroup(isExpanded: $showAdvancedModelSettings) {
+                                switch selectedProvider {
+                                case .openAI:
+                                    LabeledContent("모델") {
+                                        TextField("자동", text: $openAIModelId)
+                                    }
+                                case .openRouter:
+                                    LabeledContent("모델") {
+                                        TextField("자동", text: $openRouterModelId)
+                                    }
+                                default:
+                                    EmptyView()
+                                }
+                            } label: {
+                                Label("고급 모델 설정", systemImage: "slider.horizontal.3")
+                            }
+                        }
+                    }
+
+                    Section {
+                        Button("저장") { saveSettings() }
+                            .buttonStyle(.borderedProminent)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .formStyle(.grouped)
+                .scrollContentBackground(.hidden)
+                .task(id: dailyBriefingRefreshToken) {
+                    await refreshDailyBriefingPreview()
+                }
+            }
+        }
+    }
+
+    // MARK: - Tab 2 (Legacy): API 설정 — 개발자 모드에서만 노출
     private var apiSettingsTab: some View {
         Form {
             Section("BYOK / 사용 정책") {
@@ -649,9 +719,12 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Section("시스템 진단") {
-                    RuntimeDiagnosticsPlaceholder(manager: manager)
-                    ChainRuntimeSmokeDiagnosticsView()
+                // 시스템 진단 — 개발자/Debug 모드에서만 표시
+                if AppReleaseProfile.current.policy.showsDeveloperDiagnostics {
+                    Section("시스템 진단") {
+                        RuntimeDiagnosticsPlaceholder(manager: manager)
+                        ChainRuntimeSmokeDiagnosticsView()
+                    }
                 }
             }
             .formStyle(.grouped)
@@ -661,52 +734,19 @@ struct SettingsView: View {
 
     // MARK: - Tab 5: 캐릭터
     private var charactersTab: some View {
-        VStack(spacing: 0) {
-            planSummaryCard
-            Divider()
-            CharacterGalleryView()
-        }
-    }
+        ScrollView {
+            VStack(spacing: 16) {
+                // 스토어 스켈레톤 (기존 캐릭터 역할/말투 수정 없음)
+                CharacterStoreSkeletonView()
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
 
-    private var planSummaryCard: some View {
-        let limits = appEntitlementManager.currentLimits
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("플랜")
-                        .font(.system(size: 14, weight: .semibold))
-                    Text("현재 플랜: \(appEntitlementManager.currentPlan.displayName)")
-                        .font(.system(size: 12, weight: .medium))
-                    Text("기본 제공량은 온보딩용 placeholder이며, 초과 사용은 개인 API 키 연결을 전제로 합니다.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer()
-                Button("출시 예정") {}
-                    .buttonStyle(.borderedProminent)
-                    .disabled(true)
-            }
-
-            HStack(spacing: 8) {
-                planBadge("일 \(limits.includedAIMessagesPerDay)회")
-                planBadge("BYOK 지원")
-                planBadge("결제 출시 예정")
+                // 기존 갤러리
+                CharacterGalleryView()
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(Color(NSColor.windowBackgroundColor))
     }
 
-    private func planBadge(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 10, weight: .semibold))
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-            .background(Capsule().fill(Color.secondary.opacity(0.12)))
-    }
 
     // MARK: - 내부 로직
     private func currentKey(for provider: LLMProvider) -> String {

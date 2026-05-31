@@ -16,7 +16,7 @@ struct BYOKProviderCenterView: View {
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                 }
-                Text("MyTeam은 기본 제공량 이후 사용자의 개인 API 키로 동작할 수 있습니다.")
+                Text("연결 센터에서 API 키를 안전하게 연결할 수 있어요. 키는 이 기기에 저장됩니다.")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -63,18 +63,10 @@ struct BYOKProviderCenterView: View {
 
             Spacer()
 
-            // Round 241B: disabled(true) 제거, Settings 패널로 연결
-            Button(status.isConnected ? "설정 열기" : "API 키 추가") {
-                if let url = URL(string: "x-apple.systempreferences:") {
-                    // Settings 패널로 이동 (BYOK 전용 UI는 다음 라운드)
-                    NSWorkspace.shared.open(url)
-                }
-            }
-            .buttonStyle(.bordered)
-            .help(status.isConnected
-                  ? "연결된 API 키 설정을 확인합니다."
-                  : "API 키 입력 기능은 다음 업데이트에서 제공됩니다. 현재는 설정 앱에서 직접 Keychain을 관리할 수 있습니다."
-            )
+            // "연결 센터" 탭으로 이동 안내
+            Text("연결 센터 탭에서 키를 직접 연결하세요")
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
         }
         .padding(10)
         .background(

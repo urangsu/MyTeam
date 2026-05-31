@@ -1838,6 +1838,90 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>E3BCED940DAD6E0579E695D4</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E3BCED940DAD6E0579E695C8</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695D5</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E3BCED940DAD6E0579E695C9</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695D6</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E3BCED940DAD6E0579E695CA</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695D7</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E3BCED940DAD6E0579E695CB</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695D8</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E3BCED940DAD6E0579E695CC</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695D9</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E3BCED940DAD6E0579E695CD</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695DA</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E3BCED940DAD6E0579E695CE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695DB</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E3BCED940DAD6E0579E695CF</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695DC</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E3BCED940DAD6E0579E695D0</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695DD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E3BCED940DAD6E0579E695D1</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695DE</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E3BCED940DAD6E0579E695D2</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695DF</key>
+		<dict>
+			<key>fileRef</key>
+			<string>E3BCED940DAD6E0579E695D3</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
 		<key>270C0002A0B04E5EA7B69C3B</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -1889,6 +1973,19 @@
 			<array>
 				<string>270C0003A0B04E5EA7B69C3C</string>
 				<string>270C0004A0B04E5EA7B69C3D</string>
+			
+				<string>E3BCED940DAD6E0579E695D4</string>
+				<string>E3BCED940DAD6E0579E695D5</string>
+				<string>E3BCED940DAD6E0579E695D6</string>
+				<string>E3BCED940DAD6E0579E695D7</string>
+				<string>E3BCED940DAD6E0579E695D8</string>
+				<string>E3BCED940DAD6E0579E695D9</string>
+				<string>E3BCED940DAD6E0579E695DA</string>
+				<string>E3BCED940DAD6E0579E695DB</string>
+				<string>E3BCED940DAD6E0579E695DC</string>
+				<string>E3BCED940DAD6E0579E695DD</string>
+				<string>E3BCED940DAD6E0579E695DE</string>
+				<string>E3BCED940DAD6E0579E695DF</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -7666,6 +7763,18 @@
 				<string>E30000000000000000000011</string>
 				<string>E30000000000000000000012</string>
 				<string>E30000000000000000000013</string>
+				<string>E3BCED940DAD6E0579E695C8</string>
+				<string>E3BCED940DAD6E0579E695C9</string>
+				<string>E3BCED940DAD6E0579E695CA</string>
+				<string>E3BCED940DAD6E0579E695CB</string>
+				<string>E3BCED940DAD6E0579E695CC</string>
+				<string>E3BCED940DAD6E0579E695CD</string>
+				<string>E3BCED940DAD6E0579E695CE</string>
+				<string>E3BCED940DAD6E0579E695CF</string>
+				<string>E3BCED940DAD6E0579E695D0</string>
+				<string>E3BCED940DAD6E0579E695D1</string>
+				<string>E3BCED940DAD6E0579E695D2</string>
+				<string>E3BCED940DAD6E0579E695D3</string>
 				<string>E30000000000000000000014</string>
 				<string>E30000000000000000000015</string>
 				<string>E30000000000000000000016</string>
@@ -9163,6 +9272,18 @@
 				<string>AFS262TTS001BUILDFILE00H1</string>
 				<string>LLMR264REL001BUILDFILE00G1</string>
 				<string>0AAFDCC9E57A434B89BA610D</string>
+				<string>E3BCED940DAD6E0579E695D4</string>
+				<string>E3BCED940DAD6E0579E695D5</string>
+				<string>E3BCED940DAD6E0579E695D6</string>
+				<string>E3BCED940DAD6E0579E695D7</string>
+				<string>E3BCED940DAD6E0579E695D8</string>
+				<string>E3BCED940DAD6E0579E695D9</string>
+				<string>E3BCED940DAD6E0579E695DA</string>
+				<string>E3BCED940DAD6E0579E695DB</string>
+				<string>E3BCED940DAD6E0579E695DC</string>
+				<string>E3BCED940DAD6E0579E695DD</string>
+				<string>E3BCED940DAD6E0579E695DE</string>
+				<string>E3BCED940DAD6E0579E695DF</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -16874,6 +16995,186 @@
 			<string>PlaywrightMCPManager.swift</string>
 			<key>path</key>
 			<string>PlaywrightMCPManager.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695C8</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>AppReleaseProfile.swift</string>
+			<key>path</key>
+			<string>AppReleaseProfile.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695C9</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>ProviderCredential.swift</string>
+			<key>path</key>
+			<string>ProviderCredential.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695CA</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>SecureCredentialStore.swift</string>
+			<key>path</key>
+			<string>SecureCredentialStore.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695CB</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>CredentialHealth.swift</string>
+			<key>path</key>
+			<string>CredentialHealth.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695CC</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>ConnectorFailureCode.swift</string>
+			<key>path</key>
+			<string>ConnectorFailureCode.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695CD</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>ConnectorFailureCardView.swift</string>
+			<key>path</key>
+			<string>ConnectorFailureCardView.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695CE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>ConnectionCenterView.swift</string>
+			<key>path</key>
+			<string>ConnectionCenterView.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695CF</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>ConnectorSetupCardView.swift</string>
+			<key>path</key>
+			<string>ConnectorSetupCardView.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695D0</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>UseCaseSelectionView.swift</string>
+			<key>path</key>
+			<string>UseCaseSelectionView.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695D1</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>FirstRoomTemplatePicker.swift</string>
+			<key>path</key>
+			<string>FirstRoomTemplatePicker.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695D2</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>CharacterStoreSkeletonView.swift</string>
+			<key>path</key>
+			<string>CharacterStoreSkeletonView.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>E3BCED940DAD6E0579E695D3</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>DemoMode.swift</string>
+			<key>path</key>
+			<string>DemoMode.swift</string>
 			<key>sourceTree</key>
 			<string>SOURCE_ROOT</string>
 		</dict>
