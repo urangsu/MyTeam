@@ -20,15 +20,25 @@ final class BrowserSnapshotStore: ObservableObject {
 
     func save(_ record: BrowserSnapshotRecord) {
         recordsByID[record.id] = record
+        let encodedData: Data
+        do {
+            encodedData = try JSONEncoder().encode(record)
+        } catch {
+            AppLog.error("Failed to encode snapshot: \(error)", .legacy)
+            return
+        }
+        let roomID = record.roomID
+        let chainRunID = record.chainRunID
+        let recordID = record.id
 
         // Save to disk asynchronously
-        Task.detached(priority: .background) {
+        Task.detached(priority: .background) { [encodedData, roomID, chainRunID, recordID] in
             let baseDir = AppPaths.applicationSupportDirectory
                 .appendingPathComponent("browser_snapshots", isDirectory: true)
-                .appendingPathComponent(record.roomID.uuidString, isDirectory: true)
-                .appendingPathComponent(record.chainRunID.uuidString, isDirectory: true)
+                .appendingPathComponent(roomID.uuidString, isDirectory: true)
+                .appendingPathComponent(chainRunID.uuidString, isDirectory: true)
 
-            let fileURL = baseDir.appendingPathComponent("\(record.id.uuidString).json")
+            let fileURL = baseDir.appendingPathComponent("\(recordID.uuidString).json")
 
             do {
                 let fileManager = FileManager.default
@@ -36,8 +46,7 @@ final class BrowserSnapshotStore: ObservableObject {
                     try fileManager.createDirectory(at: baseDir, withIntermediateDirectories: true, attributes: nil)
                 }
 
-                let data = try JSONEncoder().encode(record)
-                try data.write(to: fileURL, options: .atomic)
+                try encodedData.write(to: fileURL, options: .atomic)
                 AppLog.info("Successfully persisted snapshot to \(fileURL.path)", .legacy)
             } catch {
                 AppLog.error("Failed to persist snapshot: \(error)", .legacy)

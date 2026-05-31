@@ -2,10 +2,12 @@ import Foundation
 
 // MARK: - LineBuffer
 final class LineBuffer: @unchecked Sendable {
-    private var pendingData = Data()
+    nonisolated(unsafe) private var pendingData = Data()
     private let lock = NSLock()
+
+    nonisolated init() {}
     
-    func appendAndExtractLines(_ data: Data) -> [String] {
+    nonisolated func appendAndExtractLines(_ data: Data) -> [String] {
         lock.lock()
         defer { lock.unlock() }
         
@@ -23,7 +25,7 @@ final class LineBuffer: @unchecked Sendable {
         return lines
     }
     
-    func clear() {
+    nonisolated func clear() {
         lock.lock()
         pendingData = Data()
         lock.unlock()
@@ -59,10 +61,6 @@ actor PlaywrightMCPClient {
     private var pending: [Int: CheckedContinuation<MCPResponse, Error>] = [:]
 
     private init() {}
-
-    deinit {
-        terminateProcess()
-    }
 
     private func terminateProcess() {
         outputPipe?.fileHandleForReading.readabilityHandler = nil
