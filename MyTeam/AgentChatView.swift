@@ -660,10 +660,7 @@ struct AgentChatView: View {
                                     .padding(.vertical, 48)
                             } else {
                                 VStack(spacing: 16) {
-                                    let hasAnyAPIKey = KeychainManager.load(key: "claudeAPIKey") != nil ||
-                                                       KeychainManager.load(key: "geminiAPIKey") != nil ||
-                                                       KeychainManager.load(key: "openAIAPIKey") != nil ||
-                                                       KeychainManager.load(key: "openRouterAPIKey") != nil
+                                    let hasAnyAPIKey = SecureCredentialStore.shared.hasAnyAIProviderKey()
                                     let firstLaunchState = FirstLaunchStateProvider.currentState(
                                         hasAPIKey: hasAnyAPIKey
                                     )

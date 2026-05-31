@@ -187,8 +187,8 @@ final class ConnectorRegistry: ObservableObject {
     }
 
     private static func hasGroundedSearchProvider() -> Bool {
-        let hasGemini = !(KeychainManager.load(key: "geminiAPIKey") ?? "").isEmpty
-        let hasOpenAI = !(KeychainManager.load(key: "openAIAPIKey") ?? "").isEmpty
+        let hasGemini = SecureCredentialStore.shared.hasKey(for: .gemini)
+        let hasOpenAI = SecureCredentialStore.shared.hasKey(for: .openAI)
         return hasGemini || hasOpenAI
     }
 

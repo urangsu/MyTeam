@@ -762,10 +762,7 @@ class AgentWindowManager: ObservableObject {
         }
         
         loadMemoryStores()
-        let hasAnyAPIKey = KeychainManager.load(key: "claudeAPIKey") != nil ||
-                           KeychainManager.load(key: "geminiAPIKey") != nil ||
-                           KeychainManager.load(key: "openAIAPIKey") != nil ||
-                           KeychainManager.load(key: "openRouterAPIKey") != nil
+        let hasAnyAPIKey = SecureCredentialStore.shared.hasAnyAIProviderKey()
         firstLaunchState = FirstLaunchStateProvider.currentState(hasAPIKey: hasAnyAPIKey)
 
         roomRuntimeStoreCancellable = roomRuntimeStore.objectWillChange
