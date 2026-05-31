@@ -37,6 +37,12 @@ final class SecureCredentialStore {
         return !key.isEmpty
     }
 
+    func hasAnyAIProviderKey() -> Bool {
+        [.gemini, .openAI, .anthropic, .openRouter].contains { provider in
+            hasKey(for: provider)
+        }
+    }
+
     // MARK: - Delete
 
     /// 지정 provider의 API 키를 Keychain에서 삭제합니다.
