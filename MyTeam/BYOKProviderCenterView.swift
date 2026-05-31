@@ -80,7 +80,7 @@ struct BYOKProviderCenterView: View {
     }
 
     private func stateBadge(_ isConnected: Bool) -> some View {
-        Text(isConnected ? "연결됨" : "미연결")
+        Text(isConnected ? "저장됨" : "미연결")
             .font(.system(size: 9, weight: .semibold))
             .foregroundStyle(isConnected ? .green : .secondary)
             .padding(.horizontal, 7)

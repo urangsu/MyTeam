@@ -7,6 +7,7 @@ enum CredentialHealthState: Equatable, Sendable {
     case connected               // 키 존재 + 마지막 테스트 성공
     case notConnected            // 키 없음
     case untested                // 키 있으나 테스트 미실행
+    case testUnavailable         // 키는 있으나 이 provider의 실제 검증 미구현
     case testFailed(ConnectorFailureCode) // 테스트 실패
 }
 
@@ -16,6 +17,7 @@ extension CredentialHealthState {
         case .connected:          return "연결됨"
         case .notConnected:       return "연결 필요"
         case .untested:           return "저장됨"
+        case .testUnavailable:    return "검증 준비 중"
         case .testFailed:         return "연결 오류"
         }
     }
@@ -77,6 +79,8 @@ final class CredentialHealthService: ObservableObject {
         health.lastTestedAt = Date()
         if result.success {
             health.state = .connected
+        } else if result.failureCode == .providerUnavailable {
+            health.state = .testUnavailable
         } else {
             health.state = .testFailed(result.failureCode ?? .networkError)
         }

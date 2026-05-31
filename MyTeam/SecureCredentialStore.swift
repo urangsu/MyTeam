@@ -58,12 +58,13 @@ final class SecureCredentialStore {
         return dots + suffix
     }
 
-    // MARK: - Test (Stub)
+    // MARK: - Test
 
-    /// 연결 테스트. 현재는 키 존재 여부만 확인합니다.
-    /// 실제 API 검증은 추후 구현 예정입니다.
+    /// 연결 테스트. 키 존재만으로 성공 처리하지 않습니다.
+    /// AI provider는 실제 모델 목록 엔드포인트를 확인하고, 아직 검증기가 없는 provider는
+    /// success=false/providerUnavailable로 남겨 UI가 connected를 표시하지 않게 합니다.
     func testConnection(provider: ExternalProvider) async -> CredentialTestResult {
-        guard hasKey(for: provider) else {
+        guard let key = read(provider: provider), !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return CredentialTestResult(
                 provider: provider,
                 success: false,
@@ -71,13 +72,67 @@ final class SecureCredentialStore {
                 message: "\(provider.displayName) 키가 아직 연결되지 않았어요."
             )
         }
-        // TODO: 실제 API 검증 호출 추가 (다음 라운드)
-        return CredentialTestResult(
-            provider: provider,
-            success: true,
-            failureCode: nil,
-            message: "키가 저장되어 있습니다. 실제 연결 테스트는 준비 중이에요."
-        )
+
+        guard let llmProvider = llmProviderRawValue(for: provider) else {
+            return CredentialTestResult(
+                provider: provider,
+                success: false,
+                failureCode: .providerUnavailable,
+                message: "\(provider.displayName) 실제 연결 테스트는 아직 준비 중입니다. 키는 저장됐지만 연결됨으로 표시하지 않습니다."
+            )
+        }
+
+        do {
+            let message = try await AIService.shared.validateKey(provider: llmProvider, apiKey: key)
+            return CredentialTestResult(
+                provider: provider,
+                success: true,
+                failureCode: nil,
+                message: message
+            )
+        } catch {
+            return CredentialTestResult(
+                provider: provider,
+                success: false,
+                failureCode: Self.failureCode(from: error),
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    private func llmProviderRawValue(for provider: ExternalProvider) -> String? {
+        switch provider {
+        case .gemini:
+            return LLMProvider.gemini.rawValue
+        case .openAI:
+            return LLMProvider.openAI.rawValue
+        case .anthropic:
+            return LLMProvider.claude.rawValue
+        case .openRouter:
+            return LLMProvider.openRouter.rawValue
+        case .kmaWeather, .naverNews, .dartDisclosure:
+            return nil
+        }
+    }
+
+    private static func failureCode(from error: Error) -> ConnectorFailureCode {
+        let message = error.localizedDescription.lowercased()
+        if message.contains("401") || message.contains("올바르지") || message.contains("invalid") || message.contains("unauthorized") {
+            return .invalidAPIKey
+        }
+        if message.contains("403") || message.contains("권한") || message.contains("permission") {
+            return .permissionDenied
+        }
+        if message.contains("429") || message.contains("한도") || message.contains("rate") {
+            return .rateLimited
+        }
+        if message.contains("network") || message.contains("네트워크") || message.contains("internet") {
+            return .networkError
+        }
+        if message.contains("500") || message.contains("server") || message.contains("서버") {
+            return .providerUnavailable
+        }
+        return .responseParseFailed
     }
 }
 

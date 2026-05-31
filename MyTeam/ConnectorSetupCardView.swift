@@ -170,6 +170,7 @@ struct ConnectorSetupCardView: View {
         case .connected:      return Color.green.opacity(0.15)
         case .notConnected:   return Color.secondary.opacity(0.12)
         case .untested:       return Color.blue.opacity(0.12)
+        case .testUnavailable:return Color.blue.opacity(0.12)
         case .testFailed:     return Color.orange.opacity(0.15)
         }
     }
@@ -179,6 +180,7 @@ struct ConnectorSetupCardView: View {
         case .connected:      return .green
         case .notConnected:   return .secondary
         case .untested:       return .blue
+        case .testUnavailable:return .blue
         case .testFailed:     return .orange
         }
     }
@@ -186,6 +188,7 @@ struct ConnectorSetupCardView: View {
     private var borderColor: Color {
         switch health.state {
         case .connected:      return Color.green.opacity(0.25)
+        case .testUnavailable:return Color.blue.opacity(0.22)
         case .testFailed:     return Color.orange.opacity(0.25)
         default:              return Color.black.opacity(0.06)
         }
@@ -220,6 +223,8 @@ struct ConnectorSetupCardView: View {
                 switch health.state {
                 case .connected:
                     testResultMessage = "연결 상태를 확인했습니다."
+                case .testUnavailable:
+                    testResultMessage = "\(provider.displayName) 실제 연결 테스트는 아직 준비 중입니다. 키는 저장됐지만 연결됨으로 표시하지 않습니다."
                 case .testFailed(let code):
                     testResultMessage = code.userMessage(for: provider)
                 default:

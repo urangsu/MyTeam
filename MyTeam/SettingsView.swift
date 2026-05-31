@@ -773,22 +773,23 @@ struct SettingsView: View {
     }
 
     private func deleteCurrentKey() {
-        let keychainKey: String
+        let provider = externalProvider(for: selectedProvider)
         switch selectedProvider {
-        case .gemini:     keychainKey = "geminiAPIKey"; geminiKey = ""
-        case .openAI:     keychainKey = "openAIAPIKey"; openAIKey = ""
-        case .claude:     keychainKey = "claudeAPIKey"; claudeKey = ""
-        case .openRouter: keychainKey = "openRouterAPIKey"; openRouterKey = ""
+        case .gemini:     geminiKey = ""
+        case .openAI:     openAIKey = ""
+        case .claude:     claudeKey = ""
+        case .openRouter: openRouterKey = ""
         }
-        _ = KeychainManager.delete(key: keychainKey)
+        _ = SecureCredentialStore.shared.delete(provider: provider)
+        CredentialHealthService.shared.didDeleteKey(for: provider)
         validationStatus = .idle
     }
 
     private func loadSettings() {
-        if let k = KeychainManager.load(key: "geminiAPIKey")     { geminiKey = k }
-        if let k = KeychainManager.load(key: "openAIAPIKey")     { openAIKey = k }
-        if let k = KeychainManager.load(key: "claudeAPIKey")     { claudeKey = k }
-        if let k = KeychainManager.load(key: "openRouterAPIKey") { openRouterKey = k }
+        if let k = SecureCredentialStore.shared.read(provider: .gemini)     { geminiKey = k }
+        if let k = SecureCredentialStore.shared.read(provider: .openAI)     { openAIKey = k }
+        if let k = SecureCredentialStore.shared.read(provider: .anthropic)  { claudeKey = k }
+        if let k = SecureCredentialStore.shared.read(provider: .openRouter) { openRouterKey = k }
         if AIModelPolicy.modelOverrideAllowed {
             openAIModelId = UserDefaults.standard.string(forKey: "openAIModelId") ?? ""
             openRouterModelId = UserDefaults.standard.string(forKey: "openRouterModelId") ?? ""
@@ -801,10 +802,10 @@ struct SettingsView: View {
     }
 
     private func saveSettings() {
-        KeychainManager.save(key: "geminiAPIKey",     value: geminiKey)
-        KeychainManager.save(key: "openAIAPIKey",     value: openAIKey)
-        KeychainManager.save(key: "claudeAPIKey",     value: claudeKey)
-        KeychainManager.save(key: "openRouterAPIKey", value: openRouterKey)
+        saveOrDeleteCredential(provider: .gemini, key: geminiKey)
+        saveOrDeleteCredential(provider: .openAI, key: openAIKey)
+        saveOrDeleteCredential(provider: .anthropic, key: claudeKey)
+        saveOrDeleteCredential(provider: .openRouter, key: openRouterKey)
         if AIModelPolicy.modelOverrideAllowed {
             openAIModelId = openAIModelId.trimmingCharacters(in: .whitespacesAndNewlines)
             openRouterModelId = openRouterModelId.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -823,6 +824,30 @@ struct SettingsView: View {
             UserDefaults.standard.removeObject(forKey: "openRouterModelId")
         }
         defaultProviderRaw = selectedProvider.rawValue
+    }
+
+    private func saveOrDeleteCredential(provider: ExternalProvider, key: String) {
+        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            _ = SecureCredentialStore.shared.delete(provider: provider)
+            CredentialHealthService.shared.didDeleteKey(for: provider)
+        } else {
+            _ = SecureCredentialStore.shared.save(provider: provider, key: trimmed)
+            CredentialHealthService.shared.didSaveKey(for: provider)
+        }
+    }
+
+    private func externalProvider(for provider: LLMProvider) -> ExternalProvider {
+        switch provider {
+        case .gemini:
+            return .gemini
+        case .openAI:
+            return .openAI
+        case .claude:
+            return .anthropic
+        case .openRouter:
+            return .openRouter
+        }
     }
 
     @MainActor
