@@ -8,19 +8,22 @@ struct UseCaseSelectionView: View {
     var onContinue: () -> Void
 
     var body: some View {
-        VStack(spacing: 28) {
+        VStack(spacing: 20) {
             // 타이틀
             VStack(spacing: 8) {
                 Text("어떤 용도로 써볼까요?")
-                    .font(.system(size: 22, weight: .bold))
-                Text("선택한 용도에 맞게 MyTeam을 준비할게요.\n여러 개 골라도 됩니다.")
-                    .font(.system(size: 13))
+                    .font(.system(size: 18, weight: .bold))
+                Text("필요한 시작점을 골라주세요")
+                    .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
 
             // 선택 그리드
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+            LazyVGrid(
+                columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
+                spacing: 10
+            ) {
                 ForEach(OnboardingUseCase.allCases, id: \.self) { useCase in
                     UseCaseChip(
                         useCase: useCase,
@@ -40,12 +43,13 @@ struct UseCaseSelectionView: View {
                 Text(selectedUseCases.isEmpty ? "일단 시작" : "다음")
                     .font(.system(size: 14, weight: .semibold))
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
+                    .padding(.vertical, 9)
             }
             .buttonStyle(.borderedProminent)
             .cornerRadius(10)
         }
-        .padding(24)
+        .padding(.horizontal, 18)
+        .padding(.bottom, 18)
     }
 }
 
@@ -156,6 +160,16 @@ enum OnboardingUseCase: String, CaseIterable, Hashable {
         case .dailyAssistant:   return "일상 정리, 메모, 할 일"
         }
     }
+
+    var shortDescription: String {
+        switch self {
+        case .workOrganization: return "문서, 체크리스트"
+        case .fileAndPDF:       return "파일, PDF"
+        case .stockAndNews:     return "공시, 시세"
+        case .weatherAndMove:   return "날씨, 이동"
+        case .dailyAssistant:   return "메모, 할 일"
+        }
+    }
 }
 
 // MARK: - UseCaseChip
@@ -167,29 +181,39 @@ private struct UseCaseChip: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack(alignment: .center, spacing: 10) {
-                Image(systemName: useCase.icon)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
-                    .frame(width: 24)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: useCase.icon)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+                        .frame(width: 20, height: 20)
 
-                VStack(alignment: .leading, spacing: 2) {
+                    Spacer(minLength: 0)
+
+                    if isSelected {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Color.accentColor)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
                     Text(useCase.rawValue)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(isSelected ? Color.primary : Color.primary)
-                    Text(useCase.description)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(useCase.shortDescription)
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Spacer()
-
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(Color.accentColor)
-                }
+                Spacer(minLength: 0)
             }
+            .frame(maxWidth: .infinity, minHeight: 102, alignment: .topLeading)
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 12)
