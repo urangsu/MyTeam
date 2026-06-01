@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "project": "MyTeam",
   "purpose": "Long-term productization backlog. task.md is only for short-running daily work.",
-  "last_updated": "2026-05-31",
+  "last_updated": "2026-06-01",
   "rules": {
     "task_md_is_short_term_only": true,
     "do_not_modify_character_personas": true,
@@ -11,6 +11,15 @@
     "do_not_add_cost_estimation_ui_until_myteam_provides_paid_api_calls": true,
     "do_not_mark_stub_as_done": true,
     "completion_requires_evidence": true,
+    "operating_rules_source": "AGENTS.md",
+    "work_modes": [
+      "small_patch",
+      "p0_patch",
+      "structural_change",
+      "product_design"
+    ],
+    "karpathy_guidelines_embedded_in_agents_md": true,
+    "understand_anything_outputs_commit_by_default": false,
     "codex_may_update_only": [
       "status",
       "completion_evidence",
@@ -86,6 +95,7 @@
       "notes": [
         "Productization v1에서 AppReleaseProfile gate는 이미 추가됨. 이 task는 실제 동작 검증에 해당.",
         "2026-05-31: AppReleaseProfile.appStore policy and PlaywrightMCPManager runtime guard audited. Added ToolContractValidator App Store surface policy so regressions fail diagnostics. Manual Release UI run/screenshot remains before marking done.",
+        "2026-06-01: Commit 4431fdbafc458ed1b267221953634ff3b6182c3c added lower-level AppReleaseProfile guards in PlaywrightMCPClient and PlaywrightMCPProcess so Release/App Store policy blocks npx/node/Playwright subprocess creation before Process() startup. P0 remains partial until Release UI walkthrough confirms Settings/Connection Center do not expose Playwright/MCP/developer diagnostics.",
         "Partial reason: static/runtime gate audit is complete, but App Store-like Release launch verification must still confirm the user-visible settings surface does not show Playwright MCP, npx/node setup, or developer diagnostics."
       ]
     },
@@ -563,6 +573,205 @@
         "manual_checks": [
           "데이터 계약 문서 리뷰",
           "표시 가능 범위 문서 리뷰"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": null,
+        "files_changed": [],
+        "validation_summary": null,
+        "screenshots": []
+      },
+      "notes": []
+    },
+    {
+      "id": "P0-007-voice-tab-truth-manual-audio-qa",
+      "priority": "P0",
+      "status": "partial",
+      "category": "release-truth",
+      "title": "Voice tab truth and manual audio QA",
+      "why": "음성탭은 유지하되 실제 TTS provider 없음/model 미포함 상태를 거짓 없이 표시해야 한다. 캐릭터 TTS와 오디오 경로 테스트를 혼동시키면 fake success와 사용자 불신이 발생한다.",
+      "scope": {
+        "include": [
+          "TTSProductPolicy.swift",
+          "TTSRoutingPolicy.swift",
+          "TTSLabView.swift",
+          "SpeechManager.swift",
+          "AudioPlaybackService.swift"
+        ],
+        "exclude": [
+          "ONNX/MLX/TTS 모델 재도입",
+          "ElevenLabs/Apple TTS 도입",
+          "캐릭터 역할/말투/성격 설정",
+          "치코 페르소나"
+        ]
+      },
+      "acceptance_criteria": [
+        "실제 provider 없으면 캐릭터 TTS 미리듣기 비활성화",
+        "오디오 경로 테스트는 실제 캐릭터 목소리가 아님을 명시",
+        "오디오 경로 테스트 실패를 성공처럼 표시하지 않음",
+        "Release user-facing TTS는 비활성 유지"
+      ],
+      "failure_conditions": [
+        "provider 없음인데 미리듣기 가능처럼 보임",
+        "오디오 경로 테스트를 캐릭터 TTS로 오해하게 함",
+        "Apple TTS/ElevenLabs/ONNX/MLX 재도입",
+        "소리 재생 실패를 성공 처리"
+      ],
+      "verification": {
+        "commands": [
+          "grep -rn 'userFacingTTSEnabled\\|selectedProvider\\|오디오 경로 테스트\\|캐릭터 TTS' MyTeam/ --include='*.swift'",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=macOS' build",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Release -destination 'platform=macOS' build"
+        ],
+        "manual_checks": [
+          "음성탭에서 캐릭터 TTS provider 없음 표시 확인",
+          "오디오 경로 테스트 실제 소리 재생 확인",
+          "소리가 안 나면 AudioPlaybackService.playFloatSamples 경로를 별도 P0/P1로 분리"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": "cb45a13b85c7fcbee1702c04ba74cd8474cfd6f8",
+        "files_changed": [
+          "MyTeam/AudioPlaybackService.swift",
+          "MyTeam/SpeechManager.swift",
+          "MyTeam/TTSLabView.swift",
+          "MyTeam/TTSProductPolicy.swift",
+          "MyTeam/TTSRoutingPolicy.swift"
+        ],
+        "validation_summary": "2026-06-01: Voice tab now states that no character TTS provider is available, disables character TTS preview when provider/model/release gates are absent, and separates procedural audio path testing from real character TTS. Debug/Release xcodebuild succeeded with only the existing AppIntents metadata warning. Partial because manual confirmation that the audio path test produces audible sound remains.",
+        "screenshots": []
+      },
+      "notes": [
+        "This task tracks manual QA after the runtime truth fix. It must not become done until the audio path test is exercised on the macOS app."
+      ]
+    },
+    {
+      "id": "P2-001-windows-contract-boundary",
+      "priority": "P2",
+      "status": "todo",
+      "category": "platform",
+      "title": "Windows contract boundary",
+      "why": "Windows 출시를 고려하려면 macOS-only 기능과 portable runtime contract를 분리해야 한다. Keychain, sandbox, file access, Playwright, windowing, audio 경계가 불명확하면 이식 비용이 커진다.",
+      "scope": {
+        "include": [
+          "macOS-only 기능 목록",
+          "portable service contract",
+          "Keychain/file/audio/windowing/Playwright 경계"
+        ],
+        "exclude": [
+          "Windows 구현",
+          "캐릭터 역할/말투/성격 설정",
+          "치코 페르소나"
+        ]
+      },
+      "acceptance_criteria": [
+        "macOS-only API와 portable contract 문서화",
+        "Windows에서 대체가 필요한 storage/audio/windowing/file access 식별",
+        "새 기능이 macOS-only에 직접 결합되지 않도록 가이드 제공"
+      ],
+      "failure_conditions": [
+        "Windows 구현을 문서 없이 바로 시작",
+        "Keychain/AppKit/NSPanel/Sandbox 경로를 portable 코드로 가정",
+        "macOS-only 기능을 일반 런타임 contract로 문서화"
+      ],
+      "verification": {
+        "commands": [
+          "grep -rn 'AppKit\\|NSPanel\\|Keychain\\|NSScreen\\|Process()' MyTeam/ --include='*.swift'"
+        ],
+        "manual_checks": [
+          "platform boundary 문서 리뷰"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": null,
+        "files_changed": [],
+        "validation_summary": null,
+        "screenshots": []
+      },
+      "notes": []
+    },
+    {
+      "id": "P2-002-release-qa-evidence-checklist",
+      "priority": "P2",
+      "status": "todo",
+      "category": "release-qa",
+      "title": "Release QA evidence checklist automation",
+      "why": "P0 완료 증거가 누락되면 done/partial 판단이 흔들린다. grep, build, backlog evidence 확인을 반복 가능한 체크리스트로 만들어야 한다.",
+      "scope": {
+        "include": [
+          "backlog evidence 검사",
+          "금지 경로 grep",
+          "Debug/Release build command catalog"
+        ],
+        "exclude": [
+          "CI 도입",
+          "캐릭터 역할/말투/성격 설정"
+        ]
+      },
+      "acceptance_criteria": [
+        "P0 evidence 필수 필드 누락 검사 가능",
+        "금지 경로 grep 명령 목록 문서화",
+        "수동 확인이 남은 task는 done 처리 금지 안내"
+      ],
+      "failure_conditions": [
+        "검증 없이 done 처리",
+        "수동 확인 task를 자동 검사만으로 완료 처리",
+        "backlog JSON invalid 상태"
+      ],
+      "verification": {
+        "commands": [
+          "python3 -m json.tool docs/backlog/myteam_product_backlog.json"
+        ],
+        "manual_checks": [
+          "Release QA checklist 문서 리뷰"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": null,
+        "files_changed": [],
+        "validation_summary": null,
+        "screenshots": []
+      },
+      "notes": []
+    },
+    {
+      "id": "P2-003-understand-anything-architecture-summary-routine",
+      "priority": "P2",
+      "status": "todo",
+      "category": "architecture-docs",
+      "title": "Understand-Anything architecture summary routine",
+      "why": "Structural 작업 전 영향도 파악은 필요하지만 .understand-anything 산출물을 그대로 커밋하면 repo가 지저분해진다. 필요한 요약만 선별 저장하는 루틴이 필요하다.",
+      "scope": {
+        "include": [
+          "Understand-Anything 사용 기준",
+          "산출물 커밋 금지 기본값",
+          "docs/architecture 선별 저장 기준"
+        ],
+        "exclude": [
+          ".understand-anything 전체 커밋",
+          "자동 graph update 강제"
+        ]
+      },
+      "acceptance_criteria": [
+        "Structural 작업에서 understand 사용 기준 문서화",
+        ".understand-anything 산출물 기본 커밋 금지 명시",
+        "선별 요약 저장 위치와 형식 정의"
+      ],
+      "failure_conditions": [
+        ".understand-anything 전체 산출물 커밋",
+        "자동 업데이트 산출물을 release evidence로 오인",
+        "요약 없이 대형 구조 변경 진행"
+      ],
+      "verification": {
+        "commands": [
+          "grep -rn '.understand-anything\\|understand' AGENTS.md docs/ --include='*.md'"
+        ],
+        "manual_checks": [
+          "architecture summary routine 문서 리뷰"
         ]
       },
       "completion_evidence": {
