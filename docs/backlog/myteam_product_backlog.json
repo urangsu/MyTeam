@@ -96,6 +96,7 @@
         "Productization v1에서 AppReleaseProfile gate는 이미 추가됨. 이 task는 실제 동작 검증에 해당.",
         "2026-05-31: AppReleaseProfile.appStore policy and PlaywrightMCPManager runtime guard audited. Added ToolContractValidator App Store surface policy so regressions fail diagnostics. Manual Release UI run/screenshot remains before marking done.",
         "2026-06-01: Commit 4431fdbafc458ed1b267221953634ff3b6182c3c added lower-level AppReleaseProfile guards in PlaywrightMCPClient and PlaywrightMCPProcess so Release/App Store policy blocks npx/node/Playwright subprocess creation before Process() startup. P0 remains partial until Release UI walkthrough confirms Settings/Connection Center do not expose Playwright/MCP/developer diagnostics.",
+        "2026-06-02: Commit ceae318ad3b770de3dbafba95d2b9a46c60db865 fixed Debug Playwright evidence reliability without loosening Release policy. Browser evidence now probes MCP on first use when health is not checked, MCP JSON-RPC initialize/tools/call requests time out instead of hanging, stale capabilities clear on process restart, and tool-call isError responses no longer parse as success. Debug/Release builds succeeded with the existing AppIntents metadata warning only.",
         "Partial reason: static/runtime gate audit is complete, but App Store-like Release launch verification must still confirm the user-visible settings surface does not show Playwright MCP, npx/node setup, or developer diagnostics."
       ]
     },
@@ -160,6 +161,7 @@
       "notes": [
         "Productization v1에서 SecureCredentialStore wrapper 생성 완료. 이 task는 기존 코드에서 UserDefaults 직접 저장 경로가 남아있는지 감사하는 작업.",
         "2026-05-31: SettingsView의 API key load/save/delete 경로를 SecureCredentialStore로 통일하고 CredentialHealthService 갱신을 연결함. BYOK 요약 UI는 '연결됨' 대신 '저장됨'으로 표시하도록 변경. 남은 감사: KeychainManager 직접 참조 중 내부 구현/레거시 마이그레이션 외 우회 경로 최종 분류.",
+        "2026-06-02: Commit ceae318ad3b770de3dbafba95d2b9a46c60db865 routed AgentToolKit Gemini/OpenAI evidence reads through SecureCredentialStore.read(provider:) instead of direct KeychainManager.load. P0 remains partial because AIService and LLMConfigCatalog still have direct read paths that need explicit classification.",
         "Partial reason: write/delete UI paths are secure-store based, but direct KeychainManager reads remain in runtime services. They do not prove plain-text leakage, yet must be classified before marking done."
       ]
     },
