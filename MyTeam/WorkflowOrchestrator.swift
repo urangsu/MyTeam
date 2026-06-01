@@ -13,21 +13,23 @@ final class WorkflowOrchestrator {
         manager.activeWorkflowTaskCount()
     }
 
-    private func beginBudgetSession(roomID: UUID, workflowID: UUID? = nil, tier: AICallBudgetTier) async {
+    private func beginBudgetSession(roomID: UUID?, workflowID: UUID? = nil, tier: AICallBudgetTier) async -> AICallBudgetSessionKey {
+        let key = AICallBudgetSessionKey(roomID: roomID, workflowID: workflowID)
         await MainActor.run {
-            AICallBudgetManager.shared.beginSession(roomID: roomID, workflowID: workflowID, tier: tier)
+            AICallBudgetManager.shared.beginSession(key: key, tier: tier)
+        }
+        return key
+    }
+
+    private func requestBudgetCall(_ type: AICallType, key: AICallBudgetSessionKey) async -> Bool {
+        await MainActor.run {
+            AICallBudgetManager.shared.requestCall(type, key: key)
         }
     }
 
-    private func requestBudgetCall(_ type: AICallType) async -> Bool {
+    private func blockedBudgetMessage(for type: AICallType, key: AICallBudgetSessionKey) async -> String {
         await MainActor.run {
-            AICallBudgetManager.shared.requestCall(type)
-        }
-    }
-
-    private func blockedBudgetMessage(for type: AICallType) async -> String {
-        await MainActor.run {
-            AICallBudgetManager.shared.blockedMessage(for: type)
+            AICallBudgetManager.shared.blockedMessage(for: type, key: key)
         }
     }
 
@@ -205,7 +207,7 @@ final class WorkflowOrchestrator {
 
         let interpretedGoal = GoalInterpreter.interpret(userMessage)
         let capabilityDecision = CapabilityAwareRouter.evaluate(goal: interpretedGoal)
-        await beginBudgetSession(roomID: roomID, tier: budgetTier(for: interpretedGoal, userMessage: userMessage))
+        let routingBudgetKey = await beginBudgetSession(roomID: roomID, tier: budgetTier(for: interpretedGoal, userMessage: userMessage))
         await MainActor.run {
             manager.recordGoalInterpretation(interpretedGoal, decision: capabilityDecision, roomID: roomID)
             manager.updateRoomGoalContext(roomID: roomID, goal: interpretedGoal, activeWorkflowStep: "routing")
@@ -1371,7 +1373,7 @@ final class WorkflowOrchestrator {
         }
 
         // ── 그 외: IntentRouter 1회 호출 ──
-        let routing = await classifyRouting(message: userMessage, manager: manager)
+        let routing = await classifyRouting(message: userMessage, manager: manager, budgetKey: routingBudgetKey)
         let intent = routing.intent
         AppLog.info("[WorkflowOrchestrator] Intent: \(intent.rawValue)")
         let isFallbackRouting =
@@ -1491,8 +1493,8 @@ final class WorkflowOrchestrator {
 
     // MARK: - Intent classification (1회)
 
-    private func classifyRouting(message: String, manager: AgentWindowManager) async -> IntentResult {
-        guard await requestBudgetCall(.intentClassify) else {
+    private func classifyRouting(message: String, manager: AgentWindowManager, budgetKey: AICallBudgetSessionKey) async -> IntentResult {
+        guard await requestBudgetCall(.intentClassify, key: budgetKey) else {
             AppLog.warning("[Budget] intent_classify 차단")
             return .fallback
         }
@@ -1510,7 +1512,8 @@ final class WorkflowOrchestrator {
     }
 
     private func classifyIntent(message: String, manager: AgentWindowManager) async -> UserIntent {
-        await classifyRouting(message: message, manager: manager).intent
+        let budgetKey = await beginBudgetSession(roomID: manager.currentRoomID, tier: .chatLight)
+        return await classifyRouting(message: message, manager: manager, budgetKey: budgetKey).intent
     }
 
     @MainActor
@@ -1920,6 +1923,7 @@ final class WorkflowOrchestrator {
 
         // ── workflowID 생성 (이번 workflow의 추적 키) ──
         let workflowID = UUID()
+        let budgetKey = await beginBudgetSession(roomID: roomID, workflowID: workflowID, tier: .documentTask)
         await MainActor.run {
             manager.setCurrentWorkflowID(workflowID, roomID: roomID)
             WorkflowRunStore.shared.begin(workflowID: workflowID, roomID: roomID, userMessage: userMessage)
@@ -1960,7 +1964,7 @@ final class WorkflowOrchestrator {
         // 취소 검사 — finalStatus = .cancelled (기본값) 유지
         guard !Task.isCancelled else { return }
 
-        switch await planWorkflowWithRepair(userMessage: userMessage, allowedScopes: allowedScopes, roomID: roomID, manager: manager) {
+        switch await planWorkflowWithRepair(userMessage: userMessage, allowedScopes: allowedScopes, roomID: roomID, manager: manager, budgetKey: budgetKey) {
         case .failure(let msg):
             // 취소 중이어도 실패 이유는 기록
             finalStatus = .failed
@@ -2050,9 +2054,9 @@ final class WorkflowOrchestrator {
 
     // MARK: - Planner with self-repair (최대 2회 시도)
 
-    private func planWorkflowWithRepair(userMessage: String, allowedScopes: Set<ToolScope>, roomID: UUID, manager: AgentWindowManager) async -> PlannerResult {
+    private func planWorkflowWithRepair(userMessage: String, allowedScopes: Set<ToolScope>, roomID: UUID, manager: AgentWindowManager, budgetKey: AICallBudgetSessionKey) async -> PlannerResult {
         // 1차 시도
-        let result1 = await attemptPlan(userMessage: userMessage, previousError: nil, allowedScopes: allowedScopes, roomID: roomID, manager: manager)
+        let result1 = await attemptPlan(userMessage: userMessage, previousError: nil, allowedScopes: allowedScopes, roomID: roomID, manager: manager, budgetKey: budgetKey)
         if case .success = result1 { return result1 }
         guard case .failure(let error1) = result1 else { return result1 }
 
@@ -2063,7 +2067,7 @@ final class WorkflowOrchestrator {
 
         // 2차 시도 — JSON/decode 오류에 대해서만 self-repair
         AppLog.info("[WorkflowOrchestrator] Self-repair 시도: \(error1)")
-        return await attemptPlan(userMessage: userMessage, previousError: error1, allowedScopes: allowedScopes, roomID: roomID, manager: manager)
+        return await attemptPlan(userMessage: userMessage, previousError: error1, allowedScopes: allowedScopes, roomID: roomID, manager: manager, budgetKey: budgetKey)
     }
 
     private func attemptPlan(
@@ -2071,12 +2075,13 @@ final class WorkflowOrchestrator {
         previousError: String?,
         allowedScopes: Set<ToolScope>,
         roomID: UUID,
-        manager: AgentWindowManager
+        manager: AgentWindowManager,
+        budgetKey: AICallBudgetSessionKey
     ) async -> PlannerResult {
         let callType = previousError == nil ? "workflow_plan" : "workflow_repair"
         let budgetType: AICallType = previousError == nil ? .workflowPlan : .workflowRepair
-        guard await requestBudgetCall(budgetType) else {
-            let msg = await blockedBudgetMessage(for: budgetType)
+        guard await requestBudgetCall(budgetType, key: budgetKey) else {
+            let msg = await blockedBudgetMessage(for: budgetType, key: budgetKey)
             AppLog.warning("[Budget] \(callType) 차단")
             return .failure(msg)
         }
@@ -2253,6 +2258,7 @@ final class WorkflowOrchestrator {
         guard !Task.isCancelled else { return }
 
         let workflowID = UUID()
+        let budgetKey = await beginBudgetSession(roomID: roomID, workflowID: workflowID, tier: .documentTask)
         await MainActor.run {
             manager.setCurrentWorkflowID(workflowID, roomID: roomID)
             WorkflowRunStore.shared.begin(workflowID: workflowID, roomID: roomID, userMessage: userMessage)
@@ -2289,7 +2295,7 @@ final class WorkflowOrchestrator {
         guard !Task.isCancelled else { return }
 
         // Budget check
-        guard await requestBudgetCall(.privacyTermsGen) else {
+        guard await requestBudgetCall(.privacyTermsGen, key: budgetKey) else {
             finalStatus = .failed
             finalEvent = .modelCallFailed(workflowID: workflowID, provider: "budget", error: "예산 초과")
             await MainActor.run {
@@ -2376,6 +2382,7 @@ final class WorkflowOrchestrator {
         }
 
         let workflowID = UUID()
+        let budgetKey = await beginBudgetSession(roomID: roomID, workflowID: workflowID, tier: .documentTask)
         await MainActor.run {
             manager.setCurrentWorkflowID(workflowID, roomID: roomID)
             WorkflowRunStore.shared.begin(workflowID: workflowID, roomID: roomID, userMessage: userMessage)
@@ -2425,7 +2432,7 @@ final class WorkflowOrchestrator {
 
         for attempt in 1...2 {
             let callType: AICallType = attempt == 1 ? .universalDocumentGen : .universalDocumentRepair
-            guard await requestBudgetCall(callType) else {
+            guard await requestBudgetCall(callType, key: budgetKey) else {
                 finalStatus = .failed
                 finalEvent = .modelCallFailed(workflowID: workflowID, provider: "budget", error: "예산 초과")
                 await MainActor.run {
@@ -2636,6 +2643,7 @@ final class WorkflowOrchestrator {
         guard !Task.isCancelled else { return }
 
         let workflowID = UUID()
+        let budgetKey = await beginBudgetSession(roomID: roomID, workflowID: workflowID, tier: .documentTask)
         await MainActor.run {
             manager.setCurrentWorkflowID(workflowID, roomID: roomID)
             WorkflowRunStore.shared.begin(workflowID: workflowID, roomID: roomID, userMessage: userMessage)
@@ -2677,6 +2685,7 @@ final class WorkflowOrchestrator {
             workflowID: workflowID,
             manager: manager,
             allowedScopes: allowedScopes,
+            budgetKey: budgetKey,
             legacyRunner: { [weak self] in
                 guard let self else {
                     return PlanExecutionResult(
@@ -2798,6 +2807,7 @@ final class WorkflowOrchestrator {
         AppLog.info("[AppLaunchWorkflow] scopes=[\(allowedScopes.map { $0.rawValue }.sorted().joined(separator: ","))]")
 
         let workflowID = UUID()
+        let budgetKey = await beginBudgetSession(roomID: roomID, workflowID: workflowID, tier: .documentTask)
         await MainActor.run {
             manager.setCurrentWorkflowID(workflowID, roomID: roomID)
             WorkflowRunStore.shared.begin(workflowID: workflowID, roomID: roomID, userMessage: userMessage)
@@ -2834,7 +2844,7 @@ final class WorkflowOrchestrator {
         guard !Task.isCancelled else { return }
 
         let budgetType: AICallType = .appLaunchPack
-        guard await requestBudgetCall(budgetType) else {
+        guard await requestBudgetCall(budgetType, key: budgetKey) else {
             finalStatus = .failed
             finalEvent = .modelCallFailed(workflowID: workflowID, provider: "budget", error: "예산 초과")
             await MainActor.run {

@@ -21,7 +21,8 @@ enum WorkflowRunner {
         roomID: UUID,
         workflowID: UUID,
         manager: AgentWindowManager,
-        allowedScopes: Set<ToolScope>
+        allowedScopes: Set<ToolScope>,
+        budgetKey: AICallBudgetSessionKey
     ) async -> PlanExecutionResult {
         await PlanRunner.shared.runUniversalDocumentPlan(
             plan,
@@ -29,7 +30,8 @@ enum WorkflowRunner {
             roomID: roomID,
             workflowID: workflowID,
             manager: manager,
-            allowedScopes: allowedScopes
+            allowedScopes: allowedScopes,
+            budgetKey: budgetKey
         )
     }
 
@@ -41,6 +43,7 @@ enum WorkflowRunner {
         workflowID: UUID,
         manager: AgentWindowManager,
         allowedScopes: Set<ToolScope>,
+        budgetKey: AICallBudgetSessionKey,
         legacyRunner: @escaping @Sendable () async -> PlanExecutionResult
     ) async -> PlanExecutionResult {
         _ = userMessage
@@ -55,7 +58,8 @@ enum WorkflowRunner {
             roomID: roomID,
             workflowID: workflowID,
             manager: manager,
-            allowedScopes: allowedScopes
+            allowedScopes: allowedScopes,
+            budgetKey: budgetKey
         )
 
         if result.failureReason == .recoverableRuntimeError {

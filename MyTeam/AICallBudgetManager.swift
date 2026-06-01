@@ -67,9 +67,15 @@ final class AICallBudgetManager {
     static let shared = AICallBudgetManager()
     private init() {}
 
+    private enum BlockReason {
+        case rolling
+        case session
+    }
+
     // MARK: - 세션 카운터
     private var sessions: [AICallBudgetSessionKey: AICallBudgetSession] = [:]
     private var activeSessionKey = AICallBudgetSessionKey(requestID: "default")
+    private var lastBlockedReasonByKey: [AICallBudgetSessionKey: BlockReason] = [:]
 
     // MARK: - 정책 (요청당 최대 허용 횟수) [246A: chitchat 2→3 완화]
     private let baseLimits: [AICallType: Int] = [
@@ -202,10 +208,14 @@ final class AICallBudgetManager {
     func requestCall(_ type: AICallType, key: AICallBudgetSessionKey) -> Bool {
         // 매 호출마다 플래그 초기화 — 세션 한도 차단 메시지가 rolling 메시지로 오염되지 않게
         lastBlockWasRolling = false
+        lastBlockedReasonByKey[key] = nil
 
         // 1) Rolling window 체크 먼저 (전역 속도 제한 — 세션 경계와 무관)
         // checkRollingLimit이 false 반환 시 lastBlockWasRolling = true로 설정됨
-        guard checkRollingLimit(for: type) else { return false }
+        guard checkRollingLimit(for: type) else {
+            lastBlockedReasonByKey[key] = .rolling
+            return false
+        }
 
         // 2) 세션 내 호출 횟수 체크 (여기까지 왔으면 rolling은 통과 — lastBlockWasRolling = false)
         if sessions[key] == nil {
@@ -221,6 +231,7 @@ final class AICallBudgetManager {
 
         if current >= limit {
             AppLog.warning("[Budget] 🚫 \(type.rawValue) 세션 한도 초과 key=\(key.description) (사용: \(current)/\(limit))")
+            lastBlockedReasonByKey[key] = .session
             return false
         }
         session.counts[type] = current + 1
@@ -232,7 +243,11 @@ final class AICallBudgetManager {
 
     /// 차단 시 표시할 사용자 메시지
     func blockedMessage(for type: AICallType) -> String {
-        if lastBlockWasRolling {
+        blockedMessage(for: type, key: activeSessionKey)
+    }
+
+    func blockedMessage(for type: AICallType, key: AICallBudgetSessionKey) -> String {
+        if lastBlockedReasonByKey[key] == .rolling {
             // Round 278 2-C: 정확한 남은 쿨다운(가장 오래된 호출이 윈도우를 벗어나기까지)을 표시.
             let now = Date()
             let oldest = rollingCallLog.min() ?? now

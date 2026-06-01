@@ -22,7 +22,8 @@ final class PlanRunner {
         roomID: UUID,
         workflowID: UUID,
         manager: AgentWindowManager,
-        allowedScopes: Set<ToolScope>
+        allowedScopes: Set<ToolScope>,
+        budgetKey: AICallBudgetSessionKey
     ) async -> PlanExecutionResult {
         guard plan.workflowKind == .universalDocument else {
             return makeFailure(
@@ -68,10 +69,10 @@ final class PlanRunner {
                     manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "planRunner.generating")
                 }
 
-                guard AICallBudgetManager.shared.requestCall(.universalDocumentGen) else {
+                guard AICallBudgetManager.shared.requestCall(.universalDocumentGen, key: budgetKey) else {
                     return PlanExecutionResult(
                         status: .failed,
-                        message: AICallBudgetManager.shared.blockedMessage(for: .universalDocumentGen),
+                        message: AICallBudgetManager.shared.blockedMessage(for: .universalDocumentGen, key: budgetKey),
                         artifactID: nil,
                         failureReason: .budgetBlocked
                     )
@@ -109,10 +110,10 @@ final class PlanRunner {
                 if let currentVerification = verification, currentVerification.hasError {
                     // 실패 정책: error → 저장 금지 + recovery 1회
                     if ResultRecoveryPolicy.shouldRetryUniversalDocument(verification: currentVerification, attempt: 1) {
-                        guard AICallBudgetManager.shared.requestCall(.universalDocumentRepair) else {
+                        guard AICallBudgetManager.shared.requestCall(.universalDocumentRepair, key: budgetKey) else {
                             return PlanExecutionResult(
                                 status: .failed,
-                                message: AICallBudgetManager.shared.blockedMessage(for: .universalDocumentRepair),
+                                message: AICallBudgetManager.shared.blockedMessage(for: .universalDocumentRepair, key: budgetKey),
                                 artifactID: nil,
                                 failureReason: .budgetBlocked
                             )
