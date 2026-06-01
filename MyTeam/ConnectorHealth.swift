@@ -61,6 +61,7 @@ struct ConnectorHealth: Codable, Sendable, Equatable {
 
     var dartSearch: ConnectorStatus { disclosureSearch }
     var calendarWrite: ConnectorStatus { calendarDraft }
+    static let imageOCRUnavailable: ConnectorStatus = .needsSetup(reason: "이미지 OCR은 아직 준비 중입니다. 텍스트가 포함된 PDF/DOCX/PPTX/XLSX만 읽을 수 있습니다.")
 
     static let unconfigured = ConnectorHealth(
         stockQuote: .needsSetup(reason: "시세 조회 커넥터가 설정되지 않았습니다."),
@@ -68,7 +69,7 @@ struct ConnectorHealth: Codable, Sendable, Equatable {
         disclosureSearch: .needsSetup(reason: "DART/KIND 공시 커넥터가 설정되지 않았습니다."),
         webFetch: .needsSetup(reason: "웹 조회 커넥터가 설정되지 않았습니다."),
         pdfText: .available,
-        imageOCR: .available,
+        imageOCR: imageOCRUnavailable,
         mailRead: .needsSetup(reason: "메일 계정 연결이 필요합니다."),
         calendarDraft: .approvalRequired,
         mapsSearch: .needsSetup(reason: "지도 조회 커넥터가 설정되지 않았습니다."),
@@ -99,7 +100,7 @@ final class ConnectorRegistry: ObservableObject {
             disclosureSearch: disclosureSearchStatus(hasGroundedSearch: false, hasLocalWebFallback: true),
             webFetch: webFetchStatus(hasGroundedSearch: false, hasLocalWebFallback: true),
             pdfText: .available,
-            imageOCR: .available,
+            imageOCR: ConnectorHealth.imageOCRUnavailable,
             mailRead: .needsSetup(reason: "메일 계정 연결이 필요합니다."),
             calendarDraft: .approvalRequired,
             mapsSearch: webFetchStatus(hasGroundedSearch: false, hasLocalWebFallback: true),
@@ -222,7 +223,7 @@ final class ConnectorRegistry: ObservableObject {
             disclosureSearch: Self.disclosureSearchStatus(hasGroundedSearch: hasGroundedSearch, hasLocalWebFallback: hasLocalWebFallback),
             webFetch: Self.webFetchStatus(hasGroundedSearch: hasGroundedSearch, hasLocalWebFallback: hasLocalWebFallback),
             pdfText: .available,
-            imageOCR: .available,
+            imageOCR: ConnectorHealth.imageOCRUnavailable,
             mailRead: .needsSetup(reason: "Gmail 또는 Mail 읽기 연결이 필요합니다."),
             calendarDraft: .approvalRequired,
             mapsSearch: Self.webFetchStatus(hasGroundedSearch: hasGroundedSearch, hasLocalWebFallback: hasLocalWebFallback),

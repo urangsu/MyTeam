@@ -386,7 +386,7 @@ enum ToolEvidenceService {
                 }
             }
 
-            guard !text.isEmpty else { return ("", sources) }
+            guard !text.isEmpty, !sources.isEmpty else { return ("", []) }
             AppLog.debug("[ToolEvidence] Gemini 그라운딩 성공 — 출처 \(sources.count)개")
             return ("[웹 검색 자료 (Google)]\n\(String(text.prefix(1600)))", sources)
         } catch {
@@ -422,17 +422,33 @@ enum ToolEvidenceService {
                   let output = json["output"] as? [[String: Any]] else { return ("", []) }
 
             var text = ""
+            var sources: [AgentWindowManager.SourceReference] = []
             for item in output where item["type"] as? String == "message" {
                 if let content = item["content"] as? [[String: Any]] {
                     for c in content where c["type"] as? String == "output_text" {
                         text += (c["text"] as? String) ?? ""
+                        if let annotations = c["annotations"] as? [[String: Any]] {
+                            for annotation in annotations {
+                                guard annotation["type"] as? String == "url_citation",
+                                      let url = annotation["url"] as? String,
+                                      !url.isEmpty else { continue }
+                                let title = (annotation["title"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? url
+                                sources.append(AgentWindowManager.SourceReference(
+                                    title: title,
+                                    url: url,
+                                    provider: "OpenAI web_search",
+                                    accessedAt: Date()
+                                ))
+                            }
+                        }
                     }
                 }
             }
 
-            guard !text.isEmpty else { return ("", []) }
-            AppLog.debug("[ToolEvidence] OpenAI web_search 성공")
-            return ("[웹 검색 자료 (OpenAI)]\n\(String(text.prefix(1600)))", [])
+            let dedupedSources = dedupeSources(sources)
+            guard !text.isEmpty, !dedupedSources.isEmpty else { return ("", []) }
+            AppLog.debug("[ToolEvidence] OpenAI web_search 성공 — 출처 \(dedupedSources.count)개")
+            return ("[웹 검색 자료 (OpenAI)]\n\(String(text.prefix(1600)))", dedupedSources)
         } catch {
             AppLog.debug("[ToolEvidence] OpenAI web_search 실패: \(error.localizedDescription)")
             return ("", [])
@@ -479,7 +495,8 @@ enum ToolEvidenceService {
             guard !snippets.isEmpty else { return ("", sources) }
             return ("[웹 검색 자료]\n" + snippets.prefix(4).joined(separator: "\n"), sources)
         } catch {
-            return ("[웹 검색 자료]\n검색 실패: \(error.localizedDescription)", [])
+            AppLog.debug("[ToolEvidence] DuckDuckGo 검색 실패: \(error.localizedDescription)")
+            return ("", [])
         }
     }
 
