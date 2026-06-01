@@ -4918,6 +4918,45 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>F0A100000000000000000001</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>TTSLabView.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>F0A100000000000000000002</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>SupertonicNoticeCardView.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>F0A100000000000000000003</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>SupertonicTTSNoticePolicy.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
 		<key>5E93BCEB0F1745B08FA75A59</key>
 		<dict>
 			<key>fileRef</key>
@@ -8014,6 +8053,9 @@
 				<string>AABBCC1100000000000A0002</string>
 				<string>A1B2C3D4E5F6012345678902</string>
 				<string>5E6EEB16BFFDC4C88B1A9577</string>
+				<string>F0A100000000000000000001</string>
+				<string>F0A100000000000000000002</string>
+				<string>F0A100000000000000000003</string>
 				<string>3E71A115B6C19F218850AE09</string>
 				<string>F05784DE6CFD4E514B23FE4D</string>
 				<string>C167752D8CAAA71551532214</string>
@@ -8972,6 +9014,9 @@
 				<string>AABBCC1100000000000A0001</string>
 				<string>A1B2C3D4E5F6012345678901</string>
 				<string>CB661F8E34B37A83BD132210</string>
+				<string>F0A100000000000000000011</string>
+				<string>F0A100000000000000000012</string>
+				<string>F0A100000000000000000013</string>
 				<string>A11B22C33D44E55F66010011</string>
 				<string>A11B22C33D44E55F66010012</string>
 				<string>A11B22C33D44E55F66010013</string>
@@ -14148,6 +14193,27 @@
 		<dict>
 			<key>fileRef</key>
 			<string>5E6EEB16BFFDC4C88B1A9577</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>F0A100000000000000000011</key>
+		<dict>
+			<key>fileRef</key>
+			<string>F0A100000000000000000001</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>F0A100000000000000000012</key>
+		<dict>
+			<key>fileRef</key>
+			<string>F0A100000000000000000002</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>F0A100000000000000000013</key>
+		<dict>
+			<key>fileRef</key>
+			<string>F0A100000000000000000003</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
