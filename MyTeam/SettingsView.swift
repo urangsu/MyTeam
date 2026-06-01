@@ -185,15 +185,16 @@ struct SettingsView: View {
             HStack(spacing: 8) {
                 ScrollView(.horizontal, showsIndicators: true) {
                     Picker("", selection: $currentTab) {
-                        Text("사용자 설정").tag(0)
-                        Text("연결 센터").tag(1)
-                        Text("데스크 라우팅").tag(2)
+                        Text("사용자").tag(0)
+                        Text("연결").tag(1)
+                        Text("라우팅").tag(2)
                         Text("스킬").tag(3)
                         Text("캐릭터").tag(4)
+                        Text("음성").tag(5)
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
-                    .frame(minWidth: 520)
+                    .frame(minWidth: 430)
                 }
 
                 Button(action: { manager.hideSettingsWindow() }) {
@@ -218,12 +219,13 @@ struct SettingsView: View {
                 case 2: deskRoutingTab
                 case 3: skillsTab
                 case 4: charactersTab
+                case 5: TTSLabView()
                 default: deskRoutingTab
                 }
             }
         }
         .preferredColorScheme(manager.isDarkMode ? .dark : .light)
-        .frame(minWidth: 640, minHeight: 520)
+        .frame(minWidth: 540, minHeight: 500)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear {

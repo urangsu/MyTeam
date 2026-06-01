@@ -1353,8 +1353,8 @@ class AgentWindowManager: ObservableObject {
         }
         
         let screenRect = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 800, height: 600)
-        let width: CGFloat = 760
-        let height: CGFloat = 720
+        let width: CGFloat = 620
+        let height: CGFloat = 680
         
         let panel = FloatingPanel(
             agentID: "settings_window",
@@ -1367,7 +1367,7 @@ class AgentWindowManager: ObservableObject {
         // 설정 창은 일반 창처럼 상호작용해야 하므로 키 윈도우 지원
         panel.level = .floating
         panel.isMovableByWindowBackground = true
-        panel.minSize = NSSize(width: 640, height: 520)
+        panel.minSize = NSSize(width: 540, height: 500)
         
         let view = SettingsView()
             .environmentObject(self)
