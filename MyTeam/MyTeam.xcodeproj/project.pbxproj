@@ -1973,19 +1973,6 @@
 			<array>
 				<string>270C0003A0B04E5EA7B69C3C</string>
 				<string>270C0004A0B04E5EA7B69C3D</string>
-			
-				<string>E3BCED940DAD6E0579E695D4</string>
-				<string>E3BCED940DAD6E0579E695D5</string>
-				<string>E3BCED940DAD6E0579E695D6</string>
-				<string>E3BCED940DAD6E0579E695D7</string>
-				<string>E3BCED940DAD6E0579E695D8</string>
-				<string>E3BCED940DAD6E0579E695D9</string>
-				<string>E3BCED940DAD6E0579E695DA</string>
-				<string>E3BCED940DAD6E0579E695DB</string>
-				<string>E3BCED940DAD6E0579E695DC</string>
-				<string>E3BCED940DAD6E0579E695DD</string>
-				<string>E3BCED940DAD6E0579E695DE</string>
-				<string>E3BCED940DAD6E0579E695DF</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
