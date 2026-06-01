@@ -123,6 +123,12 @@ actor PlaywrightMCPClient {
     private var initTask: Task<Bool, Never>?
 
     private func ensureProcessRunning() async -> Bool {
+        guard AppReleaseProfile.current.policy.allowsPlaywrightMCP else {
+            lastErrorLog = "Blocked by AppReleaseProfile policy"
+            terminateProcess()
+            return false
+        }
+
         // Fast path: already running and fully initialized.
         if let process = process, process.isRunning, isInitialized {
             return true
@@ -149,6 +155,12 @@ actor PlaywrightMCPClient {
     }
 
     private func _doInitialize() async -> Bool {
+        guard AppReleaseProfile.current.policy.allowsPlaywrightMCP else {
+            lastErrorLog = "Blocked by AppReleaseProfile policy"
+            terminateProcess()
+            return false
+        }
+
         terminateProcess()
         lastErrorLog = ""
 
@@ -256,6 +268,22 @@ actor PlaywrightMCPClient {
     }
 
     func probeHealth(timeout: TimeInterval = 6) async -> PlaywrightMCPHealth {
+        guard AppReleaseProfile.current.policy.allowsPlaywrightMCP else {
+            return health(
+                nodeAvailable: false,
+                npxAvailable: false,
+                mcpLaunchable: false,
+                initialized: false,
+                snapshotCapable: false,
+                navigateCapable: false,
+                clickCapable: false,
+                screenshotCapable: false,
+                toolNames: [],
+                lastError: "Blocked by AppReleaseProfile policy",
+                version: nil
+            )
+        }
+
         async let node = PlaywrightMCPProcess.run(executable: "node", arguments: ["--version"], timeout: 2)
         async let npx = PlaywrightMCPProcess.run(executable: "npx", arguments: ["--version"], timeout: 3)
         async let versionResult = PlaywrightMCPProcess.run(

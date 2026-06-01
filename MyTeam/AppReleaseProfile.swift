@@ -14,7 +14,7 @@ enum AppReleaseProfile: String, CaseIterable {
     case powerUser
 
     /// 현재 빌드의 프로필. Release 빌드는 appStore, Debug 빌드는 debug.
-    static var current: AppReleaseProfile {
+    nonisolated static var current: AppReleaseProfile {
         #if DEBUG
         return .debug
         #else
@@ -22,7 +22,7 @@ enum AppReleaseProfile: String, CaseIterable {
         #endif
     }
 
-    var policy: RuntimeFeaturePolicy {
+    nonisolated var policy: RuntimeFeaturePolicy {
         switch self {
         case .debug:
             return RuntimeFeaturePolicy(

@@ -27,6 +27,15 @@ enum PlaywrightMCPProcess {
         arguments: [String],
         timeout: TimeInterval
     ) -> ProcessRunResult {
+        guard AppReleaseProfile.current.policy.allowsExternalProcess else {
+            return ProcessRunResult(
+                exitCode: -10,
+                stdout: "",
+                stderr: "Blocked by AppReleaseProfile policy",
+                timedOut: false
+            )
+        }
+
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = [executable] + arguments
