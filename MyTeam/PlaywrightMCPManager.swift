@@ -15,16 +15,34 @@ final class PlaywrightMCPManager: ObservableObject {
         guard AppReleaseProfile.current.policy.allowsPlaywrightMCP else {
             AppLog.info("[PlaywrightMCP] 현재 배포 프로필에서 비활성화됨 (profile: \(AppReleaseProfile.current.rawValue))")
             health = .notChecked
+            ConnectorRegistry.shared.refreshWithBrowserHealth(.notChecked)
             isRefreshing = false
             return
         }
         guard !isRefreshing else { return }
-        isRefreshing = true
         Task {
-            let next = await PlaywrightMCPClient.shared.probeHealth()
-            health = next
-            ConnectorRegistry.shared.refreshWithBrowserHealth(next)
-            isRefreshing = false
+            _ = await refreshHealthNow()
         }
+    }
+
+    func refreshHealthNow() async -> PlaywrightMCPHealth {
+        guard AppReleaseProfile.current.policy.allowsPlaywrightMCP else {
+            AppLog.info("[PlaywrightMCP] 현재 배포 프로필에서 비활성화됨 (profile: \(AppReleaseProfile.current.rawValue))")
+            health = .notChecked
+            ConnectorRegistry.shared.refreshWithBrowserHealth(.notChecked)
+            isRefreshing = false
+            return health
+        }
+
+        if isRefreshing {
+            return health
+        }
+
+        isRefreshing = true
+        let next = await PlaywrightMCPClient.shared.probeHealth()
+        health = next
+        ConnectorRegistry.shared.refreshWithBrowserHealth(next)
+        isRefreshing = false
+        return next
     }
 }

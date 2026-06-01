@@ -339,7 +339,7 @@ enum ToolEvidenceService {
     // MARK: - Gemini Google 검색 그라운딩 (Google 공식 실시간 검색)
 
     private static func fetchGeminiGrounding(query: String) async -> (context: String, sources: [AgentWindowManager.SourceReference]) {
-        let apiKey = KeychainManager.load(key: "geminiAPIKey") ?? ""
+        let apiKey = SecureCredentialStore.shared.read(provider: .gemini) ?? ""
         guard !apiKey.isEmpty else { return ("", []) }
 
         let modelId = LLMConfigCatalog.shared.configs[.gemini]?.selectedModelId ?? LLMModelRegistry.Gemini.primary
@@ -398,7 +398,7 @@ enum ToolEvidenceService {
     // MARK: - OpenAI web_search (Responses API)
 
     private static func fetchOpenAIWebSearch(query: String) async -> (context: String, sources: [AgentWindowManager.SourceReference]) {
-        let apiKey = KeychainManager.load(key: "openAIAPIKey") ?? ""
+        let apiKey = SecureCredentialStore.shared.read(provider: .openAI) ?? ""
         guard !apiKey.isEmpty else { return ("", []) }
 
         guard let url = URL(string: "https://api.openai.com/v1/responses") else { return ("", []) }

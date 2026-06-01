@@ -6,7 +6,7 @@ enum BrowserEvidenceConnector {
         roomID: UUID,
         chainRunID: UUID
     ) async -> BrowserEvidenceResult {
-        let health = await MainActor.run { PlaywrightMCPManager.shared.health }
+        let health = await browserHealth()
         guard health.isDOMOperational else {
             return .unavailable(
                 health.lastError ?? "Playwright MCP DOM snapshot 커넥터가 준비되지 않았습니다.",
@@ -70,7 +70,7 @@ enum BrowserEvidenceConnector {
         roomID: UUID,
         chainRunID: UUID
     ) async -> BrowserEvidenceResult {
-        let health = await MainActor.run { PlaywrightMCPManager.shared.health }
+        let health = await browserHealth()
         guard health.isDOMOperational else {
             return .unavailable(
                 health.lastError ?? "Playwright MCP DOM snapshot 커넥터가 준비되지 않았습니다.",
@@ -160,7 +160,7 @@ enum BrowserEvidenceConnector {
         roomID: UUID,
         chainRunID: UUID
     ) async -> BrowserEvidenceResult {
-        let health = await MainActor.run { PlaywrightMCPManager.shared.health }
+        let health = await browserHealth()
         guard health.isSearchOperational else {
             return .unavailable(
                 health.lastError ?? "Playwright MCP 검색 커넥터가 준비되지 않았습니다.",
@@ -244,6 +244,14 @@ enum BrowserEvidenceConnector {
         )
     }
 
+    private static func browserHealth() async -> PlaywrightMCPHealth {
+        let current = await MainActor.run { PlaywrightMCPManager.shared.health }
+        guard current.checkedAt == .distantPast, AppReleaseProfile.current.policy.allowsPlaywrightMCP else {
+            return current
+        }
+        return await PlaywrightMCPManager.shared.refreshHealthNow()
+    }
+
     static func sourceType(for provider: BrowserSearchProvider, extractedText: String) -> AgentWindowManager.SourceType {
         let lower = extractedText.lowercased()
         switch provider {
@@ -283,8 +291,8 @@ enum BrowserEvidenceConnector {
     private static func containsNewsSignal(_ text: String) -> Bool {
         let hasNewsKeyword = text.contains("뉴스") || text.contains("기사") || text.contains("보도")
         let hasPressOrReporter = text.contains("언론사") || text.contains("기자") || text.contains("기재") || text.contains("헤드라인") || text.range(of: #"(?:일보|경제|신문|뉴스|미디어)"#, options: .regularExpression) != nil
-        let hasLink = text.contains("http") || text.contains("www.") || text.contains(".com") || text.contains(".co.kr") || text.contains(".net")
-        return hasNewsKeyword && hasPressOrReporter && hasLink
+        let hasResultShape = text.contains("관련도순") || text.contains("최신순") || text.contains("검색결과") || text.contains("검색 결과")
+        return hasNewsKeyword && (hasPressOrReporter || hasResultShape)
     }
 
     private static func containsDisclosureSignal(_ text: String) -> Bool {

@@ -74,6 +74,7 @@ actor PlaywrightMCPClient {
         errorPipe = nil
         stdoutBuffer.clear()
         isInitialized = false
+        cachedCapabilities = nil
         initTask = nil
         
         let remaining = pending
@@ -108,6 +109,24 @@ actor PlaywrightMCPClient {
             AppLog.warning("MCP STDERR: \(str)", .legacy)
             lastErrorLog = String((lastErrorLog + str).suffix(4096))
         }
+    }
+
+    private func scheduleTimeout(for requestID: Int, after timeout: TimeInterval, message: String) {
+        guard timeout > 0 else { return }
+        Task { [weak self] in
+            let nanoseconds = UInt64(timeout * 1_000_000_000)
+            try? await Task.sleep(nanoseconds: nanoseconds)
+            await self?.failPendingRequest(id: requestID, message: message)
+        }
+    }
+
+    private func failPendingRequest(id: Int, message: String) {
+        guard let continuation = pending.removeValue(forKey: id) else { return }
+        continuation.resume(throwing: NSError(
+            domain: "PlaywrightMCPClient",
+            code: -408,
+            userInfo: [NSLocalizedDescriptionKey: message]
+        ))
     }
 
     // MARK: - Initialization guard
@@ -205,6 +224,7 @@ actor PlaywrightMCPClient {
         do {
             let _ = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<MCPResponse, Error>) in
                 pending[1] = continuation
+                scheduleTimeout(for: 1, after: 8, message: "Playwright MCP initialize timed out")
                 let initialize = """
                 {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"MyTeam","version":"1.0"}}}
                 \n
@@ -232,7 +252,7 @@ actor PlaywrightMCPClient {
         }
     }
 
-    private func sendRequest(method: String, params: [String: Any]) async throws -> MCPResponse {
+    private func sendRequest(method: String, params: [String: Any], timeout: TimeInterval = 12) async throws -> MCPResponse {
         let success = await ensureProcessRunning()
         guard success, let inPipe = inputPipe else {
             throw NSError(domain: "PlaywrightMCPClient", code: -2, userInfo: [NSLocalizedDescriptionKey: "Process not running"])
@@ -256,6 +276,7 @@ actor PlaywrightMCPClient {
 
         return try await withCheckedThrowingContinuation { continuation in
             pending[requestID] = continuation
+            scheduleTimeout(for: requestID, after: timeout, message: "\(method) timed out")
 
             let payload = line + "\n"
             if let payloadData = payload.data(using: .utf8) {
@@ -443,7 +464,7 @@ actor PlaywrightMCPClient {
         }
 
         do {
-            let response = try await sendRequest(method: "tools/list", params: [:])
+            let response = try await sendRequest(method: "tools/list", params: [:], timeout: timeout)
             let cap = CapabilityProbe(initialized: true, toolNames: response.toolNames ?? [], error: response.error)
             cachedCapabilities = cap
             return cap
@@ -465,7 +486,8 @@ actor PlaywrightMCPClient {
                 params: [
                     "name": PlaywrightMCPToolName.navigate.rawValue,
                     "arguments": ["url": url.absoluteString]
-                ]
+                ],
+                timeout: timeout
             )
 
             guard navigateResponse.ok else {
@@ -478,7 +500,8 @@ actor PlaywrightMCPClient {
                 params: [
                     "name": PlaywrightMCPToolName.snapshot.rawValue,
                     "arguments": [:]
-                ]
+                ],
+                timeout: timeout
             )
 
             guard snapshotResponse.ok else {
@@ -529,7 +552,11 @@ nonisolated private func parseLine(_ line: String) -> MCPResponse? {
                     texts.append(text)
                 }
             }
-            return MCPResponse(id: id, ok: true, text: texts.joined(separator: "\n\n"), toolNames: nil, error: nil)
+            let text = texts.joined(separator: "\n\n")
+            if result["isError"] as? Bool == true {
+                return MCPResponse(id: id, ok: false, text: text, toolNames: nil, error: text.isEmpty ? "MCP tool call failed" : text)
+            }
+            return MCPResponse(id: id, ok: true, text: text, toolNames: nil, error: nil)
         }
 
         return MCPResponse(id: id, ok: true, text: "", toolNames: nil, error: nil)
