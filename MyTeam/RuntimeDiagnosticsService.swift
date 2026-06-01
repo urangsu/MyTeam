@@ -1113,11 +1113,11 @@ final class RuntimeDiagnosticsService {
         let supertonic3StrictlyDevLabGated = !UserDefaults.standard.bool(forKey: "supertonic3ExperimentalEnabled")
 
         // Round 254TTS-NOTICE: notice gate diagnostics
-        let supertonicNoticePolicyAvailable = false   // SupertonicTTSNoticePolicy.swift was deleted
+        let supertonicNoticePolicyAvailable = FileManager.default.fileExists(atPath: "MyTeam/SupertonicTTSNoticePolicy.swift")
         let supertonicLicenseNoticeRequired = TTSProductPolicy.licenseNoticeRequired
         let supertonicUseRestrictionNoticeRequired = TTSProductPolicy.useRestrictionNoticeRequired
         let supertonicNoticeAcceptanceRequired = TTSProductPolicy.userNoticeAcceptanceRequired
-        let supertonicNoticeAccepted = false // SupertonicTTSNoticePolicy was deleted
+        let supertonicNoticeAccepted = SupertonicTTSNoticePolicy.isCurrentNoticeAccepted
         let supertonicReleaseGateStillLocked = !TTSProductPolicy.canShipAsProductFeature
 
         // Round 256TTS-OFFICIAL-ENGINE: Supertonic3 공식 엔진 승격
