@@ -261,6 +261,7 @@ actor AudioPlaybackService: AudioPlayable {
     ///   - pitch: AVAudioUnitTimePitch.pitch (cents). clamp: -300~+360. default 0.0
     ///   - rate: AVAudioUnitTimePitch.rate 배율. clamp: 0.90~1.14. default 1.0
     ///   - onPlaybackStarted: playerNode.play() 이후 MainActor에서 호출되는 콜백 (nil 가능)
+    @discardableResult
     func playFloatSamples(
         samples: [Float],
         sampleRate: Int,
@@ -269,33 +270,33 @@ actor AudioPlaybackService: AudioPlayable {
         pitch: Float = 0.0,
         rate: Float = 1.0,
         onPlaybackStarted: (@Sendable () -> Void)? = nil
-    ) async {
+    ) async -> Bool {
         guard !samples.isEmpty else {
             AppLog.info("[AudioPlayback] playFloatSamples: empty samples → skip")
             if let cb = onPlaybackStarted { Task { @MainActor in cb() } }
-            return
+            return false
         }
         guard let ef = engineFormat else {
             AppLog.error("[AudioPlayback] playFloatSamples: engineFormat nil — engine not ready")
-            return
+            return false
         }
 
         // 1. 소스 포맷: standardFormat(44.1kHz, 1ch, float32 non-interleaved)
         guard let srcFormat = AVAudioFormat(standardFormatWithSampleRate: Double(sampleRate), channels: 1) else {
             AppLog.error("[AudioPlayback] playFloatSamples: 소스 포맷 생성 실패")
-            return
+            return false
         }
         let frameCount = AVAudioFrameCount(samples.count)
 
         // 2. AVAudioPCMBuffer 생성 + Float 샘플 복사
         guard let srcBuffer = AVAudioPCMBuffer(pcmFormat: srcFormat, frameCapacity: frameCount) else {
             AppLog.error("[AudioPlayback] playFloatSamples: PCM 버퍼 할당 실패")
-            return
+            return false
         }
         srcBuffer.frameLength = frameCount
         guard let channelData = srcBuffer.floatChannelData else {
             AppLog.error("[AudioPlayback] playFloatSamples: floatChannelData nil")
-            return
+            return false
         }
         channelData[0].update(from: samples, count: Int(frameCount))
 
@@ -307,7 +308,7 @@ actor AudioPlaybackService: AudioPlayable {
         // 4. 엔진 포맷으로 변환 (모노→스테레오, 샘플레이트 변환 포함)
         guard let outBuffer = convertBuffer(srcBuffer, from: srcFormat, to: ef) else {
             AppLog.error("[AudioPlayback] playFloatSamples: 포맷 변환 실패")
-            return
+            return false
         }
 
         // 5. 버퍼 스케줄링
@@ -326,7 +327,7 @@ actor AudioPlaybackService: AudioPlayable {
             do { try engine.start() }
             catch {
                 AppLog.error("[AudioPlayback] playFloatSamples: engine.start() 실패: \(error)")
-                return
+                return false
             }
         }
         if !playerNode.isPlaying {
@@ -339,6 +340,7 @@ actor AudioPlaybackService: AudioPlayable {
         if let cb = onPlaybackStarted {
             Task { @MainActor in cb() }
         }
+        return true
     }
 
     // MARK: - Round 258TTS: pitch/rate clamp helpers

@@ -13,11 +13,14 @@ enum TTSRoutingPolicy {
     /// nil = 무음 (provider 없음 — ONNX pipeline 제거됨).
     /// ⚠️ Apple TTS (AVSpeechSynthesizer)는 절대 반환하지 않는다.
     static func selectedProvider() -> TTSProviderKind? {
+        guard TTSProductPolicy.userFacingTTSEnabled else { return nil }
+        guard TTSProductPolicy.modelBundled else { return nil }
+        guard TTSProductPolicy.canShipAsProductFeature else { return nil }
         return nil   // Supertonic3 ONNX pipeline removed
     }
 
     /// Returns true if selectedProvider() can currently return .supertonic3.
-    static var isSupertonic3Available: Bool { false }
+    static var isSupertonic3Available: Bool { selectedProvider() == .supertonic3 }
 
     // MARK: - Availability Summary
 

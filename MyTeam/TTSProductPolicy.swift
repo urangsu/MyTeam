@@ -25,7 +25,8 @@ enum TTSProductPolicy {
 
     // MARK: - Product Surface
 
-    static let userFacingTTSEnabled: Bool       = true   // 공식 엔진 등록 — 수동 발화 경로 존재
+    static let userFacingTTSEnabled: Bool       = false  // 현재 provider 없음 — 사용자-facing TTS 비활성
+    static let labOnlyEnabled: Bool             = true   // TTS Lab은 목소리 연구/전처리 확인용으로 유지
     static let supertonicOnlyCandidate: Bool    = true   // 유일한 TTS 엔진
     static let supertonicDefaultEnabled: Bool   = false  // 기본 비활성 (사용자가 TTS 켤 때만)
     static let supertonicAutoInitOnLaunch: Bool = false  // launch 자동 init 금지

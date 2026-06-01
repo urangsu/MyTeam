@@ -6,6 +6,7 @@ struct TTSLabView: View {
 
     @State private var selectedProfileID: String = CharacterVoiceProfileCatalog.profiles.first?.id ?? ""
     @State private var selectedEmotion: SupertonicEmotionStyle = .friendly
+    @State private var animaleseProfile: AnimaleseVoiceProfile = .cute
     @State private var sampleText: String = "좋아요. 핵심만 짧게 정리해서 말씀드릴게요."
     @State private var tempPitch: Double = 0
     @State private var tempRate: Double = 1.0
@@ -30,7 +31,15 @@ struct TTSLabView: View {
     }
 
     private var canRunPreview: Bool {
-        experimentalEnabled && noticeAccepted && !sampleText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        TTSRoutingPolicy.selectedProvider() != nil
+            && TTSProductPolicy.modelBundled
+            && experimentalEnabled
+            && noticeAccepted
+            && !sampleText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var canRunAudioPathTest: Bool {
+        noticeAccepted && !sampleText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var body: some View {
@@ -69,7 +78,7 @@ struct TTSLabView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("TTS Lab")
                 .font(.title3.weight(.bold))
-            Text("캐릭터별 목소리 톤, 속도, 전처리 결과를 좁은 설정창 안에서 확인합니다.")
+            Text("현재 캐릭터 TTS provider는 비활성입니다. 이 탭은 목소리 설정값과 오디오 경로만 검토합니다.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -82,9 +91,10 @@ struct TTSLabView: View {
                 Label("Supertonic3 실험 모드", systemImage: "slider.horizontal.3")
             }
             .toggleStyle(.switch)
+            .disabled(!TTSProductPolicy.labOnlyEnabled)
 
             Toggle(isOn: $useAnimaleseEffect) {
-                Label("동물의숲 효과 연구", systemImage: "sparkles")
+                Label("오디오 경로 테스트 허용", systemImage: "waveform.path")
             }
             .toggleStyle(.switch)
 
@@ -97,8 +107,8 @@ struct TTSLabView: View {
     private var compactStatusGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 8) {
             statusPill("기본 자동 재생", TTSProductPolicy.autoSpeakDefaultEnabled ? "ON" : "OFF")
-            statusPill("제품 노출", TTSProductPolicy.canShipAsProductFeature ? "가능" : "보류")
-            statusPill("런타임", TTSRoutingPolicy.isSupertonic3Available ? "사용 가능" : "비활성")
+            statusPill("사용자 TTS", TTSProductPolicy.userFacingTTSEnabled ? "ON" : "OFF")
+            statusPill("캐릭터 합성", TTSRoutingPolicy.isSupertonic3Available ? "가능" : "없음")
             statusPill("모델 번들", TTSProductPolicy.modelBundled ? "포함" : "미포함")
         }
     }
@@ -147,6 +157,13 @@ struct TTSLabView: View {
 
             Toggle("Expression tag 포함", isOn: $useExpressionTags)
                 .font(.caption)
+
+            Picker("오디오 테스트", selection: $animaleseProfile) {
+                ForEach(AnimaleseVoiceProfile.allCases) { profile in
+                    Text(profile.displayName).tag(profile)
+                }
+            }
+            .font(.caption)
         }
         .padding(12)
         .background(Color(NSColor.controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -186,11 +203,20 @@ struct TTSLabView: View {
                 Button {
                     runPreview()
                 } label: {
-                    Label("미리듣기", systemImage: "play.fill")
+                    Label("캐릭터 TTS 미리듣기", systemImage: "play.fill")
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
                 .disabled(!canRunPreview || isPreviewing)
+
+                Button {
+                    runAudioPathTest()
+                } label: {
+                    Label("오디오 경로 테스트", systemImage: "waveform")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(!canRunAudioPathTest || !useAnimaleseEffect || isPreviewing)
 
                 Button {
                     previewStatus = "전처리 결과를 갱신했습니다."
@@ -234,7 +260,11 @@ struct TTSLabView: View {
 
     private func runPreview() {
         if !noticeAccepted {
-            previewStatus = "고지 수락 후 미리듣기를 실행할 수 있습니다."
+            previewStatus = "고지 수락 후 캐릭터 TTS 상태를 확인할 수 있습니다."
+            return
+        }
+        guard canRunPreview else {
+            previewStatus = "캐릭터 TTS provider가 없습니다. 모델 미포함/릴리즈 gate 보류 상태라 합성 미리듣기는 비활성입니다."
             return
         }
         isPreviewing = true
@@ -254,9 +284,35 @@ struct TTSLabView: View {
             await MainActor.run {
                 isPreviewing = false
                 if let output, output.audioFileURL != nil {
-                    previewStatus = "미리듣기를 실행했습니다."
+                    previewStatus = "캐릭터 TTS 미리듣기를 실행했습니다."
                 } else {
-                    previewStatus = "현재 합성 런타임이 비활성이라 오디오는 생성되지 않았습니다."
+                    previewStatus = "합성 런타임이 응답하지 않았습니다. 캐릭터 TTS는 성공 처리하지 않았습니다."
+                }
+            }
+        }
+    }
+
+    private func runAudioPathTest() {
+        guard noticeAccepted else {
+            previewStatus = "고지 수락 후 오디오 경로 테스트를 실행할 수 있습니다."
+            return
+        }
+        isPreviewing = true
+        previewStatus = "오디오 경로 테스트 재생 중..."
+        Task {
+            let output = await SpeechManager.shared.previewAnimalese(
+                text: processedText,
+                profile: animaleseProfile,
+                speed: Float(tempSpeed),
+                pitchOffset: Float(tempPitch),
+                label: "tts_lab_audio_path"
+            )
+            await MainActor.run {
+                isPreviewing = false
+                if let output, output.duration ?? 0 > 0 {
+                    previewStatus = "오디오 경로 테스트를 재생했습니다. 실제 캐릭터 목소리 합성은 아닙니다."
+                } else {
+                    previewStatus = "오디오 경로 테스트도 실패했습니다. 출력 장치/오디오 엔진 상태를 확인해야 합니다."
                 }
             }
         }

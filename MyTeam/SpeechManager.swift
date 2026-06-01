@@ -269,7 +269,53 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         pitchOffset: Float = 0,
         label: String = "animalese"
     ) async -> TTSOutput? {
-        return nil
+        let normalized = Self.normalizedTTSChunk(text) ?? "audio path test"
+        let sampleRate = 44_100
+        let clampedSpeed = max(0.55, min(1.6, Double(speed)))
+        let baseFrequency = profile.baseFrequency * pow(2.0, Double(pitchOffset) / 1200.0)
+        let charDuration = max(0.035, min(0.12, profile.charDuration / clampedSpeed))
+        let gapDuration = max(0.004, 0.012 / clampedSpeed)
+
+        var samples: [Float] = []
+        samples.reserveCapacity(min(180_000, normalized.count * Int(charDuration * Double(sampleRate))))
+
+        for (index, character) in normalized.enumerated() {
+            if character.unicodeScalars.allSatisfy({ CharacterSet.whitespacesAndNewlines.contains($0) }) {
+                samples.append(contentsOf: Array(repeating: 0, count: Int(0.045 * Double(sampleRate))))
+                continue
+            }
+
+            let scalarSeed = character.unicodeScalars.first.map { Int($0.value % 17) } ?? 0
+            let phraseBend = sin(Double(index) * 0.62) * 12.0
+            let frequency = baseFrequency + Double(scalarSeed * 9) + phraseBend
+            let frameCount = Int(charDuration * Double(sampleRate))
+
+            for frame in 0..<frameCount {
+                let t = Double(frame) / Double(sampleRate)
+                let progress = Double(frame) / Double(max(frameCount - 1, 1))
+                let attack = min(1.0, progress / 0.16)
+                let release = min(1.0, (1.0 - progress) / 0.22)
+                let envelope = min(attack, release) * 0.20
+                let primary = sin(2.0 * .pi * frequency * t)
+                let overtone = sin(2.0 * .pi * frequency * 2.01 * t) * 0.22
+                samples.append(Float((primary + overtone) * envelope))
+            }
+
+            samples.append(contentsOf: Array(repeating: 0, count: Int(gapDuration * Double(sampleRate))))
+        }
+
+        guard !samples.isEmpty else { return nil }
+        let didStart = await playback.playFloatSamples(
+            samples: samples,
+            sampleRate: sampleRate,
+            streamId: UUID().uuidString,
+            characterName: "audio_path_test",
+            pitch: pitchOffset,
+            rate: Float(clampedSpeed),
+            onPlaybackStarted: {}
+        )
+        guard didStart else { return nil }
+        return TTSOutput(audioFileURL: nil, duration: Double(samples.count) / Double(sampleRate), sampleRate: sampleRate, providerKind: .supertonic3)
     }
 
     /// 단발성 공식 TTS 합성. 반환값: WAV 파일 경로 (nil=무음 또는 실패).
