@@ -135,7 +135,7 @@ final class AIService {
     }
 
     private func hasAPIKey(for provider: LLMProvider) -> Bool {
-        !(KeychainManager.load(key: keychainKey(for: provider)) ?? "").isEmpty
+        !secureAPIKey(for: provider).isEmpty
     }
 
     private func keychainKey(for provider: LLMProvider) -> String {
@@ -144,6 +144,19 @@ final class AIService {
         case .openAI: return "openAIAPIKey"
         case .claude: return "claudeAPIKey"
         case .openRouter: return "openRouterAPIKey"
+        }
+    }
+
+    private func secureAPIKey(for provider: LLMProvider) -> String {
+        SecureCredentialStore.shared.read(provider: externalProvider(for: provider)) ?? ""
+    }
+
+    private func externalProvider(for provider: LLMProvider) -> ExternalProvider {
+        switch provider {
+        case .gemini: return .gemini
+        case .openAI: return .openAI
+        case .claude: return .anthropic
+        case .openRouter: return .openRouter
         }
     }
 
@@ -236,7 +249,7 @@ final class AIService {
             }
             cachedGeminiModelId = nil
             cachedGeminiModelIdAt = nil
-            let key = apiKey ?? KeychainManager.load(key: keychainKey(for: .gemini)) ?? ""
+            let key = apiKey ?? secureAPIKey(for: .gemini)
             if !key.isEmpty,
                let discovered = try? await discoverLatestGeminiModel(apiKey: key),
                !isGeminiModelCoolingDown(discovered) {
@@ -256,7 +269,7 @@ final class AIService {
             }
             cachedClaudeModelId = nil
             cachedClaudeModelIdAt = nil
-            let key = apiKey ?? KeychainManager.load(key: keychainKey(for: .claude)) ?? ""
+            let key = apiKey ?? secureAPIKey(for: .claude)
             if !key.isEmpty,
                let discovered = try? await discoverLatestClaudeModel(apiKey: key) {
                 cachedClaudeModelId = discovered
@@ -275,7 +288,7 @@ final class AIService {
             }
             cachedOpenAIModelId = nil
             cachedOpenAIModelIdAt = nil
-            let key = apiKey ?? KeychainManager.load(key: keychainKey(for: .openAI)) ?? ""
+            let key = apiKey ?? secureAPIKey(for: .openAI)
             if !key.isEmpty,
                let discovered = try? await discoverLatestOpenAIModel(apiKey: key) {
                 cachedOpenAIModelId = discovered
@@ -358,12 +371,11 @@ final class AIService {
         agentID: String,
         chatHistory: [AgentWindowManager.ChatLog]
     ) -> AsyncThrowingStream<String, Error>? {
-        if let claudeKey = KeychainManager.load(key: "claudeAPIKey"), !claudeKey.isEmpty {
+        if !secureAPIKey(for: .claude).isEmpty {
             AppLog.info("[AIService] Gemini 쿨다운 → Claude fallback")
             return claudeStream(text: text, agentID: agentID, chatHistory: chatHistory)
         }
-        let openRouterKey = KeychainManager.load(key: "openRouterAPIKey") ?? ""
-        if !openRouterKey.isEmpty {
+        if !secureAPIKey(for: .openRouter).isEmpty {
             AppLog.info("[AIService] Gemini 쿨다운 → OpenRouter fallback")
             return openRouterStream(text: text, agentID: agentID, chatHistory: chatHistory, modelId: "openrouter/auto")
         }
@@ -591,7 +603,7 @@ final class AIService {
                     return
                 }
 
-                let apiKey = KeychainManager.load(key: "geminiAPIKey") ?? ""
+                let apiKey = secureAPIKey(for: .gemini)
                 guard !apiKey.isEmpty else {
                     continuation.finish(throwing: AIServiceError.noAPIKeys)
                     return
@@ -727,7 +739,7 @@ final class AIService {
                 await MainActor.run { isProcessing = true }
                 defer { Task { @MainActor in isProcessing = false } }
 
-                let apiKey = KeychainManager.load(key: "claudeAPIKey") ?? ""
+                let apiKey = secureAPIKey(for: .claude)
                 guard !apiKey.isEmpty else {
                     continuation.finish(throwing: AIServiceError.noAPIKeys)
                     return
@@ -824,7 +836,7 @@ final class AIService {
                 await MainActor.run { isProcessing = true }
                 defer { Task { @MainActor in isProcessing = false } }
 
-                let apiKey = KeychainManager.load(key: "openAIAPIKey") ?? ""
+                let apiKey = secureAPIKey(for: .openAI)
                 guard !apiKey.isEmpty else {
                     continuation.finish(throwing: AIServiceError.noAPIKeys)
                     return
@@ -922,7 +934,7 @@ final class AIService {
                 await MainActor.run { isProcessing = true }
                 defer { Task { @MainActor in isProcessing = false } }
 
-                let apiKey = KeychainManager.load(key: "openRouterAPIKey") ?? ""
+                let apiKey = secureAPIKey(for: .openRouter)
                 guard !apiKey.isEmpty else {
                     continuation.finish(throwing: AIServiceError.noAPIKeys)
                     return
@@ -1174,7 +1186,7 @@ final class AIService {
         // OpenRouter는 quickCall 전용 구현 없음 — 제외
         let candidates = providerCandidates(preferred: preferred).filter { $0 != .openRouter }
         for provider in candidates {
-            let apiKey = KeychainManager.load(key: keychainKey(for: provider)) ?? ""
+            let apiKey = secureAPIKey(for: provider)
             guard !apiKey.isEmpty else { continue }
             do {
                 let resolved = await resolveLLMCall(for: provider, apiKey: apiKey)
@@ -1255,7 +1267,7 @@ final class AIService {
                 AppLog.warning("[PrivacyTermsGen] Gemini 쿨다운 중 — 다음 provider로")
                 continue
             }
-            let apiKey = KeychainManager.load(key: keychainKey(for: provider)) ?? ""
+            let apiKey = secureAPIKey(for: provider)
             guard !apiKey.isEmpty else { continue }
             do {
                 let resolved = await resolveLLMCall(for: provider, apiKey: apiKey)
@@ -1285,7 +1297,7 @@ final class AIService {
         chatHistory: [AgentWindowManager.ChatLog],
         maxIterations: Int = 4
     ) async throws -> String {
-        let apiKey = KeychainManager.load(key: "claudeAPIKey") ?? ""
+        let apiKey = secureAPIKey(for: .claude)
         guard !apiKey.isEmpty else { throw AIServiceError.noAPIKeys }
         guard let url = URL(string: "https://api.anthropic.com/v1/messages") else {
             throw AIServiceError.invalidResponse

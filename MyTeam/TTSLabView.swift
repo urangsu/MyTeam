@@ -46,6 +46,7 @@ struct TTSLabView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 header
+                labGuardCard
                 SupertonicNoticeCardView(
                     accepted: noticeAccepted,
                     onAccept: {
@@ -78,11 +79,25 @@ struct TTSLabView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("TTS Lab")
                 .font(.title3.weight(.bold))
-            Text("현재 캐릭터 TTS provider는 비활성입니다. 이 탭은 목소리 설정값과 오디오 경로만 검토합니다.")
+            Text("제품 기능이 아니라 진단용 Lab입니다. 캐릭터 TTS 합성은 Release gate가 끝날 때까지 비활성입니다.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private var labGuardCard: some View {
+        Label {
+            Text("모델 번들 미포함, Release 통합 미승인 상태입니다. 수동 QA를 위한 오디오 경로 테스트만 유지합니다.")
+                .font(.caption)
+                .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: "flask.fill")
+                .foregroundStyle(.blue)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private var runtimeCard: some View {
@@ -203,7 +218,7 @@ struct TTSLabView: View {
                 Button {
                     runPreview()
                 } label: {
-                    Label("캐릭터 TTS 미리듣기", systemImage: "play.fill")
+                    Label(TTSProductPolicy.canShipAsProductFeature ? "캐릭터 TTS 미리듣기" : "캐릭터 TTS 준비 중", systemImage: "play.fill")
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)

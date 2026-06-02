@@ -190,7 +190,7 @@ struct SettingsView: View {
                         Text("라우팅").tag(2)
                         Text("스킬").tag(3)
                         Text("캐릭터").tag(4)
-                        Text("음성").tag(5)
+                        Text("음성 Lab").tag(5)
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
@@ -351,10 +351,16 @@ struct SettingsView: View {
                 )) {
                     Label("음성 출력", systemImage: "waveform")
                 }
+                .disabled(!TTSProductPolicy.userFacingTTSEnabled)
                 Toggle(isOn: $useAnimalCrossingTTS) {
-                    Label("동물의숲 효과", systemImage: "sparkles")
+                    Label("오디오 경로 테스트", systemImage: "waveform.path")
                 }
-                .disabled(manager.isSilentMode)
+                .disabled(manager.isSilentMode || !TTSProductPolicy.labOnlyEnabled)
+                if !TTSProductPolicy.userFacingTTSEnabled {
+                    Text("음성 출력은 아직 제품 기능으로 승인되지 않았습니다. 오디오 확인은 음성 Lab에서 진단용으로만 진행합니다.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section {

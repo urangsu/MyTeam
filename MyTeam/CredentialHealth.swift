@@ -14,11 +14,11 @@ enum CredentialHealthState: Equatable, Sendable {
 extension CredentialHealthState {
     var displayLabel: String {
         switch self {
-        case .connected:          return "연결됨"
-        case .notConnected:       return "연결 필요"
-        case .untested:           return "저장됨"
-        case .testUnavailable:    return "검증 준비 중"
-        case .testFailed:         return "연결 오류"
+        case .connected:          return "사용 가능"
+        case .notConnected:       return "연결 안 됨"
+        case .untested:           return "키 저장됨"
+        case .testUnavailable:    return "저장됨, 자동 확인 미지원"
+        case .testFailed:         return "확인 필요"
         }
     }
 

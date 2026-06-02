@@ -97,15 +97,7 @@ final class LLMConfigCatalog: ObservableObject {
         let isExpired = cfg.lastDiscoveryDate.map { Date().timeIntervalSince($0) > cacheTTL } ?? true
         guard isExpired else { return }
 
-        // API 키 확인
-        let keychainKey: String
-        switch provider {
-        case .gemini:     keychainKey = "geminiAPIKey"
-        case .openAI:     keychainKey = "openAIAPIKey"
-        case .claude:     keychainKey = "claudeAPIKey"
-        case .openRouter: keychainKey = "openRouterAPIKey"
-        }
-        let apiKey = KeychainManager.load(key: keychainKey) ?? ""
+        let apiKey = secureAPIKey(for: provider)
         guard !apiKey.isEmpty else { return }
 
         // AIService의 discovery 함수 호출
@@ -162,14 +154,7 @@ final class LLMConfigCatalog: ObservableObject {
             case .longContext, .vision: supported = true  // 모든 provider가 기본 지원
             }
             guard supported else { continue }
-            let keychainKey: String
-            switch provider {
-            case .gemini:     keychainKey = "geminiAPIKey"
-            case .openAI:     keychainKey = "openAIAPIKey"
-            case .claude:     keychainKey = "claudeAPIKey"
-            case .openRouter: keychainKey = "openRouterAPIKey"
-            }
-            let hasKey = !(KeychainManager.load(key: keychainKey) ?? "").isEmpty
+            let hasKey = !secureAPIKey(for: provider).isEmpty
             if hasKey { return provider }
         }
         return nil
@@ -178,6 +163,19 @@ final class LLMConfigCatalog: ObservableObject {
     /// capability 기반 best provider, 없으면 현재 desk의 provider 사용
     func routeOrDefault(_ capability: LLMCapability, fallback: LLMProvider) -> LLMProvider {
         bestProvider(for: capability) ?? fallback
+    }
+
+    private func secureAPIKey(for provider: LLMProvider) -> String {
+        SecureCredentialStore.shared.read(provider: externalProvider(for: provider)) ?? ""
+    }
+
+    private func externalProvider(for provider: LLMProvider) -> ExternalProvider {
+        switch provider {
+        case .gemini: return .gemini
+        case .openAI: return .openAI
+        case .claude: return .anthropic
+        case .openRouter: return .openRouter
+        }
     }
 }
 

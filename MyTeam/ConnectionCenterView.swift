@@ -6,72 +6,124 @@ import SwiftUI
 /// 개발자 설정처럼 보이지 않고, 카드형 연결 가이드로 구성됩니다.
 struct ConnectionCenterView: View {
     private let profile = AppReleaseProfile.current
+    @StateObject private var healthService = CredentialHealthService.shared
+
+    private let aiProviders: [ExternalProvider] = [.gemini, .openAI, .anthropic, .openRouter]
+    private let dataProviders: [ExternalProvider] = [.kmaWeather, .naverNews, .dartDisclosure]
+
+    private var connectedAIProviderCount: Int {
+        aiProviders.filter { healthService.health(for: $0).state.isConnected }.count
+    }
+
+    private var storedAIProviderCount: Int {
+        aiProviders.filter { healthService.health(for: $0).state != .notConnected }.count
+    }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 18) {
+                header
 
-                // ── 안내 헤더 ──
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("연결 센터")
-                        .font(.system(size: 18, weight: .bold))
-                    Text("MyTeam은 연결한 서비스만큼 더 잘 도와드릴 수 있어요.\nAPI 키는 이 기기 안에 안전하게 저장됩니다. MyTeam 서버로 전송되지 않습니다.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(.horizontal, 2)
-
-                // ── AI 모델 ──
-                sectionHeader(
+                providerSection(
                     icon: "sparkles",
                     title: "AI 모델",
-                    subtitle: "대화, 문서 작성, 분석에 사용합니다. 하나만 연결해도 충분해요."
+                    subtitle: "대화, 문서 작성, 분석에 사용합니다. 하나만 검증돼도 MyTeam을 사용할 수 있습니다.",
+                    providers: aiProviders
                 )
 
-                VStack(spacing: 10) {
-                    ConnectorSetupCardView(provider: .gemini)
-                    ConnectorSetupCardView(provider: .openAI)
-                    ConnectorSetupCardView(provider: .anthropic)
-                    ConnectorSetupCardView(provider: .openRouter)
-                }
-
-                Divider()
-
-                // ── 한국 생활/업무 ──
-                sectionHeader(
-                    icon: "flag.fill",
-                    title: "한국 생활·업무",
-                    subtitle: "날씨, 뉴스, 공시를 직접 확인하려면 연결하세요."
-                )
-
-                VStack(spacing: 10) {
-                    ConnectorSetupCardView(provider: .kmaWeather)
-                    ConnectorSetupCardView(provider: .naverNews)
-                    ConnectorSetupCardView(provider: .dartDisclosure)
-                }
-
-                // ── 고급/개발자 (profile gate) ──
-                if profile.policy.allowsExperimentalConnectors {
-                    Divider()
-
+                DisclosureGroup {
+                    VStack(spacing: 8) {
+                        ForEach(dataProviders, id: \.rawValue) { provider in
+                            ConnectorSetupCardView(provider: provider)
+                        }
+                    }
+                    .padding(.top, 8)
+                } label: {
                     sectionHeader(
-                        icon: "wrench.and.screwdriver",
-                        title: "고급 기능",
-                        subtitle: "개발자/파워유저용 기능입니다."
+                        icon: "building.columns.fill",
+                        title: "추가 데이터 연결",
+                        subtitle: "날씨, 뉴스, 공시는 키 저장 후 수동 API 확인이 가능합니다."
                     )
+                }
 
-                    VStack(spacing: 10) {
+                if profile.policy.allowsExperimentalConnectors {
+                    DisclosureGroup {
                         PlaywrightMCPSetupCardView()
+                            .padding(.top, 8)
+                    } label: {
+                        sectionHeader(
+                            icon: "wrench.and.screwdriver",
+                            title: "개발자 연결",
+                            subtitle: "브라우저 자동화 진단용입니다. Release/App Store 표면에서는 숨겨집니다."
+                        )
                     }
                 }
 
-                // ── 요금 안내 ──
                 requirementNoticeView
 
                 Spacer(minLength: 20)
             }
             .padding(16)
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("연결")
+                    .font(.system(size: 20, weight: .bold))
+                Spacer()
+                Text(connectedAIProviderCount > 0 ? "AI 사용 가능" : "로컬 기능 사용 가능")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(connectedAIProviderCount > 0 ? .green : .secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule().fill((connectedAIProviderCount > 0 ? Color.green : Color.secondary).opacity(0.12))
+                    )
+            }
+
+            HStack(spacing: 8) {
+                summaryTile(title: "검증된 AI", value: "\(connectedAIProviderCount)", icon: "checkmark.seal.fill")
+                summaryTile(title: "저장된 키", value: "\(storedAIProviderCount)", icon: "key.fill")
+                summaryTile(title: "저장 위치", value: "Keychain", icon: "lock.fill")
+            }
+
+            Text("키는 이 Mac의 Keychain에 저장됩니다. 저장만으로 연결 성공을 표시하지 않고, 실제 확인이 된 경우에만 사용 가능으로 표시합니다.")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func summaryTile(title: String, value: String, icon: String) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 14)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary)
+                Text(value)
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(9)
+        .frame(maxWidth: .infinity, minHeight: 48)
+        .background(Color(NSColor.controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func providerSection(icon: String, title: String, subtitle: String, providers: [ExternalProvider]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            sectionHeader(icon: icon, title: title, subtitle: subtitle)
+            VStack(spacing: 8) {
+                ForEach(providers, id: \.rawValue) { provider in
+                    ConnectorSetupCardView(provider: provider)
+                }
+            }
         }
     }
 
@@ -98,18 +150,18 @@ struct ConnectionCenterView: View {
 
     private var requirementNoticeView: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("요금 및 사용량 안내", systemImage: "info.circle")
+            Label("외부 서비스 안내", systemImage: "info.circle")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.secondary)
 
-            Text("이 기능은 사용자가 연결한 외부 API를 사용합니다.\n요금과 사용량은 해당 서비스 정책을 따르며, MyTeam은 이와 무관합니다.\n키는 언제든 삭제할 수 있습니다.")
+            Text("연결한 서비스의 정책은 해당 서비스 기준을 따릅니다. MyTeam은 키를 서버에 보관하지 않으며, 키는 언제든 삭제할 수 있습니다.")
                 .font(.system(size: 10))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: 8)
                 .fill(Color.secondary.opacity(0.06))
         )
     }
@@ -157,11 +209,11 @@ private struct PlaywrightMCPSetupCardView: View {
         }
         .padding(14)
         .background(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 8)
                 .fill(Color(NSColor.windowBackgroundColor))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 8)
                 .stroke(Color.black.opacity(0.06), lineWidth: 1)
         )
     }

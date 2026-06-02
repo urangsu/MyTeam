@@ -22,9 +22,13 @@ struct ConnectorSetupCardView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // 헤더 행
+        VStack(alignment: .leading, spacing: 9) {
             HStack(alignment: .top, spacing: 10) {
+                Image(systemName: providerIcon)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(iconColor)
+                    .frame(width: 18, height: 18)
+
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
                         Text(provider.displayName)
@@ -39,37 +43,30 @@ struct ConnectorSetupCardView: View {
 
                 Spacer()
 
-                // 키 발급 바로가기
                 if let url = provider.keyIssueURL {
                     Button(action: { NSWorkspace.shared.open(url) }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "arrow.up.right.square")
-                                .font(.system(size: 10))
-                            Text("발급")
-                                .font(.system(size: 10, weight: .medium))
-                        }
-                        .foregroundStyle(.secondary)
+                        Image(systemName: "arrow.up.right.square")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
                     .help("API 키 발급 페이지를 엽니다")
                 }
             }
 
-            // 연결된 경우 — 마스킹 표시 + 삭제
             if health.state != .notConnected {
-                HStack(spacing: 8) {
+                HStack(spacing: 7) {
                     Text(healthService.health(for: provider).maskedKey)
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(.secondary)
 
                     Spacer()
 
-                    // 테스트
                     Button(action: runTest) {
                         if isTesting {
                             ProgressView().scaleEffect(0.6)
                         } else {
-                            Text("연결 테스트")
+                            Label("확인", systemImage: "checkmark.circle")
                                 .font(.system(size: 10, weight: .medium))
                         }
                     }
@@ -77,7 +74,6 @@ struct ConnectorSetupCardView: View {
                     .controlSize(.small)
                     .disabled(isTesting)
 
-                    // 삭제
                     Button(role: .destructive, action: { showDeleteConfirm = true }) {
                         Image(systemName: "trash")
                             .font(.system(size: 10))
@@ -96,17 +92,19 @@ struct ConnectorSetupCardView: View {
                 }
             }
 
-            // 테스트 결과 메시지
-            if let msg = testResultMessage {
-                Text(msg)
-                    .font(.system(size: 11))
-                    .foregroundStyle(
-                        health.state == .connected ? Color.green : Color.orange
-                    )
+            if let message = statusMessage {
+                Label {
+                    Text(message)
+                        .font(.system(size: 11))
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: statusIcon)
+                        .font(.system(size: 10, weight: .semibold))
+                }
+                .foregroundStyle(statusColor)
             }
 
-            // 키 입력 필드 (편집 모드 또는 미연결 상태)
-            if isEditing || health.state == .notConnected {
+            if isEditing {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
                         SecureField("API 키 붙여넣기", text: $inputKey)
@@ -133,25 +131,102 @@ struct ConnectorSetupCardView: View {
                         .font(.system(size: 9))
                         .foregroundStyle(.secondary)
                 }
-            } else if health.state != .notConnected && !isEditing {
-                Button("키 변경") { isEditing = true }
-                    .buttonStyle(.plain)
-                    .font(.system(size: 10))
-                    .foregroundStyle(Color.accentColor)
+            } else {
+                HStack(spacing: 8) {
+                    if health.state == .notConnected {
+                        Button {
+                            isEditing = true
+                        } label: {
+                            Label("키 입력", systemImage: "key.fill")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    } else {
+                        Button {
+                            isEditing = true
+                        } label: {
+                            Label("키 변경", systemImage: "key.fill")
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+
+                    if health.state == .notConnected {
+                        Text("키 없이도 로컬 기능은 사용할 수 있습니다.")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
         }
-        .padding(14)
+        .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 8)
                 .fill(Color(NSColor.windowBackgroundColor))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 8)
                 .stroke(
                     borderColor,
                     lineWidth: 1
                 )
         )
+    }
+
+    private var providerIcon: String {
+        switch provider {
+        case .openAI, .gemini, .anthropic, .openRouter:
+            return "sparkles"
+        case .kmaWeather:
+            return "cloud.sun.fill"
+        case .naverNews:
+            return "newspaper.fill"
+        case .dartDisclosure:
+            return "chart.line.uptrend.xyaxis"
+        }
+    }
+
+    private var iconColor: Color {
+        switch health.state {
+        case .connected: return .green
+        case .testFailed: return .orange
+        case .untested, .testUnavailable: return .blue
+        case .notConnected: return .secondary
+        }
+    }
+
+    private var statusMessage: String? {
+        if let testResultMessage { return testResultMessage }
+        switch health.state {
+        case .notConnected:
+            return nil
+        case .untested:
+            return "키는 저장됐습니다. 실제 사용 가능 여부는 확인 버튼으로 검증하세요."
+        case .testUnavailable:
+            return "\(provider.displayName)은 자동 검증기가 아직 없습니다. 오늘 수동 API 테스트를 위해 키 저장과 삭제는 유지됩니다."
+        case .testFailed(let code):
+            return code.userMessage(for: provider)
+        case .connected:
+            return "실제 연결 확인을 통과했습니다."
+        }
+    }
+
+    private var statusIcon: String {
+        switch health.state {
+        case .connected: return "checkmark.seal.fill"
+        case .testFailed: return "exclamationmark.triangle.fill"
+        case .testUnavailable: return "info.circle.fill"
+        default: return "key.fill"
+        }
+    }
+
+    private var statusColor: Color {
+        switch health.state {
+        case .connected: return .green
+        case .testFailed: return .orange
+        case .testUnavailable, .untested: return .secondary
+        case .notConnected: return .secondary
+        }
     }
 
     // MARK: - State Badge
@@ -188,7 +263,8 @@ struct ConnectorSetupCardView: View {
     private var borderColor: Color {
         switch health.state {
         case .connected:      return Color.green.opacity(0.25)
-        case .testUnavailable:return Color.blue.opacity(0.22)
+        case .untested,
+             .testUnavailable:return Color.blue.opacity(0.20)
         case .testFailed:     return Color.orange.opacity(0.25)
         default:              return Color.black.opacity(0.06)
         }
