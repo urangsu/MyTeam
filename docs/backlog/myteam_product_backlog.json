@@ -744,6 +744,58 @@
       "notes": []
     },
     {
+      "id": "P1-public-api-proxy-architecture",
+      "priority": "P1",
+      "status": "todo",
+      "category": "architecture",
+      "title": "Public API proxy architecture",
+      "why": "BYOK direct is the first shipping path. A future MyTeam proxy can provide limited default lookups, but only after quota, rate limit, privacy, billing, and health checks exist.",
+      "scope": {
+        "include": [
+          "proxy endpoint health contract",
+          "server-held upstream key policy",
+          "daily quota and rate limit policy",
+          "privacy and retention policy",
+          "Connection Center proxy availability copy"
+        ],
+        "exclude": [
+          "proxy implementation in the BYOK direct PR",
+          "기본 조회 가능 표시",
+          "user API key input blocking"
+        ]
+      },
+      "acceptance_criteria": [
+        "Proxy mode cannot display available without deployed endpoint health",
+        "Naver upstream Client ID/Secret are server-held only",
+        "Daily quota/rate limit policy documented",
+        "No user query/result permanent storage unless explicitly disclosed"
+      ],
+      "failure_conditions": [
+        "실제 proxy 없이 기본 조회 가능 표시",
+        "proxy key를 앱 번들 또는 클라이언트 코드에 저장",
+        "quota/rate limit 없는 public endpoint 공개"
+      ],
+      "verification": {
+        "commands": [
+          "python3 -m json.tool docs/backlog/myteam_product_backlog.json",
+          "python3 scripts/validate_release_checklist.py"
+        ],
+        "manual_checks": [
+          "Proxy architecture document review"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": null,
+        "files_changed": [],
+        "validation_summary": null,
+        "screenshots": []
+      },
+      "notes": [
+        "Do not build proxy in the BYOK direct PR."
+      ]
+    },
+    {
       "id": "P2-003-understand-anything-architecture-summary-routine",
       "priority": "P2",
       "status": "todo",
