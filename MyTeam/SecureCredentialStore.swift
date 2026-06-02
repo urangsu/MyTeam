@@ -103,6 +103,15 @@ final class SecureCredentialStore {
     /// AI provider는 실제 모델 목록 엔드포인트를 확인하고, 아직 검증기가 없는 provider는
     /// success=false/providerUnavailable로 남겨 UI가 connected를 표시하지 않게 합니다.
     func testConnection(provider: ExternalProvider) async -> CredentialTestResult {
+        if [.naverNews, .dartDisclosure, .kmaWeather].contains(provider) {
+            let fields = Dictionary(uniqueKeysWithValues: provider.credentialSchema.fields.map { field in
+                (field.id, read(provider: provider, field: field) ?? "")
+            })
+            return await PublicAPIConnectorValidator.validate(
+                PublicAPIValidationRequest(provider: provider, fields: fields)
+            )
+        }
+
         guard let key = read(provider: provider), !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return CredentialTestResult(
                 provider: provider,

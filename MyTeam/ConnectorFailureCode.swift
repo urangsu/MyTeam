@@ -4,7 +4,7 @@ import Foundation
 
 /// 외부 API / 커넥터 실패 원인 분류.
 /// 사용자에게는 이 코드를 직접 노출하지 않고, 사람이 이해할 수 있는 문구로 변환합니다.
-enum ConnectorFailureCode: String, Codable, Sendable, Equatable {
+enum ConnectorFailureCode: String, Codable, Sendable, Equatable, Error {
     case missingAPIKey          // 키가 연결되지 않음
     case invalidAPIKey          // 키가 올바르지 않음
     case permissionDenied       // 권한 부족

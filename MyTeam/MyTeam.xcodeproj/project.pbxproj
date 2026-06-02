@@ -1935,6 +1935,46 @@
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
+		<key>BYOK001SCHEMATEST00000001</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>CredentialSchemaTests.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>BYOK002VALIDATORTEST000001</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>PublicAPIConnectorValidatorTests.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>BYOK003SCHEMABUILD0000001</key>
+		<dict>
+			<key>fileRef</key>
+			<string>BYOK001SCHEMATEST00000001</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>BYOK004VALIDATORBUILD0001</key>
+		<dict>
+			<key>fileRef</key>
+			<string>BYOK002VALIDATORTEST000001</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
 		<key>270C0003A0B04E5EA7B69C3C</key>
 		<dict>
 			<key>fileRef</key>
@@ -1955,6 +1995,8 @@
 			<array>
 				<string>270C0001A0B04E5EA7B69C3A</string>
 				<string>270C0002A0B04E5EA7B69C3B</string>
+				<string>BYOK001SCHEMATEST00000001</string>
+				<string>BYOK002VALIDATORTEST000001</string>
 			</array>
 			<key>isa</key>
 			<string>PBXGroup</string>
@@ -1973,6 +2015,8 @@
 			<array>
 				<string>270C0003A0B04E5EA7B69C3C</string>
 				<string>270C0004A0B04E5EA7B69C3D</string>
+				<string>BYOK003SCHEMABUILD0000001</string>
+				<string>BYOK004VALIDATORBUILD0001</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -7798,6 +7842,7 @@
 				<string>E3BCED940DAD6E0579E695CE</string>
 				<string>E3BCED940DAD6E0579E695CF</string>
 				<string>E3BCED940DAD6E0579E695D0</string>
+				<string>BYOK005VALIDATORFILE00001</string>
 				<string>E3BCED940DAD6E0579E695D1</string>
 				<string>E3BCED940DAD6E0579E695D2</string>
 				<string>E3BCED940DAD6E0579E695D3</string>
@@ -9313,6 +9358,7 @@
 				<string>E3BCED940DAD6E0579E695DA</string>
 				<string>E3BCED940DAD6E0579E695DB</string>
 				<string>E3BCED940DAD6E0579E695DC</string>
+				<string>BYOK006VALIDATORAPPBUILD1</string>
 				<string>E3BCED940DAD6E0579E695DD</string>
 				<string>E3BCED940DAD6E0579E695DE</string>
 				<string>E3BCED940DAD6E0579E695DF</string>
@@ -17185,6 +17231,28 @@
 			<string>UseCaseSelectionView.swift</string>
 			<key>sourceTree</key>
 			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>BYOK005VALIDATORFILE00001</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>PublicAPIConnectorValidator.swift</string>
+			<key>path</key>
+			<string>PublicAPIConnectorValidator.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>BYOK006VALIDATORAPPBUILD1</key>
+		<dict>
+			<key>fileRef</key>
+			<string>BYOK005VALIDATORFILE00001</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
 		</dict>
 		<key>E3BCED940DAD6E0579E695D1</key>
 		<dict>
