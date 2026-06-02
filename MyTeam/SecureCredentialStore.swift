@@ -23,6 +23,13 @@ final class SecureCredentialStore {
         return KeychainManager.save(key: provider.keychainKey, value: trimmed)
     }
 
+    @discardableResult
+    func save(provider: ExternalProvider, field: CredentialField, value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return false }
+        return KeychainManager.save(key: keychainKey(provider: provider, field: field), value: trimmed)
+    }
+
     // MARK: - Read
 
     /// 지정 provider의 API 키를 Keychain에서 읽습니다.
@@ -31,10 +38,24 @@ final class SecureCredentialStore {
         KeychainManager.load(key: provider.keychainKey)
     }
 
+    func read(provider: ExternalProvider, field: CredentialField) -> String? {
+        KeychainManager.load(key: keychainKey(provider: provider, field: field))
+    }
+
     /// 키가 존재하는지 여부
     func hasKey(for provider: ExternalProvider) -> Bool {
+        if provider.credentialSchema.fields.count > 1 {
+            return hasAllRequiredFields(for: provider)
+        }
         guard let key = read(provider: provider) else { return false }
         return !key.isEmpty
+    }
+
+    func hasAllRequiredFields(for provider: ExternalProvider) -> Bool {
+        provider.credentialSchema.fields.allSatisfy { field in
+            guard let value = read(provider: provider, field: field) else { return false }
+            return !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
     }
 
     func hasAnyAIProviderKey() -> Bool {
@@ -51,11 +72,23 @@ final class SecureCredentialStore {
         KeychainManager.delete(key: provider.keychainKey)
     }
 
+    @discardableResult
+    func delete(provider: ExternalProvider, field: CredentialField) -> Bool {
+        KeychainManager.delete(key: keychainKey(provider: provider, field: field))
+    }
+
     // MARK: - Mask
 
     /// UI 표시용 마스킹 문자열. 마지막 4자만 보이고 나머지는 •로 가립니다.
     /// 예: "sk-abc...XYZ1" → "••••••••••XYZ1"
     func masked(provider: ExternalProvider) -> String {
+        if provider.credentialSchema.fields.count > 1 {
+            let filled = provider.credentialSchema.fields.filter { field in
+                guard let value = read(provider: provider, field: field) else { return false }
+                return !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            }
+            return filled.isEmpty ? "미연결" : "\(filled.count)/\(provider.credentialSchema.fields.count) fields"
+        }
         guard let key = read(provider: provider), key.count >= 4 else {
             return "미연결"
         }
@@ -139,6 +172,10 @@ final class SecureCredentialStore {
             return .providerUnavailable
         }
         return .responseParseFailed
+    }
+
+    private func keychainKey(provider: ExternalProvider, field: CredentialField) -> String {
+        "\(provider.rawValue).\(field.keychainSuffix)"
     }
 }
 

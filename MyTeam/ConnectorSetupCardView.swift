@@ -11,7 +11,7 @@ struct ConnectorSetupCardView: View {
     let provider: ExternalProvider
 
     @StateObject private var healthService = CredentialHealthService.shared
-    @State private var inputKey: String = ""
+    @State private var inputValues: [String: String] = [:]
     @State private var isEditing: Bool = false
     @State private var isTesting: Bool = false
     @State private var testResultMessage: String? = nil
@@ -19,6 +19,16 @@ struct ConnectorSetupCardView: View {
 
     private var health: CredentialHealth {
         healthService.health(for: provider)
+    }
+
+    private var schema: ProviderCredentialSchema {
+        provider.credentialSchema
+    }
+
+    private var canSaveInput: Bool {
+        schema.fields.allSatisfy { field in
+            !(inputValues[field.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
     }
 
     var body: some View {
@@ -39,6 +49,7 @@ struct ConnectorSetupCardView: View {
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    executionModeBadges
                 }
 
                 Spacer()
@@ -106,19 +117,31 @@ struct ConnectorSetupCardView: View {
 
             if isEditing {
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 8) {
-                        SecureField("API 키 붙여넣기", text: $inputKey)
-                            .textFieldStyle(.roundedBorder)
-                            .font(.system(size: 11, design: .monospaced))
+                    VStack(alignment: .leading, spacing: 7) {
+                        ForEach(schema.fields) { field in
+                            HStack(spacing: 8) {
+                                Text(field.label)
+                                    .font(.system(size: 10, weight: .medium))
+                                    .frame(width: 92, alignment: .leading)
 
+                                SecureField(field.placeholder, text: Binding(
+                                    get: { inputValues[field.id] ?? "" },
+                                    set: { inputValues[field.id] = $0 }
+                                ))
+                                .textFieldStyle(.roundedBorder)
+                                .font(.system(size: 11, design: .monospaced))
+                            }
+                        }
+                    }
+
+                    HStack(spacing: 8) {
                         Button("저장") { saveKey() }
                             .buttonStyle(.borderedProminent)
                             .controlSize(.small)
-                            .disabled(inputKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-
+                            .disabled(!canSaveInput)
                         if isEditing {
                             Button("취소") {
-                                inputKey = ""
+                                inputValues = [:]
                                 isEditing = false
                             }
                             .buttonStyle(.plain)
@@ -211,6 +234,26 @@ struct ConnectorSetupCardView: View {
         }
     }
 
+    private var executionModeBadges: some View {
+        HStack(spacing: 5) {
+            Text("개인 키 연결 가능")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(.blue)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(Color.blue.opacity(0.10)))
+
+            if provider.executionModes.contains(.proxyPlanned) {
+                Text("기본 조회 준비 중")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color.secondary.opacity(0.08)))
+            }
+        }
+    }
+
     private var statusIcon: String {
         switch health.state {
         case .connected: return "checkmark.seal.fill"
@@ -273,16 +316,25 @@ struct ConnectorSetupCardView: View {
     // MARK: - Actions
 
     private func saveKey() {
-        let trimmed = inputKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        SecureCredentialStore.shared.save(provider: provider, key: trimmed)
+        guard canSaveInput else { return }
+        if schema.fields.count == 1, let field = schema.fields.first {
+            let value = inputValues[field.id] ?? ""
+            SecureCredentialStore.shared.save(provider: provider, key: value)
+        }
+        for field in schema.fields {
+            let value = inputValues[field.id] ?? ""
+            SecureCredentialStore.shared.save(provider: provider, field: field, value: value)
+        }
         CredentialHealthService.shared.didSaveKey(for: provider)
-        inputKey = ""
+        inputValues = [:]
         isEditing = false
         testResultMessage = nil
     }
 
     private func deleteKey() {
+        for field in schema.fields {
+            SecureCredentialStore.shared.delete(provider: provider, field: field)
+        }
         SecureCredentialStore.shared.delete(provider: provider)
         CredentialHealthService.shared.didDeleteKey(for: provider)
         testResultMessage = nil

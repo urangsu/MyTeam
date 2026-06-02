@@ -1,5 +1,28 @@
 import Foundation
 
+// MARK: - ProviderCredentialSchema
+
+struct ProviderCredentialSchema: Equatable, Sendable {
+    let fields: [CredentialField]
+
+    var primaryField: CredentialField? {
+        fields.first
+    }
+}
+
+struct CredentialField: Equatable, Sendable, Identifiable {
+    let id: String
+    let label: String
+    let placeholder: String
+    let keychainSuffix: String
+    let isSecret: Bool
+}
+
+enum ConnectorExecutionMode: String, Sendable {
+    case byokDirect
+    case proxyPlanned
+}
+
 // MARK: - ExternalProvider
 
 /// MyTeam이 연결할 수 있는 외부 서비스 provider 목록.
@@ -43,6 +66,67 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable {
             return "국내 최신 뉴스를 검색하고 요약할 수 있습니다."
         case .dartDisclosure:
             return "기업 공시를 실시간으로 확인하고 분석할 수 있습니다."
+        }
+    }
+
+    var credentialSchema: ProviderCredentialSchema {
+        switch self {
+        case .naverNews:
+            return ProviderCredentialSchema(fields: [
+                CredentialField(
+                    id: "clientID",
+                    label: "Client ID",
+                    placeholder: "네이버 개발자 센터 Client ID",
+                    keychainSuffix: "clientID",
+                    isSecret: false
+                ),
+                CredentialField(
+                    id: "clientSecret",
+                    label: "Client Secret",
+                    placeholder: "네이버 개발자 센터 Client Secret",
+                    keychainSuffix: "clientSecret",
+                    isSecret: true
+                )
+            ])
+        case .dartDisclosure:
+            return ProviderCredentialSchema(fields: [
+                CredentialField(
+                    id: "apiKey",
+                    label: "API Key",
+                    placeholder: "OpenDART API Key",
+                    keychainSuffix: "apiKey",
+                    isSecret: true
+                )
+            ])
+        case .kmaWeather:
+            return ProviderCredentialSchema(fields: [
+                CredentialField(
+                    id: "serviceKey",
+                    label: "Service Key",
+                    placeholder: "공공데이터포털 Service Key",
+                    keychainSuffix: "serviceKey",
+                    isSecret: true
+                )
+            ])
+        case .openAI, .gemini, .anthropic, .openRouter:
+            return ProviderCredentialSchema(fields: [
+                CredentialField(
+                    id: "apiKey",
+                    label: "API Key",
+                    placeholder: "API Key",
+                    keychainSuffix: "apiKey",
+                    isSecret: true
+                )
+            ])
+        }
+    }
+
+    var executionModes: [ConnectorExecutionMode] {
+        switch self {
+        case .kmaWeather, .naverNews, .dartDisclosure:
+            return [.byokDirect, .proxyPlanned]
+        case .openAI, .gemini, .anthropic, .openRouter:
+            return [.byokDirect]
         }
     }
 
