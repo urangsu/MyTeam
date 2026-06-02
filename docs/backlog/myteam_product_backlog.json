@@ -155,14 +155,15 @@
           "MyTeam/BYOKProviderCenterView.swift",
           "MyTeam/ConnectorSetupCardView.swift"
         ],
-        "validation_summary": "2026-05-31: Debug/Release xcodebuild 통과. AppIntents metadata warning만 존재. Settings API key load/save/delete 경로는 SecureCredentialStore로 통일됨. BYOKProviderStatusService는 SecureCredentialStore.hasKey(for:)만 사용하고, BYOKProviderCenterView는 '연결됨' 대신 '저장됨'으로 표시함. rg audit 결과 UserDefaults.*apiKey/api_key/token 직접 저장 경로는 발견되지 않음. Partial because KeychainManager 직접 read 경로가 AIService/LLMConfigCatalog/AgentToolKit/ConnectorHealth/first-launch API key detection에 남아 있어 저장 우회인지 읽기 전용/레거시 호환인지 최종 분류가 필요함.",
+        "validation_summary": "2026-06-03: rg audit 결과 KeychainManager.save/load/delete 직접 호출은 SecureCredentialStore.swift 내부 wrapper에만 남아 있음. UserDefaults.*apiKey/UserDefaults.*token/apiKey.*UserDefaults/token.*UserDefaults 경로는 발견되지 않음. AIService, LLMConfigCatalog, AgentToolKit의 runtime key read 경로는 SecureCredentialStore.read(provider:)로 통일됨. Debug/Release xcodebuild와 MyTeamTests는 2026-06-02 c7cd7de에서 통과. Partial because 수동 UI key 입력/저장/삭제/앱 재실행 마스킹 확인은 아직 남음.",
         "screenshots": []
       },
       "notes": [
         "Productization v1에서 SecureCredentialStore wrapper 생성 완료. 이 task는 기존 코드에서 UserDefaults 직접 저장 경로가 남아있는지 감사하는 작업.",
         "2026-05-31: SettingsView의 API key load/save/delete 경로를 SecureCredentialStore로 통일하고 CredentialHealthService 갱신을 연결함. BYOK 요약 UI는 '연결됨' 대신 '저장됨'으로 표시하도록 변경. 남은 감사: KeychainManager 직접 참조 중 내부 구현/레거시 마이그레이션 외 우회 경로 최종 분류.",
-        "2026-06-02: Commit ceae318ad3b770de3dbafba95d2b9a46c60db865 routed AgentToolKit Gemini/OpenAI evidence reads through SecureCredentialStore.read(provider:) instead of direct KeychainManager.load. P0 remains partial because AIService and LLMConfigCatalog still have direct read paths that need explicit classification.",
-        "Partial reason: write/delete UI paths are secure-store based, but direct KeychainManager reads remain in runtime services. They do not prove plain-text leakage, yet must be classified before marking done."
+        "2026-06-02: Commit ceae318ad3b770de3dbafba95d2b9a46c60db865 routed AgentToolKit Gemini/OpenAI evidence reads through SecureCredentialStore.read(provider:) instead of direct KeychainManager.load.",
+        "2026-06-03: Commit c7cd7de1a8b96a8654453d7f1c01451302a3aa1b routed AIService and LLMConfigCatalog runtime key reads through SecureCredentialStore.read(provider:). rg 'KeychainManager.save|KeychainManager.delete|KeychainManager.load' now only reports SecureCredentialStore.swift wrapper calls.",
+        "Partial reason: code audit no longer shows direct credential bypass or UserDefaults key storage, but manual UI entry/save/delete/relaunch masking checks remain before marking done."
       ]
     },
     {
@@ -217,12 +218,13 @@
           "MyTeam/BYOKProviderCenterView.swift",
           "MyTeam/ConnectorSetupCardView.swift"
         ],
-        "validation_summary": "2026-05-31: Debug/Release xcodebuild 통과. AppIntents metadata warning만 존재. SecureCredentialStore.testConnection no longer treats key presence as success. AI providers call AIService.validateKey before CredentialHealthState.connected. KMA/Naver/DART return providerUnavailable and surface as testUnavailable instead of connected. Partial because invalid/valid real provider keys were not manually exercised in this session.",
+        "validation_summary": "2026-06-03: SecureCredentialStore.testConnection does not treat key presence as success. CredentialHealthService sets .connected only when result.success is true. KMA/Naver/DART return providerUnavailable and surface as testUnavailable/'저장됨, 자동 확인 미지원' instead of connected. ConnectorSetupCardView keeps key input/save/delete/masking and says manual API testing is retained. Partial because fake-key and valid-key manual provider tests were not exercised in this session.",
         "screenshots": []
       },
       "notes": [
         "CredentialHealth enum은 생성되어 있으나 실제 provider별 검증 로직 구현이 필요할 수 있음.",
         "2026-05-31: SecureCredentialStore.testConnection이 키 존재만으로 success를 반환하지 않도록 변경. AI provider는 AIService.validateKey로 실제 모델 목록 엔드포인트를 검증하고, KMA/Naver/DART처럼 검증기 미구현 provider는 testUnavailable 상태로 남김.",
+        "2026-06-03: Commit c7cd7de1a8b96a8654453d7f1c01451302a3aa1b polished Connection Center truth surface. Saved-only keys show '키 저장됨'; KMA/Naver/DART with no validator show '저장됨, 자동 확인 미지원' and never '사용 가능' unless a real validator returns success.",
         "Partial reason: fake success path is blocked in code, but manual tests with fake keys and known-good keys for Gemini/OpenAI/Claude/OpenRouter are still required before status can become done."
       ]
     },
@@ -642,11 +644,12 @@
           "MyTeam/TTSProductPolicy.swift",
           "MyTeam/TTSRoutingPolicy.swift"
         ],
-        "validation_summary": "2026-06-01: Voice tab now states that no character TTS provider is available, disables character TTS preview when provider/model/release gates are absent, and separates procedural audio path testing from real character TTS. Debug/Release xcodebuild succeeded with only the existing AppIntents metadata warning. Partial because manual confirmation that the audio path test produces audible sound remains.",
+        "validation_summary": "2026-06-03: Voice tab remains as '음성 Lab' and TTSLabView states it is diagnostic, not a product TTS feature. TTSProductPolicy.userFacingTTSEnabled is false, labOnlyEnabled is true, and canShipAsProductFeature remains gated. Character TTS preview is disabled when provider/model/release gates are absent; audio path test is labeled diagnostic and not real character voice synthesis. Partial because manual confirmation that the audio path test produces audible sound remains.",
         "screenshots": []
       },
       "notes": [
-        "This task tracks manual QA after the runtime truth fix. It must not become done until the audio path test is exercised on the macOS app."
+        "This task tracks manual QA after the runtime truth fix. It must not become done until the audio path test is exercised on the macOS app.",
+        "2026-06-03: Commit c7cd7de1a8b96a8654453d7f1c01451302a3aa1b added Settings voice guard copy and TTS Lab guard copy. Manual audio output remains the explicit partial reason."
       ]
     },
     {
