@@ -14,7 +14,7 @@
       "P2: 시점 비교, 영향 그래프"
     ],
     "myteam_direction": [
-      "ExternalProvider.koreanLaw 추가 예정",
+      "ExternalProvider.koreanLaw 스키마 사용",
       "required credential: lawOC",
       "SecureCredentialStore를 통한 Keychain 저장",
       "KoreanLawDirectConnector.swift 기반 Swift directREST 경로",

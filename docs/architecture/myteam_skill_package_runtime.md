@@ -35,7 +35,7 @@ Required fields:
 - `description`: What the package does and what it does not do.
 - `source_repo`: Origin repo or `"internal"`.
 - `runtime`: Must include `auto_load` and `user_visible_enabled`. Reference packages must set both to `false`.
-- `execution_modes`: One or more execution modes such as `byokDirect`, `proxyPlanned`, `externalMCP`, `directRESTLater`, or `disabled`.
+- `execution_modes`: One or more execution modes such as `byokDirect`, `proxyPlanned`, `externalMCP`, `externalMCPLater`, `directRESTLater`, or `disabled`.
 - `required_credentials`: Credential contract. Must match MyTeam provider schema or be clearly marked external.
 - `input_schema`: JSON-compatible input schema.
 - `output_schema`: JSON-compatible output schema.
@@ -66,9 +66,8 @@ External credentials are allowed only when MyTeam does not yet have a provider s
 }
 ```
 
-Korean law is the planned path out of this temporary external state. The intended MyTeam shape is:
+Korean law uses the MyTeam provider credential path:
 
-- Add `ExternalProvider.koreanLaw`.
 - Require `lawOC` as the BYOK credential field.
 - Store the credential through `SecureCredentialStore` and Keychain.
 - Execute through a Swift `directREST` connector before considering any optional `externalMCP` mode.
@@ -79,6 +78,7 @@ Korean law is the planned path out of this temporary external state. The intende
 - `proxyPlanned`: UI slot only. No "default lookup available" claim until MyTeam operates a real proxy.
 - `myTeamProxy`: MyTeam server/proxy owns upstream execution.
 - `externalMCP`: External MCP server or endpoint. Not bundled into App Store runtime by default.
+- `externalMCPLater`: Future optional MCP path for power-user or direct-download modes; not App Store runtime by default.
 - `directRESTLater`: Possible future direct REST path.
 - `disabled`: Contract exists, but package is not available.
 

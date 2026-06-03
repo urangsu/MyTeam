@@ -18,10 +18,19 @@ final class CredentialSchemaTests: XCTestCase {
         XCTAssertEqual(ExternalProvider.kmaWeather.credentialSchema.fields[0].label, "Service Key")
     }
 
+    func testKoreanLawUsesLawOCField() {
+        let schema = ExternalProvider.koreanLaw.credentialSchema
+
+        XCTAssertEqual(schema.fields.map(\.id), ["lawOC"])
+        XCTAssertEqual(schema.fields[0].label, "LAW OC")
+        XCTAssertTrue(schema.fields[0].isSecret)
+    }
+
     func testPublicDataProvidersExposeDirectAndPlannedProxyModes() {
         XCTAssertEqual(ExternalProvider.naverNews.executionModes, [.byokDirect, .proxyPlanned])
         XCTAssertEqual(ExternalProvider.dartDisclosure.executionModes, [.byokDirect, .proxyPlanned])
         XCTAssertEqual(ExternalProvider.kmaWeather.executionModes, [.byokDirect, .proxyPlanned])
+        XCTAssertEqual(ExternalProvider.koreanLaw.executionModes, [.byokDirect, .proxyPlanned])
     }
 
     func testAIProvidersOnlyExposeDirectMode() {

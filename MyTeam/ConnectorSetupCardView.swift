@@ -206,6 +206,8 @@ struct ConnectorSetupCardView: View {
             return "newspaper.fill"
         case .dartDisclosure:
             return "chart.line.uptrend.xyaxis"
+        case .koreanLaw:
+            return "building.columns.fill"
         }
     }
 

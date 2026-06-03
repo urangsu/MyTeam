@@ -35,6 +35,8 @@ enum PublicAPIConnectorValidator {
             return try makeDARTRequest(fields: request.fields, clock: request.clock)
         case .kmaWeather:
             return try makeKMARequest(fields: request.fields, clock: request.clock)
+        case .koreanLaw:
+            return try makeKoreanLawRequest(fields: request.fields)
         case .openAI, .gemini, .anthropic, .openRouter:
             throw ConnectorFailureCode.providerUnavailable
         }
@@ -72,6 +74,8 @@ enum PublicAPIConnectorValidator {
             return parseDART(data)
         case .kmaWeather:
             return parseKMA(data)
+        case .koreanLaw:
+            return parseKoreanLaw(data)
         case .openAI, .gemini, .anthropic, .openRouter:
             return false
         }
@@ -144,6 +148,25 @@ enum PublicAPIConnectorValidator {
         return URLRequest(url: url)
     }
 
+    private static func makeKoreanLawRequest(fields: [String: String]) throws -> URLRequest {
+        guard let lawOC = trimmed(fields["lawOC"]) else {
+            throw ConnectorFailureCode.missingAPIKey
+        }
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "www.law.go.kr"
+        components.path = "/DRF/lawSearch.do"
+        components.queryItems = [
+            URLQueryItem(name: "OC", value: lawOC),
+            URLQueryItem(name: "target", value: "law"),
+            URLQueryItem(name: "type", value: "JSON"),
+            URLQueryItem(name: "query", value: "개인정보"),
+            URLQueryItem(name: "display", value: "1")
+        ]
+        guard let url = components.url else { throw ConnectorFailureCode.responseParseFailed }
+        return URLRequest(url: url)
+    }
+
     private static func parseNaverNews(_ data: Data) -> Bool {
         guard
             let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -172,6 +195,36 @@ enum PublicAPIConnectorValidator {
             return false
         }
         return resultCode == "00"
+    }
+
+    private static func parseKoreanLaw(_ data: Data) -> Bool {
+        guard
+            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let search = object["LawSearch"] as? [String: Any]
+        else {
+            return false
+        }
+
+        let totalCount: Int
+        if let value = search["totalCnt"] as? Int {
+            totalCount = value
+        } else if let value = search["totalCnt"] as? String, let parsed = Int(value) {
+            totalCount = parsed
+        } else {
+            totalCount = 0
+        }
+
+        guard totalCount > 0 else { return false }
+
+        if let laws = search["law"] as? [[String: Any]] {
+            return laws.contains { law in
+                law["법령명한글"] != nil && (law["법령ID"] != nil || law["법령일련번호"] != nil)
+            }
+        }
+        if let law = search["law"] as? [String: Any] {
+            return law["법령명한글"] != nil && (law["법령ID"] != nil || law["법령일련번호"] != nil)
+        }
+        return false
     }
 
     private static func trimmed(_ value: String?) -> String? {

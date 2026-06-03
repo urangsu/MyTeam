@@ -37,6 +37,7 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable {
     case kmaWeather    = "kmaWeather"
     case naverNews     = "naverNews"
     case dartDisclosure = "dartDisclosure"
+    case koreanLaw     = "koreanLaw"
 
     var displayName: String {
         switch self {
@@ -47,6 +48,7 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable {
         case .kmaWeather:     return "기상청 날씨"
         case .naverNews:      return "네이버 뉴스"
         case .dartDisclosure: return "DART 공시"
+        case .koreanLaw:      return "한국 법령"
         }
     }
 
@@ -66,6 +68,8 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable {
             return "국내 최신 뉴스를 검색하고 요약할 수 있습니다."
         case .dartDisclosure:
             return "기업 공시를 실시간으로 확인하고 분석할 수 있습니다."
+        case .koreanLaw:
+            return "공식 법령 API로 법령 검색, 조문 조회, 인용 검증을 준비합니다."
         }
     }
 
@@ -108,6 +112,16 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable {
                     isSecret: true
                 )
             ])
+        case .koreanLaw:
+            return ProviderCredentialSchema(fields: [
+                CredentialField(
+                    id: "lawOC",
+                    label: "LAW OC",
+                    placeholder: "국가법령정보센터 OC",
+                    keychainSuffix: "lawOC",
+                    isSecret: true
+                )
+            ])
         case .openAI, .gemini, .anthropic, .openRouter:
             return ProviderCredentialSchema(fields: [
                 CredentialField(
@@ -123,7 +137,7 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable {
 
     var executionModes: [ConnectorExecutionMode] {
         switch self {
-        case .kmaWeather, .naverNews, .dartDisclosure:
+        case .kmaWeather, .naverNews, .dartDisclosure, .koreanLaw:
             return [.byokDirect, .proxyPlanned]
         case .openAI, .gemini, .anthropic, .openRouter:
             return [.byokDirect]
@@ -146,6 +160,8 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable {
             return URL(string: "https://developers.naver.com/apps/#/register")
         case .dartDisclosure:
             return URL(string: "https://opendart.fss.or.kr/uat/uia/egovLoginUsr.do")
+        case .koreanLaw:
+            return URL(string: "https://www.law.go.kr/LSO/openApi/guide.do")
         }
     }
 
@@ -159,6 +175,7 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable {
         case .kmaWeather:     return "kmaWeatherAPIKey"
         case .naverNews:      return "naverNewsAPIKey"
         case .dartDisclosure: return "dartDisclosureAPIKey"
+        case .koreanLaw:      return "koreanLawAPIKey"
         }
     }
 
@@ -166,7 +183,7 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable {
     var isVisibleInAppStore: Bool {
         switch self {
         case .openAI, .gemini, .anthropic, .openRouter,
-             .kmaWeather, .naverNews, .dartDisclosure:
+             .kmaWeather, .naverNews, .dartDisclosure, .koreanLaw:
             return true
         }
     }

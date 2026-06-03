@@ -60,7 +60,7 @@ Preferred sequence:
 - P2 later surface:
   - point-in-time comparison
   - impact graph
-- Add `ExternalProvider.koreanLaw` with required credential `lawOC`.
+- Use `ExternalProvider.koreanLaw` with required credential `lawOC`.
 - Store `lawOC` only through `SecureCredentialStore` and the Keychain path.
 - Build a Swift `directREST` connector such as `KoreanLawDirectConnector.swift` against official law APIs.
 - Render the result through a `LegalResearchCard`-style contract that always shows statute name, article, effective date, official source URL, and verification status.

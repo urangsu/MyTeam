@@ -9,7 +9,7 @@ struct ConnectionCenterView: View {
     @StateObject private var healthService = CredentialHealthService.shared
 
     private let aiProviders: [ExternalProvider] = [.gemini, .openAI, .anthropic, .openRouter]
-    private let dataProviders: [ExternalProvider] = [.kmaWeather, .naverNews, .dartDisclosure]
+    private let dataProviders: [ExternalProvider] = [.kmaWeather, .naverNews, .dartDisclosure, .koreanLaw]
 
     private var connectedAIProviderCount: Int {
         aiProviders.filter { healthService.health(for: $0).state.isConnected }.count
@@ -42,7 +42,7 @@ struct ConnectionCenterView: View {
                     sectionHeader(
                         icon: "building.columns.fill",
                         title: "추가 데이터 연결",
-                        subtitle: "날씨, 뉴스, 공시는 키 저장 후 수동 API 확인이 가능합니다."
+                        subtitle: "날씨, 뉴스, 공시, 법령은 개인 키로 직접 연결할 수 있습니다."
                     )
                 }
 

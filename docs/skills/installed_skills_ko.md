@@ -23,7 +23,7 @@ korean-law-mcp를 그대로 Node MCP 서버로 App Store 런타임에 번들링�
 
 MyTeam 방식:
 
-- `ExternalProvider.koreanLaw`를 추가할 예정입니다.
+- `ExternalProvider.koreanLaw` 스키마를 사용합니다.
 - required credential은 `lawOC`입니다.
 - 자격 증명은 `SecureCredentialStore`를 통해 Keychain에 저장합니다.
 - 앱 런타임은 `KoreanLawDirectConnector.swift` 같은 Swift `directREST` 경로로 공식 법령 API를 호출하는 방향이 맞습니다.

@@ -52,6 +52,23 @@ final class PublicAPIConnectorValidatorTests: XCTestCase {
         XCTAssertEqual(built.url?.queryValue("base_time"), "0800")
     }
 
+    func testKoreanLawValidationUsesLawOCAndURLComponents() throws {
+        let request = PublicAPIValidationRequest(
+            provider: .koreanLaw,
+            fields: ["lawOC": "law-key"]
+        )
+
+        let built = try PublicAPIConnectorValidator.makeRequest(for: request)
+
+        XCTAssertEqual(built.url?.scheme, "https")
+        XCTAssertEqual(built.url?.host, "www.law.go.kr")
+        XCTAssertEqual(built.url?.path, "/DRF/lawSearch.do")
+        XCTAssertEqual(built.url?.queryValue("OC"), "law-key")
+        XCTAssertEqual(built.url?.queryValue("target"), "law")
+        XCTAssertEqual(built.url?.queryValue("type"), "JSON")
+        XCTAssertEqual(built.url?.queryValue("query"), "개인정보")
+    }
+
     func testNaverBodyParserRequiresItemsEvenWhenHTTPStatusIs200() throws {
         let empty = Data(#"{"lastBuildDate":"now","total":0,"start":1,"display":0,"items":[]}"#.utf8)
         let valid = Data(#"{"lastBuildDate":"now","total":1,"start":1,"display":1,"items":[{"title":"뉴스","originallink":"https://example.com","link":"https://example.com","description":"본문","pubDate":"Wed, 03 Jun 2026 09:00:00 +0900"}]}"#.utf8)
@@ -76,6 +93,40 @@ final class PublicAPIConnectorValidatorTests: XCTestCase {
 
         XCTAssertFalse(PublicAPIConnectorValidator.bodyIndicatesSuccess(provider: .kmaWeather, data: invalid))
         XCTAssertTrue(PublicAPIConnectorValidator.bodyIndicatesSuccess(provider: .kmaWeather, data: valid))
+    }
+
+    func testKoreanLawBodyParserRequiresOfficialLawResult() {
+        let invalid = Data(#"{"LawSearch":{"totalCnt":"0","law":[]}}"#.utf8)
+        let valid = Data(#"{"LawSearch":{"totalCnt":"1","law":[{"법령명한글":"개인정보 보호법","법령ID":"011357","법령일련번호":"123456"}]}}"#.utf8)
+
+        XCTAssertFalse(PublicAPIConnectorValidator.bodyIndicatesSuccess(provider: .koreanLaw, data: invalid))
+        XCTAssertTrue(PublicAPIConnectorValidator.bodyIndicatesSuccess(provider: .koreanLaw, data: valid))
+    }
+
+    func testKoreanLawDirectConnectorBuildsSearchRequest() throws {
+        let request = KoreanLawSearchRequest(query: "개인정보", lawName: nil, article: nil)
+
+        let built = try KoreanLawDirectConnector.makeSearchRequest(request, lawOC: "law-key")
+
+        XCTAssertEqual(built.url?.host, "www.law.go.kr")
+        XCTAssertEqual(built.url?.path, "/DRF/lawSearch.do")
+        XCTAssertEqual(built.url?.queryValue("OC"), "law-key")
+        XCTAssertEqual(built.url?.queryValue("target"), "law")
+        XCTAssertEqual(built.url?.queryValue("type"), "JSON")
+        XCTAssertEqual(built.url?.queryValue("query"), "개인정보")
+    }
+
+    func testKoreanLawDirectConnectorParsesOfficialSources() {
+        let data = Data(#"{"LawSearch":{"totalCnt":"1","law":[{"법령명한글":"개인정보 보호법","법령ID":"011357","시행일자":"20240315"}]}}"#.utf8)
+
+        let results = KoreanLawDirectConnector.parseSearchResponse(data)
+
+        XCTAssertEqual(results.count, 1)
+        XCTAssertEqual(results[0].status, .verified)
+        XCTAssertEqual(results[0].lawName, "개인정보 보호법")
+        XCTAssertEqual(results[0].effectiveDate, "20240315")
+        XCTAssertFalse(results[0].sources.isEmpty)
+        XCTAssertTrue(results[0].disclaimer.contains("법률 자문이 아닌"))
     }
 
     private func fixedDate(_ iso8601: String) -> Date {
