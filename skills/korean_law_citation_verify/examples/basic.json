@@ -1,0 +1,29 @@
+{
+  "input": {
+    "citation_text": "개인정보 보호법 제15조 제1항",
+    "expected_law_name": "개인정보 보호법",
+    "expected_article": "제15조",
+    "expected_paragraph": "제1항"
+  },
+  "expected_output_shape": {
+    "status": "verified",
+    "checked_citations": [
+      {
+        "law_name": "개인정보 보호법",
+        "article": "제15조",
+        "paragraph": "제1항",
+        "effective_date": "official-source-provided-date",
+        "verification_status": "verified",
+        "mismatch_details": []
+      }
+    ],
+    "sources": [
+      {
+        "title": "official law source title",
+        "url": "official-source-url",
+        "publisher": "법제처 또는 국가법령정보센터"
+      }
+    ],
+    "disclaimer": "법률 자문이 아닌 공식 출처 기반 인용 검증 결과입니다."
+  }
+}

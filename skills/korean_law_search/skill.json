@@ -1,26 +1,21 @@
 {
   "id": "korean_law_search",
   "version": "0.1.0",
-  "kind": "externalMCP",
+  "kind": "directREST",
   "display_name": "Korean Law Search",
-  "description": "Reference package for searching Korean statutes and legal materials through Korean Law MCP. Not runtime-enabled and not legal advice.",
+  "description": "Reference package for rebuilding korean-law-mcp statute search as a MyTeam directREST skill. Not runtime-enabled and not legal advice.",
   "source_repo": "https://github.com/chrisryugj/korean-law-mcp",
-  "category": "koreanLegal",
+  "category": "legal",
   "runtime": {
     "auto_load": false,
     "user_visible_enabled": false
   },
-  "execution_modes": ["externalMCP", "directRESTLater"],
+  "execution_modes": ["byokDirect", "externalMCPLater"],
   "required_credentials": [
     {
-      "type": "external",
-      "id": "LAW_OC",
-      "description": "National Law Information Center open API key, when using a direct or self-hosted Korean Law MCP path."
-    },
-    {
-      "type": "external",
-      "id": "koreanLawMCPEndpoint",
-      "description": "Approved Korean Law MCP endpoint. Must be reviewed before App Store runtime use."
+      "type": "provider",
+      "provider": "koreanLaw",
+      "fields": ["lawOC"]
     }
   ],
   "input_schema": {
@@ -29,13 +24,19 @@
     "properties": {
       "query": { "type": "string", "minLength": 2 },
       "law_name": { "type": "string" },
-      "effective_date": { "type": "string" }
+      "article": { "type": "string" },
+      "effective_date": { "type": "string" },
+      "search_scope": {
+        "type": "string",
+        "enum": ["statute_search", "article_lookup"]
+      }
     }
   },
   "output_schema": {
     "type": "object",
-    "required": ["results", "sources", "disclaimer"],
+    "required": ["status", "results", "sources", "disclaimer"],
     "properties": {
+      "status": { "type": "string", "enum": ["verified", "partial", "failed"] },
       "results": { "type": "array" },
       "sources": { "type": "array" },
       "disclaimer": { "type": "string" }
@@ -43,8 +44,12 @@
   },
   "failure_modes": [
     {
-      "code": "missing_external_endpoint",
-      "message": "Korean Law MCP endpoint or LAW_OC credential is not configured."
+      "code": "missing_credentials",
+      "message": "lawOC credential is not configured."
+    },
+    {
+      "code": "unsupported_scope",
+      "message": "Case law, administrative rules, and interpretation examples are not part of this P0 reference package."
     },
     {
       "code": "source_missing",
@@ -61,19 +66,24 @@
   ],
   "source_policy": {
     "requires_sources": true,
+    "requires_official_source": true,
+    "legal_disclaimer_required": true,
     "verified_label_requires": "official_law_source_with_law_article_and_effective_date",
+    "required_metadata": ["law_name", "article", "effective_date", "official_source_url", "verification_status"],
     "preferred_sources": ["National Law Information Center", "법제처"]
   },
   "ui": {
-    "card": "korean_law_search_results",
+    "card": "LegalResearchCard",
     "requires_source_links": true
   },
   "rules": [
+    "P0 scope is statute search, article lookup, and official source display.",
+    "Do not present case law, administrative rules, or interpretation examples as available in this package.",
     "Do not present legal output as attorney advice.",
-    "Show law name, article, paragraph when available, effective date, and source.",
+    "Show law name, article, paragraph when available, effective date, official source, and verification status.",
     "Prefer official National Law Information Center or Ministry of Government Legislation sources.",
     "If citation verification fails, mark the result failed rather than partial.",
     "When user action has legal consequence, advise consulting a qualified professional.",
-    "Do not expose externalMCP as App Store runtime until separately approved."
+    "Do not expose externalMCP as App Store runtime; externalMCPLater is only a future power-user or direct-download option."
   ]
 }

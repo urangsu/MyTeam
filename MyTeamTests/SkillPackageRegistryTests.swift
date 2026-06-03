@@ -33,6 +33,21 @@ final class SkillPackageRegistryTests: XCTestCase {
         XCTAssertTrue(errors.contains { $0.contains("required_credentials") && $0.contains("naverNews") })
     }
 
+    func testRegistryDecodesFutureExternalMCPExecutionModeWithoutEnablingRuntimeUse() throws {
+        let package = try SkillPackageRegistry.decodePackage(
+            Data(Self.koreanLawReferenceSkillJSON.utf8),
+            sourceURL: URL(fileURLWithPath: "/tmp/skills/korean_law_search/skill.json")
+        )
+
+        let errors = SkillPackageRegistry.validate(package)
+
+        XCTAssertEqual(errors, [])
+        XCTAssertEqual(package.kind, .directREST)
+        XCTAssertEqual(package.executionModes, [.byokDirect, .externalMCPLater])
+        XCTAssertFalse(package.runtime.autoLoad)
+        XCTAssertFalse(package.runtime.userVisibleEnabled)
+    }
+
     private static let referenceSkillJSON = """
     {
       "id": "naver_news_search",
@@ -92,6 +107,52 @@ final class SkillPackageRegistryTests: XCTestCase {
         "requires_valid_credentials": true,
         "cases_file": "tests/validator_cases.json"
       }
+    }
+    """
+
+    private static let koreanLawReferenceSkillJSON = """
+    {
+      "id": "korean_law_search",
+      "display_name": "Korean Law Search",
+      "version": "0.1.0",
+      "kind": "directREST",
+      "category": "legal",
+      "description": "Reference package for Korean law directREST search.",
+      "source_repo": "https://github.com/chrisryugj/korean-law-mcp",
+      "runtime": {
+        "auto_load": false,
+        "user_visible_enabled": false
+      },
+      "required_credentials": [
+        {
+          "type": "external",
+          "id": "lawOC",
+          "description": "User-provided law API key."
+        }
+      ],
+      "execution_modes": ["byokDirect", "externalMCPLater"],
+      "input_schema": {
+        "type": "object"
+      },
+      "output_schema": {
+        "type": "object"
+      },
+      "failure_modes": [
+        { "code": "citation_unverified", "message": "Citation could not be verified." }
+      ],
+      "source_policy": {
+        "requires_sources": true,
+        "verified_label_requires": "official_law_source",
+        "requires_official_source": true,
+        "legal_disclaimer_required": true
+      },
+      "ui": {
+        "card": "LegalResearchCard",
+        "requires_source_links": true
+      },
+      "rules": [
+        "Do not present legal output as attorney advice."
+      ]
     }
     """
 }

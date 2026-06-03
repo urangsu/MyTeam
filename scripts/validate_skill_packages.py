@@ -19,6 +19,7 @@ REQUIRED_FIELDS = {
     "display_name",
     "description",
     "source_repo",
+    "runtime",
     "execution_modes",
     "required_credentials",
     "input_schema",
@@ -37,6 +38,16 @@ ALLOWED_KINDS = {
     "disabled",
 }
 
+ALLOWED_EXECUTION_MODES = {
+    "byokDirect",
+    "proxyPlanned",
+    "myTeamProxy",
+    "externalMCP",
+    "externalMCPLater",
+    "directRESTLater",
+    "disabled",
+}
+
 PROVIDER_CREDENTIAL_FIELDS = {
     "openAI": {"apiKey"},
     "gemini": {"apiKey"},
@@ -45,6 +56,7 @@ PROVIDER_CREDENTIAL_FIELDS = {
     "kmaWeather": {"serviceKey"},
     "naverNews": {"clientID", "clientSecret"},
     "dartDisclosure": {"apiKey"},
+    "koreanLaw": {"lawOC"},
 }
 
 
@@ -62,6 +74,18 @@ def non_empty_string(value: Any) -> bool:
 
 def non_empty_list(value: Any) -> bool:
     return isinstance(value, list) and len(value) > 0
+
+
+def is_legal_manifest(manifest: dict[str, Any]) -> bool:
+    category = manifest.get("category")
+    manifest_id = manifest.get("id")
+    return (
+        isinstance(category, str)
+        and "legal" in category.lower()
+    ) or (
+        isinstance(manifest_id, str)
+        and manifest_id.startswith("korean_law_")
+    )
 
 
 def validate_required_fields(path: Path, manifest: dict[str, Any]) -> list[str]:
@@ -132,6 +156,18 @@ def validate_manifest(path: Path) -> list[str]:
     if "failure_modes" in manifest and not non_empty_list(manifest.get("failure_modes")):
         errors.append(f"{path}: failure_modes must not be empty")
 
+    if "execution_modes" in manifest:
+        execution_modes = manifest.get("execution_modes")
+        if not non_empty_list(execution_modes) or not all(non_empty_string(mode) for mode in execution_modes):
+            errors.append(f"{path}: execution_modes must be a non-empty string array")
+        else:
+            invalid_modes = sorted(set(execution_modes) - ALLOWED_EXECUTION_MODES)
+            if invalid_modes:
+                errors.append(
+                    f"{path}: execution_modes contains unsupported values {invalid_modes}; "
+                    f"allowed values are {sorted(ALLOWED_EXECUTION_MODES)}"
+                )
+
     if "rules" in manifest and not non_empty_list(manifest.get("rules")):
         errors.append(f"{path}: rules must not be empty")
 
@@ -141,6 +177,29 @@ def validate_manifest(path: Path) -> list[str]:
             errors.append(f"{path}: source_policy must be an object")
         elif source_policy.get("requires_sources") is True and not non_empty_string(source_policy.get("verified_label_requires")):
             errors.append(f"{path}: source_policy.verified_label_requires is required when sources are required")
+
+    if is_legal_manifest(manifest):
+        source_policy = manifest.get("source_policy")
+        if not isinstance(source_policy, dict):
+            errors.append(f"{path}: legal category skill requires source_policy")
+        else:
+            if source_policy.get("legal_disclaimer_required") is not True:
+                errors.append(f"{path}: legal category skill requires source_policy.legal_disclaimer_required=true")
+            if source_policy.get("requires_official_source") is not True:
+                errors.append(f"{path}: legal category skill requires source_policy.requires_official_source=true")
+
+        failure_modes = manifest.get("failure_modes")
+        if isinstance(failure_modes, list):
+            failure_codes = {
+                mode.get("code")
+                for mode in failure_modes
+                if isinstance(mode, dict)
+            }
+            if not ({"citation_unverified", "citation_mismatch"} & failure_codes):
+                errors.append(
+                    f"{path}: legal category skill requires failure_modes to include "
+                    "citation_unverified or citation_mismatch"
+                )
 
     runtime = manifest.get("runtime")
     if runtime is not None:

@@ -1,26 +1,21 @@
 {
   "id": "korean_law_citation_verify",
   "version": "0.1.0",
-  "kind": "externalMCP",
+  "kind": "directREST",
   "display_name": "Korean Law Citation Verify",
-  "description": "Reference package for checking whether LLM-generated Korean legal citations exist and match official law text. Not runtime-enabled.",
+  "description": "Reference package for rebuilding korean-law-mcp citation verification as a MyTeam directREST skill. Not runtime-enabled and not legal advice.",
   "source_repo": "https://github.com/chrisryugj/korean-law-mcp",
-  "category": "koreanLegal",
+  "category": "legal",
   "runtime": {
     "auto_load": false,
     "user_visible_enabled": false
   },
-  "execution_modes": ["externalMCP", "directRESTLater"],
+  "execution_modes": ["byokDirect", "externalMCPLater"],
   "required_credentials": [
     {
-      "type": "external",
-      "id": "LAW_OC",
-      "description": "National Law Information Center open API key, when using a direct or self-hosted Korean Law MCP path."
-    },
-    {
-      "type": "external",
-      "id": "koreanLawMCPEndpoint",
-      "description": "Approved Korean Law MCP endpoint. Must be reviewed before App Store runtime use."
+      "type": "provider",
+      "provider": "koreanLaw",
+      "fields": ["lawOC"]
     }
   ],
   "input_schema": {
@@ -29,16 +24,20 @@
     "properties": {
       "citation_text": { "type": "string", "minLength": 2 },
       "expected_law_name": { "type": "string" },
-      "expected_article": { "type": "string" }
+      "expected_article": { "type": "string" },
+      "expected_paragraph": { "type": "string" },
+      "expected_item": { "type": "string" },
+      "effective_date": { "type": "string" }
     }
   },
   "output_schema": {
     "type": "object",
-    "required": ["status", "checked_citations", "sources"],
+    "required": ["status", "checked_citations", "sources", "disclaimer"],
     "properties": {
-      "status": { "type": "string", "enum": ["verified", "failed"] },
+      "status": { "type": "string", "enum": ["verified", "partial", "failed"] },
       "checked_citations": { "type": "array" },
-      "sources": { "type": "array" }
+      "sources": { "type": "array" },
+      "disclaimer": { "type": "string" }
     }
   },
   "failure_modes": [
@@ -61,19 +60,24 @@
   ],
   "source_policy": {
     "requires_sources": true,
+    "requires_official_source": true,
+    "legal_disclaimer_required": true,
     "verified_label_requires": "official_law_source_confirms_exact_citation",
+    "required_metadata": ["law_name", "article", "effective_date", "official_source_url", "verification_status"],
     "preferred_sources": ["National Law Information Center", "법제처"]
   },
   "ui": {
-    "card": "korean_law_citation_verification",
+    "card": "LegalResearchCard",
     "requires_source_links": true
   },
   "rules": [
+    "P0 scope is law name, article, paragraph, and item existence verification.",
     "Verify that the cited law text actually exists.",
     "Show law name, article, paragraph, item, effective date, and mismatch details.",
     "Mark verification failure as failed, not partial.",
+    "If the official source is reachable but the match is ambiguous, mark the result partial.",
     "Do not present legal output as attorney advice.",
     "Prefer official National Law Information Center or Ministry of Government Legislation sources.",
-    "Do not expose externalMCP as App Store runtime until separately approved."
+    "Do not expose externalMCP as App Store runtime; externalMCPLater is only a future power-user or direct-download option."
   ]
 }

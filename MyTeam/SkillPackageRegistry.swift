@@ -13,6 +13,7 @@ enum SkillPackageExecutionMode: String, Codable, Sendable {
     case proxyPlanned
     case myTeamProxy
     case externalMCP
+    case externalMCPLater
     case directRESTLater
     case disabled
 }

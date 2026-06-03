@@ -1,0 +1,28 @@
+{
+  "input": {
+    "query": "개인정보 보호법 제15조",
+    "law_name": "개인정보 보호법",
+    "article": "제15조",
+    "search_scope": "article_lookup"
+  },
+  "expected_output_shape": {
+    "status": "verified",
+    "results": [
+      {
+        "law_name": "개인정보 보호법",
+        "article": "제15조",
+        "effective_date": "official-source-provided-date",
+        "summary": "Official-source-backed article lookup result. Not legal advice.",
+        "verification_status": "verified"
+      }
+    ],
+    "sources": [
+      {
+        "title": "official law source title",
+        "url": "official-source-url",
+        "publisher": "법제처 또는 국가법령정보센터"
+      }
+    ],
+    "disclaimer": "법률 자문이 아닌 공식 출처 기반 법령 조사 결과입니다."
+  }
+}
