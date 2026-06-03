@@ -37,11 +37,36 @@ Use this checklist before copying, adapting, or referencing any external skill, 
 
 - Repo: `https://github.com/chrisryugj/korean-law-mcp`
 - Observed shape: Korean law MCP/CLI/remote endpoint over National Law Information Center APIs.
-- MyTeam intake posture: Keep as `externalMCP` reference until App Store runtime policy, endpoint trust, credential storage, and citation verification are implemented.
+- MyTeam intake posture: Do not bundle the Node MCP server directly into App Store runtime. Reconstruct the useful capabilities as MyTeam `directREST` skill packages first, then consider `externalMCP` as an optional later path for power users.
 - First reference packages:
   - `skills/korean_law_search/skill.json`
   - `skills/korean_law_citation_verify/skill.json`
 - Risk notes: Legal output must not read as attorney advice. Source, statute name, article, effective date, and citation verification status must be visible.
+
+## Korean Law Rebuild Posture
+
+MyTeam should actively rebuild the useful korean-law-mcp capability in app-native form. The release-safe path is not to bundle the external Node MCP server into the App Store runtime, but to turn the capability into MyTeam-owned skill packages and Swift connectors.
+
+Preferred sequence:
+
+- P0 reference skill surface:
+  - law search
+  - article lookup
+  - citation verification
+- P1 later surface:
+  - case law
+  - administrative rules
+  - interpretation examples
+- P2 later surface:
+  - point-in-time comparison
+  - impact graph
+- Add `ExternalProvider.koreanLaw` with required credential `lawOC`.
+- Store `lawOC` only through `SecureCredentialStore` and the Keychain path.
+- Build a Swift `directREST` connector such as `KoreanLawDirectConnector.swift` against official law APIs.
+- Render the result through a `LegalResearchCard`-style contract that always shows statute name, article, effective date, official source URL, and verification status.
+- Treat citation mismatch or missing source as `failed`, not as verified or connected.
+- Forbid source-free legal advice and any wording that reads like attorney advice.
+- Keep `externalMCP` available only as an optional later path for power-user or direct-download modes after App Store review, sandbox, endpoint trust, logging, and privacy review are complete.
 
 ## App Store Boundary
 

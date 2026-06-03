@@ -61,6 +61,8 @@ Use before adding new features, dashboards, stock/weather/search experiences, de
 - `understand`: use only for unclear Structural Mode impact analysis. Do not commit generated `.understand-anything/` artifacts unless explicitly selected into docs.
 - `verification-before-completion`: use before completion claims, commits, pushes, or PRs.
 - Superpowers skills: use for P0, Structural, and Product work when planning or verification depth is useful. Do not slow down Small Patch Mode with heavy ceremony.
+- For a Korean-readable overview of installed Codex/Claude/G-Stack skills, consult `docs/skills/installed_skills_ko.md` or `docs/skills/installed_skills_ko.json`.
+- Treat the Korean skill catalog as documentation only. Do not edit original `SKILL.md` name, description, frontmatter, or path just to translate labels, because those fields affect routing and update safety.
 
 ## Completion Reports
 

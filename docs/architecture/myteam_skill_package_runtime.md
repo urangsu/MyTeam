@@ -66,6 +66,13 @@ External credentials are allowed only when MyTeam does not yet have a provider s
 }
 ```
 
+Korean law is the planned path out of this temporary external state. The intended MyTeam shape is:
+
+- Add `ExternalProvider.koreanLaw`.
+- Require `lawOC` as the BYOK credential field.
+- Store the credential through `SecureCredentialStore` and Keychain.
+- Execute through a Swift `directREST` connector before considering any optional `externalMCP` mode.
+
 ## Execution Modes
 
 - `byokDirect`: User brings credentials; app calls the upstream API directly.
@@ -74,6 +81,8 @@ External credentials are allowed only when MyTeam does not yet have a provider s
 - `externalMCP`: External MCP server or endpoint. Not bundled into App Store runtime by default.
 - `directRESTLater`: Possible future direct REST path.
 - `disabled`: Contract exists, but package is not available.
+
+For Korean law specifically, `directREST` is the preferred product path and `externalMCP` is an optional later path only.
 
 ## Source Policy
 
@@ -113,6 +122,7 @@ Every package must list failure modes. At minimum:
 - Source missing or unverifiable.
 
 Legal packages must include citation mismatch or citation verification failure when applicable.
+Legal packages should be designed around law search, article lookup, and citation verification first. Case law, administrative rules, interpretation examples, point-in-time comparison, and impact graphs can arrive in later packages.
 
 ## Manual And Live Test Policy
 
@@ -129,5 +139,7 @@ This document does not authorize:
 - Calling MCP servers from App Store runtime.
 - Showing packages as user-available.
 - Replacing `ChainOrchestrator` or `KSkillAssistRuntime`.
+
+It does allow MyTeam to define product-owned package contracts now so that later implementation can become a MyTeam-native feature instead of a direct bundle of someone else's runtime.
 
 The next runtime phase must add a separate approval gate before any package can execute.

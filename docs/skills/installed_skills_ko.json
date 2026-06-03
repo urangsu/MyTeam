@@ -1,0 +1,4059 @@
+{
+  "generated_at": "2026-06-03",
+  "catalog_policy": {
+    "original_skill_files_modified": false,
+    "routing_keywords_preserved": true,
+    "note_ko": "이 카탈로그는 한국어 조회용 문서이며 원본 SKILL.md의 name/description/frontmatter/path를 대체하지 않습니다."
+  },
+  "myteam_legal_rebuild_guidance": {
+    "title_ko": "법률 MCP 재구성 방향",
+    "summary_ko": "korean-law-mcp를 그대로 Node MCP 서버로 App Store 런타임에 번들링하는 것은 비추천이지만, 기능과 구조를 MyTeam Skill Package 표준으로 재구성하는 것은 적극 추진 대상입니다.",
+    "priorities": [
+      "P0: 법령 검색, 조문 조회, 인용 검증",
+      "P1: 판례, 행정규칙, 해석례",
+      "P2: 시점 비교, 영향 그래프"
+    ],
+    "myteam_direction": [
+      "ExternalProvider.koreanLaw 추가 예정",
+      "required credential: lawOC",
+      "SecureCredentialStore를 통한 Keychain 저장",
+      "KoreanLawDirectConnector.swift 기반 Swift directREST 경로",
+      "LegalResearchCard 계약",
+      "법령명/조문/시행일/공식 출처 필수 표시",
+      "법률 자문처럼 단정 금지",
+      "검증 없는 verified 금지"
+    ],
+    "optional_later": [
+      "externalMCP는 power-user/direct-download 모드에서 선택형 검토",
+      "runtime 연결 전 사용 가능 표시 금지"
+    ]
+  },
+  "scan_roots": [
+    {
+      "label": "codex_system",
+      "path": "/Users/su/.codex/skills/.system",
+      "exists": true
+    },
+    {
+      "label": "codex_user",
+      "path": "/Users/su/.codex/skills",
+      "exists": true
+    },
+    {
+      "label": "agents",
+      "path": "/Users/su/.agents/skills",
+      "exists": true
+    },
+    {
+      "label": "codex_plugin_cache",
+      "path": "/Users/su/.codex/plugins/cache",
+      "exists": true
+    },
+    {
+      "label": "claude_home",
+      "path": "/Users/su/.claude",
+      "exists": true
+    },
+    {
+      "label": "project_claude",
+      "path": "/Users/su/Desktop/MyTeam/.claude",
+      "exists": true
+    },
+    {
+      "label": "project_skill_packages",
+      "path": "/Users/su/Desktop/MyTeam/skills",
+      "exists": true
+    }
+  ],
+  "skill_count": 234,
+  "skills": [
+    {
+      "name": "gstack",
+      "path": "/Users/su/.agents/skills/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "Chrome",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "node"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "agent-browser",
+      "path": "/Users/su/.agents/skills/agent-browser/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "Automates browser interactions for web testing, form filling, screenshots, and data extraction. Use when the user needs to navigate websites, interact with web pages, fill forms, take screenshots, test web applications, or extract information from web pages.",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "Chrome",
+        "GitHub",
+        "Playwright",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "autoplan",
+      "path": "/Users/su/.agents/skills/autoplan/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "npm",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "benchmark",
+      "path": "/Users/su/.agents/skills/benchmark/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "browse",
+      "path": "/Users/su/.agents/skills/browse/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "Chrome",
+        "curl",
+        "git",
+        "node"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "canary",
+      "path": "/Users/su/.agents/skills/canary/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "GitHub"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "careful",
+      "path": "/Users/su/.agents/skills/careful/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "설치된 작업 보조 스킬입니다. 원문 설명을 기준으로 특정 상황에서 Codex 행동을 좁히고 품질 기준을 올리는 데 사용합니다.",
+      "when_to_use_ko": "사용자 요청이나 원문 description이 이 스킬의 목적과 직접 맞을 때 사용합니다.",
+      "cautions_ko": "원본 SKILL.md의 name, description, path, frontmatter는 라우팅 안정성을 위해 수정하지 않습니다.",
+      "tool_dependencies": [
+        "git",
+        "node"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "checkpoint",
+      "path": "/Users/su/.agents/skills/checkpoint/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "git"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "codex",
+      "path": "/Users/su/.agents/skills/codex/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "git",
+        "GitHub",
+        "npm",
+        "python",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "open-gstack-browser",
+      "path": "/Users/su/.agents/skills/connect-chrome/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "Chrome",
+        "curl",
+        "git",
+        "Playwright",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "cso",
+      "path": "/Users/su/.agents/skills/cso/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "node",
+        "npm"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "design-consultation",
+      "path": "/Users/su/.agents/skills/design-consultation/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "design-html",
+      "path": "/Users/su/.agents/skills/design-html/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "npm",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "design-review",
+      "path": "/Users/su/.agents/skills/design-review/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "Chrome",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "node",
+        "npm",
+        "Playwright",
+        "playwright",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "design-shotgun",
+      "path": "/Users/su/.agents/skills/design-shotgun/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "dev-browser",
+      "path": "/Users/su/.agents/skills/dev-browser/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "Browser automation with persistent page state. Use when users ask to navigate websites, fill forms, take screenshots, extract web data, test web apps, or automate browser workflows. Trigger phrases include \"go to [url]\", \"click on\", \"fill out the form\", \"take a screenshot\", \"scrape\", \"automate\", \"test the website\", \"log into\", or any browser interaction request.",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "Chrome",
+        "GitHub",
+        "npm",
+        "npx",
+        "Playwright"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "devex-review",
+      "path": "/Users/su/.agents/skills/devex-review/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "rg",
+        "Vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "document-release",
+      "path": "/Users/su/.agents/skills/document-release/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "git",
+        "GitHub",
+        "node",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "freeze",
+      "path": "/Users/su/.agents/skills/freeze/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "git"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "frontend-ui-ux",
+      "path": "/Users/su/.agents/skills/frontend-ui-ux/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "Designer-turned-developer who crafts stunning UI/UX even without design mockups",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "git"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "git-master",
+      "path": "/Users/su/.agents/skills/git-master/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "MUST USE for ANY git operations. Atomic commits, rebase/squash, history search (blame, bisect, log -S). STRONGLY RECOMMENDED: Use with task(category='quick', load_skills=['git-master'], ...) to save context. Triggers: 'commit', 'rebase', 'squash', 'who wrote', 'when was X added', 'find the commit that'.",
+      "description_ko": "git 작업을 원자적이고 안전하게 처리하는 스킬입니다.",
+      "when_to_use_ko": "commit, push, rebase, blame, history 탐색 때 사용합니다.",
+      "cautions_ko": "force push나 destructive 명령은 신중하게 다룹니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "git"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "graphifyy",
+      "path": "/Users/su/.agents/skills/graphifyy/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "Build and query knowledge graphs for the workspace using graphifyy.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [],
+      "frontmatter_present": true
+    },
+    {
+      "name": "gstack-upgrade",
+      "path": "/Users/su/.agents/skills/gstack-upgrade/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "git",
+        "GitHub"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "guard",
+      "path": "/Users/su/.agents/skills/guard/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "git"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "health",
+      "path": "/Users/su/.agents/skills/health/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "git",
+        "node",
+        "npx"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "investigate",
+      "path": "/Users/su/.agents/skills/investigate/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "스킬, 플러그인, MCP, 에이전트 구성을 다루는 스킬입니다.",
+      "when_to_use_ko": "도구 통합, skill/package 작성, MCP 서버 설계 때 사용합니다.",
+      "cautions_ko": "라우팅 설명과 manifest를 망가뜨리면 자동 선택 안정성이 떨어집니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "git"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "land-and-deploy",
+      "path": "/Users/su/.agents/skills/land-and-deploy/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "rg",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "learn",
+      "path": "/Users/su/.agents/skills/learn/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "계획과 제품 판단을 더 엄격하게 검토하는 스킬입니다.",
+      "when_to_use_ko": "방향성, 제품 품질, 개발자 경험, 아키텍처 의사결정 전에 사용합니다.",
+      "cautions_ko": "검토가 실행을 지연시키는 의식이 되지 않게 결론과 기준을 남겨야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "git"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "office-hours",
+      "path": "/Users/su/.agents/skills/office-hours/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "open-gstack-browser",
+      "path": "/Users/su/.agents/skills/open-gstack-browser/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "Chrome",
+        "curl",
+        "git",
+        "Playwright",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "plan-ceo-review",
+      "path": "/Users/su/.agents/skills/plan-ceo-review/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "계획과 제품 판단을 더 엄격하게 검토하는 스킬입니다.",
+      "when_to_use_ko": "방향성, 제품 품질, 개발자 경험, 아키텍처 의사결정 전에 사용합니다.",
+      "cautions_ko": "검토가 실행을 지연시키는 의식이 되지 않게 결론과 기준을 남겨야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "git",
+        "GitHub",
+        "node",
+        "npm",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "plan-design-review",
+      "path": "/Users/su/.agents/skills/plan-design-review/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "Chrome",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "plan-devex-review",
+      "path": "/Users/su/.agents/skills/plan-devex-review/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "npm",
+        "npx",
+        "rg",
+        "Vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "plan-eng-review",
+      "path": "/Users/su/.agents/skills/plan-eng-review/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "엔지니어링 매니저 관점에서 아키텍처와 실행 계획을 검토하는 스킬입니다.",
+      "when_to_use_ko": "구조 변경, 데이터 흐름, 테스트 전략을 잠그기 전에 사용합니다.",
+      "cautions_ko": "구현보다 먼저 리스크와 엣지 케이스를 드러내야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "git",
+        "GitHub",
+        "node",
+        "Playwright",
+        "playwright",
+        "python",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "qa-only",
+      "path": "/Users/su/.agents/skills/qa-only/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "qa",
+      "path": "/Users/su/.agents/skills/qa/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "node",
+        "npm",
+        "Playwright",
+        "playwright",
+        "python",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "retro",
+      "path": "/Users/su/.agents/skills/retro/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "git",
+        "GitHub",
+        "node"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "review",
+      "path": "/Users/su/.agents/skills/review/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "git",
+        "GitHub",
+        "node",
+        "npm",
+        "python",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "setup-browser-cookies",
+      "path": "/Users/su/.agents/skills/setup-browser-cookies/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "git",
+        "GitHub",
+        "Playwright"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "setup-deploy",
+      "path": "/Users/su/.agents/skills/setup-deploy/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "ship",
+      "path": "/Users/su/.agents/skills/ship/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "node",
+        "npm",
+        "Playwright",
+        "playwright",
+        "python",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "unfreeze",
+      "path": "/Users/su/.agents/skills/unfreeze/SKILL.md",
+      "source_kind": "G-Stack/Agents skill",
+      "description_original": "|",
+      "description_ko": "스킬, 플러그인, MCP, 에이전트 구성을 다루는 스킬입니다.",
+      "when_to_use_ko": "도구 통합, skill/package 작성, MCP 서버 설계 때 사용합니다.",
+      "cautions_ko": "라우팅 설명과 manifest를 망가뜨리면 자동 선택 안정성이 떨어집니다.",
+      "tool_dependencies": [
+        "git"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "access",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/external_plugins/discord/skills/access/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "Manage Discord channel access — approve pairings, edit allowlists, set DM/group policy. Use when the user asks to pair, approve someone, check who's allowed, or change policy for the Discord channel.",
+      "description_ko": "스킬, 플러그인, MCP, 에이전트 구성을 다루는 스킬입니다.",
+      "when_to_use_ko": "도구 통합, skill/package 작성, MCP 서버 설계 때 사용합니다.",
+      "cautions_ko": "라우팅 설명과 manifest를 망가뜨리면 자동 선택 안정성이 떨어집니다.",
+      "tool_dependencies": [],
+      "frontmatter_present": true
+    },
+    {
+      "name": "configure",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/external_plugins/discord/skills/configure/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "Set up the Discord channel — save the bot token and review access policy. Use when the user pastes a Discord bot token, asks to configure Discord, asks \"how do I set this up\" or \"who can reach me,\" or wants to check channel status.",
+      "description_ko": "계획과 제품 판단을 더 엄격하게 검토하는 스킬입니다.",
+      "when_to_use_ko": "방향성, 제품 품질, 개발자 경험, 아키텍처 의사결정 전에 사용합니다.",
+      "cautions_ko": "검토가 실행을 지연시키는 의식이 되지 않게 결론과 기준을 남겨야 합니다.",
+      "tool_dependencies": [
+        "gh"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "access",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/external_plugins/imessage/skills/access/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "Manage iMessage channel access — approve pairings, edit allowlists, set DM/group policy. Use when the user asks to pair, approve someone, check who's allowed, or change policy for the iMessage channel.",
+      "description_ko": "스킬, 플러그인, MCP, 에이전트 구성을 다루는 스킬입니다.",
+      "when_to_use_ko": "도구 통합, skill/package 작성, MCP 서버 설계 때 사용합니다.",
+      "cautions_ko": "라우팅 설명과 manifest를 망가뜨리면 자동 선택 안정성이 떨어집니다.",
+      "tool_dependencies": [],
+      "frontmatter_present": true
+    },
+    {
+      "name": "configure",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/external_plugins/imessage/skills/configure/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "Check iMessage channel setup and review access policy. Use when the user asks to configure iMessage, asks \"how do I set this up\" or \"who can reach me,\" or wants to know why texts aren't reaching the assistant.",
+      "description_ko": "계획과 제품 판단을 더 엄격하게 검토하는 스킬입니다.",
+      "when_to_use_ko": "방향성, 제품 품질, 개발자 경험, 아키텍처 의사결정 전에 사용합니다.",
+      "cautions_ko": "검토가 실행을 지연시키는 의식이 되지 않게 결론과 기준을 남겨야 합니다.",
+      "tool_dependencies": [
+        "gh"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "access",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/external_plugins/telegram/skills/access/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "Manage Telegram channel access — approve pairings, edit allowlists, set DM/group policy. Use when the user asks to pair, approve someone, check who's allowed, or change policy for the Telegram channel.",
+      "description_ko": "스킬, 플러그인, MCP, 에이전트 구성을 다루는 스킬입니다.",
+      "when_to_use_ko": "도구 통합, skill/package 작성, MCP 서버 설계 때 사용합니다.",
+      "cautions_ko": "라우팅 설명과 manifest를 망가뜨리면 자동 선택 안정성이 떨어집니다.",
+      "tool_dependencies": [],
+      "frontmatter_present": true
+    },
+    {
+      "name": "configure",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/external_plugins/telegram/skills/configure/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "Set up the Telegram channel — save the bot token and review access policy. Use when the user pastes a Telegram bot token, asks to configure Telegram, asks \"how do I set this up\" or \"who can reach me,\" or wants to check channel status.",
+      "description_ko": "계획과 제품 판단을 더 엄격하게 검토하는 스킬입니다.",
+      "when_to_use_ko": "방향성, 제품 품질, 개발자 경험, 아키텍처 의사결정 전에 사용합니다.",
+      "cautions_ko": "검토가 실행을 지연시키는 의식이 되지 않게 결론과 기준을 남겨야 합니다.",
+      "tool_dependencies": [
+        "gh"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "claude-automation-recommender",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/plugins/claude-code-setup/skills/claude-automation-recommender/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "Analyze a codebase and recommend Claude Code automations (hooks, subagents, skills, plugins, MCP servers). Use when user asks for automation recommendations, wants to optimize their Claude Code setup, mentions improving Claude Code workflows, asks how to first set up Claude Code for a project, or wants to know what Claude Code features they should use.",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "git",
+        "GitHub",
+        "MCP",
+        "npm",
+        "Playwright"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "claude-md-improver",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/plugins/claude-md-management/skills/claude-md-improver/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "Audit and improve CLAUDE.md files in repositories. Use when user asks to check, audit, update, improve, or fix CLAUDE.md files. Scans for all CLAUDE.md files, evaluates quality against templates, outputs quality report, then makes targeted updates. Also use when the user mentions \"CLAUDE.md maintenance\" or \"project memory optimization\".",
+      "description_ko": "설치된 작업 보조 스킬입니다. 원문 설명을 기준으로 특정 상황에서 Codex 행동을 좁히고 품질 기준을 올리는 데 사용합니다.",
+      "when_to_use_ko": "사용자 요청이나 원문 description이 이 스킬의 목적과 직접 맞을 때 사용합니다.",
+      "cautions_ko": "원본 SKILL.md의 name, description, path, frontmatter는 라우팅 안정성을 위해 수정하지 않습니다.",
+      "tool_dependencies": [
+        "gh",
+        "npm"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "example-command",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/plugins/example-plugin/skills/example-command/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "An example user-invoked skill that demonstrates frontmatter options and the skills/<name>/SKILL.md layout",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [],
+      "frontmatter_present": true
+    },
+    {
+      "name": "example-skill",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/plugins/example-plugin/skills/example-skill/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "This skill should be used when the user asks to \"demonstrate skills\", \"show skill format\", \"create a skill template\", or discusses skill development patterns. Provides a reference template for creating Claude Code plugin skills.",
+      "description_ko": "스킬, 플러그인, MCP, 에이전트 구성을 다루는 스킬입니다.",
+      "when_to_use_ko": "도구 통합, skill/package 작성, MCP 서버 설계 때 사용합니다.",
+      "cautions_ko": "라우팅 설명과 manifest를 망가뜨리면 자동 선택 안정성이 떨어집니다.",
+      "tool_dependencies": [],
+      "frontmatter_present": true
+    },
+    {
+      "name": "frontend-design",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/plugins/frontend-design/skills/frontend-design/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "Create distinctive, production-grade frontend interfaces with high design quality. Use this skill when the user asks to build web components, pages, or applications. Generates creative, polished code that avoids generic AI aesthetics.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "writing-hookify-rules",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/plugins/hookify/skills/writing-rules/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "This skill should be used when the user asks to \"create a hookify rule\", \"write a hook rule\", \"configure hookify\", \"add a hookify rule\", or needs guidance on hookify rule syntax and patterns.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "git",
+        "node",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "math-olympiad",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/plugins/math-olympiad/skills/math-olympiad/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "Solve competition math problems (IMO, Putnam, USAMO, AIME) with adversarial verification that catches the errors self-verification misses. Activates when asked to 'solve this IMO problem', 'prove this olympiad inequality', 'verify this competition proof', 'find a counterexample', 'is this proof correct', or for any problem with 'IMO', 'Putnam', 'USAMO', 'olympiad', or 'competition math' in it. Uses pure reasoning (no tools) — then a fresh-context adversarial verifier attacks the proof using specific failure patterns, not generic 'check logic'. Outputs calibrated confidence — will say 'no confident solution' rather than bluff. If LaTeX is available, produces a clean PDF after verification passes.",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "build-mcp-app",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/plugins/mcp-server-dev/skills/build-mcp-app/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "This skill should be used when the user wants to build an \"MCP app\", add \"interactive UI\" or \"widgets\" to an MCP server, \"render components in chat\", build \"MCP UI resources\", make a tool that shows a \"form\", \"picker\", \"dashboard\" or \"confirmation dialog\" inline in the conversation, or mentions \"apps SDK\" in the context of MCP. Use AFTER the build-mcp-server skill has settled the deployment model, or when the user already knows they want UI widgets.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "MCP",
+        "node",
+        "npm",
+        "npx"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "build-mcp-server",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/plugins/mcp-server-dev/skills/build-mcp-server/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "This skill should be used when the user asks to \"build an MCP server\", \"create an MCP\", \"make an MCP integration\", \"wrap an API for Claude\", \"expose tools to Claude\", \"make an MCP app\", or discusses building something with the Model Context Protocol. It is the entry point for MCP server development — it interrogates the user about their use case, determines the right deployment model (remote HTTP, MCPB, local stdio), picks a tool-design pattern, and hands off to specialized skills.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "MCP",
+        "npx"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "build-mcpb",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/plugins/mcp-server-dev/skills/build-mcpb/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "This skill should be used when the user wants to \"package an MCP server\", \"bundle an MCP\", \"make an MCPB\", \"ship a local MCP server\", \"distribute a local MCP\", discusses \".mcpb files\", mentions bundling a Node or Python runtime with their MCP server, or needs an MCP server that interacts with the local filesystem, desktop apps, or OS and must be installable without the user having Node/Python set up.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "GitHub",
+        "MCP",
+        "node",
+        "npm",
+        "npx",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "playground",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/plugins/playground/skills/playground/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "Creates interactive HTML playgrounds — self-contained single-file explorers that let users configure something visually through controls, see a live preview, and copy out a prompt. Use when the user asks to make a playground, explorer, or interactive tool for a topic.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "Chrome",
+        "gh",
+        "git"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "agent-development",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/plugins/plugin-dev/skills/agent-development/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "This skill should be used when the user asks to \"create an agent\", \"add an agent\", \"write a subagent\", \"agent frontmatter\", \"when to use description\", \"agent examples\", \"agent tools\", \"agent colors\", \"autonomous agent\", or needs guidance on agent structure, system prompts, triggering conditions, or agent development best practices for Claude Code plugins.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [],
+      "frontmatter_present": true
+    },
+    {
+      "name": "command-development",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/plugins/plugin-dev/skills/command-development/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "This skill should be used when the user asks to \"create a slash command\", \"add a command\", \"write a custom command\", \"define command arguments\", \"use command frontmatter\", \"organize commands\", \"create command with file references\", \"interactive command\", \"use AskUserQuestion in command\", or needs guidance on slash command structure, YAML frontmatter fields, dynamic arguments, bash execution in commands, user interaction patterns, or command development best practices for Claude Code.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "git",
+        "node",
+        "npm"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "hook-development",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/plugins/plugin-dev/skills/hook-development/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "This skill should be used when the user asks to \"create a hook\", \"add a PreToolUse/PostToolUse/Stop hook\", \"validate tool use\", \"implement prompt-based hooks\", \"use ${CLAUDE_PLUGIN_ROOT}\", \"set up event-driven automation\", \"block dangerous commands\", or mentions hook events (PreToolUse, PostToolUse, Stop, SubagentStop, SessionStart, SessionEnd, UserPromptSubmit, PreCompact, Notification). Provides comprehensive guidance for creating and implementing Claude Code plugin hooks with focus on advanced prompt-based hooks API.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "MCP",
+        "node"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "mcp-integration",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/plugins/plugin-dev/skills/mcp-integration/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "This skill should be used when the user asks to \"add MCP server\", \"integrate MCP\", \"configure MCP in plugin\", \"use .mcp.json\", \"set up Model Context Protocol\", \"connect external service\", mentions \"${CLAUDE_PLUGIN_ROOT} with MCP\", or discusses MCP server types (SSE, stdio, HTTP, WebSocket). Provides comprehensive guidance for integrating Model Context Protocol servers into Claude Code plugins for external tool and service integration.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "GitHub",
+        "MCP",
+        "npx",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "plugin-settings",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/plugins/plugin-dev/skills/plugin-settings/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "This skill should be used when the user asks about \"plugin settings\", \"store plugin configuration\", \"user-configurable plugin\", \".local.md files\", \"plugin state files\", \"read YAML frontmatter\", \"per-project plugin settings\", or wants to make plugin behavior configurable. Documents the .claude/plugin-name.local.md pattern for storing plugin-specific configuration with YAML frontmatter and markdown content.",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [],
+      "frontmatter_present": true
+    },
+    {
+      "name": "plugin-structure",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/plugins/plugin-dev/skills/plugin-structure/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "This skill should be used when the user asks to \"create a plugin\", \"scaffold a plugin\", \"understand plugin structure\", \"organize plugin components\", \"set up plugin.json\", \"use ${CLAUDE_PLUGIN_ROOT}\", \"add commands/agents/skills/hooks\", \"configure auto-discovery\", or needs guidance on plugin directory layout, manifest configuration, component organization, file naming conventions, or Claude Code plugin architecture best practices.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "GitHub",
+        "MCP",
+        "node",
+        "npm"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "skill-development",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/plugins/plugin-dev/skills/skill-development/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "This skill should be used when the user wants to \"create a skill\", \"add a skill to plugin\", \"write a new skill\", \"improve skill description\", \"organize skill content\", or needs guidance on skill structure, progressive disclosure, or skill development best practices for Claude Code plugins.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "MCP"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "skill-creator",
+      "path": "/Users/su/.claude/plugins/marketplaces/claude-plugins-official/plugins/skill-creator/skills/skill-creator/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "Create new skills, modify and improve existing skills, and measure skill performance. Use when users want to create a skill from scratch, update or optimize an existing skill, run evals to test a skill, benchmark skill performance with variance analysis, or optimize a skill's description for better triggering accuracy.",
+      "description_ko": "새 Codex skill을 설계하고 만드는 스킬입니다.",
+      "when_to_use_ko": "새 skill 생성 또는 기존 skill 업데이트 요청에 사용합니다.",
+      "cautions_ko": "frontmatter와 routing description을 훼손하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "MCP",
+        "npm",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "graphify",
+      "path": "/Users/su/.claude/skills/graphify/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "any input (code, docs, papers, images) - knowledge graph - clustered communities - HTML + JSON + audit report",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "node",
+        "python",
+        "swift"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "gstack",
+      "path": "/Users/su/.claude/skills/gstack/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "Chrome",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "node",
+        "Playwright",
+        "playwright",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "autoplan",
+      "path": "/Users/su/.claude/skills/gstack/autoplan/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "npm",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "benchmark-models",
+      "path": "/Users/su/.claude/skills/gstack/benchmark-models/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "스킬, 플러그인, MCP, 에이전트 구성을 다루는 스킬입니다.",
+      "when_to_use_ko": "도구 통합, skill/package 작성, MCP 서버 설계 때 사용합니다.",
+      "cautions_ko": "라우팅 설명과 manifest를 망가뜨리면 자동 선택 안정성이 떨어집니다.",
+      "tool_dependencies": [
+        "browse",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "benchmark",
+      "path": "/Users/su/.claude/skills/gstack/benchmark/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "browse",
+      "path": "/Users/su/.claude/skills/gstack/browse/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "Chrome",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "node",
+        "Playwright",
+        "playwright",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "hackernews-frontpage",
+      "path": "/Users/su/.claude/skills/gstack/browser-skills/hackernews-frontpage/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "Scrape the Hacker News front page (titles, points, comment counts).",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "canary",
+      "path": "/Users/su/.claude/skills/gstack/canary/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "careful",
+      "path": "/Users/su/.claude/skills/gstack/careful/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "설치된 작업 보조 스킬입니다. 원문 설명을 기준으로 특정 상황에서 Codex 행동을 좁히고 품질 기준을 올리는 데 사용합니다.",
+      "when_to_use_ko": "사용자 요청이나 원문 description이 이 스킬의 목적과 직접 맞을 때 사용합니다.",
+      "cautions_ko": "원본 SKILL.md의 name, description, path, frontmatter는 라우팅 안정성을 위해 수정하지 않습니다.",
+      "tool_dependencies": [
+        "git",
+        "node"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "codex",
+      "path": "/Users/su/.claude/skills/gstack/codex/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "npm",
+        "python",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "context-restore",
+      "path": "/Users/su/.claude/skills/gstack/context-restore/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "설치된 작업 보조 스킬입니다. 원문 설명을 기준으로 특정 상황에서 Codex 행동을 좁히고 품질 기준을 올리는 데 사용합니다.",
+      "when_to_use_ko": "사용자 요청이나 원문 description이 이 스킬의 목적과 직접 맞을 때 사용합니다.",
+      "cautions_ko": "원본 SKILL.md의 name, description, path, frontmatter는 라우팅 안정성을 위해 수정하지 않습니다.",
+      "tool_dependencies": [
+        "browse",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "context-save",
+      "path": "/Users/su/.claude/skills/gstack/context-save/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "cso",
+      "path": "/Users/su/.claude/skills/gstack/cso/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "node",
+        "npm"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "design-consultation",
+      "path": "/Users/su/.claude/skills/gstack/design-consultation/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "design-html",
+      "path": "/Users/su/.claude/skills/gstack/design-html/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "npm",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "design-review",
+      "path": "/Users/su/.claude/skills/gstack/design-review/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "Chrome",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "node",
+        "npm",
+        "Playwright",
+        "playwright"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "design-shotgun",
+      "path": "/Users/su/.claude/skills/gstack/design-shotgun/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "devex-review",
+      "path": "/Users/su/.claude/skills/gstack/devex-review/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "rg",
+        "Vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "document-generate",
+      "path": "/Users/su/.claude/skills/gstack/document-generate/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "계획과 제품 판단을 더 엄격하게 검토하는 스킬입니다.",
+      "when_to_use_ko": "방향성, 제품 품질, 개발자 경험, 아키텍처 의사결정 전에 사용합니다.",
+      "cautions_ko": "검토가 실행을 지연시키는 의식이 되지 않게 결론과 기준을 남겨야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "node"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "document-release",
+      "path": "/Users/su/.claude/skills/gstack/document-release/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "node",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "freeze",
+      "path": "/Users/su/.claude/skills/gstack/freeze/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "git"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "gstack-upgrade",
+      "path": "/Users/su/.claude/skills/gstack/gstack-upgrade/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "git",
+        "GitHub"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "guard",
+      "path": "/Users/su/.claude/skills/gstack/guard/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "git"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "health",
+      "path": "/Users/su/.claude/skills/gstack/health/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "node",
+        "npx"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "investigate",
+      "path": "/Users/su/.claude/skills/gstack/investigate/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "스킬, 플러그인, MCP, 에이전트 구성을 다루는 스킬입니다.",
+      "when_to_use_ko": "도구 통합, skill/package 작성, MCP 서버 설계 때 사용합니다.",
+      "cautions_ko": "라우팅 설명과 manifest를 망가뜨리면 자동 선택 안정성이 떨어집니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "ios-clean",
+      "path": "/Users/su/.claude/skills/gstack/ios-clean/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "rg",
+        "swift",
+        "xcodebuild"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "ios-design-review",
+      "path": "/Users/su/.claude/skills/gstack/ios-design-review/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "ios-fix",
+      "path": "/Users/su/.claude/skills/gstack/ios-fix/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "node",
+        "rg",
+        "swift",
+        "xcodebuild"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "ios-qa",
+      "path": "/Users/su/.claude/skills/gstack/ios-qa/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "python",
+        "rg",
+        "swift",
+        "xcodebuild"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "ios-sync",
+      "path": "/Users/su/.claude/skills/gstack/ios-sync/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "rg",
+        "swift",
+        "xcodebuild"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "land-and-deploy",
+      "path": "/Users/su/.claude/skills/gstack/land-and-deploy/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "rg",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "landing-report",
+      "path": "/Users/su/.claude/skills/gstack/landing-report/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "learn",
+      "path": "/Users/su/.claude/skills/gstack/learn/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "계획과 제품 판단을 더 엄격하게 검토하는 스킬입니다.",
+      "when_to_use_ko": "방향성, 제품 품질, 개발자 경험, 아키텍처 의사결정 전에 사용합니다.",
+      "cautions_ko": "검토가 실행을 지연시키는 의식이 되지 않게 결론과 기준을 남겨야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "make-pdf",
+      "path": "/Users/su/.claude/skills/gstack/make-pdf/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "문서, 발표자료, 스프레드시트 산출물을 만들거나 검토하는 스킬입니다.",
+      "when_to_use_ko": "문서 작성, PPT/PDF/XLSX 생성, 시각 렌더 검증 때 사용합니다.",
+      "cautions_ko": "렌더링과 실제 파일 결과물을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "office-hours",
+      "path": "/Users/su/.claude/skills/gstack/office-hours/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "open-gstack-browser",
+      "path": "/Users/su/.claude/skills/gstack/open-gstack-browser/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "Chrome",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "Playwright",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "gstack-openclaw-ceo-review",
+      "path": "/Users/su/.claude/skills/gstack/openclaw/skills/gstack-openclaw-ceo-review/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "Use when asked to review a plan, challenge a proposal, run a CEO review, poke holes in an approach, think bigger about scope, or decide whether to expand or reduce the plan.",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "node"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "gstack-openclaw-investigate",
+      "path": "/Users/su/.claude/skills/gstack/openclaw/skills/gstack-openclaw-investigate/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "Use when asked to debug, fix a bug, investigate an error, or do root cause analysis, and when users report errors, stack traces, unexpected behavior, or say something stopped working.",
+      "description_ko": "설치된 작업 보조 스킬입니다. 원문 설명을 기준으로 특정 상황에서 Codex 행동을 좁히고 품질 기준을 올리는 데 사용합니다.",
+      "when_to_use_ko": "사용자 요청이나 원문 description이 이 스킬의 목적과 직접 맞을 때 사용합니다.",
+      "cautions_ko": "원본 SKILL.md의 name, description, path, frontmatter는 라우팅 안정성을 위해 수정하지 않습니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "git"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "gstack-openclaw-office-hours",
+      "path": "/Users/su/.claude/skills/gstack/openclaw/skills/gstack-openclaw-office-hours/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "Use when asked to brainstorm, evaluate whether an idea is worth building, run office hours, or think through a new product idea or design direction before any code is written.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "git"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "gstack-openclaw-retro",
+      "path": "/Users/su/.claude/skills/gstack/openclaw/skills/gstack-openclaw-retro/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "Weekly engineering retrospective. Analyzes commit history, work patterns, and code quality metrics with persistent history and trend tracking. Team-aware with per-person contributions, praise, and growth areas. Use when asked for weekly retro, what shipped this week, or engineering retrospective.",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "git",
+        "node"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "pair-agent",
+      "path": "/Users/su/.claude/skills/gstack/pair-agent/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "plan-ceo-review",
+      "path": "/Users/su/.claude/skills/gstack/plan-ceo-review/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "계획과 제품 판단을 더 엄격하게 검토하는 스킬입니다.",
+      "when_to_use_ko": "방향성, 제품 품질, 개발자 경험, 아키텍처 의사결정 전에 사용합니다.",
+      "cautions_ko": "검토가 실행을 지연시키는 의식이 되지 않게 결론과 기준을 남겨야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "node",
+        "npm",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "plan-design-review",
+      "path": "/Users/su/.claude/skills/gstack/plan-design-review/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "Chrome",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "plan-devex-review",
+      "path": "/Users/su/.claude/skills/gstack/plan-devex-review/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "npm",
+        "npx",
+        "rg",
+        "Vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "plan-eng-review",
+      "path": "/Users/su/.claude/skills/gstack/plan-eng-review/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "엔지니어링 매니저 관점에서 아키텍처와 실행 계획을 검토하는 스킬입니다.",
+      "when_to_use_ko": "구조 변경, 데이터 흐름, 테스트 전략을 잠그기 전에 사용합니다.",
+      "cautions_ko": "구현보다 먼저 리스크와 엣지 케이스를 드러내야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "node",
+        "Playwright",
+        "playwright",
+        "python",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "plan-tune",
+      "path": "/Users/su/.claude/skills/gstack/plan-tune/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "qa-only",
+      "path": "/Users/su/.claude/skills/gstack/qa-only/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "qa",
+      "path": "/Users/su/.claude/skills/gstack/qa/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "node",
+        "npm",
+        "Playwright",
+        "playwright",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "retro",
+      "path": "/Users/su/.claude/skills/gstack/retro/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "node"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "review",
+      "path": "/Users/su/.claude/skills/gstack/review/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "node",
+        "npm",
+        "python",
+        "rg",
+        "Vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "scrape",
+      "path": "/Users/su/.claude/skills/gstack/scrape/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "setup-browser-cookies",
+      "path": "/Users/su/.claude/skills/gstack/setup-browser-cookies/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "Playwright"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "setup-deploy",
+      "path": "/Users/su/.claude/skills/gstack/setup-deploy/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "setup-gbrain",
+      "path": "/Users/su/.claude/skills/gstack/setup-gbrain/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "스킬, 플러그인, MCP, 에이전트 구성을 다루는 스킬입니다.",
+      "when_to_use_ko": "도구 통합, skill/package 작성, MCP 서버 설계 때 사용합니다.",
+      "cautions_ko": "라우팅 설명과 manifest를 망가뜨리면 자동 선택 안정성이 떨어집니다.",
+      "tool_dependencies": [
+        "browse",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "python",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "ship",
+      "path": "/Users/su/.claude/skills/gstack/ship/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "curl",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "node",
+        "npm",
+        "Playwright",
+        "playwright",
+        "python",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "skillify",
+      "path": "/Users/su/.claude/skills/gstack/skillify/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "Playwright",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "sync-gbrain",
+      "path": "/Users/su/.claude/skills/gstack/sync-gbrain/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "gh",
+        "git",
+        "GitHub",
+        "MCP",
+        "rg"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "unfreeze",
+      "path": "/Users/su/.claude/skills/gstack/unfreeze/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "|",
+      "description_ko": "스킬, 플러그인, MCP, 에이전트 구성을 다루는 스킬입니다.",
+      "when_to_use_ko": "도구 통합, skill/package 작성, MCP 서버 설계 때 사용합니다.",
+      "cautions_ko": "라우팅 설명과 manifest를 망가뜨리면 자동 선택 안정성이 떨어집니다.",
+      "tool_dependencies": [
+        "git"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "moai-skill",
+      "path": "/Users/su/.claude/skills/moai-skill/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "MoAI-ADK Skill",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [],
+      "frontmatter_present": false
+    },
+    {
+      "name": "moai",
+      "path": "/Users/su/.claude/skills/moai/SKILL.md",
+      "source_kind": "Claude-side installed skill",
+      "description_original": "moai",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [],
+      "frontmatter_present": false
+    },
+    {
+      "name": "control-in-app-browser",
+      "path": "/Users/su/.codex/plugins/cache/openai-bundled/browser/26.601.21317/skills/control-in-app-browser/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Control the in-app Browser. Use to open, navigate, inspect, test, click, type, screenshot, or verify local targets such as localhost, 127.0.0.1, ::1, file://, the current in-app browser tab, and websites shown side by side inside Codex.",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "MCP",
+        "node",
+        "Playwright",
+        "playwright"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "control-chrome",
+      "path": "/Users/su/.codex/plugins/cache/openai-bundled/chrome/26.601.21317/skills/control-chrome/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Control the user's Chrome browser. Use for browser tasks that require the user's cookies, logged-in sessions, existing tabs, extensions, or remote authenticated sites.",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "Chrome",
+        "gh",
+        "MCP",
+        "node",
+        "Playwright",
+        "playwright"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "buyer-investor-list",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/buyer-investor-list/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "build prioritized buyer, investor, lender, or sponsor universes for ib processes. use when the user asks for target lists, outreach waves, rationale, or tracker-ready parties. do not use to run the live process; use deal-process-tracker.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "capital-markets-issuance",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/capital-markets-issuance/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "frame issuer financing and capital-markets execution options. use when the user asks about ecm, dcm, private placements, market window, investor targeting, or use of proceeds. do not use for borrower credit approval.",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "cim-builder",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/cim-builder/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Draft or refresh buyer-facing CIMs, teasers, CIM storyboards, lender presentations, and management presentations. Do not use for independent CIM diligence; use cim-teardown.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "cim-teardown",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/cim-teardown/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "analyze seller materials into claims, diligence gaps, red flags, and model handoffs. use when the user asks to tear down a cim or banker deck. do not use to write the cim; use cim-builder.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "company-tearsheet",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/company-tearsheet/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Create source-backed banker-facing company, target, borrower, issuer, or counterparty tearsheets. Use for baseline profiles, coverage screens, deal-screen inputs, and meeting context. Do not use for full memos, models, decks, or diligence reports.",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "comps-valuation",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/comps-valuation/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Produce source-backed trading-comps valuation for Investment Banking in report or workbook mode. Use for peer selection, trading multiples, implied valuation, Excel or Sheets comps models, EV bridges, refreshes, pressure tests, and workbook QA. Do not use for DCF, LBO, merger, three-statement, or non-banker investment decisions.",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "covenant-package-analyzer",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/covenant-package-analyzer/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Analyze credit documents for covenant definitions, baskets, leakage, headroom mechanics, amendments, and waivers. Use for finance-side covenant reviews, not legal advice.",
+      "description_ko": "계획과 제품 판단을 더 엄격하게 검토하는 스킬입니다.",
+      "when_to_use_ko": "방향성, 제품 품질, 개발자 경험, 아키텍처 의사결정 전에 사용합니다.",
+      "cautions_ko": "검토가 실행을 지연시키는 의식이 되지 않게 결론과 기준을 남겨야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "dcf-model-builder",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/dcf-model-builder/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Use when building code-backed DCF exports, WACC/terminal value work, EV-to-equity bridges, sensitivities, or price targets; not comps-only.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "deal-process-tracker",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/deal-process-tracker/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Build, update, or reconstruct IB deal-process trackers in a banker-facing workbook. Use for buyer progression, outreach, NDAs, access, diligence, bids, deadlines, process status, or proxy-disclosed sale-process chronology. Do not use to create buyer universes from scratch or write narrative HTML reports.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "distressed-recovery-waterfall",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/distressed-recovery-waterfall/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Analyze distressed capital structures and recovery waterfalls. Use when the user asks about claims, lien priority, fulcrum security, plan value, liquidation value, sale paths, or restructuring recoveries. Do not use for standard LBO modeling.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "financials-normalizer",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/financials-normalizer/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "convert messy deal financials into model-ready statements, kpi schedules, source maps, and qa flags. use when an ib workflow needs spreading, normalization, or reconciliation. do not use for generic spreadsheet cleanup; use excel-data-cleaner.",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "ib-deck-qc",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/ib-deck-qc/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "quality-control investment-banking decks and reports before circulation. use when the user asks to check numbers, units, sources, charts, footnotes, formatting, or page takeaways. do not use to build the deck from scratch.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "Chrome",
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "investment-banking",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/investment-banking/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Route Investment Banking work only when the user explicitly names or tags Investment Banking or unmistakably requests banker-owned transaction execution, such as a sell-side process, CIM, M&A/merger model, ECM/DCM/LevFin client mandate, or restructuring pitch. Do not use for generic memos, reports, decks, models, valuations, spreadsheets, research, or meeting preparation.",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "lbo-model-build",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/lbo-model-build/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Build sponsor LBO models for sources and uses, debt, sweep, liquidity, returns, and downside underwriting. Use for take-privates, acquisition financing, or leverage screens; not DCF-only work.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "meeting-prep",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/meeting-prep/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "prepare ib meeting briefs, question lists, and debrief follow-ups. use when the user asks for call prep, buyer or lender meeting materials, diligence questions, or action tracking. do not use for full memo drafting.",
+      "description_ko": "스킬, 플러그인, MCP, 에이전트 구성을 다루는 스킬입니다.",
+      "when_to_use_ko": "도구 통합, skill/package 작성, MCP 서버 설계 때 사용합니다.",
+      "cautions_ko": "라우팅 설명과 manifest를 망가뜨리면 자동 선택 안정성이 떨어집니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "memo-builder",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/memo-builder/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "draft or review investment-banking memos from existing analysis. use when the user wants a client, committee, board, financing, process, or diligence note. do not use to build source models, decks, trackers, or tearsheets.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "merger-model-builder",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/merger-model-builder/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Build merger and accretion/dilution models for consideration, pro forma ownership, synergies, purchase accounting, financing mix, or EPS impact. Use for strategic M&A modeling; not standalone DCF or LBO work.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "model-audit-tieout",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/model-audit-tieout/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "audit existing financial models and workbook outputs. use when the user asks to check formulas, sources, assumptions, sensitivities, links, or model readiness. do not use to build a new model from scratch.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "pitch-deck-builder",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/pitch-deck-builder/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "build investment-banking pitch deck outlines, page plans, and draft slide content. use when the user asks to create or refresh a banking pitch or client discussion deck. do not mark final client-ready; route final circulation qc to ib-deck-qc.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "private-credit-underwriting",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/private-credit-underwriting/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Build borrower-level private credit underwriting views for lender cases, credit memos, debt sizing, downside, liquidity, collateral, recovery, and proceed/decline decisions. Use for lender-side credit decisions, not issuer financing strategy.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "scenario-sensitivity-generator",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/scenario-sensitivity-generator/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "create scenario, sensitivity, stress-test, and breakeven frameworks for ib analyses. use when the user asks to pressure-test model drivers, cases, downside paths, or decision thresholds. do not build base models.",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "three-statement-model-builder",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/three-statement-model-builder/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Use when building integrated three-statement operating model exports with linked IS, BS, CF, drivers, checks, scenarios, or formula templates.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "user-context",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated-remote/investment-banking/0.1.24/skills/user-context/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Start onboarding, initialize, inspect, save, update, forget, export, or explicitly reset the Investment Banking plugin's local user context, source setup, or optional automation setup. Use when the user explicitly asks to get started, orient, or manage Investment Banking saved preferences, source pointers, context storage, or recurring automation.",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "gh-address-comments",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/github/5e86d584/skills/gh-address-comments/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Address actionable GitHub pull request review feedback. Use when the user wants to inspect unresolved review threads, requested changes, or inline review comments on a PR, then implement selected fixes. Use the GitHub app for PR metadata and flat comment reads, and use the bundled GraphQL script via `gh` whenever thread-level state, resolution status, or inline review context matters.",
+      "description_ko": "계획과 제품 판단을 더 엄격하게 검토하는 스킬입니다.",
+      "when_to_use_ko": "방향성, 제품 품질, 개발자 경험, 아키텍처 의사결정 전에 사용합니다.",
+      "cautions_ko": "검토가 실행을 지연시키는 의식이 되지 않게 결론과 기준을 남겨야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "git",
+        "GitHub"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "gh-fix-ci",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/github/5e86d584/skills/gh-fix-ci/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Use when a user asks to debug or fix failing GitHub PR checks that run in GitHub Actions. Use the GitHub app from this plugin for PR metadata and patch context, and use `gh` for Actions check and log inspection before implementing any approved fix.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "GitHub",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "github",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/github/5e86d584/skills/github/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Triage and orient GitHub repository, pull request, and issue work through the connected GitHub app. Use when the user asks for general GitHub help, wants PR or issue summaries, or needs repository context before choosing a more specific GitHub workflow.",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "git",
+        "GitHub"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "yeet",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/github/5e86d584/skills/yeet/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Publish local changes to GitHub by confirming scope, committing intentionally, pushing the branch, and opening a draft PR through the GitHub app from this plugin, with `gh` used only as a fallback where connector coverage is insufficient.",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "git",
+        "GitHub"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "agent-browser-verify",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/agent-browser-verify/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Automated browser verification for dev servers. Triggers when a dev server starts to run a visual gut-check with agent-browser — verifies the page loads, checks for console errors, validates key UI elements, and reports pass/fail before continuing.",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "npm",
+        "npx",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "agent-browser",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/agent-browser/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Browser automation CLI for AI agents. Use when the user needs to interact with websites, verify dev server output, test web apps, navigate pages, fill forms, click buttons, take screenshots, extract data, or automate any browser task. Also triggers when a dev server starts so you can verify it visually.",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "npm",
+        "Playwright",
+        "playwright",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "ai-elements",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/ai-elements/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "AI Elements component library guidance — pre-built React components for AI interfaces built on shadcn/ui. Use when building chat UIs, message displays, tool call rendering, streaming responses, reasoning panels, or any AI-native interface with the AI SDK.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "Chrome",
+        "git",
+        "GitHub",
+        "npm",
+        "npx",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "ai-gateway",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/ai-gateway/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Vercel AI Gateway expert guidance. Use when configuring model routing, provider failover, cost tracking, or managing multiple AI providers through a unified API.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "curl",
+        "gh",
+        "GitHub",
+        "npm",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "ai-generation-persistence",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/ai-generation-persistence/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "AI generation persistence patterns — unique IDs, addressable URLs, database storage, and cost tracking for every LLM generation",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "GitHub",
+        "vercel",
+        "Vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "ai-sdk",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/ai-sdk/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Vercel AI SDK expert guidance. Use when building AI-powered features — chat interfaces, text generation, structured output, tool calling, agents, MCP integration, streaming, embeddings, reranking, image generation, or working with any LLM provider.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "GitHub",
+        "MCP",
+        "node",
+        "npm",
+        "npx",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "auth",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/auth/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Authentication integration guidance — Clerk (native Vercel Marketplace), Descope, and Auth0 setup for Next.js applications. Covers middleware auth patterns, sign-in/sign-up flows, and Marketplace provisioning. Use when implementing user authentication.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "npm",
+        "npx",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "bootstrap",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/bootstrap/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Project bootstrapping orchestrator for repos that depend on Vercel-linked resources (databases, auth, and managed integrations). Use when setting up or repairing a repository so linking, environment provisioning, env pulls, and first-run db/dev commands happen in the correct safe order.",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "node",
+        "npm",
+        "npx",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "chat-sdk",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/chat-sdk/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Vercel Chat SDK expert guidance. Use when building multi-platform chat bots — Slack, Telegram, Microsoft Teams, Discord, Google Chat, GitHub, Linear — with a single codebase. Covers the Chat class, adapters, threads, messages, cards, modals, streaming, state management, and webhook setup.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "GitHub",
+        "npm",
+        "rg",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "cms",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/cms/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Headless CMS integration guidance — Sanity (native Vercel Marketplace), Contentful, DatoCMS, Storyblok, and Builder.io. Covers studio setup, content modeling, preview mode, revalidation webhooks, and Visual Editing. Use when building content-driven sites with a headless CMS on Vercel.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "GitHub",
+        "npm",
+        "npx",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "cron-jobs",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/cron-jobs/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Vercel Cron Jobs configuration and best practices. Use when adding, editing, or debugging scheduled tasks in vercel.json.",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "vercel",
+        "Vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "deployments-cicd",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/deployments-cicd/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Vercel deployment and CI/CD expert guidance. Use when deploying, promoting, rolling back, inspecting deployments, building with --prebuilt, or configuring CI workflow files for Vercel.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "GitHub",
+        "node",
+        "npm",
+        "npx",
+        "Playwright",
+        "playwright",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "email",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/email/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Email sending integration guidance — Resend (native Vercel Marketplace) with React Email templates. Covers API setup, transactional emails, domain verification, and template patterns. Use when sending emails from a Vercel-deployed application.",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "npm",
+        "npx",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "env-vars",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/env-vars/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Vercel environment variable expert guidance. Use when working with .env files, vercel env commands, OIDC tokens, or managing environment-specific configuration.",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "node",
+        "npm",
+        "npx",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "geist",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/geist/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Expert guidance for Geist, Vercel's default typography system and font family for precise Next.js interfaces. Use when configuring Geist Sans, Geist Mono, or Geist Pixel, setting up font imports, or applying Vercel typography and aesthetic guidance.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "GitHub",
+        "npm",
+        "vercel",
+        "Vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "geistdocs",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/geistdocs/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Expert guidance for Geistdocs, Vercel's documentation template built with Next.js and Fumadocs — MDX authoring, configuration, AI chat, i18n, feedback, deployment. Use when creating documentation sites, configuring geistdocs, writing MDX content, or setting up docs infrastructure.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "GitHub",
+        "npm",
+        "npx",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "investigation-mode",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/investigation-mode/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Orchestrated debugging coordinator. Triggers on frustration signals (stuck, hung, broken, waiting) and systematically triages: runtime logs → workflow status → browser verify → deploy/env. Reports findings at every step.",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "json-render",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/json-render/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "AI chat response rendering guidance — handling UIMessage parts, tool call displays, streaming states, and structured data presentation. Use when building custom chat UIs, rendering tool results, or troubleshooting AI response display issues.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [],
+      "frontmatter_present": true
+    },
+    {
+      "name": "marketplace",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/marketplace/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Vercel Marketplace expert guidance — discovering, installing, and building integrations, auto-provisioned environment variables, unified billing, and the vercel integration CLI. Use when consuming third-party services, building custom integrations, or managing marketplace resources on Vercel.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "npx",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "micro",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/micro/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Expert guidance for micro — asynchronous HTTP microservices framework by Vercel. Use when building lightweight HTTP servers, API endpoints, or microservices using the micro library.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "GitHub",
+        "npm",
+        "npx",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "ncc",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/ncc/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "'Expert guidance for @vercel/ncc — a simple CLI for compiling Node.js modules into a single file with all dependencies included. Use when bundling serverless functions, CLI tools, or any Node.js project into a self-contained file.'",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "GitHub",
+        "node",
+        "npm",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "next-forge",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/next-forge/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "'next-forge expert guidance — production-grade Turborepo monorepo SaaS starter by Vercel. Use when working in a next-forge project, scaffolding with `npx next-forge init`, or editing @repo/* workspace packages.'",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "GitHub",
+        "npm",
+        "npx",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "nextjs",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/nextjs/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Next.js App Router expert guidance. Use when building, debugging, or architecting Next.js applications — routing, Server Components, Server Actions, Cache Components, layouts, middleware/proxy, data fetching, rendering strategies, and deployment on Vercel.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "GitHub",
+        "MCP",
+        "node",
+        "npm",
+        "npx",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "observability",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/observability/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Vercel Observability expert guidance — Drains (logs, traces, speed insights, web analytics), Web Analytics, Speed Insights, runtime logs, custom events, OpenTelemetry integration, and monitoring dashboards. Use when instrumenting, debugging, or optimizing application performance and user experience on Vercel.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "Chrome",
+        "curl",
+        "gh",
+        "MCP",
+        "node",
+        "npm",
+        "npx",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "payments",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/payments/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Stripe payments integration guidance — native Vercel Marketplace setup, checkout sessions, webhook handling, subscription billing, and the Stripe SDK. Use when implementing payments, subscriptions, or processing transactions.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "npm",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "react-best-practices",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/react-best-practices/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "React best-practices reviewer for TSX files. Triggers after editing multiple TSX components to run a condensed quality checklist covering component structure, hooks usage, accessibility, performance, and TypeScript patterns.",
+      "description_ko": "계획과 제품 판단을 더 엄격하게 검토하는 스킬입니다.",
+      "when_to_use_ko": "방향성, 제품 품질, 개발자 경험, 아키텍처 의사결정 전에 사용합니다.",
+      "cautions_ko": "검토가 실행을 지연시키는 의식이 되지 않게 결론과 기준을 남겨야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "Vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "routing-middleware",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/routing-middleware/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Vercel Routing Middleware guidance — request interception before cache, rewrites, redirects, personalization. Works with any framework. Supports Edge, Node.js, and Bun runtimes. Use when intercepting requests at the platform level.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "node",
+        "npx",
+        "vercel",
+        "Vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "runtime-cache",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/runtime-cache/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Vercel Runtime Cache API guidance — ephemeral per-region key-value cache with tag-based invalidation. Shared across Functions, Routing Middleware, and Builds. Use when implementing caching strategies beyond framework-level caching.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "npm",
+        "vercel",
+        "Vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "satori",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/satori/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Expert guidance for Satori — Vercel's library that converts HTML and CSS to SVG, commonly used to generate dynamic OG images for Next.js and other frameworks.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "GitHub",
+        "npm",
+        "vercel",
+        "Vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "shadcn",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/shadcn/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "shadcn/ui expert guidance — CLI, component installation, composition patterns, custom registries, theming, Tailwind CSS integration, and high-quality interface design. Use when initializing shadcn, adding components, composing product UI, building custom registries, configuring themes, or troubleshooting component issues.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "gh",
+        "GitHub",
+        "MCP",
+        "npm",
+        "npx",
+        "Vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "sign-in-with-vercel",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/sign-in-with-vercel/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Sign in with Vercel guidance — OAuth 2.0/OIDC identity provider for user authentication via Vercel accounts. Use when implementing user login with Vercel as the identity provider.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "vercel",
+        "Vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "swr",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/swr/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "SWR data-fetching expert guidance. Use when building React apps with client-side data fetching, caching, revalidation, mutations, optimistic UI, pagination, or infinite loading using the SWR library.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "npm",
+        "rg",
+        "vercel",
+        "Vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "turbopack",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/turbopack/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Turbopack expert guidance. Use when configuring the Next.js bundler, optimizing HMR, debugging build issues, or understanding the Turbopack vs Webpack differences.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browser",
+        "Chrome",
+        "GitHub",
+        "npm",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "turborepo",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/turborepo/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Turborepo expert guidance. Use when setting up or optimizing monorepo builds, configuring task caching, remote caching, parallel execution, or the --affected flag for incremental CI.",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "GitHub",
+        "node",
+        "npm",
+        "npx",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "v0-dev",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/v0-dev/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "v0 by Vercel expert guidance. Use when discussing AI code generation, generating UI components from prompts, v0 CLI usage, v0 SDK/API integration, or integrating v0 into development workflows with GitHub and Vercel deployment.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "git",
+        "GitHub",
+        "MCP",
+        "npm",
+        "npx",
+        "rg",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "vercel-agent",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/vercel-agent/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Vercel Agent guidance — AI-powered code review, incident investigation, and SDK installation. Automates PR analysis and anomaly debugging. Use when configuring or understanding Vercel's AI development tools.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "GitHub",
+        "npm",
+        "vercel",
+        "Vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "vercel-api",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/vercel-api/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Vercel app and REST API expert guidance. Use when the agent needs live access to Vercel projects, deployments, environment variables, domains, logs, or documentation through the connected Vercel app or REST API.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "GitHub",
+        "MCP",
+        "npm",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "vercel-cli",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/vercel-cli/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Vercel CLI expert guidance. Use when deploying, managing environment variables, linking projects, viewing logs, managing domains, or interacting with the Vercel platform from the command line.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "git",
+        "GitHub",
+        "MCP",
+        "npm",
+        "npx",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "vercel-firewall",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/vercel-firewall/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Vercel Firewall and security expert guidance. Use when configuring DDoS protection, WAF rules, rate limiting, bot filtering, IP allow/block lists, OWASP rulesets, Attack Challenge Mode, or any security configuration on the Vercel platform.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "curl",
+        "gh",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "vercel-flags",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/vercel-flags/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Vercel Flags guidance — feature flags platform with unified dashboard, Flags Explorer, gradual rollouts, A/B testing, and provider adapters. Use when implementing feature flags, experimentation, or staged rollouts.",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "GitHub",
+        "npm",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "vercel-functions",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/vercel-functions/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Vercel Functions expert guidance — Serverless Functions, Edge Functions, Fluid Compute, streaming, Cron Jobs, and runtime configuration. Use when configuring, debugging, or optimizing server-side code running on Vercel.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "GitHub",
+        "node",
+        "npm",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "vercel-queues",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/vercel-queues/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Vercel Queues guidance (public beta) — durable event streaming with topics, consumer groups, retries, and delayed delivery. $0.60/1M ops. Powers Workflow DevKit. Use when building async processing, fan-out patterns, or event-driven architectures.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "npm",
+        "vercel",
+        "Vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "vercel-sandbox",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/vercel-sandbox/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Vercel Sandbox guidance — ephemeral Firecracker microVMs for running untrusted code safely. Supports AI agents, code generation, and experimentation. Use when executing user-generated or AI-generated code in isolation.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "git",
+        "GitHub",
+        "node",
+        "npm",
+        "python",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "vercel-services",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/vercel-services/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Vercel Services — deploy multiple services within a single Vercel project. Use for monorepo layouts or when combining a backend (Python, Go) with a frontend (Next.js, Vite) in one deployment.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browser",
+        "python",
+        "vercel",
+        "Vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "vercel-storage",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/vercel-storage/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Vercel storage expert guidance — Blob, Edge Config, and Marketplace storage (Neon Postgres, Upstash Redis). Use when choosing, configuring, or using data storage with Vercel applications.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "GitHub",
+        "npm",
+        "npx",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "verification",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/verification/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Full-story verification — infers what the user is building, then verifies the complete flow end-to-end: browser → API → data → response. Triggers on dev server start and 'why isn't this working' signals.",
+      "description_ko": "브라우저 자동화와 화면 검증을 돕는 스킬입니다.",
+      "when_to_use_ko": "웹 페이지 탐색, 클릭, 폼 입력, 스크린샷, 로컬/원격 UI QA 때 사용합니다.",
+      "cautions_ko": "인증 정보, 쿠키, 실제 사용자 세션을 다룰 때 범위와 보안을 확인해야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "git",
+        "npm",
+        "Playwright",
+        "playwright",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "workflow",
+      "path": "/Users/su/.codex/plugins/cache/openai-curated/vercel/5e86d584/skills/workflow/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Vercel Workflow DevKit (WDK) expert guidance. Use when building durable workflows, long-running tasks, API routes or agents that need pause/resume, retries, step-based execution, or crash-safe orchestration with Vercel Workflow.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "GitHub",
+        "npm",
+        "npx",
+        "Vercel",
+        "vercel"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "documents",
+      "path": "/Users/su/.codex/plugins/cache/openai-primary-runtime/documents/26.601.10930/skills/documents/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Create, edit, redline, and comment on `.docx`, Word, and Google Docs-targeted document artifacts inside the container, with a strict render-and-verify workflow. Use `render_docx.py` to generate page PNGs (and optional PDF) for visual QA, then iterate until layout is flawless before delivering the final document.",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browser",
+        "gh",
+        "MCP",
+        "node",
+        "npm",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "Presentations",
+      "path": "/Users/su/.codex/plugins/cache/openai-primary-runtime/presentations/26.601.10930/skills/presentations/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Build PowerPoint PPTX decks with artifact-tool presentation JSX",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "Chrome",
+        "gh",
+        "node"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "Spreadsheets",
+      "path": "/Users/su/.codex/plugins/cache/openai-primary-runtime/spreadsheets/26.601.10930/skills/spreadsheets/SKILL.md",
+      "source_kind": "Codex plugin skill",
+      "description_original": "Use this skill when a user requests to create, modify, analyze, visualize, or work with spreadsheet files (`.xlsx`, `.xls`, `.csv`, `.tsv`) or Google Sheets-targeted spreadsheet artifacts with formulas, formatting, charts, tables, and recalculation.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "MCP",
+        "node",
+        "npm",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "imagegen",
+      "path": "/Users/su/.codex/skills/.system/imagegen/SKILL.md",
+      "source_kind": "Codex system skill",
+      "description_original": "Generate or edit raster images when the task benefits from AI-created bitmap visuals such as photos, illustrations, textures, sprites, mockups, or transparent-background cutouts. Use when Codex should create a brand-new image, transform an existing image, or derive visual variants from references, and the output should be a bitmap asset rather than repo-native code or vector. Do not use when the task is better handled by editing existing SVG/vector/code-native assets, extending an established icon or logo system, or building the visual directly in HTML/CSS/canvas.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "openai-docs",
+      "path": "/Users/su/.codex/skills/.system/openai-docs/SKILL.md",
+      "source_kind": "Codex system skill",
+      "description_original": "Use when the user asks how to build with OpenAI products or APIs, asks about Codex itself or choosing Codex surfaces, needs up-to-date official documentation with citations, help choosing the latest model for a use case, or model upgrade and prompt-upgrade guidance; use OpenAI docs MCP tools for non-Codex docs questions, use the Codex manual helper first for broad Codex self-knowledge, and restrict fallback browsing to official OpenAI domains.",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "Chrome",
+        "curl",
+        "gh",
+        "GitHub",
+        "MCP",
+        "node"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "plugin-creator",
+      "path": "/Users/su/.codex/skills/.system/plugin-creator/SKILL.md",
+      "source_kind": "Codex system skill",
+      "description_original": "Create and scaffold plugin directories for Codex with a required `.codex-plugin/plugin.json`, optional plugin folders/files, valid manifest defaults, and personal-marketplace entries by default. Use when Codex needs to create a new personal plugin, add optional plugin structure, generate or update marketplace entries for plugin ordering and availability metadata, or update an existing local plugin during development with the CLI-driven cachebuster and reinstall flow.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "MCP",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "skill-creator",
+      "path": "/Users/su/.codex/skills/.system/skill-creator/SKILL.md",
+      "source_kind": "Codex system skill",
+      "description_original": "Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Codex's capabilities with specialized knowledge, workflows, or tool integrations.",
+      "description_ko": "새 Codex skill을 설계하고 만드는 스킬입니다.",
+      "when_to_use_ko": "새 skill 생성 또는 기존 skill 업데이트 요청에 사용합니다.",
+      "cautions_ko": "frontmatter와 routing description을 훼손하지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "skill-installer",
+      "path": "/Users/su/.codex/skills/.system/skill-installer/SKILL.md",
+      "source_kind": "Codex system skill",
+      "description_original": "Install Codex skills into $CODEX_HOME/skills from a curated list or a GitHub repo path. Use when a user asks to list installable skills, install a curated skill, or install a skill from another repo (including private repos).",
+      "description_ko": "스킬, 플러그인, MCP, 에이전트 구성을 다루는 스킬입니다.",
+      "when_to_use_ko": "도구 통합, skill/package 작성, MCP 서버 설계 때 사용합니다.",
+      "cautions_ko": "라우팅 설명과 manifest를 망가뜨리면 자동 선택 안정성이 떨어집니다.",
+      "tool_dependencies": [
+        "git",
+        "GitHub"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "brainstorming",
+      "path": "/Users/su/.codex/skills/brainstorming/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation.",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "gh",
+        "MCP"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "dispatching-parallel-agents",
+      "path": "/Users/su/.codex/skills/dispatching-parallel-agents/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Use when facing 2+ independent tasks that can be worked on without shared state or sequential dependencies",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [],
+      "frontmatter_present": true
+    },
+    {
+      "name": "executing-plans",
+      "path": "/Users/su/.codex/skills/executing-plans/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Use when you have a written implementation plan to execute in a separate session with review checkpoints",
+      "description_ko": "작성된 구현 계획을 순서대로 실행하고 검증하는 워크플로 스킬입니다.",
+      "when_to_use_ko": "사용자가 작업지시서나 실행 계획을 준 경우 사용합니다.",
+      "cautions_ko": "계획이 막히면 억지 진행하지 말고 이유를 드러내야 합니다.",
+      "tool_dependencies": [
+        "gh"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "finishing-a-development-branch",
+      "path": "/Users/su/.codex/skills/finishing-a-development-branch/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Use when implementation is complete, all tests pass, and you need to decide how to integrate the work - guides completion of development work by presenting structured options for merge, PR, or cleanup",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "git",
+        "npm"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "karpathy-guidelines",
+      "path": "/Users/su/.codex/skills/karpathy-guidelines/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Behavioral guidelines to reduce common LLM coding mistakes. Use when writing, reviewing, or refactoring code to avoid overcomplication, make surgical changes, surface assumptions, and define verifiable success criteria.",
+      "description_ko": "코딩 실수를 줄이기 위한 기본 운영 원칙입니다. 단순성, 작은 변경, 모호성 노출, 검증 전 완료 주장 금지를 강제합니다.",
+      "when_to_use_ko": "코드 작성, 리뷰, 리팩토링 전후에 사용합니다.",
+      "cautions_ko": "과한 추상화나 검증 없는 성공 주장을 피해야 합니다.",
+      "tool_dependencies": [],
+      "frontmatter_present": true
+    },
+    {
+      "name": "receiving-code-review",
+      "path": "/Users/su/.codex/skills/receiving-code-review/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Use when receiving code review feedback, before implementing suggestions, especially if feedback seems unclear or technically questionable - requires technical rigor and verification, not performative agreement or blind implementation",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "GitHub"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "requesting-code-review",
+      "path": "/Users/su/.codex/skills/requesting-code-review/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Use when completing tasks, implementing major features, or before merging to verify work meets requirements",
+      "description_ko": "검증과 품질 확인을 체계화하는 스킬입니다.",
+      "when_to_use_ko": "테스트, QA, 회귀 확인, 릴리즈 전 검증에 사용합니다.",
+      "cautions_ko": "검증 결과를 실제 증거 없이 성공으로 포장하지 않아야 합니다.",
+      "tool_dependencies": [
+        "git"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "subagent-driven-development",
+      "path": "/Users/su/.codex/skills/subagent-driven-development/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Use when executing implementation plans with independent tasks in the current session",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "git"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "systematic-debugging",
+      "path": "/Users/su/.codex/skills/systematic-debugging/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes",
+      "description_ko": "버그를 조사, 분석, 가설, 구현 순서로 다루는 디버깅 스킬입니다.",
+      "when_to_use_ko": "원인을 모르는 오류나 회귀가 있을 때 사용합니다.",
+      "cautions_ko": "루트 원인 없이 임시 패치로 덮지 않습니다.",
+      "tool_dependencies": [
+        "gh"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "test-driven-development",
+      "path": "/Users/su/.codex/skills/test-driven-development/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Use when implementing any feature or bugfix, before writing implementation code",
+      "description_ko": "실패하는 테스트를 먼저 만들고 구현으로 통과시키는 개발 스킬입니다.",
+      "when_to_use_ko": "버그 수정이나 기능 추가에서 검증 가능한 조건이 있을 때 사용합니다.",
+      "cautions_ko": "테스트가 의미 없이 구현을 따라가게 만들면 안 됩니다.",
+      "tool_dependencies": [
+        "gh",
+        "npm"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "understand-chat",
+      "path": "/Users/su/.codex/skills/understand-chat/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Use when you need to ask questions about a codebase or understand code using a knowledge graph",
+      "description_ko": "코드베이스 구조와 지식을 분석하는 스킬입니다.",
+      "when_to_use_ko": "영향 범위가 불명확하거나 큰 구조를 이해해야 할 때 사용합니다.",
+      "cautions_ko": "생성된 분석 산출물을 무조건 커밋하지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "node"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "understand-dashboard",
+      "path": "/Users/su/.codex/skills/understand-dashboard/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Launch the interactive web dashboard to visualize a codebase's knowledge graph",
+      "description_ko": "코드베이스 구조와 지식을 분석하는 스킬입니다.",
+      "when_to_use_ko": "영향 범위가 불명확하거나 큰 구조를 이해해야 할 때 사용합니다.",
+      "cautions_ko": "생성된 분석 산출물을 무조건 커밋하지 않아야 합니다.",
+      "tool_dependencies": [
+        "browse",
+        "browser",
+        "npm",
+        "npx"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "understand-diff",
+      "path": "/Users/su/.codex/skills/understand-diff/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Use when you need to analyze git diffs or pull requests to understand what changed, affected components, and risks",
+      "description_ko": "코드베이스 구조와 지식을 분석하는 스킬입니다.",
+      "when_to_use_ko": "영향 범위가 불명확하거나 큰 구조를 이해해야 할 때 사용합니다.",
+      "cautions_ko": "생성된 분석 산출물을 무조건 커밋하지 않아야 합니다.",
+      "tool_dependencies": [
+        "git",
+        "node"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "understand-domain",
+      "path": "/Users/su/.codex/skills/understand-domain/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Extract business domain knowledge from a codebase and generate an interactive domain flow graph. Works standalone (lightweight scan) or derives from an existing /understand knowledge graph.",
+      "description_ko": "코드베이스 구조와 지식을 분석하는 스킬입니다.",
+      "when_to_use_ko": "영향 범위가 불명확하거나 큰 구조를 이해해야 할 때 사용합니다.",
+      "cautions_ko": "생성된 분석 산출물을 무조건 커밋하지 않아야 합니다.",
+      "tool_dependencies": [
+        "git",
+        "node",
+        "npm",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "understand-explain",
+      "path": "/Users/su/.codex/skills/understand-explain/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Use when you need a deep-dive explanation of a specific file, function, or module in the codebase",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "node"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "understand-knowledge",
+      "path": "/Users/su/.codex/skills/understand-knowledge/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Analyze a Karpathy-pattern LLM wiki knowledge base and generate an interactive knowledge graph with entity extraction, implicit relationships, and topic clustering.",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "git",
+        "GitHub",
+        "node",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "understand-onboard",
+      "path": "/Users/su/.codex/skills/understand-onboard/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Use when you need to generate an onboarding guide for new team members joining a project",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "node"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "understand",
+      "path": "/Users/su/.codex/skills/understand/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Analyze a codebase to produce an interactive knowledge graph for understanding architecture, components, and relationships",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "gh",
+        "git",
+        "node",
+        "npm",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "using-git-worktrees",
+      "path": "/Users/su/.codex/skills/using-git-worktrees/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Use when starting feature work that needs isolation from current workspace or before executing implementation plans - ensures an isolated workspace exists via native tools or git worktree fallback",
+      "description_ko": "배포와 릴리즈 흐름을 관리하는 스킬입니다.",
+      "when_to_use_ko": "PR 생성, 배포, CI 수정, 운영 검증 때 사용합니다.",
+      "cautions_ko": "실패한 CI나 배포를 통과처럼 보고하지 않아야 합니다.",
+      "tool_dependencies": [
+        "git",
+        "npm"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "using-superpowers",
+      "path": "/Users/su/.codex/skills/using-superpowers/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Use when starting any conversation - establishes how to find and use skills, requiring Skill tool invocation before ANY response including clarifying questions",
+      "description_ko": "제품 UI와 시각 품질을 개선하는 스킬입니다.",
+      "when_to_use_ko": "화면 설계, 디자인 리뷰, 프론트엔드 구현, 시각 QA 때 사용합니다.",
+      "cautions_ko": "겉모습만 만들고 실제 동작이나 접근성을 놓치지 않아야 합니다.",
+      "tool_dependencies": [
+        "MCP"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "verification-before-completion",
+      "path": "/Users/su/.codex/skills/verification-before-completion/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always",
+      "description_ko": "완료·수정·통과를 주장하기 전에 실제 검증 증거를 요구하는 스킬입니다.",
+      "when_to_use_ko": "커밋, 푸시, PR, 완료 보고 직전에 사용합니다.",
+      "cautions_ko": "증거 없이 “완료”라고 말하지 않습니다.",
+      "tool_dependencies": [],
+      "frontmatter_present": true
+    },
+    {
+      "name": "writing-plans",
+      "path": "/Users/su/.codex/skills/writing-plans/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Use when you have a spec or requirements for a multi-step task, before touching code",
+      "description_ko": "복잡한 작업을 실행 가능한 계획으로 정리하는 스킬입니다.",
+      "when_to_use_ko": "다단계 기능, 구조 변경, 제품 방향 결정 전에 사용합니다.",
+      "cautions_ko": "계획만 쓰고 검증 기준을 빼먹지 않아야 합니다.",
+      "tool_dependencies": [
+        "git",
+        "python"
+      ],
+      "frontmatter_present": true
+    },
+    {
+      "name": "writing-skills",
+      "path": "/Users/su/.codex/skills/writing-skills/SKILL.md",
+      "source_kind": "Codex installed skill",
+      "description_original": "Use when creating new skills, editing existing skills, or verifying skills work before deployment",
+      "description_ko": "스킬 작성, 수정, 배포 검증을 위한 지침 스킬입니다.",
+      "when_to_use_ko": "SKILL.md를 만들거나 고칠 때 사용합니다.",
+      "cautions_ko": "자동 생성 파일과 라우팅 키워드를 함부로 바꾸지 않습니다.",
+      "tool_dependencies": [
+        "gh",
+        "git"
+      ],
+      "frontmatter_present": true
+    }
+  ]
+}
