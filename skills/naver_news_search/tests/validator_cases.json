@@ -1,0 +1,31 @@
+{
+  "cases": [
+    {
+      "name": "rejects_missing_sources",
+      "input": {
+        "items": [
+          {
+            "title": "뉴스",
+            "link": "",
+            "pubDate": "Wed, 03 Jun 2026 09:00:00 +0900"
+          }
+        ]
+      },
+      "expected": "failed"
+    },
+    {
+      "name": "accepts_source_backed_news",
+      "input": {
+        "items": [
+          {
+            "title": "뉴스",
+            "link": "https://example.com/news",
+            "originallink": "https://example.com/news",
+            "pubDate": "Wed, 03 Jun 2026 09:00:00 +0900"
+          }
+        ]
+      },
+      "expected": "valid_shape"
+    }
+  ]
+}

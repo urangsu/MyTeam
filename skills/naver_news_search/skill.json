@@ -1,0 +1,108 @@
+{
+  "id": "naver_news_search",
+  "version": "0.1.0",
+  "kind": "directREST",
+  "display_name": "Naver News Search",
+  "description": "Reference package for source-backed Naver News search using user-provided Naver Client ID and Client Secret. Not runtime-enabled yet.",
+  "source_repo": "https://github.com/NomaDamas/k-skill",
+  "category": "koreanBusiness",
+  "runtime": {
+    "auto_load": false,
+    "user_visible_enabled": false
+  },
+  "execution_modes": ["byokDirect", "proxyPlanned"],
+  "required_credentials": [
+    {
+      "type": "provider",
+      "provider": "naverNews",
+      "fields": ["clientID", "clientSecret"]
+    }
+  ],
+  "input_schema": {
+    "type": "object",
+    "required": ["query"],
+    "properties": {
+      "query": {
+        "type": "string",
+        "minLength": 2
+      },
+      "display": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 20,
+        "default": 10
+      },
+      "start": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100,
+        "default": 1
+      },
+      "sort": {
+        "type": "string",
+        "enum": ["date", "sim"],
+        "default": "date"
+      }
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "required": ["items", "sources"],
+    "properties": {
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["title", "link", "pubDate", "source_url"],
+          "properties": {
+            "title": { "type": "string" },
+            "description": { "type": "string" },
+            "link": { "type": "string" },
+            "originallink": { "type": "string" },
+            "pubDate": { "type": "string" },
+            "source_url": { "type": "string" }
+          }
+        }
+      },
+      "sources": {
+        "type": "array"
+      }
+    }
+  },
+  "failure_modes": [
+    {
+      "code": "missing_credentials",
+      "message": "Naver Client ID and Client Secret are required."
+    },
+    {
+      "code": "invalid_credentials",
+      "message": "Naver rejected the supplied Client ID or Client Secret."
+    },
+    {
+      "code": "source_missing",
+      "message": "News results without source links cannot be presented as verified."
+    },
+    {
+      "code": "response_parse_failed",
+      "message": "Naver response could not be parsed into the expected news result schema."
+    }
+  ],
+  "source_policy": {
+    "requires_sources": true,
+    "verified_label_requires": "provider_response_with_source_url",
+    "preferred_sources": ["originallink", "link"]
+  },
+  "ui": {
+    "card": "news_search_results",
+    "requires_source_links": true
+  },
+  "rules": [
+    "Do not summarize or conclude from news without source links.",
+    "Search query must be at least two characters.",
+    "Limit display/start/sort to the declared input schema.",
+    "Clean HTML tags and entities from title and description before rendering.",
+    "Deduplicate by canonical link before summarizing.",
+    "Convert pubDate into a user-readable local date before card rendering.",
+    "Do not show this package as available until runtime validation is implemented."
+  ]
+}

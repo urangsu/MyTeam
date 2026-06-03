@@ -1,0 +1,19 @@
+{
+  "input": {
+    "query": "삼성전자",
+    "display": 5,
+    "start": 1,
+    "sort": "date"
+  },
+  "expected_output_shape": {
+    "items": [
+      {
+        "title": "source-backed cleaned title",
+        "link": "https://example.com/news",
+        "pubDate": "2026-06-03T09:00:00+09:00",
+        "source_url": "https://example.com/news"
+      }
+    ],
+    "sources": ["https://example.com/news"]
+  }
+}

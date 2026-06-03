@@ -1,0 +1,79 @@
+{
+  "id": "korean_law_search",
+  "version": "0.1.0",
+  "kind": "externalMCP",
+  "display_name": "Korean Law Search",
+  "description": "Reference package for searching Korean statutes and legal materials through Korean Law MCP. Not runtime-enabled and not legal advice.",
+  "source_repo": "https://github.com/chrisryugj/korean-law-mcp",
+  "category": "koreanLegal",
+  "runtime": {
+    "auto_load": false,
+    "user_visible_enabled": false
+  },
+  "execution_modes": ["externalMCP", "directRESTLater"],
+  "required_credentials": [
+    {
+      "type": "external",
+      "id": "LAW_OC",
+      "description": "National Law Information Center open API key, when using a direct or self-hosted Korean Law MCP path."
+    },
+    {
+      "type": "external",
+      "id": "koreanLawMCPEndpoint",
+      "description": "Approved Korean Law MCP endpoint. Must be reviewed before App Store runtime use."
+    }
+  ],
+  "input_schema": {
+    "type": "object",
+    "required": ["query"],
+    "properties": {
+      "query": { "type": "string", "minLength": 2 },
+      "law_name": { "type": "string" },
+      "effective_date": { "type": "string" }
+    }
+  },
+  "output_schema": {
+    "type": "object",
+    "required": ["results", "sources", "disclaimer"],
+    "properties": {
+      "results": { "type": "array" },
+      "sources": { "type": "array" },
+      "disclaimer": { "type": "string" }
+    }
+  },
+  "failure_modes": [
+    {
+      "code": "missing_external_endpoint",
+      "message": "Korean Law MCP endpoint or LAW_OC credential is not configured."
+    },
+    {
+      "code": "source_missing",
+      "message": "Legal result lacks official source metadata."
+    },
+    {
+      "code": "citation_unverified",
+      "message": "Law name, article, paragraph, or effective date could not be verified."
+    },
+    {
+      "code": "provider_unavailable",
+      "message": "Korean Law MCP or upstream law API is unavailable."
+    }
+  ],
+  "source_policy": {
+    "requires_sources": true,
+    "verified_label_requires": "official_law_source_with_law_article_and_effective_date",
+    "preferred_sources": ["National Law Information Center", "법제처"]
+  },
+  "ui": {
+    "card": "korean_law_search_results",
+    "requires_source_links": true
+  },
+  "rules": [
+    "Do not present legal output as attorney advice.",
+    "Show law name, article, paragraph when available, effective date, and source.",
+    "Prefer official National Law Information Center or Ministry of Government Legislation sources.",
+    "If citation verification fails, mark the result failed rather than partial.",
+    "When user action has legal consequence, advise consulting a qualified professional.",
+    "Do not expose externalMCP as App Store runtime until separately approved."
+  ]
+}
