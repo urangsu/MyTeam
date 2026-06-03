@@ -190,11 +190,20 @@ enum PublicAPIConnectorValidator {
             let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
             let response = object["response"] as? [String: Any],
             let header = response["header"] as? [String: Any],
-            let resultCode = header["resultCode"] as? String
+            let resultCode = header["resultCode"] as? String,
+            let body = response["body"] as? [String: Any],
+            let items = body["items"] as? [String: Any]
         else {
             return false
         }
-        return resultCode == "00"
+        guard resultCode == "00" else { return false }
+        if let itemArray = items["item"] as? [[String: Any]] {
+            return !itemArray.isEmpty
+        }
+        if let singleItem = items["item"] as? [String: Any] {
+            return !singleItem.isEmpty
+        }
+        return false
     }
 
     private static func parseKoreanLaw(_ data: Data) -> Bool {

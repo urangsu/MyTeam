@@ -39,7 +39,13 @@ final class SecureCredentialStore {
     }
 
     func read(provider: ExternalProvider, field: CredentialField) -> String? {
-        KeychainManager.load(key: keychainKey(provider: provider, field: field))
+        if let value = KeychainManager.load(key: keychainKey(provider: provider, field: field)) {
+            return value
+        }
+        guard provider.credentialSchema.fields.count == 1 else {
+            return nil
+        }
+        return KeychainManager.load(key: provider.keychainKey)
     }
 
     /// 키가 존재하는지 여부

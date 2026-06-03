@@ -144,6 +144,24 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable {
         }
     }
 
+    var isPublicAPIProvider: Bool {
+        switch self {
+        case .kmaWeather, .naverNews, .dartDisclosure, .koreanLaw:
+            return true
+        case .openAI, .gemini, .anthropic, .openRouter:
+            return false
+        }
+    }
+
+    var hasLiveCredentialValidator: Bool {
+        switch self {
+        case .kmaWeather, .naverNews, .dartDisclosure, .koreanLaw:
+            return true
+        case .openAI, .gemini, .anthropic, .openRouter:
+            return true
+        }
+    }
+
     var keyIssueURL: URL? {
         switch self {
         case .openAI:

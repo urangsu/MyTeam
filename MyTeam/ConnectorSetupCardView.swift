@@ -77,7 +77,7 @@ struct ConnectorSetupCardView: View {
                         if isTesting {
                             ProgressView().scaleEffect(0.6)
                         } else {
-                            Label("확인", systemImage: "checkmark.circle")
+                            Label(validationButtonTitle, systemImage: validationButtonIcon)
                                 .font(.system(size: 10, weight: .medium))
                         }
                     }
@@ -124,12 +124,7 @@ struct ConnectorSetupCardView: View {
                                     .font(.system(size: 10, weight: .medium))
                                     .frame(width: 92, alignment: .leading)
 
-                                SecureField(field.placeholder, text: Binding(
-                                    get: { inputValues[field.id] ?? "" },
-                                    set: { inputValues[field.id] = $0 }
-                                ))
-                                .textFieldStyle(.roundedBorder)
-                                .font(.system(size: 11, design: .monospaced))
+                                credentialInput(for: field)
                             }
                         }
                     }
@@ -226,7 +221,9 @@ struct ConnectorSetupCardView: View {
         case .notConnected:
             return nil
         case .untested:
-            return "키는 저장됐습니다. 실제 사용 가능 여부는 확인 버튼으로 검증하세요."
+            return provider.hasLiveCredentialValidator
+                ? "키는 저장됐습니다. 실제 사용 가능 여부는 검증 버튼으로 확인하세요."
+                : "키는 저장됐습니다. 이 provider는 아직 자동 검증 준비 중입니다."
         case .testUnavailable:
             return "\(provider.displayName)은 자동 검증기가 아직 없습니다. 오늘 수동 API 테스트를 위해 키 저장과 삭제는 유지됩니다."
         case .testFailed(let code):
@@ -234,6 +231,17 @@ struct ConnectorSetupCardView: View {
         case .connected:
             return "실제 연결 확인을 통과했습니다."
         }
+    }
+
+    private var validationButtonTitle: String {
+        if provider.isPublicAPIProvider {
+            return provider.hasLiveCredentialValidator ? "실제 API 검증" : "저장 상태 확인"
+        }
+        return "연결 테스트"
+    }
+
+    private var validationButtonIcon: String {
+        provider.hasLiveCredentialValidator ? "checkmark.circle" : "key.viewfinder"
     }
 
     private var executionModeBadges: some View {
@@ -262,6 +270,23 @@ struct ConnectorSetupCardView: View {
         case .testFailed: return "exclamationmark.triangle.fill"
         case .testUnavailable: return "info.circle.fill"
         default: return "key.fill"
+        }
+    }
+
+    @ViewBuilder
+    private func credentialInput(for field: CredentialField) -> some View {
+        let binding = Binding(
+            get: { inputValues[field.id] ?? "" },
+            set: { inputValues[field.id] = $0 }
+        )
+        if field.isSecret {
+            SecureField(field.placeholder, text: binding)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 11, design: .monospaced))
+        } else {
+            TextField(field.placeholder, text: binding)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 11, design: .monospaced))
         }
     }
 
@@ -352,7 +377,7 @@ struct ConnectorSetupCardView: View {
                 isTesting = false
                 switch health.state {
                 case .connected:
-                    testResultMessage = "연결 상태를 확인했습니다."
+                    testResultMessage = provider.isPublicAPIProvider ? "실제 API 응답을 확인했습니다." : "연결 상태를 확인했습니다."
                 case .testUnavailable:
                     testResultMessage = "\(provider.displayName) 실제 연결 테스트는 아직 준비 중입니다. 키는 저장됐지만 연결됨으로 표시하지 않습니다."
                 case .testFailed(let code):

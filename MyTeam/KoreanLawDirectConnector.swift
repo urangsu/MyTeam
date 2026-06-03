@@ -12,6 +12,7 @@ struct KoreanLawCitationVerificationRequest: Sendable, Equatable {
     let expectedArticle: String?
     let expectedParagraph: String?
     let expectedItem: String?
+    let expectedEffectiveDate: String?
 }
 
 struct KoreanLawSource: Sendable, Equatable {
@@ -92,12 +93,12 @@ enum KoreanLawDirectConnector {
                 KoreanLawSource(title: lawName, url: $0, publisher: "법제처 또는 국가법령정보센터")
             }
             return KoreanLawResult(
-                status: sourceURL == nil ? .partial : .verified,
+                status: .partial,
                 lawName: lawName,
                 article: nil,
                 effectiveDate: law["시행일자"] as? String,
                 officialSourceURL: sourceURL,
-                verificationStatus: sourceURL == nil ? "partial" : "verified",
+                verificationStatus: "partial",
                 summary: "공식 법령 검색 결과입니다. 법률 자문이 아닙니다.",
                 mismatchDetails: [],
                 sources: source.map { [$0] } ?? [],
@@ -114,8 +115,33 @@ enum KoreanLawDirectConnector {
         if let expected = request.expectedLawName, expected != result.lawName {
             mismatches.append("법령명 불일치: \(expected) != \(result.lawName)")
         }
-        if let expected = request.expectedArticle, let article = result.article, expected != article {
-            mismatches.append("조문 불일치: \(expected) != \(article)")
+        if let expected = request.expectedArticle {
+            guard let article = result.article else {
+                mismatches.append("조문 누락: \(expected)")
+                return failedCitationResult(from: result, mismatches: mismatches)
+            }
+            if expected != article {
+                mismatches.append("조문 불일치: \(expected) != \(article)")
+            }
+        }
+        if let expected = request.expectedParagraph {
+            mismatches.append("항 검증 미지원: \(expected)")
+        }
+        if let expected = request.expectedItem {
+            mismatches.append("호 검증 미지원: \(expected)")
+        }
+        if let expected = request.expectedEffectiveDate {
+            guard let effectiveDate = result.effectiveDate else {
+                mismatches.append("시행일 누락: \(expected)")
+                return failedCitationResult(from: result, mismatches: mismatches)
+            }
+            if expected != effectiveDate {
+                mismatches.append("시행일 불일치: \(expected) != \(effectiveDate)")
+            }
+        }
+        guard result.officialSourceURL != nil else {
+            mismatches.append("공식 출처 URL 누락")
+            return failedCitationResult(from: result, mismatches: mismatches)
         }
         let status: KoreanLawResult.Status = mismatches.isEmpty && result.officialSourceURL != nil ? .verified : .failed
         return KoreanLawResult(
@@ -125,6 +151,21 @@ enum KoreanLawDirectConnector {
             effectiveDate: result.effectiveDate,
             officialSourceURL: result.officialSourceURL,
             verificationStatus: status.rawValue,
+            summary: result.summary,
+            mismatchDetails: mismatches,
+            sources: result.sources,
+            disclaimer: result.disclaimer
+        )
+    }
+
+    private static func failedCitationResult(from result: KoreanLawResult, mismatches: [String]) -> KoreanLawResult {
+        KoreanLawResult(
+            status: .failed,
+            lawName: result.lawName,
+            article: result.article,
+            effectiveDate: result.effectiveDate,
+            officialSourceURL: result.officialSourceURL,
+            verificationStatus: KoreanLawResult.Status.failed.rawValue,
             summary: result.summary,
             mismatchDetails: mismatches,
             sources: result.sources,

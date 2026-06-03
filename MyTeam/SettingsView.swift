@@ -155,7 +155,6 @@ struct SettingsView: View {
     @AppStorage(TeamNameplateAppearanceSettings.paletteKey) private var teamNameplatePaletteRaw: String = TeamNameplateAppearanceSettings.defaultPalette.rawValue
     @AppStorage(TeamNameplateAppearanceSettings.borderModeKey) private var teamNameplateBorderModeRaw: String = TeamNameplateAppearanceSettings.defaultBorderMode.rawValue
     @AppStorage("agentWindowOpacity")     private var agentWindowOpacity: Double = 0.0
-    @AppStorage("useAnimalCrossingTTS")   private var useAnimalCrossingTTS: Bool = false
 
     // ── API 설정
     @AppStorage("defaultLLMProvider") private var defaultProviderRaw: String = LLMProvider.gemini.rawValue
@@ -190,7 +189,7 @@ struct SettingsView: View {
                         Text("라우팅").tag(2)
                         Text("스킬").tag(3)
                         Text("캐릭터").tag(4)
-                        Text("음성 Lab").tag(5)
+                        Text("음성 Lab · 진단용").tag(5)
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
@@ -352,12 +351,8 @@ struct SettingsView: View {
                     Label("음성 출력", systemImage: "waveform")
                 }
                 .disabled(!TTSProductPolicy.userFacingTTSEnabled)
-                Toggle(isOn: $useAnimalCrossingTTS) {
-                    Label("오디오 경로 테스트", systemImage: "waveform.path")
-                }
-                .disabled(manager.isSilentMode || !TTSProductPolicy.labOnlyEnabled)
                 if !TTSProductPolicy.userFacingTTSEnabled {
-                    Text("음성 출력은 아직 제품 기능으로 승인되지 않았습니다. 오디오 확인은 음성 Lab에서 진단용으로만 진행합니다.")
+                    Text("Supertonic3가 MyTeam의 단일 TTS 엔진입니다. 모델·고지·런타임 조건이 충족되면 말하기 버튼에서 재생됩니다.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
