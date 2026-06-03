@@ -2,7 +2,7 @@ import Foundation
 
 // ============================================================
 // CharacterVoiceConfig.swift
-// Chatterbox TTS 캐릭터별 감정 파라미터 설정
+// Supertonic3/Animalese 캐릭터별 감정 파라미터 설정
 //
 // 감정 상태 → exaggeration + cfg_weight 매핑
 //
@@ -23,7 +23,7 @@ enum CharacterVoiceConfig {
         ].map { CharacterDisplayNameResolver.displayName(for: $0) }
     }
 
-    // MARK: - 감정 상태별 Chatterbox 파라미터
+    // MARK: - 감정 상태별 음성 파라미터
 
     struct EmotionConfig {
         let exaggeration: Float    // 감정 과장도 (0.2~1.0)
@@ -70,11 +70,10 @@ enum CharacterVoiceConfig {
     // MARK: - 캐릭터별 음성 특성 (선택사항)
 
     /// 캐릭터별 기본 음성 톤 조정
-    /// (Chatterbox가 10초 샘플로 이미 캐릭터 스타일을 학습했으므로
-    ///  추가 조정은 미미. 극적 효과용.)
+    /// Supertonic3 캐릭터 보이스와 Animalese 효과 레이어의 후처리 힌트.
     struct CharacterVoiceTrait {
         let characterID: String
-        let voiceType: String        // ElevenLabs 목소리 유형
+        let voiceType: String        // MyTeam 내부 음성 톤 유형
         let pitchOffset: Float       // 피치 미세조정 (-0.5 ~ 0.5)
         let speedOffset: Float       // 속도 미세조정 (-0.2 ~ 0.2)
     }

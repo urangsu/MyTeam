@@ -4,7 +4,7 @@ import Foundation
 // Round 258TTS-CHARACTER-VOICE-SYSTEM: Supertonic3 감정 발화 스타일.
 //
 // 각 캐릭터는 CharacterVoiceProfile.defaultEmotionStyle로 기본 스타일을 갖는다.
-// SupertonicProsodyTextProcessor.preprocess에서 스타일에 따라 텍스트를 소프트 변환.
+// SupertonicProsodyTextProcessor.preprocess는 제품 발화에서 문구를 바꾸지 않는다.
 
 enum SupertonicEmotionStyle: String, Sendable, CaseIterable {
     case neutral       // 중립 — 수치/법률/보고서 등 정형 텍스트
@@ -19,15 +19,15 @@ enum SupertonicEmotionStyle: String, Sendable, CaseIterable {
 // Round 258TTS-CHARACTER-VOICE-SYSTEM: TTS 입력 텍스트 경량 전처리.
 //
 // 원칙:
-//   - 말풍선 원문은 절대 변경하지 않음 — TTS 입력 텍스트만 처리.
-//   - 의미 변경 금지. 오직 자연스러운 발화를 위한 형태만 변환.
+//   - 말풍선 원문과 TTS 발화 문구는 일치해야 함.
+//   - 의미/어미/문장부호를 rewrite하지 않음. 말투는 pitch/rate/speed/Animalese 레이어에서 처리.
 //   - 법률/회계/금액/숫자가 많은 문장 → neutral 처리 (변환 스킵).
 //   - 200자 초과 텍스트 → 첫 200자 + "..." 처리 (긴 보고서 읽기 방지).
 //
-// 1차 변환 규칙 (minimal):
-//   - 개행 → 공백, 연속 공백 정리.
-//   - style == .friendly && text.count < 80: 경어 소프트 변환.
-//   - 쉼표 보완: "먼저 " → "먼저, ", "그럼 " → "그럼, ".
+// 제품 발화 변환 규칙:
+//   - 개행/연속 공백 정리, 길이 제한만 허용.
+//   - "하겠습니다" → "해볼게요" 같은 텍스트 rewrite 금지.
+//   - 쉼표 삽입 같은 문장부호 rewrite 금지.
 
 enum SupertonicProsodyTextProcessor {
 
@@ -50,30 +50,12 @@ enum SupertonicProsodyTextProcessor {
         let profile = CharacterVoiceProfileCatalog.profile(for: agentID)
         let effectiveStyle = style ?? profile.defaultEmotionStyle
 
-        // 1. 법률/회계/숫자 감지 → neutral 처리 (변환 스킵, tag도 금지)
-        if looksLikeFormalOrNumericText(text) {
-            return normalizeWhitespace(text, truncate: true)
-        }
-
-        // 2. animalCrossing 스타일 → 텍스트 변환 없음 (pitch/rate/speed로 처리)
-        if effectiveStyle == .animalCrossing {
-            let result = normalizeWhitespace(text, truncate: true)
-            return result
-        }
-
-        // 3. 기본 정규화
+        // Product speech must preserve the visible bubble wording.
+        // Character style belongs in audio parameters/effects, not text rewrites.
         var result = normalizeWhitespace(text, truncate: true)
-
-        // 4. 쉼표 보완 (짧은 텍스트만)
-        if result.count < 150 {
-            result = addCommaBoosts(result)
+        if useExpressionTags && !looksLikeFormalOrNumericText(result) {
+            result = SupertonicExpressionTagPolicy.apply(emotion: effectiveStyle, to: result)
         }
-
-        // 5. 감정 스타일별 소프트 변환 (friendly, 짧은 텍스트만)
-        if effectiveStyle == .friendly && result.count < 80 {
-            result = applyFriendlyTransforms(result)
-        }
-
         return result
     }
 
@@ -118,39 +100,4 @@ enum SupertonicProsodyTextProcessor {
         return result
     }
 
-    // MARK: - Private: Comma Boosts
-
-    private static func addCommaBoosts(_ text: String) -> String {
-        var result = text
-        // "먼저 " → "먼저, " (연결어 앞 쉼표 추가)
-        let connectors = ["먼저", "그럼", "그러면", "그리고", "하지만", "그래서", "따라서", "우선"]
-        for connector in connectors {
-            let pattern = connector + " "
-            let replacement = connector + ", "
-            // 이미 쉼표가 있으면 스킵
-            if !result.contains(connector + ",") {
-                result = result.replacingOccurrences(of: pattern, with: replacement)
-            }
-        }
-        return result
-    }
-
-    // MARK: - Private: Friendly Style Transforms
-
-    private static func applyFriendlyTransforms(_ text: String) -> String {
-        var result = text
-        // 딱딱한 공식 표현 → 부드러운 표현
-        let transforms: [(String, String)] = [
-            ("하겠습니다.", "해볼게요."),
-            ("하겠습니다!", "해볼게요!"),
-            ("확인했습니다.", "확인했어요."),
-            ("완료했습니다.", "완료했어요."),
-            ("시작하겠습니다.", "시작할게요."),
-            ("진행하겠습니다.", "진행할게요."),
-        ]
-        for (from, to) in transforms {
-            result = result.replacingOccurrences(of: from, with: to)
-        }
-        return result
-    }
 }

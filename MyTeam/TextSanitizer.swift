@@ -2,7 +2,7 @@ import Foundation
 
 // ============================================================
 // TextSanitizer.swift
-// Chatterbox TTS용 텍스트 정제 (정규식 필터)
+// Supertonic3/Animalese 음성 입력용 텍스트 정제 (정규식 필터)
 //
 // 기능:
 //   1. 이름 태그 제거 ([루나], 루나:, **루나** 등)
@@ -95,7 +95,7 @@ enum TextSanitizer {
         return !cleaned.isEmpty && cleaned.count > 0
     }
 
-    /// 텍스트 길이 제한 (Chatterbox 최대 입력 길이)
+    /// 텍스트 길이 제한 (음성 합성 입력 보호)
     static func truncate(_ text: String, maxLength: Int = 500) -> String {
         let cleaned = sanitize(text)
         guard cleaned.count > maxLength else { return cleaned }

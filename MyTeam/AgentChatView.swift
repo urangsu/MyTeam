@@ -781,8 +781,8 @@ struct AgentChatView: View {
                 .transition(.scale.combined(with: .opacity))
             }
 
-            // 말하기 버튼 (Round 256TTS-OFFICIAL-ENGINE) — 비편집 모드, 비사용자 메시지만
-            if !isEditingMessages && !log.isUser && !log.text.isEmpty {
+            // 말하기 버튼 (Supertonic3) — 비편집 모드, 비사용자 메시지만
+            if !isEditingMessages && !log.isUser && !log.text.isEmpty && TTSRoutingPolicy.isSupertonic3Available {
                 SpeakButtonView(
                     text: log.text,
                     agentID: log.agentID
@@ -1303,11 +1303,12 @@ struct AgentChatView: View {
                         + personalPolicy
                         + toolEvidence.promptContext
 
-                    AppLog.info("[DirectChat] response targetAgentID=\(targetID) provider=\(agentConfig?.llmProvider.displayName ?? "nil") silentMode=\(manager.isSilentMode)")
+                    let ttsProvider = TTSRoutingPolicy.selectedProvider()
+                    AppLog.info("[DirectChat] response targetAgentID=\(targetID) provider=\(agentConfig?.llmProvider.displayName ?? "nil") silentMode=\(manager.isSilentMode) ttsProvider=\(ttsProvider?.rawValue ?? "nil")")
                     let roomIDAtSend = roomID
                     let targetIDAtSend = targetID
                     // ── 순차 스트리밍: SpeechManager 백그라운드 위임 ──
-                    if manager.isSilentMode {
+                    if manager.isSilentMode || ttsProvider == nil {
                         _ = await MainActor.run { manager.typingAgentIDs.insert(targetIDAtSend) }
                         let tokenStream = AIService.shared.getResponseStream(
                             text: groundedText, agentID: targetIDAtSend,
@@ -1463,7 +1464,7 @@ private struct SpeakButtonView: View {
                         ? "재생 실패 — 모델 파일·ONNX Runtime·고지 수락 확인 필요"
                         : isAvailable
                             ? "말하기 (Supertonic3)"
-                            : "TTS 미사용 가능 — 모델·고지·활성화 확인 필요"
+                            : "Supertonic3 미사용 가능 — 모델·고지·활성화 확인 필요"
                 )
             }
         }

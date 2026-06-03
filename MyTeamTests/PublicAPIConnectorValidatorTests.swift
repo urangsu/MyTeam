@@ -1,6 +1,20 @@
 import XCTest
 @testable import MyTeam
 
+final class SupertonicProsodyTextProcessorTests: XCTestCase {
+    func testProductSpeechPreservesVisibleBubbleWording() {
+        let visible = "먼저 확인했습니다. 지금 진행하겠습니다!"
+
+        let spoken = SupertonicProsodyTextProcessor.preprocess(
+            visible,
+            agentID: nil,
+            style: .friendly
+        )
+
+        XCTAssertEqual(spoken, visible)
+    }
+}
+
 final class PublicAPIConnectorValidatorTests: XCTestCase {
     func testNaverNewsValidationUsesClientHeadersAndURLComponents() throws {
         let request = PublicAPIValidationRequest(
@@ -89,9 +103,11 @@ final class PublicAPIConnectorValidatorTests: XCTestCase {
 
     func testKMABodyParserRequiresNormalServiceResult() {
         let invalid = Data(#"{"response":{"header":{"resultCode":"03","resultMsg":"NO_DATA"}}}"#.utf8)
+        let emptyBody = Data(#"{"response":{"header":{"resultCode":"00","resultMsg":"NORMAL_SERVICE"},"body":{"items":{"item":[]}}}}"#.utf8)
         let valid = Data(#"{"response":{"header":{"resultCode":"00","resultMsg":"NORMAL_SERVICE"},"body":{"items":{"item":[{"obsrValue":"20"}]}}}}"#.utf8)
 
         XCTAssertFalse(PublicAPIConnectorValidator.bodyIndicatesSuccess(provider: .kmaWeather, data: invalid))
+        XCTAssertFalse(PublicAPIConnectorValidator.bodyIndicatesSuccess(provider: .kmaWeather, data: emptyBody))
         XCTAssertTrue(PublicAPIConnectorValidator.bodyIndicatesSuccess(provider: .kmaWeather, data: valid))
     }
 
@@ -116,17 +132,74 @@ final class PublicAPIConnectorValidatorTests: XCTestCase {
         XCTAssertEqual(built.url?.queryValue("query"), "개인정보")
     }
 
-    func testKoreanLawDirectConnectorParsesOfficialSources() {
+    func testKoreanLawDirectConnectorKeepsSearchResultsPartial() {
         let data = Data(#"{"LawSearch":{"totalCnt":"1","law":[{"법령명한글":"개인정보 보호법","법령ID":"011357","시행일자":"20240315"}]}}"#.utf8)
 
         let results = KoreanLawDirectConnector.parseSearchResponse(data)
 
         XCTAssertEqual(results.count, 1)
-        XCTAssertEqual(results[0].status, .verified)
+        XCTAssertEqual(results[0].status, .partial)
+        XCTAssertEqual(results[0].verificationStatus, "partial")
         XCTAssertEqual(results[0].lawName, "개인정보 보호법")
         XCTAssertEqual(results[0].effectiveDate, "20240315")
         XCTAssertFalse(results[0].sources.isEmpty)
         XCTAssertTrue(results[0].disclaimer.contains("법률 자문이 아닌"))
+    }
+
+    func testKoreanLawCitationVerificationFailsWhenExpectedArticleIsMissing() {
+        let result = KoreanLawResult(
+            status: .partial,
+            lawName: "개인정보 보호법",
+            article: nil,
+            effectiveDate: "20240315",
+            officialSourceURL: URL(string: "https://www.law.go.kr/법령?id=011357"),
+            verificationStatus: "partial",
+            summary: "공식 법령 검색 결과입니다.",
+            mismatchDetails: [],
+            sources: [],
+            disclaimer: KoreanLawDirectConnector.disclaimer
+        )
+        let request = KoreanLawCitationVerificationRequest(
+            citationText: "개인정보 보호법 제1조",
+            expectedLawName: "개인정보 보호법",
+            expectedArticle: "제1조",
+            expectedParagraph: nil,
+            expectedItem: nil,
+            expectedEffectiveDate: nil
+        )
+
+        let verified = KoreanLawDirectConnector.verifyCitation(request, against: result)
+
+        XCTAssertEqual(verified.status, .failed)
+        XCTAssertTrue(verified.mismatchDetails.contains { $0.contains("조문 누락") })
+    }
+
+    func testKoreanLawCitationVerificationFailsWithoutOfficialSource() {
+        let result = KoreanLawResult(
+            status: .partial,
+            lawName: "개인정보 보호법",
+            article: "제1조",
+            effectiveDate: "20240315",
+            officialSourceURL: nil,
+            verificationStatus: "partial",
+            summary: "공식 법령 검색 결과입니다.",
+            mismatchDetails: [],
+            sources: [],
+            disclaimer: KoreanLawDirectConnector.disclaimer
+        )
+        let request = KoreanLawCitationVerificationRequest(
+            citationText: "개인정보 보호법 제1조",
+            expectedLawName: "개인정보 보호법",
+            expectedArticle: "제1조",
+            expectedParagraph: nil,
+            expectedItem: nil,
+            expectedEffectiveDate: "20240315"
+        )
+
+        let verified = KoreanLawDirectConnector.verifyCitation(request, against: result)
+
+        XCTAssertEqual(verified.status, .failed)
+        XCTAssertTrue(verified.mismatchDetails.contains { $0.contains("공식 출처 URL 누락") })
     }
 
     private func fixedDate(_ iso8601: String) -> Date {

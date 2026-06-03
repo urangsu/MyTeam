@@ -276,6 +276,9 @@ actor AudioPlaybackService: AudioPlayable {
             if let cb = onPlaybackStarted { Task { @MainActor in cb() } }
             return false
         }
+        if engineFormat == nil {
+            setupEngine()
+        }
         guard let ef = engineFormat else {
             AppLog.error("[AudioPlayback] playFloatSamples: engineFormat nil — engine not ready")
             return false

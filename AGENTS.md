@@ -12,7 +12,10 @@ MyTeam is a commercial macOS app with a free entry path and future expansion thr
 - Never store API keys in UserDefaults or plain text.
 - Never expose developer diagnostics, Playwright MCP, `node`, `npx`, or external subprocess features in Release/App Store profile.
 - Never modify existing character roles, Chiko persona, character tone, or personality unless explicitly requested.
-- Never reintroduce ONNX/MLX/TTS models, ElevenLabs, or Apple TTS fallback.
+- Never reintroduce non-Supertonic TTS models, ElevenLabs, Apple TTS fallback, Chatterbox, Qwen TTS, or MLX TTS.
+- MyTeam's main TTS engine is Supertonic3. Never remove, stub, hide, downgrade, or "clean up" Supertonic3 runtime, routing, model locator, voice profile, tuning, ONNX integration, or playback integration without explicit user instruction.
+- Animalese is a protected character voice effect layer: it is not a replacement TTS model and not a fallback. It must remain as the Animal Crossing-style speech effect layered onto or tuned around generated character voice. Never delete Animalese files, toggles, profile logic, preview paths, or overlay paths; improve/overlay/harden them instead.
+- TTS must speak the same wording shown in the chat bubble. Do not rewrite endings, soften phrasing, insert new punctuation, summarize, or substitute text in the TTS path. Character voice should be expressed through Supertonic3 tuning and Animalese audio effects, not hidden text edits.
 - Never reintroduce cost/usage estimation UI until MyTeam itself provides paid API calls.
 - Prefer small changes with strong verification over broad refactors.
 
@@ -80,4 +83,4 @@ Avoid vague success language. Prefer precise statements such as:
 
 - "Build passed, but manual Release UI verification remains."
 - "Code blocks fake success, but valid-key testing remains."
-- "The voice tab is present, but there is still no real TTS provider."
+- "Supertonic3 is restored as the main TTS engine, but manual audio QA remains."

@@ -8942,6 +8942,24 @@
 				<string>KSD262TTS001FILEREF0000G1</string>
 				<string>AFS262TTS001FILEREF0000H1</string>
 				<string>LLMR264REL001FILEREF0000G1</string>
+				<string>567D1A4FACEB86D551EA76E9</string>
+				<string>61150C60C35554733E6102F0</string>
+				<string>00A0F1DAC43837B67FB53EB4</string>
+				<string>345D1CF584113043965929AE</string>
+				<string>443A8E238641FFD50A9904C8</string>
+				<string>C14EBB2EA987A89A097CA368</string>
+				<string>49A2252D58BDFFA508C840ED</string>
+				<string>97E2A9F0CB291496F95E1FC8</string>
+				<string>2E3BF897801716E6A07DF494</string>
+				<string>2D7534A4E01907E28CB4D0D2</string>
+				<string>B9EF24F00D7BE4BF7C54F2D4</string>
+				<string>6B75D5436B31AB37CBE526B1</string>
+				<string>C885037CC0611EBF7A01F0D0</string>
+				<string>869A062515C9F59A0ECB2444</string>
+				<string>6CA3013B4C0B5D7F425988B4</string>
+				<string>86AAA1F0E4393713A9F2A4BC</string>
+				<string>0C887399B1B54BF7CA470BEA</string>
+				<string>B31D865E25CCF109A8EC1181</string>
 			</array>
 			<key>isa</key>
 			<string>PBXGroup</string>
@@ -8955,9 +8973,9 @@
 				<key>BuildIndependentTargetsInParallel</key>
 				<string>1</string>
 				<key>LastSwiftUpdateCheck</key>
-				<string>2630</string>
+				<string>2650</string>
 				<key>LastUpgradeCheck</key>
-				<string>2630</string>
+				<string>2650</string>
 				<key>TargetAttributes</key>
 				<dict>
 					<key>9079F7EC2F6EDE4900B4CE24</key>
@@ -8988,6 +9006,7 @@
 			<string>1</string>
 			<key>packageReferences</key>
 			<array>
+				<string>AAAA0001BBBB2222CCCC0003</string>
 				<string>C0A1E003C0A1E003C0A1E003</string>
 			</array>
 			<key>preferredProjectObjectVersion</key>
@@ -9404,6 +9423,24 @@
 				<string>E3BCED940DAD6E0579E695DD</string>
 				<string>E3BCED940DAD6E0579E695DE</string>
 				<string>E3BCED940DAD6E0579E695DF</string>
+				<string>CB448CDB5AE36D7DBEA54213</string>
+				<string>FADDA881F78D1970F1E847C6</string>
+				<string>373733FF48FC563C4C651D6C</string>
+				<string>71B357B9A0791B7B03C9B5B5</string>
+				<string>E16D27F0491C2AA3AA8C4414</string>
+				<string>EA6BF908EBD543A7E417C91B</string>
+				<string>439028E9E792A36090ADBE00</string>
+				<string>9DF1AEEB2FBAAF47CBB8DC9F</string>
+				<string>F8017C63B7C273BCEF3FFB0A</string>
+				<string>67CECBACE83E5408E9430580</string>
+				<string>BD08022B0278E43866B132E2</string>
+				<string>516E9FE1259EC755FFBFF634</string>
+				<string>EA41CBC908BBB934D208E83A</string>
+				<string>E0B171E3E70F26CCC0DD4279</string>
+				<string>BB1036F07BBBE21D172C3D46</string>
+				<string>64F168336327C0A9E0CE570B</string>
+				<string>1421B689B446BDEAE82D225C</string>
+				<string>1A19BFE34FEAD07A85DE7AD7</string>
 			</array>
 			<key>isa</key>
 			<string>PBXSourcesBuildPhase</string>
@@ -9416,6 +9453,7 @@
 			<string>2147483647</string>
 			<key>files</key>
 			<array>
+				<string>AAAA0001BBBB2222CCCC0001</string>
 				<string>C0A1E001C0A1E001C0A1E001</string>
 				<string>4DB960E0107CA5235607ED11</string>
 			</array>
@@ -9458,6 +9496,7 @@
 			<string>MyTeam</string>
 			<key>packageProductDependencies</key>
 			<array>
+				<string>AAAA0001BBBB2222CCCC0002</string>
 				<string>C0A1E002C0A1E002C0A1E002</string>
 			</array>
 			<key>productName</key>
@@ -19677,6 +19716,360 @@
 			<string>GHM3FIWYA993WVU9SYCOOGFR</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
+		</dict>
+		<key>567D1A4FACEB86D551EA76E9</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>ONNXRuntimeAdapter.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>CB448CDB5AE36D7DBEA54213</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>567D1A4FACEB86D551EA76E9</string>
+		</dict>
+		<key>61150C60C35554733E6102F0</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>Supertonic3ModelLocator.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>FADDA881F78D1970F1E847C6</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>61150C60C35554733E6102F0</string>
+		</dict>
+		<key>00A0F1DAC43837B67FB53EB4</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>Supertonic3ONNXRuntimeProbe.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>373733FF48FC563C4C651D6C</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>00A0F1DAC43837B67FB53EB4</string>
+		</dict>
+		<key>345D1CF584113043965929AE</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>Supertonic3ONNXSpike.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>71B357B9A0791B7B03C9B5B5</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>345D1CF584113043965929AE</string>
+		</dict>
+		<key>443A8E238641FFD50A9904C8</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>Supertonic3TTSProbe.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>E16D27F0491C2AA3AA8C4414</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>443A8E238641FFD50A9904C8</string>
+		</dict>
+		<key>C14EBB2EA987A89A097CA368</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>Supertonic3TensorTypes.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>EA6BF908EBD543A7E417C91B</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>C14EBB2EA987A89A097CA368</string>
+		</dict>
+		<key>49A2252D58BDFFA508C840ED</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>Supertonic3ONNXModelPaths.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>439028E9E792A36090ADBE00</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>49A2252D58BDFFA508C840ED</string>
+		</dict>
+		<key>97E2A9F0CB291496F95E1FC8</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>Supertonic3ONNXRunner.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>9DF1AEEB2FBAAF47CBB8DC9F</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>97E2A9F0CB291496F95E1FC8</string>
+		</dict>
+		<key>2E3BF897801716E6A07DF494</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>Supertonic3UnicodeIndexer.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>F8017C63B7C273BCEF3FFB0A</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>2E3BF897801716E6A07DF494</string>
+		</dict>
+		<key>2D7534A4E01907E28CB4D0D2</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>Supertonic3VoiceStyle.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>67CECBACE83E5408E9430580</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>2D7534A4E01907E28CB4D0D2</string>
+		</dict>
+		<key>B9EF24F00D7BE4BF7C54F2D4</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>Supertonic3TTSConfig.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>BD08022B0278E43866B132E2</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>B9EF24F00D7BE4BF7C54F2D4</string>
+		</dict>
+		<key>6B75D5436B31AB37CBE526B1</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>Supertonic3InferencePipeline.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>516E9FE1259EC755FFBFF634</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>6B75D5436B31AB37CBE526B1</string>
+		</dict>
+		<key>C885037CC0611EBF7A01F0D0</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>Supertonic3ModelManifest.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>EA41CBC908BBB934D208E83A</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>C885037CC0611EBF7A01F0D0</string>
+		</dict>
+		<key>869A062515C9F59A0ECB2444</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>Supertonic3TTSProvider.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>E0B171E3E70F26CCC0DD4279</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>869A062515C9F59A0ECB2444</string>
+		</dict>
+		<key>AAAA0001BBBB2222CCCC0003</key>
+		<dict>
+			<key>isa</key>
+			<string>XCRemoteSwiftPackageReference</string>
+			<key>repositoryURL</key>
+			<string>https://github.com/microsoft/onnxruntime-swift-package-manager</string>
+			<key>requirement</key>
+			<dict>
+				<key>kind</key>
+				<string>upToNextMajorVersion</string>
+				<key>minimumVersion</key>
+				<string>1.20.0</string>
+			</dict>
+		</dict>
+		<key>AAAA0001BBBB2222CCCC0002</key>
+		<dict>
+			<key>isa</key>
+			<string>XCSwiftPackageProductDependency</string>
+			<key>package</key>
+			<string>AAAA0001BBBB2222CCCC0003</string>
+			<key>productName</key>
+			<string>onnxruntime</string>
+		</dict>
+		<key>AAAA0001BBBB2222CCCC0001</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>productRef</key>
+			<string>AAAA0001BBBB2222CCCC0002</string>
+		</dict>
+		<key>6CA3013B4C0B5D7F425988B4</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>SupertonicSpeedProbe.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>BB1036F07BBBE21D172C3D46</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>6CA3013B4C0B5D7F425988B4</string>
+		</dict>
+		<key>86AAA1F0E4393713A9F2A4BC</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>SupertonicVoicePresetPolicy.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>64F168336327C0A9E0CE570B</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>86AAA1F0E4393713A9F2A4BC</string>
+		</dict>
+		<key>0C887399B1B54BF7CA470BEA</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>SupertonicExpressionTagPolicy.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>1421B689B446BDEAE82D225C</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>0C887399B1B54BF7CA470BEA</string>
+		</dict>
+		<key>B31D865E25CCF109A8EC1181</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>VoiceTuningState.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>1A19BFE34FEAD07A85DE7AD7</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>B31D865E25CCF109A8EC1181</string>
 		</dict>
 	</dict>
 	<key>rootObject</key>

@@ -1,31 +1,51 @@
 import Foundation
 
 // MARK: - TTSRoutingPolicy
-// Supertonic3 ONNX pipeline 제거 후 — TTS provider 없음.
-// Apple TTS (AVSpeechSynthesizer): 영원히 금지. 폴백 포함.
-// auto-speak 기본 OFF (TTSProductPolicy.autoSpeakDefaultEnabled = false).
+// Round 256TTS-OFFICIAL-ENGINE: Supertonic3 공식 TTS 엔진 라우팅.
+//
+// 정책:
+// - Apple TTS (AVSpeechSynthesizer): 영원히 금지. 폴백 포함.
+// - Supertonic3: officialEngineEnabled + enabled + notice accepted + model available + runtime linked
+// - 해당 없음 → nil → 무음. 폴백 없음.
+// - auto-speak 기본 OFF (TTSProductPolicy.autoSpeakDefaultEnabled = false).
 
 enum TTSRoutingPolicy {
 
     // MARK: - Provider Selection
 
     /// 현재 활성화할 TTS provider 반환.
-    /// nil = 무음 (provider 없음 — ONNX pipeline 제거됨).
+    /// nil = 무음 (provider 없음 또는 조건 미충족).
     /// ⚠️ Apple TTS (AVSpeechSynthesizer)는 절대 반환하지 않는다.
     static func selectedProvider() -> TTSProviderKind? {
-        guard TTSProductPolicy.userFacingTTSEnabled else { return nil }
-        guard TTSProductPolicy.modelBundled else { return nil }
-        guard TTSProductPolicy.canShipAsProductFeature else { return nil }
-        return nil   // Supertonic3 ONNX pipeline removed
+        guard TTSProductPolicy.officialEngineEnabled else { return nil }
+        guard Supertonic3TTSConfig.isEnabled else { return nil }
+        guard SupertonicTTSNoticePolicy.isCurrentNoticeAccepted else { return nil }
+        guard Supertonic3ModelLocator.isModelAvailable() else { return nil }
+        guard Supertonic3ONNXRuntimeProbe.isRuntimeLinked else { return nil }
+        return .supertonic3
     }
 
     /// Returns true if selectedProvider() can currently return .supertonic3.
-    static var isSupertonic3Available: Bool { selectedProvider() == .supertonic3 }
+    static var isSupertonic3Available: Bool {
+        selectedProvider() == .supertonic3
+    }
 
     // MARK: - Availability Summary
 
     static func availabilitySummary() -> [TTSProviderKind: TTSProviderAvailability] {
-        return [.supertonic3: .experimental]
+        var result: [TTSProviderKind: TTSProviderAvailability] = [:]
+        if !Supertonic3TTSConfig.isEnabled {
+            result[.supertonic3] = .experimental
+        } else if !Supertonic3ModelLocator.isModelAvailable() {
+            result[.supertonic3] = .missingModel
+        } else if !Supertonic3ONNXRuntimeProbe.isRuntimeLinked {
+            result[.supertonic3] = .runtimeUnavailable
+        } else if !SupertonicTTSNoticePolicy.isCurrentNoticeAccepted {
+            result[.supertonic3] = .noticeRequired
+        } else {
+            result[.supertonic3] = .runtimeReady
+        }
+        return result
     }
 
     // MARK: - Policy Guards

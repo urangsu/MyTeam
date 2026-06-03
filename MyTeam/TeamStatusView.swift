@@ -267,9 +267,14 @@ struct TeamStatusView: View {
                 HStack(spacing: 6) {
                     headerIconButton(
                         systemName: manager.isSilentMode ? "speaker.slash.fill" : "speaker.wave.2.fill",
-                        tint: manager.isSilentMode ? .red.opacity(0.75) : textColor.opacity(0.42),
-                        label: manager.isSilentMode ? "소리 켜기" : "무음 모드",
-                        action: { manager.isSilentMode.toggle() }
+                        tint: TTSProductPolicy.userFacingTTSEnabled
+                            ? (manager.isSilentMode ? .red.opacity(0.75) : textColor.opacity(0.42))
+                            : textColor.opacity(0.22),
+                        label: TTSProductPolicy.userFacingTTSEnabled
+                            ? (manager.isSilentMode ? "소리 켜기" : "무음 모드")
+                            : "음성 출력 준비 중",
+                        action: { manager.isSilentMode.toggle() },
+                        disabled: !TTSProductPolicy.userFacingTTSEnabled
                     )
                     headerIconButton(
                         systemName: "waveform",
@@ -1276,9 +1281,14 @@ struct TeamStatusView: View {
         HStack(spacing: 6) {
             headerIconButton(
                 systemName: manager.isSilentMode ? "speaker.slash.fill" : "speaker.wave.2.fill",
-                tint: manager.isSilentMode ? .red.opacity(0.75) : textColor.opacity(0.42),
-                label: manager.isSilentMode ? "소리 켜기" : "무음 모드",
-                action: { manager.isSilentMode.toggle() }
+                tint: TTSProductPolicy.userFacingTTSEnabled
+                    ? (manager.isSilentMode ? .red.opacity(0.75) : textColor.opacity(0.42))
+                    : textColor.opacity(0.22),
+                label: TTSProductPolicy.userFacingTTSEnabled
+                    ? (manager.isSilentMode ? "소리 켜기" : "무음 모드")
+                    : "음성 출력 준비 중",
+                action: { manager.isSilentMode.toggle() },
+                disabled: !TTSProductPolicy.userFacingTTSEnabled
             )
 
             headerIconButton(
@@ -1324,7 +1334,8 @@ struct TeamStatusView: View {
         systemName: String,
         tint: Color,
         label: String,
-        action: @escaping () -> Void
+        action: @escaping () -> Void,
+        disabled: Bool = false
     ) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
@@ -1334,6 +1345,7 @@ struct TeamStatusView: View {
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
+        .disabled(disabled)
         .help(label)
         .accessibilityLabel(label)
     }

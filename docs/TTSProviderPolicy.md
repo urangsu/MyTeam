@@ -1,12 +1,38 @@
 # TTS Provider Policy
 
+**Current MyTeam TTS Rule** — Supertonic3 is the main generated voice engine. Animalese is the protected Animal Crossing-style character speech effect layer that must be enhanced, not deleted.
+
+## Protected Runtime Contract (2026-06-03)
+
+- **Main TTS engine:** Supertonic3 only.
+- **Protected effect layer:** Animalese. It is not a competing TTS model, not a fallback provider, and not a fake success path.
+- Animalese exists to shape, stylize, or test the character voice experience toward an Animal Crossing-style speech feel.
+- Do not delete `AnimaleseSynthesizer.swift`, `SpeechManager.previewAnimalese`, Animalese profile logic, TTS Lab Animalese controls, or future Supertonic3→Animalese overlay code.
+- Do not delete or "legacy-cleanup" Supertonic3 runtime files, ONNX integration, model locator, voice tuning, routing, or playback paths.
+- Do not "simplify" voice by removing Animalese. The correct direction is overlay quality, controllability, character mapping, QA metrics, and truthful UI labels.
+- If Supertonic3 runtime is broken, fix Supertonic3. Do not replace it with Apple TTS, ElevenLabs, Chatterbox, Qwen, MLX TTS, or any other TTS model.
+- If Animalese output quality is weak, improve the effect layer. Do not delete it.
+- The TTS input wording must match the visible chat bubble wording. Character style must come from Supertonic3 pitch/rate/speed/timbre tuning and Animalese audio effects, not from hidden text rewrites such as changing endings, adding punctuation, summarizing, or substituting different phrases.
+
+Target architecture:
+
+```text
+LLM response
+  -> Supertonic3 character voice synthesis
+  -> CharacterVoiceProfile prosody/tuning
+  -> Animalese speech-effect overlay or effect-mode preview
+  -> AudioPlaybackService
+```
+
+---
+
 **Round 262TTS-ANIMALESE-SPEECHLIKE-ENGINE** — melody-like blip을 음절형 procedural speech effect로 재작성.
 
 ## Round 262TTS-ANIMALESE-SPEECHLIKE-ENGINE (2026-05-23)
 
 ### Animalese Speech Effect 정책
 
-Animalese는 Supertonic 대체 TTS가 아니다. fallback TTS도 아니다. TTS Lab에서만 쓰는 procedural speech effect다.
+Animalese는 Supertonic 대체 TTS가 아니다. fallback TTS도 아니다. MyTeam 캐릭터 보이스를 동물의숲식 말하기 감각으로 보정/고도화하기 위한 보호된 speech effect layer다.
 
 Round 261 구현은 글자마다 장음계 pitch를 부여하는 blip engine이라 음표처럼 들리는 문제가 있었다. Round 262는 다음 구조로 바꾼다.
 
@@ -48,8 +74,10 @@ Round 261 구현은 글자마다 장음계 pitch를 부여하는 blip engine이�
 
 ### Animalese 정책
 
-- **Supertonic TTS와 완전 분리** — Supertonic3ONNXRunner 호출 없음.
-- **Fallback TTS 아님** — TTS Lab 테스트 전용. 기본 채팅 발화에 사용하지 않음.
+- **Supertonic3 대체 금지** — Supertonic3가 메인 TTS 엔진이다.
+- **Fallback TTS 아님** — Supertonic3 실패를 성공처럼 포장하지 않는다.
+- **삭제 금지** — Animalese는 캐릭터 보이스 효과 레이어로 유지하고 고도화한다.
+- **Overlay 목표** — 생성된 Supertonic3 캐릭터 보이스 위에 Animalese 말하기 질감을 얹는 방향으로 발전시킨다.
 - **procedural audio only** — Nintendo/AC 원본 샘플, YouTube 추출 금지. 자체 sine/triangle/squareSoft/noiseBlend 파형.
 - **모델 없어도 동작** — AnimaleseSynthesizer는 순수 DSP 계산.
 - AudioPlaybackService.playFloatSamples 재사용 (pitch/rate 오프셋 지원).
