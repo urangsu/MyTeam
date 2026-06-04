@@ -1,18 +1,18 @@
 # TTS Provider Policy
 
-**Current MyTeam TTS Rule** — Supertonic3 is the main generated voice engine. Animalese is the protected Animal Crossing-style character speech effect layer that must be enhanced, not deleted.
+**Current MyTeam TTS Rule** — Supertonic3 is the main generated voice engine. BubbleSpeech / `뽀글뽀글 말하기` is the protected procedural syllable speech effect layer that must be enhanced, not deleted.
 
 ## Protected Runtime Contract (2026-06-03)
 
 - **Main TTS engine:** Supertonic3 only.
-- **Protected effect layer:** Animalese. It is not a competing TTS model, not a fallback provider, and not a fake success path.
-- Animalese exists to shape, stylize, or test the character voice experience toward an Animal Crossing-style speech feel.
-- Do not delete `AnimaleseSynthesizer.swift`, `SpeechManager.previewAnimalese`, Animalese profile logic, TTS Lab Animalese controls, or future Supertonic3→Animalese overlay code.
+- **Protected effect layer:** BubbleSpeech / `뽀글뽀글 말하기`. It is not a competing TTS model, not a fallback provider, and not a fake success path.
+- BubbleSpeech exists to shape, stylize, or test the character voice experience with app-generated syllable blips.
+- Do not delete `BubbleSpeechSynthesizer.swift`, `SpeechManager.previewBubbleSpeech`, BubbleSpeech profile logic, TTS Lab BubbleSpeech controls, or future Supertonic3→BubbleSpeech overlay code.
 - Do not delete or "legacy-cleanup" Supertonic3 runtime files, ONNX integration, model locator, voice tuning, routing, or playback paths.
-- Do not "simplify" voice by removing Animalese. The correct direction is overlay quality, controllability, character mapping, QA metrics, and truthful UI labels.
+- Do not "simplify" voice by removing BubbleSpeech. The correct direction is overlay quality, controllability, character mapping, QA metrics, and truthful UI labels.
 - If Supertonic3 runtime is broken, fix Supertonic3. Do not replace it with Apple TTS, ElevenLabs, Chatterbox, Qwen, MLX TTS, or any other TTS model.
-- If Animalese output quality is weak, improve the effect layer. Do not delete it.
-- The TTS input wording must match the visible chat bubble wording. Character style must come from Supertonic3 pitch/rate/speed/timbre tuning and Animalese audio effects, not from hidden text rewrites such as changing endings, adding punctuation, summarizing, or substituting different phrases.
+- If BubbleSpeech output quality is weak, improve the effect layer. Do not delete it.
+- The TTS input wording must match the visible chat bubble wording. Character style must come from Supertonic3 pitch/rate/speed/timbre tuning and BubbleSpeech audio effects, not from hidden text rewrites such as changing endings, adding punctuation, summarizing, or substituting different phrases.
 
 Target architecture:
 
@@ -20,19 +20,19 @@ Target architecture:
 LLM response
   -> Supertonic3 character voice synthesis
   -> CharacterVoiceProfile prosody/tuning
-  -> Animalese speech-effect overlay or effect-mode preview
+  -> BubbleSpeech speech-effect overlay or effect-mode preview
   -> AudioPlaybackService
 ```
 
 ---
 
-**Round 262TTS-ANIMALESE-SPEECHLIKE-ENGINE** — melody-like blip을 음절형 procedural speech effect로 재작성.
+**Round 262TTS-BUBBLESPEECH-SPEECHLIKE-ENGINE** — melody-like blip을 음절형 procedural speech effect로 재작성.
 
-## Round 262TTS-ANIMALESE-SPEECHLIKE-ENGINE (2026-05-23)
+## Round 262TTS-BUBBLESPEECH-SPEECHLIKE-ENGINE (2026-05-23)
 
-### Animalese Speech Effect 정책
+### BubbleSpeech Speech Effect 정책
 
-Animalese는 Supertonic 대체 TTS가 아니다. fallback TTS도 아니다. MyTeam 캐릭터 보이스를 동물의숲식 말하기 감각으로 보정/고도화하기 위한 보호된 speech effect layer다.
+BubbleSpeech / 뽀글뽀글 말하기는 Supertonic 대체 TTS가 아니다. fallback TTS도 아니다. MyTeam 캐릭터 보이스를 앱 내부 procedural 음절 말소리로 보정/고도화하기 위한 보호된 speech effect layer다.
 
 Round 261 구현은 글자마다 장음계 pitch를 부여하는 blip engine이라 음표처럼 들리는 문제가 있었다. Round 262는 다음 구조로 바꾼다.
 
@@ -53,7 +53,7 @@ Round 261 구현은 글자마다 장음계 pitch를 부여하는 blip engine이�
 
 ### Safety
 
-- Nintendo/Animal Crossing 원본 샘플 사용 금지
+- 타사 원본 샘플 사용 금지
 - YouTube 오디오 추출 금지
 - 외부 sample file 로드 금지
 - Apple TTS/fallback TTS 추가 금지
@@ -61,9 +61,9 @@ Round 261 구현은 글자마다 장음계 pitch를 부여하는 blip engine이�
 
 ---
 
-**Round 261TTS-SPEED-PROBE-AND-ANIMALESE** — speed 계측 + procedural Animalese blip speech 엔진.
+**Round 261TTS-SPEED-PROBE-AND-BUBBLESPEECH** — speed 계측 + procedural BubbleSpeech blip speech 엔진.
 
-## Round 261TTS-SPEED-PROBE-AND-ANIMALESE (2026-05-23)
+## Round 261TTS-SPEED-PROBE-AND-BUBBLESPEECH (2026-05-23)
 
 ### Speed Probe 정책
 
@@ -72,26 +72,26 @@ Round 261 구현은 글자마다 장음계 pitch를 부여하는 blip engine이�
 
 기대: `S 0.70 > S 1.00 > S 1.30 > S 2.00` (durationSec 감소). 깨지면 의심 표시.
 
-### Animalese 정책
+### BubbleSpeech 정책
 
 - **Supertonic3 대체 금지** — Supertonic3가 메인 TTS 엔진이다.
 - **Fallback TTS 아님** — Supertonic3 실패를 성공처럼 포장하지 않는다.
-- **삭제 금지** — Animalese는 캐릭터 보이스 효과 레이어로 유지하고 고도화한다.
-- **Overlay 목표** — 생성된 Supertonic3 캐릭터 보이스 위에 Animalese 말하기 질감을 얹는 방향으로 발전시킨다.
-- **procedural audio only** — Nintendo/AC 원본 샘플, YouTube 추출 금지. 자체 sine/triangle/squareSoft/noiseBlend 파형.
-- **모델 없어도 동작** — AnimaleseSynthesizer는 순수 DSP 계산.
+- **삭제 금지** — BubbleSpeech는 캐릭터 보이스 효과 레이어로 유지하고 고도화한다.
+- **Overlay 목표** — 생성된 Supertonic3 캐릭터 보이스 위에 BubbleSpeech 말하기 질감을 얹는 방향으로 발전시킨다.
+- **procedural audio only** — 타사 원본 샘플, YouTube 추출 금지. 자체 sine/triangle/squareSoft/noiseBlend 파형.
+- **모델 없어도 동작** — BubbleSpeechSynthesizer는 순수 DSP 계산.
 - AudioPlaybackService.playFloatSamples 재사용 (pitch/rate 오프셋 지원).
 
-Animalese 프로필 5종: cute(620Hz/triangle), calm(430Hz/triangle), deep(300Hz/triangle), robot(520Hz/squareSoft), tiny(760Hz/sine).
+BubbleSpeech 프로필 5종: cute(620Hz/triangle), calm(430Hz/triangle), deep(300Hz/triangle), robot(520Hz/squareSoft), tiny(760Hz/sine).
 
 변경 파일:
 1. `SupertonicSpeedProbe.swift` (신규) — probe result + ordering 검증
-2. `AnimaleseSynthesizer.swift` (신규) — AnimaleseWaveform + AnimaleseVoiceProfile + AnimaleseConfig + synthesize
+2. `BubbleSpeechSynthesizer.swift` (신규) — BubbleSpeechWaveform + BubbleSpeechVoiceProfile + BubbleSpeechConfig + synthesize
 3. `SpeechManager.probeSpeedApplication()` — speed 4종 계측 API
-4. `SpeechManager.previewAnimalese()` — procedural blip 재생 API
+4. `SpeechManager.previewBubbleSpeech()` — procedural blip 재생 API
 5. `TTSLabView.speedProbeSection` — 계측 UI + 결과 표
-6. `TTSLabView.animaleseSection` — profile/speed/pitchOffset + 재생 버튼
-7. `scripts/preflight_round261tts_speed_probe_animalese.sh` — 22/22 PASS
+6. `TTSLabView.bubbleSpeechSection` — profile/speed/pitchOffset + 재생 버튼
+7. `scripts/preflight_round261tts_speed_probe_bubbleSpeech.sh` — 22/22 PASS
 
 ---
 
@@ -129,9 +129,9 @@ Supertonic3 공식 expression tag: `<laugh>`, `<breath>`, `<sigh>`.
 | confident | 없음 |
 | careful | `<breath>` |
 | excited | `<laugh>` |
-| animalCrossing | `<laugh>` |
+| bubbleSpeech | `<laugh>` |
 
-### Animal Crossing 재튜닝 (Round 260B)
+### BubbleSpeech 재튜닝 (Round 260B)
 
 speed-first 전략으로 재정의. pitch 과도 상승 제거.
 
@@ -148,13 +148,13 @@ speed-first 전략으로 재정의. pitch 과도 상승 제거.
 3. `Supertonic3ONNXRunner.swift` — safeSpeed clamp min(2.00, max(0.70, speed))
 4. `SupertonicProsodyTextProcessor.swift` — useExpressionTags 파라미터 추가
 5. `SpeechManager.previewWithTuning` — useExpressionTags 파라미터 추가
-6. `SupertonicVoicePresetPolicy.animalCrossingTuning` — speed-first 재정의
+6. `SupertonicVoicePresetPolicy.bubbleSpeechTuning` — speed-first 재정의
 7. `TTSLabView` — S 슬라이더 존 배지+경고, Expression Tags A/B 섹션
 8. `scripts/preflight_round260btts_official_speed_range.sh` — 18/18 PASS
 
 ---
 
-**Round 259TTS-VOICE-TUNER** — 임시 P/R/S 튜닝 컨트롤 + pitch 재조정 + Animal Crossing 모드 분리.
+**Round 259TTS-VOICE-TUNER** — 임시 P/R/S 튜닝 컨트롤 + pitch 재조정 + BubbleSpeech 모드 분리.
 
 ## Round 259TTS-VOICE-TUNER (2026-05-23)
 
@@ -174,11 +174,11 @@ speed-first 전략으로 재정의. pitch 과도 상승 제거.
 이전 최대값: 핀 +320, 몽몽 +340, 치코 +260 → 모두 +90으로 낮춤.  
 모코/올리버는 안정적으로 평가되어 ±60 이내 유지.
 
-### Animal Crossing 모드 재정의 (Round 259TTS)
+### BubbleSpeech 모드 재정의 (Round 259TTS)
 
-- **이전:** `basePitch + animalCrossingPitchBoost` (누적 방식) → 기존 설정과 체감 차이 없음
-- **이후:** `animalCrossingTuning(for:)` — 독립 cartoon target (M:+140, F:+180, rate:1.12)
-- Animal Crossing은 테스트 전용. 기본 캐릭터 발화에는 사용되지 않음.
+- **이전:** `basePitch + bubbleSpeechPitchBoost` (누적 방식) → 기존 설정과 체감 차이 없음
+- **이후:** `bubbleSpeechTuning(for:)` — 독립 cartoon target (M:+140, F:+180, rate:1.12)
+- BubbleSpeech은 테스트 전용. 기본 캐릭터 발화에는 사용되지 않음.
 
 ### VoiceTuningState (신규)
 
@@ -187,8 +187,8 @@ speed-first 전략으로 재정의. pitch 과도 상승 제거.
 
 변경 파일:
 1. `VoiceTuningState.swift` (신규)
-2. `CharacterVoiceProfile.swift` — basePitch 재조정 + animalCrossingBoost 필드 비활성화
-3. `SupertonicVoicePresetPolicy.swift` — animalCrossingTuning(for:) 추가, AC case 재정의
+2. `CharacterVoiceProfile.swift` — basePitch 재조정 + bubbleSpeechBoost 필드 비활성화
+3. `SupertonicVoicePresetPolicy.swift` — bubbleSpeechTuning(for:) 추가, BubbleSpeech case 재정의
 4. `SpeechManager.previewWithTuning(text:preset:pitch:rate:speed:)` 추가
 5. `TTSLabView` — prsDescriptionBox + prsTuningSection + 3개 섹션 tuning override 지원
 6. `scripts/preflight_round259tts_voice_tuner.sh` — 22/22 PASS
@@ -208,7 +208,7 @@ speed-first 전략으로 재정의. pitch 과도 상승 제거.
    - neutral: base 값 그대로
    - careful: base + min(0, boost) — 음수 boost만 적용
    - friendly/confident/excited: base + boost 전체 적용
-   - animalCrossing: base + animalCrossingBoost (강한 모드, 기본 미사용)
+   - bubbleSpeech: base + bubbleSpeechBoost (강한 모드, 기본 미사용)
 4. `SpeechManager` — dispatch/speakOnce에서 emotionStyle 조회 후 emotion-aware API 사용
 5. `SpeechManager.previewPreset(text:preset:)` — 원본 preset 미리듣기 (pitch=0, rate=1, neutral)
 6. `SpeechManager.previewCharacterEmotion(text:agentID:emotion:)` — 캐릭터+감정 미리듣기
@@ -244,7 +244,7 @@ speed-first 전략으로 재정의. pitch 과도 상승 제거.
 캐릭터 보이스 정책:
 - basePitch/baseRate: VoiceStyleCatalog 기존값 계승 (cents 기준)
 - baseSpeed: Supertonic3 duration predictor 속도 스케일 (0.85~1.25 clamp)
-- Animal Crossing mode: animalCrossingPitchBoost/RateBoost로 분리, 기본 OFF
+- BubbleSpeech mode: bubbleSpeechPitchBoost/RateBoost로 분리, 기본 OFF
 - 법률/회계/숫자 텍스트 → neutral 처리 (변환 스킵)
 - 말풍선 원문은 절대 변경 안 함
 

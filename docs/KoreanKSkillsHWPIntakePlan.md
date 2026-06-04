@@ -27,7 +27,7 @@ enum SupertonicEmotionStyle: String, CaseIterable {
     case confident     // 전략가, 개발자 톤
     case careful       // 법률, QA, PM 톤
     case excited       // 마케터, 디자이너 톤
-    case animalCrossing // 미래 옵션 (기본 비활성)
+    case bubbleSpeech // 미래 옵션 (기본 비활성)
 }
 ```
 
