@@ -30,6 +30,8 @@ struct ConnectionCenterView: View {
                     providers: aiProviders
                 )
 
+                routingSection
+
                 DisclosureGroup {
                     VStack(spacing: 8) {
                         ForEach(dataProviders, id: \.rawValue) { provider in
@@ -79,6 +81,22 @@ struct ConnectionCenterView: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var routingSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            sectionHeader(
+                icon: "arrow.triangle.branch",
+                title: "데스크별 사용 경로",
+                subtitle: "각 데스크가 사용할 AI를 고릅니다. 키 저장과 실제 연결 성공은 별도로 표시됩니다."
+            )
+
+            VStack(spacing: 8) {
+                ForEach(0..<4, id: \.self) { index in
+                    DeskRoutingPreferenceRow(deskIndex: index, healthService: healthService)
+                }
+            }
         }
     }
 
@@ -151,5 +169,115 @@ struct ConnectionCenterView: View {
             RoundedRectangle(cornerRadius: 8)
                 .fill(Color.secondary.opacity(0.06))
         )
+    }
+}
+
+private struct DeskRoutingPreferenceRow: View {
+    let deskIndex: Int
+    @ObservedObject var healthService: CredentialHealthService
+
+    @AppStorage private var providerRaw: String
+    @AppStorage private var modelId: String
+
+    init(deskIndex: Int, healthService: CredentialHealthService) {
+        self.deskIndex = deskIndex
+        self.healthService = healthService
+        _providerRaw = AppStorage(
+            wrappedValue: LLMProvider.gemini.rawValue,
+            "llmProvider_desk_\(deskIndex)"
+        )
+        _modelId = AppStorage(
+            wrappedValue: "",
+            "openRouterModelId_desk_\(deskIndex)"
+        )
+    }
+
+    private var selectedProvider: LLMProvider {
+        LLMProvider(rawValue: providerRaw) ?? .gemini
+    }
+
+    private var externalProvider: ExternalProvider {
+        switch selectedProvider {
+        case .gemini:
+            return .gemini
+        case .openAI:
+            return .openAI
+        case .claude:
+            return .anthropic
+        case .openRouter:
+            return .openRouter
+        }
+    }
+
+    private var health: CredentialHealth {
+        healthService.health(for: externalProvider)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Text("데스크 \(deskIndex + 1)")
+                    .font(.system(size: 12, weight: .semibold))
+                    .frame(width: 54, alignment: .leading)
+
+                Picker("AI", selection: $providerRaw) {
+                    ForEach(LLMProvider.allCases, id: \.rawValue) { provider in
+                        Text(provider.displayName).tag(provider.rawValue)
+                    }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .frame(maxWidth: 150)
+
+                stateBadge
+
+                Spacer(minLength: 0)
+            }
+
+            if selectedProvider == .openRouter {
+                if AIModelPolicy.modelOverrideAllowed {
+                    HStack(spacing: 8) {
+                        Text("모델")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 54, alignment: .leading)
+                        TextField("자동", text: $modelId)
+                            .textFieldStyle(.roundedBorder)
+                    }
+                } else {
+                    Text("Release에서는 검증된 모델 정책을 사용합니다.")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color(NSColor.controlBackgroundColor))
+        )
+    }
+
+    private var stateBadge: some View {
+        Text(health.state.displayLabel)
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(badgeColor)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(Capsule().fill(badgeColor.opacity(0.12)))
+            .help(health.maskedKey)
+    }
+
+    private var badgeColor: Color {
+        switch health.state {
+        case .connected:
+            return .green
+        case .notConnected:
+            return .secondary
+        case .untested, .testUnavailable:
+            return .orange
+        case .testFailed:
+            return .red
+        }
     }
 }

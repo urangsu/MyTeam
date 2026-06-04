@@ -224,10 +224,9 @@ struct SettingsView: View {
     private let settingsTabs: [SettingsTabItem] = [
         .init(id: 0, title: "사용자", icon: "person.fill"),
         .init(id: 1, title: "연결", icon: "link"),
-        .init(id: 2, title: "라우팅", icon: "arrow.triangle.branch"),
-        .init(id: 3, title: "스킬", icon: "square.stack.3d.up"),
-        .init(id: 4, title: "캐릭터", icon: "person.2.fill"),
-        .init(id: 5, title: "음성", icon: "waveform")
+        .init(id: 2, title: "스킬", icon: "square.stack.3d.up"),
+        .init(id: 3, title: "캐릭터", icon: "person.2.fill"),
+        .init(id: 4, title: "음성", icon: "waveform")
     ]
 
     var body: some View {
@@ -254,11 +253,10 @@ struct SettingsView: View {
                 switch currentTab {
                 case 0: userSettingsTab
                 case 1: connectionCenterTab
-                case 2: deskRoutingTab
-                case 3: skillsTab
-                case 4: charactersTab
-                case 5: TTSLabView()
-                default: deskRoutingTab
+                case 2: skillsTab
+                case 3: charactersTab
+                case 4: TTSLabView()
+                default: userSettingsTab
                 }
             }
         }
@@ -598,26 +596,7 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Tab 3: 데스크 라우팅 (4개 데스크)
-    private var deskRoutingTab: some View {
-        Form {
-            ForEach(0..<4, id: \.self) { index in
-                Section("데스크 \(index + 1)") {
-                    DeskRoutingRow(deskIndex: index)
-                }
-            }
-
-            Section {
-                Button("저장") { saveSettings() }
-                    .buttonStyle(.borderedProminent)
-                    .frame(maxWidth: .infinity)
-            }
-        }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
-    }
-
-    // MARK: - Tab 4: 스킬 설정
+    // MARK: - Tab 3: 스킬 설정
     private var skillsTab: some View {
         let _ = skillRefreshToken
         let builtInSkills = SkillRegistry.shared.builtInSkills().sorted { $0.id < $1.id }
@@ -697,7 +676,7 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Tab 5: 캐릭터
+    // MARK: - Tab 4: 캐릭터
     private var charactersTab: some View {
         ScrollView {
             VStack(spacing: 16) {
@@ -826,51 +805,6 @@ struct SettingsView: View {
         dailyBriefingPreview = briefing
     }
 
-}
-
-// MARK: - 데스크 라우팅 행
-private struct DeskRoutingRow: View {
-    let deskIndex: Int
-
-    @AppStorage private var providerRaw: String
-    @AppStorage private var modelId: String
-
-    init(deskIndex: Int) {
-        self.deskIndex = deskIndex
-        _providerRaw = AppStorage(wrappedValue: LLMProvider.gemini.rawValue,
-                                  "llmProvider_desk_\(deskIndex)")
-        _modelId     = AppStorage(wrappedValue: "",
-                                  "openRouterModelId_desk_\(deskIndex)")
-    }
-
-    var body: some View {
-        LabeledContent("API") {
-            Picker("", selection: $providerRaw) {
-                Text("Gemini").tag(LLMProvider.gemini.rawValue)
-                Text("OpenAI").tag(LLMProvider.openAI.rawValue)
-                Text("Claude").tag(LLMProvider.claude.rawValue)
-                Text("OpenRouter").tag(LLMProvider.openRouter.rawValue)
-            }
-            .pickerStyle(.menu)
-            .labelsHidden()
-        }
-
-        if providerRaw == LLMProvider.openRouter.rawValue && AIModelPolicy.modelOverrideAllowed {
-            DisclosureGroup {
-                LabeledContent("모델") {
-                    TextField("자동", text: $modelId)
-                }
-            } label: {
-                Text("고급 모델 설정")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        } else if providerRaw == LLMProvider.openRouter.rawValue {
-            Text("Release pinned model")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-    }
 }
 
 // MARK: - RuntimeDiagnosticsPlaceholder
