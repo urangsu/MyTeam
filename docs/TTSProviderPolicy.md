@@ -12,6 +12,9 @@
 - Do not "simplify" voice by removing BubbleSpeech. The correct direction is overlay quality, controllability, character mapping, QA metrics, and truthful UI labels.
 - If Supertonic3 runtime is broken, fix Supertonic3. Do not replace it with Apple TTS, ElevenLabs, Chatterbox, Qwen, MLX TTS, or any other TTS model.
 - If BubbleSpeech output quality is weak, improve the effect layer. Do not delete it.
+- BubbleSpeech guide generation failure is a failure, not passthrough success.
+- Returning original Supertonic3 voice samples without effect is forbidden in BubbleSpeech preview.
+- BubbleSpeech preview may only report success when Supertonic3 synthesis succeeds and BubbleSpeech effect rendering produces non-empty modified samples.
 - The TTS input wording must match the visible chat bubble wording. Character style must come from Supertonic3 pitch/rate/speed/timbre tuning and BubbleSpeech audio effects, not from hidden text rewrites such as changing endings, adding punctuation, summarizing, or substituting different phrases.
 
 Target architecture:
@@ -79,7 +82,7 @@ Round 261 구현은 글자마다 장음계 pitch를 부여하는 blip engine이�
 - **삭제 금지** — BubbleSpeech는 캐릭터 보이스 효과 레이어로 유지하고 고도화한다.
 - **Overlay 목표** — 생성된 Supertonic3 캐릭터 보이스 위에 BubbleSpeech 말하기 질감을 얹는 방향으로 발전시킨다.
 - **procedural audio only** — 타사 원본 샘플, YouTube 추출 금지. 자체 sine/triangle/squareSoft/noiseBlend 파형.
-- **모델 없어도 동작** — BubbleSpeechSynthesizer는 순수 DSP 계산.
+- **provider 아님** — BubbleSpeechSynthesizer는 순수 DSP 효과 레이어지만, 제품 preview 성공은 Supertonic3 합성 성공과 non-empty modified render가 모두 있어야 한다.
 - AudioPlaybackService.playFloatSamples 재사용 (pitch/rate 오프셋 지원).
 
 BubbleSpeech 프로필 5종: cute(620Hz/triangle), calm(430Hz/triangle), deep(300Hz/triangle), robot(520Hz/squareSoft), tiny(760Hz/sine).
@@ -88,7 +91,7 @@ BubbleSpeech 프로필 5종: cute(620Hz/triangle), calm(430Hz/triangle), deep(30
 1. `SupertonicSpeedProbe.swift` (신규) — probe result + ordering 검증
 2. `BubbleSpeechSynthesizer.swift` (신규) — BubbleSpeechWaveform + BubbleSpeechVoiceProfile + BubbleSpeechConfig + synthesize
 3. `SpeechManager.probeSpeedApplication()` — speed 4종 계측 API
-4. `SpeechManager.previewBubbleSpeech()` — procedural blip 재생 API
+4. `SpeechManager.previewBubbleSpeech()` — Supertonic3 캐릭터 음성 기반 effect preview API
 5. `TTSLabView.speedProbeSection` — 계측 UI + 결과 표
 6. `TTSLabView.bubbleSpeechSection` — profile/speed/pitchOffset + 재생 버튼
 7. `scripts/preflight_round261tts_speed_probe_bubbleSpeech.sh` — 22/22 PASS

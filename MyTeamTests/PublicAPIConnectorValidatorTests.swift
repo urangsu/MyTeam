@@ -61,8 +61,26 @@ final class BubbleSpeechSynthesizerTests: XCTestCase {
         )
 
         XCTAssertEqual(rendered.count, voiceSamples.count)
-        XCTAssertNotEqual(Array(rendered.prefix(256)), Array(voiceSamples.prefix(256)))
+        XCTAssertGreaterThan(BubbleSpeechSynthesizer.meanAbsoluteDelta(rendered, voiceSamples), 0.002)
         XCTAssertGreaterThan(rendered.map { abs($0) }.max() ?? 0, 0.01)
+        XCTAssertFalse(rendered.contains { !$0.isFinite })
+    }
+
+    func testBubbleSpeechGuideFailureDoesNotPassthroughVoiceSamples() {
+        let sampleRate = 44_100
+        let voiceSamples = (0..<sampleRate / 4).map { index -> Float in
+            let t = Double(index) / Double(sampleRate)
+            return Float(sin(2.0 * .pi * 330.0 * t) * 0.2)
+        }
+
+        let rendered = BubbleSpeechSynthesizer.renderVoiceBasedEffect(
+            text: " !!!",
+            voiceSamples: voiceSamples,
+            sampleRate: sampleRate,
+            config: BubbleSpeechConfig.from(profile: .cute, speed: 1.0)
+        )
+
+        XCTAssertTrue(rendered.isEmpty)
     }
 }
 

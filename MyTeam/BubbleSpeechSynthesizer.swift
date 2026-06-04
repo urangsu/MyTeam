@@ -12,6 +12,7 @@ import Foundation
 //   - No external sample files.
 //   - Pure procedural synthesis only.
 //   - Lab-only speech effect, not a fallback TTS.
+//   - Guide generation failure is a BubbleSpeech failure, not passthrough success.
 
 // MARK: - Wave / Profile
 
@@ -213,7 +214,7 @@ enum BubbleSpeechSynthesizer {
         guard !voiceSamples.isEmpty, sampleRate > 0 else { return [] }
 
         let guide = synthesize(text: text, config: config)
-        guard !guide.isEmpty else { return voiceSamples }
+        guard !guide.isEmpty else { return [] }
 
         let resampledGuide = resample(guide, targetCount: voiceSamples.count)
         let envelope = smoothedEnvelope(from: resampledGuide, window: max(32, sampleRate / 220))
@@ -236,6 +237,15 @@ enum BubbleSpeechSynthesizer {
 
         smoothEdges(&output, sampleRate: Double(sampleRate), attack: 0.006, release: 0.028)
         return output
+    }
+
+    static func meanAbsoluteDelta(_ lhs: [Float], _ rhs: [Float]) -> Float {
+        guard !lhs.isEmpty, lhs.count == rhs.count else { return 0 }
+        var total: Double = 0
+        for i in lhs.indices {
+            total += Double(abs(lhs[i] - rhs[i]))
+        }
+        return Float(total / Double(lhs.count))
     }
 
     static func synthesize(text: String, config: BubbleSpeechConfig) -> [Float] {

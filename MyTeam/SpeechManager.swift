@@ -513,7 +513,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
 
     // MARK: - BubbleSpeech Effect Preview
 
-    /// BubbleSpeech는 별도 TTS 모델이 아니라 뽀글뽀글 말하기 효과/오디오 경로 테스트 레이어다.
+    /// BubbleSpeech는 별도 TTS 모델이 아니라 Supertonic3 캐릭터 목소리 기반 뽀글뽀글 말하기 효과 레이어다.
     /// MyTeam의 메인 TTS 엔진은 Supertonic3이며, 이 함수는 Lab/효과 확인에만 사용한다.
     /// 반환값은 효과 재생 시간이며, Supertonic3 합성 성공으로 취급하면 안 된다.
     func previewBubbleSpeech(
@@ -561,11 +561,15 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
             sampleRate: result.sampleRate,
             config: config
         )
-        guard !samples.isEmpty else { return nil }
+        guard !samples.isEmpty else {
+            AppLog.warning("[BubbleSpeechEffect] failed: empty rendered samples voiceBased=true preset=\(preset) agentID=\(agentID ?? "nil") profile=\(profile.rawValue) pitch=\(pitch + pitchOffset) rate=\(rate) speed=\(speed) inputChars=\(spokenText.count) voiceSamples=\(result.wavSamples.count)")
+            return nil
+        }
 
         let sampleRate = result.sampleRate
         let durationSec = Double(samples.count) / Double(sampleRate)
         let snapshot = AudioFeatureAnalyzer.analyze(samples: samples, sampleRate: sampleRate)
+        let delta = BubbleSpeechSynthesizer.meanAbsoluteDelta(samples, result.wavSamples)
 
         await playback.playFloatSamples(
             samples: samples,
@@ -577,9 +581,14 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
             onPlaybackStarted: nil
         )
 
+        let safeAgent = (agentID ?? "none").replacingOccurrences(of: " ", with: "_")
         let safeLabel = label.replacingOccurrences(of: " ", with: "_")
-        _ = S3WavWriter.write(samples: samples, sampleRate: sampleRate, tag: "bubble_speech_\(safeLabel)")
-        AppLog.info("[BubbleSpeechEffect] voiceBased=true preset=\(preset) profile=\(profile.rawValue) kind=\(profile.profileKindLabel) samples=\(samples.count) duration=\(String(format: "%.3f", durationSec))s pitch=\(pitch + pitchOffset) rate=\(rate) speed=\(speed) peak=\(String(format: "%.3f", snapshot.peak)) zcr=\(String(format: "%.1f", snapshot.zeroCrossingRate)) clicks=\(snapshot.estimatedClickCount)")
+        let safePitch = String(format: "%.0f", pitch + pitchOffset)
+        let safeRate = String(format: "%.2f", rate).replacingOccurrences(of: ".", with: "p")
+        let safeSpeed = String(format: "%.2f", speed).replacingOccurrences(of: ".", with: "p")
+        let wavTag = "bubble_speech_\(safeLabel)_\(safeAgent)_\(preset)_\(profile.rawValue)_p\(safePitch)_r\(safeRate)_s\(safeSpeed)"
+        _ = S3WavWriter.write(samples: samples, sampleRate: sampleRate, tag: wavTag)
+        AppLog.info("[BubbleSpeechEffect] voiceBased=true preset=\(preset) agentID=\(agentID ?? "nil") profile=\(profile.rawValue) kind=\(profile.profileKindLabel) pitch=\(pitch + pitchOffset) rate=\(rate) speed=\(speed) inputChars=\(spokenText.count) voiceSamples=\(result.wavSamples.count) renderedSamples=\(samples.count) duration=\(String(format: "%.3f", durationSec))s peak=\(String(format: "%.3f", snapshot.peak)) zcr=\(String(format: "%.1f", snapshot.zeroCrossingRate)) clicks=\(snapshot.estimatedClickCount) meanDelta=\(String(format: "%.5f", delta)) wavTag=\(wavTag)")
         return durationSec
     }
 

@@ -175,23 +175,23 @@ else
   fail "모코/올리버 basePitch 범위 초과"
 fi
 
-# 15. SupertonicVoicePresetPolicy.animalCrossingTuning 존재
+# 15. SupertonicVoicePresetPolicy.bubbleSpeechTuning 존재
 echo ""
-echo "[15] SupertonicVoicePresetPolicy.animalCrossingTuning 존재 확인"
-if grep -q "func animalCrossingTuning" "$MYTEAM/SupertonicVoicePresetPolicy.swift" 2>/dev/null; then
-  pass "animalCrossingTuning(for:) 존재"
+echo "[15] SupertonicVoicePresetPolicy.bubbleSpeechTuning 존재 확인"
+if grep -q "func bubbleSpeechTuning" "$MYTEAM/SupertonicVoicePresetPolicy.swift" 2>/dev/null; then
+  pass "bubbleSpeechTuning(for:) 존재"
 else
-  fail "animalCrossingTuning(for:) 없음"
+  fail "bubbleSpeechTuning(for:) 없음"
 fi
 
-# 16. Animal Crossing이 단순 animalCrossingBoost 누적 방식이 아님
+# 16. BubbleSpeech이 단순 bubbleSpeechBoost 누적 방식이 아님
 echo ""
-echo "[16] Animal Crossing — boost 누적 방식 아닌 별도 target 방식 확인"
-# The animalCrossing case should call animalCrossingTuning, not use animalCrossingPitchBoost
-if grep -A 5 "case .animalCrossing" "$MYTEAM/SupertonicVoicePresetPolicy.swift" 2>/dev/null | grep -q "animalCrossingTuning"; then
-  pass "Animal Crossing이 animalCrossingTuning() 별도 target 사용"
+echo "[16] BubbleSpeech — boost 누적 방식 아닌 별도 target 방식 확인"
+# The bubbleSpeech case should call bubbleSpeechTuning, not use bubbleSpeechPitchBoost
+if grep -A 5 "case .bubbleSpeech" "$MYTEAM/SupertonicVoicePresetPolicy.swift" 2>/dev/null | grep -q "bubbleSpeechTuning"; then
+  pass "BubbleSpeech이 bubbleSpeechTuning() 별도 target 사용"
 else
-  fail "Animal Crossing이 여전히 boost 누적 방식"
+  fail "BubbleSpeech이 여전히 boost 누적 방식"
 fi
 
 # 17. 치코 role "UX 디자이너 & 온보딩 도우미" 유지

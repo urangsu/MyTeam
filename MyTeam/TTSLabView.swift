@@ -32,7 +32,7 @@ struct TTSLabView: View {
     }
 
     private var canRunPreview: Bool {
-        TTSRoutingPolicy.selectedProvider() != nil
+        TTSRoutingPolicy.selectedProvider() == .supertonic3
             && experimentalEnabled
             && noticeAccepted
             && !sampleText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -297,7 +297,7 @@ struct TTSLabView: View {
         previewStatus = "합성 요청 중..."
         Task {
             let output = await SpeechManager.shared.previewWithTuning(
-                text: processedText,
+                text: sampleText,
                 preset: selectedProfile.preset,
                 pitch: Float(tempPitch + Double(selectedProfile.basePitch)),
                 rate: Float(tempRate),
@@ -310,7 +310,7 @@ struct TTSLabView: View {
             await MainActor.run {
                 isPreviewing = false
                 if let output, output.audioFileURL != nil {
-                    previewStatus = "캐릭터 TTS 미리듣기를 실행했습니다."
+                    previewStatus = "Supertonic3 캐릭터 TTS 미리듣기를 재생했습니다."
                 } else {
                     previewStatus = "합성 런타임이 응답하지 않았습니다. 캐릭터 TTS는 성공 처리하지 않았습니다."
                 }
@@ -347,7 +347,7 @@ struct TTSLabView: View {
                 if let duration, duration > 0 {
                     previewStatus = "Supertonic3 캐릭터 목소리 기반 뽀글뽀글 말하기를 재생했습니다."
                 } else {
-                    previewStatus = "뽀글뽀글 말하기 생성에 실패했습니다. Supertonic3 모델/ONNX Runtime/출력 장치를 확인해야 합니다."
+                    previewStatus = "뽀글뽀글 말하기 생성에 실패했습니다. Supertonic3 합성 또는 BubbleSpeech 효과 생성이 완료되지 않았습니다."
                 }
             }
         }

@@ -81,8 +81,8 @@ check 14 "TTSLabView S>1.30 효과음 경고 존재" \
 check 15 "TTSLabView S>1.60 극단 경고 존재" \
   "grep -q 'speedExtremeHigh' '$LAB'"
 
-# [16] animalCrossingTuning speed-first 1.35~1.60
-check 16 "animalCrossingTuning speed-first 1.35~1.60" \
+# [16] BubbleSpeech tuning speed-first 1.35~1.60
+check 16 "BubbleSpeech tuning speed-first 1.35~1.60" \
   "grep -q '1.35' '$ROOT/MyTeam/SupertonicVoicePresetPolicy.swift' && grep -q '1.60' '$ROOT/MyTeam/SupertonicVoicePresetPolicy.swift'"
 
 # [17] pbxproj에 SupertonicExpressionTagPolicy 등록
