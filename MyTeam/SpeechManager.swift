@@ -531,7 +531,9 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
     ) async -> TimeInterval? {
         guard TTSRoutingPolicy.selectedProvider() == .supertonic3 else { return nil }
 
-        let config = BubbleSpeechConfig.from(profile: profile, speed: Double(speed))
+        let bubbleTuning = SupertonicVoicePresetPolicy.bubbleSpeechTuning(for: agentID)
+        let synthesisSpeed = min(1.60, max(1.35, max(speed, bubbleTuning.speed)))
+        let config = BubbleSpeechConfig.from(profile: profile, speed: Double(synthesisSpeed))
         let paths = Supertonic3ONNXModelPaths.defaultPaths()
         let spokenText = SupertonicProsodyTextProcessor.preprocess(
             text,
@@ -547,7 +549,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 preset: preset,
                 lang: Supertonic3TTSConfig.selectedLanguage,
                 totalSteps: Supertonic3TTSConfig.totalStep,
-                speed: speed,
+                speed: synthesisSpeed,
                 paths: paths
             )
         } catch {
@@ -559,10 +561,11 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
             text: spokenText,
             voiceSamples: result.wavSamples,
             sampleRate: result.sampleRate,
-            config: config
+            config: config,
+            segmentRate: rate
         )
         guard !samples.isEmpty else {
-            AppLog.warning("[BubbleSpeechEffect] failed: empty rendered samples voiceBased=true preset=\(preset) agentID=\(agentID ?? "nil") profile=\(profile.rawValue) pitch=\(pitch + pitchOffset) rate=\(rate) speed=\(speed) inputChars=\(spokenText.count) voiceSamples=\(result.wavSamples.count)")
+            AppLog.warning("[BubbleSpeechEffect] failed: empty rendered samples voiceBased=true preset=\(preset) agentID=\(agentID ?? "nil") profile=\(profile.rawValue) synthesisSpeed=\(synthesisSpeed) segmentRate=\(rate) playbackPitch=\(pitch + pitchOffset) inputChars=\(spokenText.count) syllableCount=\(BubbleSpeechSynthesizer.syllableCount(in: spokenText)) sourceSamples=\(result.wavSamples.count)")
             return nil
         }
 
@@ -570,6 +573,8 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         let durationSec = Double(samples.count) / Double(sampleRate)
         let snapshot = AudioFeatureAnalyzer.analyze(samples: samples, sampleRate: sampleRate)
         let delta = BubbleSpeechSynthesizer.meanAbsoluteDelta(samples, result.wavSamples)
+        let durationRatio = BubbleSpeechSynthesizer.durationRatio(renderedSamples: samples, sourceSamples: result.wavSamples)
+        let syllableCount = BubbleSpeechSynthesizer.syllableCount(in: spokenText)
 
         await playback.playFloatSamples(
             samples: samples,
@@ -585,10 +590,10 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         let safeLabel = label.replacingOccurrences(of: " ", with: "_")
         let safePitch = String(format: "%.0f", pitch + pitchOffset)
         let safeRate = String(format: "%.2f", rate).replacingOccurrences(of: ".", with: "p")
-        let safeSpeed = String(format: "%.2f", speed).replacingOccurrences(of: ".", with: "p")
-        let wavTag = "bubble_speech_\(safeLabel)_\(safeAgent)_\(preset)_\(profile.rawValue)_p\(safePitch)_r\(safeRate)_s\(safeSpeed)"
+        let safeSpeed = String(format: "%.2f", synthesisSpeed).replacingOccurrences(of: ".", with: "p")
+        let wavTag = "bubble_speech_\(safeLabel)_\(safeAgent)_\(preset)_\(profile.rawValue)_p\(safePitch)_r\(safeRate)_syn\(safeSpeed)"
         _ = S3WavWriter.write(samples: samples, sampleRate: sampleRate, tag: wavTag)
-        AppLog.info("[BubbleSpeechEffect] voiceBased=true preset=\(preset) agentID=\(agentID ?? "nil") profile=\(profile.rawValue) kind=\(profile.profileKindLabel) pitch=\(pitch + pitchOffset) rate=\(rate) speed=\(speed) inputChars=\(spokenText.count) voiceSamples=\(result.wavSamples.count) renderedSamples=\(samples.count) duration=\(String(format: "%.3f", durationSec))s peak=\(String(format: "%.3f", snapshot.peak)) zcr=\(String(format: "%.1f", snapshot.zeroCrossingRate)) clicks=\(snapshot.estimatedClickCount) meanDelta=\(String(format: "%.5f", delta)) wavTag=\(wavTag)")
+        AppLog.info("[BubbleSpeechEffect] voiceBased=true mode=singlePassChopper preset=\(preset) agentID=\(agentID ?? "nil") profile=\(profile.rawValue) kind=\(profile.profileKindLabel) synthesisSpeed=\(synthesisSpeed) segmentRate=\(rate) playbackPitch=\(pitch + pitchOffset) inputChars=\(spokenText.count) syllableCount=\(syllableCount) sourceSamples=\(result.wavSamples.count) renderedSamples=\(samples.count) duration=\(String(format: "%.3f", durationSec))s durationRatio=\(String(format: "%.3f", durationRatio)) peak=\(String(format: "%.3f", snapshot.peak)) zcr=\(String(format: "%.1f", snapshot.zeroCrossingRate)) clicks=\(snapshot.estimatedClickCount) meanDelta=\(String(format: "%.5f", delta)) wavTag=\(wavTag)")
         return durationSec
     }
 

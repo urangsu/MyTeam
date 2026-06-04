@@ -328,7 +328,7 @@ struct TTSLabView: View {
             return
         }
         isPreviewing = true
-        previewStatus = "Supertonic3 캐릭터 목소리로 뽀글뽀글 말하기 생성 중..."
+        previewStatus = "Supertonic3 캐릭터 목소리를 음절 리듬으로 재구성하는 중..."
         Task {
             let duration = await SpeechManager.shared.previewBubbleSpeech(
                 text: sampleText,
@@ -345,9 +345,9 @@ struct TTSLabView: View {
             await MainActor.run {
                 isPreviewing = false
                 if let duration, duration > 0 {
-                    previewStatus = "Supertonic3 캐릭터 목소리 기반 뽀글뽀글 말하기를 재생했습니다."
+                    previewStatus = "Supertonic3 캐릭터 목소리를 음절 리듬으로 재구성한 뽀글뽀글 말하기를 재생했습니다."
                 } else {
-                    previewStatus = "뽀글뽀글 말하기 생성에 실패했습니다. Supertonic3 합성 또는 BubbleSpeech 효과 생성이 완료되지 않았습니다."
+                    previewStatus = "뽀글뽀글 말하기 생성에 실패했습니다. Supertonic3 합성 또는 음절 리듬 렌더링이 완료되지 않았습니다."
                 }
             }
         }
