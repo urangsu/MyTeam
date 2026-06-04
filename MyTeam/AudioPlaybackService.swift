@@ -3,45 +3,73 @@ import Foundation
 
 actor AudioPlaybackService: AudioPlayable {
     static let shared = AudioPlaybackService()
-    
+
     private let engine = AVAudioEngine()
     private let playerNode = AVAudioPlayerNode()
     private let timePitchNode = AVAudioUnitTimePitch()
-    private var engineFormat: AVAudioFormat!
-    
+    private var engineFormat: AVAudioFormat?
+    private var isGraphConfigured = false
+
     private var currentActiveStreamId: String? = nil
-    
+
     var isCurrentlyPlaying: Bool { return playerNode.isPlaying }
-    
-    private init() {
-        Task { await self.setupEngine() }
+
+    private init() {}
+
+    @discardableResult
+    private func ensureEngineReady() -> Bool {
+        if !isGraphConfigured {
+            configureEngineGraph()
+        }
+
+        guard let format = engineFormat else {
+            AppLog.error("[AudioPlayback] engineFormat nil — engine graph is not ready")
+            return false
+        }
+
+        if !engine.isRunning {
+            do {
+                try engine.start()
+            } catch {
+                AppLog.error("[AudioPlayback] engine.start() 실패: \(error)")
+                return false
+            }
+        }
+
+        if !format.sampleRate.isFinite || format.sampleRate <= 0 {
+            AppLog.error("[AudioPlayback] invalid engine format: \(format)")
+            return false
+        }
+        return true
     }
-    
-    private func setupEngine() {
+
+    private func configureEngineGraph() {
+        guard !isGraphConfigured else { return }
+
         engine.attach(playerNode)
         engine.attach(timePitchNode)
-        
-        // 믹서 노드의 기본 포맷을 엔진의 공통 포맷으로 기준 잡습니다. 
+
+        // 믹서 노드의 기본 포맷을 엔진의 공통 포맷으로 기준 잡습니다.
         // 맥 환경에서는 보통 44.1kHz 또는 48kHz Stereo가 됩니다.
         engineFormat = engine.mainMixerNode.outputFormat(forBus: 0)
-        
-        engine.connect(playerNode, to: timePitchNode, format: engineFormat)
-        engine.connect(timePitchNode, to: engine.mainMixerNode, format: engineFormat)
-        
-        do {
-            try engine.start()
-            AppLog.info("[AudioPlayback] 엔진 시작 완료. 기준 포맷: \(engineFormat!)")
-        } catch {
-            AppLog.error("[AudioPlayback] 스피커 엔진 시작 실패: \(error)")
+
+        guard let format = engineFormat else {
+            AppLog.error("[AudioPlayback] 엔진 기준 포맷을 확인하지 못했습니다.")
+            return
         }
+
+        engine.connect(playerNode, to: timePitchNode, format: format)
+        engine.connect(timePitchNode, to: engine.mainMixerNode, format: format)
+        isGraphConfigured = true
+        AppLog.info("[AudioPlayback] 엔진 graph 구성 완료. 기준 포맷: \(format)")
     }
-    
+
     // MARK: - Optimization & Tracking State
     private var converters: [String: AVAudioConverter] = [:]
     private var queuedBufferCount: Int = 0
     func getQueuedBufferCount() -> Int { return queuedBufferCount }
     private let playbackStartThreshold: Int = 1 // threshold=1: 첫 청크 도착 즉시 재생 (짧은 문장 누락 방지)
-    
+
     // MARK: - Core Resampling Logic (Reuse + Autoreleasepool)
     private func convertBuffer(_ input: AVAudioPCMBuffer, from srcFormat: AVAudioFormat, to dstFormat: AVAudioFormat) -> AVAudioPCMBuffer? {
         return autoreleasepool { () -> AVAudioPCMBuffer? in
@@ -49,7 +77,7 @@ actor AudioPlaybackService: AudioPlayable {
             if srcFormat.sampleRate == dstFormat.sampleRate && srcFormat.channelCount == dstFormat.channelCount {
                 return input
             }
-            
+
             let formatKey = "\(srcFormat.description)_to_\(dstFormat.description)"
             let converter: AVAudioConverter
             if let cached = converters[formatKey] {
@@ -61,15 +89,15 @@ actor AudioPlaybackService: AudioPlayable {
                 AppLog.error("[AudioPlayback] AVAudioConverter 생성 실패")
                 return nil
             }
-            
+
             let ratio = dstFormat.sampleRate / srcFormat.sampleRate
             let capacity = AVAudioFrameCount(Double(input.frameLength) * ratio) + 1024
             guard let output = AVAudioPCMBuffer(pcmFormat: dstFormat, frameCapacity: capacity) else { return nil }
-            
+
             var error: NSError?
             class InputState: @unchecked Sendable { var consumed = false }
             let state = InputState()
-            
+
             converter.convert(to: output, error: &error) { packetCount, outStatus in
                 if !state.consumed {
                     state.consumed = true
@@ -80,7 +108,7 @@ actor AudioPlaybackService: AudioPlayable {
                     return nil
                 }
             }
-            
+
             if let err = error {
                 AppLog.error("[AudioPlayback] 포맷 변환 에러: \(err)")
                 return nil
@@ -88,9 +116,11 @@ actor AudioPlaybackService: AudioPlayable {
             return output
         }
     }
-    
+
     /// 네트워크나 TTS 생성기에서 들어온 Data를 안전하게 리샘플링하여 스케줄
     func appendRawPCM(command: PlaybackCommand) {
+        guard ensureEngineReady(), let format = engineFormat else { return }
+
         // onPlaybackStarted 클로저를 actor 격리 컨텍스트 밖으로 먼저 캡처
         let lipSyncCallback: (@Sendable () -> Void)? = command.onPlaybackStarted
 
@@ -107,16 +137,16 @@ actor AudioPlaybackService: AudioPlayable {
                 return
             }
             let sourceFormat = command.format
-            
+
             // 1. Data -> AVAudioPCMBuffer 구조 복원
             guard let sourceBuffer = data.toAVAudioPCMBuffer(format: sourceFormat) else { return }
-            
+
             // 2. 리샘플링
-            guard let outBuffer = convertBuffer(sourceBuffer, from: sourceFormat, to: engineFormat) else { return }
-            
+            guard let outBuffer = convertBuffer(sourceBuffer, from: sourceFormat, to: format) else { return }
+
             // 3. 볼륨
             playerNode.volume = command.volume
-            
+
             // 4. 버퍼 스케줄링
             let wasAlreadyPlaying = playerNode.isPlaying
             playerNode.scheduleBuffer(outBuffer, at: nil, options: []) { [weak self] in
@@ -126,17 +156,14 @@ actor AudioPlaybackService: AudioPlayable {
                 }
             }
             queuedBufferCount += 1
-            
+
             // 5. Jitter Pre-buffering: 임계점까지 도달하면 비로소 엔진 start & 재생
             if !playerNode.isPlaying && queuedBufferCount >= playbackStartThreshold {
-                if !engine.isRunning {
-                    do { try engine.start() }
-                    catch { AppLog.error("[AudioPlayback] engine.start() 실패: \(error)") }
-                }
+                guard ensureEngineReady() else { return }
                 playerNode.play()
                 AppLog.info("[AudioPlayback] ▶️ 재생 개시 (streamId=\(command.streamId.prefix(12)), queuedBuffers=\(queuedBufferCount), engineRunning=\(engine.isRunning), playerPlaying=\(playerNode.isPlaying))")
             }
-            
+
             // 🎯 Perfect Lip-Sync: 첫 버퍼가 재생 큐에 등록되는 찰나에 UI 말풍선 트리거
             // wasAlreadyPlaying=false → 이 버퍼가 재생 개시 버퍼 → 텍스트 표시 타이밍 정확
             if !wasAlreadyPlaying, let callback = lipSyncCallback {
@@ -144,51 +171,39 @@ actor AudioPlaybackService: AudioPlayable {
             }
         }
     }
-    
+
     private func decrementBufferCount() {
         queuedBufferCount = max(0, queuedBufferCount - 1)
     }
-    
+
     func endSession(streamId: String) {
         if currentActiveStreamId == streamId {
-            // Teardown: 재생 노드를 중지하고 분리(Detach)하여 엔진 무리 및 메모리 릭 방지
             playerNode.stop()
-            engine.disconnectNodeOutput(playerNode)
-            engine.disconnectNodeOutput(timePitchNode)
-            engine.detach(playerNode)
-            engine.detach(timePitchNode)
-            
+            playerNode.reset()
+
             currentActiveStreamId = nil
             queuedBufferCount = 0
-            
+
             // 사용을 다한 재사용 컨버터들을 정리(Evict)
             converters.removeAll()
-            AppLog.info("[AudioPlayback] 🧹 세션(\(streamId)) 종료 및 오디오 노드 Detach, 컨버터 풀 Evict 완료")
+            AppLog.info("[AudioPlayback] 세션(\(streamId)) 종료: player reset, queue clear, converter pool evict")
         }
     }
-    
+
     func prepareSession(streamId: String, characterName: String, pitch: Float, rate: Float) {
+        guard ensureEngineReady() else { return }
+
         if currentActiveStreamId != streamId {
             playerNode.stop()
-            
-            // 기존 노드가 엔진에 안 붙어있을 수 있으므로 재연결 로직 가동
-            if playerNode.engine == nil {
-                engine.attach(playerNode)
-                engine.attach(timePitchNode)
-                // engineFormat을 재쿼리 (detach 후 nil 가능성 방어)
-                engineFormat = engine.mainMixerNode.outputFormat(forBus: 0)
-                engine.connect(playerNode, to: timePitchNode, format: engineFormat)
-                engine.connect(timePitchNode, to: engine.mainMixerNode, format: engineFormat)
-                AppLog.info("[AudioPlayback] 🔁 노드 재연결 완료. 포맷: \(engineFormat!)")
-            }
-            
+            playerNode.reset()
+
             currentActiveStreamId = streamId
             queuedBufferCount = 0
-            
+
             // 새 세션용 컨버터 풀 초기화
             converters.removeAll()
         }
-        
+
         timePitchNode.pitch = pitch
         timePitchNode.rate = rate
     }
@@ -241,10 +256,7 @@ actor AudioPlaybackService: AudioPlayable {
         // 🔊 스트림 종료 후 안전망: 아직 playerNode가 play 안 됐으면 강제 시작
         // (짧은 문장 → threshold 미달 → 재생 안 되는 버그 방어)
         if !playerNode.isPlaying && queuedBufferCount > 0 {
-            if !engine.isRunning {
-                do { try engine.start() }
-                catch { AppLog.error("[AudioPlayback] engine.start() 실패: \(error)") }
-            }
+            guard ensureEngineReady() else { return }
             playerNode.play()
             AppLog.info("[AudioPlayback] ⚡ 스트림 종료 후 강제 재생 시작 (queuedBuffers=\(queuedBufferCount))")
         }
@@ -273,12 +285,9 @@ actor AudioPlaybackService: AudioPlayable {
     ) async -> Bool {
         guard !samples.isEmpty else {
             AppLog.info("[AudioPlayback] playFloatSamples: empty samples → skip")
-            if let cb = onPlaybackStarted { Task { @MainActor in cb() } }
             return false
         }
-        if engineFormat == nil {
-            setupEngine()
-        }
+        guard ensureEngineReady() else { return false }
         guard let ef = engineFormat else {
             AppLog.error("[AudioPlayback] playFloatSamples: engineFormat nil — engine not ready")
             return false
@@ -326,13 +335,7 @@ actor AudioPlaybackService: AudioPlayable {
         queuedBufferCount += 1
 
         // 6. 엔진 시작 + 재생 — playerNode.play() 먼저, 콜백은 그 이후
-        if !engine.isRunning {
-            do { try engine.start() }
-            catch {
-                AppLog.error("[AudioPlayback] playFloatSamples: engine.start() 실패: \(error)")
-                return false
-            }
-        }
+        guard ensureEngineReady() else { return false }
         if !playerNode.isPlaying {
             playerNode.play()
             AppLog.info("[AudioPlayback] ▶️ playFloatSamples 재생 시작 "
@@ -354,15 +357,11 @@ actor AudioPlaybackService: AudioPlayable {
     func stopAll() {
 
         playerNode.stop()
-        if playerNode.engine != nil {
-            engine.disconnectNodeOutput(playerNode)
-            engine.disconnectNodeOutput(timePitchNode)
-            engine.detach(playerNode)
-            engine.detach(timePitchNode)
-        }
+        playerNode.reset()
         currentActiveStreamId = nil
         queuedBufferCount = 0
         converters.removeAll()
+        AppLog.info("[AudioPlayback] stopAll: player reset, queue clear, engine graph kept attached")
     }
 
     /// 앱 종료 전용 즉시 정지.
@@ -377,6 +376,8 @@ actor AudioPlaybackService: AudioPlayable {
             engine.detach(playerNode)
             engine.detach(timePitchNode)
         }
+        isGraphConfigured = false
+        engineFormat = nil
         currentActiveStreamId = nil
         queuedBufferCount = 0
         converters.removeAll()
@@ -390,13 +391,13 @@ extension Data {
         let streamDesc = format.streamDescription.pointee
         let bytesPerFrame = streamDesc.mBytesPerFrame
         guard bytesPerFrame > 0 else { return nil }
-        
+
         let frameCapacity = UInt32(self.count) / bytesPerFrame
         guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCapacity) else { return nil }
-        
+
         buffer.frameLength = frameCapacity
         let audioBuffer = buffer.audioBufferList.pointee.mBuffers
-        
+
         self.withUnsafeBytes { bufferPointer in
             guard let baseAddress = bufferPointer.baseAddress else { return }
             audioBuffer.mData?.copyMemory(from: baseAddress, byteCount: self.count)
