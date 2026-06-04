@@ -164,7 +164,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                     AppLog.info("[SpeechManager] WAV written: \(wavPath)")
                 }
                 // 실제 재생: playerNode.play() 이후 onPlaybackStarted 호출됨
-                await playback.playFloatSamples(
+                let didPlay = await playback.playFloatSamples(
                     samples: result.wavSamples,
                     sampleRate: result.sampleRate,
                     streamId: streamId ?? UUID().uuidString,
@@ -173,6 +173,9 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                     rate: rate,
                     onPlaybackStarted: onPlaybackStarted
                 )
+                if !didPlay {
+                    AppLog.warning("[SpeechManager] Supertonic3 playback failed after synthesis")
+                }
             } catch {
                 AppLog.info("[SpeechManager] Supertonic3 synthesis failed: \(error) → silent")
                 onPlaybackStarted()
@@ -303,7 +306,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 paths: paths
             )
             // 재생 — playerNode.play() 이후 완료
-            await playback.playFloatSamples(
+            let didPlay = await playback.playFloatSamples(
                 samples: result.wavSamples,
                 sampleRate: result.sampleRate,
                 streamId: UUID().uuidString,
@@ -312,6 +315,10 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 rate: rate,
                 onPlaybackStarted: nil
             )
+            guard didPlay else {
+                AppLog.warning("[SpeechManager.speakOnce] playback failed after synthesis preset=\(preset)")
+                return nil
+            }
             // WAV 저장 (debug/lab 확인용, 실패해도 재생에 영향 없음)
             let wavPath = S3WavWriter.write(
                 samples: result.wavSamples,
@@ -348,7 +355,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 speed: speed,
                 paths: paths
             )
-            await playback.playFloatSamples(
+            let didPlay = await playback.playFloatSamples(
                 samples: result.wavSamples,
                 sampleRate: result.sampleRate,
                 streamId: UUID().uuidString,
@@ -357,6 +364,10 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 rate: 1,
                 onPlaybackStarted: nil
             )
+            guard didPlay else {
+                AppLog.warning("[SpeechManager.previewPreset] playback failed after synthesis preset=\(preset)")
+                return nil
+            }
             let wavPath = S3WavWriter.write(samples: result.wavSamples, sampleRate: result.sampleRate, tag: "preset_\(preset)")
             AppLog.info("[SpeechManager.previewPreset] preset=\(preset) frames=\(result.wavSamples.count)")
             return TTSOutput(audioFileURL: wavPath.map { URL(fileURLWithPath: $0) },
@@ -387,11 +398,15 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 totalSteps: Supertonic3TTSConfig.totalStep,
                 speed: speed, paths: paths
             )
-            await playback.playFloatSamples(
+            let didPlay = await playback.playFloatSamples(
                 samples: result.wavSamples, sampleRate: result.sampleRate,
                 streamId: UUID().uuidString, characterName: charName,
                 pitch: pitch, rate: rate, onPlaybackStarted: nil
             )
+            guard didPlay else {
+                AppLog.warning("[SpeechManager.previewCharacterEmotion] playback failed after synthesis \(charName) emotion=\(emotion.rawValue)")
+                return nil
+            }
             let wavPath = S3WavWriter.write(samples: result.wavSamples, sampleRate: result.sampleRate,
                                             tag: "emotion_\(charName)_\(emotion.rawValue)")
             AppLog.info("[SpeechManager.previewCharacterEmotion] \(charName) emotion=\(emotion.rawValue)")
@@ -441,7 +456,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 speed: speed,
                 paths: paths
             )
-            await playback.playFloatSamples(
+            let didPlay = await playback.playFloatSamples(
                 samples: result.wavSamples,
                 sampleRate: result.sampleRate,
                 streamId: UUID().uuidString,
@@ -450,6 +465,10 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 rate: rate,
                 onPlaybackStarted: nil
             )
+            guard didPlay else {
+                AppLog.warning("[SpeechManager.previewWithTuning] playback failed after synthesis preset=\(preset)")
+                return nil
+            }
             let safeLabel = label.replacingOccurrences(of: " ", with: "_")
             let wavPath = S3WavWriter.write(samples: result.wavSamples, sampleRate: result.sampleRate,
                                             tag: "tuning_\(safeLabel)")
@@ -528,8 +547,10 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         pitchOffset: Float = 0,
         label: String = "bubbleSpeech",
         useExpressionTags: Bool = false
-    ) async -> TimeInterval? {
-        guard TTSRoutingPolicy.selectedProvider() == .supertonic3 else { return nil }
+    ) async -> BubbleSpeechPreviewResult {
+        guard TTSRoutingPolicy.selectedProvider() == .supertonic3 else {
+            return .failed("Supertonic3 캐릭터 목소리 합성 조건이 아직 충족되지 않았습니다.")
+        }
 
         let bubbleTuning = SupertonicVoicePresetPolicy.bubbleSpeechTuning(for: agentID)
         let synthesisSpeed = min(1.60, max(1.35, max(speed, bubbleTuning.speed)))
@@ -554,7 +575,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
             )
         } catch {
             AppLog.info("[BubbleSpeechEffect] Supertonic3 voice synthesis failed: \(error)")
-            return nil
+            return .failed("Supertonic3 캐릭터 목소리 합성이 완료되지 않았습니다.")
         }
 
         let samples = BubbleSpeechSynthesizer.renderVoiceBasedEffect(
@@ -566,7 +587,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         )
         guard !samples.isEmpty else {
             AppLog.warning("[BubbleSpeechEffect] failed: empty rendered samples voiceBased=true preset=\(preset) agentID=\(agentID ?? "nil") profile=\(profile.rawValue) synthesisSpeed=\(synthesisSpeed) segmentRate=\(rate) playbackPitch=\(pitch + pitchOffset) inputChars=\(spokenText.count) syllableCount=\(BubbleSpeechSynthesizer.syllableCount(in: spokenText)) sourceSamples=\(result.wavSamples.count)")
-            return nil
+            return .failed("뽀글뽀글 음절 리듬 렌더링이 완료되지 않았습니다.")
         }
 
         let sampleRate = result.sampleRate
@@ -575,8 +596,17 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         let delta = BubbleSpeechSynthesizer.meanAbsoluteDelta(samples, result.wavSamples)
         let durationRatio = BubbleSpeechSynthesizer.durationRatio(renderedSamples: samples, sourceSamples: result.wavSamples)
         let syllableCount = BubbleSpeechSynthesizer.syllableCount(in: spokenText)
+        let isFinite = !samples.contains { !$0.isFinite }
+        guard durationRatio > 0.18,
+              durationRatio < 0.95,
+              delta > 0.002,
+              snapshot.peak > 0.01,
+              isFinite else {
+            AppLog.warning("[BubbleSpeechEffect] failed: invalid output metrics preset=\(preset) agentID=\(agentID ?? "nil") profile=\(profile.rawValue) durationRatio=\(String(format: "%.3f", durationRatio)) peak=\(String(format: "%.3f", snapshot.peak)) meanDelta=\(String(format: "%.5f", delta)) isFinite=\(isFinite)")
+            return .failed("뽀글뽀글 렌더링 품질 기준을 통과하지 못했습니다.")
+        }
 
-        await playback.playFloatSamples(
+        let didPlay = await playback.playFloatSamples(
             samples: samples,
             sampleRate: sampleRate,
             streamId: UUID().uuidString,
@@ -585,6 +615,10 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
             rate: rate,
             onPlaybackStarted: nil
         )
+        guard didPlay else {
+            AppLog.warning("[BubbleSpeechEffect] playback failed after render")
+            return .failed("출력 장치 또는 오디오 엔진 재생 실패로 뽀글뽀글 말하기를 재생하지 못했습니다.")
+        }
 
         let safeAgent = (agentID ?? "none").replacingOccurrences(of: " ", with: "_")
         let safeLabel = label.replacingOccurrences(of: " ", with: "_")
@@ -594,7 +628,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         let wavTag = "bubble_speech_\(safeLabel)_\(safeAgent)_\(preset)_\(profile.rawValue)_p\(safePitch)_r\(safeRate)_syn\(safeSpeed)"
         _ = S3WavWriter.write(samples: samples, sampleRate: sampleRate, tag: wavTag)
         AppLog.info("[BubbleSpeechEffect] voiceBased=true mode=singlePassChopper preset=\(preset) agentID=\(agentID ?? "nil") profile=\(profile.rawValue) kind=\(profile.profileKindLabel) synthesisSpeed=\(synthesisSpeed) segmentRate=\(rate) playbackPitch=\(pitch + pitchOffset) inputChars=\(spokenText.count) syllableCount=\(syllableCount) sourceSamples=\(result.wavSamples.count) renderedSamples=\(samples.count) duration=\(String(format: "%.3f", durationSec))s durationRatio=\(String(format: "%.3f", durationRatio)) peak=\(String(format: "%.3f", snapshot.peak)) zcr=\(String(format: "%.1f", snapshot.zeroCrossingRate)) clicks=\(snapshot.estimatedClickCount) meanDelta=\(String(format: "%.5f", delta)) wavTag=\(wavTag)")
-        return durationSec
+        return .played(duration: durationSec)
     }
 
     /// 단발성 공식 TTS 합성. 반환값: WAV 파일 경로 (nil=무음 또는 실패).
@@ -649,6 +683,23 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
     func stopChunkSpeaking() { abortPipelinedStream() }
     func prefetchChunk(text: String, characterName: String) { /* No-op: 레거시 호환 */ }
     func playAudioData(_ data: Data) { /* No-op */ }
+}
+
+struct BubbleSpeechPreviewResult: Sendable {
+    let duration: TimeInterval
+    let failureMessage: String?
+
+    static func played(duration: TimeInterval) -> BubbleSpeechPreviewResult {
+        BubbleSpeechPreviewResult(duration: duration, failureMessage: nil)
+    }
+
+    static func failed(_ message: String) -> BubbleSpeechPreviewResult {
+        BubbleSpeechPreviewResult(duration: 0, failureMessage: message)
+    }
+
+    var didPlay: Bool {
+        failureMessage == nil && duration > 0
+    }
 }
 
 private extension Character {
