@@ -2,7 +2,7 @@ import Foundation
 
 // ============================================================
 // TextSanitizer.swift
-// Supertonic3/Animalese 음성 입력용 텍스트 정제 (정규식 필터)
+// Supertonic3/BubbleSpeech 음성 입력용 텍스트 정제 (정규식 필터)
 //
 // 기능:
 //   1. 이름 태그 제거 ([루나], 루나:, **루나** 등)

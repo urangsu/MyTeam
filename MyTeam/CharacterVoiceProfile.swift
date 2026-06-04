@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - CharacterVoiceProfile
 // Round 258TTS: 캐릭터별 TTS 목소리 정체성 정의.
-// Round 259TTS: basePitch 재조정 (±100 이하 권장). Animal Crossing은 별도 tuning mode로 분리.
+// Round 259TTS: basePitch 재조정 (±100 이하 권장). BubbleSpeech은 별도 tuning mode로 분리.
 //
 // basePitch/baseRate: Supertonic 경로 기본 재생 값.
 //   pitch 단위: cents (AVAudioUnitTimePitch.pitch). ±100 cents ≈ 1 semitone.
@@ -11,8 +11,8 @@ import Foundation
 // baseSpeed: Supertonic3ONNXRunner.synthesize(speed:) 값. duration predictor 스케일.
 //   range: 0.85~1.25. 1.0 = 원래 속도.
 // emotionPitchBoost / emotionRateBoost / emotionSpeedBoost: 감정 발화 시 base값에 더함.
-// animalCrossingPitchBoost / animalCrossingRateBoost: Round 259에서는 사용 안 함.
-//   Animal Crossing → SupertonicVoicePresetPolicy.animalCrossingTuning(for:) 별도 target으로 대체.
+// bubbleSpeechPitchBoost / bubbleSpeechRateBoost: Round 259에서는 사용 안 함.
+//   BubbleSpeech → SupertonicVoicePresetPolicy.bubbleSpeechTuning(for:) 별도 target으로 대체.
 // defaultEmotionStyle: 캐릭터 기본 감정 스타일 (SupertonicProsodyTextProcessor 전처리에 사용).
 
 struct CharacterVoiceProfile: Sendable, Identifiable {
@@ -26,8 +26,8 @@ struct CharacterVoiceProfile: Sendable, Identifiable {
     let emotionPitchBoost: Float         // 감정 발화 시 추가 pitch
     let emotionRateBoost: Float          // 감정 발화 시 추가 rate
     let emotionSpeedBoost: Float         // 감정 발화 시 추가 speed (Round 258B)
-    let animalCrossingPitchBoost: Float  // 강한 모드 추가 pitch (기본 미사용)
-    let animalCrossingRateBoost: Float   // 강한 모드 추가 rate (기본 미사용)
+    let bubbleSpeechPitchBoost: Float  // 강한 모드 추가 pitch (기본 미사용)
+    let bubbleSpeechRateBoost: Float   // 강한 모드 추가 rate (기본 미사용)
     let defaultEmotionStyle: SupertonicEmotionStyle
     let styleNote: String                // "낮고 안정적인 전략가 톤"
     let sampleLine: String               // 샘플 발화 문장
@@ -44,7 +44,7 @@ extension CharacterVoiceProfile {
 enum CharacterVoiceProfileCatalog {
 
     // Round 259TTS: basePitch ±100 이하로 재조정 (artifact 감소).
-    // 감정 boost도 +30 이하 권장. Animal Crossing → animalCrossingTuning() 별도 모드.
+    // 감정 boost도 +30 이하 권장. BubbleSpeech → bubbleSpeechTuning() 별도 모드.
     static let profiles: [CharacterVoiceProfile] = [
         CharacterVoiceProfile(
             id: "leo_m1",
@@ -57,8 +57,8 @@ enum CharacterVoiceProfileCatalog {
             emotionPitchBoost: -10,
             emotionRateBoost: -0.01,
             emotionSpeedBoost: 0.00,
-            animalCrossingPitchBoost: 0,   // unused: replaced by animalCrossingTuning()
-            animalCrossingRateBoost: 0.00,
+            bubbleSpeechPitchBoost: 0,   // unused: replaced by bubbleSpeechTuning()
+            bubbleSpeechRateBoost: 0.00,
             defaultEmotionStyle: .confident,
             styleNote: "낮고 안정적인 전략가 톤",
             sampleLine: "핵심부터 정리해보겠습니다."
@@ -74,8 +74,8 @@ enum CharacterVoiceProfileCatalog {
             emotionPitchBoost: 15,
             emotionRateBoost: 0.01,
             emotionSpeedBoost: 0.02,
-            animalCrossingPitchBoost: 0,
-            animalCrossingRateBoost: 0.00,
+            bubbleSpeechPitchBoost: 0,
+            bubbleSpeechRateBoost: 0.00,
             defaultEmotionStyle: .excited,
             styleNote: "밝고 콘텐츠형 마케터 톤",
             sampleLine: "좋은 아이디어가 생각났어요!"
@@ -91,8 +91,8 @@ enum CharacterVoiceProfileCatalog {
             emotionPitchBoost: 8,
             emotionRateBoost: 0.01,
             emotionSpeedBoost: 0.00,
-            animalCrossingPitchBoost: 0,
-            animalCrossingRateBoost: 0.00,
+            bubbleSpeechPitchBoost: 0,
+            bubbleSpeechRateBoost: 0.00,
             defaultEmotionStyle: .careful,
             styleNote: "침착한 PM 톤",
             sampleLine: "일정을 확인해 드릴게요."
@@ -108,8 +108,8 @@ enum CharacterVoiceProfileCatalog {
             emotionPitchBoost: 20,
             emotionRateBoost: 0.02,
             emotionSpeedBoost: 0.03,
-            animalCrossingPitchBoost: 0,
-            animalCrossingRateBoost: 0.00,
+            bubbleSpeechPitchBoost: 0,
+            bubbleSpeechRateBoost: 0.00,
             defaultEmotionStyle: .friendly,
             styleNote: "경쾌한 디자이너 톤",
             sampleLine: "디자인 작업 시작할게요!"
@@ -125,8 +125,8 @@ enum CharacterVoiceProfileCatalog {
             emotionPitchBoost: 15,
             emotionRateBoost: 0.01,
             emotionSpeedBoost: 0.02,
-            animalCrossingPitchBoost: 0,
-            animalCrossingRateBoost: 0.00,
+            bubbleSpeechPitchBoost: 0,
+            bubbleSpeechRateBoost: 0.00,
             defaultEmotionStyle: .friendly,
             styleNote: "친근한 온보딩 도우미 톤",
             sampleLine: "도와드릴게요, 함께 해봐요!"
@@ -142,8 +142,8 @@ enum CharacterVoiceProfileCatalog {
             emotionPitchBoost: -10,
             emotionRateBoost: -0.01,
             emotionSpeedBoost: -0.01,
-            animalCrossingPitchBoost: 0,
-            animalCrossingRateBoost: 0.00,
+            bubbleSpeechPitchBoost: 0,
+            bubbleSpeechRateBoost: 0.00,
             defaultEmotionStyle: .careful,
             styleNote: "느리고 신중한 법률가 톤",
             sampleLine: "법적 사항을 검토하겠습니다."
@@ -159,8 +159,8 @@ enum CharacterVoiceProfileCatalog {
             emotionPitchBoost: -8,
             emotionRateBoost: 0.00,
             emotionSpeedBoost: 0.00,
-            animalCrossingPitchBoost: 0,
-            animalCrossingRateBoost: 0.00,
+            bubbleSpeechPitchBoost: 0,
+            bubbleSpeechRateBoost: 0.00,
             defaultEmotionStyle: .neutral,
             styleNote: "또렷한 분석가 톤",
             sampleLine: "데이터를 분석해 보겠습니다."
@@ -176,8 +176,8 @@ enum CharacterVoiceProfileCatalog {
             emotionPitchBoost: 12,
             emotionRateBoost: 0.01,
             emotionSpeedBoost: 0.02,
-            animalCrossingPitchBoost: 0,
-            animalCrossingRateBoost: 0.00,
+            bubbleSpeechPitchBoost: 0,
+            bubbleSpeechRateBoost: 0.00,
             defaultEmotionStyle: .confident,
             styleNote: "빠른 개발자 톤",
             sampleLine: "코드 작성을 시작하겠습니다."
@@ -193,8 +193,8 @@ enum CharacterVoiceProfileCatalog {
             emotionPitchBoost: -8,
             emotionRateBoost: -0.01,
             emotionSpeedBoost: 0.01,
-            animalCrossingPitchBoost: 0,
-            animalCrossingRateBoost: 0.00,
+            bubbleSpeechPitchBoost: 0,
+            bubbleSpeechRateBoost: 0.00,
             defaultEmotionStyle: .confident,
             styleNote: "설득력 있는 세일즈 톤",
             sampleLine: "좋은 제안이 있습니다."
@@ -210,8 +210,8 @@ enum CharacterVoiceProfileCatalog {
             emotionPitchBoost: 20,
             emotionRateBoost: 0.02,
             emotionSpeedBoost: 0.02,
-            animalCrossingPitchBoost: 0,
-            animalCrossingRateBoost: 0.00,
+            bubbleSpeechPitchBoost: 0,
+            bubbleSpeechRateBoost: 0.00,
             defaultEmotionStyle: .friendly,
             styleNote: "따뜻하고 상냥한 고객 서비스 톤",
             sampleLine: "도움이 필요하시면 말씀해 주세요."
@@ -227,8 +227,8 @@ enum CharacterVoiceProfileCatalog {
             emotionPitchBoost: -8,
             emotionRateBoost: -0.01,
             emotionSpeedBoost: 0.00,
-            animalCrossingPitchBoost: 0,
-            animalCrossingRateBoost: 0.00,
+            bubbleSpeechPitchBoost: 0,
+            bubbleSpeechRateBoost: 0.00,
             defaultEmotionStyle: .careful,
             styleNote: "꼼꼼한 QA 엔지니어 톤",
             sampleLine: "꼼꼼하게 확인해 드리겠습니다."

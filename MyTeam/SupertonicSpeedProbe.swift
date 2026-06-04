@@ -1,7 +1,7 @@
 import Foundation
 
 // MARK: - SupertonicSpeedProbe
-// Round 261TTS-SPEED-PROBE-AND-ANIMALESE
+// Round 261TTS-SPEED-PROBE-AND-BUBBLESPEECH
 //
 // Speed 적용 계측: Supertonic3 합성 duration이 speed에 따라 실제로 변하는지 확인.
 // 재생 없이 순수 계측만 수행. WAV 저장 없음.

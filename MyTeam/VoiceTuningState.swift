@@ -57,7 +57,7 @@ enum VoiceTuningDefaults {
     /// 실험적 범위. 약간 과장된 빠르기 — 표현력 있지만 부자연스러울 수 있음.
     static let experimentalSpeedRange: ClosedRange<Float> = 1.30...1.60
 
-    /// 극단 범위. Animal Crossing / 장난감 효과 / 특수 실험 전용.
+    /// 극단 범위. BubbleSpeech / 장난감 효과 / 특수 실험 전용.
     /// 일반 캐릭터 음성에는 권장하지 않음.
     static let extremeSpeedRange: ClosedRange<Float>      = 1.60...2.00
 

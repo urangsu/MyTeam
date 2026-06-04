@@ -15,6 +15,57 @@ final class SupertonicProsodyTextProcessorTests: XCTestCase {
     }
 }
 
+final class BubbleSpeechSynthesizerTests: XCTestCase {
+    func testBubbleSpeechGeneratesProceduralSyllableAudio() {
+        let config = BubbleSpeechConfig.from(profile: .cute, speed: 1.0)
+        let samples = BubbleSpeechSynthesizer.synthesize(text: "뽀글뽀글 말하기!", config: config)
+
+        XCTAssertGreaterThan(samples.count, 1_000)
+        XCTAssertGreaterThan(samples.map { abs($0) }.max() ?? 0, 0.01)
+    }
+
+    func testBubbleSpeechProfilesProduceDifferentTiming() {
+        let cute = BubbleSpeechSynthesizer.synthesize(
+            text: "안녕하세요",
+            config: BubbleSpeechConfig.from(profile: .cute, speed: 1.0)
+        )
+        let deep = BubbleSpeechSynthesizer.synthesize(
+            text: "안녕하세요",
+            config: BubbleSpeechConfig.from(profile: .deep, speed: 1.0)
+        )
+
+        XCTAssertNotEqual(cute.count, deep.count)
+    }
+
+    func testBubbleSpeechVowelColorsAffectWaveform() {
+        let config = BubbleSpeechConfig.from(profile: .cute, speed: 1.0)
+        let bright = BubbleSpeechSynthesizer.synthesize(text: "가가가", config: config)
+        let round = BubbleSpeechSynthesizer.synthesize(text: "고고고", config: config)
+
+        XCTAssertEqual(bright.count, round.count)
+        XCTAssertNotEqual(Array(bright.prefix(256)), Array(round.prefix(256)))
+    }
+
+    func testBubbleSpeechCanShapeExistingVoiceSamples() {
+        let sampleRate = 44_100
+        let voiceSamples = (0..<sampleRate / 2).map { index -> Float in
+            let t = Double(index) / Double(sampleRate)
+            return Float(sin(2.0 * .pi * 440.0 * t) * 0.25)
+        }
+
+        let rendered = BubbleSpeechSynthesizer.renderVoiceBasedEffect(
+            text: "뽀글뽀글 말하기",
+            voiceSamples: voiceSamples,
+            sampleRate: sampleRate,
+            config: BubbleSpeechConfig.from(profile: .cute, speed: 1.0)
+        )
+
+        XCTAssertEqual(rendered.count, voiceSamples.count)
+        XCTAssertNotEqual(Array(rendered.prefix(256)), Array(voiceSamples.prefix(256)))
+        XCTAssertGreaterThan(rendered.map { abs($0) }.max() ?? 0, 0.01)
+    }
+}
+
 final class PublicAPIConnectorValidatorTests: XCTestCase {
     func testNaverNewsValidationUsesClientHeadersAndURLComponents() throws {
         let request = PublicAPIValidationRequest(

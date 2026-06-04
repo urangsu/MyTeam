@@ -511,23 +511,60 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         return results
     }
 
-    // MARK: - Animalese Effect Preview
+    // MARK: - BubbleSpeech Effect Preview
 
-    /// Animalese는 별도 TTS 모델이 아니라 동물의숲식 말하기 효과/오디오 경로 테스트 레이어다.
+    /// BubbleSpeech는 별도 TTS 모델이 아니라 뽀글뽀글 말하기 효과/오디오 경로 테스트 레이어다.
     /// MyTeam의 메인 TTS 엔진은 Supertonic3이며, 이 함수는 Lab/효과 확인에만 사용한다.
-    func previewAnimalese(
+    /// 반환값은 효과 재생 시간이며, Supertonic3 합성 성공으로 취급하면 안 된다.
+    func previewBubbleSpeech(
         text: String,
-        profile: AnimaleseVoiceProfile,
+        preset: String,
+        profile: BubbleSpeechVoiceProfile,
+        pitch: Float,
+        rate: Float,
         speed: Float,
+        emotion: SupertonicEmotionStyle = .neutral,
+        agentID: String? = nil,
         pitchOffset: Float = 0,
-        label: String = "animalese"
-    ) async -> TTSOutput? {
-        let config = AnimaleseConfig.from(profile: profile, speed: Double(speed))
-        let samples = AnimaleseSynthesizer.synthesize(text: text, config: config)
+        label: String = "bubbleSpeech",
+        useExpressionTags: Bool = false
+    ) async -> TimeInterval? {
+        guard TTSRoutingPolicy.selectedProvider() == .supertonic3 else { return nil }
+
+        let config = BubbleSpeechConfig.from(profile: profile, speed: Double(speed))
+        let paths = Supertonic3ONNXModelPaths.defaultPaths()
+        let spokenText = SupertonicProsodyTextProcessor.preprocess(
+            text,
+            agentID: agentID,
+            style: emotion,
+            useExpressionTags: useExpressionTags
+        )
+
+        let result: Supertonic3SynthesisResult
+        do {
+            result = try await Supertonic3ONNXRunner.shared.synthesize(
+                text: spokenText,
+                preset: preset,
+                lang: Supertonic3TTSConfig.selectedLanguage,
+                totalSteps: Supertonic3TTSConfig.totalStep,
+                speed: speed,
+                paths: paths
+            )
+        } catch {
+            AppLog.info("[BubbleSpeechEffect] Supertonic3 voice synthesis failed: \(error)")
+            return nil
+        }
+
+        let samples = BubbleSpeechSynthesizer.renderVoiceBasedEffect(
+            text: spokenText,
+            voiceSamples: result.wavSamples,
+            sampleRate: result.sampleRate,
+            config: config
+        )
         guard !samples.isEmpty else { return nil }
 
-        let sampleRate = Int(config.sampleRate)
-        let durationSec = Double(samples.count) / config.sampleRate
+        let sampleRate = result.sampleRate
+        let durationSec = Double(samples.count) / Double(sampleRate)
         let snapshot = AudioFeatureAnalyzer.analyze(samples: samples, sampleRate: sampleRate)
 
         await playback.playFloatSamples(
@@ -535,13 +572,15 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
             sampleRate: sampleRate,
             streamId: UUID().uuidString,
             characterName: label,
-            pitch: pitchOffset,
-            rate: 1.0,
+            pitch: pitch + pitchOffset,
+            rate: rate,
             onPlaybackStarted: nil
         )
 
-        AppLog.info("[AnimaleseEffect] profile=\(profile.rawValue) kind=\(profile.profileKindLabel) samples=\(samples.count) duration=\(String(format: "%.3f", durationSec))s speed=\(speed) peak=\(String(format: "%.3f", snapshot.peak)) zcr=\(String(format: "%.1f", snapshot.zeroCrossingRate)) clicks=\(snapshot.estimatedClickCount)")
-        return TTSOutput(audioFileURL: nil, duration: durationSec, sampleRate: sampleRate, providerKind: .supertonic3)
+        let safeLabel = label.replacingOccurrences(of: " ", with: "_")
+        _ = S3WavWriter.write(samples: samples, sampleRate: sampleRate, tag: "bubble_speech_\(safeLabel)")
+        AppLog.info("[BubbleSpeechEffect] voiceBased=true preset=\(preset) profile=\(profile.rawValue) kind=\(profile.profileKindLabel) samples=\(samples.count) duration=\(String(format: "%.3f", durationSec))s pitch=\(pitch + pitchOffset) rate=\(rate) speed=\(speed) peak=\(String(format: "%.3f", snapshot.peak)) zcr=\(String(format: "%.1f", snapshot.zeroCrossingRate)) clicks=\(snapshot.estimatedClickCount)")
+        return durationSec
     }
 
     /// 단발성 공식 TTS 합성. 반환값: WAV 파일 경로 (nil=무음 또는 실패).

@@ -35,7 +35,7 @@ enum SupertonicExpressionTag: String, CaseIterable, Sendable {
         case .confident:      return []
         case .careful:        return [.breath]
         case .excited:        return [.laugh]
-        case .animalCrossing: return [.laugh]
+        case .bubbleSpeech: return [.laugh]
         }
     }
 }

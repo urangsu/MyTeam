@@ -12211,7 +12211,7 @@
 			<key>lastKnownFileType</key>
 			<string>sourcecode.swift</string>
 			<key>path</key>
-			<string>AnimaleseSynthesizer.swift</string>
+			<string>BubbleSpeechSynthesizer.swift</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>

@@ -2,7 +2,7 @@ import Foundation
 
 // ============================================================
 // CharacterVoiceConfig.swift
-// Supertonic3/Animalese 캐릭터별 감정 파라미터 설정
+// Supertonic3/BubbleSpeech 캐릭터별 감정 파라미터 설정
 //
 // 감정 상태 → exaggeration + cfg_weight 매핑
 //
@@ -70,7 +70,7 @@ enum CharacterVoiceConfig {
     // MARK: - 캐릭터별 음성 특성 (선택사항)
 
     /// 캐릭터별 기본 음성 톤 조정
-    /// Supertonic3 캐릭터 보이스와 Animalese 효과 레이어의 후처리 힌트.
+    /// Supertonic3 캐릭터 보이스와 BubbleSpeech 효과 레이어의 후처리 힌트.
     struct CharacterVoiceTrait {
         let characterID: String
         let voiceType: String        // MyTeam 내부 음성 톤 유형

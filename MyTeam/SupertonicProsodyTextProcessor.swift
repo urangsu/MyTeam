@@ -12,7 +12,7 @@ enum SupertonicEmotionStyle: String, Sendable, CaseIterable {
     case confident     // 자신감 — 전략가, 개발자 톤
     case careful       // 신중 — 법률, QA, PM 톤
     case excited       // 신남 — 마케터, 디자이너 톤
-    case animalCrossing // 강한 모드 — 미래 옵션, 기본 비활성
+    case bubbleSpeech // 강한 모드 — 미래 옵션, 기본 비활성
 }
 
 // MARK: - SupertonicProsodyTextProcessor
@@ -20,7 +20,7 @@ enum SupertonicEmotionStyle: String, Sendable, CaseIterable {
 //
 // 원칙:
 //   - 말풍선 원문과 TTS 발화 문구는 일치해야 함.
-//   - 의미/어미/문장부호를 rewrite하지 않음. 말투는 pitch/rate/speed/Animalese 레이어에서 처리.
+//   - 의미/어미/문장부호를 rewrite하지 않음. 말투는 pitch/rate/speed/BubbleSpeech 레이어에서 처리.
 //   - 법률/회계/금액/숫자가 많은 문장 → neutral 처리 (변환 스킵).
 //   - 200자 초과 텍스트 → 첫 200자 + "..." 처리 (긴 보고서 읽기 방지).
 //

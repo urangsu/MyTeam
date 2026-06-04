@@ -1,15 +1,13 @@
 import Foundation
 
-// MARK: - AnimaleseSynthesizer
-// Round 262TTS-ANIMALESE-SPEECHLIKE-ENGINE
+// MARK: - BubbleSpeechSynthesizer
+// Round 262TTS-BUBBLESPEECH-SPEECHLIKE-ENGINE
 //
-// Round 261 used a melody-like blip engine: one character became one tone and
-// pitch was selected from a major scale. That passed wiring tests but sounded
-// like arcade notes. Round 262 switches to a speech-like syllable engine:
-// consonant transient + vowel-colored body + final tail + phrase contour.
+// BubbleSpeech is MyTeam's own procedural syllable speech effect. It is built
+// from consonant transient + vowel-colored body + final tail + phrase contour.
 //
 // Rules:
-//   - No Nintendo/Animal Crossing original samples.
+//   - No third-party original samples.
 //   - No YouTube audio extraction.
 //   - No external sample files.
 //   - Pure procedural synthesis only.
@@ -17,7 +15,7 @@ import Foundation
 
 // MARK: - Wave / Profile
 
-enum AnimaleseWaveform: String, CaseIterable, Sendable {
+enum BubbleSpeechWaveform: String, CaseIterable, Sendable {
     case sine
     case triangle
     case squareSoft
@@ -33,7 +31,7 @@ enum AnimaleseWaveform: String, CaseIterable, Sendable {
     }
 }
 
-enum AnimaleseVoiceProfile: String, CaseIterable, Sendable, Identifiable {
+enum BubbleSpeechVoiceProfile: String, CaseIterable, Sendable, Identifiable {
     case cute
     case calm
     case deep
@@ -45,12 +43,12 @@ enum AnimaleseVoiceProfile: String, CaseIterable, Sendable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .cute:   return "Cute speech"
-        case .calm:   return "Calm speech"
-        case .deep:   return "Deep speech"
-        case .tiny:   return "Tiny speech"
-        case .robot:  return "Robot effect"
-        case .arcade: return "Arcade effect"
+        case .cute:   return "맑은 뽀글"
+        case .calm:   return "차분한 뽀글"
+        case .deep:   return "낮은 뽀글"
+        case .tiny:   return "작은 뽀글"
+        case .robot:  return "로봇 뽀글"
+        case .arcade: return "빠른 뽀글"
         }
     }
 
@@ -78,33 +76,33 @@ enum AnimaleseVoiceProfile: String, CaseIterable, Sendable, Identifiable {
 
     var charDuration: Double {
         switch self {
-        case .cute:   return 0.072
-        case .calm:   return 0.088
-        case .deep:   return 0.096
-        case .tiny:   return 0.058
-        case .robot:  return 0.064
-        case .arcade: return 0.044
+        case .cute:   return 0.054
+        case .calm:   return 0.066
+        case .deep:   return 0.074
+        case .tiny:   return 0.044
+        case .robot:  return 0.050
+        case .arcade: return 0.038
         }
     }
 
     var gapDuration: Double {
         switch self {
-        case .calm, .deep: return 0.018
-        case .arcade: return 0.010
-        default: return 0.014
+        case .calm, .deep: return 0.011
+        case .arcade, .tiny: return 0.006
+        default: return 0.008
         }
     }
 
     var pitchJitterHz: Double {
         switch self {
-        case .calm, .deep: return 8
-        case .robot: return 10
-        case .arcade: return 22
-        default: return 12
+        case .calm, .deep: return 10
+        case .robot: return 14
+        case .arcade: return 28
+        default: return 18
         }
     }
 
-    var waveform: AnimaleseWaveform {
+    var waveform: BubbleSpeechWaveform {
         switch self {
         case .robot: return .squareSoft
         case .arcade: return .sine
@@ -113,7 +111,7 @@ enum AnimaleseVoiceProfile: String, CaseIterable, Sendable, Identifiable {
     }
 }
 
-struct AnimaleseConfig: Sendable {
+struct BubbleSpeechConfig: Sendable {
     var sampleRate: Double = 44100
     var baseFrequency: Double = 470
     var pitchJitterHz: Double = 12
@@ -121,12 +119,12 @@ struct AnimaleseConfig: Sendable {
     var gapDuration: Double = 0.014
     var attack: Double = 0.004
     var release: Double = 0.020
-    var waveform: AnimaleseWaveform = .triangle
+    var waveform: BubbleSpeechWaveform = .triangle
     var speed: Double = 1.0
-    var voiceProfile: AnimaleseVoiceProfile = .cute
+    var voiceProfile: BubbleSpeechVoiceProfile = .cute
 
-    static func from(profile: AnimaleseVoiceProfile, speed: Double = 1.0) -> AnimaleseConfig {
-        AnimaleseConfig(
+    static func from(profile: BubbleSpeechVoiceProfile, speed: Double = 1.0) -> BubbleSpeechConfig {
+        BubbleSpeechConfig(
             sampleRate: 44100,
             baseFrequency: profile.baseFrequency,
             pitchJitterHz: profile.pitchJitterHz,
@@ -153,19 +151,19 @@ struct AnimaleseConfig: Sendable {
 
 // MARK: - Syllable Model
 
-struct AnimaleseSyllableFrame: Sendable {
+struct BubbleSpeechSyllableFrame: Sendable {
     let char: Character
     let parts: KoreanSyllableParts
     let baseFrequency: Double
-    let vowelColor: AnimaleseVowelColor
-    let consonantTransient: AnimaleseTransientKind
-    let finalTail: AnimaleseTailKind
+    let vowelColor: BubbleSpeechVowelColor
+    let consonantTransient: BubbleSpeechTransientKind
+    let finalTail: BubbleSpeechTailKind
     let duration: Double
     let gap: Double
-    let phrasePosition: AnimalesePhrasePosition
+    let phrasePosition: BubbleSpeechPhrasePosition
 }
 
-enum AnimaleseVowelColor: Sendable {
+enum BubbleSpeechVowelColor: Sendable {
     case bright
     case neutral
     case round
@@ -173,7 +171,7 @@ enum AnimaleseVowelColor: Sendable {
     case narrow
 }
 
-enum AnimaleseTransientKind: Sendable {
+enum BubbleSpeechTransientKind: Sendable {
     case none
     case softClick
     case noiseTap
@@ -181,32 +179,66 @@ enum AnimaleseTransientKind: Sendable {
     case breath
 }
 
-enum AnimaleseTailKind: Sendable {
+enum BubbleSpeechTailKind: Sendable {
     case none
     case shortCut
     case nasalHum
     case softStop
 }
 
-enum AnimalesePhrasePosition: Sendable {
+enum BubbleSpeechPhrasePosition: Sendable {
     case start
     case middle
     case endFalling
     case endRising
 }
 
-enum AnimaleseToken: Sendable {
+enum BubbleSpeechToken: Sendable {
     case syllable(Character)
     case shortPause
     case mediumPause
-    case longPause(ending: AnimalesePhrasePosition)
+    case longPause(ending: BubbleSpeechPhrasePosition)
 }
 
 // MARK: - Synthesizer
 
-enum AnimaleseSynthesizer {
+enum BubbleSpeechSynthesizer {
 
-    static func synthesize(text: String, config: AnimaleseConfig) -> [Float] {
+    static func renderVoiceBasedEffect(
+        text: String,
+        voiceSamples: [Float],
+        sampleRate: Int,
+        config: BubbleSpeechConfig
+    ) -> [Float] {
+        guard !voiceSamples.isEmpty, sampleRate > 0 else { return [] }
+
+        let guide = synthesize(text: text, config: config)
+        guard !guide.isEmpty else { return voiceSamples }
+
+        let resampledGuide = resample(guide, targetCount: voiceSamples.count)
+        let envelope = smoothedEnvelope(from: resampledGuide, window: max(32, sampleRate / 220))
+        let maxEnvelope = max(0.001, envelope.max() ?? 0)
+        let carrierGain: Float = config.voiceProfile.isEffectProfile ? 0.18 : 0.13
+        let voiceGain: Float = config.voiceProfile.isEffectProfile ? 0.72 : 0.84
+
+        var output: [Float] = []
+        output.reserveCapacity(voiceSamples.count)
+        for i in voiceSamples.indices {
+            let gate = Float(min(1.0, envelope[i] / maxEnvelope))
+            let syllableGate = 0.30 + 0.85 * gate
+            let guideSample = resampledGuide[i]
+            let t = Double(i) / Double(sampleRate)
+            let shimmer = Float(0.96 + 0.04 * sin(2.0 * .pi * 42.0 * t))
+            let shapedVoice = softClip(Double(voiceSamples[i] * syllableGate * shimmer * voiceGain))
+            let mixed = shapedVoice + Double(guideSample * carrierGain * gate)
+            output.append(Float(max(-0.98, min(0.98, mixed))))
+        }
+
+        smoothEdges(&output, sampleRate: Double(sampleRate), attack: 0.006, release: 0.028)
+        return output
+    }
+
+    static func synthesize(text: String, config: BubbleSpeechConfig) -> [Float] {
         let tokens = tokenize(text)
         let syllableCount = tokens.reduce(0) { total, token in
             if case .syllable = token { return total + 1 }
@@ -216,7 +248,7 @@ enum AnimaleseSynthesizer {
 
         var output: [Float] = []
         var syllableIndex = 0
-        var nextPosition: AnimalesePhrasePosition = .start
+        var nextPosition: BubbleSpeechPhrasePosition = .start
 
         for (tokenIndex, token) in tokens.enumerated() {
             switch token {
@@ -226,7 +258,7 @@ enum AnimaleseSynthesizer {
                 nextPosition = .middle
 
                 let parts = KoreanSyllableDecomposer.decompose(char)
-                let frame = AnimaleseSyllableFrame(
+                let frame = BubbleSpeechSyllableFrame(
                     char: char,
                     parts: parts,
                     baseFrequency: config.baseFrequency,
@@ -238,28 +270,28 @@ enum AnimaleseSynthesizer {
                     phrasePosition: phrasePosition
                 )
                 output.append(contentsOf: generateSyllable(frame: frame, config: config, index: syllableIndex, total: syllableCount))
-                output.append(contentsOf: silence(duration: frame.gap * 0.45, sampleRate: config.sampleRate))
+                output.append(contentsOf: silence(duration: frame.gap * 0.32, sampleRate: config.sampleRate))
                 syllableIndex += 1
 
             case .shortPause:
-                output.append(contentsOf: silence(duration: 0.025 / max(0.25, config.speed), sampleRate: config.sampleRate))
+                output.append(contentsOf: silence(duration: 0.018 / max(0.25, config.speed), sampleRate: config.sampleRate))
                 nextPosition = .start
 
             case .mediumPause:
-                output.append(contentsOf: silence(duration: 0.070 / max(0.25, config.speed), sampleRate: config.sampleRate))
+                output.append(contentsOf: silence(duration: 0.052 / max(0.25, config.speed), sampleRate: config.sampleRate))
                 nextPosition = .start
 
             case .longPause(let ending):
-                output.append(contentsOf: silence(duration: 0.140 / max(0.25, config.speed), sampleRate: config.sampleRate))
+                output.append(contentsOf: silence(duration: 0.105 / max(0.25, config.speed), sampleRate: config.sampleRate))
                 nextPosition = ending == .endRising ? .start : .start
             }
         }
 
-        output.append(contentsOf: silence(duration: 0.055, sampleRate: config.sampleRate))
+        output.append(contentsOf: silence(duration: 0.040, sampleRate: config.sampleRate))
         return output
     }
 
-    static func vowelColor(for medialIndex: Int?) -> AnimaleseVowelColor {
+    static func vowelColor(for medialIndex: Int?) -> BubbleSpeechVowelColor {
         guard let medialIndex else { return .neutral }
         switch medialIndex {
         case 0, 2, 1, 3:
@@ -275,7 +307,7 @@ enum AnimaleseSynthesizer {
         }
     }
 
-    static func transientKind(for initialIndex: Int?) -> AnimaleseTransientKind {
+    static func transientKind(for initialIndex: Int?) -> BubbleSpeechTransientKind {
         guard let initialIndex else { return .softClick }
         switch initialIndex {
         case 0, 1, 15, 16, 17, 18:
@@ -295,7 +327,7 @@ enum AnimaleseSynthesizer {
         }
     }
 
-    static func tailKind(for finalIndex: Int?) -> AnimaleseTailKind {
+    static func tailKind(for finalIndex: Int?) -> BubbleSpeechTailKind {
         guard let finalIndex, finalIndex > 0 else { return .none }
         switch finalIndex {
         case 4, 16, 21:
@@ -312,43 +344,44 @@ enum AnimaleseSynthesizer {
     }
 
     static func speechFrequency(
-        for frame: AnimaleseSyllableFrame,
-        config: AnimaleseConfig,
+        for frame: BubbleSpeechSyllableFrame,
+        config: BubbleSpeechConfig,
         index: Int,
         total: Int
     ) -> Double {
         let vowelOffset: Double
         switch frame.vowelColor {
-        case .bright: vowelOffset = 35
-        case .round: vowelOffset = 10
+        case .bright: vowelOffset = 42
+        case .round: vowelOffset = 12
         case .neutral: vowelOffset = 0
-        case .dark: vowelOffset = -25
-        case .narrow: vowelOffset = 20
+        case .dark: vowelOffset = -34
+        case .narrow: vowelOffset = 28
         }
 
         let phraseOffset: Double
         switch frame.phrasePosition {
-        case .start: phraseOffset = 15
+        case .start: phraseOffset = 24
         case .middle: phraseOffset = 0
-        case .endFalling: phraseOffset = -40
-        case .endRising: phraseOffset = 45
+        case .endFalling: phraseOffset = -52
+        case .endRising: phraseOffset = 58
         }
 
         let progress = total > 1 ? Double(index) / Double(total - 1) : 0
-        let contour = (0.5 - progress) * 18.0
+        let contour = (0.5 - progress) * 26.0
+        let bounce = index.isMultiple(of: 2) ? 10.0 : -6.0
         let jitter = deterministicJitter(for: frame.char, index: index, range: config.pitchJitterHz)
-        let frequency = config.baseFrequency + vowelOffset + phraseOffset + contour + jitter
+        let frequency = config.baseFrequency + vowelOffset + phraseOffset + contour + bounce + jitter
         return min(config.baseFrequency * 1.35, max(config.baseFrequency * 0.75, frequency))
     }
 
     static func generateSyllable(
-        frame: AnimaleseSyllableFrame,
-        config: AnimaleseConfig,
+        frame: BubbleSpeechSyllableFrame,
+        config: BubbleSpeechConfig,
         index: Int,
         total: Int
     ) -> [Float] {
         let frequency = speechFrequency(for: frame, config: config, index: index, total: total)
-        let duration = frame.finalTail == .shortCut ? frame.duration * 0.88 : frame.duration
+        let duration = frame.finalTail == .shortCut ? frame.duration * 0.82 : frame.duration
         let transientDuration = transientDuration(for: frame.consonantTransient)
         let tailDuration = tailDuration(for: frame.finalTail)
         let bodyDuration = max(0.018, duration - transientDuration - tailDuration)
@@ -363,8 +396,8 @@ enum AnimaleseSynthesizer {
 
     // MARK: - Token / Phrase
 
-    private static func tokenize(_ text: String) -> [AnimaleseToken] {
-        var tokens: [AnimaleseToken] = []
+    private static func tokenize(_ text: String) -> [BubbleSpeechToken] {
+        var tokens: [BubbleSpeechToken] = []
         for char in text {
             if char == "\n" || char == "\r" {
                 tokens.append(.longPause(ending: .endFalling))
@@ -385,7 +418,7 @@ enum AnimaleseSynthesizer {
         return tokens
     }
 
-    private static func terminalPhrasePosition(after tokenIndex: Int, in tokens: [AnimaleseToken]) -> AnimalesePhrasePosition? {
+    private static func terminalPhrasePosition(after tokenIndex: Int, in tokens: [BubbleSpeechToken]) -> BubbleSpeechPhrasePosition? {
         var cursor = tokenIndex + 1
         while cursor < tokens.count {
             switch tokens[cursor] {
@@ -403,7 +436,7 @@ enum AnimaleseSynthesizer {
     // MARK: - Segments
 
     private static func generateTransient(
-        kind: AnimaleseTransientKind,
+        kind: BubbleSpeechTransientKind,
         frequency: Double,
         duration: Double,
         sampleRate: Double,
@@ -434,24 +467,33 @@ enum AnimaleseSynthesizer {
     }
 
     private static func generateVowelBody(
-        frame: AnimaleseSyllableFrame,
+        frame: BubbleSpeechSyllableFrame,
         frequency: Double,
         duration: Double,
-        config: AnimaleseConfig
+        config: BubbleSpeechConfig
     ) -> [Float] {
         let count = max(1, Int(duration * config.sampleRate))
-        let amplitude = config.voiceProfile.isEffectProfile ? 0.34 : 0.42
+        let amplitude = config.voiceProfile.isEffectProfile ? 0.32 : 0.40
 
         return (0..<count).map { i in
             let t = Double(i) / config.sampleRate
-            let raw = oscillatorMix(t: t, frequency: frequency, vowelColor: frame.vowelColor, waveform: config.waveform)
+            let progress = Double(i) / Double(max(1, count - 1))
+            let glide = syllableGlideCents(position: frame.phrasePosition, progress: progress)
+            let localFrequency = frequency * pow(2.0, glide / 1200.0)
+            let raw = oscillatorMix(
+                t: t,
+                frequency: localFrequency,
+                vowelColor: frame.vowelColor,
+                waveform: config.waveform
+            )
             let envelope = vowelEnvelope(sample: i, count: count)
-            return Float(raw * envelope * amplitude)
+            let tremolo = 0.94 + 0.06 * sin(2.0 * .pi * 38.0 * t)
+            return Float(raw * envelope * amplitude * tremolo)
         }
     }
 
     private static func generateTail(
-        kind: AnimaleseTailKind,
+        kind: BubbleSpeechTailKind,
         frequency: Double,
         duration: Double,
         sampleRate: Double
@@ -479,29 +521,64 @@ enum AnimaleseSynthesizer {
     private static func oscillatorMix(
         t: Double,
         frequency: Double,
-        vowelColor: AnimaleseVowelColor,
-        waveform: AnimaleseWaveform
+        vowelColor: BubbleSpeechVowelColor,
+        waveform: BubbleSpeechWaveform
     ) -> Double {
         let base = baseWave(t: t, frequency: frequency, waveform: waveform)
         let second = sin(2.0 * .pi * frequency * 2.0 * t)
         let low = sin(2.0 * .pi * frequency * 0.5 * t)
         let high = sin(2.0 * .pi * frequency * 3.0 * t)
+        let formant = vowelResonance(t: t, vowelColor: vowelColor)
 
         switch vowelColor {
         case .bright:
-            return base * 0.82 + second * 0.16 + high * 0.02
+            return base * 0.70 + second * 0.16 + high * 0.04 + formant * 0.10
         case .round:
-            return base * 0.76 + low * 0.20 + second * 0.04
+            return base * 0.66 + low * 0.20 + second * 0.04 + formant * 0.10
         case .neutral:
-            return base * 0.90 + second * 0.10
+            return base * 0.78 + second * 0.10 + formant * 0.12
         case .dark:
-            return base * 0.68 + low * 0.28 + second * 0.04
+            return base * 0.62 + low * 0.26 + second * 0.03 + formant * 0.09
         case .narrow:
-            return base * 0.80 + second * 0.08 + high * 0.12
+            return base * 0.68 + second * 0.08 + high * 0.13 + formant * 0.11
         }
     }
 
-    private static func baseWave(t: Double, frequency: Double, waveform: AnimaleseWaveform) -> Double {
+    private static func vowelResonance(t: Double, vowelColor: BubbleSpeechVowelColor) -> Double {
+        let bands: (Double, Double, Double)
+        switch vowelColor {
+        case .bright:
+            bands = (760, 1180, 2360)
+        case .round:
+            bands = (520, 900, 1760)
+        case .neutral:
+            bands = (610, 1040, 1980)
+        case .dark:
+            bands = (430, 820, 1560)
+        case .narrow:
+            bands = (690, 1460, 2600)
+        }
+        let first = sin(2.0 * .pi * bands.0 * t) * 0.55
+        let second = sin(2.0 * .pi * bands.1 * t) * 0.30
+        let third = sin(2.0 * .pi * bands.2 * t) * 0.15
+        return first + second + third
+    }
+
+    private static func syllableGlideCents(position: BubbleSpeechPhrasePosition, progress: Double) -> Double {
+        let center = sin(progress * .pi) * 8.0
+        switch position {
+        case .start:
+            return 10.0 - progress * 14.0 + center
+        case .middle:
+            return 5.0 - progress * 8.0 + center
+        case .endFalling:
+            return 4.0 - progress * 26.0 + center * 0.4
+        case .endRising:
+            return -8.0 + progress * 28.0 + center * 0.5
+        }
+    }
+
+    private static func baseWave(t: Double, frequency: Double, waveform: BubbleSpeechWaveform) -> Double {
         let phase = (t * frequency).truncatingRemainder(dividingBy: 1.0)
         switch waveform {
         case .sine:
@@ -528,7 +605,7 @@ enum AnimaleseSynthesizer {
         return 1.0
     }
 
-    private static func transientDuration(for kind: AnimaleseTransientKind) -> Double {
+    private static func transientDuration(for kind: BubbleSpeechTransientKind) -> Double {
         switch kind {
         case .none: return 0
         case .softClick: return 0.005
@@ -538,7 +615,7 @@ enum AnimaleseSynthesizer {
         }
     }
 
-    private static func tailDuration(for kind: AnimaleseTailKind) -> Double {
+    private static func tailDuration(for kind: BubbleSpeechTailKind) -> Double {
         switch kind {
         case .none: return 0
         case .shortCut: return 0.006
@@ -567,6 +644,40 @@ enum AnimaleseSynthesizer {
 
     private static func silence(duration: Double, sampleRate: Double) -> [Float] {
         [Float](repeating: 0, count: max(1, Int(duration * sampleRate)))
+    }
+
+    private static func resample(_ samples: [Float], targetCount: Int) -> [Float] {
+        guard targetCount > 0 else { return [] }
+        guard samples.count > 1 else { return [Float](repeating: samples.first ?? 0, count: targetCount) }
+        if samples.count == targetCount { return samples }
+
+        let scale = Double(samples.count - 1) / Double(max(1, targetCount - 1))
+        return (0..<targetCount).map { index in
+            let source = Double(index) * scale
+            let left = Int(source)
+            let right = min(samples.count - 1, left + 1)
+            let fraction = Float(source - Double(left))
+            return samples[left] * (1 - fraction) + samples[right] * fraction
+        }
+    }
+
+    private static func smoothedEnvelope(from samples: [Float], window: Int) -> [Double] {
+        guard !samples.isEmpty else { return [] }
+        let width = max(1, window)
+        var envelope = [Double](repeating: 0, count: samples.count)
+        var running = 0.0
+        for i in samples.indices {
+            running += Double(abs(samples[i]))
+            if i >= width {
+                running -= Double(abs(samples[i - width]))
+            }
+            envelope[i] = running / Double(min(width, i + 1))
+        }
+        return envelope
+    }
+
+    private static func softClip(_ value: Double) -> Double {
+        tanh(value * 1.35) / tanh(1.35)
     }
 
     private static func deterministicJitter(for char: Character, index: Int, range: Double) -> Double {
