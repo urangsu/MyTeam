@@ -12,6 +12,7 @@
 - Do not "simplify" voice by removing BubbleSpeech. The correct direction is overlay quality, controllability, character mapping, QA metrics, and truthful UI labels.
 - If Supertonic3 runtime is broken, fix Supertonic3. Do not replace it with Apple TTS, ElevenLabs, Chatterbox, Qwen, MLX TTS, or any other TTS model.
 - If BubbleSpeech output quality is weak, improve the effect layer. Do not delete it.
+- BubbleSpeech v1.2 uses a single Supertonic3 synthesis pass, then cuts the generated character voice into short syllable rhythm chunks. Per-syllable Supertonic3 multi-call synthesis is intentionally out of scope for this add-on effect.
 - BubbleSpeech guide generation failure is a failure, not passthrough success.
 - Returning original Supertonic3 voice samples without effect is forbidden in BubbleSpeech preview.
 - BubbleSpeech preview may only report success when Supertonic3 synthesis succeeds and BubbleSpeech effect rendering produces non-empty modified samples.
@@ -23,7 +24,7 @@ Target architecture:
 LLM response
   -> Supertonic3 character voice synthesis
   -> CharacterVoiceProfile prosody/tuning
-  -> BubbleSpeech speech-effect overlay or effect-mode preview
+  -> BubbleSpeech single-pass syllable chopper + quiet guide support
   -> AudioPlaybackService
 ```
 

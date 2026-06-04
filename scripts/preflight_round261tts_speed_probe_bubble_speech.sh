@@ -63,9 +63,9 @@ check 10 "BubbleSpeechSynthesizer.synthesize -> [Float]" \
 check 11 "SpeechManager.previewBubbleSpeech 존재" \
   "grep -q 'func previewBubbleSpeech' '$SM'"
 
-# [12] previewBubbleSpeech가 Supertonic3ONNXRunner 사용하지 않음
-check 12 "previewBubbleSpeech는 Supertonic3ONNXRunner 호출 없음" \
-  "! awk '/func previewBubbleSpeech/,/^    func [a-z]/' '$SM' | grep -q 'Supertonic3ONNXRunner'"
+# [12] previewBubbleSpeech는 Supertonic3 single-pass 합성 기반이어야 함
+check 12 "previewBubbleSpeech는 Supertonic3 single-pass 합성 사용" \
+  "awk '/func previewBubbleSpeech/,/^    func [a-z]/' '$SM' | grep -q 'Supertonic3ONNXRunner'"
 
 # [13] TTSLabView에 BubbleSpeech 섹션 존재
 check 13 "TTSLabView BubbleSpeech 섹션 존재" \
