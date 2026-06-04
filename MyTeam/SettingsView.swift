@@ -142,10 +142,53 @@ private class LocationHelper: NSObject, ObservableObject, CLLocationManagerDeleg
     }
 }
 
+private struct SettingsTabItem: Identifiable {
+    let id: Int
+    let title: String
+    let icon: String
+}
+
+private struct SettingsTabBar: View {
+    let tabs: [SettingsTabItem]
+    @Binding var selection: Int
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(tabs) { tab in
+                Button {
+                    selection = tab.id
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: tab.icon)
+                            .font(.system(size: 10, weight: .semibold))
+                        Text(tab.title)
+                            .font(.system(size: 12, weight: .semibold))
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 30)
+                    .padding(.horizontal, 6)
+                    .foregroundStyle(selection == tab.id ? Color.white : Color.primary)
+                    .background(
+                        Capsule()
+                            .fill(selection == tab.id ? Color.accentColor : Color.clear)
+                    )
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 32)
+        .padding(2)
+        .background(
+            Capsule()
+                .fill(Color(NSColor.controlBackgroundColor))
+        )
+    }
+}
+
 // MARK: - SettingsView
 struct SettingsView: View {
     @EnvironmentObject var manager: AgentWindowManager
-    @ObservedObject private var connectorRegistry = ConnectorRegistry.shared
 
     // ── 사용자 설정
     @AppStorage("userTitle")              private var userTitle: String = "수석님"
@@ -178,23 +221,19 @@ struct SettingsView: View {
     @State private var skillRefreshToken: UUID = UUID()
     @StateObject private var gps = LocationHelper()
 
+    private let settingsTabs: [SettingsTabItem] = [
+        .init(id: 0, title: "사용자", icon: "person.fill"),
+        .init(id: 1, title: "연결", icon: "link"),
+        .init(id: 2, title: "라우팅", icon: "arrow.triangle.branch"),
+        .init(id: 3, title: "스킬", icon: "square.stack.3d.up"),
+        .init(id: 4, title: "캐릭터", icon: "person.2.fill"),
+        .init(id: 5, title: "음성", icon: "waveform")
+    ]
+
     var body: some View {
         VStack(spacing: 0) {
-            // ── 탭 세그먼트 + X 버튼 (같은 라인)
             HStack(spacing: 8) {
-                ScrollView(.horizontal, showsIndicators: true) {
-                    Picker("", selection: $currentTab) {
-                        Text("사용자").tag(0)
-                        Text("연결").tag(1)
-                        Text("라우팅").tag(2)
-                        Text("스킬").tag(3)
-                        Text("캐릭터").tag(4)
-                        Text("음성 Lab · 진단용").tag(5)
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .frame(minWidth: 430)
-                }
+                SettingsTabBar(tabs: settingsTabs, selection: $currentTab)
 
                 Button(action: { manager.hideSettingsWindow() }) {
                     Image(systemName: "xmark.circle.fill")
@@ -224,13 +263,12 @@ struct SettingsView: View {
             }
         }
         .preferredColorScheme(manager.isDarkMode ? .dark : .light)
-        .frame(minWidth: 540, minHeight: 500)
+        .frame(minWidth: 560, minHeight: 500)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear {
             TeamNameplateAppearanceSettings.migrateLegacyValuesIfNeeded()
             loadSettings()
-            connectorRegistry.refresh()
         }
         .onChange(of: gps.locationText) { _, newVal in
             if !newVal.isEmpty { userLocation = newVal }
@@ -370,73 +408,7 @@ struct SettingsView: View {
 
     // MARK: - Tab 2: 연결 센터
     private var connectionCenterTab: some View {
-        VStack(spacing: 0) {
-            ConnectionCenterView()
-
-            // 커넥터 상태 + 브리핑 (개발자/고급 기능)
-            if AppReleaseProfile.current.policy.showsDeveloperDiagnostics {
-                Divider()
-                Form {
-                    Section("커넥터 상태") {
-                        ConnectorStatusView(
-                            health: connectorRegistry.lastHealth,
-                            onRefresh: { connectorRegistry.refresh() }
-                        )
-                        PlaywrightMCPStatusView()
-                    }
-
-                    Section("오늘 브리핑") {
-                        DailyBriefingCardView(
-                            briefing: dailyBriefingPreview,
-                            onActionTap: handleBriefingAction
-                        )
-                    }
-
-                    Section("기본 제공자") {
-                        Picker("제공자", selection: $selectedProvider) {
-                            Text("Gemini").tag(LLMProvider.gemini)
-                            Text("OpenAI").tag(LLMProvider.openAI)
-                            Text("Claude").tag(LLMProvider.claude)
-                            Text("OpenRouter").tag(LLMProvider.openRouter)
-                        }
-                        .pickerStyle(.segmented)
-                        .onChange(of: selectedProvider) { _, _ in validationStatus = .idle }
-                    }
-
-                    if AIModelPolicy.modelOverrideAllowed {
-                        Section {
-                            DisclosureGroup(isExpanded: $showAdvancedModelSettings) {
-                                switch selectedProvider {
-                                case .openAI:
-                                    LabeledContent("모델") {
-                                        TextField("자동", text: $openAIModelId)
-                                    }
-                                case .openRouter:
-                                    LabeledContent("모델") {
-                                        TextField("자동", text: $openRouterModelId)
-                                    }
-                                default:
-                                    EmptyView()
-                                }
-                            } label: {
-                                Label("고급 모델 설정", systemImage: "slider.horizontal.3")
-                            }
-                        }
-                    }
-
-                    Section {
-                        Button("저장") { saveSettings() }
-                            .buttonStyle(.borderedProminent)
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-                .formStyle(.grouped)
-                .scrollContentBackground(.hidden)
-                .task(id: dailyBriefingRefreshToken) {
-                    await refreshDailyBriefingPreview()
-                }
-            }
-        }
+        ConnectionCenterView()
     }
 
     // MARK: - Tab 2 (Legacy): API 설정 — 개발자 모드에서만 노출
@@ -451,16 +423,6 @@ struct SettingsView: View {
                 AssistantConnectorCenterView(onGoogleCalendarConnectionChanged: {
                     dailyBriefingRefreshToken = UUID()
                 })
-            }
-
-            Section("커넥터 상태") {
-                ConnectorStatusView(
-                    health: connectorRegistry.lastHealth,
-                    onRefresh: {
-                        connectorRegistry.refresh()
-                    }
-                )
-                PlaywrightMCPStatusView()
             }
 
             Section("오늘 브리핑") {
@@ -1080,87 +1042,6 @@ private struct ChainRuntimeSmokeDiagnosticsView: View {
                 isRunning = false
             }
         }
-    }
-}
-
-private struct PlaywrightMCPStatusView: View {
-    @ObservedObject private var playwright = PlaywrightMCPManager.shared
-    @State private var showCopied = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Label("Playwright MCP", systemImage: "globe")
-                    .font(.caption)
-                    .fontWeight(.semibold)
-                Spacer()
-                Button {
-                    playwright.refreshHealth()
-                } label: {
-                    if playwright.isRefreshing {
-                        ProgressView().scaleEffect(0.75)
-                    } else {
-                        Text("검사")
-                    }
-                }
-                .controlSize(.small)
-                .disabled(playwright.isRefreshing)
-            }
-
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], alignment: .leading, spacing: 6) {
-                DiagnosticRow(label: "Node", value: playwright.health.nodeAvailable ? "ok" : "missing")
-                DiagnosticRow(label: "npx", value: playwright.health.npxAvailable ? "ok" : "missing")
-                DiagnosticRow(label: "설치 상태", value: playwright.health.mcpLaunchable ? "설치됨" : "미설치")
-                DiagnosticRow(label: "버전", value: playwright.health.version ?? "알 수 없음")
-            }
-
-            if !playwright.health.mcpLaunchable {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("안정적인 브라우저 근거 수집을 위해 패키지 설치가 필요합니다.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    
-                    HStack(spacing: 8) {
-                        Text("npm install -D @playwright/mcp@0.0.75")
-                            .font(.system(.caption2, design: .monospaced))
-                            .padding(4)
-                            .background(Color.primary.opacity(0.06))
-                            .cornerRadius(4)
-                        
-                        Button {
-                            let pb = NSPasteboard.general
-                            pb.clearContents()
-                            pb.setString("npm install -D @playwright/mcp@0.0.75", forType: .string)
-                            showCopied = true
-                            Task {
-                                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                                showCopied = false
-                            }
-                        } label: {
-                            Text(showCopied ? "복사됨" : "복사")
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.mini)
-                    }
-                }
-                .padding(.top, 4)
-            }
-
-            if !playwright.health.toolNames.isEmpty {
-                Text("도구: " + playwright.health.toolNames.prefix(8).joined(separator: ", "))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-
-            if let error = playwright.health.lastError, !error.isEmpty {
-                Text(error)
-                    .font(.caption2)
-                    .foregroundStyle(.orange)
-                    .lineLimit(3)
-            }
-        }
-        .padding(.vertical, 8)
     }
 }
 

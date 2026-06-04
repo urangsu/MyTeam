@@ -44,13 +44,13 @@ struct ConnectorSetupCardView: View {
                         Text(provider.displayName)
                             .font(.system(size: 13, weight: .semibold))
                         stateBadge
+                        if health.state != .notConnected && !health.state.isConnected {
+                            storedBadge
+                        }
                     }
-                    Text(provider.description)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
                     executionModeBadges
                 }
+                .help(provider.description)
 
                 Spacer()
 
@@ -77,7 +77,7 @@ struct ConnectorSetupCardView: View {
                         if isTesting {
                             ProgressView().scaleEffect(0.6)
                         } else {
-                            Label(validationButtonTitle, systemImage: validationButtonIcon)
+                            Label("검증", systemImage: validationButtonIcon)
                                 .font(.system(size: 10, weight: .medium))
                         }
                     }
@@ -86,11 +86,12 @@ struct ConnectorSetupCardView: View {
                     .disabled(isTesting)
 
                     Button(role: .destructive, action: { showDeleteConfirm = true }) {
-                        Image(systemName: "trash")
-                            .font(.system(size: 10))
+                        Label("삭제", systemImage: "trash")
+                            .font(.system(size: 10, weight: .medium))
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.red.opacity(0.7))
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .foregroundStyle(.red.opacity(0.8))
                     .help("API 키 삭제")
                     .confirmationDialog(
                         "\(provider.displayName) 키를 삭제할까요?",
@@ -233,13 +234,6 @@ struct ConnectorSetupCardView: View {
         }
     }
 
-    private var validationButtonTitle: String {
-        if provider.isPublicAPIProvider {
-            return provider.hasLiveCredentialValidator ? "실제 API 검증" : "저장 상태 확인"
-        }
-        return "연결 테스트"
-    }
-
     private var validationButtonIcon: String {
         provider.hasLiveCredentialValidator ? "checkmark.circle" : "key.viewfinder"
     }
@@ -302,12 +296,31 @@ struct ConnectorSetupCardView: View {
     // MARK: - State Badge
 
     private var stateBadge: some View {
-        Text(health.state.displayLabel)
+        Text(stateBadgeLabel)
             .font(.system(size: 9, weight: .semibold))
             .foregroundStyle(badgeTextColor)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
             .background(Capsule().fill(badgeBgColor))
+    }
+
+    private var stateBadgeLabel: String {
+        switch health.state {
+        case .connected: return "연결됨"
+        case .notConnected: return "미연결"
+        case .untested: return "미검증"
+        case .testUnavailable: return "검증 준비 중"
+        case .testFailed: return "확인 필요"
+        }
+    }
+
+    private var storedBadge: some View {
+        Text("저장됨")
+            .font(.system(size: 9, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(Capsule().fill(Color.secondary.opacity(0.10)))
     }
 
     private var badgeBgColor: Color {
