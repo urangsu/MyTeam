@@ -1,10 +1,11 @@
 import Foundation
 
 // MARK: - BubbleSpeechSynthesizer
-// Round 262TTS-BUBBLESPEECH-SPEECHLIKE-ENGINE
+// Round 263TTS-BUBBLESPEECH-SINGLE-PASS-CHOPPER
 //
-// BubbleSpeech is MyTeam's own procedural syllable speech effect. It is built
-// from consonant transient + vowel-colored body + final tail + phrase contour.
+// BubbleSpeech is MyTeam's own procedural syllable speech effect. It cuts a
+// single Supertonic3 voice render into short syllable rhythm chunks, then adds
+// a quiet procedural guide as attack/color support.
 //
 // Rules:
 //   - No third-party original samples.
@@ -209,29 +210,45 @@ enum BubbleSpeechSynthesizer {
         text: String,
         voiceSamples: [Float],
         sampleRate: Int,
-        config: BubbleSpeechConfig
+        config: BubbleSpeechConfig,
+        segmentRate: Float = 1.0
     ) -> [Float] {
         guard !voiceSamples.isEmpty, sampleRate > 0 else { return [] }
+
+        let tokens = tokenize(text)
+        let syllableCount = tokens.reduce(0) { total, token in
+            if case .syllable = token { return total + 1 }
+            return total
+        }
+        guard syllableCount > 0 else { return [] }
 
         let guide = synthesize(text: text, config: config)
         guard !guide.isEmpty else { return [] }
 
-        let resampledGuide = resample(guide, targetCount: voiceSamples.count)
-        let envelope = smoothedEnvelope(from: resampledGuide, window: max(32, sampleRate / 220))
-        let maxEnvelope = max(0.001, envelope.max() ?? 0)
-        let carrierGain: Float = config.voiceProfile.isEffectProfile ? 0.18 : 0.13
-        let voiceGain: Float = config.voiceProfile.isEffectProfile ? 0.72 : 0.84
+        let choppedVoice = chopVoiceSamples(
+            voiceSamples,
+            tokens: tokens,
+            syllableCount: syllableCount,
+            sampleRate: sampleRate,
+            config: config,
+            segmentRate: segmentRate
+        )
+        guard !choppedVoice.isEmpty else { return [] }
 
         var output: [Float] = []
-        output.reserveCapacity(voiceSamples.count)
-        for i in voiceSamples.indices {
-            let gate = Float(min(1.0, envelope[i] / maxEnvelope))
-            let syllableGate = 0.30 + 0.85 * gate
-            let guideSample = resampledGuide[i]
+        output.reserveCapacity(choppedVoice.count)
+        let guideSupport = resample(guide, targetCount: choppedVoice.count)
+        let guideEnvelope = smoothedEnvelope(from: guideSupport, window: max(24, sampleRate / 360))
+        let maxEnvelope = max(0.001, guideEnvelope.max() ?? 0)
+        let carrierGain: Float = config.voiceProfile.isEffectProfile ? 0.10 : 0.075
+
+        for i in choppedVoice.indices {
+            let gate = Float(min(1.0, guideEnvelope[i] / maxEnvelope))
+            let guideSample = guideSupport[i] * carrierGain * gate
             let t = Double(i) / Double(sampleRate)
-            let shimmer = Float(0.96 + 0.04 * sin(2.0 * .pi * 42.0 * t))
-            let shapedVoice = softClip(Double(voiceSamples[i] * syllableGate * shimmer * voiceGain))
-            let mixed = shapedVoice + Double(guideSample * carrierGain * gate)
+            let shimmer = Float(0.97 + 0.03 * sin(2.0 * .pi * 54.0 * t))
+            let shapedVoice = softClip(Double(choppedVoice[i] * shimmer))
+            let mixed = shapedVoice + Double(guideSample)
             output.append(Float(max(-0.98, min(0.98, mixed))))
         }
 
@@ -240,12 +257,126 @@ enum BubbleSpeechSynthesizer {
     }
 
     static func meanAbsoluteDelta(_ lhs: [Float], _ rhs: [Float]) -> Float {
-        guard !lhs.isEmpty, lhs.count == rhs.count else { return 0 }
+        guard !lhs.isEmpty, !rhs.isEmpty else { return 0 }
+        let rhsComparable = lhs.count == rhs.count ? rhs : resample(rhs, targetCount: lhs.count)
         var total: Double = 0
         for i in lhs.indices {
-            total += Double(abs(lhs[i] - rhs[i]))
+            total += Double(abs(lhs[i] - rhsComparable[i]))
         }
         return Float(total / Double(lhs.count))
+    }
+
+    static func durationRatio(renderedSamples: [Float], sourceSamples: [Float]) -> Double {
+        guard !renderedSamples.isEmpty, !sourceSamples.isEmpty else { return 0 }
+        return Double(renderedSamples.count) / Double(sourceSamples.count)
+    }
+
+    static func syllableCount(in text: String) -> Int {
+        tokenize(text).reduce(0) { total, token in
+            if case .syllable = token { return total + 1 }
+            return total
+        }
+    }
+
+    private static func chopVoiceSamples(
+        _ voiceSamples: [Float],
+        tokens: [BubbleSpeechToken],
+        syllableCount: Int,
+        sampleRate: Int,
+        config: BubbleSpeechConfig,
+        segmentRate: Float
+    ) -> [Float] {
+        guard syllableCount > 0 else { return [] }
+
+        let safeRate = max(0.85, min(1.25, Double(segmentRate)))
+        let sourceStride = Double(voiceSamples.count) / Double(syllableCount)
+        let crossfadeFrames = max(Int(0.003 * Double(sampleRate)), min(Int(0.008 * Double(sampleRate)), sampleRate / 160))
+        var output: [Float] = []
+        var syllableIndex = 0
+
+        for token in tokens {
+            switch token {
+            case .syllable:
+                let sourceStart = Int(Double(syllableIndex) * sourceStride)
+                let sourceEnd = syllableIndex == syllableCount - 1
+                    ? voiceSamples.count
+                    : Int(Double(syllableIndex + 1) * sourceStride)
+                let source = Array(voiceSamples[max(0, sourceStart)..<min(voiceSamples.count, max(sourceStart + 1, sourceEnd))])
+                let targetCount = targetSegmentFrameCount(
+                    sourceCount: source.count,
+                    sampleRate: sampleRate,
+                    config: config,
+                    segmentRate: safeRate
+                )
+                var segment = resample(source, targetCount: targetCount)
+                applyChopperEnvelope(&segment, sampleRate: sampleRate, config: config)
+                appendWithCrossfade(segment, to: &output, crossfadeFrames: crossfadeFrames)
+
+                let gapFrames = max(0, Int(config.effectiveGapDuration * 0.62 / safeRate * Double(sampleRate)))
+                if gapFrames > 0 {
+                    output.append(contentsOf: [Float](repeating: 0, count: gapFrames))
+                }
+                syllableIndex += 1
+
+            case .shortPause:
+                output.append(contentsOf: [Float](repeating: 0, count: max(1, Int(0.010 / safeRate * Double(sampleRate)))))
+
+            case .mediumPause:
+                output.append(contentsOf: [Float](repeating: 0, count: max(1, Int(0.024 / safeRate * Double(sampleRate)))))
+
+            case .longPause:
+                output.append(contentsOf: [Float](repeating: 0, count: max(1, Int(0.038 / safeRate * Double(sampleRate)))))
+            }
+        }
+
+        smoothEdges(&output, sampleRate: Double(sampleRate), attack: 0.004, release: 0.018)
+        return output
+    }
+
+    private static func targetSegmentFrameCount(
+        sourceCount: Int,
+        sampleRate: Int,
+        config: BubbleSpeechConfig,
+        segmentRate: Double
+    ) -> Int {
+        let profileDuration = config.effectiveCharDuration / segmentRate
+        let minDuration = config.voiceProfile.isEffectProfile ? 0.026 : 0.034
+        let maxDuration = config.voiceProfile.isEffectProfile ? 0.052 : 0.066
+        let targetDuration = min(maxDuration, max(minDuration, profileDuration))
+        let targetCount = Int(targetDuration * Double(sampleRate))
+        return max(64, min(max(sourceCount, 64), targetCount))
+    }
+
+    private static func applyChopperEnvelope(_ samples: inout [Float], sampleRate: Int, config: BubbleSpeechConfig) {
+        guard !samples.isEmpty else { return }
+        let attack = config.voiceProfile.isEffectProfile ? 0.0025 : 0.004
+        let release = config.voiceProfile.isEffectProfile ? 0.008 : 0.014
+        smoothEdges(&samples, sampleRate: Double(sampleRate), attack: attack, release: release)
+    }
+
+    private static func appendWithCrossfade(_ segment: [Float], to output: inout [Float], crossfadeFrames: Int) {
+        guard !segment.isEmpty else { return }
+        guard !output.isEmpty, crossfadeFrames > 0 else {
+            output.append(contentsOf: segment)
+            return
+        }
+
+        let overlap = min(crossfadeFrames, output.count, segment.count)
+        if overlap <= 0 {
+            output.append(contentsOf: segment)
+            return
+        }
+
+        let outputStart = output.count - overlap
+        for i in 0..<overlap {
+            let progress = Double(i + 1) / Double(overlap + 1)
+            let fadeOut = Float(1.0 - progress)
+            let fadeIn = Float(progress)
+            output[outputStart + i] = output[outputStart + i] * fadeOut + segment[i] * fadeIn
+        }
+        if segment.count > overlap {
+            output.append(contentsOf: segment[overlap...])
+        }
     }
 
     static func synthesize(text: String, config: BubbleSpeechConfig) -> [Float] {

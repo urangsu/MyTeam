@@ -46,7 +46,7 @@ final class BubbleSpeechSynthesizerTests: XCTestCase {
         XCTAssertNotEqual(Array(bright.prefix(256)), Array(round.prefix(256)))
     }
 
-    func testBubbleSpeechCanShapeExistingVoiceSamples() {
+    func testBubbleSpeechChopsExistingVoiceIntoShorterSyllableRhythm() {
         let sampleRate = 44_100
         let voiceSamples = (0..<sampleRate / 2).map { index -> Float in
             let t = Double(index) / Double(sampleRate)
@@ -60,7 +60,8 @@ final class BubbleSpeechSynthesizerTests: XCTestCase {
             config: BubbleSpeechConfig.from(profile: .cute, speed: 1.0)
         )
 
-        XCTAssertEqual(rendered.count, voiceSamples.count)
+        XCTAssertLessThan(rendered.count, Int(Double(voiceSamples.count) * 0.95))
+        XCTAssertGreaterThan(rendered.count, sampleRate / 20)
         XCTAssertGreaterThan(BubbleSpeechSynthesizer.meanAbsoluteDelta(rendered, voiceSamples), 0.002)
         XCTAssertGreaterThan(rendered.map { abs($0) }.max() ?? 0, 0.01)
         XCTAssertFalse(rendered.contains { !$0.isFinite })
@@ -81,6 +82,32 @@ final class BubbleSpeechSynthesizerTests: XCTestCase {
         )
 
         XCTAssertTrue(rendered.isEmpty)
+    }
+
+    func testBubbleSpeechProfilesProduceDifferentChopperDurations() {
+        let sampleRate = 44_100
+        let voiceSamples = (0..<sampleRate).map { index -> Float in
+            let t = Double(index) / Double(sampleRate)
+            return Float((sin(2.0 * .pi * 220.0 * t) + sin(2.0 * .pi * 660.0 * t) * 0.25) * 0.2)
+        }
+
+        let cute = BubbleSpeechSynthesizer.renderVoiceBasedEffect(
+            text: "좋아요 바로 해볼게요",
+            voiceSamples: voiceSamples,
+            sampleRate: sampleRate,
+            config: BubbleSpeechConfig.from(profile: .cute, speed: 1.0)
+        )
+        let arcade = BubbleSpeechSynthesizer.renderVoiceBasedEffect(
+            text: "좋아요 바로 해볼게요",
+            voiceSamples: voiceSamples,
+            sampleRate: sampleRate,
+            config: BubbleSpeechConfig.from(profile: .arcade, speed: 1.18)
+        )
+
+        XCTAssertFalse(cute.isEmpty)
+        XCTAssertFalse(arcade.isEmpty)
+        XCTAssertNotEqual(cute.count, arcade.count)
+        XCTAssertGreaterThan(BubbleSpeechSynthesizer.meanAbsoluteDelta(cute, arcade), 0.001)
     }
 }
 

@@ -35,7 +35,8 @@ let rendered = BubbleSpeechSynthesizer.renderVoiceBasedEffect(
     config: cuteConfig
 )
 require(!rendered.isEmpty, "voice-based render should not be empty")
-require(rendered.count == voiceSamples.count, "voice-based render should preserve source length")
+require(rendered.count < Int(Double(voiceSamples.count) * 0.95), "voice-based render should be shorter than source")
+require(rendered.count > sampleRate / 20, "voice-based render should not collapse into a broken ultra-short clip")
 require(BubbleSpeechSynthesizer.meanAbsoluteDelta(rendered, voiceSamples) > 0.002, "voice-based render should modify samples")
 require(peak(rendered) > 0.01, "voice-based render should have non-zero peak")
 require(!rendered.contains { !$0.isFinite }, "voice-based render should not contain NaN/Inf")
@@ -62,4 +63,4 @@ let arcadeRendered = BubbleSpeechSynthesizer.renderVoiceBasedEffect(
 )
 require(BubbleSpeechSynthesizer.meanAbsoluteDelta(tinyRendered, arcadeRendered) > 0.001, "profiles should produce different output")
 
-print("PASS bubble_speech_smoke guide=\(guide.count) rendered=\(rendered.count) delta=\(String(format: "%.5f", BubbleSpeechSynthesizer.meanAbsoluteDelta(rendered, voiceSamples))) peak=\(String(format: "%.4f", peak(rendered)))")
+print("PASS bubble_speech_smoke guide=\(guide.count) rendered=\(rendered.count) ratio=\(String(format: "%.3f", BubbleSpeechSynthesizer.durationRatio(renderedSamples: rendered, sourceSamples: voiceSamples))) delta=\(String(format: "%.5f", BubbleSpeechSynthesizer.meanAbsoluteDelta(rendered, voiceSamples))) peak=\(String(format: "%.4f", peak(rendered)))")
