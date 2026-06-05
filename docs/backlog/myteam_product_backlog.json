@@ -558,7 +558,7 @@
     {
       "id": "P1-004-stock-analysis-report-contract",
       "priority": "P1",
-      "status": "todo",
+      "status": "partial",
       "category": "connector",
       "title": "Stock analysis report contract",
       "why": "주식 대시보드 UI 전에 실제 데이터 계약과 표시 가능 범위를 먼저 정의해야 한다. 데이터 소스 없이 기술 지표를 표시하면 잘못된 투자 판단을 유도할 수 있다.",
@@ -597,11 +597,15 @@
       "completion_evidence": {
         "required": true,
         "commit_sha": null,
-        "files_changed": [],
-        "validation_summary": null,
+        "files_changed": [
+          "docs/connectors/StockAnalysisReportContract.md"
+        ],
+        "validation_summary": "2026-06-05: Added StockAnalysisReportContract defining source requirements for current price, technical indicators, narrative cause claims, verification labels, and stock card UI exclusions. Partial because product/engineering document review and future technical-indicator tests remain.",
         "screenshots": []
       },
-      "notes": []
+      "notes": [
+        "2026-06-05: Stock report contract added. It forbids current price without quote source, RSI/MACD/Bollinger without OHLCV + formula engine, and cause claims without news/disclosure/source evidence. Manual contract review remains."
+      ]
     },
     {
       "id": "P0-007-voice-tab-truth-manual-audio-qa",
@@ -716,7 +720,7 @@
     {
       "id": "P2-002-release-qa-evidence-checklist",
       "priority": "P2",
-      "status": "todo",
+      "status": "partial",
       "category": "release-qa",
       "title": "Release QA evidence checklist automation",
       "why": "P0 완료 증거가 누락되면 done/partial 판단이 흔들린다. grep, build, backlog evidence 확인을 반복 가능한 체크리스트로 만들어야 한다.",
@@ -752,11 +756,17 @@
       "completion_evidence": {
         "required": true,
         "commit_sha": null,
-        "files_changed": [],
-        "validation_summary": null,
+        "files_changed": [
+          "scripts/validate_release_checklist.py",
+          "MyTeam/SkillPackageRegistry.swift",
+          "MyTeamTests/SkillPackageRegistryTests.swift"
+        ],
+        "validation_summary": "2026-06-05: validate_release_checklist.py now checks backlog evidence shape, forbidden Swift API key/token and cost/quota strings, KeychainManager direct-access boundary, and invokes validate_skill_packages.py. Swift SkillPackageRegistry validation now mirrors legal package official-source/disclaimer/citation failure-mode gates. Partial because CI integration and manual release checklist review remain.",
         "screenshots": []
       },
-      "notes": []
+      "notes": [
+        "2026-06-05: Release checklist automation expanded beyond JSON shape into forbidden-pattern, Keychain boundary, and skill package policy validation. CI wiring/manual checklist review remain."
+      ]
     },
     {
       "id": "P1-public-api-proxy-architecture",

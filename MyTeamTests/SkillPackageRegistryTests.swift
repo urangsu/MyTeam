@@ -48,6 +48,36 @@ final class SkillPackageRegistryTests: XCTestCase {
         XCTAssertFalse(package.runtime.userVisibleEnabled)
     }
 
+    func testRegistryRejectsLegalPackageWithoutOfficialSourcePolicy() throws {
+        let invalidJSON = Self.koreanLawReferenceSkillJSON
+            .replacingOccurrences(of: #""requires_official_source": true,"#, with: "")
+            .replacingOccurrences(of: #""legal_disclaimer_required": true,"#, with: "")
+        let package = try SkillPackageRegistry.decodePackage(
+            Data(invalidJSON.utf8),
+            sourceURL: URL(fileURLWithPath: "/tmp/skills/korean_law_search/skill.json")
+        )
+
+        let errors = SkillPackageRegistry.validate(package)
+
+        XCTAssertTrue(errors.contains { $0.contains("requires_official_source") })
+        XCTAssertTrue(errors.contains { $0.contains("legal_disclaimer_required") })
+    }
+
+    func testRegistryRejectsLegalPackageWithoutCitationFailureMode() throws {
+        let invalidJSON = Self.koreanLawReferenceSkillJSON.replacingOccurrences(
+            of: #""citation_unverified""#,
+            with: #""provider_unavailable""#
+        )
+        let package = try SkillPackageRegistry.decodePackage(
+            Data(invalidJSON.utf8),
+            sourceURL: URL(fileURLWithPath: "/tmp/skills/korean_law_search/skill.json")
+        )
+
+        let errors = SkillPackageRegistry.validate(package)
+
+        XCTAssertTrue(errors.contains { $0.contains("citation_unverified") || $0.contains("citation_mismatch") })
+    }
+
     private static let referenceSkillJSON = """
     {
       "id": "naver_news_search",
@@ -144,7 +174,14 @@ final class SkillPackageRegistryTests: XCTestCase {
         "requires_sources": true,
         "verified_label_requires": "official_law_source",
         "requires_official_source": true,
-        "legal_disclaimer_required": true
+        "legal_disclaimer_required": true,
+        "required_metadata": [
+          "law_name",
+          "article",
+          "effective_date",
+          "official_source_url",
+          "verification_status"
+        ]
       },
       "ui": {
         "card": "LegalResearchCard",

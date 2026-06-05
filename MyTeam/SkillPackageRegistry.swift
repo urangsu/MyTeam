@@ -49,11 +49,17 @@ struct SkillPackageFailureMode: Codable, Equatable, Sendable {
 struct SkillPackageSourcePolicy: Codable, Equatable, Sendable {
     let requiresSources: Bool
     let verifiedLabelRequires: String
+    let requiresOfficialSource: Bool?
+    let legalDisclaimerRequired: Bool?
+    let requiredMetadata: [String]?
     let preferredSources: [String]?
 
     enum CodingKeys: String, CodingKey {
         case requiresSources = "requires_sources"
         case verifiedLabelRequires = "verified_label_requires"
+        case requiresOfficialSource = "requires_official_source"
+        case legalDisclaimerRequired = "legal_disclaimer_required"
+        case requiredMetadata = "required_metadata"
         case preferredSources = "preferred_sources"
     }
 }
@@ -196,6 +202,9 @@ enum SkillPackageRegistry {
         if package.sourcePolicy.requiresSources && package.sourcePolicy.verifiedLabelRequires.isEmpty {
             errors.append("\(package.id): source_policy.verified_label_requires is required")
         }
+        if isLegalPackage(package) {
+            errors.append(contentsOf: validateLegalPackage(package))
+        }
 
         for credential in package.requiredCredentials {
             switch credential.type {
@@ -226,5 +235,40 @@ enum SkillPackageRegistry {
             ]
         }
         return []
+    }
+
+    private static func isLegalPackage(_ package: SkillPackageManifest) -> Bool {
+        if package.id.hasPrefix("korean_law_") {
+            return true
+        }
+        return package.category?.localizedCaseInsensitiveContains("legal") == true
+    }
+
+    private static func validateLegalPackage(_ package: SkillPackageManifest) -> [String] {
+        var errors: [String] = []
+        if package.sourcePolicy.requiresOfficialSource != true {
+            errors.append("\(package.id): legal packages require source_policy.requires_official_source=true")
+        }
+        if package.sourcePolicy.legalDisclaimerRequired != true {
+            errors.append("\(package.id): legal packages require source_policy.legal_disclaimer_required=true")
+        }
+
+        let failureCodes = Set(package.failureModes.map(\.code))
+        if failureCodes.isDisjoint(with: ["citation_unverified", "citation_mismatch"]) {
+            errors.append("\(package.id): legal packages require citation_unverified or citation_mismatch failure mode")
+        }
+
+        let requiredMetadata = Set(package.sourcePolicy.requiredMetadata ?? [])
+        let expectedMetadata: Set<String> = [
+            "law_name",
+            "effective_date",
+            "official_source_url",
+            "verification_status"
+        ]
+        let missingMetadata = expectedMetadata.subtracting(requiredMetadata)
+        if !missingMetadata.isEmpty {
+            errors.append("\(package.id): legal packages require metadata \(missingMetadata.sorted())")
+        }
+        return errors
     }
 }
