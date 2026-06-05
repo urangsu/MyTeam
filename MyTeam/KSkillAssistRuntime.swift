@@ -7,6 +7,7 @@ import Foundation
 // MARK: - Intent
 
 enum KSkillAssistIntent: String, Codable, Sendable {
+    case weatherAssist
     case ktxBookingAssist
     case mapPlaceAssist
     case reservationPreparation
@@ -267,6 +268,7 @@ enum KSkillAssistRuntime {
 
     private static let assistSkillIDs: Set<String> = [
         "korean.ktx-booking",
+        "korean.weather",
         "korean.map-place",
         "korean.reservation-preparation",
         "korean.stock-info",
@@ -287,6 +289,8 @@ enum KSkillAssistRuntime {
 
     nonisolated static func skillID(for intent: KSkillAssistIntent) -> String {
         switch intent {
+        case .weatherAssist:
+            return "korean.weather"
         case .ktxBookingAssist:
             return "korean.ktx-booking"
         case .mapPlaceAssist:
@@ -422,6 +426,7 @@ enum KSkillAssistRuntime {
 
         if let skillID {
             switch skillID {
+            case "korean.weather": return .weatherAssist
             case "korean.ktx-booking", "ktx-booking-assist": return .ktxBookingAssist
             case "korean.dart", "dart-disclosure-assist": return .dartDisclosureAssist
             case "korean.stock", "stock-info-assist": return .stockInfoAssist
@@ -454,6 +459,9 @@ enum KSkillAssistRuntime {
         }
         if lower.contains("ktx") || lower.contains("srt") || lower.contains("기차 예매") || lower.contains("열차 예매") {
             return .ktxBookingAssist
+        }
+        if lower.contains("날씨") || lower.contains("기상") || lower.contains("비 와") || lower.contains("우산") {
+            return .weatherAssist
         }
         if lower.contains("주가") || lower.contains("주식") || lower.contains("종목") || lower.contains("시세")
             || lower.contains("삼성전자") || lower.contains("삼전") || lower.contains("sk하이닉스")
@@ -498,6 +506,29 @@ enum KSkillAssistRuntime {
         attachments: [ChatAttachment] = []
     ) -> KSkillAssistResponse {
         switch intent {
+
+        case .weatherAssist:
+            return KSkillAssistResponse(
+                intent: intent,
+                title: "한국 날씨 도우미",
+                message: "기상청 개인 키가 실제 검증된 경우에만 현재 관측값을 조회합니다. 지역 격자 변환이 불명확하면 기본 좌표 기준으로 표시하고, 확인되지 않은 예보나 체감 판단은 만들지 않습니다.",
+                checklist: [
+                    "기상청 Service Key 연결 및 검증 여부 확인",
+                    "지역명 또는 좌표 확인",
+                    "관측 기준 시각 확인",
+                    "강수·기온·풍속 등 관측 항목 분리",
+                    "예보와 현재 관측을 혼동하지 않기"
+                ],
+                nextActions: [
+                    "지역명을 알려주면 알려진 격자 좌표로 현재 관측값을 조회",
+                    "정확한 위치가 필요하면 nx/ny 격자 좌표를 함께 제공"
+                ],
+                hardBlockedActions: [
+                    "검증되지 않은 날씨 조회 성공 표시",
+                    "출처 없는 예보·강수 확률 생성"
+                ],
+                requiredUserInputs: ["지역명 또는 기상청 nx/ny 좌표"]
+            )
 
         case .ktxBookingAssist:
             return KSkillAssistResponse(
@@ -986,9 +1017,10 @@ enum KSkillRunEngine {
                 health: health
             )
         } else {
+            let directEvidence = await directPublicAPIEvidence(for: intent, query: lookupQuery)
             let baseEvidence = shouldGatherEvidence ? await ToolEvidenceService.gather(for: lookupQuery, policy: policy) : .empty
             let browserEvidence = shouldGatherEvidence ? await browserEvidence(for: intent, query: lookupQuery, roomID: roomID, chainRunID: chainRunID) : .empty
-            gatheredEvidence = mergeToolEvidence(baseEvidence, browserEvidence)
+            gatheredEvidence = mergeToolEvidence(mergeToolEvidence(directEvidence, baseEvidence), browserEvidence)
         }
         let evidence = mergeEvidence(gatheredEvidence, attachments: attachments)
         let verification = verificationStatus(
@@ -1151,7 +1183,7 @@ enum KSkillRunEngine {
 
     private static func executionMode(for intent: KSkillAssistIntent) -> SkillExecutionMode {
         switch intent {
-        case .stockInfoAssist, .dartDisclosureAssist, .naverNewsAssist, .naverBlogResearchAssist:
+        case .weatherAssist, .stockInfoAssist, .dartDisclosureAssist, .naverNewsAssist, .naverBlogResearchAssist:
             return .readOnlyLookup
         case .mailSummaryAssist, .fileImageAssist, .accountReviewAssist, .officeReviewAssist:
             return .userProvidedSourceAnalysis
@@ -1170,7 +1202,7 @@ enum KSkillRunEngine {
             return .mailAction
         case .fileImageAssist, .officeReviewAssist:
             return .documentAction
-        case .ktxBookingAssist, .mapPlaceAssist, .reservationPreparation:
+        case .weatherAssist, .ktxBookingAssist, .mapPlaceAssist, .reservationPreparation:
             return .tripPlanning
         case .accountReviewAssist:
             return .accountReview
@@ -1196,7 +1228,7 @@ enum KSkillRunEngine {
             return health.disclosureSearch.isOperational || health.webFetch.isOperational || health.browserSearch.isOperational
         case .naverNewsAssist, .naverBlogResearchAssist, .lawSearchAssist, .scholarshipAssist:
             return health.newsSearch.isOperational || health.webFetch.isOperational || health.browserSearch.isOperational
-        case .ktxBookingAssist, .mapPlaceAssist, .reservationPreparation:
+        case .weatherAssist, .ktxBookingAssist, .mapPlaceAssist, .reservationPreparation:
             return health.trainSearch.isOperational || health.mapsSearch.isOperational || health.browserSearch.isOperational
         default:
             return false
@@ -1207,6 +1239,9 @@ enum KSkillRunEngine {
         let provider: BrowserSearchProvider
         let forcedType: AgentWindowManager.SourceType
         switch intent {
+        case .weatherAssist:
+            provider = .general
+            forcedType = .webPage
         case .dartDisclosureAssist:
             provider = .dart
             forcedType = .disclosure
@@ -1268,6 +1303,235 @@ enum KSkillRunEngine {
         return ToolEvidenceResult(promptContext: context, sources: sources)
     }
 
+    private static func directPublicAPIEvidence(for intent: KSkillAssistIntent, query: String) async -> ToolEvidenceResult {
+        switch intent {
+        case .weatherAssist:
+            return await kmaDirectEvidence(query: query)
+        case .dartDisclosureAssist:
+            return await dartDirectEvidence(query: query)
+        case .naverNewsAssist:
+            return await naverNewsDirectEvidence(query: query)
+        case .lawSearchAssist:
+            return await koreanLawDirectEvidence(query: query)
+        default:
+            return .empty
+        }
+    }
+
+    private static func naverNewsDirectEvidence(query: String) async -> ToolEvidenceResult {
+        let provider = ExternalProvider.naverNews
+        guard await isCredentialConnected(provider) else {
+            return missingDirectCredentialEvidence(provider: provider)
+        }
+        guard
+            let clientID = credential(provider, fieldID: "clientID"),
+            let clientSecret = credential(provider, fieldID: "clientSecret")
+        else {
+            return missingDirectCredentialEvidence(provider: provider)
+        }
+
+        do {
+            let items = try await NaverNewsDirectConnector.search(
+                query: cleanedLookupQuery(query, dropping: ["네이버 뉴스", "뉴스 검색", "최신 뉴스", "출처"]),
+                clientID: clientID,
+                clientSecret: clientSecret
+            )
+            guard !items.isEmpty else {
+                return ToolEvidenceResult(promptContext: "\n\n[네이버 뉴스 직접 조회]\n- 결과 없음", sources: [])
+            }
+            let sources = items.map {
+                AgentWindowManager.SourceReference(
+                    title: $0.title,
+                    url: ($0.originalLink ?? $0.link).absoluteString,
+                    provider: provider.displayName,
+                    accessedAt: Date(),
+                    sourceType: .news
+                )
+            }
+            let context = "\n\n[네이버 뉴스 직접 조회]\n" + items.map {
+                let date = $0.publishedAt.map(formatEvidenceDate) ?? "날짜 미상"
+                return "- \($0.title)\n  \($0.description)\n  \((($0.originalLink ?? $0.link).absoluteString))\n  publishedAt=\(date)"
+            }.joined(separator: "\n")
+            return ToolEvidenceResult(promptContext: context, sources: sources)
+        } catch {
+            return directFailureEvidence(provider: provider, error: error)
+        }
+    }
+
+    private static func dartDirectEvidence(query: String) async -> ToolEvidenceResult {
+        let provider = ExternalProvider.dartDisclosure
+        guard await isCredentialConnected(provider) else {
+            return missingDirectCredentialEvidence(provider: provider)
+        }
+        guard let apiKey = credential(provider, fieldID: "apiKey") else {
+            return missingDirectCredentialEvidence(provider: provider)
+        }
+
+        do {
+            let items = try await DARTDisclosureDirectConnector.recentDisclosures(
+                query: cleanedLookupQuery(query, dropping: ["DART", "공시", "최근 이슈"]),
+                apiKey: apiKey
+            )
+            guard !items.isEmpty else {
+                return ToolEvidenceResult(promptContext: "\n\n[DART 직접 조회]\n- 최근 공시 결과 없음", sources: [])
+            }
+            let sources = items.map {
+                AgentWindowManager.SourceReference(
+                    title: "\($0.corporationName) - \($0.reportName)",
+                    url: $0.sourceURL.absoluteString,
+                    provider: provider.displayName,
+                    accessedAt: Date(),
+                    sourceType: .disclosure
+                )
+            }
+            let context = "\n\n[DART 직접 조회]\n" + items.map {
+                "- \($0.corporationName) / \($0.reportName)\n  rceptNo=\($0.receiptNumber), rceptDate=\($0.receiptDate)\n  \($0.sourceURL.absoluteString)"
+            }.joined(separator: "\n")
+            return ToolEvidenceResult(promptContext: context, sources: sources)
+        } catch {
+            return directFailureEvidence(provider: provider, error: error)
+        }
+    }
+
+    private static func kmaDirectEvidence(query: String) async -> ToolEvidenceResult {
+        let provider = ExternalProvider.kmaWeather
+        guard await isCredentialConnected(provider) else {
+            return missingDirectCredentialEvidence(provider: provider)
+        }
+        guard let serviceKey = credential(provider, fieldID: "serviceKey") else {
+            return missingDirectCredentialEvidence(provider: provider)
+        }
+
+        let grid = weatherGrid(for: query)
+        do {
+            let observations = try await KMAWeatherDirectConnector.ultraShortNowcast(
+                serviceKey: serviceKey,
+                nx: grid.nx,
+                ny: grid.ny
+            )
+            let sourceURL = "https://www.data.go.kr/data/15084084/openapi.do"
+            let source = AgentWindowManager.SourceReference(
+                title: "기상청 초단기실황 - \(grid.name)",
+                url: sourceURL,
+                provider: provider.displayName,
+                accessedAt: Date(),
+                sourceType: .webPage
+            )
+            let context = "\n\n[기상청 직접 조회]\n- 지역: \(grid.name) nx=\(grid.nx) ny=\(grid.ny)\n" + observations.map {
+                "- \($0.category)=\($0.value) base=\($0.baseDate) \($0.baseTime)"
+            }.joined(separator: "\n")
+            return ToolEvidenceResult(promptContext: context, sources: [source])
+        } catch {
+            return directFailureEvidence(provider: provider, error: error)
+        }
+    }
+
+    private static func koreanLawDirectEvidence(query: String) async -> ToolEvidenceResult {
+        let provider = ExternalProvider.koreanLaw
+        guard await isCredentialConnected(provider) else {
+            return missingDirectCredentialEvidence(provider: provider)
+        }
+        guard let lawOC = credential(provider, fieldID: "lawOC") else {
+            return missingDirectCredentialEvidence(provider: provider)
+        }
+
+        do {
+            let request = KoreanLawSearchRequest(
+                query: cleanedLookupQuery(query, dropping: ["법령", "조문", "출처"]),
+                lawName: nil,
+                article: nil
+            )
+            let results = try await KoreanLawDirectConnector.search(request, lawOC: lawOC)
+            let sourced = results.filter { !$0.sources.isEmpty }
+            guard !sourced.isEmpty else {
+                return ToolEvidenceResult(promptContext: "\n\n[국가법령정보센터 직접 조회]\n- 공식 출처가 있는 결과 없음", sources: [])
+            }
+            let sources = sourced.flatMap { result in
+                result.sources.map {
+                    AgentWindowManager.SourceReference(
+                        title: $0.title,
+                        url: $0.url.absoluteString,
+                        provider: $0.publisher,
+                        accessedAt: Date(),
+                        sourceType: .webPage
+                    )
+                }
+            }
+            let context = "\n\n[국가법령정보센터 직접 조회]\n" + sourced.map {
+                "- \($0.lawName)\n  status=\($0.verificationStatus), effectiveDate=\($0.effectiveDate ?? "미확인")\n  \($0.officialSourceURL?.absoluteString ?? "공식 URL 없음")\n  \(KoreanLawDirectConnector.disclaimer)"
+            }.joined(separator: "\n")
+            return ToolEvidenceResult(promptContext: context, sources: sources)
+        } catch {
+            return directFailureEvidence(provider: provider, error: error)
+        }
+    }
+
+    private static func isCredentialConnected(_ provider: ExternalProvider) async -> Bool {
+        await MainActor.run {
+            CredentialHealthService.shared.health(for: provider).state.isConnected
+        }
+    }
+
+    private static func credential(_ provider: ExternalProvider, fieldID: String) -> String? {
+        guard let field = provider.credentialSchema.fields.first(where: { $0.id == fieldID }) else {
+            return nil
+        }
+        return SecureCredentialStore.shared.read(provider: provider, field: field)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func missingDirectCredentialEvidence(provider: ExternalProvider) -> ToolEvidenceResult {
+        ToolEvidenceResult(
+            promptContext: "\n\n[\(provider.displayName) 직접 조회]\n- 상태: 검증된 개인 키가 없어 직접 조회하지 않았습니다.",
+            sources: []
+        )
+    }
+
+    private static func directFailureEvidence(provider: ExternalProvider, error: Error) -> ToolEvidenceResult {
+        let failure = (error as? ConnectorFailureCode)?.rawValue ?? error.localizedDescription
+        return ToolEvidenceResult(
+            promptContext: "\n\n[\(provider.displayName) 직접 조회]\n- 실패: \(failure)",
+            sources: []
+        )
+    }
+
+    private static func cleanedLookupQuery(_ query: String, dropping tokens: [String]) -> String {
+        var cleaned = query
+        for token in tokens {
+            cleaned = cleaned.replacingOccurrences(of: token, with: "", options: [.caseInsensitive])
+        }
+        cleaned = cleaned.replacingOccurrences(of: "오늘", with: "")
+            .replacingOccurrences(of: "최신", with: "")
+            .replacingOccurrences(of: "알려줘", with: "")
+            .replacingOccurrences(of: "찾아줘", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return cleaned.isEmpty ? query : cleaned
+    }
+
+    private static func weatherGrid(for query: String) -> (name: String, nx: Int, ny: Int) {
+        let lower = query.lowercased()
+        let known: [(String, Int, Int)] = [
+            ("서울", 60, 127),
+            ("인천", 55, 124),
+            ("부산", 98, 76),
+            ("대구", 89, 90),
+            ("대전", 67, 100),
+            ("광주", 58, 74),
+            ("울산", 102, 84),
+            ("제주", 52, 38)
+        ]
+        if let match = known.first(where: { lower.contains($0.0.lowercased()) }) {
+            return (match.0, match.1, match.2)
+        }
+        return ("서울 기본 격자", 60, 127)
+    }
+
+    private static func formatEvidenceDate(_ date: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.string(from: date)
+    }
+
     private static func mergeToolEvidence(_ lhs: ToolEvidenceResult, _ rhs: ToolEvidenceResult) -> ToolEvidenceResult {
         let prompt = [lhs.promptContext, rhs.promptContext]
             .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
@@ -1282,6 +1546,8 @@ enum KSkillRunEngine {
 
     private static func evidenceQuery(for intent: KSkillAssistIntent, userMessage: String) -> String {
         switch intent {
+        case .weatherAssist:
+            return "\(userMessage) 기상청 현재 관측 출처"
         case .stockInfoAssist:
             return "\(userMessage) 오늘 주가 등락률 관련 뉴스 공시 원인"
         case .dartDisclosureAssist:
@@ -1310,7 +1576,7 @@ enum KSkillRunEngine {
                 recommendedTools: Array(Set(base.recommendedTools + ["finance_quote", "web_search", "disclosure_search"])).sorted(),
                 reason: "stock move analysis chain"
             )
-        case .dartDisclosureAssist, .naverNewsAssist, .naverBlogResearchAssist, .lawSearchAssist, .scholarshipAssist:
+        case .weatherAssist, .dartDisclosureAssist, .naverNewsAssist, .naverBlogResearchAssist, .lawSearchAssist, .scholarshipAssist:
             return ToolPolicyDecision(
                 needsTool: true,
                 needsWeb: true,

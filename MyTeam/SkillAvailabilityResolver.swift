@@ -20,6 +20,8 @@ enum SkillAvailabilityResolver {
 
         // 스킬 ID별 명시적 override
         switch skill.id {
+        case "korean.weather":
+            return .assistOnly
         case "korean.dart":
             return .assistOnly
         case "korean.law-search":
@@ -47,6 +49,7 @@ enum SkillAvailabilityResolver {
     static var assistOnlySkillIDs: Set<String> {
         let baseIDs: Set<String> = [
             "korean.dart",
+            "korean.weather",
             "korean.law-search",
             "korean.naver-news",
             "korean.naver-blog-research",
@@ -69,6 +72,8 @@ enum SkillAvailabilityResolver {
     /// assistOnly 스킬에 표시할 사용자 안내 메시지
     static func assistOnlyMessage(for skillID: String) -> String {
         switch skillID {
+        case "korean.weather":
+            return "기상청 키가 실제 검증된 경우에만 직접 조회합니다. 검증 전에는 날씨를 확인한 것처럼 표시하지 않고, 지역과 확인할 항목을 정리해드릴게요."
         case "korean.dart":
             return "제가 DART를 조회한 척하지는 않아요. 공시 PDF, 사업보고서 본문, 링크를 주시면 핵심 숫자와 위험 포인트를 카드로 정리해드릴게요."
         case "korean.law-search":

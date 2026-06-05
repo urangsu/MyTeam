@@ -153,9 +153,12 @@
           "MyTeam/SettingsView.swift",
           "MyTeam/BYOKProviderStatusService.swift",
           "MyTeam/BYOKProviderCenterView.swift",
-          "MyTeam/ConnectorSetupCardView.swift"
+          "MyTeam/ConnectorSetupCardView.swift",
+          "MyTeam/PublicAPIConnectorValidator.swift",
+          "MyTeam/KSkillAssistRuntime.swift",
+          "MyTeam/SkillAvailabilityResolver.swift"
         ],
-        "validation_summary": "2026-06-03: rg audit 결과 KeychainManager.save/load/delete 직접 호출은 SecureCredentialStore.swift 내부 wrapper에만 남아 있음. UserDefaults.*apiKey/UserDefaults.*token/apiKey.*UserDefaults/token.*UserDefaults 경로는 발견되지 않음. AIService, LLMConfigCatalog, AgentToolKit의 runtime key read 경로는 SecureCredentialStore.read(provider:)로 통일됨. Debug/Release xcodebuild와 MyTeamTests는 2026-06-02 c7cd7de에서 통과. Partial because 수동 UI key 입력/저장/삭제/앱 재실행 마스킹 확인은 아직 남음.",
+        "validation_summary": "2026-06-05: Added credential-gated BYOK direct public API evidence paths. Runtime reads Naver/DART/KMA/KoreanLaw credentials through SecureCredentialStore field reads only after CredentialHealthService reports .connected. rg UserDefaults.*apiKey/UserDefaults.*token/apiKey.*UserDefaults/token.*UserDefaults returned no Swift matches. Partial remains because manual UI key entry/save/delete/relaunch masking checks are still required.",
         "screenshots": []
       },
       "notes": [
@@ -163,7 +166,8 @@
         "2026-05-31: SettingsView의 API key load/save/delete 경로를 SecureCredentialStore로 통일하고 CredentialHealthService 갱신을 연결함. BYOK 요약 UI는 '연결됨' 대신 '저장됨'으로 표시하도록 변경. 남은 감사: KeychainManager 직접 참조 중 내부 구현/레거시 마이그레이션 외 우회 경로 최종 분류.",
         "2026-06-02: Commit ceae318ad3b770de3dbafba95d2b9a46c60db865 routed AgentToolKit Gemini/OpenAI evidence reads through SecureCredentialStore.read(provider:) instead of direct KeychainManager.load.",
         "2026-06-03: Commit c7cd7de1a8b96a8654453d7f1c01451302a3aa1b routed AIService and LLMConfigCatalog runtime key reads through SecureCredentialStore.read(provider:). rg 'KeychainManager.save|KeychainManager.delete|KeychainManager.load' now only reports SecureCredentialStore.swift wrapper calls.",
-        "Partial reason: code audit no longer shows direct credential bypass or UserDefaults key storage, but manual UI entry/save/delete/relaunch masking checks remain before marking done."
+        "Partial reason: code audit no longer shows direct credential bypass or UserDefaults key storage, but manual UI entry/save/delete/relaunch masking checks remain before marking done.",
+        "2026-06-05: Public API runtime path now uses SecureCredentialStore.read(provider:field:) after validated CredentialHealthService .connected state; no UserDefaults API key/token Swift matches found. Manual UI persistence checks remain."
       ]
     },
     {
@@ -216,22 +220,26 @@
           "MyTeam/SecureCredentialStore.swift",
           "MyTeam/CredentialHealth.swift",
           "MyTeam/BYOKProviderCenterView.swift",
-          "MyTeam/ConnectorSetupCardView.swift"
+          "MyTeam/ConnectorSetupCardView.swift",
+          "MyTeam/PublicAPIConnectorValidator.swift",
+          "MyTeam/KSkillAssistRuntime.swift",
+          "MyTeam/SkillAvailabilityResolver.swift"
         ],
-        "validation_summary": "2026-06-03: SecureCredentialStore.testConnection does not treat key presence as success. CredentialHealthService sets .connected only when result.success is true. KMA/Naver/DART return providerUnavailable and surface as testUnavailable/'저장됨, 자동 확인 미지원' instead of connected. ConnectorSetupCardView keeps key input/save/delete/masking and says manual API testing is retained. Partial because fake-key and valid-key manual provider tests were not exercised in this session.",
+        "validation_summary": "2026-06-05: KSkillRunEngine now gathers Naver/DART/KMA/KoreanLaw direct evidence only when CredentialHealthService state is .connected; missing/unvalidated credentials add no source refs and cannot make verified/connected output. Naver/DART/KMA/KoreanLaw validators already parse provider bodies instead of HTTP 200 alone. Partial remains until fake-key and valid-key manual runs are completed.",
         "screenshots": []
       },
       "notes": [
         "CredentialHealth enum은 생성되어 있으나 실제 provider별 검증 로직 구현이 필요할 수 있음.",
         "2026-05-31: SecureCredentialStore.testConnection이 키 존재만으로 success를 반환하지 않도록 변경. AI provider는 AIService.validateKey로 실제 모델 목록 엔드포인트를 검증하고, KMA/Naver/DART처럼 검증기 미구현 provider는 testUnavailable 상태로 남김.",
         "2026-06-03: Commit c7cd7de1a8b96a8654453d7f1c01451302a3aa1b polished Connection Center truth surface. Saved-only keys show '키 저장됨'; KMA/Naver/DART with no validator show '저장됨, 자동 확인 미지원' and never '사용 가능' unless a real validator returns success.",
-        "Partial reason: fake success path is blocked in code, but manual tests with fake keys and known-good keys for Gemini/OpenAI/Claude/OpenRouter are still required before status can become done."
+        "Partial reason: fake success path is blocked in code, but manual tests with fake keys and known-good keys for Gemini/OpenAI/Claude/OpenRouter are still required before status can become done.",
+        "2026-06-05: Runtime direct evidence gate blocks source refs unless provider health is .connected. Valid-key/fake-key manual provider checks remain before done."
       ]
     },
     {
       "id": "P0-004-remove-cost-usage-estimation-ui",
       "priority": "P0",
-      "status": "todo",
+      "status": "partial",
       "category": "product-policy",
       "title": "비용/사용량 추정 UI 제거 유지",
       "why": "우리가 무료 API 호출을 제공하기 전까지 추정 사용량/예상 비용 UI를 제거 유지해야 한다. MyTeam이 과금하지 않으면서 비용 표시를 하면 사용자 혼란과 법적 리스크가 발생한다.",
@@ -272,11 +280,12 @@
         "required": true,
         "commit_sha": null,
         "files_changed": [],
-        "validation_summary": null,
+        "validation_summary": "2026-06-05: rg \"UserDefaults.*apiKey|UserDefaults.*token|apiKey.*UserDefaults|token.*UserDefaults|estimated.*cost|usage.*limit|무료.*호출|잔여.*량\" MyTeam --glob \"*.swift\" returned no matches. Partial because Settings/Connection Center manual UI review for cost/usage wording remains.",
         "screenshots": []
       },
       "notes": [
-        "Productization v1에서 planSummaryCard/planBadge 제거, UsagePolicyCardView 비용행 제거 완료. 이 task는 재도입 방지 감사."
+        "Productization v1에서 planSummaryCard/planBadge 제거, UsagePolicyCardView 비용행 제거 완료. 이 task는 재도입 방지 감사.",
+        "2026-06-05: Swift grep found no cost/usage/free-call/remaining-quota UI strings and no UserDefaults key/token storage strings. Manual Settings/Connection Center UI review remains, so status is partial."
       ]
     },
     {
@@ -497,7 +506,7 @@
     {
       "id": "P1-003-kma-weather-connector-design",
       "priority": "P1",
-      "status": "todo",
+      "status": "partial",
       "category": "connector",
       "title": "KMA Weather connector design",
       "why": "기상청 날씨 연결 구조를 설계해야 한다. key 없음/실패 시 fake weather를 표시하면 사용자 신뢰를 해친다.",
@@ -534,11 +543,17 @@
       "completion_evidence": {
         "required": true,
         "commit_sha": null,
-        "files_changed": [],
-        "validation_summary": null,
+        "files_changed": [
+          "MyTeam/PublicAPIConnectorValidator.swift",
+          "MyTeam/KSkillAssistRuntime.swift",
+          "MyTeam/SkillAvailabilityResolver.swift"
+        ],
+        "validation_summary": "2026-06-05: KMA direct connector added for getUltraSrtNcst using URLComponents, dynamic base_date/base_time, body resultCode==00 and non-empty item parsing. korean.weather is now routed into KSkillAssistRuntime, but execution is gated on validated kmaWeather CredentialHealthService .connected. Partial because live Service Key test, region-grid QA, and UI runtime confirmation remain.",
         "screenshots": []
       },
-      "notes": []
+      "notes": [
+        "2026-06-05: KMA weather moved from settings-only validation toward credential-gated runtime evidence. Still partial until live Service Key and regional grid QA are completed."
+      ]
     },
     {
       "id": "P1-004-stock-analysis-report-contract",
