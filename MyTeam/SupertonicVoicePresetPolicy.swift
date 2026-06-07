@@ -11,7 +11,7 @@ import Foundation
 //   - friendly, confident, excited: base + boost 전체 적용
 //   - bubbleSpeech: bubbleSpeechTuning(for:) 별도 target (기존 boost 누적 방식 제거)
 // emotionStyle(for:): 캐릭터 기본 감정 반환 (SpeechManager에서 사용)
-// bubbleSpeechTuning(for:): BubbleSpeech 별도 target (M preset→+140, F preset→+180)
+// bubbleSpeechTuning(for:): BubbleSpeech 별도 target. 캐릭터 목소리 보존 우선.
 
 enum SupertonicVoicePresetPolicy {
 
@@ -99,24 +99,21 @@ enum SupertonicVoicePresetPolicy {
 
     // MARK: - BubbleSpeech Separate Tuning (Round 259TTS)
 
-    /// BubbleSpeech 별도 tuning target (Round 259: 분리, Round 260B: speed 중심 재정의).
-    /// pitch를 과하게 올리지 않고, BubbleSpeech 느낌은 speed 중심으로 구현.
-    /// M preset: targetPitch +120, F preset: targetPitch +160.
-    /// speed: 1.35~1.60 실험 범위 (baseSpeed + 0.35, max 1.60).
+    /// BubbleSpeech 별도 tuning target.
+    /// pitch/speed를 과하게 올리면 캐릭터 감정과 목소리 존재감이 사라지므로 v1.4에서는 완화한다.
     /// 테스트 전용 모드 — 기본 캐릭터 발화에는 사용되지 않음.
     static func bubbleSpeechTuning(for agentID: String?) -> VoiceTuningValues {
         let p = CharacterVoiceProfileCatalog.profile(for: agentID)
         let targetPitch: Float
         switch p.preset.first {
-        case "M": targetPitch = 120
-        case "F": targetPitch = 160
-        default:  targetPitch = 140
+        case "M": targetPitch = 80
+        case "F": targetPitch = 115
+        default:  targetPitch = 100
         }
-        // Speed 중심: 1.35~1.60 실험 범위. 2.00은 수동 슬라이더로만 열어둠.
-        let targetSpeed = min(1.60, max(1.35, p.baseSpeed + 0.35))
+        let targetSpeed = min(1.34, max(1.10, p.baseSpeed + 0.18))
         return VoiceTuningValues(
             pitch: targetPitch,
-            rate:  1.08,
+            rate:  1.02,
             speed: targetSpeed
         )
     }

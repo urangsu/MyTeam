@@ -553,7 +553,17 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         }
 
         let bubbleTuning = SupertonicVoicePresetPolicy.bubbleSpeechTuning(for: agentID)
-        let synthesisSpeed = min(1.60, max(1.35, max(speed, bubbleTuning.speed)))
+        let basePitch = SupertonicVoicePresetPolicy.pitch(for: agentID)
+        let emotionPitch = SupertonicVoicePresetPolicy.pitch(for: agentID, emotion: emotion)
+        let baseRate = SupertonicVoicePresetPolicy.rate(for: agentID)
+        let emotionRate = SupertonicVoicePresetPolicy.rate(for: agentID, emotion: emotion)
+        let baseSpeed = SupertonicVoicePresetPolicy.speed(for: agentID)
+        let emotionSpeed = SupertonicVoicePresetPolicy.speed(for: agentID, emotion: emotion)
+        let playbackPitch = pitch + pitchOffset + (emotionPitch - basePitch)
+        let segmentRate = min(1.08, max(0.90, rate + (emotionRate - baseRate)))
+        let playbackRate = min(1.10, max(0.90, segmentRate))
+        let speedWithEmotion = speed + (emotionSpeed - baseSpeed)
+        let synthesisSpeed = min(1.42, max(1.06, max(speedWithEmotion, bubbleTuning.speed)))
         var config = BubbleSpeechConfig.from(profile: profile, speed: Double(synthesisSpeed))
         config.characterTuning = BubbleSpeechCharacterTuningPolicy.tuning(
             agentID: agentID,
@@ -588,10 +598,10 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
             voiceSamples: result.wavSamples,
             sampleRate: result.sampleRate,
             config: config,
-            segmentRate: rate
+            segmentRate: segmentRate
         )
         guard !samples.isEmpty else {
-            AppLog.warning("[BubbleSpeechEffect] failed: empty rendered samples voiceBased=true preset=\(preset) agentID=\(agentID ?? "nil") profile=\(profile.rawValue) synthesisSpeed=\(synthesisSpeed) segmentRate=\(rate) playbackPitch=\(pitch + pitchOffset) inputChars=\(spokenText.count) syllableCount=\(BubbleSpeechSynthesizer.syllableCount(in: spokenText)) sourceSamples=\(result.wavSamples.count)")
+            AppLog.warning("[BubbleSpeechEffect] failed: empty rendered samples voiceBased=true preset=\(preset) agentID=\(agentID ?? "nil") profile=\(profile.rawValue) synthesisSpeed=\(synthesisSpeed) segmentRate=\(segmentRate) playbackPitch=\(playbackPitch) emotion=\(emotion.rawValue) inputChars=\(spokenText.count) syllableCount=\(BubbleSpeechSynthesizer.syllableCount(in: spokenText)) sourceSamples=\(result.wavSamples.count)")
             return .failed("뽀글뽀글 음절 리듬 렌더링이 완료되지 않았습니다.")
         }
 
@@ -616,8 +626,8 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
             sampleRate: sampleRate,
             streamId: UUID().uuidString,
             characterName: label,
-            pitch: pitch + pitchOffset,
-            rate: rate,
+            pitch: playbackPitch,
+            rate: playbackRate,
             onPlaybackStarted: nil
         )
         guard didPlay else {
@@ -627,12 +637,12 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
 
         let safeAgent = (agentID ?? "none").replacingOccurrences(of: " ", with: "_")
         let safeLabel = label.replacingOccurrences(of: " ", with: "_")
-        let safePitch = String(format: "%.0f", pitch + pitchOffset)
-        let safeRate = String(format: "%.2f", rate).replacingOccurrences(of: ".", with: "p")
+        let safePitch = String(format: "%.0f", playbackPitch)
+        let safeRate = String(format: "%.2f", segmentRate).replacingOccurrences(of: ".", with: "p")
         let safeSpeed = String(format: "%.2f", synthesisSpeed).replacingOccurrences(of: ".", with: "p")
         let wavTag = "bubble_speech_\(safeLabel)_\(safeAgent)_\(preset)_\(profile.rawValue)_p\(safePitch)_r\(safeRate)_syn\(safeSpeed)"
         _ = S3WavWriter.write(samples: samples, sampleRate: sampleRate, tag: wavTag)
-        AppLog.info("[BubbleSpeechEffect] voiceBased=true mode=singlePassChopper preset=\(preset) agentID=\(agentID ?? "nil") profile=\(profile.rawValue) kind=\(profile.profileKindLabel) synthesisSpeed=\(synthesisSpeed) segmentRate=\(rate) playbackPitch=\(pitch + pitchOffset) minSegment=\(String(format: "%.3f", config.characterTuning.minSegmentDuration)) maxSegment=\(String(format: "%.3f", config.characterTuning.maxSegmentDuration)) guideGain=\(String(format: "%.3f", config.characterTuning.guideGain)) shimmerDepth=\(String(format: "%.3f", config.characterTuning.shimmerDepth)) gapScale=\(String(format: "%.2f", config.characterTuning.gapScale)) inputChars=\(spokenText.count) syllableCount=\(syllableCount) sourceSamples=\(result.wavSamples.count) renderedSamples=\(samples.count) duration=\(String(format: "%.3f", durationSec))s durationRatio=\(String(format: "%.3f", durationRatio)) peak=\(String(format: "%.3f", snapshot.peak)) zcr=\(String(format: "%.1f", snapshot.zeroCrossingRate)) clicks=\(snapshot.estimatedClickCount) meanDelta=\(String(format: "%.5f", delta)) wavTag=\(wavTag)")
+        AppLog.info("[BubbleSpeechEffect] voiceBased=true mode=singlePassChopper preset=\(preset) agentID=\(agentID ?? "nil") profile=\(profile.rawValue) kind=\(profile.profileKindLabel) emotion=\(emotion.rawValue) synthesisSpeed=\(synthesisSpeed) segmentRate=\(segmentRate) playbackRate=\(playbackRate) playbackPitch=\(playbackPitch) minSegment=\(String(format: "%.3f", config.characterTuning.minSegmentDuration)) maxSegment=\(String(format: "%.3f", config.characterTuning.maxSegmentDuration)) guideGain=\(String(format: "%.3f", config.characterTuning.guideGain)) shimmerDepth=\(String(format: "%.3f", config.characterTuning.shimmerDepth)) gapScale=\(String(format: "%.2f", config.characterTuning.gapScale)) inputChars=\(spokenText.count) syllableCount=\(syllableCount) sourceSamples=\(result.wavSamples.count) renderedSamples=\(samples.count) duration=\(String(format: "%.3f", durationSec))s durationRatio=\(String(format: "%.3f", durationRatio)) peak=\(String(format: "%.3f", snapshot.peak)) zcr=\(String(format: "%.1f", snapshot.zeroCrossingRate)) clicks=\(snapshot.estimatedClickCount) meanDelta=\(String(format: "%.5f", delta)) wavTag=\(wavTag)")
         return .played(duration: durationSec)
     }
 
