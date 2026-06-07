@@ -175,13 +175,26 @@ actor AudioPlaybackService: AudioPlayable {
         queuedBufferCount = max(0, queuedBufferCount - 1)
     }
 
+    private func resetPlayerQueueIfNeeded(reason: String) {
+        let hadQueuedAudio = queuedBufferCount > 0
+        let wasPlaying = playerNode.isPlaying
+
+        guard wasPlaying || hadQueuedAudio else {
+            queuedBufferCount = 0
+            return
+        }
+
+        playerNode.stop()
+        playerNode.reset()
+        queuedBufferCount = 0
+        AppLog.info("[AudioPlayback] player reset: \(reason), wasPlaying=\(wasPlaying), hadQueuedAudio=\(hadQueuedAudio)")
+    }
+
     func endSession(streamId: String) {
         if currentActiveStreamId == streamId {
-            playerNode.stop()
-            playerNode.reset()
+            resetPlayerQueueIfNeeded(reason: "endSession")
 
             currentActiveStreamId = nil
-            queuedBufferCount = 0
 
             // 사용을 다한 재사용 컨버터들을 정리(Evict)
             converters.removeAll()
@@ -205,11 +218,9 @@ actor AudioPlaybackService: AudioPlayable {
         }
 
         if currentActiveStreamId != streamId {
-            playerNode.stop()
-            playerNode.reset()
+            resetPlayerQueueIfNeeded(reason: "session switch")
 
             currentActiveStreamId = streamId
-            queuedBufferCount = 0
 
             // 새 세션용 컨버터 풀 초기화
             converters.removeAll()
@@ -366,10 +377,8 @@ actor AudioPlaybackService: AudioPlayable {
 
     func stopAll() {
 
-        playerNode.stop()
-        playerNode.reset()
+        resetPlayerQueueIfNeeded(reason: "stopAll")
         currentActiveStreamId = nil
-        queuedBufferCount = 0
         converters.removeAll()
         AppLog.info("[AudioPlayback] stopAll: player reset, queue clear, engine graph kept attached")
     }

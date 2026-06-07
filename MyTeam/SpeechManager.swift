@@ -33,7 +33,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
 
         // 🛑 Barge-in: 마이크 입력 감지 즉시 전체 파이프라인 격추
         capture.onBargeInDetected = { [weak self] in
-            Task { @MainActor [weak self] in
+            Task(priority: .userInitiated) { @MainActor [weak self] in
                 guard let self else { return }
                 guard await self.playback.isCurrentlyPlaying else { return }
                 print("[SpeechManager] 🎙️ Barge-in 감지 → Supertonic3 추론 + 오디오 엔진 즉각 격추")
@@ -202,7 +202,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
 
     /// Round 278 3-A: 거부 시 안내 메시지를 함께 전달. throttle 후엔 guidance == nil.
     func requestAuthorization(completion: @escaping (_ granted: Bool, _ guidance: String?) -> Void) {
-        Task {
+        Task(priority: .userInitiated) {
             let granted = await PermissionsManager.shared.requestAllAudioPermissions()
             var guidance: String? = nil
             if !granted {
@@ -265,7 +265,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         currentSpeakingAgentID = agentID
         DispatchQueue.main.async { self.isSpeaking = true }
 
-        currentStreamTask = Task {
+        currentStreamTask = Task(priority: .userInitiated) {
             // Round 256TTS-OFFICIAL-ENGINE: Supertonic3 공식 경로 사용.
             // Apple TTS 폴백 없음. provider 없으면 무음.
             await dispatchToInferencePipeline(
@@ -673,7 +673,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         currentStreamTask = nil
 
         // 오디오 엔진 즉각 정지
-        Task { await playback.stopAll() }
+        Task(priority: .userInitiated) { await playback.stopAll() }
 
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
