@@ -8958,6 +8958,7 @@
 				<string>869A062515C9F59A0ECB2444</string>
 				<string>6CA3013B4C0B5D7F425988B4</string>
 				<string>86AAA1F0E4393713A9F2A4BC</string>
+				<string>BSPOL001CHARACTER001</string>
 				<string>0C887399B1B54BF7CA470BEA</string>
 				<string>B31D865E25CCF109A8EC1181</string>
 			</array>
@@ -9439,6 +9440,7 @@
 				<string>E0B171E3E70F26CCC0DD4279</string>
 				<string>BB1036F07BBBE21D172C3D46</string>
 				<string>64F168336327C0A9E0CE570B</string>
+				<string>BSPOL002CHARACTERBUILD</string>
 				<string>1421B689B446BDEAE82D225C</string>
 				<string>1A19BFE34FEAD07A85DE7AD7</string>
 			</array>
@@ -20034,6 +20036,24 @@
 			<string>PBXBuildFile</string>
 			<key>fileRef</key>
 			<string>86AAA1F0E4393713A9F2A4BC</string>
+		</dict>
+		<key>BSPOL001CHARACTER001</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>BubbleSpeechCharacterTuningPolicy.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>BSPOL002CHARACTERBUILD</key>
+		<dict>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+			<key>fileRef</key>
+			<string>BSPOL001CHARACTER001</string>
 		</dict>
 		<key>0C887399B1B54BF7CA470BEA</key>
 		<dict>

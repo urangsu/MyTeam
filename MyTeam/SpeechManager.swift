@@ -554,7 +554,12 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
 
         let bubbleTuning = SupertonicVoicePresetPolicy.bubbleSpeechTuning(for: agentID)
         let synthesisSpeed = min(1.60, max(1.35, max(speed, bubbleTuning.speed)))
-        let config = BubbleSpeechConfig.from(profile: profile, speed: Double(synthesisSpeed))
+        var config = BubbleSpeechConfig.from(profile: profile, speed: Double(synthesisSpeed))
+        config.characterTuning = BubbleSpeechCharacterTuningPolicy.tuning(
+            agentID: agentID,
+            preset: preset,
+            profile: profile
+        )
         let paths = Supertonic3ONNXModelPaths.defaultPaths()
         let spokenText = SupertonicProsodyTextProcessor.preprocess(
             text,
@@ -627,7 +632,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         let safeSpeed = String(format: "%.2f", synthesisSpeed).replacingOccurrences(of: ".", with: "p")
         let wavTag = "bubble_speech_\(safeLabel)_\(safeAgent)_\(preset)_\(profile.rawValue)_p\(safePitch)_r\(safeRate)_syn\(safeSpeed)"
         _ = S3WavWriter.write(samples: samples, sampleRate: sampleRate, tag: wavTag)
-        AppLog.info("[BubbleSpeechEffect] voiceBased=true mode=singlePassChopper preset=\(preset) agentID=\(agentID ?? "nil") profile=\(profile.rawValue) kind=\(profile.profileKindLabel) synthesisSpeed=\(synthesisSpeed) segmentRate=\(rate) playbackPitch=\(pitch + pitchOffset) inputChars=\(spokenText.count) syllableCount=\(syllableCount) sourceSamples=\(result.wavSamples.count) renderedSamples=\(samples.count) duration=\(String(format: "%.3f", durationSec))s durationRatio=\(String(format: "%.3f", durationRatio)) peak=\(String(format: "%.3f", snapshot.peak)) zcr=\(String(format: "%.1f", snapshot.zeroCrossingRate)) clicks=\(snapshot.estimatedClickCount) meanDelta=\(String(format: "%.5f", delta)) wavTag=\(wavTag)")
+        AppLog.info("[BubbleSpeechEffect] voiceBased=true mode=singlePassChopper preset=\(preset) agentID=\(agentID ?? "nil") profile=\(profile.rawValue) kind=\(profile.profileKindLabel) synthesisSpeed=\(synthesisSpeed) segmentRate=\(rate) playbackPitch=\(pitch + pitchOffset) minSegment=\(String(format: "%.3f", config.characterTuning.minSegmentDuration)) maxSegment=\(String(format: "%.3f", config.characterTuning.maxSegmentDuration)) guideGain=\(String(format: "%.3f", config.characterTuning.guideGain)) shimmerDepth=\(String(format: "%.3f", config.characterTuning.shimmerDepth)) gapScale=\(String(format: "%.2f", config.characterTuning.gapScale)) inputChars=\(spokenText.count) syllableCount=\(syllableCount) sourceSamples=\(result.wavSamples.count) renderedSamples=\(samples.count) duration=\(String(format: "%.3f", durationSec))s durationRatio=\(String(format: "%.3f", durationRatio)) peak=\(String(format: "%.3f", snapshot.peak)) zcr=\(String(format: "%.1f", snapshot.zeroCrossingRate)) clicks=\(snapshot.estimatedClickCount) meanDelta=\(String(format: "%.5f", delta)) wavTag=\(wavTag)")
         return .played(duration: durationSec)
     }
 

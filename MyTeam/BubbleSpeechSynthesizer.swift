@@ -124,6 +124,7 @@ struct BubbleSpeechConfig: Sendable {
     var waveform: BubbleSpeechWaveform = .triangle
     var speed: Double = 1.0
     var voiceProfile: BubbleSpeechVoiceProfile = .cute
+    var characterTuning: BubbleSpeechCharacterTuning = .neutral
 
     static func from(profile: BubbleSpeechVoiceProfile, speed: Double = 1.0) -> BubbleSpeechConfig {
         BubbleSpeechConfig(
@@ -136,7 +137,8 @@ struct BubbleSpeechConfig: Sendable {
             release: profile.isEffectProfile ? 0.014 : 0.024,
             waveform: profile.waveform,
             speed: speed,
-            voiceProfile: profile
+            voiceProfile: profile,
+            characterTuning: .neutral
         )
     }
 
@@ -240,13 +242,14 @@ enum BubbleSpeechSynthesizer {
         let guideSupport = resample(guide, targetCount: choppedVoice.count)
         let guideEnvelope = smoothedEnvelope(from: guideSupport, window: max(24, sampleRate / 360))
         let maxEnvelope = max(0.001, guideEnvelope.max() ?? 0)
-        let carrierGain: Float = config.voiceProfile.isEffectProfile ? 0.10 : 0.075
+        let guideGain = config.characterTuning.guideGain
+        let shimmerDepth = config.characterTuning.shimmerDepth
 
         for i in choppedVoice.indices {
             let gate = Float(min(1.0, guideEnvelope[i] / maxEnvelope))
-            let guideSample = guideSupport[i] * carrierGain * gate
+            let guideSample = guideSupport[i] * guideGain * gate
             let t = Double(i) / Double(sampleRate)
-            let shimmer = Float(0.97 + 0.03 * sin(2.0 * .pi * 54.0 * t))
+            let shimmer = Float(1.0 - Double(shimmerDepth) + Double(shimmerDepth) * sin(2.0 * .pi * 54.0 * t))
             let shapedVoice = softClip(Double(choppedVoice[i] * shimmer))
             let mixed = shapedVoice + Double(guideSample)
             output.append(Float(max(-0.98, min(0.98, mixed))))
@@ -312,7 +315,7 @@ enum BubbleSpeechSynthesizer {
                 applyChopperEnvelope(&segment, sampleRate: sampleRate, config: config)
                 appendWithCrossfade(segment, to: &output, crossfadeFrames: crossfadeFrames)
 
-                let gapFrames = max(0, Int(config.effectiveGapDuration * 0.62 / safeRate * Double(sampleRate)))
+                let gapFrames = max(0, Int(config.effectiveGapDuration * 0.62 * config.characterTuning.gapScale / safeRate * Double(sampleRate)))
                 if gapFrames > 0 {
                     output.append(contentsOf: [Float](repeating: 0, count: gapFrames))
                 }
@@ -340,8 +343,8 @@ enum BubbleSpeechSynthesizer {
         segmentRate: Double
     ) -> Int {
         let profileDuration = config.effectiveCharDuration / segmentRate
-        let minDuration = config.voiceProfile.isEffectProfile ? 0.026 : 0.034
-        let maxDuration = config.voiceProfile.isEffectProfile ? 0.052 : 0.066
+        let minDuration = config.characterTuning.minSegmentDuration
+        let maxDuration = config.characterTuning.maxSegmentDuration
         let targetDuration = min(maxDuration, max(minDuration, profileDuration))
         let targetCount = Int(targetDuration * Double(sampleRate))
         return max(64, min(max(sourceCount, 64), targetCount))

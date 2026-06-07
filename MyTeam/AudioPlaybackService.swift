@@ -150,7 +150,7 @@ actor AudioPlaybackService: AudioPlayable {
             // 4. 버퍼 스케줄링
             let wasAlreadyPlaying = playerNode.isPlaying
             playerNode.scheduleBuffer(outBuffer, at: nil, options: []) { [weak self] in
-                Task { [weak self] in
+                Task(priority: .userInitiated) { [weak self] in
                     guard let self else { return }
                     await self.decrementBufferCount()
                 }
@@ -159,7 +159,6 @@ actor AudioPlaybackService: AudioPlayable {
 
             // 5. Jitter Pre-buffering: 임계점까지 도달하면 비로소 엔진 start & 재생
             if !playerNode.isPlaying && queuedBufferCount >= playbackStartThreshold {
-                guard ensureEngineReady() else { return }
                 playerNode.play()
                 AppLog.info("[AudioPlayback] ▶️ 재생 개시 (streamId=\(command.streamId.prefix(12)), queuedBuffers=\(queuedBufferCount), engineRunning=\(engine.isRunning), playerPlaying=\(playerNode.isPlaying))")
             }
@@ -167,7 +166,7 @@ actor AudioPlaybackService: AudioPlayable {
             // 🎯 Perfect Lip-Sync: 첫 버퍼가 재생 큐에 등록되는 찰나에 UI 말풍선 트리거
             // wasAlreadyPlaying=false → 이 버퍼가 재생 개시 버퍼 → 텍스트 표시 타이밍 정확
             if !wasAlreadyPlaying, let callback = lipSyncCallback {
-                Task { @MainActor in callback() }
+                Task(priority: .userInitiated) { @MainActor in callback() }
             }
         }
     }
@@ -191,7 +190,19 @@ actor AudioPlaybackService: AudioPlayable {
     }
 
     func prepareSession(streamId: String, characterName: String, pitch: Float, rate: Float) {
-        guard ensureEngineReady() else { return }
+        prepareSession(streamId: streamId, characterName: characterName, pitch: pitch, rate: rate, engineAlreadyReady: false)
+    }
+
+    private func prepareSession(
+        streamId: String,
+        characterName: String,
+        pitch: Float,
+        rate: Float,
+        engineAlreadyReady: Bool
+    ) {
+        if !engineAlreadyReady {
+            guard ensureEngineReady() else { return }
+        }
 
         if currentActiveStreamId != streamId {
             playerNode.stop()
@@ -312,10 +323,10 @@ actor AudioPlaybackService: AudioPlayable {
         }
         channelData[0].update(from: samples, count: Int(frameCount))
 
-        // 3. 세션 준비 (노드 재연결 + currentActiveStreamId 설정)
+        // 3. 세션 준비 (currentActiveStreamId 설정; graph 재구성 없음)
         // Round 258TTS: pitch/rate clamp 적용 후 prepareSession에 전달
         prepareSession(streamId: streamId, characterName: characterName,
-                       pitch: clampedPitch(pitch), rate: clampedRate(rate))
+                       pitch: clampedPitch(pitch), rate: clampedRate(rate), engineAlreadyReady: true)
 
         // 4. 엔진 포맷으로 변환 (모노→스테레오, 샘플레이트 변환 포함)
         guard let outBuffer = convertBuffer(srcBuffer, from: srcFormat, to: ef) else {
@@ -327,15 +338,14 @@ actor AudioPlaybackService: AudioPlayable {
         playerNode.volume = 1.0
         // completionCallbackType 오버로드 사용 — async 대안 경고 없이 콜백 패턴 유지
         playerNode.scheduleBuffer(outBuffer, at: nil, options: [], completionCallbackType: .dataPlayedBack) { [weak self] _ in
-            Task { [weak self] in
+            Task(priority: .userInitiated) { [weak self] in
                 guard let self else { return }
                 await self.decrementBufferCount()
             }
         }
         queuedBufferCount += 1
 
-        // 6. 엔진 시작 + 재생 — playerNode.play() 먼저, 콜백은 그 이후
-        guard ensureEngineReady() else { return false }
+        // 6. 재생 — readiness는 함수 초반 1회 확인했고, 콜백은 playerNode.play() 이후에만 호출
         if !playerNode.isPlaying {
             playerNode.play()
             AppLog.info("[AudioPlayback] ▶️ playFloatSamples 재생 시작 "
@@ -344,7 +354,7 @@ actor AudioPlaybackService: AudioPlayable {
 
         // 7. playerNode.play() 이후 콜백 — 립싱크 원칙 준수
         if let cb = onPlaybackStarted {
-            Task { @MainActor in cb() }
+            Task(priority: .userInitiated) { @MainActor in cb() }
         }
         return true
     }

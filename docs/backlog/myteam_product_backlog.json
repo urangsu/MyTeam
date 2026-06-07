@@ -661,14 +661,18 @@
           "MyTeam/SpeechManager.swift",
           "MyTeam/TTSLabView.swift",
           "MyTeam/TTSProductPolicy.swift",
-          "MyTeam/TTSRoutingPolicy.swift"
+          "MyTeam/TTSRoutingPolicy.swift",
+          "MyTeam/BubbleSpeechSynthesizer.swift",
+          "MyTeam/BubbleSpeechCharacterTuningPolicy.swift",
+          "MyTeam/MyTeam.xcodeproj/project.pbxproj"
         ],
-        "validation_summary": "2026-06-03: Voice tab remains as '음성 Lab' and TTSLabView states it is diagnostic, not a product TTS feature. TTSProductPolicy.userFacingTTSEnabled is false, labOnlyEnabled is true, and canShipAsProductFeature remains gated. Character TTS preview is disabled when provider/model/release gates are absent; audio path test is labeled diagnostic and not real character voice synthesis. Partial because manual confirmation that the audio path test produces audible sound remains.",
+        "validation_summary": "2026-06-07: AudioPlaybackService QoS hot path tightened. scheduleBuffer completion and onPlaybackStarted Task calls now use .userInitiated priority; playFloatSamples performs engine readiness once at function entry and reuses the prepared graph for session setup/scheduling; appendRawPCM no longer rechecks readiness immediately before playerNode.play(). stopAll/endSession still keep the engine graph attached, and detach/disconnect remain termination-only. BubbleSpeechCharacterTuningPolicy added and wired into chopper min/max segment duration, guideGain, shimmerDepth, and gapScale for character/profile tuning prep. Debug/Release builds passed. Partial because live manual smoke and Xcode console QoS warning observation remain.",
         "screenshots": []
       },
       "notes": [
         "This task tracks manual QA after the runtime truth fix. It must not become done until the audio path test is exercised on the macOS app.",
-        "2026-06-03: Commit c7cd7de1a8b96a8654453d7f1c01451302a3aa1b added Settings voice guard copy and TTS Lab guard copy. Manual audio output remains the explicit partial reason."
+        "2026-06-03: Commit c7cd7de1a8b96a8654453d7f1c01451302a3aa1b added Settings voice guard copy and TTS Lab guard copy. Manual audio output remains the explicit partial reason.",
+        "2026-06-07: QoS code hardening complete for default-priority callback tasks and duplicate hot-path readiness checks. Manual smoke must still report QoS priority inversion warning YES/NO, playback failed, engineFormat nil, and buffer drop status before done."
       ]
     },
     {
