@@ -41,6 +41,7 @@ struct MyTeamToolResult: Sendable, Equatable {
     let title: String
     let summary: String
     let sourceLabel: String?
+    let body: String?
     let items: [MyTeamToolResultItem]
     let nextActions: [MyTeamNextAction]
 }

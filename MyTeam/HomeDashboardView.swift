@@ -6,6 +6,10 @@ struct HomeDashboardView: View {
 
     @State private var toolStates: [String: ToolExecutionState] = [:]
     @State private var toolQueries: [String: String] = [
+        "briefing.today": "오늘 업무 브리핑",
+        "document.meetingMinutes": "회의 내용을 붙여넣으세요.",
+        "document.rewrite": "다듬을 문장이나 문서를 붙여넣으세요.",
+        "spreadsheet.postprocess": "표 내용을 붙여넣으세요.",
         "dart.disclosures.search": "포스코",
         "news.search": "경제",
         "weather.current": "서울",
@@ -45,8 +49,8 @@ struct HomeDashboardView: View {
                     ToolActionCardView(
                         descriptor: briefing,
                         state: state(for: briefing),
-                        query: nil,
-                        onRun: nil,
+                        query: queryBinding(for: briefing),
+                        onRun: run,
                         onOpenWorkspace: onOpenWorkspace,
                         onOpenConnection: onOpenConnection
                     )
@@ -162,6 +166,14 @@ struct HomeDashboardView: View {
             return "서울"
         case "law.search":
             return "근로기준법"
+        case "briefing.today":
+            return "오늘 업무 브리핑"
+        case "document.meetingMinutes":
+            return "회의 내용을 붙여넣으세요."
+        case "document.rewrite":
+            return "다듬을 문장이나 문서를 붙여넣으세요."
+        case "spreadsheet.postprocess":
+            return "표 내용을 붙여넣으세요."
         default:
             return ""
         }
@@ -196,7 +208,11 @@ struct HomeDashboardView: View {
             "dart.disclosures.search",
             "news.search",
             "weather.current",
-            "law.search"
+            "law.search",
+            "briefing.today",
+            "document.meetingMinutes",
+            "document.rewrite",
+            "spreadsheet.postprocess"
         ]
     }
 

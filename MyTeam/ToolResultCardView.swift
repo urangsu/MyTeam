@@ -19,6 +19,7 @@ struct ToolResultCardView: View {
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                 }
+                resultBody(result.body)
                 resultItems(result.items)
                 actionButtons(result.nextActions)
             case .failed(let failure):
@@ -74,6 +75,20 @@ struct ToolResultCardView: View {
                 .padding(8)
                 .background(Color(NSColor.windowBackgroundColor), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
             }
+        }
+    }
+
+    @ViewBuilder
+    private func resultBody(_ body: String?) -> some View {
+        if let body, !body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            Text(body)
+                .font(.system(size: 10))
+                .foregroundStyle(.primary)
+                .lineLimit(12)
+                .textSelection(.enabled)
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(NSColor.windowBackgroundColor), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
         }
     }
 
