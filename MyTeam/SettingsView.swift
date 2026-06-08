@@ -221,6 +221,7 @@ struct SettingsView: View {
     @State private var skillSearchText: String = ""
     @State private var skillRefreshToken: UUID = UUID()
     @StateObject private var gps = LocationHelper()
+    @StateObject private var credentialHealthService = CredentialHealthService.shared
 
     private let settingsTabs: [SettingsTabItem] = [
         .init(id: 0, title: "업무", icon: "bolt.fill"),
@@ -642,6 +643,7 @@ struct SettingsView: View {
                     ForEach(filteredSkills, id: \.id) { skill in
                         let isEnabled = SkillRegistry.shared.isSkillEnabled(id: skill.id)
                         let isHighRisk = SkillRegistry.isHighRiskSkill(skill)
+                        let requiredProvider = skillRequiredProvider(skill)
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(skill.name)
@@ -659,6 +661,9 @@ struct SettingsView: View {
                                     .padding(.vertical, 2)
                                     .background(Color.orange.opacity(0.15))
                                     .cornerRadius(4)
+                            }
+                            if let requiredProvider {
+                                skillConnectionButton(for: requiredProvider)
                             }
                             Toggle("", isOn: Binding(
                                 get: { isEnabled },
@@ -687,6 +692,67 @@ struct SettingsView: View {
             }
             .formStyle(.grouped)
             .scrollContentBackground(.hidden)
+        }
+    }
+
+    private func skillRequiredProvider(_ skill: SkillManifest) -> ExternalProvider? {
+        switch skill.id {
+        case "korean.weather", "korean.fine-dust":
+            return .kmaWeather
+        case "korean.naver-news", "korean.naver-blog-research":
+            return .naverNews
+        case "korean.dart":
+            return .dartDisclosure
+        case "korean.law-search":
+            return .koreanLaw
+        default:
+            return nil
+        }
+    }
+
+    @ViewBuilder
+    private func skillConnectionButton(for provider: ExternalProvider) -> some View {
+        let health = credentialHealthService.health(for: provider)
+        Button {
+            focusedConnectionProvider = provider
+            currentTab = 2
+        } label: {
+            Image(systemName: skillConnectionIcon(for: health.state))
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(skillConnectionColor(for: health.state))
+                .frame(width: 24, height: 24)
+                .background(
+                    Circle()
+                        .fill(skillConnectionColor(for: health.state).opacity(0.12))
+                )
+        }
+        .buttonStyle(.plain)
+        .help("\(provider.displayName): \(health.state.displayLabel)")
+    }
+
+    private func skillConnectionIcon(for state: CredentialHealthState) -> String {
+        switch state {
+        case .connected:
+            return "key.fill"
+        case .untested, .testUnavailable:
+            return "key"
+        case .testFailed:
+            return "exclamationmark.triangle.fill"
+        case .notConnected:
+            return "key.slash"
+        }
+    }
+
+    private func skillConnectionColor(for state: CredentialHealthState) -> Color {
+        switch state {
+        case .connected:
+            return .green
+        case .untested, .testUnavailable:
+            return .blue
+        case .testFailed:
+            return .orange
+        case .notConnected:
+            return .secondary
         }
     }
 

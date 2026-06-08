@@ -12,6 +12,7 @@ MyTeam is a commercial macOS app with a free entry path and future expansion thr
 - Never store API keys in UserDefaults or plain text.
 - Never expose developer diagnostics, Playwright MCP, `node`, `npx`, or external subprocess features in Release/App Store profile.
 - Never modify existing character roles, Chiko persona, character tone, or personality unless explicitly requested.
+- Character lines must not scold, guilt, shame, or make the user feel blamed. Remove lines that could read as user-hostile, such as demanding warnings or implying the user caused trouble. Prefer character-appropriate, witty, warm lines; detailed persona tuning can be refined later.
 - Never reintroduce non-Supertonic TTS models, ElevenLabs, Apple TTS fallback, Chatterbox, Qwen TTS, or MLX TTS.
 - MyTeam's main TTS engine is Supertonic3. Never remove, stub, hide, downgrade, or "clean up" Supertonic3 runtime, routing, model locator, voice profile, tuning, ONNX integration, or playback integration without explicit user instruction.
 - BubbleSpeech / `뽀글뽀글 말하기` is a protected character voice effect layer: it is not a replacement TTS model and not a fallback. It must remain as the procedural syllable speech effect layered onto or tuned around generated Supertonic3 character voice. Never delete BubbleSpeech files, toggles, profile logic, preview paths, or overlay paths; improve/overlay/harden them instead.
