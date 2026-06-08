@@ -108,15 +108,38 @@ struct ToolActionCardView: View {
     }
 
     private var supportsInlineRun: Bool {
-        descriptor.id == "dart.disclosures.search" || descriptor.id == "news.search"
+        switch descriptor.id {
+        case "dart.disclosures.search", "news.search", "weather.current", "law.search":
+            return true
+        default:
+            return false
+        }
     }
 
     private var runtimeButtonTitle: String {
-        descriptor.id == "dart.disclosures.search" ? "조회" : "검색"
+        switch descriptor.id {
+        case "dart.disclosures.search", "weather.current":
+            return "조회"
+        case "law.search", "news.search":
+            return "검색"
+        default:
+            return "실행"
+        }
     }
 
     private var defaultQuery: String {
-        descriptor.id == "dart.disclosures.search" ? "포스코" : "경제"
+        switch descriptor.id {
+        case "dart.disclosures.search":
+            return "포스코"
+        case "news.search":
+            return "경제"
+        case "weather.current":
+            return "서울"
+        case "law.search":
+            return "근로기준법"
+        default:
+            return ""
+        }
     }
 
     private var tint: Color {

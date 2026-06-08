@@ -3,6 +3,7 @@ import AppKit
 
 struct ToolResultCardView: View {
     let state: ToolExecutionState
+    let onAction: ((MyTeamNextAction) -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -80,17 +81,31 @@ struct ToolResultCardView: View {
         HStack(spacing: 8) {
             ForEach(actions) { action in
                 if action.role == .normal {
-                    Button(action.title) {}
+                    Button(action.title) {
+                        onAction?(action)
+                    }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
-                        .disabled(true)
+                        .disabled(!isActionEnabled(action))
                 } else {
-                    Button(action.title) {}
+                    Button(action.title) {
+                        onAction?(action)
+                    }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
-                        .disabled(true)
+                        .disabled(!isActionEnabled(action))
                 }
             }
+        }
+    }
+
+    private func isActionEnabled(_ action: MyTeamNextAction) -> Bool {
+        guard onAction != nil else { return false }
+        switch action.id {
+        case "openConnection", "checkConnection", "searchAgain", "extendRange", "changeKeyword":
+            return true
+        default:
+            return false
         }
     }
 }

@@ -7,13 +7,17 @@ struct HomeDashboardView: View {
     @State private var toolStates: [String: ToolExecutionState] = [:]
     @State private var toolQueries: [String: String] = [
         "dart.disclosures.search": "포스코",
-        "news.search": "경제"
+        "news.search": "경제",
+        "weather.current": "서울",
+        "law.search": "근로기준법"
     ]
     @State private var selectedState: ToolExecutionState? = nil
+    @State private var selectedDescriptor: MyTeamToolDescriptor? = nil
 
     private let quickToolIDs = [
         "document.meetingMinutes",
         "spreadsheet.postprocess",
+        "weather.current",
         "dart.disclosures.search",
         "news.search",
         "law.search",
@@ -85,7 +89,10 @@ struct HomeDashboardView: View {
                 }
 
                 if let selectedState {
-                    ToolResultCardView(state: selectedState)
+                    ToolResultCardView(
+                        state: selectedState,
+                        onAction: handleResultAction
+                    )
                 }
             }
             .padding(16)
@@ -136,7 +143,7 @@ struct HomeDashboardView: View {
     }
 
     private func queryBinding(for descriptor: MyTeamToolDescriptor) -> Binding<String>? {
-        guard descriptor.id == "dart.disclosures.search" || descriptor.id == "news.search" else {
+        guard inlineRunnableToolIDs.contains(descriptor.id) else {
             return nil
         }
         return Binding(
@@ -146,7 +153,18 @@ struct HomeDashboardView: View {
     }
 
     private func defaultQuery(for descriptor: MyTeamToolDescriptor) -> String {
-        descriptor.id == "dart.disclosures.search" ? "포스코" : "경제"
+        switch descriptor.id {
+        case "dart.disclosures.search":
+            return "포스코"
+        case "news.search":
+            return "경제"
+        case "weather.current":
+            return "서울"
+        case "law.search":
+            return "근로기준법"
+        default:
+            return ""
+        }
     }
 
     private func run(_ descriptor: MyTeamToolDescriptor, query: String) {
@@ -154,18 +172,43 @@ struct HomeDashboardView: View {
             await MainActor.run {
                 toolStates[descriptor.id] = .running
                 selectedState = nil
+                selectedDescriptor = descriptor
             }
             let input = MyTeamToolInput(
                 query: query,
                 daysBack: descriptor.id == "dart.disclosures.search" ? 30 : nil,
                 displayCount: descriptor.id == "news.search" ? 5 : nil,
+                nx: descriptor.id == "weather.current" ? 60 : nil,
+                ny: descriptor.id == "weather.current" ? 127 : nil,
                 providerHint: descriptor.requiredCredential?.provider
             )
             let result = await ToolExecutionRouter.shared.run(descriptor, input: input)
             await MainActor.run {
                 toolStates[descriptor.id] = result
                 selectedState = result
+                selectedDescriptor = descriptor
             }
+        }
+    }
+
+    private var inlineRunnableToolIDs: Set<String> {
+        [
+            "dart.disclosures.search",
+            "news.search",
+            "weather.current",
+            "law.search"
+        ]
+    }
+
+    private func handleResultAction(_ action: MyTeamNextAction) {
+        guard let descriptor = selectedDescriptor else { return }
+        switch action.id {
+        case "openConnection", "checkConnection":
+            onOpenConnection(descriptor.requiredCredential?.provider)
+        case "searchAgain", "extendRange", "changeKeyword":
+            run(descriptor, query: toolQueries[descriptor.id] ?? defaultQuery(for: descriptor))
+        default:
+            break
         }
     }
 }

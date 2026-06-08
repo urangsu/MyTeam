@@ -55,6 +55,10 @@ actor ToolExecutionRouter {
             return await runDART(input: input)
         case "news.search":
             return await runNaverNews(input: input)
+        case "weather.current":
+            return await runKMAWeather(input: input)
+        case "law.search":
+            return await runKoreanLaw(input: input)
         default:
             return .unavailable("이 업무는 아직 실행 연결 전입니다.")
         }
@@ -167,6 +171,97 @@ actor ToolExecutionRouter {
         }
     }
 
+    private func runKMAWeather(input: MyTeamToolInput) async -> ToolExecutionState {
+        let provider = ExternalProvider.kmaWeather
+        guard let serviceKey = await credentialValue(provider: provider, fieldID: "serviceKey") else {
+            return .needsConnection(provider)
+        }
+        let nx = input.nx ?? 60
+        let ny = input.ny ?? 127
+
+        do {
+            let observations = try await KMAWeatherDirectConnector.ultraShortNowcast(
+                serviceKey: serviceKey,
+                nx: nx,
+                ny: ny
+            )
+            let summaryParts = weatherSummaryParts(from: observations)
+            return .succeeded(MyTeamToolResult(
+                title: "현재 날씨를 확인했습니다",
+                summary: summaryParts.isEmpty
+                    ? "기상청 초단기실황 \(observations.count)개 항목을 가져왔습니다."
+                    : summaryParts.joined(separator: " · "),
+                sourceLabel: "기상청 초단기실황",
+                items: observations.prefix(5).map { observation in
+                    MyTeamToolResultItem(
+                        id: "\(observation.category)-\(observation.baseDate)-\(observation.baseTime)",
+                        title: weatherTitle(for: observation.category),
+                        subtitle: "\(observation.value)\(weatherUnit(for: observation.category))",
+                        metadata: "기준 \(observation.baseDate) \(observation.baseTime) · 격자 \(nx),\(ny)",
+                        sourceURL: kmaOfficialURL()
+                    )
+                },
+                nextActions: [
+                    MyTeamNextAction(id: "searchAgain", title: "다시 조회", role: .normal),
+                    MyTeamNextAction(id: "checkConnection", title: "연결 확인", role: .normal)
+                ]
+            ))
+        } catch {
+            return failureState(error, provider: provider)
+        }
+    }
+
+    private func runKoreanLaw(input: MyTeamToolInput) async -> ToolExecutionState {
+        let provider = ExternalProvider.koreanLaw
+        guard let lawOC = await credentialValue(provider: provider, fieldID: "lawOC") else {
+            return .needsConnection(provider)
+        }
+        let query = sanitizedQuery(input.query, fallback: "근로기준법")
+
+        do {
+            let results = try await KoreanLawDirectConnector.search(
+                KoreanLawSearchRequest(query: query, lawName: nil, article: nil),
+                lawOC: lawOC
+            )
+            if results.isEmpty {
+                return .succeeded(MyTeamToolResult(
+                    title: "법령 검색 결과가 없습니다",
+                    summary: "'\(query)' 기준 공식 법령 검색 결과를 찾지 못했습니다.",
+                    sourceLabel: "국가법령정보센터",
+                    items: [],
+                    nextActions: [
+                        MyTeamNextAction(id: "changeKeyword", title: "키워드 바꾸기", role: .normal),
+                        MyTeamNextAction(id: "checkConnection", title: "연결 확인", role: .normal)
+                    ]
+                ))
+            }
+
+            return .succeeded(MyTeamToolResult(
+                title: "공식 법령 검색 결과입니다",
+                summary: "법률 자문이 아닌 공식 출처 기반 검색 결과 \(results.count)건입니다. 조문 검증은 별도 확인이 필요합니다.",
+                sourceLabel: "국가법령정보센터 · partial",
+                items: results.prefix(5).map { result in
+                    MyTeamToolResultItem(
+                        id: "\(result.lawName)-\(result.effectiveDate ?? "unknown")",
+                        title: result.lawName,
+                        subtitle: result.summary,
+                        metadata: [
+                            result.effectiveDate.map { "시행일 \($0)" },
+                            "검증 상태 \(result.verificationStatus)"
+                        ].compactMap(\.self).joined(separator: " · "),
+                        sourceURL: result.officialSourceURL
+                    )
+                },
+                nextActions: [
+                    MyTeamNextAction(id: "searchAgain", title: "다시 검색", role: .normal),
+                    MyTeamNextAction(id: "checkConnection", title: "연결 확인", role: .normal)
+                ]
+            ))
+        } catch {
+            return failureState(error, provider: provider)
+        }
+    }
+
     private func credentialValue(provider: ExternalProvider, fieldID: String) async -> String? {
         await MainActor.run {
             guard
@@ -183,6 +278,52 @@ actor ToolExecutionRouter {
     private func sanitizedQuery(_ query: String?, fallback: String) -> String {
         let trimmed = query?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmed.isEmpty ? fallback : trimmed
+    }
+
+    private func weatherSummaryParts(from observations: [KMAWeatherDirectObservation]) -> [String] {
+        observations.compactMap { observation in
+            switch observation.category {
+            case "T1H":
+                return "기온 \(observation.value)℃"
+            case "RN1":
+                return "1시간 강수량 \(observation.value)mm"
+            case "REH":
+                return "습도 \(observation.value)%"
+            case "WSD":
+                return "풍속 \(observation.value)m/s"
+            default:
+                return nil
+            }
+        }
+    }
+
+    private func weatherTitle(for category: String) -> String {
+        switch category {
+        case "T1H": return "기온"
+        case "RN1": return "1시간 강수량"
+        case "UUU": return "동서바람성분"
+        case "VVV": return "남북바람성분"
+        case "REH": return "습도"
+        case "PTY": return "강수형태"
+        case "VEC": return "풍향"
+        case "WSD": return "풍속"
+        default: return category
+        }
+    }
+
+    private func weatherUnit(for category: String) -> String {
+        switch category {
+        case "T1H": return "℃"
+        case "RN1": return "mm"
+        case "REH": return "%"
+        case "WSD", "UUU", "VVV": return "m/s"
+        case "VEC": return "°"
+        default: return ""
+        }
+    }
+
+    private func kmaOfficialURL() -> URL? {
+        URL(string: "https://www.data.go.kr/tcs/dss/selectApiDataDetailView.do?publicDataPk=15084084")
     }
 
     private func failureState(_ error: Error, provider: ExternalProvider) -> ToolExecutionState {

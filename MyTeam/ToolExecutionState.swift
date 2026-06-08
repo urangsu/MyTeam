@@ -4,17 +4,23 @@ struct MyTeamToolInput: Sendable, Equatable {
     var query: String?
     var daysBack: Int?
     var displayCount: Int?
+    var nx: Int?
+    var ny: Int?
     var providerHint: ExternalProvider?
 
     nonisolated init(
         query: String? = nil,
         daysBack: Int? = nil,
         displayCount: Int? = nil,
+        nx: Int? = nil,
+        ny: Int? = nil,
         providerHint: ExternalProvider? = nil
     ) {
         self.query = query
         self.daysBack = daysBack
         self.displayCount = displayCount
+        self.nx = nx
+        self.ny = ny
         self.providerHint = providerHint
     }
 }
