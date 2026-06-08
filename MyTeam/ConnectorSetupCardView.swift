@@ -116,6 +116,8 @@ struct ConnectorSetupCardView: View {
                 .foregroundStyle(statusColor)
             }
 
+            usedByFeaturesView
+
             if isEditing {
                 VStack(alignment: .leading, spacing: 6) {
                     VStack(alignment: .leading, spacing: 7) {
@@ -220,7 +222,7 @@ struct ConnectorSetupCardView: View {
         if let testResultMessage { return testResultMessage }
         switch health.state {
         case .notConnected:
-            return nil
+            return "이 기능을 사용하려면 연결이 필요합니다."
         case .untested:
             return provider.hasLiveCredentialValidator
                 ? "키는 저장됐습니다. 실제 사용 가능 여부는 검증 버튼으로 확인하세요."
@@ -230,7 +232,27 @@ struct ConnectorSetupCardView: View {
         case .testFailed(let code):
             return code.userMessage(for: provider)
         case .connected:
-            return "실제 연결 확인을 통과했습니다."
+            return "이 연결을 사용하는 기능을 실행할 수 있습니다."
+        }
+    }
+
+    private var usedByFeaturesView: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text("사용되는 기능")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 72), spacing: 5)], alignment: .leading, spacing: 5) {
+                ForEach(MyTeamToolRegistry.providerUsageLabels(for: provider), id: \.self) { label in
+                    Text(label)
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(Color.secondary.opacity(0.08)))
+                }
+            }
         }
     }
 

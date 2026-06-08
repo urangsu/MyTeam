@@ -222,11 +222,12 @@ struct SettingsView: View {
     @StateObject private var gps = LocationHelper()
 
     private let settingsTabs: [SettingsTabItem] = [
-        .init(id: 0, title: "사용자", icon: "person.fill"),
-        .init(id: 1, title: "연결", icon: "link"),
-        .init(id: 2, title: "스킬", icon: "square.stack.3d.up"),
-        .init(id: 3, title: "캐릭터", icon: "person.2.fill"),
-        .init(id: 4, title: "음성", icon: "waveform")
+        .init(id: 0, title: "기능", icon: "bolt.fill"),
+        .init(id: 1, title: "사용자", icon: "person.fill"),
+        .init(id: 2, title: "연결", icon: "link"),
+        .init(id: 3, title: "스킬", icon: "square.stack.3d.up"),
+        .init(id: 4, title: "캐릭터", icon: "person.2.fill"),
+        .init(id: 5, title: "음성", icon: "waveform")
     ]
 
     var body: some View {
@@ -251,12 +252,13 @@ struct SettingsView: View {
             // ── 탭 콘텐츠
             Group {
                 switch currentTab {
-                case 0: userSettingsTab
-                case 1: connectionCenterTab
-                case 2: skillsTab
-                case 3: charactersTab
-                case 4: TTSLabView()
-                default: userSettingsTab
+                case 0: homeDashboardTab
+                case 1: userSettingsTab
+                case 2: connectionCenterTab
+                case 3: skillsTab
+                case 4: charactersTab
+                case 5: TTSLabView()
+                default: homeDashboardTab
                 }
             }
         }
@@ -273,7 +275,14 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Tab 1: 사용자 설정
+    // MARK: - Tab 1: 기능 홈
+    private var homeDashboardTab: some View {
+        HomeDashboardView(onOpenConnection: {
+            currentTab = 2
+        })
+    }
+
+    // MARK: - Tab 2: 사용자 설정
     private var userSettingsTab: some View {
         Form {
             Section("기본 정보") {
