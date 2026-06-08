@@ -7882,6 +7882,14 @@
 				<string>KLW001DIRECTCONNECTFILE</string>
 				<string>KLW002LEGALCARDFILE</string>
 				<string>SKPKG003REGISTRYFILE0001</string>
+				<string>TLF001DISTRIBUTIONFILE</string>
+				<string>TLF002PERMISSIONFILE</string>
+				<string>TLF003EXECSTATEFILE</string>
+				<string>TLF004REGISTRYFILE</string>
+				<string>TLF005ROUTERFILE</string>
+				<string>TLF006ACTIONCARDFILE</string>
+				<string>TLF007RESULTCARDFILE</string>
+				<string>TLF008HOMEDASHFILE</string>
 				<string>E3BCED940DAD6E0579E695D1</string>
 				<string>E3BCED940DAD6E0579E695D2</string>
 				<string>E3BCED940DAD6E0579E695D3</string>
@@ -9421,6 +9429,14 @@
 				<string>KLW001DIRECTCONNECTBUILD</string>
 				<string>KLW002LEGALCARDBUILD</string>
 				<string>SKPKG004REGISTRYAPPBUILD</string>
+				<string>TLB001DISTRIBUTIONBLD</string>
+				<string>TLB002PERMISSIONBLD</string>
+				<string>TLB003EXECSTATEBLD</string>
+				<string>TLB004REGISTRYBLD</string>
+				<string>TLB005ROUTERBLD</string>
+				<string>TLB006ACTIONCARDBLD</string>
+				<string>TLB007RESULTCARDBLD</string>
+				<string>TLB008HOMEDASHBLD</string>
 				<string>E3BCED940DAD6E0579E695DD</string>
 				<string>E3BCED940DAD6E0579E695DE</string>
 				<string>E3BCED940DAD6E0579E695DF</string>
@@ -17386,6 +17402,182 @@
 		<dict>
 			<key>fileRef</key>
 			<string>SKPKG003REGISTRYFILE0001</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>TLF001DISTRIBUTIONFILE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>DistributionChannel.swift</string>
+			<key>path</key>
+			<string>DistributionChannel.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>TLF002PERMISSIONFILE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>ToolPermissionPolicy.swift</string>
+			<key>path</key>
+			<string>ToolPermissionPolicy.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>TLF003EXECSTATEFILE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>ToolExecutionState.swift</string>
+			<key>path</key>
+			<string>ToolExecutionState.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>TLF004REGISTRYFILE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>MyTeamToolRegistry.swift</string>
+			<key>path</key>
+			<string>MyTeamToolRegistry.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>TLF005ROUTERFILE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>ToolExecutionRouter.swift</string>
+			<key>path</key>
+			<string>ToolExecutionRouter.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>TLF006ACTIONCARDFILE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>ToolActionCardView.swift</string>
+			<key>path</key>
+			<string>ToolActionCardView.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>TLF007RESULTCARDFILE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>ToolResultCardView.swift</string>
+			<key>path</key>
+			<string>ToolResultCardView.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>TLF008HOMEDASHFILE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>HomeDashboardView.swift</string>
+			<key>path</key>
+			<string>HomeDashboardView.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>TLB001DISTRIBUTIONBLD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>TLF001DISTRIBUTIONFILE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>TLB002PERMISSIONBLD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>TLF002PERMISSIONFILE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>TLB003EXECSTATEBLD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>TLF003EXECSTATEFILE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>TLB004REGISTRYBLD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>TLF004REGISTRYFILE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>TLB005ROUTERBLD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>TLF005ROUTERFILE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>TLB006ACTIONCARDBLD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>TLF006ACTIONCARDFILE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>TLB007RESULTCARDBLD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>TLF007RESULTCARDFILE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>TLB008HOMEDASHBLD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>TLF008HOMEDASHFILE</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>

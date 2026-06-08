@@ -26,7 +26,7 @@ enum ConnectorExecutionMode: String, Sendable {
 // MARK: - ExternalProvider
 
 /// MyTeam이 연결할 수 있는 외부 서비스 provider 목록.
-enum ExternalProvider: String, Codable, CaseIterable, Sendable {
+enum ExternalProvider: String, Codable, CaseIterable, Sendable, Hashable {
     // AI 모델
     case openAI        = "openAI"
     case gemini        = "gemini"
