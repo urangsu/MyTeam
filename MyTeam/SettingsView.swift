@@ -217,12 +217,13 @@ struct SettingsView: View {
     @State private var dailyBriefingRefreshToken = UUID()
 
     @State private var currentTab: Int = 0
+    @State private var focusedConnectionProvider: ExternalProvider? = nil
     @State private var skillSearchText: String = ""
     @State private var skillRefreshToken: UUID = UUID()
     @StateObject private var gps = LocationHelper()
 
     private let settingsTabs: [SettingsTabItem] = [
-        .init(id: 0, title: "기능", icon: "bolt.fill"),
+        .init(id: 0, title: "업무", icon: "bolt.fill"),
         .init(id: 1, title: "사용자", icon: "person.fill"),
         .init(id: 2, title: "연결", icon: "link"),
         .init(id: 3, title: "스킬", icon: "square.stack.3d.up"),
@@ -261,6 +262,7 @@ struct SettingsView: View {
                 default: homeDashboardTab
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .preferredColorScheme(manager.isDarkMode ? .dark : .light)
         .frame(minWidth: 560, minHeight: 500)
@@ -277,8 +279,11 @@ struct SettingsView: View {
 
     // MARK: - Tab 1: 기능 홈
     private var homeDashboardTab: some View {
-        HomeDashboardView(onOpenConnection: {
+        HomeDashboardView(onOpenConnection: { provider in
+            focusedConnectionProvider = provider
             currentTab = 2
+        }, onOpenWorkspace: { descriptor in
+            currentTab = descriptor.category == .voice ? 5 : 3
         })
     }
 
@@ -415,7 +420,7 @@ struct SettingsView: View {
 
     // MARK: - Tab 2: 연결 센터
     private var connectionCenterTab: some View {
-        ConnectionCenterView()
+        ConnectionCenterView(focusedProvider: focusedConnectionProvider)
     }
 
     // MARK: - Tab 2 (Legacy): API 설정 — 개발자 모드에서만 노출

@@ -32,7 +32,7 @@ struct ConnectorSetupCardView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: providerIcon)
                     .font(.system(size: 13, weight: .semibold))
@@ -43,12 +43,12 @@ struct ConnectorSetupCardView: View {
                     HStack(spacing: 6) {
                         Text(provider.displayName)
                             .font(.system(size: 13, weight: .semibold))
+                            .lineLimit(1)
                         stateBadge
                         if health.state != .notConnected && !health.state.isConnected {
                             storedBadge
                         }
                     }
-                    executionModeBadges
                 }
                 .help(provider.description)
 
@@ -70,8 +70,18 @@ struct ConnectorSetupCardView: View {
                     Text(healthService.health(for: provider).maskedKey)
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
 
                     Spacer()
+
+                    Button {
+                        isEditing = true
+                    } label: {
+                        Label("키 변경", systemImage: "key.fill")
+                            .font(.system(size: 10, weight: .medium))
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
 
                     Button(action: runTest) {
                         if isTesting {
@@ -108,15 +118,13 @@ struct ConnectorSetupCardView: View {
                 Label {
                     Text(message)
                         .font(.system(size: 11))
-                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(2)
                 } icon: {
                     Image(systemName: statusIcon)
                         .font(.system(size: 10, weight: .semibold))
                 }
                 .foregroundStyle(statusColor)
             }
-
-            usedByFeaturesView
 
             if isEditing {
                 VStack(alignment: .leading, spacing: 6) {
@@ -162,20 +170,6 @@ struct ConnectorSetupCardView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
-                    } else {
-                        Button {
-                            isEditing = true
-                        } label: {
-                            Label("키 변경", systemImage: "key.fill")
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                    }
-
-                    if health.state == .notConnected {
-                        Text("키 없이도 로컬 기능은 사용할 수 있습니다.")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -222,62 +216,22 @@ struct ConnectorSetupCardView: View {
         if let testResultMessage { return testResultMessage }
         switch health.state {
         case .notConnected:
-            return "이 기능을 사용하려면 연결이 필요합니다."
+            return nil
         case .untested:
             return provider.hasLiveCredentialValidator
-                ? "키는 저장됐습니다. 실제 사용 가능 여부는 검증 버튼으로 확인하세요."
-                : "키는 저장됐습니다. 이 provider는 아직 자동 검증 준비 중입니다."
+                ? "저장됨. 검증을 누르면 실제 연결 여부를 확인합니다."
+                : "저장됨. 자동 검증은 준비 중입니다."
         case .testUnavailable:
-            return "\(provider.displayName)은 자동 검증기가 아직 없습니다. 오늘 수동 API 테스트를 위해 키 저장과 삭제는 유지됩니다."
+            return "저장됨. 자동 검증은 준비 중입니다."
         case .testFailed(let code):
             return code.userMessage(for: provider)
         case .connected:
-            return "이 연결을 사용하는 기능을 실행할 수 있습니다."
-        }
-    }
-
-    private var usedByFeaturesView: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text("사용되는 기능")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.secondary)
-
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 72), spacing: 5)], alignment: .leading, spacing: 5) {
-                ForEach(MyTeamToolRegistry.providerUsageLabels(for: provider), id: \.self) { label in
-                    Text(label)
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .background(Capsule().fill(Color.secondary.opacity(0.08)))
-                }
-            }
+            return nil
         }
     }
 
     private var validationButtonIcon: String {
         provider.hasLiveCredentialValidator ? "checkmark.circle" : "key.viewfinder"
-    }
-
-    private var executionModeBadges: some View {
-        HStack(spacing: 5) {
-            Text("개인 키 연결 가능")
-                .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(.blue)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(Capsule().fill(Color.blue.opacity(0.10)))
-
-            if provider.executionModes.contains(.proxyPlanned) {
-                Text("기본 조회 준비 중")
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(Color.secondary.opacity(0.08)))
-            }
-        }
     }
 
     private var statusIcon: String {

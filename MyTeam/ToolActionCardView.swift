@@ -3,11 +3,11 @@ import SwiftUI
 struct ToolActionCardView: View {
     let descriptor: MyTeamToolDescriptor
     let state: ToolExecutionState
-    let onRun: () -> Void
-    let onOpenConnection: (() -> Void)?
+    let onOpenWorkspace: (MyTeamToolDescriptor) -> Void
+    let onOpenConnection: ((ExternalProvider?) -> Void)?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: iconName)
                     .font(.system(size: 14, weight: .semibold))
@@ -18,6 +18,7 @@ struct ToolActionCardView: View {
                     HStack(spacing: 6) {
                         Text(descriptor.displayName)
                             .font(.system(size: 13, weight: .semibold))
+                            .lineLimit(1)
                         stateBadge
                     }
 
@@ -30,35 +31,35 @@ struct ToolActionCardView: View {
                 Spacer(minLength: 0)
             }
 
-            if let provider = descriptor.requiredCredential?.provider {
-                Label(provider.displayName, systemImage: "link")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.secondary)
-            }
-
             HStack {
+                if let provider = descriptor.requiredCredential?.provider {
+                    Text(provider.displayName)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 0)
+
                 if case .needsConnection = state {
-                    Button("연결 설정", action: { onOpenConnection?() })
+                    Button("연결", action: { onOpenConnection?(descriptor.requiredCredential?.provider) })
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                 } else if case .needsValidation = state {
-                    Button("검증하기", action: { onOpenConnection?() })
+                    Button("검증", action: { onOpenConnection?(descriptor.requiredCredential?.provider) })
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                 } else {
                     if state.isRunnable {
-                        Button(buttonTitle, action: onRun)
+                        Button(buttonTitle, action: { onOpenWorkspace(descriptor) })
                             .buttonStyle(.borderedProminent)
                             .controlSize(.small)
                     } else {
-                        Button(buttonTitle, action: onRun)
+                        Button(buttonTitle, action: { onOpenWorkspace(descriptor) })
                             .buttonStyle(.bordered)
                             .controlSize(.small)
                             .disabled(true)
                     }
                 }
-
-                Spacer()
             }
         }
         .padding(12)
@@ -80,11 +81,13 @@ struct ToolActionCardView: View {
     }
 
     private var buttonTitle: String {
-        switch descriptor.permissionLevel {
-        case .readOnly, .draftOnly:
-            return "시작"
-        case .writeRequiresApproval, .destructiveRequiresApproval, .externalSendRequiresApproval:
-            return "승인 후 시작"
+        switch descriptor.category {
+        case .briefing, .document, .spreadsheet, .externalInfo, .calendar, .mail:
+            return "스킬"
+        case .voice:
+            return "음성"
+        case .system:
+            return "열기"
         }
     }
 

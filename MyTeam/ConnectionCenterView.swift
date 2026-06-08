@@ -5,6 +5,8 @@ import SwiftUI
 /// 연결 센터 — 외부 서비스를 연결하는 메인 허브.
 /// 개발자 설정처럼 보이지 않고, 카드형 연결 가이드로 구성됩니다.
 struct ConnectionCenterView: View {
+    let focusedProvider: ExternalProvider?
+
     @StateObject private var healthService = CredentialHealthService.shared
 
     private let aiProviders: [ExternalProvider] = [.gemini, .openAI, .anthropic, .openRouter]
@@ -18,34 +20,51 @@ struct ConnectionCenterView: View {
         aiProviders.filter { healthService.health(for: $0).state != .notConnected }.count
     }
 
+    private var focusedProviderSection: some View {
+        Group {
+            if let focusedProvider {
+                VStack(alignment: .leading, spacing: 8) {
+                    sectionHeader(
+                        icon: "target",
+                        title: "\(focusedProvider.displayName) 연결",
+                        subtitle: "방금 선택한 업무에 필요한 연결입니다."
+                    )
+                    ConnectorSetupCardView(provider: focusedProvider)
+                }
+            }
+        }
+    }
+
+    private var visibleAIProviders: [ExternalProvider] {
+        aiProviders.filter { $0 != focusedProvider }
+    }
+
+    private var visibleDataProviders: [ExternalProvider] {
+        dataProviders.filter { $0 != focusedProvider }
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header
 
+                focusedProviderSection
+
                 providerSection(
                     icon: "sparkles",
                     title: "AI 모델",
                     subtitle: "대화, 문서 작성, 분석에 사용합니다. 하나만 검증돼도 MyTeam을 사용할 수 있습니다.",
-                    providers: aiProviders
+                    providers: visibleAIProviders
                 )
 
                 routingSection
 
-                DisclosureGroup {
-                    VStack(spacing: 8) {
-                        ForEach(dataProviders, id: \.rawValue) { provider in
-                            ConnectorSetupCardView(provider: provider)
-                        }
-                    }
-                    .padding(.top, 8)
-                } label: {
-                    sectionHeader(
-                        icon: "building.columns.fill",
-                        title: "추가 데이터 연결",
-                        subtitle: "날씨, 뉴스, 공시, 법령은 개인 키로 직접 연결할 수 있습니다."
-                    )
-                }
+                providerSection(
+                    icon: "building.columns.fill",
+                    title: "데이터 연결",
+                    subtitle: "날씨, 뉴스, 공시, 법령을 개인 키로 직접 연결합니다.",
+                    providers: visibleDataProviders
+                )
 
                 requirementNoticeView
 

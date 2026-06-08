@@ -1,10 +1,10 @@
 import SwiftUI
 
 struct HomeDashboardView: View {
-    let onOpenConnection: () -> Void
+    let onOpenConnection: (ExternalProvider?) -> Void
+    let onOpenWorkspace: (MyTeamToolDescriptor) -> Void
 
     @State private var toolStates: [String: ToolExecutionState] = [:]
-    @State private var selectedState: ToolExecutionState? = nil
 
     private let quickToolIDs = [
         "document.meetingMinutes",
@@ -29,32 +29,32 @@ struct HomeDashboardView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 16) {
                 header
 
                 if let briefing = MyTeamToolRegistry.descriptor(id: "briefing.today") {
                     ToolActionCardView(
                         descriptor: briefing,
                         state: state(for: briefing),
-                        onRun: { run(briefing) },
+                        onOpenWorkspace: onOpenWorkspace,
                         onOpenConnection: onOpenConnection
                     )
                 }
 
-                dashboardSection(title: "빠른 실행", subtitle: "업무명으로 바로 시작합니다.") {
+                dashboardSection(title: "업무 바로가기") {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 10)], spacing: 10) {
                         ForEach(quickTools) { descriptor in
                             ToolActionCardView(
                                 descriptor: descriptor,
                                 state: state(for: descriptor),
-                                onRun: { run(descriptor) },
+                                onOpenWorkspace: onOpenWorkspace,
                                 onOpenConnection: onOpenConnection
                             )
                         }
                     }
                 }
 
-                dashboardSection(title: "연결 필요", subtitle: "개인 키 저장과 실제 검증을 분리해서 표시합니다.") {
+                dashboardSection(title: "연결이 필요한 업무") {
                     if connectionTools.isEmpty {
                         Text("지금 바로 연결이 필요한 기능은 없습니다.")
                             .font(.system(size: 11))
@@ -65,28 +65,16 @@ struct HomeDashboardView: View {
                                 ToolActionCardView(
                                     descriptor: descriptor,
                                     state: state(for: descriptor),
-                                    onRun: { run(descriptor) },
+                                    onOpenWorkspace: onOpenWorkspace,
                                     onOpenConnection: onOpenConnection
                                 )
                             }
                         }
                     }
                 }
-
-                dashboardSection(title: "최근 실행", subtitle: "실행 기록은 다음 단계에서 연결합니다.") {
-                    Text("아직 기록된 실행이 없습니다.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                        .padding(12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color(NSColor.controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                }
-
-                if let selectedState {
-                    ToolResultCardView(state: selectedState)
-                }
             }
             .padding(16)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .task {
             await refreshReadiness()
@@ -95,9 +83,9 @@ struct HomeDashboardView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("수석님, 오늘 업무를 준비했습니다.")
+            Text("업무")
                 .font(.system(size: 20, weight: .bold))
-            Text("기능을 고르면 MyTeam이 필요한 연결과 승인 상태를 먼저 확인합니다.")
+            Text("필요한 연결을 확인한 뒤 스킬과 업무창으로 이어집니다.")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
         }
@@ -105,17 +93,11 @@ struct HomeDashboardView: View {
 
     private func dashboardSection<Content: View>(
         title: String,
-        subtitle: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 9) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 14, weight: .semibold))
-                Text(subtitle)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
+            Text(title)
+                .font(.system(size: 14, weight: .semibold))
             content()
         }
     }
@@ -131,19 +113,6 @@ struct HomeDashboardView: View {
         }
         await MainActor.run {
             toolStates = states
-        }
-    }
-
-    private func run(_ descriptor: MyTeamToolDescriptor) {
-        Task {
-            await MainActor.run {
-                toolStates[descriptor.id] = .running
-            }
-            let result = await ToolExecutionRouter.shared.run(descriptor)
-            await MainActor.run {
-                toolStates[descriptor.id] = result
-                selectedState = result
-            }
         }
     }
 }
