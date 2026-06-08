@@ -7890,6 +7890,7 @@
 				<string>TLF006ACTIONCARDFILE</string>
 				<string>TLF007RESULTCARDFILE</string>
 				<string>TLF008HOMEDASHFILE</string>
+				<string>TLF009EXECLOGFILE</string>
 				<string>E3BCED940DAD6E0579E695D1</string>
 				<string>E3BCED940DAD6E0579E695D2</string>
 				<string>E3BCED940DAD6E0579E695D3</string>
@@ -9437,6 +9438,7 @@
 				<string>TLB006ACTIONCARDBLD</string>
 				<string>TLB007RESULTCARDBLD</string>
 				<string>TLB008HOMEDASHBLD</string>
+				<string>TLB009EXECLOGBLD</string>
 				<string>E3BCED940DAD6E0579E695DD</string>
 				<string>E3BCED940DAD6E0579E695DE</string>
 				<string>E3BCED940DAD6E0579E695DF</string>
@@ -17525,6 +17527,21 @@
 			<key>sourceTree</key>
 			<string>SOURCE_ROOT</string>
 		</dict>
+		<key>TLF009EXECLOGFILE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>ToolExecutionLog.swift</string>
+			<key>path</key>
+			<string>ToolExecutionLog.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
 		<key>TLB001DISTRIBUTIONBLD</key>
 		<dict>
 			<key>fileRef</key>
@@ -17578,6 +17595,13 @@
 		<dict>
 			<key>fileRef</key>
 			<string>TLF008HOMEDASHFILE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>TLB009EXECLOGBLD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>TLF009EXECLOGFILE</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>

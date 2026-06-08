@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 struct ToolResultCardView: View {
     let state: ToolExecutionState
@@ -17,6 +18,7 @@ struct ToolResultCardView: View {
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                 }
+                resultItems(result.items)
                 actionButtons(result.nextActions)
             case .failed(let failure):
                 Label(failure.title, systemImage: "exclamationmark.triangle.fill")
@@ -33,6 +35,45 @@ struct ToolResultCardView: View {
         }
         .padding(12)
         .background(Color(NSColor.controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func resultItems(_ items: [MyTeamToolResultItem]) -> some View {
+        VStack(spacing: 6) {
+            ForEach(items.prefix(5)) { item in
+                HStack(alignment: .top, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(item.title)
+                            .font(.system(size: 11, weight: .semibold))
+                            .lineLimit(2)
+                        if let subtitle = item.subtitle, !subtitle.isEmpty {
+                            Text(subtitle)
+                                .font(.system(size: 10))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+                        if let metadata = item.metadata, !metadata.isEmpty {
+                            Text(metadata)
+                                .font(.system(size: 9))
+                                .foregroundStyle(.tertiary)
+                                .lineLimit(1)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                    if let url = item.sourceURL {
+                        Button {
+                            NSWorkspace.shared.open(url)
+                        } label: {
+                            Image(systemName: "arrow.up.right.square")
+                                .font(.system(size: 11, weight: .semibold))
+                        }
+                        .buttonStyle(.plain)
+                        .help("원문 열기")
+                    }
+                }
+                .padding(8)
+                .background(Color(NSColor.windowBackgroundColor), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            }
+        }
     }
 
     private func actionButtons(_ actions: [MyTeamNextAction]) -> some View {

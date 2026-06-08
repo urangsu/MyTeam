@@ -3,6 +3,8 @@ import SwiftUI
 struct ToolActionCardView: View {
     let descriptor: MyTeamToolDescriptor
     let state: ToolExecutionState
+    let query: Binding<String>?
+    let onRun: ((MyTeamToolDescriptor, String) -> Void)?
     let onOpenWorkspace: (MyTeamToolDescriptor) -> Void
     let onOpenConnection: ((ExternalProvider?) -> Void)?
 
@@ -31,6 +33,12 @@ struct ToolActionCardView: View {
                 Spacer(minLength: 0)
             }
 
+            if supportsInlineRun, let query {
+                TextField(defaultQuery, text: query)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 11))
+            }
+
             HStack {
                 if let provider = descriptor.requiredCredential?.provider {
                     Text(provider.displayName)
@@ -48,8 +56,16 @@ struct ToolActionCardView: View {
                     Button("검증", action: { onOpenConnection?(descriptor.requiredCredential?.provider) })
                         .buttonStyle(.bordered)
                         .controlSize(.small)
+                } else if case .running = state {
+                    ProgressView()
+                        .controlSize(.small)
                 } else {
-                    if state.isRunnable {
+                    if state.isRunnable, supportsInlineRun, let query, let onRun {
+                        Button(runtimeButtonTitle, action: { onRun(descriptor, query.wrappedValue) })
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                            .disabled(query.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    } else if state.isRunnable {
                         Button(buttonTitle, action: { onOpenWorkspace(descriptor) })
                             .buttonStyle(.borderedProminent)
                             .controlSize(.small)
@@ -89,6 +105,18 @@ struct ToolActionCardView: View {
         case .system:
             return "열기"
         }
+    }
+
+    private var supportsInlineRun: Bool {
+        descriptor.id == "dart.disclosures.search" || descriptor.id == "news.search"
+    }
+
+    private var runtimeButtonTitle: String {
+        descriptor.id == "dart.disclosures.search" ? "조회" : "검색"
+    }
+
+    private var defaultQuery: String {
+        descriptor.id == "dart.disclosures.search" ? "포스코" : "경제"
     }
 
     private var tint: Color {
