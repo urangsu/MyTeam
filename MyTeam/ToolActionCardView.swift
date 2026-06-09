@@ -110,7 +110,8 @@ struct ToolActionCardView: View {
     private var supportsInlineRun: Bool {
         switch descriptor.id {
         case "dart.disclosures.search", "news.search", "weather.current", "law.search",
-             "briefing.today", "document.meetingMinutes", "document.rewrite", "spreadsheet.postprocess":
+             "briefing.today", "document.meetingMinutes", "document.rewrite", "spreadsheet.postprocess",
+             "calendar.events.today":
             return true
         default:
             return false
@@ -129,6 +130,8 @@ struct ToolActionCardView: View {
             return "초안"
         case "spreadsheet.postprocess":
             return "정리"
+        case "calendar.events.today":
+            return "확인"
         default:
             return "실행"
         }
@@ -152,6 +155,8 @@ struct ToolActionCardView: View {
             return "다듬을 문장이나 문서를 붙여넣으세요."
         case "spreadsheet.postprocess":
             return "표 내용을 붙여넣으세요."
+        case "calendar.events.today":
+            return "오늘 일정"
         default:
             return ""
         }

@@ -21,6 +21,7 @@ struct HomeDashboardView: View {
     private let quickToolIDs = [
         "document.meetingMinutes",
         "spreadsheet.postprocess",
+        "calendar.events.today",
         "weather.current",
         "dart.disclosures.search",
         "news.search",
@@ -174,6 +175,8 @@ struct HomeDashboardView: View {
             return "다듬을 문장이나 문서를 붙여넣으세요."
         case "spreadsheet.postprocess":
             return "표 내용을 붙여넣으세요."
+        case "calendar.events.today":
+            return "오늘 일정"
         default:
             return ""
         }
@@ -190,8 +193,6 @@ struct HomeDashboardView: View {
                 query: query,
                 daysBack: descriptor.id == "dart.disclosures.search" ? 30 : nil,
                 displayCount: descriptor.id == "news.search" ? 5 : nil,
-                nx: descriptor.id == "weather.current" ? 60 : nil,
-                ny: descriptor.id == "weather.current" ? 127 : nil,
                 providerHint: descriptor.requiredCredential?.provider
             )
             let result = await ToolExecutionRouter.shared.run(descriptor, input: input)
@@ -212,7 +213,8 @@ struct HomeDashboardView: View {
             "briefing.today",
             "document.meetingMinutes",
             "document.rewrite",
-            "spreadsheet.postprocess"
+            "spreadsheet.postprocess",
+            "calendar.events.today"
         ]
     }
 
@@ -221,6 +223,10 @@ struct HomeDashboardView: View {
         switch action.id {
         case "openConnection", "checkConnection":
             onOpenConnection(descriptor.requiredCredential?.provider)
+        case "openAssistantConnection":
+            if let connectionCenter = MyTeamToolRegistry.descriptor(id: "system.connectionCenter") {
+                onOpenWorkspace(connectionCenter)
+            }
         case "searchAgain", "extendRange", "changeKeyword":
             run(descriptor, query: toolQueries[descriptor.id] ?? defaultQuery(for: descriptor))
         default:

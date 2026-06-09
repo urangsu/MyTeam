@@ -115,7 +115,7 @@ enum MyTeamToolRegistry {
             category: .calendar,
             requiredCredential: nil,
             permissionLevel: .readOnly,
-            isImplemented: false,
+            isImplemented: true,
             isUserFacing: true,
             supportedDistributionChannels: [.appStore, .direct, .developer],
             relatedProvider: nil

@@ -59,6 +59,8 @@ actor ToolExecutionRouter {
             return await runUniversalDocument(type: .summary, input: input)
         case "spreadsheet.postprocess":
             return runSpreadsheetPostprocess(input: input)
+        case "calendar.events.today":
+            return await runGoogleCalendarToday()
         case "dart.disclosures.search":
             return await runDART(input: input)
         case "news.search":
@@ -159,6 +161,58 @@ actor ToolExecutionRouter {
             ],
             nextActions: [
                 MyTeamNextAction(id: "changeKeyword", title: "다시 정리", role: .normal)
+            ]
+        ))
+    }
+
+    private func runGoogleCalendarToday() async -> ToolExecutionState {
+        let hasToken = await MainActor.run {
+            GoogleOAuthTokenStore.shared.hasToken(for: .googleCalendar)
+        }
+        guard hasToken else {
+            return .failed(MyTeamToolFailure(
+                title: "Google Calendar 연결이 필요합니다",
+                message: "오늘 일정을 가져오려면 비서 연결에서 Google Calendar 읽기 연결을 먼저 완료하세요.",
+                recoveryActions: [
+                    MyTeamNextAction(id: "openAssistantConnection", title: "비서 연결", role: .normal)
+                ]
+            ))
+        }
+
+        let now = Date()
+        let items = await GoogleDailyBriefingCalendarProvider.shared.calendarItemsForToday(now: now)
+        let status = await MainActor.run {
+            GoogleDailyBriefingCalendarProvider.shared.statusMessage
+        }
+        if items.isEmpty {
+            return .succeeded(MyTeamToolResult(
+                title: "오늘 일정이 없습니다",
+                summary: status,
+                sourceLabel: "Google Calendar",
+                body: nil,
+                items: [],
+                nextActions: [
+                    MyTeamNextAction(id: "searchAgain", title: "새로고침", role: .normal)
+                ]
+            ))
+        }
+
+        return .succeeded(MyTeamToolResult(
+            title: "오늘 일정을 가져왔습니다",
+            summary: status,
+            sourceLabel: "Google Calendar",
+            body: calendarBody(from: items),
+            items: items.prefix(5).map { item in
+                MyTeamToolResultItem(
+                    id: item.id.uuidString,
+                    title: item.title,
+                    subtitle: [item.timeText, item.location].compactMap { $0 }.joined(separator: " · "),
+                    metadata: "Google Calendar",
+                    sourceURL: nil
+                )
+            },
+            nextActions: [
+                MyTeamNextAction(id: "searchAgain", title: "새로고침", role: .normal)
             ]
         ))
     }
@@ -279,8 +333,9 @@ actor ToolExecutionRouter {
         guard let serviceKey = await credentialValue(provider: provider, fieldID: "serviceKey") else {
             return .needsConnection(provider)
         }
-        let nx = input.nx ?? 60
-        let ny = input.ny ?? 127
+        let region = kmaRegion(from: input.query)
+        let nx = input.nx ?? region.nx
+        let ny = input.ny ?? region.ny
 
         do {
             let observations = try await KMAWeatherDirectConnector.ultraShortNowcast(
@@ -301,7 +356,7 @@ actor ToolExecutionRouter {
                         id: "\(observation.category)-\(observation.baseDate)-\(observation.baseTime)",
                         title: weatherTitle(for: observation.category),
                         subtitle: "\(observation.value)\(weatherUnit(for: observation.category))",
-                        metadata: "기준 \(observation.baseDate) \(observation.baseTime) · 격자 \(nx),\(ny)",
+                        metadata: "\(region.name) · 기준 \(observation.baseDate) \(observation.baseTime) · 격자 \(nx),\(ny)",
                         sourceURL: kmaOfficialURL()
                     )
                 },
@@ -437,6 +492,18 @@ actor ToolExecutionRouter {
         return lines.joined(separator: "\n")
     }
 
+    private func calendarBody(from items: [DailyCalendarBriefingItem]) -> String {
+        var lines = [
+            "# 오늘 일정",
+            ""
+        ]
+        lines.append(contentsOf: items.prefix(10).map { item in
+            let detail = [item.timeText, item.location].compactMap { $0 }.joined(separator: " · ")
+            return detail.isEmpty ? "- \(item.title)" : "- \(item.title) · \(detail)"
+        })
+        return lines.joined(separator: "\n")
+    }
+
     private func estimatedColumnCount(_ row: String) -> Int {
         let separators: [Character] = ["\t", ",", "|"]
         return separators
@@ -519,6 +586,23 @@ actor ToolExecutionRouter {
         URL(string: "https://www.data.go.kr/tcs/dss/selectApiDataDetailView.do?publicDataPk=15084084")
     }
 
+    private func kmaRegion(from query: String?) -> KMAGridRegion {
+        let raw = (query ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty else { return KMAGridRegion.default }
+        let normalized = raw
+            .replacingOccurrences(of: "특별시", with: "")
+            .replacingOccurrences(of: "광역시", with: "")
+            .replacingOccurrences(of: "특별자치시", with: "")
+            .replacingOccurrences(of: "특별자치도", with: "")
+            .replacingOccurrences(of: "시", with: "")
+            .replacingOccurrences(of: "군", with: "")
+            .replacingOccurrences(of: "구", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return KMAGridRegion.known.first { region in
+            raw.contains(region.name) || normalized.contains(region.name) || region.aliases.contains { raw.contains($0) || normalized.contains($0) }
+        } ?? .default
+    }
+
     private func failureState(_ error: Error, provider: ExternalProvider) -> ToolExecutionState {
         let code = error as? ConnectorFailureCode ?? .networkError
         return .failed(MyTeamToolFailure(
@@ -563,4 +647,40 @@ actor ToolExecutionRouter {
             return "\(descriptor.displayName)은 현재 개발자 프로필에서 사용할 수 없습니다."
         }
     }
+}
+
+private struct KMAGridRegion: Sendable, Equatable {
+    let name: String
+    let nx: Int
+    let ny: Int
+    let aliases: [String]
+
+    nonisolated static let `default` = KMAGridRegion(name: "서울", nx: 60, ny: 127, aliases: ["서울"])
+
+    nonisolated static let known: [KMAGridRegion] = [
+        KMAGridRegion(name: "서울", nx: 60, ny: 127, aliases: ["서울특별시", "강남", "서초", "송파", "마포", "종로"]),
+        KMAGridRegion(name: "부산", nx: 98, ny: 76, aliases: ["부산광역시", "해운대", "서면"]),
+        KMAGridRegion(name: "대구", nx: 89, ny: 90, aliases: ["대구광역시"]),
+        KMAGridRegion(name: "인천", nx: 55, ny: 124, aliases: ["인천광역시"]),
+        KMAGridRegion(name: "광주", nx: 58, ny: 74, aliases: ["광주광역시"]),
+        KMAGridRegion(name: "대전", nx: 67, ny: 100, aliases: ["대전광역시"]),
+        KMAGridRegion(name: "울산", nx: 102, ny: 84, aliases: ["울산광역시"]),
+        KMAGridRegion(name: "세종", nx: 66, ny: 103, aliases: ["세종특별자치시"]),
+        KMAGridRegion(name: "수원", nx: 60, ny: 121, aliases: ["경기 수원", "수원시"]),
+        KMAGridRegion(name: "성남", nx: 62, ny: 123, aliases: ["분당", "판교", "성남시"]),
+        KMAGridRegion(name: "용인", nx: 64, ny: 119, aliases: ["용인시"]),
+        KMAGridRegion(name: "고양", nx: 57, ny: 128, aliases: ["고양시", "일산"]),
+        KMAGridRegion(name: "춘천", nx: 73, ny: 134, aliases: ["춘천시"]),
+        KMAGridRegion(name: "강릉", nx: 92, ny: 131, aliases: ["강릉시"]),
+        KMAGridRegion(name: "청주", nx: 69, ny: 107, aliases: ["청주시"]),
+        KMAGridRegion(name: "천안", nx: 63, ny: 110, aliases: ["천안시"]),
+        KMAGridRegion(name: "전주", nx: 63, ny: 89, aliases: ["전주시"]),
+        KMAGridRegion(name: "목포", nx: 50, ny: 67, aliases: ["목포시"]),
+        KMAGridRegion(name: "여수", nx: 73, ny: 66, aliases: ["여수시"]),
+        KMAGridRegion(name: "포항", nx: 102, ny: 94, aliases: ["포항시"]),
+        KMAGridRegion(name: "창원", nx: 90, ny: 77, aliases: ["창원시", "마산", "진해"]),
+        KMAGridRegion(name: "진주", nx: 81, ny: 75, aliases: ["진주시"]),
+        KMAGridRegion(name: "제주", nx: 52, ny: 38, aliases: ["제주시", "제주도"]),
+        KMAGridRegion(name: "서귀포", nx: 52, ny: 33, aliases: ["서귀포시"])
+    ]
 }
