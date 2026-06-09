@@ -74,7 +74,7 @@ struct AssistantConnectorCenterView: View {
                     .background(Capsule().fill(validation.status == .ready ? Color.green.opacity(0.12) : Color.orange.opacity(0.12)))
             }
 
-            Text("Google Calendar 읽기 연결은 준비 중입니다.")
+            Text(validation.isReady ? "Google 계정으로 로그인하면 오늘 일정을 읽어옵니다." : "앱 Google OAuth 설정이 필요합니다.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
@@ -108,6 +108,7 @@ struct AssistantConnectorCenterView: View {
                     .font(.caption2)
                     .foregroundStyle(sessionManager.lastErrorMessage == nil && validation.isReady ? .green : .secondary)
                 Spacer()
+                #if DEBUG
                 Button("초기화") {
                     GoogleOAuthConfigStore.shared.clear()
                     loadGoogleOAuthDraft()
@@ -121,6 +122,7 @@ struct AssistantConnectorCenterView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
+                #endif
             }
         }
         .padding(12)
@@ -172,8 +174,8 @@ struct AssistantConnectorCenterView: View {
                     Text(connectorDecision.badgeLabel)
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(.secondary)
-                    if connector.id == .googleCalendar {
-                        googleCalendarActionButton(state: state)
+                    if connector.id == .googleCalendar || connector.id == .googleSheets {
+                        googleActionButton(for: connector.id, state: state)
                     } else {
                         Button("연결 준비 중") { }
                             .buttonStyle(.bordered)
@@ -204,20 +206,16 @@ struct AssistantConnectorCenterView: View {
         .id(refreshToken)
     }
 
-    private func googleCalendarActionButton(state: GoogleOAuthConnectionState) -> some View {
-        let draft = GoogleOAuthStoredConfig(
-            clientID: googleClientID,
-            redirectMode: googleRedirectMode,
-            enabledScopes: googleCalendarScopeEnabled ? [.calendarEventsReadonly] : [],
-            updatedAt: Date()
-        )
+    private func googleActionButton(for provider: AssistantConnector.Provider, state: GoogleOAuthConnectionState) -> some View {
+        let scopes = googleScopes(for: provider)
+        let draft = googleOAuthDraft(scopes: scopes)
         let validation = GoogleOAuthConfigValidator.validate(draft)
         let canConnect = validation.isReady && (state.status == .notConnected || state.status == .needsReauth)
         let buttonTitle: String = {
-            if !validation.isReady { return "연결 필요" }
+            if !validation.isReady { return "앱 설정 필요" }
             if state.status == .connected { return "연결됨" }
             if state.status == .needsReauth { return "재연결" }
-            return "Google Calendar 연결"
+            return "Google로 로그인"
         }()
 
         if sessionManager.isConnecting {
@@ -243,9 +241,15 @@ struct AssistantConnectorCenterView: View {
                 Task {
                     do {
                         GoogleOAuthConfigStore.shared.save(draft)
-                        _ = try await sessionManager.startCalendarReadOnlyConnection(config: draft)
+                        _ = try await sessionManager.startConnection(
+                            provider: provider,
+                            scopes: scopes,
+                            config: draft
+                        )
                         refreshToken = UUID()
-                        onGoogleCalendarConnectionChanged?()
+                        if provider == .googleCalendar {
+                            onGoogleCalendarConnectionChanged?()
+                        }
                     } catch {
                         refreshToken = UUID()
                     }
@@ -258,17 +262,7 @@ struct AssistantConnectorCenterView: View {
     }
 
     private func googleScopeRow(for provider: AssistantConnector.Provider) -> some View {
-        let scopes: [GoogleOAuthScope]
-        switch provider {
-        case .googleCalendar:
-            scopes = [.calendarEventsReadonly]
-        case .googleSheets:
-            scopes = [.spreadsheets]
-        case .gmail:
-            scopes = [.gmailMetadata, .gmailReadonly]
-        default:
-            scopes = []
-        }
+        let scopes = googleScopes(for: provider)
 
         return VStack(alignment: .leading, spacing: 6) {
             Text(googleScopeTitle(for: provider))
@@ -300,6 +294,30 @@ struct AssistantConnectorCenterView: View {
         case .naverMail, .naverCalendar:
             return "OAuth scope"
         }
+    }
+
+    private func googleScopes(for provider: AssistantConnector.Provider) -> [GoogleOAuthScope] {
+        switch provider {
+        case .googleCalendar:
+            return [.calendarEventsReadonly]
+        case .googleSheets:
+            return [.spreadsheets]
+        case .gmail:
+            return [.gmailMetadata, .gmailReadonly]
+        default:
+            return []
+        }
+    }
+
+    private func googleOAuthDraft(scopes: [GoogleOAuthScope]) -> GoogleOAuthStoredConfig {
+        let mergedScopes = Array(Set(scopes + (googleCalendarScopeEnabled ? [.calendarEventsReadonly] : [])))
+            .sorted(by: { $0.priority < $1.priority })
+        return GoogleOAuthStoredConfig(
+            clientID: googleClientID,
+            redirectMode: googleRedirectMode,
+            enabledScopes: mergedScopes,
+            updatedAt: Date()
+        )
     }
 
     private var scopePolicySection: some View {
@@ -375,12 +393,6 @@ struct AssistantConnectorCenterView: View {
     }
 
     private func saveGoogleOAuthDraft() {
-        let stored = GoogleOAuthStoredConfig(
-            clientID: googleClientID,
-            redirectMode: googleRedirectMode,
-            enabledScopes: googleCalendarScopeEnabled ? [.calendarEventsReadonly] : [],
-            updatedAt: Date()
-        )
-        GoogleOAuthConfigStore.shared.save(stored)
+        GoogleOAuthConfigStore.shared.save(googleOAuthDraft(scopes: [.calendarEventsReadonly]))
     }
 }

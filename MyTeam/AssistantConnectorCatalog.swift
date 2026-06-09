@@ -81,12 +81,41 @@ enum AssistantConnectorCatalog {
                 message: status == .connected ? "연결됨" : (status == .needsReauth ? "재인증 필요" : "연결 준비 중")
             )
         case .googleSheets:
+            let stored = GoogleOAuthConfigStore.shared.load()
+            let validation = GoogleOAuthConfigValidator.validate(
+                GoogleOAuthStoredConfig(
+                    clientID: stored.clientID,
+                    redirectMode: stored.redirectMode,
+                    enabledScopes: [.spreadsheets],
+                    updatedAt: stored.updatedAt
+                )
+            )
+            if !validation.isReady {
+                return GoogleOAuthConnectionState(
+                    provider: provider,
+                    status: .notConfigured,
+                    grantedScopes: [.spreadsheets],
+                    lastCheckedAt: nil,
+                    message: "연결 준비 중"
+                )
+            }
+            let token = try? GoogleOAuthTokenStore.shared.loadToken(for: provider)
+            let connected = token != nil && (token?.isExpired == false || token?.refreshToken != nil)
+            if connected {
+                return GoogleOAuthConnectionState(
+                    provider: provider,
+                    status: .connected,
+                    grantedScopes: token?.scopes ?? [.spreadsheets],
+                    lastCheckedAt: Date(),
+                    message: "OAuth 연결됨 · Sheets 내보내기는 준비 중"
+                )
+            }
             return GoogleOAuthConnectionState(
                 provider: provider,
-                status: .comingSoon,
+                status: token?.isExpired == true && token?.refreshToken == nil ? .needsReauth : .notConnected,
                 grantedScopes: [.spreadsheets],
                 lastCheckedAt: nil,
-                message: "Google Sheets API 연결 준비 중"
+                message: "Google Sheets OAuth 연결 가능 · 내보내기는 준비 중"
             )
         case .gmail:
             return GoogleOAuthConnectionState(
