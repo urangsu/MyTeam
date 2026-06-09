@@ -5,7 +5,8 @@ enum GoogleOAuthTokenExchangeService {
         code: String,
         codeVerifier: String,
         clientID: String,
-        redirectURI: String
+        redirectURI: String,
+        fallbackScopes: [GoogleOAuthScope] = [.calendarEventsReadonly]
     ) async throws -> GoogleOAuthToken {
         var request = URLRequest(url: URL(string: "https://oauth2.googleapis.com/token")!)
         request.httpMethod = "POST"
@@ -29,7 +30,7 @@ enum GoogleOAuthTokenExchangeService {
         let scopes = decoded.scope?
             .split(separator: " ")
             .compactMap { GoogleOAuthScope(rawValue: String($0)) }
-            ?? [.calendarEventsReadonly]
+            ?? fallbackScopes
         let expiresAt = Date().addingTimeInterval(TimeInterval(decoded.expiresIn ?? 3600))
 
         return GoogleOAuthToken(
@@ -44,7 +45,8 @@ enum GoogleOAuthTokenExchangeService {
 
     static func refreshAccessToken(
         refreshToken: String,
-        clientID: String
+        clientID: String,
+        fallbackScopes: [GoogleOAuthScope] = [.calendarEventsReadonly]
     ) async throws -> GoogleOAuthToken {
         var request = URLRequest(url: URL(string: "https://oauth2.googleapis.com/token")!)
         request.httpMethod = "POST"
@@ -66,7 +68,7 @@ enum GoogleOAuthTokenExchangeService {
         let scopes = decoded.scope?
             .split(separator: " ")
             .compactMap { GoogleOAuthScope(rawValue: String($0)) }
-            ?? [.calendarEventsReadonly]
+            ?? fallbackScopes
         let expiresAt = Date().addingTimeInterval(TimeInterval(decoded.expiresIn ?? 3600))
 
         return GoogleOAuthToken(

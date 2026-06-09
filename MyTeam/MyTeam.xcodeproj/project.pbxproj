@@ -9854,6 +9854,8 @@
 				<string>회의록 작성을 위해 사용자가 시작한 녹음에만 마이크를 사용합니다.</string>
 				<key>INFOPLIST_KEY_NSSpeechRecognitionUsageDescription</key>
 				<string>에이전트에게 전달할 음성을 텍스트로 변환합니다.</string>
+				<key>INFOPLIST_KEY_MyTeamGoogleOAuthClientID</key>
+				<string>$(MYTEAM_GOOGLE_OAUTH_CLIENT_ID)</string>
 				<key>LD_RUNPATH_SEARCH_PATHS</key>
 				<array>
 					<string>$(inherited)</string>
@@ -9861,6 +9863,8 @@
 				</array>
 				<key>MARKETING_VERSION</key>
 				<string>1.0</string>
+				<key>MYTEAM_GOOGLE_OAUTH_CLIENT_ID</key>
+				<string></string>
 				<key>PRODUCT_BUNDLE_IDENTIFIER</key>
 				<string>com.urang.MyTeam</string>
 				<key>PRODUCT_NAME</key>
@@ -9947,6 +9951,8 @@
 				<string>회의록 작성을 위해 사용자가 시작한 녹음에만 마이크를 사용합니다.</string>
 				<key>INFOPLIST_KEY_NSSpeechRecognitionUsageDescription</key>
 				<string>에이전트에게 전달할 음성을 텍스트로 변환합니다.</string>
+				<key>INFOPLIST_KEY_MyTeamGoogleOAuthClientID</key>
+				<string>$(MYTEAM_GOOGLE_OAUTH_CLIENT_ID)</string>
 				<key>LD_RUNPATH_SEARCH_PATHS</key>
 				<array>
 					<string>$(inherited)</string>
@@ -9954,6 +9960,8 @@
 				</array>
 				<key>MARKETING_VERSION</key>
 				<string>1.0</string>
+				<key>MYTEAM_GOOGLE_OAUTH_CLIENT_ID</key>
+				<string></string>
 				<key>PRODUCT_BUNDLE_IDENTIFIER</key>
 				<string>com.urang.MyTeam</string>
 				<key>PRODUCT_NAME</key>

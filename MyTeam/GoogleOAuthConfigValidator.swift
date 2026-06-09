@@ -18,7 +18,7 @@ struct GoogleOAuthConfigValidationResult: Equatable {
 enum GoogleOAuthConfigValidator {
     static func validate(_ config: GoogleOAuthStoredConfig) -> GoogleOAuthConfigValidationResult {
         if config.clientID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return .init(status: .missingClientID, message: "Google OAuth Desktop client ID가 필요합니다.")
+            return .init(status: .missingClientID, message: "앱 Google OAuth Client ID 설정이 필요합니다.")
         }
 
         if config.redirectMode != .customURLScheme {
@@ -29,6 +29,6 @@ enum GoogleOAuthConfigValidator {
             return .init(status: .noScopes, message: "Calendar read-only scope가 필요합니다.")
         }
 
-        return .init(status: .ready, message: "Calendar read-only OAuth 연결 준비가 완료됐습니다.")
+        return .init(status: .ready, message: "Google Calendar 읽기 로그인을 시작할 수 있습니다.")
     }
 }

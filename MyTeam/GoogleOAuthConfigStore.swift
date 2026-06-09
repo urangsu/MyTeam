@@ -15,6 +15,10 @@ final class GoogleOAuthConfigStore {
     static let shared = GoogleOAuthConfigStore()
 
     private let userDefaultsKey = "MyTeam.GoogleOAuth.StoredConfig"
+    private let bundledClientIDKeys = [
+        "MyTeamGoogleOAuthClientID",
+        "GoogleOAuthClientID"
+    ]
 
     private init() {}
 
@@ -23,12 +27,10 @@ final class GoogleOAuthConfigStore {
             let data = UserDefaults.standard.data(forKey: userDefaultsKey),
             let config = try? JSONDecoder().decode(GoogleOAuthStoredConfig.self, from: data)
         else {
-            return GoogleOAuthStoredConfig(
-                clientID: "",
-                redirectMode: .customURLScheme,
-                enabledScopes: [.calendarEventsReadonly],
-                updatedAt: Date()
-            )
+            return bundledConfig()
+        }
+        if config.isEmpty, !bundledConfig().isEmpty {
+            return bundledConfig()
         }
         return config
     }
@@ -40,5 +42,25 @@ final class GoogleOAuthConfigStore {
 
     func clear() {
         UserDefaults.standard.removeObject(forKey: userDefaultsKey)
+    }
+
+    private func bundledConfig() -> GoogleOAuthStoredConfig {
+        GoogleOAuthStoredConfig(
+            clientID: bundledClientID(),
+            redirectMode: .customURLScheme,
+            enabledScopes: [.calendarEventsReadonly],
+            updatedAt: Date()
+        )
+    }
+
+    private func bundledClientID() -> String {
+        for key in bundledClientIDKeys {
+            guard let value = Bundle.main.object(forInfoDictionaryKey: key) as? String else { continue }
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty, !trimmed.hasPrefix("$(") {
+                return trimmed
+            }
+        }
+        return ""
     }
 }

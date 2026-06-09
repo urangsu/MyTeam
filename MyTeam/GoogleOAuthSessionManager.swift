@@ -15,6 +15,18 @@ final class GoogleOAuthSessionManager: NSObject, ObservableObject, ASWebAuthenti
     private override init() {}
 
     func startCalendarReadOnlyConnection(config: GoogleOAuthStoredConfig) async throws -> GoogleOAuthToken {
+        try await startConnection(
+            provider: .googleCalendar,
+            scopes: [.calendarEventsReadonly],
+            config: config
+        )
+    }
+
+    func startConnection(
+        provider: AssistantConnector.Provider,
+        scopes: [GoogleOAuthScope],
+        config: GoogleOAuthStoredConfig
+    ) async throws -> GoogleOAuthToken {
         isConnecting = true
         lastErrorMessage = nil
         defer {
@@ -39,7 +51,7 @@ final class GoogleOAuthSessionManager: NSObject, ObservableObject, ASWebAuthenti
             let request = GoogleOAuthAuthorizationRequest(
                 clientID: config.clientID,
                 redirectURI: Self.redirectURI,
-                scopes: [.calendarEventsReadonly],
+                scopes: scopes,
                 state: state,
                 codeChallenge: pkce.codeChallenge,
                 codeChallengeMethod: pkce.method
@@ -90,10 +102,11 @@ final class GoogleOAuthSessionManager: NSObject, ObservableObject, ASWebAuthenti
                 code: code,
                 codeVerifier: pkce.codeVerifier,
                 clientID: config.clientID,
-                redirectURI: Self.redirectURI
+                redirectURI: Self.redirectURI,
+                fallbackScopes: scopes
             )
 
-            try GoogleOAuthTokenStore.shared.saveToken(token, for: .googleCalendar)
+            try GoogleOAuthTokenStore.shared.saveToken(token, for: provider)
             lastErrorMessage = nil
             return token
         } catch {
