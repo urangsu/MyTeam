@@ -3,6 +3,7 @@ import Foundation
 struct AssistantConnector: Identifiable, Equatable {
     enum Provider: String, Codable, CaseIterable {
         case googleCalendar
+        case googleSheets
         case gmail
         case naverMail
         case naverCalendar
@@ -10,6 +11,7 @@ struct AssistantConnector: Identifiable, Equatable {
         var displayName: String {
             switch self {
             case .googleCalendar: return "Google Calendar"
+            case .googleSheets: return "Google Sheets"
             case .gmail: return "Gmail"
             case .naverMail: return "Naver Mail"
             case .naverCalendar: return "Naver Calendar"
@@ -24,6 +26,7 @@ struct AssistantConnector: Identifiable, Equatable {
         case summarizeEmail
         case createDraft
         case sendEmail
+        case createSpreadsheet
         case createCalendarEvent
         case modifyCalendarEvent
         case deleteItem
@@ -36,6 +39,7 @@ struct AssistantConnector: Identifiable, Equatable {
             case .summarizeEmail: return "메일 요약"
             case .createDraft: return "초안 작성"
             case .sendEmail: return "메일 발송"
+            case .createSpreadsheet: return "스프레드시트 생성"
             case .createCalendarEvent: return "일정 생성"
             case .modifyCalendarEvent: return "일정 수정"
             case .deleteItem: return "삭제"

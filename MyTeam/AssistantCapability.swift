@@ -12,6 +12,7 @@ enum AssistantCapability: String, Codable, CaseIterable {
     case mailSummarize
     case mailDraft
     case mailSend
+    case spreadsheetCreate
     case calendarCreate
     case calendarModify
     case destructiveFileAction
@@ -38,6 +39,7 @@ enum AssistantCapability: String, Codable, CaseIterable {
         case .mailSummarize: return "메일 요약"
         case .mailDraft: return "메일 초안"
         case .mailSend: return "메일 발송"
+        case .spreadsheetCreate: return "스프레드시트 생성"
         case .calendarCreate: return "일정 생성"
         case .calendarModify: return "일정 수정"
         case .destructiveFileAction: return "파일 삭제"
@@ -52,7 +54,7 @@ enum AssistantCapability: String, Codable, CaseIterable {
             return .available
         case .calendarRead, .mailMetadataRead:
             return .future
-        case .mailBodyRead, .mailSummarize, .mailDraft:
+        case .mailBodyRead, .mailSummarize, .mailDraft, .spreadsheetCreate:
             return .requiresApproval
         case .mailSend, .calendarCreate, .calendarModify, .destructiveFileAction, .automaticLogin:
             return .blocked

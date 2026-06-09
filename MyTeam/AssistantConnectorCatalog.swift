@@ -6,9 +6,17 @@ enum AssistantConnectorCatalog {
             id: .googleCalendar,
             displayName: "Google Calendar",
             description: "오늘 일정과 다가오는 회의를 브리핑합니다.",
-            capabilities: [.readCalendarEvents, .createCalendarEvent, .modifyCalendarEvent],
+            capabilities: [.readCalendarEvents],
+            isImplemented: true,
+            notes: "Google 계정 연결 후 오늘 일정을 읽기 전용으로 가져옵니다."
+        ),
+        AssistantConnector(
+            id: .googleSheets,
+            displayName: "Google Sheets",
+            description: "스프레드시트 생성과 내보내기를 준비합니다.",
+            capabilities: [.createSpreadsheet],
             isImplemented: false,
-            notes: "Google 계정 연결 후 오늘 일정을 자동으로 가져옵니다."
+            notes: "현재는 로컬 XLSX 생성만 사용할 수 있고, Google Sheets API 내보내기는 준비 중입니다."
         ),
         AssistantConnector(
             id: .gmail,
@@ -71,6 +79,14 @@ enum AssistantConnectorCatalog {
                 grantedScopes: scopes,
                 lastCheckedAt: Date(),
                 message: status == .connected ? "연결됨" : (status == .needsReauth ? "재인증 필요" : "연결 준비 중")
+            )
+        case .googleSheets:
+            return GoogleOAuthConnectionState(
+                provider: provider,
+                status: .comingSoon,
+                grantedScopes: [.spreadsheets],
+                lastCheckedAt: nil,
+                message: "Google Sheets API 연결 준비 중"
             )
         case .gmail:
             return GoogleOAuthConnectionState(

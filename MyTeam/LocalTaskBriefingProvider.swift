@@ -228,11 +228,10 @@ enum LocalTaskBriefingProvider {
             }
         }()
 
-        let title = provider == .googleCalendar ? "Google Calendar" : "Gmail"
         return LocalTaskBriefingItem(
             id: UUID(),
             kind: .connectorAction,
-            title: title,
+            title: provider.displayName,
             detail: state.message,
             priority: priority,
             createdAt: Date()

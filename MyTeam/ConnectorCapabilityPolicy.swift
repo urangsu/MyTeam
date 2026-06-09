@@ -33,7 +33,7 @@ enum ConnectorCapabilityPolicy {
         case .mailMetadataRead:
             return .init(status: .unavailable, message: "메일 메타데이터는 준비 중입니다.")
 
-        case .mailBodyRead, .mailSummarize, .mailDraft:
+        case .mailBodyRead, .mailSummarize, .mailDraft, .spreadsheetCreate:
             return .init(status: .requiresApproval, message: "이 작업은 추가 확인이 필요합니다.")
 
         case .mailSend, .calendarCreate, .calendarModify, .destructiveFileAction, .automaticLogin:
@@ -72,6 +72,7 @@ private extension AssistantConnector.Capability {
         case .summarizeEmail: return .mailSummarize
         case .createDraft: return .mailDraft
         case .sendEmail: return .mailSend
+        case .createSpreadsheet: return .spreadsheetCreate
         case .createCalendarEvent: return .calendarCreate
         case .modifyCalendarEvent: return .calendarModify
         case .deleteItem: return .destructiveFileAction

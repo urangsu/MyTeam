@@ -194,7 +194,7 @@ struct AssistantConnectorCenterView: View {
                 Spacer()
             }
 
-            if connector.id == .googleCalendar || connector.id == .gmail {
+            if connector.id == .googleCalendar || connector.id == .googleSheets || connector.id == .gmail {
                 googleScopeRow(for: connector.id)
             }
         }
@@ -262,6 +262,8 @@ struct AssistantConnectorCenterView: View {
         switch provider {
         case .googleCalendar:
             scopes = [.calendarEventsReadonly]
+        case .googleSheets:
+            scopes = [.spreadsheets]
         case .gmail:
             scopes = [.gmailMetadata, .gmailReadonly]
         default:
@@ -269,7 +271,7 @@ struct AssistantConnectorCenterView: View {
         }
 
         return VStack(alignment: .leading, spacing: 6) {
-            Text(provider == .googleCalendar ? "Google Calendar OAuth scope" : "Gmail OAuth scope")
+            Text(googleScopeTitle(for: provider))
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(.secondary)
 
@@ -284,6 +286,19 @@ struct AssistantConnectorCenterView: View {
                 }
                 Spacer()
             }
+        }
+    }
+
+    private func googleScopeTitle(for provider: AssistantConnector.Provider) -> String {
+        switch provider {
+        case .googleCalendar:
+            return "Google Calendar OAuth scope"
+        case .googleSheets:
+            return "Google Sheets OAuth scope"
+        case .gmail:
+            return "Gmail OAuth scope"
+        case .naverMail, .naverCalendar:
+            return "OAuth scope"
         }
     }
 
