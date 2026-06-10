@@ -1356,13 +1356,43 @@ struct AgentChatView: View {
                         )
                         AppLog.debug("[DirectChat] silent getResponseStream opened targetAgentID=\(targetIDAtSend)")
                         var accumulated = ""
+                        var assistantMessageID: UUID?
                         for try await token in tokenStream {
                             accumulated += token
+
+                            let visibleText = accumulated.trimmingCharacters(in: .whitespacesAndNewlines)
+                            guard !visibleText.isEmpty else { continue }
+                            await MainActor.run {
+                                if let assistantMessageID {
+                                    manager.updateChatLogText(
+                                        roomID: roomIDAtSend,
+                                        messageID: assistantMessageID,
+                                        text: visibleText,
+                                        sources: toolEvidence.sources
+                                    )
+                                } else {
+                                    assistantMessageID = manager.addChatLog(
+                                        roomID: roomIDAtSend,
+                                        agentID: targetIDAtSend,
+                                        agentName: agentName,
+                                        text: visibleText,
+                                        isUser: false,
+                                        sources: toolEvidence.sources
+                                    )
+                                }
+                            }
                         }
-                        _ = await MainActor.run {
+                        await MainActor.run {
                             manager.typingAgentIDs.remove(targetIDAtSend)
-                            manager.addChatLog(roomID: roomIDAtSend, agentID: targetIDAtSend, agentName: agentName,
-                                               text: accumulated, isUser: false, sources: toolEvidence.sources)
+                            if assistantMessageID == nil {
+                                manager.addChatLog(
+                                    roomID: roomIDAtSend,
+                                    agentID: "system",
+                                    agentName: "시스템",
+                                    text: "응답이 비어 있습니다. API 키와 모델 설정을 확인해 주세요.",
+                                    isUser: false
+                                )
+                            }
                         }
                     } else {
                         // SSE 스트림 오픈. 화면에는 LLM 원문을 누적 표시하고,

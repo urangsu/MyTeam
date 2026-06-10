@@ -11,27 +11,27 @@ enum MyTeamToolFastPathRouter {
         guard !normalized.isEmpty else { return nil }
         let lower = normalized.lowercased()
 
-        if containsAny(lower, ["google sheets", "구글시트", "구글 시트", "스프레드시트"]) {
+        if isGoogleSheetsReadRequest(normalized, lower: lower) {
             return make("spreadsheet.googleSheets.read", query: normalized)
         }
 
-        if containsAny(lower, ["오늘 일정", "일정 확인", "캘린더", "calendar"]) {
+        if containsAny(lower, ["오늘 일정", "일정 확인", "일정 조회", "캘린더 일정", "calendar events"]) {
             return make("calendar.events.today", query: "오늘 일정")
         }
 
-        if containsAny(lower, ["날씨", "기상청", "weather"]) {
+        if containsAny(lower, ["날씨 조회", "날씨 알려", "날씨 확인", "현재 날씨", "기상청 조회", "weather"]) {
             return make("weather.current", query: query(afterRemoving: ["날씨", "조회", "기상청"], from: normalized, fallback: "서울"))
         }
 
-        if containsAny(lower, ["뉴스", "news"]) {
+        if containsAny(lower, ["뉴스 검색", "뉴스 찾아", "뉴스 조회", "최신 뉴스", "news search"]) {
             return make("news.search", query: query(afterRemoving: ["뉴스", "검색", "요약", "찾아줘"], from: normalized, fallback: "경제"))
         }
 
-        if containsAny(lower, ["공시", "dart", "다트"]) {
+        if containsAny(lower, ["공시 조회", "공시 검색", "최근 공시", "dart", "다트"]) {
             return make("dart.disclosures.search", query: query(afterRemoving: ["공시", "조회", "검색", "DART", "다트"], from: normalized, fallback: "포스코"))
         }
 
-        if containsAny(lower, ["법령", "법률", "조문", "law"]) {
+        if containsAny(lower, ["법령 검색", "법령 찾아", "법률 검색", "조문 조회", "조문 찾아", "law search"]) {
             return make("law.search", query: query(afterRemoving: ["법령", "법률", "조문", "검색", "찾아줘"], from: normalized, fallback: "근로기준법"))
         }
 
@@ -109,6 +109,19 @@ enum MyTeamToolFastPathRouter {
 
     private static func containsAny(_ text: String, _ needles: [String]) -> Bool {
         needles.contains { text.contains($0.lowercased()) }
+    }
+
+    private static func isGoogleSheetsReadRequest(_ message: String, lower: String) -> Bool {
+        if lower.contains("docs.google.com/spreadsheets") { return true }
+        if lower.contains("google sheets") && containsAny(lower, ["읽", "조회", "확인", "read"]) { return true }
+        if containsAny(lower, ["구글시트", "구글 시트"]) && containsAny(lower, ["읽", "조회", "확인"]) { return true }
+        if lower.contains("스프레드시트") && containsAny(lower, ["url", "id", "읽", "조회", "확인"]) {
+            return true
+        }
+        return message.range(
+            of: #"[A-Za-z0-9_-]{25,}\s+[A-Za-z0-9가-힣_ !']+![A-Z]+[0-9]+:[A-Z]+[0-9]+"#,
+            options: .regularExpression
+        ) != nil
     }
 
     private static func query(afterRemoving tokens: [String], from message: String, fallback: String) -> String {

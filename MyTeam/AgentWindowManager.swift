@@ -477,6 +477,18 @@ class AgentWindowManager: ObservableObject {
     }
 
     @MainActor
+    func setWorkflowStatus(_ status: String, for roomID: UUID) {
+        workflowStatusTextByRoom[roomID] = status
+        workflowStatusText = status
+    }
+
+    @MainActor
+    func clearWorkflowStatus(for roomID: UUID) {
+        workflowStatusTextByRoom.removeValue(forKey: roomID)
+        workflowStatusText = nil
+    }
+
+    @MainActor
     func updateRoomGoalContext(
         roomID: UUID,
         goal: GoalInterpretation? = nil,

@@ -42,6 +42,7 @@ final class AIService {
 
     @MainActor @Published var isProcessing: Bool = false
     private let session = URLSession.shared
+    private let streamStartupTimeoutSeconds: TimeInterval = 8
 
     // MARK: - ModelRouter: SSE 스트림 (에이전트별 LLM 동적 라우팅)
     /// agentConfig.llmProvider에 따라 Gemini / Claude / OpenRouter로 라우팅
@@ -623,6 +624,7 @@ final class AIService {
                 }
 
                 var request = URLRequest(url: url)
+                request.timeoutInterval = streamStartupTimeoutSeconds
                 request.httpMethod = "POST"
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
@@ -751,6 +753,7 @@ final class AIService {
                 }
 
                 var request = URLRequest(url: url)
+                request.timeoutInterval = streamStartupTimeoutSeconds
                 request.httpMethod = "POST"
                 request.setValue("application/json", forHTTPHeaderField: "content-type")
                 request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
@@ -860,6 +863,7 @@ final class AIService {
                 }
 
                 var request = URLRequest(url: url)
+                request.timeoutInterval = streamStartupTimeoutSeconds
                 request.httpMethod = "POST"
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
@@ -946,6 +950,7 @@ final class AIService {
                 }
 
                 var request = URLRequest(url: url)
+                request.timeoutInterval = streamStartupTimeoutSeconds
                 request.httpMethod = "POST"
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")

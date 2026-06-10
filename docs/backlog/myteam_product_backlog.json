@@ -672,7 +672,8 @@
       "notes": [
         "This task tracks manual QA after the runtime truth fix. It must not become done until the audio path test is exercised on the macOS app.",
         "2026-06-03: Commit c7cd7de1a8b96a8654453d7f1c01451302a3aa1b added Settings voice guard copy and TTS Lab guard copy. Manual audio output remains the explicit partial reason.",
-        "2026-06-07: QoS code hardening complete for default-priority callback tasks and duplicate hot-path readiness checks. Manual smoke must still report QoS priority inversion warning YES/NO, playback failed, engineFormat nil, and buffer drop status before done."
+        "2026-06-07: QoS code hardening complete for default-priority callback tasks and duplicate hot-path readiness checks. Manual smoke must still report QoS priority inversion warning YES/NO, playback failed, engineFormat nil, and buffer drop status before done.",
+        "2026-06-10: Supertonic3 App Store release gate now requires explicit AppStoreTTSReleaseGate approval and bundled model validation. validate_supertonic3_bundle.py skips in developer mode but fails under MYTEAM_REQUIRE_SUPERTONIC3_BUNDLE=1 when required ONNX/style files are missing. Partial remains until model bundle, license/redistribution approval, and live audio smoke are complete."
       ]
     },
     {
@@ -769,7 +770,8 @@
         "screenshots": []
       },
       "notes": [
-        "2026-06-05: Release checklist automation expanded beyond JSON shape into forbidden-pattern, Keychain boundary, and skill package policy validation. CI wiring/manual checklist review remain."
+        "2026-06-05: Release checklist automation expanded beyond JSON shape into forbidden-pattern, Keychain boundary, and skill package policy validation. CI wiring/manual checklist review remain.",
+        "2026-06-10: validate_myteam_release.py now invokes validate_supertonic3_bundle.py. Normal developer validation reports SKIP when model resources are absent; App Store RC validation can set MYTEAM_REQUIRE_SUPERTONIC3_BUNDLE=1 to fail on missing Supertonic3 ONNX/style files."
       ]
     },
     {

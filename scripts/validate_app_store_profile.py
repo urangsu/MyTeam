@@ -121,6 +121,12 @@ def validate_supertonic3_policy() -> None:
         fail("Supertonic3 App Store model source must be bundled")
     if not re.search(r"case \.developer:\s*return \.externalCacheDeveloperOnly", source_policy):
         fail("Supertonic3 external cache must be Developer-only")
+    if not re.search(r"case \.appStore:\s*return AppStoreTTSReleaseGate\.isApproved", source_policy):
+        fail("Supertonic3 App Store runtime must be gated by AppStoreTTSReleaseGate")
+    if "enum AppStoreTTSReleaseGate" not in source_policy:
+        fail("Supertonic3 App Store release gate must be explicit")
+    if "bundledModelValidated" not in source_policy:
+        fail("Supertonic3 App Store release gate must validate bundled model files")
     if "FeatureGate.current == .developer" not in external_locator:
         fail("Supertonic3 external cache locator must guard Developer profile")
     if "Supertonic3DistributionGate.isRuntimeAllowed" not in routing_policy:

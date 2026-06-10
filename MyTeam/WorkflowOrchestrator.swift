@@ -205,6 +205,10 @@ final class WorkflowOrchestrator {
         let eventMsg = userMessage
         Task { await AgentEventBus.shared.publish(.userMessageSubmitted(roomID: eventRoomID, message: eventMsg)) }
 
+        if await handleToolFastPath(userMessage: userMessage, roomID: roomID, manager: manager) {
+            return
+        }
+
         let interpretedGoal = GoalInterpreter.interpret(userMessage)
         let capabilityDecision = CapabilityAwareRouter.evaluate(goal: interpretedGoal)
         let routingBudgetKey = await beginBudgetSession(roomID: roomID, tier: budgetTier(for: interpretedGoal, userMessage: userMessage))
@@ -2792,6 +2796,40 @@ final class WorkflowOrchestrator {
                 manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "universalDocument.cancelled")
             }
         }
+    }
+
+    private func handleToolFastPath(
+        userMessage: String,
+        roomID: UUID,
+        manager: AgentWindowManager
+    ) async -> Bool {
+        guard let match = MyTeamToolFastPathRouter.match(userMessage) else { return false }
+        await MainActor.run {
+            manager.isWorkflowRunning = true
+            manager.setWorkflowStatus("업무 도구 실행 중: \(match.descriptor.displayName)", for: roomID)
+        }
+        let state = await ToolExecutionRouter.shared.run(
+            match.descriptor,
+            input: match.input,
+            bypassApproval: false,
+            path: .planner
+        )
+        let responseText = MyTeamToolFastPathRouter.markdown(
+            for: state,
+            descriptor: match.descriptor
+        )
+        await MainActor.run {
+            manager.addChatLog(
+                roomID: roomID,
+                agentID: "system",
+                agentName: "업무 실행",
+                text: responseText,
+                isUser: false
+            )
+            manager.clearWorkflowStatus(for: roomID)
+            manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0
+        }
+        return true
     }
 
     // MARK: - App Launch Pack Workflow

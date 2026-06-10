@@ -43,9 +43,7 @@ enum Supertonic3DistributionGate {
     nonisolated static var isRuntimeAllowed: Bool {
         switch FeatureGate.current {
         case .appStore:
-            return Supertonic3TTSConfig.isLicenseVerifiedForAppStore
-                && Supertonic3TTSConfig.isModelRedistributionApproved
-                && Supertonic3TTSConfig.isCommercialProductGateApproved
+            return AppStoreTTSReleaseGate.isApproved
         case .direct, .developer:
             return true
         }
@@ -54,6 +52,23 @@ enum Supertonic3DistributionGate {
     nonisolated static var blockedReason: String? {
         guard !isRuntimeAllowed else { return nil }
         return "Supertonic3 App Store release gate is not approved yet."
+    }
+}
+
+enum AppStoreTTSReleaseGate {
+    nonisolated static let licenseVerified = Supertonic3TTSConfig.isLicenseVerifiedForAppStore
+    nonisolated static let redistributionApproved = Supertonic3TTSConfig.isModelRedistributionApproved
+    nonisolated static let commercialProductApproved = Supertonic3TTSConfig.isCommercialProductGateApproved
+
+    nonisolated static var bundledModelValidated: Bool {
+        (try? Supertonic3BundledModelLocator.validateRequiredFiles()) != nil
+    }
+
+    nonisolated static var isApproved: Bool {
+        licenseVerified
+            && redistributionApproved
+            && commercialProductApproved
+            && bundledModelValidated
     }
 }
 
