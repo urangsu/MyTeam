@@ -11,7 +11,7 @@ enum MyTeamToolCategory: String, CaseIterable, Sendable, Hashable {
     case system
 }
 
-enum MyTeamPermissionLevel: String, Sendable, Hashable {
+enum MyTeamPermissionLevel: String, Codable, Sendable, Hashable {
     case readOnly
     case draftOnly
     case writeRequiresApproval
@@ -151,6 +151,18 @@ enum MyTeamToolRegistry {
             category: .spreadsheet,
             requiredCredential: nil,
             permissionLevel: .draftOnly,
+            isImplemented: true,
+            isUserFacing: true,
+            supportedDistributionChannels: [.appStore, .direct, .developer],
+            relatedProvider: nil
+        ),
+        MyTeamToolDescriptor(
+            id: "spreadsheet.googleSheets.read",
+            displayName: "Google Sheets 읽기",
+            shortDescription: "스프레드시트 URL 또는 ID로 값을 읽어옵니다.",
+            category: .spreadsheet,
+            requiredCredential: nil,
+            permissionLevel: .readOnly,
             isImplemented: true,
             isUserFacing: true,
             supportedDistributionChannels: [.appStore, .direct, .developer],

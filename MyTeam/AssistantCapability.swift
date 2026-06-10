@@ -12,6 +12,7 @@ enum AssistantCapability: String, Codable, CaseIterable {
     case mailSummarize
     case mailDraft
     case mailSend
+    case spreadsheetRead
     case spreadsheetCreate
     case calendarCreate
     case calendarModify
@@ -39,6 +40,7 @@ enum AssistantCapability: String, Codable, CaseIterable {
         case .mailSummarize: return "메일 요약"
         case .mailDraft: return "메일 초안"
         case .mailSend: return "메일 발송"
+        case .spreadsheetRead: return "스프레드시트 읽기"
         case .spreadsheetCreate: return "스프레드시트 생성"
         case .calendarCreate: return "일정 생성"
         case .calendarModify: return "일정 수정"
@@ -50,9 +52,9 @@ enum AssistantCapability: String, Codable, CaseIterable {
 
     var accessTier: AccessTier {
         switch self {
-        case .answer, .localSkill, .llmGeneration, .artifactCreation, .dailyBriefingPreview, .userInitiatedOAuth:
+        case .answer, .localSkill, .llmGeneration, .artifactCreation, .dailyBriefingPreview, .calendarRead, .spreadsheetRead, .userInitiatedOAuth:
             return .available
-        case .calendarRead, .mailMetadataRead:
+        case .mailMetadataRead:
             return .future
         case .mailBodyRead, .mailSummarize, .mailDraft, .spreadsheetCreate:
             return .requiresApproval

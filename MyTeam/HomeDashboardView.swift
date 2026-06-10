@@ -10,6 +10,7 @@ struct HomeDashboardView: View {
         "document.meetingMinutes": "회의 내용을 붙여넣으세요.",
         "document.rewrite": "다듬을 문장이나 문서를 붙여넣으세요.",
         "spreadsheet.postprocess": "표 내용을 붙여넣으세요.",
+        "spreadsheet.googleSheets.read": "",
         "dart.disclosures.search": "포스코",
         "news.search": "경제",
         "weather.current": "서울",
@@ -17,10 +18,13 @@ struct HomeDashboardView: View {
     ]
     @State private var selectedState: ToolExecutionState? = nil
     @State private var selectedDescriptor: MyTeamToolDescriptor? = nil
+    @State private var pendingApproval: ToolApprovalRequest? = nil
+    @StateObject private var executionLogStore = ToolExecutionLogStore.shared
 
     private let quickToolIDs = [
         "document.meetingMinutes",
         "spreadsheet.postprocess",
+        "spreadsheet.googleSheets.read",
         "calendar.events.today",
         "weather.current",
         "dart.disclosures.search",
@@ -52,6 +56,7 @@ struct HomeDashboardView: View {
                         state: state(for: briefing),
                         query: queryBinding(for: briefing),
                         onRun: run,
+                        onRequestApproval: requestApproval,
                         onOpenWorkspace: onOpenWorkspace,
                         onOpenConnection: onOpenConnection
                     )
@@ -65,6 +70,7 @@ struct HomeDashboardView: View {
                                 state: state(for: descriptor),
                                 query: queryBinding(for: descriptor),
                                 onRun: run,
+                                onRequestApproval: requestApproval,
                                 onOpenWorkspace: onOpenWorkspace,
                                 onOpenConnection: onOpenConnection
                             )
@@ -85,6 +91,7 @@ struct HomeDashboardView: View {
                                     state: state(for: descriptor),
                                     query: queryBinding(for: descriptor),
                                     onRun: run,
+                                    onRequestApproval: requestApproval,
                                     onOpenWorkspace: onOpenWorkspace,
                                     onOpenConnection: onOpenConnection
                                 )
@@ -99,12 +106,26 @@ struct HomeDashboardView: View {
                         onAction: handleResultAction
                     )
                 }
+
+                ToolExecutionLogView(store: executionLogStore)
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .task {
             await refreshReadiness()
+        }
+        .sheet(item: $pendingApproval) { request in
+            ToolApprovalSheetView(
+                request: request,
+                onCancel: { pendingApproval = nil },
+                onApprove: {
+                    let descriptor = request.descriptor
+                    let query = request.query
+                    pendingApproval = nil
+                    run(descriptor, query: query, bypassApproval: true)
+                }
+            )
         }
     }
 
@@ -175,6 +196,8 @@ struct HomeDashboardView: View {
             return "다듬을 문장이나 문서를 붙여넣으세요."
         case "spreadsheet.postprocess":
             return "표 내용을 붙여넣으세요."
+        case "spreadsheet.googleSheets.read":
+            return "스프레드시트 URL 또는 ID"
         case "calendar.events.today":
             return "오늘 일정"
         default:
@@ -183,6 +206,10 @@ struct HomeDashboardView: View {
     }
 
     private func run(_ descriptor: MyTeamToolDescriptor, query: String) {
+        run(descriptor, query: query, bypassApproval: false)
+    }
+
+    private func run(_ descriptor: MyTeamToolDescriptor, query: String, bypassApproval: Bool) {
         Task {
             await MainActor.run {
                 toolStates[descriptor.id] = .running
@@ -195,13 +222,21 @@ struct HomeDashboardView: View {
                 displayCount: descriptor.id == "news.search" ? 5 : nil,
                 providerHint: descriptor.requiredCredential?.provider
             )
-            let result = await ToolExecutionRouter.shared.run(descriptor, input: input)
+            let result = await ToolExecutionRouter.shared.run(descriptor, input: input, bypassApproval: bypassApproval)
             await MainActor.run {
                 toolStates[descriptor.id] = result
                 selectedState = result
                 selectedDescriptor = descriptor
             }
         }
+    }
+
+    private func requestApproval(_ descriptor: MyTeamToolDescriptor, query: String, reason: String) {
+        pendingApproval = ToolApprovalRequest(
+            descriptor: descriptor,
+            reason: reason,
+            query: query
+        )
     }
 
     private var inlineRunnableToolIDs: Set<String> {
@@ -214,6 +249,7 @@ struct HomeDashboardView: View {
             "document.meetingMinutes",
             "document.rewrite",
             "spreadsheet.postprocess",
+            "spreadsheet.googleSheets.read",
             "calendar.events.today"
         ]
     }

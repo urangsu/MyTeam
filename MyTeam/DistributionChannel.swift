@@ -35,11 +35,11 @@ enum FeatureGate {
     }
 
     nonisolated static var allowsModelAutoDownload: Bool {
-        current != .appStore
+        false
     }
 
     nonisolated static var allowsLocalModelOutsideContainer: Bool {
-        current != .appStore
+        current == .developer
     }
 
     nonisolated static var allowsSupertonic3Lab: Bool {

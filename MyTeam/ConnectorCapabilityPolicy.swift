@@ -30,6 +30,12 @@ enum ConnectorCapabilityPolicy {
             }
             return .init(status: .unavailable, message: "Google Calendar 연결 후 사용할 수 있습니다.")
 
+        case .spreadsheetRead:
+            if tokenState == .connected {
+                return .init(status: .allowed, message: "Google Sheets 읽기 가능")
+            }
+            return .init(status: .unavailable, message: "Google Sheets 연결 후 사용할 수 있습니다.")
+
         case .mailMetadataRead:
             return .init(status: .unavailable, message: "메일 메타데이터는 준비 중입니다.")
 
@@ -72,6 +78,7 @@ private extension AssistantConnector.Capability {
         case .summarizeEmail: return .mailSummarize
         case .createDraft: return .mailDraft
         case .sendEmail: return .mailSend
+        case .readSpreadsheet: return .spreadsheetRead
         case .createSpreadsheet: return .spreadsheetCreate
         case .createCalendarEvent: return .calendarCreate
         case .modifyCalendarEvent: return .calendarModify

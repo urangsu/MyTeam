@@ -26,6 +26,7 @@ struct AssistantConnector: Identifiable, Equatable {
         case summarizeEmail
         case createDraft
         case sendEmail
+        case readSpreadsheet
         case createSpreadsheet
         case createCalendarEvent
         case modifyCalendarEvent
@@ -39,6 +40,7 @@ struct AssistantConnector: Identifiable, Equatable {
             case .summarizeEmail: return "메일 요약"
             case .createDraft: return "초안 작성"
             case .sendEmail: return "메일 발송"
+            case .readSpreadsheet: return "스프레드시트 읽기"
             case .createSpreadsheet: return "스프레드시트 생성"
             case .createCalendarEvent: return "일정 생성"
             case .modifyCalendarEvent: return "일정 수정"

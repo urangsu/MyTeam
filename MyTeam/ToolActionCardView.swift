@@ -5,6 +5,7 @@ struct ToolActionCardView: View {
     let state: ToolExecutionState
     let query: Binding<String>?
     let onRun: ((MyTeamToolDescriptor, String) -> Void)?
+    let onRequestApproval: ((MyTeamToolDescriptor, String, String) -> Void)?
     let onOpenWorkspace: (MyTeamToolDescriptor) -> Void
     let onOpenConnection: ((ExternalProvider?) -> Void)?
 
@@ -56,6 +57,13 @@ struct ToolActionCardView: View {
                     Button("검증", action: { onOpenConnection?(descriptor.requiredCredential?.provider) })
                         .buttonStyle(.bordered)
                         .controlSize(.small)
+                } else if case .needsApproval(let reason) = state {
+                    Button("승인", action: {
+                        onRequestApproval?(descriptor, query?.wrappedValue ?? defaultQuery, reason)
+                    })
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .disabled(onRequestApproval == nil)
                 } else if case .running = state {
                     ProgressView()
                         .controlSize(.small)
@@ -111,7 +119,7 @@ struct ToolActionCardView: View {
         switch descriptor.id {
         case "dart.disclosures.search", "news.search", "weather.current", "law.search",
              "briefing.today", "document.meetingMinutes", "document.rewrite", "spreadsheet.postprocess",
-             "calendar.events.today":
+             "spreadsheet.googleSheets.read", "calendar.events.today":
             return true
         default:
             return false
@@ -130,6 +138,8 @@ struct ToolActionCardView: View {
             return "초안"
         case "spreadsheet.postprocess":
             return "정리"
+        case "spreadsheet.googleSheets.read":
+            return "읽기"
         case "calendar.events.today":
             return "확인"
         default:
@@ -155,6 +165,8 @@ struct ToolActionCardView: View {
             return "다듬을 문장이나 문서를 붙여넣으세요."
         case "spreadsheet.postprocess":
             return "표 내용을 붙여넣으세요."
+        case "spreadsheet.googleSheets.read":
+            return "스프레드시트 URL 또는 ID"
         case "calendar.events.today":
             return "오늘 일정"
         default:

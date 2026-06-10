@@ -9,7 +9,7 @@ enum GoogleOAuthPolicyDecision: Equatable {
 enum GoogleOAuthPolicy {
     static func decision(for scope: GoogleOAuthScope) -> GoogleOAuthPolicyDecision {
         switch scope {
-        case .calendarEventsReadonly:
+        case .calendarEventsReadonly, .spreadsheetsReadonly:
             return .autoAllowed
         case .spreadsheets:
             return .requiresApproval(reason: "Google Sheets 생성/수정은 외부 파일 쓰기라 사용자 승인 후 실행합니다.")

@@ -301,7 +301,7 @@ struct AssistantConnectorCenterView: View {
         case .googleCalendar:
             return [.calendarEventsReadonly]
         case .googleSheets:
-            return [.spreadsheets]
+            return [.spreadsheetsReadonly]
         case .gmail:
             return [.gmailMetadata, .gmailReadonly]
         default:

@@ -13,10 +13,10 @@ enum AssistantConnectorCatalog {
         AssistantConnector(
             id: .googleSheets,
             displayName: "Google Sheets",
-            description: "스프레드시트 생성과 내보내기를 준비합니다.",
-            capabilities: [.createSpreadsheet],
-            isImplemented: false,
-            notes: "현재는 로컬 XLSX 생성만 사용할 수 있고, Google Sheets API 내보내기는 준비 중입니다."
+            description: "지정한 스프레드시트 값을 읽어 업무 카드로 확인합니다.",
+            capabilities: [.readSpreadsheet],
+            isImplemented: true,
+            notes: "읽기는 Google Sheets read-only scope로 실행합니다. 생성/수정은 준비 중입니다."
         ),
         AssistantConnector(
             id: .gmail,
@@ -86,7 +86,7 @@ enum AssistantConnectorCatalog {
                 GoogleOAuthStoredConfig(
                     clientID: stored.clientID,
                     redirectMode: stored.redirectMode,
-                    enabledScopes: [.spreadsheets],
+                    enabledScopes: [.spreadsheetsReadonly],
                     updatedAt: stored.updatedAt
                 )
             )
@@ -94,28 +94,30 @@ enum AssistantConnectorCatalog {
                 return GoogleOAuthConnectionState(
                     provider: provider,
                     status: .notConfigured,
-                    grantedScopes: [.spreadsheets],
+                    grantedScopes: [.spreadsheetsReadonly],
                     lastCheckedAt: nil,
                     message: "연결 준비 중"
                 )
             }
             let token = try? GoogleOAuthTokenStore.shared.loadToken(for: provider)
-            let connected = token != nil && (token?.isExpired == false || token?.refreshToken != nil)
+            let tokenScopes = token?.scopes ?? []
+            let hasReadScope = tokenScopes.contains(.spreadsheetsReadonly) || tokenScopes.contains(.spreadsheets)
+            let connected = hasReadScope && (token?.isExpired == false || token?.refreshToken != nil)
             if connected {
                 return GoogleOAuthConnectionState(
                     provider: provider,
                     status: .connected,
-                    grantedScopes: token?.scopes ?? [.spreadsheets],
+                    grantedScopes: token?.scopes ?? [.spreadsheetsReadonly],
                     lastCheckedAt: Date(),
-                    message: "OAuth 연결됨 · Sheets 내보내기는 준비 중"
+                    message: "읽기 연결됨 · Sheets 수정은 준비 중"
                 )
             }
             return GoogleOAuthConnectionState(
                 provider: provider,
                 status: token?.isExpired == true && token?.refreshToken == nil ? .needsReauth : .notConnected,
-                grantedScopes: [.spreadsheets],
+                grantedScopes: [.spreadsheetsReadonly],
                 lastCheckedAt: nil,
-                message: "Google Sheets OAuth 연결 가능 · 내보내기는 준비 중"
+                message: "Google Sheets 읽기 연결 가능"
             )
         case .gmail:
             return GoogleOAuthConnectionState(

@@ -47,30 +47,57 @@ actor ToolExecutionRouter {
     }
 
     func run(_ descriptor: MyTeamToolDescriptor, input: MyTeamToolInput) async -> ToolExecutionState {
-        let state = await readiness(for: descriptor)
-        guard state.isRunnable else { return state }
+        await run(descriptor, input: input, bypassApproval: false)
+    }
 
+    func run(_ descriptor: MyTeamToolDescriptor, input: MyTeamToolInput, bypassApproval: Bool) async -> ToolExecutionState {
+        let logID = await MainActor.run {
+            ToolExecutionLogStore.shared.start(descriptor: descriptor)
+        }
+        let state = await readiness(for: descriptor, bypassApproval: bypassApproval)
+        guard state.isRunnable else {
+            await finishLog(id: logID, state: state)
+            return state
+        }
+
+        let result: ToolExecutionState
         switch descriptor.id {
         case "briefing.today":
-            return await runTodayBriefing()
+            result = await runTodayBriefing()
         case "document.meetingMinutes":
-            return await runUniversalDocument(type: .meetingMinutes, input: input)
+            result = await runUniversalDocument(type: .meetingMinutes, input: input)
         case "document.rewrite":
-            return await runUniversalDocument(type: .summary, input: input)
+            result = await runUniversalDocument(type: .summary, input: input)
         case "spreadsheet.postprocess":
-            return runSpreadsheetPostprocess(input: input)
+            result = runSpreadsheetPostprocess(input: input)
+        case "spreadsheet.googleSheets.read":
+            result = await runGoogleSheetsRead(input: input)
         case "calendar.events.today":
-            return await runGoogleCalendarToday()
+            result = await runGoogleCalendarToday()
         case "dart.disclosures.search":
-            return await runDART(input: input)
+            result = await runDART(input: input)
         case "news.search":
-            return await runNaverNews(input: input)
+            result = await runNaverNews(input: input)
         case "weather.current":
-            return await runKMAWeather(input: input)
+            result = await runKMAWeather(input: input)
         case "law.search":
-            return await runKoreanLaw(input: input)
+            result = await runKoreanLaw(input: input)
         default:
-            return .unavailable("이 업무는 아직 실행 연결 전입니다.")
+            result = .unavailable("이 업무는 아직 실행 연결 전입니다.")
+        }
+        await finishLog(id: logID, state: result)
+        return result
+    }
+
+    private func readiness(for descriptor: MyTeamToolDescriptor, bypassApproval: Bool) async -> ToolExecutionState {
+        let state = await readiness(for: descriptor)
+        guard case .needsApproval = state, bypassApproval else { return state }
+        return .idle
+    }
+
+    private func finishLog(id: UUID, state: ToolExecutionState) async {
+        await MainActor.run {
+            ToolExecutionLogStore.shared.finish(id: id, state: state)
         }
     }
 
@@ -165,6 +192,78 @@ actor ToolExecutionRouter {
         ))
     }
 
+    private func runGoogleSheetsRead(input: MyTeamToolInput) async -> ToolExecutionState {
+        let hasSheetsToken = await MainActor.run {
+            GoogleOAuthTokenStore.shared.hasToken(for: .googleSheets)
+        }
+        guard hasSheetsToken else {
+            return .failed(MyTeamToolFailure(
+                title: "Google Sheets 연결이 필요합니다",
+                message: "스프레드시트를 읽으려면 비서 연결에서 Google Sheets 읽기 연결을 먼저 완료하세요.",
+                recoveryActions: [
+                    MyTeamNextAction(id: "openAssistantConnection", title: "비서 연결", role: .normal)
+                ]
+            ))
+        }
+
+        guard let request = googleSheetsReadRequest(from: input.query) else {
+            return .failed(MyTeamToolFailure(
+                title: "스프레드시트 ID가 필요합니다",
+                message: "Google Sheets URL 또는 spreadsheetId를 입력해 주세요. 범위는 입력하지 않으면 Sheet1!A1:Z100으로 조회합니다.",
+                recoveryActions: [
+                    MyTeamNextAction(id: "changeKeyword", title: "다시 입력", role: .normal)
+                ]
+            ))
+        }
+
+        do {
+            let result = try await GoogleSheetsClient.shared.fetchValues(
+                spreadsheetID: request.spreadsheetID,
+                range: request.range
+            )
+            if result.values.isEmpty {
+                return .succeeded(MyTeamToolResult(
+                    title: "시트 값이 없습니다",
+                    summary: "\(result.range) 범위에서 값을 찾지 못했습니다.",
+                    sourceLabel: "Google Sheets 읽기",
+                    body: nil,
+                    items: [],
+                    nextActions: [
+                        MyTeamNextAction(id: "changeKeyword", title: "범위 바꾸기", role: .normal)
+                    ]
+                ))
+            }
+
+            return .succeeded(MyTeamToolResult(
+                title: "Google Sheets 값을 읽었습니다",
+                summary: "\(result.range) 범위에서 \(result.rowCount)행, \(result.columnCount)열을 가져왔습니다.",
+                sourceLabel: "Google Sheets 읽기",
+                body: googleSheetsTableBody(result),
+                items: [
+                    MyTeamToolResultItem(
+                        id: "rows",
+                        title: "행",
+                        subtitle: "\(result.rowCount)개",
+                        metadata: "최대 20행 미리보기",
+                        sourceURL: nil
+                    ),
+                    MyTeamToolResultItem(
+                        id: "columns",
+                        title: "열",
+                        subtitle: "\(result.columnCount)개",
+                        metadata: result.range,
+                        sourceURL: nil
+                    )
+                ],
+                nextActions: [
+                    MyTeamNextAction(id: "changeKeyword", title: "다른 시트 읽기", role: .normal)
+                ]
+            ))
+        } catch {
+            return googleSheetsFailureState(error)
+        }
+    }
+
     private func runGoogleCalendarToday() async -> ToolExecutionState {
         let hasToken = await MainActor.run {
             GoogleOAuthTokenStore.shared.hasToken(for: .googleCalendar)
@@ -181,13 +280,22 @@ actor ToolExecutionRouter {
 
         let now = Date()
         let items = await GoogleDailyBriefingCalendarProvider.shared.calendarItemsForToday(now: now)
-        let status = await MainActor.run {
-            GoogleDailyBriefingCalendarProvider.shared.statusMessage
+        let calendarStatus = await MainActor.run {
+            (
+                message: GoogleDailyBriefingCalendarProvider.shared.statusMessage,
+                fetchStatus: GoogleDailyBriefingCalendarProvider.shared.lastFetchStatus
+            )
+        }
+        if items.isEmpty, calendarStatus.fetchStatus != "empty" {
+            return calendarFailureState(
+                fetchStatus: calendarStatus.fetchStatus,
+                message: calendarStatus.message
+            )
         }
         if items.isEmpty {
             return .succeeded(MyTeamToolResult(
                 title: "오늘 일정이 없습니다",
-                summary: status,
+                summary: calendarStatus.message,
                 sourceLabel: "Google Calendar",
                 body: nil,
                 items: [],
@@ -199,7 +307,7 @@ actor ToolExecutionRouter {
 
         return .succeeded(MyTeamToolResult(
             title: "오늘 일정을 가져왔습니다",
-            summary: status,
+            summary: calendarStatus.message,
             sourceLabel: "Google Calendar",
             body: calendarBody(from: items),
             items: items.prefix(5).map { item in
@@ -333,7 +441,15 @@ actor ToolExecutionRouter {
         guard let serviceKey = await credentialValue(provider: provider, fieldID: "serviceKey") else {
             return .needsConnection(provider)
         }
-        let region = kmaRegion(from: input.query)
+        guard let region = KMARegionGridMapper.resolve(input.query) else {
+            return .failed(MyTeamToolFailure(
+                title: "지역 격자를 찾지 못했습니다",
+                message: KMARegionGridMapper.userFacingUnsupportedMessage(for: input.query),
+                recoveryActions: [
+                    MyTeamNextAction(id: "changeKeyword", title: "지역 바꾸기", role: .normal)
+                ]
+            ))
+        }
         let nx = input.nx ?? region.nx
         let ny = input.ny ?? region.ny
 
@@ -504,6 +620,155 @@ actor ToolExecutionRouter {
         return lines.joined(separator: "\n")
     }
 
+    private func googleSheetsReadRequest(from query: String?) -> GoogleSheetsReadRequest? {
+        let raw = (query ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty else { return nil }
+        let defaultRange = "Sheet1!A1:Z100"
+
+        if let url = URL(string: raw), let host = url.host, host.contains("docs.google.com") {
+            let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            let range = components?.queryItems?.first(where: { $0.name == "range" })?.value ?? defaultRange
+            let parts = url.pathComponents
+            if let index = parts.firstIndex(of: "d"), parts.indices.contains(index + 1) {
+                return GoogleSheetsReadRequest(
+                    spreadsheetID: parts[index + 1],
+                    range: sanitizedSheetRange(range, fallback: defaultRange)
+                )
+            }
+        }
+
+        let tokens = raw
+            .split(whereSeparator: { $0.isWhitespace || $0.isNewline })
+            .map(String.init)
+        guard let idToken = tokens.first else { return nil }
+        let id = spreadsheetID(from: idToken) ?? idToken
+        let range = tokens.dropFirst().first.map { String($0) } ?? defaultRange
+        guard isLikelySpreadsheetID(id) else { return nil }
+        return GoogleSheetsReadRequest(
+            spreadsheetID: id,
+            range: sanitizedSheetRange(range, fallback: defaultRange)
+        )
+    }
+
+    private func spreadsheetID(from value: String) -> String? {
+        guard let url = URL(string: value), let host = url.host, host.contains("docs.google.com") else {
+            return nil
+        }
+        let parts = url.pathComponents
+        guard let index = parts.firstIndex(of: "d"), parts.indices.contains(index + 1) else {
+            return nil
+        }
+        return parts[index + 1]
+    }
+
+    private func isLikelySpreadsheetID(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 20 else { return false }
+        return trimmed.range(of: #"^[A-Za-z0-9_-]+$"#, options: .regularExpression) != nil
+    }
+
+    private func sanitizedSheetRange(_ value: String, fallback: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return fallback }
+        return trimmed
+    }
+
+    private func googleSheetsTableBody(_ result: GoogleSheetsReadResult) -> String {
+        let previewRows = result.values.prefix(20)
+        let lines = previewRows.map { row in
+            row.map { cell in
+                cell.replacingOccurrences(of: "\n", with: " ")
+            }
+            .joined(separator: " | ")
+        }
+        return ([
+            "# Google Sheets 읽기",
+            "",
+            "- 범위: \(result.range)",
+            "- 행: \(result.rowCount)",
+            "- 열: \(result.columnCount)",
+            "",
+            "## 미리보기"
+        ] + lines.map { "- \($0)" }).joined(separator: "\n")
+    }
+
+    private func googleSheetsFailureState(_ error: Error) -> ToolExecutionState {
+        let title: String
+        let message: String
+        let actions: [MyTeamNextAction]
+
+        switch error {
+        case GoogleSheetsClientError.missingToken:
+            title = "Google Sheets 연결이 필요합니다"
+            message = "Google Sheets 읽기 연결을 먼저 완료하세요."
+            actions = [MyTeamNextAction(id: "openAssistantConnection", title: "비서 연결", role: .normal)]
+        case GoogleSheetsClientError.needsReauth, GoogleSheetsClientError.unauthorized:
+            title = "Google Sheets 재인증이 필요합니다"
+            message = "Google 로그인 토큰이 만료되었거나 사용할 수 없습니다."
+            actions = [MyTeamNextAction(id: "openAssistantConnection", title: "비서 연결", role: .normal)]
+        case GoogleSheetsClientError.unsupportedScope:
+            title = "Google Sheets 읽기 권한이 필요합니다"
+            message = "현재 토큰에 spreadsheets.readonly 권한이 없습니다. Google Sheets 읽기 연결을 다시 진행해 주세요."
+            actions = [MyTeamNextAction(id: "openAssistantConnection", title: "비서 연결", role: .normal)]
+        case GoogleSheetsClientError.forbidden:
+            title = "시트 접근 권한이 없습니다"
+            message = "해당 스프레드시트를 볼 수 있는 Google 계정으로 연결했는지 확인하세요."
+            actions = [MyTeamNextAction(id: "openAssistantConnection", title: "비서 연결", role: .normal)]
+        case GoogleSheetsClientError.notFound:
+            title = "스프레드시트를 찾지 못했습니다"
+            message = "spreadsheetId 또는 URL이 올바른지 확인하세요."
+            actions = [MyTeamNextAction(id: "changeKeyword", title: "다시 입력", role: .normal)]
+        case GoogleSheetsClientError.invalidRequest:
+            title = "시트 범위를 확인하세요"
+            message = "예: Sheet1!A1:Z100 형식의 범위를 입력해 주세요."
+            actions = [MyTeamNextAction(id: "changeKeyword", title: "범위 바꾸기", role: .normal)]
+        case GoogleSheetsClientError.decodeFailed:
+            title = "시트 응답을 해석하지 못했습니다"
+            message = "Google Sheets 응답 형식이 예상과 다릅니다."
+            actions = [MyTeamNextAction(id: "searchAgain", title: "다시 시도", role: .normal)]
+        default:
+            title = "Google Sheets 값을 가져오지 못했습니다"
+            message = "네트워크 상태 또는 Google Sheets API 설정을 확인하세요."
+            actions = [MyTeamNextAction(id: "searchAgain", title: "다시 시도", role: .normal)]
+        }
+
+        return .failed(MyTeamToolFailure(
+            title: title,
+            message: message,
+            recoveryActions: actions
+        ))
+    }
+
+    private func calendarFailureState(fetchStatus: String, message: String) -> ToolExecutionState {
+        let actions: [MyTeamNextAction]
+        switch fetchStatus {
+        case "missing_token", "needs_reauth", "forbidden":
+            actions = [
+                MyTeamNextAction(id: "openAssistantConnection", title: "비서 연결", role: .normal)
+            ]
+        default:
+            actions = [
+                MyTeamNextAction(id: "searchAgain", title: "다시 시도", role: .normal)
+            ]
+        }
+        let title: String
+        switch fetchStatus {
+        case "missing_token":
+            title = "Google Calendar 연결이 필요합니다"
+        case "needs_reauth":
+            title = "Google Calendar 재인증이 필요합니다"
+        case "forbidden":
+            title = "Google Calendar 읽기 권한이 필요합니다"
+        default:
+            title = "Google Calendar 일정을 가져오지 못했습니다"
+        }
+        return .failed(MyTeamToolFailure(
+            title: title,
+            message: message,
+            recoveryActions: actions
+        ))
+    }
+
     private func estimatedColumnCount(_ row: String) -> Int {
         let separators: [Character] = ["\t", ",", "|"]
         return separators
@@ -586,23 +851,6 @@ actor ToolExecutionRouter {
         URL(string: "https://www.data.go.kr/tcs/dss/selectApiDataDetailView.do?publicDataPk=15084084")
     }
 
-    private func kmaRegion(from query: String?) -> KMAGridRegion {
-        let raw = (query ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !raw.isEmpty else { return KMAGridRegion.default }
-        let normalized = raw
-            .replacingOccurrences(of: "특별시", with: "")
-            .replacingOccurrences(of: "광역시", with: "")
-            .replacingOccurrences(of: "특별자치시", with: "")
-            .replacingOccurrences(of: "특별자치도", with: "")
-            .replacingOccurrences(of: "시", with: "")
-            .replacingOccurrences(of: "군", with: "")
-            .replacingOccurrences(of: "구", with: "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        return KMAGridRegion.known.first { region in
-            raw.contains(region.name) || normalized.contains(region.name) || region.aliases.contains { raw.contains($0) || normalized.contains($0) }
-        } ?? .default
-    }
-
     private func failureState(_ error: Error, provider: ExternalProvider) -> ToolExecutionState {
         let code = error as? ConnectorFailureCode ?? .networkError
         return .failed(MyTeamToolFailure(
@@ -649,38 +897,7 @@ actor ToolExecutionRouter {
     }
 }
 
-private struct KMAGridRegion: Sendable, Equatable {
-    let name: String
-    let nx: Int
-    let ny: Int
-    let aliases: [String]
-
-    nonisolated static let `default` = KMAGridRegion(name: "서울", nx: 60, ny: 127, aliases: ["서울"])
-
-    nonisolated static let known: [KMAGridRegion] = [
-        KMAGridRegion(name: "서울", nx: 60, ny: 127, aliases: ["서울특별시", "강남", "서초", "송파", "마포", "종로"]),
-        KMAGridRegion(name: "부산", nx: 98, ny: 76, aliases: ["부산광역시", "해운대", "서면"]),
-        KMAGridRegion(name: "대구", nx: 89, ny: 90, aliases: ["대구광역시"]),
-        KMAGridRegion(name: "인천", nx: 55, ny: 124, aliases: ["인천광역시"]),
-        KMAGridRegion(name: "광주", nx: 58, ny: 74, aliases: ["광주광역시"]),
-        KMAGridRegion(name: "대전", nx: 67, ny: 100, aliases: ["대전광역시"]),
-        KMAGridRegion(name: "울산", nx: 102, ny: 84, aliases: ["울산광역시"]),
-        KMAGridRegion(name: "세종", nx: 66, ny: 103, aliases: ["세종특별자치시"]),
-        KMAGridRegion(name: "수원", nx: 60, ny: 121, aliases: ["경기 수원", "수원시"]),
-        KMAGridRegion(name: "성남", nx: 62, ny: 123, aliases: ["분당", "판교", "성남시"]),
-        KMAGridRegion(name: "용인", nx: 64, ny: 119, aliases: ["용인시"]),
-        KMAGridRegion(name: "고양", nx: 57, ny: 128, aliases: ["고양시", "일산"]),
-        KMAGridRegion(name: "춘천", nx: 73, ny: 134, aliases: ["춘천시"]),
-        KMAGridRegion(name: "강릉", nx: 92, ny: 131, aliases: ["강릉시"]),
-        KMAGridRegion(name: "청주", nx: 69, ny: 107, aliases: ["청주시"]),
-        KMAGridRegion(name: "천안", nx: 63, ny: 110, aliases: ["천안시"]),
-        KMAGridRegion(name: "전주", nx: 63, ny: 89, aliases: ["전주시"]),
-        KMAGridRegion(name: "목포", nx: 50, ny: 67, aliases: ["목포시"]),
-        KMAGridRegion(name: "여수", nx: 73, ny: 66, aliases: ["여수시"]),
-        KMAGridRegion(name: "포항", nx: 102, ny: 94, aliases: ["포항시"]),
-        KMAGridRegion(name: "창원", nx: 90, ny: 77, aliases: ["창원시", "마산", "진해"]),
-        KMAGridRegion(name: "진주", nx: 81, ny: 75, aliases: ["진주시"]),
-        KMAGridRegion(name: "제주", nx: 52, ny: 38, aliases: ["제주시", "제주도"]),
-        KMAGridRegion(name: "서귀포", nx: 52, ny: 33, aliases: ["서귀포시"])
-    ]
+private struct GoogleSheetsReadRequest: Sendable, Equatable {
+    let spreadsheetID: String
+    let range: String
 }
