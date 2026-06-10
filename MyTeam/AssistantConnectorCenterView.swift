@@ -7,7 +7,6 @@ struct AssistantConnectorCenterView: View {
     @State private var refreshToken = UUID()
     @State private var googleClientID: String = ""
     @State private var googleRedirectMode: GoogleOAuthConfig.RedirectMode = .customURLScheme
-    @State private var googleCalendarScopeEnabled: Bool = true
 
     private var connectors: [AssistantConnector] {
         AssistantConnectorCatalog.connectors
@@ -55,7 +54,7 @@ struct AssistantConnectorCenterView: View {
             GoogleOAuthStoredConfig(
                 clientID: googleClientID,
                 redirectMode: googleRedirectMode,
-                enabledScopes: googleCalendarScopeEnabled ? [.calendarEventsReadonly] : [],
+                enabledScopes: [.calendarEventsReadonly, .spreadsheetsReadonly],
                 updatedAt: Date()
             )
         )
@@ -64,7 +63,7 @@ struct AssistantConnectorCenterView: View {
             HStack(spacing: 8) {
                 Image(systemName: "shield.lefthalf.filled")
                     .foregroundStyle(.blue)
-                Text("Google Calendar")
+                Text("Google 연결 설정")
                     .font(.system(size: 12, weight: .semibold))
                 Spacer()
                 Text(validation.status == .ready ? "준비 완료" : "준비 필요")
@@ -74,11 +73,11 @@ struct AssistantConnectorCenterView: View {
                     .background(Capsule().fill(validation.status == .ready ? Color.green.opacity(0.12) : Color.orange.opacity(0.12)))
             }
 
-            Text(validation.isReady ? "Google 계정으로 로그인하면 오늘 일정을 읽어옵니다." : "앱 Google OAuth 설정이 필요합니다.")
+            Text(validation.isReady ? "Google Calendar와 Google Sheets 읽기 연결에 사용합니다." : "앱 Google OAuth 설정이 필요합니다.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
-            Text("일정 생성/수정은 자동 실행하지 않습니다.")
+            Text("쓰기 작업은 승인 전 실행하지 않습니다.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
@@ -95,9 +94,9 @@ struct AssistantConnectorCenterView: View {
                     .pickerStyle(.menu)
                     .frame(width: 150)
 
-                    Toggle("Calendar read-only scope", isOn: $googleCalendarScopeEnabled)
-                        .toggleStyle(.checkbox)
-                        .disabled(true)
+                    Text("연결 버튼별로 필요한 read-only scope만 요청합니다.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
                 .padding(.top, 4)
             }
@@ -208,7 +207,7 @@ struct AssistantConnectorCenterView: View {
 
     private func googleActionButton(for provider: AssistantConnector.Provider, state: GoogleOAuthConnectionState) -> some View {
         let scopes = googleScopes(for: provider)
-        let draft = googleOAuthDraft(scopes: scopes)
+        let draft = googleOAuthDraft(for: provider, scopes: scopes)
         let validation = GoogleOAuthConfigValidator.validate(draft)
         let canConnect = validation.isReady && (state.status == .notConnected || state.status == .needsReauth)
         let buttonTitle: String = {
@@ -309,8 +308,19 @@ struct AssistantConnectorCenterView: View {
         }
     }
 
-    private func googleOAuthDraft(scopes: [GoogleOAuthScope]) -> GoogleOAuthStoredConfig {
-        let mergedScopes = Array(Set(scopes + (googleCalendarScopeEnabled ? [.calendarEventsReadonly] : [])))
+    private func googleOAuthDraft(for provider: AssistantConnector.Provider, scopes: [GoogleOAuthScope]) -> GoogleOAuthStoredConfig {
+        let providerScopes: [GoogleOAuthScope]
+        switch provider {
+        case .googleCalendar:
+            providerScopes = [.calendarEventsReadonly]
+        case .googleSheets:
+            providerScopes = [.spreadsheetsReadonly]
+        case .gmail:
+            providerScopes = []
+        case .naverMail, .naverCalendar:
+            providerScopes = scopes
+        }
+        let mergedScopes = Array(Set(providerScopes))
             .sorted(by: { $0.priority < $1.priority })
         return GoogleOAuthStoredConfig(
             clientID: googleClientID,
@@ -389,10 +399,9 @@ struct AssistantConnectorCenterView: View {
         let stored = GoogleOAuthConfigStore.shared.load()
         googleClientID = stored.clientID
         googleRedirectMode = stored.redirectMode == .notConfigured ? .customURLScheme : stored.redirectMode
-        googleCalendarScopeEnabled = stored.enabledScopes.contains(.calendarEventsReadonly) || stored.enabledScopes.isEmpty
     }
 
     private func saveGoogleOAuthDraft() {
-        GoogleOAuthConfigStore.shared.save(googleOAuthDraft(scopes: [.calendarEventsReadonly]))
+        GoogleOAuthConfigStore.shared.save(googleOAuthDraft(for: .googleCalendar, scopes: [.calendarEventsReadonly]))
     }
 }

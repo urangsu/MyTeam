@@ -101,7 +101,9 @@ enum AssistantConnectorCatalog {
             }
             let token = try? GoogleOAuthTokenStore.shared.loadToken(for: provider)
             let tokenScopes = token?.scopes ?? []
-            let hasReadScope = tokenScopes.contains(.spreadsheetsReadonly) || tokenScopes.contains(.spreadsheets)
+            let hasReadonlyScope = tokenScopes.contains(.spreadsheetsReadonly)
+            let hasWideScope = tokenScopes.contains(.spreadsheets)
+            let hasReadScope = hasReadonlyScope || hasWideScope
             let connected = hasReadScope && (token?.isExpired == false || token?.refreshToken != nil)
             if connected {
                 return GoogleOAuthConnectionState(
@@ -109,7 +111,7 @@ enum AssistantConnectorCatalog {
                     status: .connected,
                     grantedScopes: token?.scopes ?? [.spreadsheetsReadonly],
                     lastCheckedAt: Date(),
-                    message: "읽기 연결됨 · Sheets 수정은 준비 중"
+                    message: hasWideScope && !hasReadonlyScope ? "넓은 권한으로 연결됨 · 읽기만 사용 중" : "읽기 연결됨 · Sheets 수정은 준비 중"
                 )
             }
             return GoogleOAuthConnectionState(

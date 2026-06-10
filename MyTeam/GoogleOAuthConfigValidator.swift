@@ -26,9 +26,9 @@ enum GoogleOAuthConfigValidator {
         }
 
         if config.enabledScopes.isEmpty {
-            return .init(status: .noScopes, message: "Calendar read-only scope가 필요합니다.")
+            return .init(status: .noScopes, message: "Google read-only scope가 필요합니다.")
         }
 
-        return .init(status: .ready, message: "Google Calendar 읽기 로그인을 시작할 수 있습니다.")
+        return .init(status: .ready, message: "Google 읽기 로그인을 시작할 수 있습니다.")
     }
 }
