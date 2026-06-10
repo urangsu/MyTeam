@@ -8,7 +8,7 @@ struct AssistantConnector: Identifiable, Equatable {
         case naverMail
         case naverCalendar
 
-        var displayName: String {
+        nonisolated var displayName: String {
             switch self {
             case .googleCalendar: return "Google Calendar"
             case .googleSheets: return "Google Sheets"
@@ -32,7 +32,7 @@ struct AssistantConnector: Identifiable, Equatable {
         case modifyCalendarEvent
         case deleteItem
 
-        var displayName: String {
+        nonisolated var displayName: String {
             switch self {
             case .readCalendarEvents: return "캘린더 읽기"
             case .readEmailMetadata: return "메일 메타데이터 읽기"

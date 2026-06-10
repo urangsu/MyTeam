@@ -1161,21 +1161,50 @@ struct AgentChatView: View {
             ) {
                 return
             }
-        }
 
-        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("/") else { return }
+            guard !text.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("/") else { return }
 
-        // 첨부파일 컨텍스트를 메시지에 포함
-        let attachmentContext = ConversationMemory.buildAttachmentContext(from: attachments)
-        let fullText = attachmentContext.isEmpty ? text : text + attachmentContext
+            // 첨부파일 컨텍스트를 메시지에 포함
+            let attachmentContext = ConversationMemory.buildAttachmentContext(from: attachments)
+            let fullText = attachmentContext.isEmpty ? text : text + attachmentContext
 
-        let userMessageID = manager.addChatLog(
-            roomID: roomID, agentID: targetID, agentName: "나",
-            text: text.isEmpty ? "[첨부파일 \(attachments.count)개]" : text,
-            isUser: true
-        )
+            let userMessageID = await MainActor.run {
+                manager.addChatLog(
+                    roomID: roomID, agentID: targetID, agentName: "나",
+                    text: text.isEmpty ? "[첨부파일 \(attachments.count)개]" : text,
+                    isUser: true
+                )
+            }
 
-        Task {
+            if let fastPath = MyTeamToolFastPathRouter.match(fullText) {
+                if targetID != "team_all" {
+                    setTyping(targetID, true)
+                }
+                let state = await ToolExecutionRouter.shared.run(
+                    fastPath.descriptor,
+                    input: fastPath.input,
+                    bypassApproval: false,
+                    path: .chatFastPath
+                )
+                let responseText = MyTeamToolFastPathRouter.markdown(
+                    for: state,
+                    descriptor: fastPath.descriptor
+                )
+                await MainActor.run {
+                    if targetID != "team_all" {
+                        manager.typingAgentIDs.remove(targetID)
+                    }
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "업무 실행",
+                        text: responseText,
+                        isUser: false
+                    )
+                }
+                return
+            }
+
             if targetID == "team_all" {
                 let matchedSkills = SkillRegistry.shared.matchEnabledSkills(for: fullText)
                 let skillRoute = await SkillOrchestrator.route(
@@ -1224,7 +1253,7 @@ struct AgentChatView: View {
                 // ── 개별 채팅: 해당 에이전트 단독 응답 ──
                 // WorkflowOrchestrator / TeamOrchestrator 호출 금지
                 // Selector 호출 금지 — 이 경로는 항상 targetID 에이전트 단독 응답
-                await setTyping(targetID, true)
+                setTyping(targetID, true)
                 AppLog.info("[DirectChat] submit roomID=\(roomID.uuidString.prefix(8)) targetAgentID=\(targetID)")
                 let roomMessages = manager.rooms.first(where: { $0.id == roomID })?.messages ?? []
                 var history = ConversationMemory.promptHistory(
@@ -1269,7 +1298,7 @@ struct AgentChatView: View {
                             skillID: skillRoute.result.skillID
                         )
                     }
-                    await setTyping(targetID, false)
+                    setTyping(targetID, false)
                     return
                 }
 

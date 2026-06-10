@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeDashboardView: View {
     let onOpenConnection: (ExternalProvider?) -> Void
+    let onOpenAssistantConnection: (AssistantConnector.Provider?) -> Void
     let onOpenWorkspace: (MyTeamToolDescriptor) -> Void
 
     @State private var toolStates: [String: ToolExecutionState] = [:]
@@ -59,7 +60,8 @@ struct HomeDashboardView: View {
                         onRun: run,
                         onRequestApproval: requestApproval,
                         onOpenWorkspace: onOpenWorkspace,
-                        onOpenConnection: onOpenConnection
+                        onOpenConnection: onOpenConnection,
+                        onOpenAssistantConnection: onOpenAssistantConnection
                     )
                 }
 
@@ -73,7 +75,8 @@ struct HomeDashboardView: View {
                                 onRun: run,
                                 onRequestApproval: requestApproval,
                                 onOpenWorkspace: onOpenWorkspace,
-                                onOpenConnection: onOpenConnection
+                                onOpenConnection: onOpenConnection,
+                                onOpenAssistantConnection: onOpenAssistantConnection
                             )
                         }
                     }
@@ -94,7 +97,8 @@ struct HomeDashboardView: View {
                                     onRun: run,
                                     onRequestApproval: requestApproval,
                                     onOpenWorkspace: onOpenWorkspace,
-                                    onOpenConnection: onOpenConnection
+                                    onOpenConnection: onOpenConnection,
+                                    onOpenAssistantConnection: onOpenAssistantConnection
                                 )
                             }
                         }
@@ -262,9 +266,7 @@ struct HomeDashboardView: View {
         case "openConnection", "checkConnection":
             onOpenConnection(descriptor.requiredCredential?.provider)
         case "openAssistantConnection":
-            if let connectionCenter = MyTeamToolRegistry.descriptor(id: "system.connectionCenter") {
-                onOpenWorkspace(connectionCenter)
-            }
+            onOpenAssistantConnection(nil)
         case "searchAgain", "extendRange", "changeKeyword":
             run(descriptor, query: toolQueries[descriptor.id] ?? defaultQuery(for: descriptor))
         default:

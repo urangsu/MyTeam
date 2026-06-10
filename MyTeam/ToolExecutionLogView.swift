@@ -63,6 +63,11 @@ struct ToolExecutionLogView: View {
                     Text(label(for: entry.state))
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(tint(for: entry.state))
+                    if let duration = entry.durationMs {
+                        Text("\(duration)ms")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(duration > 4000 ? .orange : .secondary)
+                    }
                 }
 
                 Text(detail(for: entry))
@@ -85,9 +90,9 @@ struct ToolExecutionLogView: View {
             return summary
         }
         if let provider = entry.provider {
-            return "\(provider.displayName) · \(entry.permissionLevel.rawValue)"
+            return "\(provider.displayName) · \(entry.permissionLevel.rawValue) · \(pathLabel(entry.path))"
         }
-        return entry.permissionLevel.rawValue
+        return "\(entry.permissionLevel.rawValue) · \(pathLabel(entry.path))"
     }
 
     private func iconName(for state: ToolExecutionLogState) -> String {
@@ -114,6 +119,14 @@ struct ToolExecutionLogView: View {
         case .succeeded: return .green
         case .failed: return .orange
         case .blocked: return .secondary
+        }
+    }
+
+    private func pathLabel(_ path: ToolExecutionPath) -> String {
+        switch path {
+        case .toolCard: return "업무 카드"
+        case .chatFastPath: return "채팅 빠른 실행"
+        case .planner: return "계획 실행"
         }
     }
 }

@@ -105,6 +105,7 @@ enum Supertonic3TTSProbe {
         let enabled = Supertonic3TTSConfig.isEnabled
         let runtimeLinked = Supertonic3ONNXRuntimeProbe.isRuntimeLinked
         let noticeAccepted = SupertonicTTSNoticePolicy.isCurrentNoticeAccepted
+        let distributionAllowed = Supertonic3DistributionGate.isRuntimeAllowed
 
         let runtimeAvailability: ONNXRuntimeAvailability
         if runtimeLinked {
@@ -116,6 +117,8 @@ enum Supertonic3TTSProbe {
         let readiness: Supertonic3Readiness
         if !enabled {
             readiness = .disabled
+        } else if !distributionAllowed {
+            readiness = .runtimeUnavailable
         } else if !modelCheck.isAvailable {
             readiness = .missingModel
         } else if !runtimeLinked {

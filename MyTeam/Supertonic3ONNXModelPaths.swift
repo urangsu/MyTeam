@@ -8,9 +8,9 @@ import Foundation
 // Pure value type — no FileManager calls, paths resolved lazily.
 //
 // Policy:
-// - Model files live outside app bundle (~/.cache/supertonic3/onnx/)
-// - No auto-download, no app-bundle inclusion
-// - spike scope only — not exposed on production surfaces
+// - App Store / Direct routes through the bundled model locator.
+// - Developer builds may use the external ~/.cache path for local iteration.
+// - No auto-download. Missing model files are unavailable, not fallback success.
 
 struct Supertonic3ONNXModelPaths: Sendable {
 
@@ -27,16 +27,22 @@ struct Supertonic3ONNXModelPaths: Sendable {
     // MARK: - Init from directory
 
     nonisolated init(modelDirectory: URL) {
+        self.init(
+            modelDirectory: modelDirectory,
+            voiceStylesDirectory: modelDirectory
+                .deletingLastPathComponent()
+                .appendingPathComponent("voice_styles", isDirectory: true)
+        )
+    }
+
+    nonisolated init(modelDirectory: URL, voiceStylesDirectory: URL) {
         textEncoderURL       = modelDirectory.appendingPathComponent("text_encoder.onnx")
         durationPredictorURL = modelDirectory.appendingPathComponent("duration_predictor.onnx")
         vectorEstimatorURL   = modelDirectory.appendingPathComponent("vector_estimator.onnx")
         vocoderURL           = modelDirectory.appendingPathComponent("vocoder.onnx")
         unicodeIndexerURL    = modelDirectory.appendingPathComponent("unicode_indexer.json")
         ttsConfigURL         = modelDirectory.appendingPathComponent("tts.json")
-        // voice_styles is a sibling directory to onnx/
-        voiceStylesDirectoryURL = modelDirectory
-            .deletingLastPathComponent()
-            .appendingPathComponent("voice_styles")
+        voiceStylesDirectoryURL = voiceStylesDirectory
     }
 
     // MARK: - Validation
@@ -66,7 +72,32 @@ struct Supertonic3ONNXModelPaths: Sendable {
 
     /// Creates paths from the default Supertonic3 model directory.
     nonisolated static func defaultPaths() -> Supertonic3ONNXModelPaths {
-        Supertonic3ONNXModelPaths(modelDirectory: Supertonic3TTSConfig.modelDirectoryURL)
+        switch Supertonic3ModelSourcePolicy.preferredSource {
+        case .bundled:
+            if let paths = try? Supertonic3BundledModelLocator.paths() {
+                return paths
+            }
+            return Supertonic3ONNXModelPaths(
+                modelDirectory: URL(fileURLWithPath: "/__missing_bundled_supertonic3__/onnx", isDirectory: true),
+                voiceStylesDirectory: URL(fileURLWithPath: "/__missing_bundled_supertonic3__/voice_styles", isDirectory: true)
+            )
+        case .appSupport:
+            if let paths = try? Supertonic3AppSupportModelLocator.paths() {
+                return paths
+            }
+            return Supertonic3ONNXModelPaths(
+                modelDirectory: URL(fileURLWithPath: "/__missing_app_support_supertonic3__/onnx", isDirectory: true),
+                voiceStylesDirectory: URL(fileURLWithPath: "/__missing_app_support_supertonic3__/voice_styles", isDirectory: true)
+            )
+        case .externalCacheDeveloperOnly:
+            if let paths = try? Supertonic3ExternalCacheModelLocator.paths() {
+                return paths
+            }
+            return Supertonic3ONNXModelPaths(
+                modelDirectory: URL(fileURLWithPath: "/__external_cache_not_allowed__/onnx", isDirectory: true),
+                voiceStylesDirectory: URL(fileURLWithPath: "/__external_cache_not_allowed__/voice_styles", isDirectory: true)
+            )
+        }
     }
 
     /// Voice style JSON file URL for a given preset name (e.g., "F1", "M3").

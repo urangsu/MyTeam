@@ -8,6 +8,7 @@ struct ToolActionCardView: View {
     let onRequestApproval: ((MyTeamToolDescriptor, String, String) -> Void)?
     let onOpenWorkspace: (MyTeamToolDescriptor) -> Void
     let onOpenConnection: ((ExternalProvider?) -> Void)?
+    let onOpenAssistantConnection: ((AssistantConnector.Provider?) -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -59,8 +60,10 @@ struct ToolActionCardView: View {
                         .controlSize(.small)
                 } else if case .needsAssistantConnection = state {
                     Button("연결", action: {
-                        if let connectionCenter = MyTeamToolRegistry.descriptor(id: "system.connectionCenter") {
-                            onOpenWorkspace(connectionCenter)
+                        if case .needsAssistantConnection(let provider) = state {
+                            onOpenAssistantConnection?(provider)
+                        } else {
+                            onOpenAssistantConnection?(nil)
                         }
                     })
                     .buttonStyle(.bordered)
@@ -98,12 +101,16 @@ struct ToolActionCardView: View {
             }
             .frame(minHeight: 28)
 
-            if case .running = state {
-                ProgressView()
-                    .progressViewStyle(.linear)
-                    .controlSize(.small)
-                    .frame(height: 3)
+            Group {
+                if case .running = state {
+                    ProgressView()
+                        .progressViewStyle(.linear)
+                        .controlSize(.small)
+                } else {
+                    Color.clear
+                }
             }
+            .frame(height: 3)
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)

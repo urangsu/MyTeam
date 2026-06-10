@@ -5,7 +5,7 @@ import Foundation
 //
 // 정책:
 // - Apple TTS (AVSpeechSynthesizer): 영원히 금지. 폴백 포함.
-// - Supertonic3: officialEngineEnabled + enabled + notice accepted + model available + runtime linked
+// - Supertonic3: officialEngineEnabled + enabled + notice accepted + distribution gate + model source ready + runtime linked
 // - 해당 없음 → nil → 무음. 폴백 없음.
 // - auto-speak 기본 OFF (TTSProductPolicy.autoSpeakDefaultEnabled = false).
 
@@ -20,7 +20,8 @@ enum TTSRoutingPolicy {
         guard TTSProductPolicy.officialEngineEnabled else { return nil }
         guard Supertonic3TTSConfig.isEnabled else { return nil }
         guard SupertonicTTSNoticePolicy.isCurrentNoticeAccepted else { return nil }
-        guard Supertonic3ModelLocator.isModelAvailable() else { return nil }
+        guard Supertonic3DistributionGate.isRuntimeAllowed else { return nil }
+        guard Supertonic3ModelAvailability.isReady else { return nil }
         guard Supertonic3ONNXRuntimeProbe.isRuntimeLinked else { return nil }
         return .supertonic3
     }
@@ -36,7 +37,9 @@ enum TTSRoutingPolicy {
         var result: [TTSProviderKind: TTSProviderAvailability] = [:]
         if !Supertonic3TTSConfig.isEnabled {
             result[.supertonic3] = .experimental
-        } else if !Supertonic3ModelLocator.isModelAvailable() {
+        } else if !Supertonic3DistributionGate.isRuntimeAllowed {
+            result[.supertonic3] = .runtimeUnavailable
+        } else if !Supertonic3ModelAvailability.isReady {
             result[.supertonic3] = .missingModel
         } else if !Supertonic3ONNXRuntimeProbe.isRuntimeLinked {
             result[.supertonic3] = .runtimeUnavailable

@@ -13,7 +13,7 @@ struct Supertonic3ModelManifest {
     }
 
     // Primary required ONNX models (4 files ~398 MB total)
-    static let requiredFiles: [RequiredModelFile] = [
+    nonisolated static let requiredFiles: [RequiredModelFile] = [
         RequiredModelFile(
             logicalName: "text_encoder",
             candidateFilenames: ["text_encoder.onnx", "encoder.onnx", "text_encoder_model.onnx"],
@@ -37,7 +37,7 @@ struct Supertonic3ModelManifest {
     ]
 
     // Optional support files
-    static let optionalFiles: [RequiredModelFile] = [
+    nonisolated static let optionalFiles: [RequiredModelFile] = [
         RequiredModelFile(
             logicalName: "voice_styles",
             candidateFilenames: ["voice_styles.json", "styles.json", "voice_presets.json"],
@@ -56,7 +56,7 @@ struct Supertonic3ModelManifest {
     ]
 
     // Model metadata (informational, not enforced in Cloud)
-    static let metadata: [String: Any] = [
+    nonisolated static let metadata: [String: Any] = [
         "source": "Hugging Face / MIT Sample Implementation",
         "framework": "ONNX",
         "languages": 31,
@@ -67,7 +67,7 @@ struct Supertonic3ModelManifest {
     ]
 
     /// Locates model file by trying candidates in order
-    static func findModelFile(
+    nonisolated static func findModelFile(
         logicalName: String,
         in directory: URL
     ) -> URL? {

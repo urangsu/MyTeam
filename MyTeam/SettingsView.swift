@@ -218,6 +218,7 @@ struct SettingsView: View {
 
     @State private var currentTab: Int = 0
     @State private var focusedConnectionProvider: ExternalProvider? = nil
+    @State private var focusedAssistantConnectorProvider: AssistantConnector.Provider? = nil
     @State private var skillSearchText: String = ""
     @State private var skillRefreshToken: UUID = UUID()
     @StateObject private var gps = LocationHelper()
@@ -286,8 +287,15 @@ struct SettingsView: View {
         HomeDashboardView(onOpenConnection: { provider in
             focusedConnectionProvider = provider
             currentTab = 2
+        }, onOpenAssistantConnection: { provider in
+            focusedAssistantConnectorProvider = provider
+            currentTab = 2
         }, onOpenWorkspace: { descriptor in
-            currentTab = descriptor.category == .voice ? 5 : 3
+            if descriptor.category == .system {
+                currentTab = 2
+            } else {
+                currentTab = descriptor.category == .voice ? 5 : 3
+            }
         })
     }
 
@@ -424,7 +432,33 @@ struct SettingsView: View {
 
     // MARK: - Tab 2: 연결 센터
     private var connectionCenterTab: some View {
-        ConnectionCenterView(focusedProvider: focusedConnectionProvider)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                ConnectionCenterView(focusedProvider: focusedConnectionProvider)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "person.crop.circle.badge.checkmark")
+                            .foregroundStyle(.blue)
+                        Text("비서 연결")
+                            .font(.system(size: 13, weight: .semibold))
+                        if let focusedAssistantConnectorProvider {
+                            Text(focusedAssistantConnectorProvider.displayName)
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(Color.blue.opacity(0.10)))
+                        }
+                    }
+
+                    AssistantConnectorCenterView(onGoogleCalendarConnectionChanged: {
+                        dailyBriefingRefreshToken = UUID()
+                    })
+                }
+            }
+            .padding(.bottom, 12)
+        }
     }
 
     // MARK: - Tab 2 (Legacy): API 설정 — 개발자 모드에서만 노출

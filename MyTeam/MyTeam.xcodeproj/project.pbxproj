@@ -7888,12 +7888,17 @@
 				<string>TLF004REGISTRYFILE</string>
 				<string>TLF005ROUTERFILE</string>
 				<string>TLF006ACTIONCARDFILE</string>
-				<string>TLF007RESULTCARDFILE</string>
-				<string>TLF008HOMEDASHFILE</string>
-				<string>TLF009EXECLOGFILE</string>
-				<string>E3BCED940DAD6E0579E695D1</string>
-				<string>E3BCED940DAD6E0579E695D2</string>
-				<string>E3BCED940DAD6E0579E695D3</string>
+					<string>TLF007RESULTCARDFILE</string>
+						<string>TLF008HOMEDASHFILE</string>
+						<string>TLF009EXECLOGFILE</string>
+						<string>TLF015FASTPATHFILE</string>
+						<string>TLF016ST3SOURCEFILE</string>
+						<string>TLF017ST3BUNDLEDFILE</string>
+						<string>TLF018ST3EXTERNALFILE</string>
+						<string>TLF019LICENSEVIEWFILE</string>
+						<string>E3BCED940DAD6E0579E695D1</string>
+					<string>E3BCED940DAD6E0579E695D2</string>
+					<string>E3BCED940DAD6E0579E695D3</string>
 				<string>E30000000000000000000014</string>
 				<string>E30000000000000000000015</string>
 				<string>E30000000000000000000016</string>
@@ -9441,12 +9446,17 @@
 				<string>TLB009EXECLOGBLD</string>
 				<string>TLB010EXECLOGVIEWBLD</string>
 				<string>TLB011APPROVALREQBLD</string>
-				<string>TLB012APPROVALVIEWBLD</string>
-				<string>TLB013KMAREGIONBLD</string>
-				<string>TLB014GOOGLESHEETSBLD</string>
-				<string>E3BCED940DAD6E0579E695DD</string>
-				<string>E3BCED940DAD6E0579E695DE</string>
-				<string>E3BCED940DAD6E0579E695DF</string>
+					<string>TLB012APPROVALVIEWBLD</string>
+						<string>TLB013KMAREGIONBLD</string>
+						<string>TLB014GOOGLESHEETSBLD</string>
+						<string>TLB015FASTPATHBLD</string>
+						<string>TLB016ST3SOURCEBLD</string>
+						<string>TLB017ST3BUNDLEDBLD</string>
+						<string>TLB018ST3EXTERNALBLD</string>
+						<string>TLB019LICENSEVIEWBLD</string>
+						<string>E3BCED940DAD6E0579E695DD</string>
+					<string>E3BCED940DAD6E0579E695DE</string>
+					<string>E3BCED940DAD6E0579E695DF</string>
 				<string>CB448CDB5AE36D7DBEA54213</string>
 				<string>FADDA881F78D1970F1E847C6</string>
 				<string>373733FF48FC563C4C651D6C</string>
@@ -9813,6 +9823,8 @@
 				<string>YES</string>
 				<key>CODE_SIGN_IDENTITY</key>
 				<string>-</string>
+				<key>CODE_SIGN_ENTITLEMENTS</key>
+				<string>MyTeam.Developer.entitlements</string>
 				<key>CODE_SIGN_STYLE</key>
 				<string>Manual</string>
 				<key>COMBINE_HIDPI_IMAGES</key>
@@ -9854,11 +9866,11 @@
 				<key>INFOPLIST_KEY_NSHumanReadableCopyright</key>
 				<string>© 2026 DALGRACSTUDIO. All rights reserved.</string>
 				<key>INFOPLIST_KEY_NSLocationUsageDescription</key>
-				<string>날씨·지역 기반 브리핑 제공을 위해 위치를 사용할 수 있습니다.</string>
+				<string>날씨와 업무 브리핑의 기본 지역을 설정하기 위해 사용합니다.</string>
 				<key>INFOPLIST_KEY_NSMicrophoneUsageDescription</key>
-				<string>회의록 작성을 위해 사용자가 시작한 녹음에만 마이크를 사용합니다.</string>
+				<string>음성 입력으로 캐릭터에게 메시지를 전달하기 위해 사용합니다.</string>
 				<key>INFOPLIST_KEY_NSSpeechRecognitionUsageDescription</key>
-				<string>에이전트에게 전달할 음성을 텍스트로 변환합니다.</string>
+				<string>사용자가 말한 내용을 캐릭터와 업무비서에게 전달할 텍스트로 변환합니다.</string>
 				<key>INFOPLIST_KEY_MyTeamGoogleOAuthClientID</key>
 				<string>$(MYTEAM_GOOGLE_OAUTH_CLIENT_ID)</string>
 				<key>LD_RUNPATH_SEARCH_PATHS</key>
@@ -9910,6 +9922,8 @@
 				<string>YES</string>
 				<key>CODE_SIGN_IDENTITY</key>
 				<string>-</string>
+				<key>CODE_SIGN_ENTITLEMENTS</key>
+				<string>MyTeam.AppStore.entitlements</string>
 				<key>CODE_SIGN_STYLE</key>
 				<string>Manual</string>
 				<key>COMBINE_HIDPI_IMAGES</key>
@@ -9917,7 +9931,7 @@
 				<key>CURRENT_PROJECT_VERSION</key>
 				<string>1</string>
 				<key>ENABLE_APP_SANDBOX</key>
-				<string>NO</string>
+				<string>YES</string>
 				<key>ENABLE_HARDENED_RUNTIME</key>
 				<string>YES</string>
 				<key>ENABLE_INCOMING_NETWORK_CONNECTIONS</key>
@@ -9951,11 +9965,11 @@
 				<key>INFOPLIST_KEY_NSHumanReadableCopyright</key>
 				<string>© 2026 DALGRACSTUDIO. All rights reserved.</string>
 				<key>INFOPLIST_KEY_NSLocationUsageDescription</key>
-				<string>날씨·지역 기반 브리핑 제공을 위해 위치를 사용할 수 있습니다.</string>
+				<string>날씨와 업무 브리핑의 기본 지역을 설정하기 위해 사용합니다.</string>
 				<key>INFOPLIST_KEY_NSMicrophoneUsageDescription</key>
-				<string>회의록 작성을 위해 사용자가 시작한 녹음에만 마이크를 사용합니다.</string>
+				<string>음성 입력으로 캐릭터에게 메시지를 전달하기 위해 사용합니다.</string>
 				<key>INFOPLIST_KEY_NSSpeechRecognitionUsageDescription</key>
-				<string>에이전트에게 전달할 음성을 텍스트로 변환합니다.</string>
+				<string>사용자가 말한 내용을 캐릭터와 업무비서에게 전달할 텍스트로 변환합니다.</string>
 				<key>INFOPLIST_KEY_MyTeamGoogleOAuthClientID</key>
 				<string>$(MYTEAM_GOOGLE_OAUTH_CLIENT_ID)</string>
 				<key>LD_RUNPATH_SEARCH_PATHS</key>
@@ -17615,10 +17629,10 @@
 			<key>sourceTree</key>
 			<string>SOURCE_ROOT</string>
 		</dict>
-		<key>TLF014GOOGLESHEETSFILE</key>
-		<dict>
-			<key>fileEncoding</key>
-			<integer>4</integer>
+			<key>TLF014GOOGLESHEETSFILE</key>
+			<dict>
+				<key>fileEncoding</key>
+				<integer>4</integer>
 			<key>isa</key>
 			<string>PBXFileReference</string>
 			<key>lastKnownFileType</key>
@@ -17627,12 +17641,27 @@
 			<string>GoogleSheetsClient.swift</string>
 			<key>path</key>
 			<string>GoogleSheetsClient.swift</string>
-			<key>sourceTree</key>
-			<string>SOURCE_ROOT</string>
-		</dict>
-		<key>TLB001DISTRIBUTIONBLD</key>
-		<dict>
-			<key>fileRef</key>
+				<key>sourceTree</key>
+				<string>SOURCE_ROOT</string>
+			</dict>
+			<key>TLF015FASTPATHFILE</key>
+			<dict>
+				<key>fileEncoding</key>
+				<integer>4</integer>
+				<key>isa</key>
+				<string>PBXFileReference</string>
+				<key>lastKnownFileType</key>
+				<string>sourcecode.swift</string>
+				<key>name</key>
+				<string>MyTeamToolFastPathRouter.swift</string>
+				<key>path</key>
+				<string>MyTeamToolFastPathRouter.swift</string>
+				<key>sourceTree</key>
+				<string>SOURCE_ROOT</string>
+			</dict>
+			<key>TLB001DISTRIBUTIONBLD</key>
+			<dict>
+				<key>fileRef</key>
 			<string>TLF001DISTRIBUTIONFILE</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
@@ -17721,15 +17750,110 @@
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
-		<key>TLB014GOOGLESHEETSBLD</key>
-		<dict>
-			<key>fileRef</key>
-			<string>TLF014GOOGLESHEETSFILE</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
-		<key>E3BCED940DAD6E0579E695D1</key>
-		<dict>
+			<key>TLB014GOOGLESHEETSBLD</key>
+			<dict>
+				<key>fileRef</key>
+				<string>TLF014GOOGLESHEETSFILE</string>
+				<key>isa</key>
+				<string>PBXBuildFile</string>
+			</dict>
+				<key>TLB015FASTPATHBLD</key>
+				<dict>
+					<key>fileRef</key>
+					<string>TLF015FASTPATHFILE</string>
+					<key>isa</key>
+					<string>PBXBuildFile</string>
+				</dict>
+				<key>TLF016ST3SOURCEFILE</key>
+				<dict>
+					<key>fileEncoding</key>
+					<integer>4</integer>
+					<key>isa</key>
+					<string>PBXFileReference</string>
+					<key>lastKnownFileType</key>
+					<string>sourcecode.swift</string>
+					<key>name</key>
+					<string>Supertonic3ModelSource.swift</string>
+					<key>path</key>
+					<string>Supertonic3ModelSource.swift</string>
+					<key>sourceTree</key>
+					<string>SOURCE_ROOT</string>
+				</dict>
+				<key>TLF017ST3BUNDLEDFILE</key>
+				<dict>
+					<key>fileEncoding</key>
+					<integer>4</integer>
+					<key>isa</key>
+					<string>PBXFileReference</string>
+					<key>lastKnownFileType</key>
+					<string>sourcecode.swift</string>
+					<key>name</key>
+					<string>Supertonic3BundledModelLocator.swift</string>
+					<key>path</key>
+					<string>Supertonic3BundledModelLocator.swift</string>
+					<key>sourceTree</key>
+					<string>SOURCE_ROOT</string>
+				</dict>
+				<key>TLF018ST3EXTERNALFILE</key>
+				<dict>
+					<key>fileEncoding</key>
+					<integer>4</integer>
+					<key>isa</key>
+					<string>PBXFileReference</string>
+					<key>lastKnownFileType</key>
+					<string>sourcecode.swift</string>
+					<key>name</key>
+					<string>Supertonic3ExternalCacheModelLocator.swift</string>
+					<key>path</key>
+					<string>Supertonic3ExternalCacheModelLocator.swift</string>
+					<key>sourceTree</key>
+					<string>SOURCE_ROOT</string>
+				</dict>
+				<key>TLF019LICENSEVIEWFILE</key>
+				<dict>
+					<key>fileEncoding</key>
+					<integer>4</integer>
+					<key>isa</key>
+					<string>PBXFileReference</string>
+					<key>lastKnownFileType</key>
+					<string>sourcecode.swift</string>
+					<key>name</key>
+					<string>ThirdPartyLicensesView.swift</string>
+					<key>path</key>
+					<string>ThirdPartyLicensesView.swift</string>
+					<key>sourceTree</key>
+					<string>SOURCE_ROOT</string>
+				</dict>
+				<key>TLB016ST3SOURCEBLD</key>
+				<dict>
+					<key>fileRef</key>
+					<string>TLF016ST3SOURCEFILE</string>
+					<key>isa</key>
+					<string>PBXBuildFile</string>
+				</dict>
+				<key>TLB017ST3BUNDLEDBLD</key>
+				<dict>
+					<key>fileRef</key>
+					<string>TLF017ST3BUNDLEDFILE</string>
+					<key>isa</key>
+					<string>PBXBuildFile</string>
+				</dict>
+				<key>TLB018ST3EXTERNALBLD</key>
+				<dict>
+					<key>fileRef</key>
+					<string>TLF018ST3EXTERNALFILE</string>
+					<key>isa</key>
+					<string>PBXBuildFile</string>
+				</dict>
+				<key>TLB019LICENSEVIEWBLD</key>
+				<dict>
+					<key>fileRef</key>
+					<string>TLF019LICENSEVIEWFILE</string>
+					<key>isa</key>
+					<string>PBXBuildFile</string>
+				</dict>
+				<key>E3BCED940DAD6E0579E695D1</key>
+			<dict>
 			<key>fileEncoding</key>
 			<integer>4</integer>
 			<key>isa</key>

@@ -1,7 +1,49 @@
 import Foundation
 
+private final class ToolExecutionRaceBox: @unchecked Sendable {
+    private let lock = NSLock()
+    nonisolated(unsafe) private var didResolve = false
+    nonisolated(unsafe) private var operationTask: Task<Void, Never>?
+    nonisolated(unsafe) private var timeoutTask: Task<Void, Never>?
+
+    nonisolated init() {}
+
+    nonisolated func setTasks(operation: Task<Void, Never>, timeout: Task<Void, Never>) {
+        lock.lock()
+        if didResolve {
+            lock.unlock()
+            operation.cancel()
+            timeout.cancel()
+            return
+        }
+        operationTask = operation
+        timeoutTask = timeout
+        lock.unlock()
+    }
+
+    nonisolated func resolve(
+        _ state: ToolExecutionState,
+        continuation: CheckedContinuation<ToolExecutionState, Never>
+    ) {
+        lock.lock()
+        guard !didResolve else {
+            lock.unlock()
+            return
+        }
+        didResolve = true
+        let operationTask = operationTask
+        let timeoutTask = timeoutTask
+        lock.unlock()
+
+        operationTask?.cancel()
+        timeoutTask?.cancel()
+        continuation.resume(returning: state)
+    }
+}
+
 actor ToolExecutionRouter {
     static let shared = ToolExecutionRouter()
+    private let externalReadSoftBudgetNanoseconds: UInt64 = 3_000_000_000
 
     func readiness(for descriptor: MyTeamToolDescriptor) async -> ToolExecutionState {
         guard FeatureGate.allows(descriptor) else {
@@ -34,20 +76,20 @@ actor ToolExecutionRouter {
             }
         }
 
-        if descriptor.id == "spreadsheet.googleSheets.read" {
+        if let assistantProvider = assistantProvider(for: descriptor) {
             let sheetsState = await MainActor.run {
-                AssistantConnectorCatalog.connectionState(for: .googleSheets)
+                AssistantConnectorCatalog.connectionState(for: assistantProvider)
             }
             switch sheetsState.status {
             case .connected:
                 break
             case .notConfigured, .notConnected, .needsReauth:
-                return .needsAssistantConnection(.googleSheets)
+                return .needsAssistantConnection(assistantProvider)
             case .comingSoon:
-                return .unavailable("Google Sheets 읽기 연결은 준비 중입니다.")
+                return .unavailable("\(assistantProvider.displayName) 연결은 준비 중입니다.")
             case .error:
                 return .failed(MyTeamToolFailure(
-                    title: "Google Sheets 연결 상태를 확인하세요",
+                    title: "\(assistantProvider.displayName) 연결 상태를 확인하세요",
                     message: sheetsState.message,
                     recoveryActions: [
                         MyTeamNextAction(id: "openAssistantConnection", title: "비서 연결", role: .normal)
@@ -64,6 +106,17 @@ actor ToolExecutionRouter {
         return .idle
     }
 
+    private func assistantProvider(for descriptor: MyTeamToolDescriptor) -> AssistantConnector.Provider? {
+        switch descriptor.id {
+        case "calendar.events.today":
+            return .googleCalendar
+        case "spreadsheet.googleSheets.read":
+            return .googleSheets
+        default:
+            return nil
+        }
+    }
+
     func run(_ descriptor: MyTeamToolDescriptor) async -> ToolExecutionState {
         await run(descriptor, input: MyTeamToolInput())
     }
@@ -72,9 +125,14 @@ actor ToolExecutionRouter {
         await run(descriptor, input: input, bypassApproval: false)
     }
 
-    func run(_ descriptor: MyTeamToolDescriptor, input: MyTeamToolInput, bypassApproval: Bool) async -> ToolExecutionState {
+    func run(
+        _ descriptor: MyTeamToolDescriptor,
+        input: MyTeamToolInput,
+        bypassApproval: Bool,
+        path: ToolExecutionPath = .toolCard
+    ) async -> ToolExecutionState {
         let logID = await MainActor.run {
-            ToolExecutionLogStore.shared.start(descriptor: descriptor)
+            ToolExecutionLogStore.shared.start(descriptor: descriptor, path: path)
         }
         let state = await readiness(for: descriptor, bypassApproval: bypassApproval)
         guard state.isRunnable else {
@@ -93,17 +151,17 @@ actor ToolExecutionRouter {
         case "spreadsheet.postprocess":
             result = runSpreadsheetPostprocess(input: input)
         case "spreadsheet.googleSheets.read":
-            result = await runGoogleSheetsRead(input: input)
+            result = await runWithSoftBudget(descriptor) { await self.runGoogleSheetsRead(input: input) }
         case "calendar.events.today":
-            result = await runGoogleCalendarToday()
+            result = await runWithSoftBudget(descriptor) { await self.runGoogleCalendarToday() }
         case "dart.disclosures.search":
-            result = await runDART(input: input)
+            result = await runWithSoftBudget(descriptor) { await self.runDART(input: input) }
         case "news.search":
-            result = await runNaverNews(input: input)
+            result = await runWithSoftBudget(descriptor) { await self.runNaverNews(input: input) }
         case "weather.current":
-            result = await runKMAWeather(input: input)
+            result = await runWithSoftBudget(descriptor) { await self.runKMAWeather(input: input) }
         case "law.search":
-            result = await runKoreanLaw(input: input)
+            result = await runWithSoftBudget(descriptor) { await self.runKoreanLaw(input: input) }
         default:
             result = .unavailable("이 업무는 아직 실행 연결 전입니다.")
         }
@@ -120,6 +178,33 @@ actor ToolExecutionRouter {
     private func finishLog(id: UUID, state: ToolExecutionState) async {
         await MainActor.run {
             ToolExecutionLogStore.shared.finish(id: id, state: state)
+        }
+    }
+
+    private func runWithSoftBudget(
+        _ descriptor: MyTeamToolDescriptor,
+        operation: @escaping @Sendable () async -> ToolExecutionState
+    ) async -> ToolExecutionState {
+        let timeoutState = ToolExecutionState.failed(MyTeamToolFailure(
+            title: "\(descriptor.displayName) 응답 지연",
+            message: "3초 안에 결과를 받지 못했습니다. 연결 상태를 확인하거나 잠시 후 다시 시도하세요.",
+            recoveryActions: [
+                MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal)
+            ]
+        ))
+
+        return await withCheckedContinuation { continuation in
+            let box = ToolExecutionRaceBox()
+            let operationTask = Task(priority: .userInitiated) {
+                let state = await operation()
+                box.resolve(state, continuation: continuation)
+            }
+            let timeoutTask = Task(priority: .userInitiated) { [externalReadSoftBudgetNanoseconds] in
+                try? await Task.sleep(nanoseconds: externalReadSoftBudgetNanoseconds)
+                guard !Task.isCancelled else { return }
+                box.resolve(timeoutState, continuation: continuation)
+            }
+            box.setTasks(operation: operationTask, timeout: timeoutTask)
         }
     }
 

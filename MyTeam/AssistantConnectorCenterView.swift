@@ -44,7 +44,7 @@ struct AssistantConnectorCenterView: View {
                 .controlSize(.small)
             }
 
-            Text("일정과 메일 연결 상태를 확인합니다.")
+            Text("일정, 스프레드시트, 메일 연결 상태를 확인합니다.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -425,6 +425,13 @@ struct AssistantConnectorCenterView: View {
     }
 
     private func saveGoogleOAuthDraft() {
-        GoogleOAuthConfigStore.shared.save(googleOAuthDraft(for: .googleCalendar, scopes: [.calendarEventsReadonly]))
+        GoogleOAuthConfigStore.shared.save(
+            GoogleOAuthStoredConfig(
+                clientID: googleClientID,
+                redirectMode: googleRedirectMode,
+                enabledScopes: [.calendarEventsReadonly, .spreadsheetsReadonly],
+                updatedAt: Date()
+            )
+        )
     }
 }

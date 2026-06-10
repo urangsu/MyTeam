@@ -5,8 +5,8 @@ import Foundation
 //
 // 정책 (Round 248TTS-A):
 // - Supertonic3ModelManifest 기반 파일 탐색 (candidate filenames 지원)
-// - ~/Library/Application Support/MyTeam/Models/Supertonic3 먼저 확인
-// - ~/.cache/supertonic3/onnx/ 다음 확인
+// - App Store / Direct: bundled Resources/Supertonic3/onnx only
+// - Developer: external ~/.cache/supertonic3/onnx allowed for iteration
 // - 파일 크기 > 0 체크 (유효성 확인)
 // - 자동 다운로드 없음 — 사용자가 직접 다운로드
 // - full path 일반 UI에 노출 안 함 (redacted path 사용)
@@ -30,6 +30,7 @@ enum Supertonic3ModelLocator {
         let isAvailable: Bool
         let missingFiles: [String]
         let totalFoundSizeBytes: Int64
+        let source: Supertonic3ModelSource
 
         /// Safe nonisolated placeholder used as @State default in SwiftUI views.
         /// Avoids @MainActor isolation inference from FileManager calls.
@@ -40,18 +41,19 @@ enum Supertonic3ModelLocator {
             optionalFiles: [],
             isAvailable: false,
             missingFiles: [],
-            totalFoundSizeBytes: 0
+            totalFoundSizeBytes: 0,
+            source: .externalCacheDeveloperOnly
         )
 
-        var foundFiles: [String] {
+        nonisolated var foundFiles: [String] {
             files.compactMap { $0.foundURL?.lastPathComponent }
         }
 
-        var modelDirectoryExists: Bool {
+        nonisolated var modelDirectoryExists: Bool {
             FileManager.default.fileExists(atPath: directoryURL.path)
         }
 
-        var redactedDirectory: String {
+        nonisolated var redactedDirectory: String {
             if let home = FileManager.default.homeDirectoryForCurrentUser as URL? {
                 let path = directoryURL.path
                 if let range = path.range(of: home.path) {
@@ -60,18 +62,41 @@ enum Supertonic3ModelLocator {
             }
             return directoryURL.lastPathComponent
         }
+
+        nonisolated var sourceLabel: String {
+            switch source {
+            case .bundled:
+                return "bundled"
+            case .appSupport:
+                return "app support"
+            case .externalCacheDeveloperOnly:
+                return "developer external cache"
+            }
+        }
     }
 
     // MARK: - Public API
 
     /// 모델 파일 존재 여부 확인 (manifest 기반)
-    static func checkModel() -> ModelCheckResult {
-        // Try preferred directory first, then fallback
-        let preferredDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("MyTeam/Models/Supertonic3")
-        let fallbackDir = Supertonic3TTSConfig.modelDirectoryURL
-
-        let dirToCheck = FileManager.default.fileExists(atPath: preferredDir.path) ? preferredDir : fallbackDir
+    nonisolated static func checkModel() -> ModelCheckResult {
+        let source = Supertonic3ModelSourcePolicy.preferredSource
+        let dirToCheck: URL
+        let voiceStylesDir: URL
+        do {
+            switch source {
+            case .bundled:
+                dirToCheck = try Supertonic3BundledModelLocator.modelDirectoryURL()
+                voiceStylesDir = try Supertonic3BundledModelLocator.voiceStylesDirectoryURL()
+            case .appSupport:
+                dirToCheck = try Supertonic3AppSupportModelLocator.modelDirectoryURL()
+                voiceStylesDir = try Supertonic3AppSupportModelLocator.voiceStylesDirectoryURL()
+            case .externalCacheDeveloperOnly:
+                dirToCheck = try Supertonic3ExternalCacheModelLocator.modelDirectoryURL()
+                voiceStylesDir = try Supertonic3ExternalCacheModelLocator.voiceStylesDirectoryURL()
+            }
+        } catch {
+            return unavailableResult(source: source, directoryURL: placeholderDirectory(for: source), missingFiles: [error.localizedDescription])
+        }
 
         var requiredFound: [ModelFileCheck] = []
         var optionalFound: [ModelFileCheck] = []
@@ -107,28 +132,36 @@ enum Supertonic3ModelLocator {
             optionalFound.append(check)
         }
 
+        for preset in Supertonic3TTSConfig.availableVoicePresets {
+            let url = voiceStylesDir.appendingPathComponent("\(preset).json")
+            if !FileManager.default.fileExists(atPath: url.path) {
+                missingFiles.append("voice_styles/\(preset).json")
+            }
+        }
+
         return ModelCheckResult(
             directoryURL: dirToCheck,
             files: requiredFound,
             optionalFiles: optionalFound,
             isAvailable: missingFiles.isEmpty,
             missingFiles: missingFiles,
-            totalFoundSizeBytes: totalSize
+            totalFoundSizeBytes: totalSize,
+            source: source
         )
     }
 
     /// 빠른 가용성 확인
-    static func isModelAvailable() -> Bool {
+    nonisolated static func isModelAvailable() -> Bool {
         checkModel().isAvailable
     }
 
     // MARK: - User-facing Messages
 
-    static func statusMessage() -> String {
+    nonisolated static func statusMessage() -> String {
         let result = checkModel()
         if result.isAvailable {
             let mb = result.totalFoundSizeBytes / 1_048_576
-            return "모델 준비됨 (\(mb) MB, \(result.redactedDirectory))"
+            return "모델 준비됨 (\(mb) MB, \(result.sourceLabel), \(result.redactedDirectory))"
         } else if !result.missingFiles.isEmpty {
             return "누락: \(result.missingFiles.joined(separator: ", "))"
         } else {
@@ -136,7 +169,7 @@ enum Supertonic3ModelLocator {
         }
     }
 
-    static func downloadGuideMessage() -> String {
+    nonisolated static func downloadGuideMessage() -> String {
         """
         Supertonic3 모델 다운로드 방법:
 
@@ -165,7 +198,34 @@ enum Supertonic3ModelLocator {
 
     // MARK: - Private Helpers
 
-    private static func checkModelFile(
+    nonisolated private static func unavailableResult(
+        source: Supertonic3ModelSource,
+        directoryURL: URL,
+        missingFiles: [String]
+    ) -> ModelCheckResult {
+        ModelCheckResult(
+            directoryURL: directoryURL,
+            files: [],
+            optionalFiles: [],
+            isAvailable: false,
+            missingFiles: missingFiles,
+            totalFoundSizeBytes: 0,
+            source: source
+        )
+    }
+
+    nonisolated private static func placeholderDirectory(for source: Supertonic3ModelSource) -> URL {
+        switch source {
+        case .bundled:
+            return URL(fileURLWithPath: "/__missing_bundled_supertonic3__/onnx", isDirectory: true)
+        case .appSupport:
+            return URL(fileURLWithPath: "/__missing_app_support_supertonic3__/onnx", isDirectory: true)
+        case .externalCacheDeveloperOnly:
+            return URL(fileURLWithPath: "/__external_cache_not_allowed__/onnx", isDirectory: true)
+        }
+    }
+
+    nonisolated private static func checkModelFile(
         logicalName: String,
         candidates: [String],
         in directory: URL
