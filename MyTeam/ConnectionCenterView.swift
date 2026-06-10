@@ -44,34 +44,30 @@ struct ConnectionCenterView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                header
+        VStack(alignment: .leading, spacing: 16) {
+            header
 
-                focusedProviderSection
+            focusedProviderSection
 
-                providerSection(
-                    icon: "sparkles",
-                    title: "AI 모델",
-                    subtitle: "대화, 문서 작성, 분석에 사용합니다. 하나만 검증돼도 MyTeam을 사용할 수 있습니다.",
-                    providers: visibleAIProviders
-                )
+            providerSection(
+                icon: "sparkles",
+                title: "AI 모델",
+                subtitle: "대화, 문서 작성, 분석에 사용합니다. 하나만 검증돼도 MyTeam을 사용할 수 있습니다.",
+                providers: visibleAIProviders
+            )
 
-                routingSection
+            routingSection
 
-                providerSection(
-                    icon: "building.columns.fill",
-                    title: "데이터 연결",
-                    subtitle: "날씨, 뉴스, 공시, 법령을 개인 키로 직접 연결합니다.",
-                    providers: visibleDataProviders
-                )
+            providerSection(
+                icon: "building.columns.fill",
+                title: "데이터 연결",
+                subtitle: "날씨, 뉴스, 공시, 법령을 개인 키로 직접 연결합니다.",
+                providers: visibleDataProviders
+            )
 
-                requirementNoticeView
-
-                Spacer(minLength: 20)
-            }
-            .padding(16)
+            requirementNoticeView
         }
+        .padding(16)
     }
 
     private var header: some View {
