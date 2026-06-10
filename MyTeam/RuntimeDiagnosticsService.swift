@@ -783,7 +783,7 @@ final class RuntimeDiagnosticsService {
         let googleConfigValidation = GoogleOAuthConfigValidator.validate(googleStoredConfig)
         let googleOAuthHasCalendarToken = GoogleOAuthTokenStore.shared.hasToken(for: .googleCalendar)
         let googleCalendarConnectionState = AssistantConnectorCatalog.connectionState(for: .googleCalendar)
-        let googleCalendarLastFetchStatus = GoogleDailyBriefingCalendarProvider.shared.lastFetchStatus
+        let googleCalendarLastFetchStatus = GoogleDailyBriefingCalendarProvider.shared.lastFetchStatus.rawValue
         let dailyBriefing = await DailyBriefingService.makePreviewBriefing(
             now: Date(),
             calendarProvider: EmptyDailyBriefingCalendarProvider(),

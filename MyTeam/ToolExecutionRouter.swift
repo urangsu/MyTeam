@@ -34,6 +34,28 @@ actor ToolExecutionRouter {
             }
         }
 
+        if descriptor.id == "spreadsheet.googleSheets.read" {
+            let sheetsState = await MainActor.run {
+                AssistantConnectorCatalog.connectionState(for: .googleSheets)
+            }
+            switch sheetsState.status {
+            case .connected:
+                break
+            case .notConfigured, .notConnected, .needsReauth:
+                return .needsAssistantConnection(.googleSheets)
+            case .comingSoon:
+                return .unavailable("Google Sheets 읽기 연결은 준비 중입니다.")
+            case .error:
+                return .failed(MyTeamToolFailure(
+                    title: "Google Sheets 연결 상태를 확인하세요",
+                    message: sheetsState.message,
+                    recoveryActions: [
+                        MyTeamNextAction(id: "openAssistantConnection", title: "비서 연결", role: .normal)
+                    ]
+                ))
+            }
+        }
+
         let decision = ToolPermissionPolicy.decision(for: descriptor.permissionLevel)
         if decision.requiresApproval {
             return .needsApproval(decision.userFacingReason)
@@ -209,7 +231,7 @@ actor ToolExecutionRouter {
         guard let request = googleSheetsReadRequest(from: input.query) else {
             return .failed(MyTeamToolFailure(
                 title: "스프레드시트 ID가 필요합니다",
-                message: "Google Sheets URL 또는 spreadsheetId를 입력해 주세요. 범위는 입력하지 않으면 Sheet1!A1:Z100으로 조회합니다.",
+                message: "입력 예: https://docs.google.com/spreadsheets/d/.../edit 또는 spreadsheetId Sheet1!A1:Z100",
                 recoveryActions: [
                     MyTeamNextAction(id: "changeKeyword", title: "다시 입력", role: .normal)
                 ]
@@ -286,7 +308,7 @@ actor ToolExecutionRouter {
                 fetchStatus: GoogleDailyBriefingCalendarProvider.shared.lastFetchStatus
             )
         }
-        if items.isEmpty, calendarStatus.fetchStatus != "empty" {
+        if items.isEmpty, calendarStatus.fetchStatus != .empty {
             return calendarFailureState(
                 fetchStatus: calendarStatus.fetchStatus,
                 message: calendarStatus.message
@@ -716,11 +738,11 @@ actor ToolExecutionRouter {
             actions = [MyTeamNextAction(id: "openAssistantConnection", title: "비서 연결", role: .normal)]
         case GoogleSheetsClientError.notFound:
             title = "스프레드시트를 찾지 못했습니다"
-            message = "spreadsheetId 또는 URL이 올바른지 확인하세요."
+            message = "spreadsheetId 또는 URL이 올바른지 확인하세요. 예: spreadsheetId Sheet1!A1:Z100"
             actions = [MyTeamNextAction(id: "changeKeyword", title: "다시 입력", role: .normal)]
         case GoogleSheetsClientError.invalidRequest:
             title = "시트 범위를 확인하세요"
-            message = "예: Sheet1!A1:Z100 형식의 범위를 입력해 주세요."
+            message = "예: spreadsheetId Sheet1!A1:Z100 형식으로 입력해 주세요."
             actions = [MyTeamNextAction(id: "changeKeyword", title: "범위 바꾸기", role: .normal)]
         case GoogleSheetsClientError.decodeFailed:
             title = "시트 응답을 해석하지 못했습니다"
@@ -739,10 +761,10 @@ actor ToolExecutionRouter {
         ))
     }
 
-    private func calendarFailureState(fetchStatus: String, message: String) -> ToolExecutionState {
+    private func calendarFailureState(fetchStatus: GoogleCalendarFetchStatus, message: String) -> ToolExecutionState {
         let actions: [MyTeamNextAction]
         switch fetchStatus {
-        case "missing_token", "needs_reauth", "forbidden":
+        case .missingToken, .needsReauth, .forbidden:
             actions = [
                 MyTeamNextAction(id: "openAssistantConnection", title: "비서 연결", role: .normal)
             ]
@@ -753,11 +775,11 @@ actor ToolExecutionRouter {
         }
         let title: String
         switch fetchStatus {
-        case "missing_token":
+        case .missingToken:
             title = "Google Calendar 연결이 필요합니다"
-        case "needs_reauth":
+        case .needsReauth:
             title = "Google Calendar 재인증이 필요합니다"
-        case "forbidden":
+        case .forbidden:
             title = "Google Calendar 읽기 권한이 필요합니다"
         default:
             title = "Google Calendar 일정을 가져오지 못했습니다"

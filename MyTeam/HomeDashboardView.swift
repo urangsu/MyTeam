@@ -40,6 +40,7 @@ struct HomeDashboardView: View {
     private var connectionTools: [MyTeamToolDescriptor] {
         MyTeamToolRegistry.userFacingTools.filter {
             if case .needsConnection = state(for: $0) { return true }
+            if case .needsAssistantConnection = state(for: $0) { return true }
             if case .needsValidation = state(for: $0) { return true }
             return false
         }
@@ -197,7 +198,7 @@ struct HomeDashboardView: View {
         case "spreadsheet.postprocess":
             return "표 내용을 붙여넣으세요."
         case "spreadsheet.googleSheets.read":
-            return "스프레드시트 URL 또는 ID"
+            return "Sheets URL 또는 ID Sheet1!A1:Z100"
         case "calendar.events.today":
             return "오늘 일정"
         default:

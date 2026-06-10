@@ -27,6 +27,8 @@ final class ToolExecutionLogStore: ObservableObject {
 
     @Published private(set) var entries: [ToolExecutionLogEntry] = []
 
+    // Do not persist raw input, OAuth tokens, API keys, mail bodies, spreadsheet values,
+    // calendar details, or external message contents. Store status and short summaries only.
     private let userDefaultsKey = "MyTeam.ToolExecutionLogStore.entries"
     private let maxEntries = 20
 
@@ -101,7 +103,7 @@ final class ToolExecutionLogStore: ObservableObject {
             return .succeeded
         case .failed:
             return .failed
-        case .needsConnection, .needsValidation, .needsApproval, .unavailable:
+        case .needsConnection, .needsAssistantConnection, .needsValidation, .needsApproval, .unavailable:
             return .blocked
         case .idle, .checkingReadiness, .running:
             return .running
@@ -113,6 +115,8 @@ final class ToolExecutionLogStore: ObservableObject {
         case .failed(let failure):
             return failure.message
         case .needsConnection(let provider):
+            return "\(provider.displayName) 연결이 필요합니다."
+        case .needsAssistantConnection(let provider):
             return "\(provider.displayName) 연결이 필요합니다."
         case .needsValidation(let provider):
             return "\(provider.displayName) 검증이 필요합니다."

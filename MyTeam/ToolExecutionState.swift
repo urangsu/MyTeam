@@ -29,6 +29,7 @@ enum ToolExecutionState: Sendable, Equatable {
     case idle
     case checkingReadiness
     case needsConnection(ExternalProvider)
+    case needsAssistantConnection(AssistantConnector.Provider)
     case needsValidation(ExternalProvider)
     case needsApproval(String)
     case running
@@ -77,7 +78,7 @@ extension ToolExecutionState {
         switch self {
         case .idle: return "준비"
         case .checkingReadiness: return "확인 중"
-        case .needsConnection: return "연결 필요"
+        case .needsConnection, .needsAssistantConnection: return "연결 필요"
         case .needsValidation: return "검증 필요"
         case .needsApproval: return "승인 필요"
         case .running: return "실행 중"

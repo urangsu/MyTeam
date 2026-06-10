@@ -14,21 +14,34 @@ struct EmptyDailyBriefingCalendarProvider: DailyBriefingCalendarProviding {
     }
 }
 
+enum GoogleCalendarFetchStatus: String, Sendable, Equatable {
+    case notFetched = "not_fetched"
+    case loading
+    case ready
+    case empty
+    case missingToken = "missing_token"
+    case needsReauth = "needs_reauth"
+    case forbidden
+    case decodeFailed = "decode_failed"
+    case network
+    case error
+}
+
 final class GoogleDailyBriefingCalendarProvider: DailyBriefingCalendarProviding {
     static let shared = GoogleDailyBriefingCalendarProvider()
 
     private(set) var statusMessage: String = "Google Calendar 연결 후 오늘 일정이 표시됩니다."
-    private(set) var lastFetchStatus: String = "not_fetched"
+    private(set) var lastFetchStatus: GoogleCalendarFetchStatus = .notFetched
 
     private init() {}
 
     func calendarItemsForToday(now: Date) async -> [DailyCalendarBriefingItem] {
         _ = now
-        lastFetchStatus = "loading"
+        lastFetchStatus = .loading
 
         guard GoogleOAuthTokenStore.shared.hasToken(for: .googleCalendar) else {
             statusMessage = "Google Calendar 연결 후 오늘 일정이 표시됩니다."
-            lastFetchStatus = "missing_token"
+            lastFetchStatus = .missingToken
             return []
         }
 
@@ -36,10 +49,10 @@ final class GoogleDailyBriefingCalendarProvider: DailyBriefingCalendarProviding 
             let events = try await GoogleCalendarClient.shared.fetchEventsForToday()
             if events.isEmpty {
                 statusMessage = "오늘 일정이 없습니다."
-                lastFetchStatus = "empty"
+                lastFetchStatus = .empty
             } else {
                 statusMessage = "오늘 일정 \(events.count)개를 불러왔습니다."
-                lastFetchStatus = "ready"
+                lastFetchStatus = .ready
             }
 
             return events.map { event in
@@ -55,22 +68,22 @@ final class GoogleDailyBriefingCalendarProvider: DailyBriefingCalendarProviding 
             switch error {
             case GoogleCalendarClientError.missingToken:
                 statusMessage = "Google Calendar 연결 후 오늘 일정이 표시됩니다."
-                lastFetchStatus = "missing_token"
+                lastFetchStatus = .missingToken
             case GoogleCalendarClientError.needsReauth, GoogleCalendarClientError.unauthorized:
                 statusMessage = "Google Calendar 재인증이 필요합니다."
-                lastFetchStatus = "needs_reauth"
+                lastFetchStatus = .needsReauth
             case GoogleCalendarClientError.forbidden:
                 statusMessage = "Google Calendar 읽기 권한이 필요합니다."
-                lastFetchStatus = "forbidden"
+                lastFetchStatus = .forbidden
             case GoogleCalendarClientError.decodeFailed:
                 statusMessage = "일정을 해석하지 못했습니다. 다시 시도해 주세요."
-                lastFetchStatus = "decode_failed"
+                lastFetchStatus = .decodeFailed
             case GoogleCalendarClientError.network:
                 statusMessage = "네트워크 상태를 확인해 주세요."
-                lastFetchStatus = "network"
+                lastFetchStatus = .network
             default:
                 statusMessage = "Google Calendar 연결 실패"
-                lastFetchStatus = "error"
+                lastFetchStatus = .error
             }
             return []
         }

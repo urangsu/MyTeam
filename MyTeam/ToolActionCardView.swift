@@ -45,6 +45,10 @@ struct ToolActionCardView: View {
                     Text(provider.displayName)
                         .font(.system(size: 10, weight: .medium))
                         .foregroundStyle(.secondary)
+                } else if case .needsAssistantConnection(let provider) = state {
+                    Text(provider.displayName)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer(minLength: 0)
@@ -53,6 +57,14 @@ struct ToolActionCardView: View {
                     Button("연결", action: { onOpenConnection?(descriptor.requiredCredential?.provider) })
                         .buttonStyle(.bordered)
                         .controlSize(.small)
+                } else if case .needsAssistantConnection = state {
+                    Button("연결", action: {
+                        if let connectionCenter = MyTeamToolRegistry.descriptor(id: "system.connectionCenter") {
+                            onOpenWorkspace(connectionCenter)
+                        }
+                    })
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                 } else if case .needsValidation = state {
                     Button("검증", action: { onOpenConnection?(descriptor.requiredCredential?.provider) })
                         .buttonStyle(.bordered)
@@ -166,7 +178,7 @@ struct ToolActionCardView: View {
         case "spreadsheet.postprocess":
             return "표 내용을 붙여넣으세요."
         case "spreadsheet.googleSheets.read":
-            return "스프레드시트 URL 또는 ID"
+            return "Sheets URL 또는 ID Sheet1!A1:Z100"
         case "calendar.events.today":
             return "오늘 일정"
         default:
@@ -178,7 +190,7 @@ struct ToolActionCardView: View {
         switch state {
         case .idle, .succeeded:
             return .green
-        case .needsConnection, .needsValidation, .needsApproval:
+        case .needsConnection, .needsAssistantConnection, .needsValidation, .needsApproval:
             return .orange
         case .failed:
             return .red
