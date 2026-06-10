@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ToolExecutionLogView: View {
     @ObservedObject var store: ToolExecutionLogStore
+    @State private var showsAllEntries = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -24,8 +25,23 @@ struct ToolExecutionLogView: View {
                     .foregroundStyle(.secondary)
             } else {
                 VStack(spacing: 6) {
-                    ForEach(store.entries.prefix(5)) { entry in
+                    ForEach(store.entries.prefix(3)) { entry in
                         logRow(entry)
+                    }
+
+                    if store.entries.count > 3 {
+                        DisclosureGroup(isExpanded: $showsAllEntries) {
+                            VStack(spacing: 6) {
+                                ForEach(store.entries.dropFirst(3)) { entry in
+                                    logRow(entry)
+                                }
+                            }
+                            .padding(.top, 4)
+                        } label: {
+                            Text("전체 보기 \(store.entries.count)건")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
             }

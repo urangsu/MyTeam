@@ -3,6 +3,7 @@ import AppKit
 
 struct ToolResultCardView: View {
     let state: ToolExecutionState
+    let runningTitle: String?
     let onAction: ((MyTeamNextAction) -> Void)?
 
     var body: some View {
@@ -29,6 +30,16 @@ struct ToolResultCardView: View {
                 Text(failure.message)
                     .font(.system(size: 11))
                 actionButtons(failure.recoveryActions)
+            case .running:
+                Label("작업 중: \(runningTitle ?? "업무")", systemImage: "arrow.triangle.2.circlepath")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.blue)
+                Text("입력값을 확인하고 결과를 가져오는 중입니다.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                ProgressView()
+                    .progressViewStyle(.linear)
+                    .controlSize(.small)
             default:
                 Label(state.displayLabel, systemImage: "info.circle.fill")
                     .font(.system(size: 13, weight: .semibold))

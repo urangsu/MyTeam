@@ -77,8 +77,7 @@ struct ToolActionCardView: View {
                     .controlSize(.small)
                     .disabled(onRequestApproval == nil)
                 } else if case .running = state {
-                    ProgressView()
-                        .controlSize(.small)
+                    runningPill
                 } else {
                     if state.isRunnable, supportsInlineRun, let query, let onRun {
                         Button(runtimeButtonTitle, action: { onRun(descriptor, query.wrappedValue) })
@@ -97,6 +96,14 @@ struct ToolActionCardView: View {
                     }
                 }
             }
+            .frame(minHeight: 28)
+
+            if case .running = state {
+                ProgressView()
+                    .progressViewStyle(.linear)
+                    .controlSize(.small)
+                    .frame(height: 3)
+            }
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -114,6 +121,21 @@ struct ToolActionCardView: View {
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
             .background(Capsule().fill(tint.opacity(0.12)))
+    }
+
+    private var runningPill: some View {
+        HStack(spacing: 5) {
+            ProgressView()
+                .controlSize(.small)
+                .scaleEffect(0.62)
+                .frame(width: 14, height: 14)
+            Text("작업 중")
+                .font(.system(size: 10, weight: .semibold))
+        }
+        .foregroundStyle(.blue)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Capsule().fill(Color.blue.opacity(0.12)))
     }
 
     private var buttonTitle: String {

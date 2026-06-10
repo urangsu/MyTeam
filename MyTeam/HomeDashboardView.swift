@@ -104,6 +104,7 @@ struct HomeDashboardView: View {
                 if let selectedState {
                     ToolResultCardView(
                         state: selectedState,
+                        runningTitle: selectedDescriptor?.displayName,
                         onAction: handleResultAction
                     )
                 }
@@ -214,8 +215,8 @@ struct HomeDashboardView: View {
         Task {
             await MainActor.run {
                 toolStates[descriptor.id] = .running
-                selectedState = nil
                 selectedDescriptor = descriptor
+                selectedState = .running
             }
             let input = MyTeamToolInput(
                 query: query,
