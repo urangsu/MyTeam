@@ -1116,6 +1116,15 @@ struct AgentChatView: View {
         return newRoomID
     }
 
+    @MainActor
+    private func setTyping(_ targetID: String, _ isTyping: Bool) {
+        if isTyping {
+            manager.typingAgentIDs.insert(targetID)
+        } else {
+            manager.typingAgentIDs.remove(targetID)
+        }
+    }
+
     // MARK: - 메시지 전송
     private func sendMessage() {
         guard !inputText.isEmpty || !pendingAttachments.isEmpty else { return }
@@ -1215,6 +1224,7 @@ struct AgentChatView: View {
                 // ── 개별 채팅: 해당 에이전트 단독 응답 ──
                 // WorkflowOrchestrator / TeamOrchestrator 호출 금지
                 // Selector 호출 금지 — 이 경로는 항상 targetID 에이전트 단독 응답
+                await setTyping(targetID, true)
                 AppLog.info("[DirectChat] submit roomID=\(roomID.uuidString.prefix(8)) targetAgentID=\(targetID)")
                 let roomMessages = manager.rooms.first(where: { $0.id == roomID })?.messages ?? []
                 var history = ConversationMemory.promptHistory(
@@ -1259,6 +1269,7 @@ struct AgentChatView: View {
                             skillID: skillRoute.result.skillID
                         )
                     }
+                    await setTyping(targetID, false)
                     return
                 }
 
@@ -1309,7 +1320,6 @@ struct AgentChatView: View {
                     let targetIDAtSend = targetID
                     // ── 순차 스트리밍: SpeechManager 백그라운드 위임 ──
                     if manager.isSilentMode || ttsProvider == nil {
-                        _ = await MainActor.run { manager.typingAgentIDs.insert(targetIDAtSend) }
                         let tokenStream = AIService.shared.getResponseStream(
                             text: groundedText, agentID: targetIDAtSend,
                             chatHistory: history, agentConfig: agentConfig,
@@ -1326,10 +1336,7 @@ struct AgentChatView: View {
                                                text: accumulated, isUser: false, sources: toolEvidence.sources)
                         }
                     } else {
-                        // 1. 타이핑 인디케이터 ON
-                        _ = await MainActor.run { manager.typingAgentIDs.insert(targetIDAtSend) }
-
-                        // 2. SSE 스트림 오픈. 화면에는 LLM 원문을 누적 표시하고,
+                        // SSE 스트림 오픈. 화면에는 LLM 원문을 누적 표시하고,
                         // TTS에는 별도 proxy stream을 넘긴다. TTS chunk truncation이 채팅 로그를 훼손하면 안 된다.
                         let sourceStream = AIService.shared.getResponseStream(
                             text: groundedText, agentID: targetIDAtSend, chatHistory: history, agentConfig: agentConfig,
