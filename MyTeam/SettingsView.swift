@@ -263,6 +263,9 @@ struct SettingsView: View {
                 default: homeDashboardTab
                 }
             }
+            .transaction { transaction in
+                transaction.animation = nil
+            }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .preferredColorScheme(manager.isDarkMode ? .dark : .light)

@@ -4,9 +4,9 @@ struct AssistantConnectorCenterView: View {
     var onGoogleCalendarConnectionChanged: (() -> Void)? = nil
 
     @StateObject private var sessionManager = GoogleOAuthSessionManager.shared
-    @State private var refreshToken = UUID()
     @State private var googleClientID: String = ""
     @State private var googleRedirectMode: GoogleOAuthConfig.RedirectMode = .customURLScheme
+    @State private var connectionStates: [AssistantConnector.Provider: GoogleOAuthConnectionState] = [:]
 
     private var connectors: [AssistantConnector] {
         AssistantConnectorCatalog.connectors
@@ -23,8 +23,10 @@ struct AssistantConnectorCenterView: View {
 
             scopePolicySection
         }
-        .onAppear { refreshToken = UUID() }
-        .onAppear { loadGoogleOAuthDraft() }
+        .onAppear {
+            loadGoogleOAuthDraft()
+            refreshConnectionStates()
+        }
     }
 
     private var header: some View {
@@ -36,7 +38,7 @@ struct AssistantConnectorCenterView: View {
                     .font(.headline)
                 Spacer()
                 Button("상태 새로고침") {
-                    refreshToken = UUID()
+                    refreshConnectionStates()
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
@@ -111,13 +113,13 @@ struct AssistantConnectorCenterView: View {
                 Button("초기화") {
                     GoogleOAuthConfigStore.shared.clear()
                     loadGoogleOAuthDraft()
-                    refreshToken = UUID()
+                    refreshConnectionStates()
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
                 Button("설정 저장") {
                     saveGoogleOAuthDraft()
-                    refreshToken = UUID()
+                    refreshConnectionStates()
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
@@ -130,7 +132,7 @@ struct AssistantConnectorCenterView: View {
     }
 
     private func connectorCard(for connector: AssistantConnector) -> some View {
-        let state = AssistantConnectorCatalog.connectionState(for: connector.id)
+        let state = connectionState(for: connector.id)
         let connectorDecision = AssistantConnectorPolicy.decision(for: connector)
         let scopeBadges = connector.capabilities.reduce(into: [String]()) { badges, capability in
             let label = AssistantConnectorPolicy.decision(for: capability).badgeLabel
@@ -173,6 +175,7 @@ struct AssistantConnectorCenterView: View {
                     Text(connectorDecision.badgeLabel)
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(.secondary)
+                        .frame(width: 96, alignment: .trailing)
                     if connector.id == .googleCalendar || connector.id == .googleSheets {
                         googleActionButton(for: connector.id, state: state)
                     } else {
@@ -180,8 +183,10 @@ struct AssistantConnectorCenterView: View {
                             .buttonStyle(.bordered)
                             .controlSize(.small)
                             .disabled(true)
+                            .frame(width: 96, alignment: .trailing)
                     }
                 }
+                .frame(width: 104, alignment: .trailing)
             }
 
             HStack(spacing: 6) {
@@ -202,7 +207,6 @@ struct AssistantConnectorCenterView: View {
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 12).fill(Color(nsColor: .controlBackgroundColor).opacity(0.42)))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.secondary.opacity(0.14)))
-        .id(refreshToken)
     }
 
     private func googleActionButton(for provider: AssistantConnector.Provider, state: GoogleOAuthConnectionState) -> some View {
@@ -223,6 +227,7 @@ struct AssistantConnectorCenterView: View {
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
                     .disabled(true)
+                    .frame(width: 96, alignment: .trailing)
             )
         }
 
@@ -232,6 +237,7 @@ struct AssistantConnectorCenterView: View {
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .disabled(true)
+                    .frame(width: 96, alignment: .trailing)
             )
         }
 
@@ -245,18 +251,23 @@ struct AssistantConnectorCenterView: View {
                             scopes: scopes,
                             config: draft
                         )
-                        refreshToken = UUID()
+                        await MainActor.run {
+                            refreshConnectionStates()
+                        }
                         if provider == .googleCalendar {
                             onGoogleCalendarConnectionChanged?()
                         }
                     } catch {
-                        refreshToken = UUID()
+                        await MainActor.run {
+                            refreshConnectionStates()
+                        }
                     }
                 }
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
             .disabled(!canConnect)
+            .frame(width: 96, alignment: .trailing)
         )
     }
 
@@ -393,6 +404,18 @@ struct AssistantConnectorCenterView: View {
         case .needsReauth: return Color.yellow.opacity(0.12)
         case .error: return Color.red.opacity(0.12)
         }
+    }
+
+    private func connectionState(for provider: AssistantConnector.Provider) -> GoogleOAuthConnectionState {
+        connectionStates[provider] ?? AssistantConnectorCatalog.connectionState(for: provider)
+    }
+
+    private func refreshConnectionStates() {
+        connectionStates = Dictionary(
+            uniqueKeysWithValues: connectors.map { connector in
+                (connector.id, AssistantConnectorCatalog.connectionState(for: connector.id))
+            }
+        )
     }
 
     private func loadGoogleOAuthDraft() {

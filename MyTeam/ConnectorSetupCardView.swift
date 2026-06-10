@@ -62,6 +62,10 @@ struct ConnectorSetupCardView: View {
                     }
                     .buttonStyle(.plain)
                     .help("API 키 발급 페이지를 엽니다")
+                    .frame(width: 28, height: 24, alignment: .trailing)
+                } else {
+                    Color.clear
+                        .frame(width: 28, height: 24)
                 }
             }
 
@@ -74,44 +78,49 @@ struct ConnectorSetupCardView: View {
 
                     Spacer()
 
-                    Button {
-                        isEditing = true
-                    } label: {
-                        Label("키 변경", systemImage: "key.fill")
-                            .font(.system(size: 10, weight: .medium))
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-
-                    Button(action: runTest) {
-                        if isTesting {
-                            ProgressView().scaleEffect(0.6)
-                        } else {
-                            Label("검증", systemImage: validationButtonIcon)
+                    HStack(spacing: 6) {
+                        Button {
+                            isEditing = true
+                        } label: {
+                            Label("키 변경", systemImage: "key.fill")
                                 .font(.system(size: 10, weight: .medium))
                         }
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .disabled(isTesting)
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
 
-                    Button(role: .destructive, action: { showDeleteConfirm = true }) {
-                        Label("삭제", systemImage: "trash")
-                            .font(.system(size: 10, weight: .medium))
+                        Button(action: runTest) {
+                            if isTesting {
+                                ProgressView().scaleEffect(0.6)
+                                    .frame(width: 42, height: 18)
+                            } else {
+                                Label("검증", systemImage: validationButtonIcon)
+                                    .font(.system(size: 10, weight: .medium))
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .disabled(isTesting)
+
+                        Button(role: .destructive, action: { showDeleteConfirm = true }) {
+                            Label("삭제", systemImage: "trash")
+                                .font(.system(size: 10, weight: .medium))
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .foregroundStyle(.red.opacity(0.8))
+                        .help("API 키 삭제")
+                        .confirmationDialog(
+                            "\(provider.displayName) 키를 삭제할까요?",
+                            isPresented: $showDeleteConfirm,
+                            titleVisibility: .visible
+                        ) {
+                            Button("삭제", role: .destructive) { deleteKey() }
+                            Button("취소", role: .cancel) {}
+                        }
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .foregroundStyle(.red.opacity(0.8))
-                    .help("API 키 삭제")
-                    .confirmationDialog(
-                        "\(provider.displayName) 키를 삭제할까요?",
-                        isPresented: $showDeleteConfirm,
-                        titleVisibility: .visible
-                    ) {
-                        Button("삭제", role: .destructive) { deleteKey() }
-                        Button("취소", role: .cancel) {}
-                    }
+                    .frame(width: 210, height: 28, alignment: .trailing)
                 }
+                .frame(minHeight: 30)
             }
 
             if let message = statusMessage {
@@ -172,6 +181,7 @@ struct ConnectorSetupCardView: View {
                         .controlSize(.small)
                     }
                 }
+                .frame(minHeight: 30)
             }
         }
         .padding(12)
@@ -278,6 +288,7 @@ struct ConnectorSetupCardView: View {
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
             .background(Capsule().fill(badgeBgColor))
+            .frame(minWidth: 62, alignment: .leading)
     }
 
     private var stateBadgeLabel: String {
@@ -297,6 +308,7 @@ struct ConnectorSetupCardView: View {
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
             .background(Capsule().fill(Color.secondary.opacity(0.10)))
+            .frame(minWidth: 54, alignment: .leading)
     }
 
     private var badgeBgColor: Color {
