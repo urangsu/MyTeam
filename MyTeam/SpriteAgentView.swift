@@ -32,9 +32,12 @@ struct SpriteAgentView: View {
                 options: [.allowsTransparency]
             )
             .frame(width: geo.size.width, height: geo.size.height)
-        }
-        .onAppear {
-            setupScene()
+            .onAppear {
+                setupScene(size: geo.size)
+            }
+            .onChange(of: geo.size) { _, newSize in
+                updateSceneSize(newSize)
+            }
         }
         // state 값이 변경될 때마다 씬에 새 상태를 전달합니다.
         .onChange(of: state) { _, newState in
@@ -43,20 +46,33 @@ struct SpriteAgentView: View {
     }
 
     // MARK: - 씬 초기화
-    private func setupScene() {
+    private func setupScene(size: CGSize) {
         // 캐릭터 ID와 폴백 이미지 설정
         scene.characterID = characterID
         scene.fallbackImageName = fallbackImageName
 
-        // 씬 크기: SpriteView 프레임과 동일하게 맞춥니다
-        // (나중에 fitCharacterToScene()에서 캐릭터 크기 조절)
-        scene.size = CGSize(width: 100, height: 140)
+        // 씬 크기: SpriteView 프레임과 동일하게 맞춥니다.
+        scene.size = sanitizedSceneSize(size)
 
         // 배경 투명
         scene.backgroundColor = .clear
 
         // 초기 상태 재생
         scene.loadAndPlay(state: state)
+    }
+
+    private func updateSceneSize(_ size: CGSize) {
+        let nextSize = sanitizedSceneSize(size)
+        guard scene.size != nextSize else { return }
+        scene.size = nextSize
+        scene.fitCharacterToScene()
+    }
+
+    private func sanitizedSceneSize(_ size: CGSize) -> CGSize {
+        CGSize(
+            width: max(1, size.width),
+            height: max(1, size.height)
+        )
     }
 }
 

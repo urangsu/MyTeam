@@ -116,6 +116,11 @@ class CharacterSpriteScene: SKScene {
         loadAndPlay(state: .typing)             // 기본 상태: 타이핑
     }
 
+    override func didChangeSize(_ oldSize: CGSize) {
+        super.didChangeSize(oldSize)
+        fitCharacterToScene()
+    }
+
     // MARK: - 노드 셋업
     private func setupCharacterNode() {
         let placeholder = SKTexture(imageNamed: "\(characterID)_idle_001")
@@ -250,7 +255,7 @@ class CharacterSpriteScene: SKScene {
 
     // MARK: - 크기 조절
     func fitCharacterToScene(basedOn sizeList: [CGSize]? = nil) {
-        guard !characterNode.isHidden else { return }
+        guard characterNode != nil, !characterNode.isHidden else { return }
         
         var refWidth = characterNode.size.width
         var refHeight = characterNode.size.height

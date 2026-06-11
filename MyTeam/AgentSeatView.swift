@@ -103,7 +103,6 @@ struct AgentSeatView: View {
                     )
                     .frame(width: 100, height: 140)
                     .rotationEffect(.degrees(isDragging ? config.dragRotation : 0))
-                    .scaleEffect(isHovered && !isDragging ? 1.1 : 1.0)
                 } else if !config.fallbackImageName.isEmpty {
                     Image(config.fallbackImageName)
                         .resizable()

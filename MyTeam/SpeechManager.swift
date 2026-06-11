@@ -257,6 +257,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
 
     func speak(text: String, agentID: String? = nil, characterName: String? = nil) {
         guard !AgentWindowManager.shared.isSilentMode else { return }
+        abortPipelinedStream()
         let character = characterName
             ?? agentID.flatMap { id in
                 AgentWindowManager.shared.allAvailableAgents.first(where: { $0.id == id })?.name
