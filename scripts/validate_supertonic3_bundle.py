@@ -29,7 +29,15 @@ REQUIRED_VOICE_STYLES = [
 
 
 def is_required_mode(argv: list[str]) -> bool:
-    return "--require-bundle" in argv or os.environ.get("MYTEAM_REQUIRE_SUPERTONIC3_BUNDLE") == "1"
+    if "--require-bundle" in argv:
+        return True
+    if os.environ.get("MYTEAM_REQUIRE_SUPERTONIC3_BUNDLE") == "1":
+        return True
+    if "--profile" in argv:
+        index = argv.index("--profile")
+        if index + 1 < len(argv):
+            return argv[index + 1].lower() in {"appstore", "app-store", "release", "rc"}
+    return False
 
 
 def missing_files() -> list[str]:
