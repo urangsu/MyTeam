@@ -260,7 +260,7 @@ enum ToolContractValidator {
         // Round 249TTS-SPIKE validators (Disabled: ONNX pipeline removed)
         // validateSupertonicONNXSpikeIsolation(issues: &issues)
         // validateSupertonicNoAutoInit(issues: &issues)
-        // validateSupertonicModelNotBundled(issues: &issues)
+        // validateSupertonicBundleGate(issues: &issues)
         // validateNoUserFacingTTSUntilReady(issues: &issues)
 
         // Round 256TTS-OFFICIAL-ENGINE validators (Disabled: ONNX pipeline removed)
@@ -2102,11 +2102,11 @@ enum ToolContractValidator {
         }
     }
 
-    private static func validateSupertonicModelNotBundled(issues: inout [ToolContractValidationIssue]) {
+    private static func validateSupertonicBundleGate(issues: inout [ToolContractValidationIssue]) {
         let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
         guard let snap else { return }
-        if snap.supertonicONNXModelBundled {
-            issues.append(issue(.error, "Supertonic3 ONNX 모델이 앱 번들에 포함되어 있습니다. 정책 위반: 대용량 모델 번들 포함 금지 (~398 MB)."))
+        if !snap.supertonicONNXModelBundled && FeatureGate.current == .appStore {
+            issues.append(issue(.error, "App Store profile requires bundled Supertonic3 model resources."))
         }
     }
 

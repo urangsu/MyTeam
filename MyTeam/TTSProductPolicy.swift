@@ -10,7 +10,8 @@ import Foundation
 //   - 고지/사용제한 notice gate 구현 완료 (Round 254TTS)
 //
 // 공식 엔진이지만 자동 재생 기본값은 OFF.
-// bundle policy / release-wide integration gate는 아직 남아 있음.
+// App Store/Direct는 bundled model 경로를 사용한다.
+// release-wide integration gate와 상업 배포 승인 gate는 아직 남아 있음.
 // fallback TTS 없음. Apple TTS 없음. Qwen 없음.
 
 enum TTSProductPolicy {
@@ -30,7 +31,9 @@ enum TTSProductPolicy {
     static let supertonicOnlyCandidate: Bool    = true   // 유일한 TTS 엔진
     static let supertonicDefaultEnabled: Bool   = false  // 기본 비활성 (사용자가 TTS 켤 때만)
     static let supertonicAutoInitOnLaunch: Bool = false  // launch 자동 init 금지
-    static let modelBundled: Bool               = false  // app bundle 미포함 (다음 gate)
+    static var modelBundled: Bool {
+        (try? Supertonic3BundledModelLocator.validateRequiredFiles()) != nil
+    }
     static let fallbackTTSAvailable: Bool       = false  // 폴백 없음
 
     // MARK: - License Gate (Round 252-253TTS 확인 완료)

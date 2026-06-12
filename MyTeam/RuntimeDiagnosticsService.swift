@@ -583,7 +583,7 @@ struct RuntimeDiagnosticsSnapshot {
     // Round 249TTS-SPIKE: Supertonic3 ONNX Swift feasibility
     let supertonicONNXSpikeAvailable: Bool          // Supertonic3ONNXRunner.swift exists
     let supertonicONNXAutoInitOnLaunch: Bool         // must be false (no init on launch)
-    let supertonicONNXModelBundled: Bool             // must be false (models not in app bundle)
+    let supertonicONNXModelBundled: Bool             // App Store RC requires bundled Supertonic3 resources
     let supertonicONNXRuntimeMeasured: Bool          // true when RTF has been measured on Mac
     let supertonicONNXRealtimeFactor: Double?        // RTF (nil until measured)
     let supertonicProductReady: Bool                 // all readiness gates passed (false in spike)
@@ -734,7 +734,7 @@ struct RuntimeDiagnosticsSnapshot {
         lines.append("observe247a: inboxView=\(observationInboxViewAvailable) teamRoom=\(observationCardsConnectedToTeamRoom) personalRoom=\(observationCardsConnectedToPersonalRoom) clipboardRoute=\(clipboardExplicitReadRouteAvailable) downloadsDefaultOff=\(downloadsWatcherSettingsDefaultOff) finderFallback=\(finderSelectionFallbackAvailable) screenPlanned=\(screenSnapshotPlannedNoticeAvailable) presentationPolicy=\(observationPresentationPolicyAvailable) noAutoAnalyze=\(observationAttachDoesNotAutoAnalyze) roomScope=\(observationRoomScopeEnforced)")
         lines.append("office248a: executor=\(officeReviewLiteExecutorAvailable) resultCard=\(officeReviewResultCardViewAvailable) skillExec=\(localSkillExecutorHandlesOfficeReviewLite) statusUpdated=\(officeReviewExecutionStatusUpdated) disclaimer=\(officeReviewLimitationsDisclaimerShown) noMutation=\(officeReviewNoOriginalFileMutation) noEvidence=\(officeReviewNoEvidenceLocationTracking) heuristic=\(officeReviewHeuristicExtractionOnly) assistOnly=\(officeReviewAssistOnlyGuidanceAvailable)")
         lines.append("office248hotfix: resultWired=\(officeReviewLiteResultReturnedToOrchestrator) noEmptyMsg=\(officeReviewLiteDoesNotReturnEmptyMessage) markdown=\(officeReviewMarkdownPresentationAvailable) macSafe=\(officeReviewCardViewCompileSafeOnMac) 2ndPhase=\(officeReviewAssistOnlySecondPhaseReachable) evidenceHonest=\(officeReviewEvidenceLabelHonest)")
-        lines.append("onnxSpike249: runner=\(supertonicONNXSpikeAvailable ? "✅" : "❌") noAutoInit=\(!supertonicONNXAutoInitOnLaunch ? "✅" : "❌") noBundle=\(!supertonicONNXModelBundled ? "✅" : "❌") rtfMeasured=\(supertonicONNXRuntimeMeasured ? "✅" : "⬜") rtf=\(supertonicONNXRealtimeFactor.map { String(format: "%.4fx", $0) } ?? "nil") prodReady=\(supertonicProductReady ? "✅" : "❌")")
+        lines.append("onnxSpike249: runner=\(supertonicONNXSpikeAvailable ? "✅" : "❌") noAutoInit=\(!supertonicONNXAutoInitOnLaunch ? "✅" : "❌") bundled=\(supertonicONNXModelBundled ? "✅" : "❌") rtfMeasured=\(supertonicONNXRuntimeMeasured ? "✅" : "⬜") rtf=\(supertonicONNXRealtimeFactor.map { String(format: "%.4fx", $0) } ?? "nil") prodReady=\(supertonicProductReady ? "✅" : "❌")")
 
         return lines.joined(separator: "\n  ")
     }
@@ -1137,7 +1137,7 @@ final class RuntimeDiagnosticsService {
             atPath: "MyTeam/Supertonic3ONNXRunner.swift"
         )
         let supertonicONNXAutoInitOnLaunch = false
-        let supertonicONNXModelBundled = false
+        let supertonicONNXModelBundled = (try? Supertonic3BundledModelLocator.validateRequiredFiles()) != nil
         let supertonicONNXRuntimeMeasured = false   // updated to true after Mac synthesis run
         let supertonicONNXRealtimeFactor: Double? = nil   // nil until Mac synthesis run
         let supertonicProductReady = false

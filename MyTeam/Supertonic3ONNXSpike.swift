@@ -10,7 +10,7 @@ import Foundation
 //   - main product surface: TTS 노출 금지
 //   - SystemTTS fallback: 부활 금지
 //   - auto-init on launch: 금지
-//   - model bundled in app: 금지
+//   - App Store runtime without bundled model/release gate: 금지
 //   - production-ready 표현: 금지
 
 struct SupertonicProductReadiness: Sendable {
@@ -35,7 +35,7 @@ struct SupertonicProductReadiness: Sendable {
     /// True only after: App Store license review for OpenRAIL-M completed.
     let licenseVerifiedForAppStore: Bool = false
 
-    /// True only after: model bundling strategy decided (download flow, size impact).
+    /// True only after: App Store bundling/review strategy is approved end to end.
     let distributionStrategyDecided: Bool = false
 
     // MARK: - Production gate
@@ -84,7 +84,8 @@ enum Supertonic3SpikeMeta {
     /// Always false — no init in AppDelegate, SceneDelegate, or any @main entry point.
     static let autoInitOnLaunch: Bool = false
 
-    /// Quick check: are model files bundled in the app target?
-    /// Always false — models stay at ~/.cache/supertonic3/
-    static let modelBundled: Bool = false
+    /// Quick check: are required bundled model files visible to the app target?
+    static var modelBundled: Bool {
+        (try? Supertonic3BundledModelLocator.validateRequiredFiles()) != nil
+    }
 }
