@@ -2804,6 +2804,20 @@ final class WorkflowOrchestrator {
         manager: AgentWindowManager
     ) async -> Bool {
         guard let match = MyTeamToolFastPathRouter.match(userMessage) else { return false }
+        guard match.descriptor.permissionLevel == .readOnly || match.descriptor.permissionLevel == .draftOnly else {
+            AppLog.warning("[WorkflowOrchestrator] fast-path blocked by permission level toolID=\(match.descriptor.id) permission=\(match.descriptor.permissionLevel.rawValue)")
+            return false
+        }
+        let progressText = MyTeamToolFastPathRouter.runningMarkdown(for: match.descriptor)
+        let progressMessageID = await MainActor.run {
+            manager.addChatLog(
+                roomID: roomID,
+                agentID: "system",
+                agentName: "업무 실행",
+                text: progressText,
+                isUser: false
+            )
+        }
         await MainActor.run {
             manager.isWorkflowRunning = true
             manager.setWorkflowStatus("업무 도구 실행 중: \(match.descriptor.displayName)", for: roomID)
@@ -2819,13 +2833,21 @@ final class WorkflowOrchestrator {
             descriptor: match.descriptor
         )
         await MainActor.run {
-            manager.addChatLog(
-                roomID: roomID,
-                agentID: "system",
-                agentName: "업무 실행",
-                text: responseText,
-                isUser: false
-            )
+            if let progressMessageID {
+                manager.updateChatLogText(
+                    roomID: roomID,
+                    messageID: progressMessageID,
+                    text: responseText
+                )
+            } else {
+                manager.addChatLog(
+                    roomID: roomID,
+                    agentID: "system",
+                    agentName: "업무 실행",
+                    text: responseText,
+                    isUser: false
+                )
+            }
             manager.clearWorkflowStatus(for: roomID)
             manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0
         }
