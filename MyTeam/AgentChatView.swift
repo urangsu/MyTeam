@@ -1180,6 +1180,15 @@ struct AgentChatView: View {
                 if targetID != "team_all" {
                     setTyping(targetID, true)
                 }
+                let progressMessageID = await MainActor.run {
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "업무 실행",
+                        text: MyTeamToolFastPathRouter.runningMarkdown(for: fastPath.descriptor),
+                        isUser: false
+                    )
+                }
                 let state = await ToolExecutionRouter.shared.run(
                     fastPath.descriptor,
                     input: fastPath.input,
@@ -1194,13 +1203,21 @@ struct AgentChatView: View {
                     if targetID != "team_all" {
                         manager.typingAgentIDs.remove(targetID)
                     }
-                    manager.addChatLog(
-                        roomID: roomID,
-                        agentID: "system",
-                        agentName: "업무 실행",
-                        text: responseText,
-                        isUser: false
-                    )
+                    if let progressMessageID {
+                        manager.updateChatLogText(
+                            roomID: roomID,
+                            messageID: progressMessageID,
+                            text: responseText
+                        )
+                    } else {
+                        manager.addChatLog(
+                            roomID: roomID,
+                            agentID: "system",
+                            agentName: "업무 실행",
+                            text: responseText,
+                            isUser: false
+                        )
+                    }
                 }
                 return
             }
