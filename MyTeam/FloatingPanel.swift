@@ -34,8 +34,6 @@ enum PanelTuckGeometry {
     nonisolated static let allowedPanelIDs: Set<String> = [
         "chat_single",
         "status_window",
-        "settings_window",
-        "agent_settings_window",
         "swap_window"
     ]
 
@@ -120,8 +118,7 @@ class FloatingPanel: NSPanel {
 
         self.titleVisibility = .hidden
         self.titlebarAppearsTransparent = true
-        // 모든 패널에서 배경 드래그 허용 (창 이동 필수)
-        self.isMovableByWindowBackground = true
+        self.isMovableByWindowBackground = allowsBackgroundDragging
 
         // 표준 버튼(신호등) 숨기기 - 디자인 통앤매너 유지 (개별 X버튼이 이미 존재함)
         self.standardWindowButton(.closeButton)?.isHidden = true
@@ -140,7 +137,11 @@ class FloatingPanel: NSPanel {
 
         restorePosition()
         restoreSizeIfAvailable(defaultSize: size)
-        restoreTuckStateIfAvailable()
+        if PanelTuckGeometry.isTuckAllowed(agentID: agentID) {
+            restoreTuckStateIfAvailable()
+        } else {
+            clearPersistedTuckState()
+        }
     }
 
     override var canBecomeKey: Bool  { true }
@@ -157,6 +158,12 @@ class FloatingPanel: NSPanel {
     override func mouseDown(with event: NSEvent) {
         if tuckState.tuckedEdge != nil {
             restoreFromTuck()
+            return
+        }
+
+        guard allowsBackgroundDragging else {
+            AgentWindowManager.shared.updateInteractionTime()
+            super.mouseDown(with: event)
             return
         }
 
@@ -185,6 +192,10 @@ class FloatingPanel: NSPanel {
     private var lastDraggingEventTime: Date = .distantPast
 
     override func mouseDragged(with event: NSEvent) {
+        guard allowsBackgroundDragging else {
+            super.mouseDragged(with: event)
+            return
+        }
         guard let startLocation = dragStartMouseLocation else { return }
 
         let currentLocation = NSEvent.mouseLocation
@@ -318,6 +329,15 @@ class FloatingPanel: NSPanel {
         }
     }
 
+    private var allowsBackgroundDragging: Bool {
+        switch agentID {
+        case "settings_window":
+            return false
+        default:
+            return true
+        }
+    }
+
     private func restoreSizeIfAvailable(defaultSize: NSSize) {
         guard persistencePolicy.persistSize else { return }
         let width = UserDefaults.standard.double(forKey: "\(agentID)_w")
@@ -358,6 +378,14 @@ class FloatingPanel: NSPanel {
         UserDefaults.standard.set(expanded.origin.y, forKey: "\(agentID)_expanded_y")
         UserDefaults.standard.set(expanded.size.width, forKey: "\(agentID)_expanded_w")
         UserDefaults.standard.set(expanded.size.height, forKey: "\(agentID)_expanded_h")
+    }
+
+    private func clearPersistedTuckState() {
+        UserDefaults.standard.removeObject(forKey: "\(agentID)_tuckEdge")
+        UserDefaults.standard.removeObject(forKey: "\(agentID)_expanded_x")
+        UserDefaults.standard.removeObject(forKey: "\(agentID)_expanded_y")
+        UserDefaults.standard.removeObject(forKey: "\(agentID)_expanded_w")
+        UserDefaults.standard.removeObject(forKey: "\(agentID)_expanded_h")
     }
 
     private func restoreTuckStateIfAvailable() {

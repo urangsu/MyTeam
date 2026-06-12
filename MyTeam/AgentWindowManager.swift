@@ -1377,8 +1377,8 @@ class AgentWindowManager: ObservableObject {
             size: NSSize(width: width, height: height)
         )
         // 설정 창은 일반 창처럼 상호작용해야 하므로 키 윈도우 지원
-        panel.level = .floating
-        panel.isMovableByWindowBackground = true
+        panel.level = .normal
+        panel.isMovableByWindowBackground = false
         panel.minSize = NSSize(width: 540, height: 500)
         
         let view = SettingsView()
