@@ -15,11 +15,11 @@ enum MyTeamToolFastPathRouter {
             return make("spreadsheet.googleSheets.read", query: normalized)
         }
 
-        if containsAny(lower, ["오늘 일정", "일정 확인", "일정 조회", "캘린더 일정", "calendar events"]) {
+        if containsAny(lower, ["오늘 일정", "오늘 회의", "일정 확인", "일정 조회", "캘린더 확인", "캘린더 일정", "calendar events"]) {
             return make("calendar.events.today", query: "오늘 일정")
         }
 
-        if containsAny(lower, ["날씨 조회", "날씨 알려", "날씨 확인", "현재 날씨", "기상청 조회", "weather"]) {
+        if isWeatherReadRequest(normalized, lower: lower) {
             return make("weather.current", query: query(afterRemoving: ["날씨", "조회", "기상청"], from: normalized, fallback: "서울"))
         }
 
@@ -27,7 +27,7 @@ enum MyTeamToolFastPathRouter {
             return make("news.search", query: query(afterRemoving: ["뉴스", "검색", "요약", "찾아줘"], from: normalized, fallback: "경제"))
         }
 
-        if containsAny(lower, ["공시 조회", "공시 검색", "최근 공시", "dart", "다트"]) {
+        if isDARTReadRequest(normalized, lower: lower) {
             return make("dart.disclosures.search", query: query(afterRemoving: ["공시", "조회", "검색", "DART", "다트"], from: normalized, fallback: "포스코"))
         }
 
@@ -94,6 +94,14 @@ enum MyTeamToolFastPathRouter {
         }
     }
 
+    static func runningMarkdown(for descriptor: MyTeamToolDescriptor) -> String {
+        """
+        ### 업무 실행 중: \(descriptor.displayName)
+
+        입력값을 확인하고 결과를 가져오는 중입니다.
+        """
+    }
+
     private static func make(_ id: String, query: String) -> MyTeamToolFastPathMatch? {
         guard let descriptor = MyTeamToolRegistry.descriptor(id: id), descriptor.isUserFacing else { return nil }
         return MyTeamToolFastPathMatch(
@@ -113,15 +121,35 @@ enum MyTeamToolFastPathRouter {
 
     private static func isGoogleSheetsReadRequest(_ message: String, lower: String) -> Bool {
         if lower.contains("docs.google.com/spreadsheets") { return true }
-        if lower.contains("google sheets") && containsAny(lower, ["읽", "조회", "확인", "read"]) { return true }
-        if containsAny(lower, ["구글시트", "구글 시트"]) && containsAny(lower, ["읽", "조회", "확인"]) { return true }
-        if lower.contains("스프레드시트") && containsAny(lower, ["url", "id", "읽", "조회", "확인"]) {
+        if lower.contains("google sheets") && containsAny(lower, ["읽", "조회", "확인", "가져", "read"]) { return true }
+        if containsAny(lower, ["구글시트", "구글 시트"]) && containsAny(lower, ["읽", "조회", "확인", "가져"]) { return true }
+        if lower.contains("스프레드시트") && containsAny(lower, ["url", "id", "읽", "조회", "확인", "가져"]) {
             return true
         }
         return message.range(
             of: #"[A-Za-z0-9_-]{25,}\s+[A-Za-z0-9가-힣_ !']+![A-Z]+[0-9]+:[A-Z]+[0-9]+"#,
             options: .regularExpression
         ) != nil
+    }
+
+    private static func isWeatherReadRequest(_ message: String, lower: String) -> Bool {
+        if containsAny(lower, ["날씨 조회", "날씨 알려", "날씨 확인", "현재 날씨", "기상청 조회", "weather"]) {
+            return true
+        }
+        guard lower.contains("날씨") else { return false }
+        if containsAny(lower, ["처럼", "문장", "카피", "기사", "형식"]) { return false }
+        let compact = message.replacingOccurrences(of: "날씨", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return !compact.isEmpty && compact.count <= 12
+    }
+
+    private static func isDARTReadRequest(_ message: String, lower: String) -> Bool {
+        if containsAny(lower, ["공시 조회", "공시 검색", "최근 공시", "dart", "다트"]) {
+            return true
+        }
+        guard lower.contains("공시") else { return false }
+        if containsAny(lower, ["문장", "형식", "예시", "작성"]) { return false }
+        let compact = message.replacingOccurrences(of: "공시", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return !compact.isEmpty && compact.count <= 16
     }
 
     private static func query(afterRemoving tokens: [String], from message: String, fallback: String) -> String {
