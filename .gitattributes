@@ -1,0 +1,2 @@
+MyTeam/Resources/Supertonic3/onnx/*.onnx filter=lfs diff=lfs merge=lfs -text
+MyTeam/Resources/Supertonic3/voice_styles/*.json filter=lfs diff=lfs merge=lfs -text

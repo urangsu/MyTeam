@@ -7896,6 +7896,8 @@
 						<string>TLF017ST3BUNDLEDFILE</string>
 						<string>TLF018ST3EXTERNALFILE</string>
 						<string>TLF019LICENSEVIEWFILE</string>
+						<string>TLF020ST3GATEFILE</string>
+						<string>ST3RESFOLDERREF00001</string>
 						<string>E3BCED940DAD6E0579E695D1</string>
 					<string>E3BCED940DAD6E0579E695D2</string>
 					<string>E3BCED940DAD6E0579E695D3</string>
@@ -9454,6 +9456,7 @@
 						<string>TLB017ST3BUNDLEDBLD</string>
 						<string>TLB018ST3EXTERNALBLD</string>
 						<string>TLB019LICENSEVIEWBLD</string>
+						<string>TLB020ST3GATEBLD</string>
 						<string>E3BCED940DAD6E0579E695DD</string>
 					<string>E3BCED940DAD6E0579E695DE</string>
 					<string>E3BCED940DAD6E0579E695DF</string>
@@ -9505,6 +9508,7 @@
 			<array>
 				<string>BB22CC33DD44EE55FF660011</string>
 				<string>EBACDDE7799422A3D727F4B6</string>
+				<string>ST3RESFOLDERBLD00001</string>
 			</array>
 			<key>isa</key>
 			<string>PBXResourcesBuildPhase</string>
@@ -17824,6 +17828,34 @@
 					<key>sourceTree</key>
 					<string>SOURCE_ROOT</string>
 				</dict>
+				<key>TLF020ST3GATEFILE</key>
+				<dict>
+					<key>fileEncoding</key>
+					<integer>4</integer>
+					<key>isa</key>
+					<string>PBXFileReference</string>
+					<key>lastKnownFileType</key>
+					<string>sourcecode.swift</string>
+					<key>name</key>
+					<string>Supertonic3ReleaseGate.swift</string>
+					<key>path</key>
+					<string>Supertonic3ReleaseGate.swift</string>
+					<key>sourceTree</key>
+					<string>SOURCE_ROOT</string>
+				</dict>
+				<key>ST3RESFOLDERREF00001</key>
+				<dict>
+					<key>isa</key>
+					<string>PBXFileReference</string>
+					<key>lastKnownFileType</key>
+					<string>folder</string>
+					<key>name</key>
+					<string>Supertonic3</string>
+					<key>path</key>
+					<string>Resources/Supertonic3</string>
+					<key>sourceTree</key>
+					<string>&lt;group&gt;</string>
+				</dict>
 				<key>TLB016ST3SOURCEBLD</key>
 				<dict>
 					<key>fileRef</key>
@@ -17849,6 +17881,20 @@
 				<dict>
 					<key>fileRef</key>
 					<string>TLF019LICENSEVIEWFILE</string>
+					<key>isa</key>
+					<string>PBXBuildFile</string>
+				</dict>
+				<key>TLB020ST3GATEBLD</key>
+				<dict>
+					<key>fileRef</key>
+					<string>TLF020ST3GATEFILE</string>
+					<key>isa</key>
+					<string>PBXBuildFile</string>
+				</dict>
+				<key>ST3RESFOLDERBLD00001</key>
+				<dict>
+					<key>fileRef</key>
+					<string>ST3RESFOLDERREF00001</string>
 					<key>isa</key>
 					<string>PBXBuildFile</string>
 				</dict>
