@@ -113,6 +113,7 @@ def validate_policy_sources() -> None:
 
 def validate_supertonic3_policy() -> None:
     source_policy = read_text(REPO_SOURCES / "Supertonic3ModelSource.swift")
+    release_gate = read_text(REPO_SOURCES / "Supertonic3ReleaseGate.swift")
     routing_policy = read_text(REPO_SOURCES / "TTSRoutingPolicy.swift")
     external_locator = read_text(REPO_SOURCES / "Supertonic3ExternalCacheModelLocator.swift")
     onnx_paths = read_text(REPO_SOURCES / "Supertonic3ONNXModelPaths.swift")
@@ -121,12 +122,20 @@ def validate_supertonic3_policy() -> None:
         fail("Supertonic3 App Store model source must be bundled")
     if not re.search(r"case \.developer:\s*return \.externalCacheDeveloperOnly", source_policy):
         fail("Supertonic3 external cache must be Developer-only")
-    if not re.search(r"case \.appStore:\s*return AppStoreTTSReleaseGate\.isApproved", source_policy):
-        fail("Supertonic3 App Store runtime must be gated by AppStoreTTSReleaseGate")
-    if "enum AppStoreTTSReleaseGate" not in source_policy:
-        fail("Supertonic3 App Store release gate must be explicit")
-    if "bundledModelValidated" not in source_policy:
+    if not re.search(r"case \.appStore:\s*return Supertonic3ReleaseGate\.isAppStoreApproved", source_policy):
+        fail("Supertonic3 App Store runtime must be gated by Supertonic3ReleaseGate")
+    if "enum Supertonic3ReleaseGate" not in release_gate:
+        fail("Supertonic3 App Store release gate must be centralized")
+    if "bundledModelValidated" not in release_gate:
         fail("Supertonic3 App Store release gate must validate bundled model files")
+    for marker in [
+        "licenseVerifiedForAppStore",
+        "modelRedistributionApproved",
+        "commercialProductGateApproved",
+        "isAppStoreApproved",
+    ]:
+        if marker not in release_gate:
+            fail(f"Supertonic3ReleaseGate missing marker: {marker}")
     if "FeatureGate.current == .developer" not in external_locator:
         fail("Supertonic3 external cache locator must guard Developer profile")
     if "Supertonic3DistributionGate.isRuntimeAllowed" not in routing_policy:
