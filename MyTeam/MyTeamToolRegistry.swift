@@ -28,8 +28,32 @@ enum MyTeamToolImplementationStatus: String, Sendable {
     case blockedByPolicy
 }
 
+enum MyTeamCredentialProvider: Sendable, Hashable {
+    case external(ExternalProvider)
+    case assistant(AssistantConnector.Provider)
+
+    nonisolated var externalProvider: ExternalProvider? {
+        if case .external(let provider) = self { return provider }
+        return nil
+    }
+
+    nonisolated var assistantProvider: AssistantConnector.Provider? {
+        if case .assistant(let provider) = self { return provider }
+        return nil
+    }
+
+    nonisolated var displayName: String {
+        switch self {
+        case .external(let provider):
+            return provider.displayName
+        case .assistant(let provider):
+            return provider.displayName
+        }
+    }
+}
+
 struct MyTeamCredentialRequirement: Sendable, Hashable {
-    let provider: ExternalProvider
+    let provider: MyTeamCredentialProvider
     let reason: String
 }
 
@@ -65,7 +89,7 @@ enum MyTeamToolRegistry {
             displayName: "뉴스 요약",
             shortDescription: "네이버 뉴스 검색 결과를 출처와 함께 정리합니다.",
             category: .externalInfo,
-            requiredCredential: MyTeamCredentialRequirement(provider: .naverNews, reason: "네이버 뉴스 검색에 Client ID와 Secret이 필요합니다."),
+            requiredCredential: MyTeamCredentialRequirement(provider: .external(.naverNews), reason: "네이버 뉴스 검색에 Client ID와 Secret이 필요합니다."),
             permissionLevel: .readOnly,
             isImplemented: true,
             isUserFacing: true,
@@ -77,7 +101,7 @@ enum MyTeamToolRegistry {
             displayName: "공시 조회",
             shortDescription: "DART 공시를 조회하고 원문 출처를 확인합니다.",
             category: .externalInfo,
-            requiredCredential: MyTeamCredentialRequirement(provider: .dartDisclosure, reason: "OpenDART API Key가 필요합니다."),
+            requiredCredential: MyTeamCredentialRequirement(provider: .external(.dartDisclosure), reason: "OpenDART API Key가 필요합니다."),
             permissionLevel: .readOnly,
             isImplemented: true,
             isUserFacing: true,
@@ -89,7 +113,7 @@ enum MyTeamToolRegistry {
             displayName: "날씨 조회",
             shortDescription: "기상청 단기 데이터를 확인합니다.",
             category: .externalInfo,
-            requiredCredential: MyTeamCredentialRequirement(provider: .kmaWeather, reason: "공공데이터포털 Service Key가 필요합니다."),
+            requiredCredential: MyTeamCredentialRequirement(provider: .external(.kmaWeather), reason: "공공데이터포털 Service Key가 필요합니다."),
             permissionLevel: .readOnly,
             isImplemented: true,
             isUserFacing: true,
@@ -101,7 +125,7 @@ enum MyTeamToolRegistry {
             displayName: "법령 검색",
             shortDescription: "공식 법령 출처를 기준으로 법령과 조문을 찾습니다.",
             category: .externalInfo,
-            requiredCredential: MyTeamCredentialRequirement(provider: .koreanLaw, reason: "국가법령정보센터 OC가 필요합니다."),
+            requiredCredential: MyTeamCredentialRequirement(provider: .external(.koreanLaw), reason: "국가법령정보센터 OC가 필요합니다."),
             permissionLevel: .readOnly,
             isImplemented: true,
             isUserFacing: true,
@@ -113,7 +137,7 @@ enum MyTeamToolRegistry {
             displayName: "일정 확인",
             shortDescription: "오늘 일정과 회의 준비 사항을 확인합니다.",
             category: .calendar,
-            requiredCredential: nil,
+            requiredCredential: MyTeamCredentialRequirement(provider: .assistant(.googleCalendar), reason: "Google Calendar 읽기 연결이 필요합니다."),
             permissionLevel: .readOnly,
             isImplemented: true,
             isUserFacing: true,
@@ -161,7 +185,7 @@ enum MyTeamToolRegistry {
             displayName: "Google Sheets 읽기",
             shortDescription: "스프레드시트 URL 또는 ID로 값을 읽어옵니다.",
             category: .spreadsheet,
-            requiredCredential: nil,
+            requiredCredential: MyTeamCredentialRequirement(provider: .assistant(.googleSheets), reason: "Google Sheets 읽기 연결이 필요합니다."),
             permissionLevel: .readOnly,
             isImplemented: true,
             isUserFacing: true,
@@ -176,7 +200,7 @@ enum MyTeamToolRegistry {
             requiredCredential: nil,
             permissionLevel: .draftOnly,
             isImplemented: false,
-            isUserFacing: true,
+            isUserFacing: false,
             supportedDistributionChannels: [.appStore, .direct, .developer],
             relatedProvider: nil
         ),
@@ -227,7 +251,15 @@ enum MyTeamToolRegistry {
     }
 
     nonisolated static func tools(using provider: ExternalProvider) -> [MyTeamToolDescriptor] {
-        all.filter { $0.relatedProvider == provider || $0.requiredCredential?.provider == provider }
+        all.filter {
+            $0.relatedProvider == provider || $0.requiredCredential?.provider.externalProvider == provider
+        }
+    }
+
+    nonisolated static func tools(using provider: AssistantConnector.Provider) -> [MyTeamToolDescriptor] {
+        all.filter {
+            $0.requiredCredential?.provider.assistantProvider == provider
+        }
     }
 
     nonisolated static func providerUsageLabels(for provider: ExternalProvider) -> [String] {

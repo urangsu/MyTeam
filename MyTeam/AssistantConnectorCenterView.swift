@@ -12,13 +12,25 @@ struct AssistantConnectorCenterView: View {
         AssistantConnectorCatalog.connectors
     }
 
+    private var implementedConnectors: [AssistantConnector] {
+        connectors.filter(\.isImplemented)
+    }
+
+    private var comingSoonConnectors: [AssistantConnector] {
+        connectors.filter { !$0.isImplemented }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             header
             googleOAuthSetupCard
 
-            ForEach(connectors) { connector in
+            ForEach(implementedConnectors) { connector in
                 connectorCard(for: connector)
+            }
+
+            if !comingSoonConnectors.isEmpty {
+                comingSoonCompactRow
             }
 
             scopePolicySection
@@ -176,15 +188,7 @@ struct AssistantConnectorCenterView: View {
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(.secondary)
                         .frame(width: 96, alignment: .trailing)
-                    if connector.id == .googleCalendar || connector.id == .googleSheets {
-                        googleActionButton(for: connector.id, state: state)
-                    } else {
-                        Button("연결 준비 중") { }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                            .disabled(true)
-                            .frame(width: 96, alignment: .trailing)
-                    }
+                    googleActionButton(for: connector.id, state: state)
                 }
                 .frame(width: 104, alignment: .trailing)
             }
@@ -200,13 +204,32 @@ struct AssistantConnectorCenterView: View {
                 Spacer()
             }
 
-            if connector.id == .googleCalendar || connector.id == .googleSheets || connector.id == .gmail {
+            if connector.id == .googleCalendar || connector.id == .googleSheets {
                 googleScopeRow(for: connector.id)
             }
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 12).fill(Color(nsColor: .controlBackgroundColor).opacity(0.42)))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.secondary.opacity(0.14)))
+    }
+
+    private var comingSoonCompactRow: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "clock.badge.exclamationmark")
+                .foregroundStyle(.secondary)
+            Text("준비 중")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
+            Text(comingSoonConnectors.map(\.displayName).joined(separator: ", "))
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color(nsColor: .controlBackgroundColor).opacity(0.28)))
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.secondary.opacity(0.10)))
     }
 
     private func googleActionButton(for provider: AssistantConnector.Provider, state: GoogleOAuthConnectionState) -> some View {

@@ -54,8 +54,8 @@ struct ToolActionCardView: View {
 
                 Spacer(minLength: 0)
 
-                if case .needsConnection = state {
-                    Button("연결", action: { onOpenConnection?(descriptor.requiredCredential?.provider) })
+                if case .needsConnection(let provider) = state {
+                    Button("연결", action: { onOpenConnection?(provider) })
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                 } else if case .needsAssistantConnection = state {
@@ -68,8 +68,8 @@ struct ToolActionCardView: View {
                     })
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                } else if case .needsValidation = state {
-                    Button("검증", action: { onOpenConnection?(descriptor.requiredCredential?.provider) })
+                } else if case .needsValidation(let provider) = state {
+                    Button("검증", action: { onOpenConnection?(provider) })
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                 } else if case .needsApproval(let reason) = state {

@@ -39,7 +39,7 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable, Hashable {
     case dartDisclosure = "dartDisclosure"
     case koreanLaw     = "koreanLaw"
 
-    var displayName: String {
+    nonisolated var displayName: String {
         switch self {
         case .openAI:         return "OpenAI"
         case .gemini:         return "Google Gemini"

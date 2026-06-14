@@ -110,7 +110,7 @@ enum MyTeamToolFastPathRouter {
                 query: query,
                 daysBack: id == "dart.disclosures.search" ? 30 : nil,
                 displayCount: id == "news.search" ? 5 : nil,
-                providerHint: descriptor.requiredCredential?.provider
+                providerHint: descriptor.requiredCredential?.provider.externalProvider
             )
         )
     }

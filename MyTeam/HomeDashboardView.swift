@@ -226,7 +226,7 @@ struct HomeDashboardView: View {
                 query: query,
                 daysBack: descriptor.id == "dart.disclosures.search" ? 30 : nil,
                 displayCount: descriptor.id == "news.search" ? 5 : nil,
-                providerHint: descriptor.requiredCredential?.provider
+                providerHint: descriptor.requiredCredential?.provider.externalProvider
             )
             let result = await ToolExecutionRouter.shared.run(descriptor, input: input, bypassApproval: bypassApproval)
             await MainActor.run {
@@ -264,9 +264,9 @@ struct HomeDashboardView: View {
         guard let descriptor = selectedDescriptor else { return }
         switch action.id {
         case "openConnection", "checkConnection":
-            onOpenConnection(descriptor.requiredCredential?.provider)
+            onOpenConnection(descriptor.requiredCredential?.provider.externalProvider)
         case "openAssistantConnection":
-            onOpenAssistantConnection(nil)
+            onOpenAssistantConnection(descriptor.requiredCredential?.provider.assistantProvider)
         case "searchAgain", "extendRange", "changeKeyword":
             run(descriptor, query: toolQueries[descriptor.id] ?? defaultQuery(for: descriptor))
         default:

@@ -43,7 +43,7 @@ private final class ToolExecutionRaceBox: @unchecked Sendable {
 
 actor ToolExecutionRouter {
     static let shared = ToolExecutionRouter()
-    private let externalReadSoftBudgetNanoseconds: UInt64 = 3_000_000_000
+    private let externalReadHardTimeoutNanoseconds: UInt64 = 10_000_000_000
 
     func readiness(for descriptor: MyTeamToolDescriptor) async -> ToolExecutionState {
         guard FeatureGate.allows(descriptor) else {
@@ -55,46 +55,47 @@ actor ToolExecutionRouter {
         }
 
         if let requirement = descriptor.requiredCredential {
-            let health = await MainActor.run {
-                CredentialHealthService.shared.health(for: requirement.provider)
-            }
-            switch health.state {
-            case .notConnected:
-                return .needsConnection(requirement.provider)
-            case .untested, .testUnavailable:
-                return .needsValidation(requirement.provider)
-            case .testFailed:
-                return .failed(MyTeamToolFailure(
-                    title: "연결 확인 실패",
-                    message: "키 권한 또는 발급 상태를 확인하세요.",
-                    recoveryActions: [
-                        MyTeamNextAction(id: "openConnection", title: "연결 설정", role: .normal)
-                    ]
-                ))
-            case .connected:
-                break
-            }
-        }
-
-        if let assistantProvider = assistantProvider(for: descriptor) {
-            let sheetsState = await MainActor.run {
-                AssistantConnectorCatalog.connectionState(for: assistantProvider)
-            }
-            switch sheetsState.status {
-            case .connected:
-                break
-            case .notConfigured, .notConnected, .needsReauth:
-                return .needsAssistantConnection(assistantProvider)
-            case .comingSoon:
-                return .unavailable("\(assistantProvider.displayName) 연결은 준비 중입니다.")
-            case .error:
-                return .failed(MyTeamToolFailure(
-                    title: "\(assistantProvider.displayName) 연결 상태를 확인하세요",
-                    message: sheetsState.message,
-                    recoveryActions: [
-                        MyTeamNextAction(id: "openAssistantConnection", title: "비서 연결", role: .normal)
-                    ]
-                ))
+            switch requirement.provider {
+            case .external(let provider):
+                let health = await MainActor.run {
+                    CredentialHealthService.shared.health(for: provider)
+                }
+                switch health.state {
+                case .notConnected:
+                    return .needsConnection(provider)
+                case .untested, .testUnavailable:
+                    return .needsValidation(provider)
+                case .testFailed:
+                    return .failed(MyTeamToolFailure(
+                        title: "연결 확인 실패",
+                        message: "키 권한 또는 발급 상태를 확인하세요.",
+                        recoveryActions: [
+                            MyTeamNextAction(id: "openConnection", title: "연결 설정", role: .normal)
+                        ]
+                    ))
+                case .connected:
+                    break
+                }
+            case .assistant(let provider):
+                let connectionState = await MainActor.run {
+                    AssistantConnectorCatalog.connectionState(for: provider)
+                }
+                switch connectionState.status {
+                case .connected:
+                    break
+                case .notConfigured, .notConnected, .needsReauth:
+                    return .needsAssistantConnection(provider)
+                case .comingSoon:
+                    return .unavailable("\(provider.displayName) 연결은 준비 중입니다.")
+                case .error:
+                    return .failed(MyTeamToolFailure(
+                        title: "\(provider.displayName) 연결 상태를 확인하세요",
+                        message: connectionState.message,
+                        recoveryActions: [
+                            MyTeamNextAction(id: "openAssistantConnection", title: "비서 연결", role: .normal)
+                        ]
+                    ))
+                }
             }
         }
 
@@ -104,17 +105,6 @@ actor ToolExecutionRouter {
         }
 
         return .idle
-    }
-
-    private func assistantProvider(for descriptor: MyTeamToolDescriptor) -> AssistantConnector.Provider? {
-        switch descriptor.id {
-        case "calendar.events.today":
-            return .googleCalendar
-        case "spreadsheet.googleSheets.read":
-            return .googleSheets
-        default:
-            return nil
-        }
     }
 
     func run(_ descriptor: MyTeamToolDescriptor) async -> ToolExecutionState {
@@ -151,17 +141,17 @@ actor ToolExecutionRouter {
         case "spreadsheet.postprocess":
             result = runSpreadsheetPostprocess(input: input)
         case "spreadsheet.googleSheets.read":
-            result = await runWithSoftBudget(descriptor) { await self.runGoogleSheetsRead(input: input) }
+            result = await runWithHardTimeout(descriptor) { await self.runGoogleSheetsRead(input: input) }
         case "calendar.events.today":
-            result = await runWithSoftBudget(descriptor) { await self.runGoogleCalendarToday() }
+            result = await runWithHardTimeout(descriptor) { await self.runGoogleCalendarToday() }
         case "dart.disclosures.search":
-            result = await runWithSoftBudget(descriptor) { await self.runDART(input: input) }
+            result = await runWithHardTimeout(descriptor) { await self.runDART(input: input) }
         case "news.search":
-            result = await runWithSoftBudget(descriptor) { await self.runNaverNews(input: input) }
+            result = await runWithHardTimeout(descriptor) { await self.runNaverNews(input: input) }
         case "weather.current":
-            result = await runWithSoftBudget(descriptor) { await self.runKMAWeather(input: input) }
+            result = await runWithHardTimeout(descriptor) { await self.runKMAWeather(input: input) }
         case "law.search":
-            result = await runWithSoftBudget(descriptor) { await self.runKoreanLaw(input: input) }
+            result = await runWithHardTimeout(descriptor) { await self.runKoreanLaw(input: input) }
         default:
             result = .unavailable("이 업무는 아직 실행 연결 전입니다.")
         }
@@ -181,13 +171,13 @@ actor ToolExecutionRouter {
         }
     }
 
-    private func runWithSoftBudget(
+    private func runWithHardTimeout(
         _ descriptor: MyTeamToolDescriptor,
         operation: @escaping @Sendable () async -> ToolExecutionState
     ) async -> ToolExecutionState {
         let timeoutState = ToolExecutionState.failed(MyTeamToolFailure(
-            title: "\(descriptor.displayName) 응답 지연",
-            message: "3초 안에 결과를 받지 못했습니다. 연결 상태를 확인하거나 잠시 후 다시 시도하세요.",
+            title: "\(descriptor.displayName) 시간 초과",
+            message: "10초 안에 결과를 받지 못했습니다. 연결 상태를 확인하거나 잠시 후 다시 시도하세요.",
             recoveryActions: [
                 MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal)
             ]
@@ -199,8 +189,8 @@ actor ToolExecutionRouter {
                 let state = await operation()
                 box.resolve(state, continuation: continuation)
             }
-            let timeoutTask = Task(priority: .userInitiated) { [externalReadSoftBudgetNanoseconds] in
-                try? await Task.sleep(nanoseconds: externalReadSoftBudgetNanoseconds)
+            let timeoutTask = Task(priority: .userInitiated) { [externalReadHardTimeoutNanoseconds] in
+                try? await Task.sleep(nanoseconds: externalReadHardTimeoutNanoseconds)
                 guard !Task.isCancelled else { return }
                 box.resolve(timeoutState, continuation: continuation)
             }

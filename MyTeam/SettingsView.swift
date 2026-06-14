@@ -199,23 +199,6 @@ struct SettingsView: View {
     @AppStorage(TeamNameplateAppearanceSettings.borderModeKey) private var teamNameplateBorderModeRaw: String = TeamNameplateAppearanceSettings.defaultBorderMode.rawValue
     @AppStorage("agentWindowOpacity")     private var agentWindowOpacity: Double = 0.0
 
-    // ── API 설정
-    @AppStorage("defaultLLMProvider") private var defaultProviderRaw: String = LLMProvider.gemini.rawValue
-    @AppStorage("openAIModelId")      private var openAIModelId: String = ""
-    @State private var geminiKey: String = ""
-    @State private var openAIKey: String = ""
-    @State private var claudeKey: String = ""
-    @State private var openRouterKey: String = ""
-    @State private var openRouterModelId: String = ""
-    @State private var selectedProvider: LLMProvider = .gemini
-    @State private var validationStatus: ValidationStatus = .idle
-    @State private var showAdvancedModelSettings: Bool = false
-    @State private var dailyBriefingPreview: DailyBriefing = DailyBriefingService.makeUnavailableBriefing(
-        now: Date(),
-        manager: AgentWindowManager.shared
-    )
-    @State private var dailyBriefingRefreshToken = UUID()
-
     @State private var currentTab: Int = 0
     @State private var focusedConnectionProvider: ExternalProvider? = nil
     @State private var focusedAssistantConnectorProvider: AssistantConnector.Provider? = nil
@@ -275,7 +258,6 @@ struct SettingsView: View {
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear {
             TeamNameplateAppearanceSettings.migrateLegacyValuesIfNeeded()
-            loadSettings()
         }
         .onChange(of: gps.locationText) { _, newVal in
             if !newVal.isEmpty { userLocation = newVal }
@@ -420,11 +402,6 @@ struct SettingsView: View {
                 }
             }
 
-            Section {
-                Button("저장") { saveSettings() }
-                    .buttonStyle(.borderedProminent)
-                    .frame(maxWidth: .infinity)
-            }
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
@@ -452,199 +429,10 @@ struct SettingsView: View {
                         }
                     }
 
-                    AssistantConnectorCenterView(onGoogleCalendarConnectionChanged: {
-                        dailyBriefingRefreshToken = UUID()
-                    })
+                    AssistantConnectorCenterView()
                 }
             }
             .padding(.bottom, 12)
-        }
-    }
-
-    // MARK: - Tab 2 (Legacy): API 설정 — 개발자 모드에서만 노출
-    private var apiSettingsTab: some View {
-        Form {
-            Section("BYOK / 사용 정책") {
-                BYOKProviderCenterView()
-                UsagePolicyCardView()
-            }
-
-            Section("비서 연결") {
-                AssistantConnectorCenterView(onGoogleCalendarConnectionChanged: {
-                    dailyBriefingRefreshToken = UUID()
-                })
-            }
-
-            Section("오늘 브리핑") {
-                DailyBriefingCardView(
-                    briefing: dailyBriefingPreview,
-                    onActionTap: handleBriefingAction
-                )
-            }
-
-            Section("기본 제공자") {
-                Picker("제공자", selection: $selectedProvider) {
-                    Text("Gemini").tag(LLMProvider.gemini)
-                    Text("OpenAI").tag(LLMProvider.openAI)
-                    Text("Claude").tag(LLMProvider.claude)
-                    Text("OpenRouter").tag(LLMProvider.openRouter)
-                }
-                .pickerStyle(.segmented)
-                .onChange(of: selectedProvider) { _, _ in validationStatus = .idle }
-            }
-
-            Section("API 키") {
-                switch selectedProvider {
-                case .gemini:
-                    LabeledContent("Gemini Key") {
-                        SecureField("", text: $geminiKey)
-                    }
-                case .openAI:
-                    LabeledContent("OpenAI Key") {
-                        SecureField("", text: $openAIKey)
-                    }
-                case .claude:
-                    LabeledContent("Claude Key") {
-                        SecureField("", text: $claudeKey)
-                    }
-                case .openRouter:
-                    LabeledContent("OpenRouter Key") {
-                        SecureField("", text: $openRouterKey)
-                    }
-                }
-
-                HStack {
-                    if case .loading = validationStatus {
-                        ProgressView().scaleEffect(0.7)
-                    } else {
-                        Text(validationStatus.message)
-                            .font(.caption)
-                            .foregroundStyle(validationStatus.color)
-                    }
-                    Spacer()
-                    if !currentKey(for: selectedProvider).isEmpty {
-                        Button(role: .destructive) {
-                            deleteCurrentKey()
-                        } label: {
-                            Image(systemName: "trash")
-                                .font(.caption)
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.red.opacity(0.7))
-                        .help("API 키 삭제")
-                    }
-                    Button("검증") { validateCurrentKey() }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        .disabled(currentKey(for: selectedProvider).isEmpty)
-                }
-
-                if currentKey(for: selectedProvider).isEmpty {
-                    LocalOnlyModeCardView(
-                        onOpenSettings: { /* Settings already open */ }
-                    )
-                }
-            }
-
-            Section {
-                if AIModelPolicy.modelOverrideAllowed {
-                    DisclosureGroup(isExpanded: $showAdvancedModelSettings) {
-                        switch selectedProvider {
-                        case .openAI:
-                            LabeledContent("모델") {
-                                TextField("자동", text: $openAIModelId)
-                            }
-                        case .openRouter:
-                            LabeledContent("모델") {
-                                TextField("자동", text: $openRouterModelId)
-                            }
-                        default:
-                            EmptyView()
-                        }
-
-                        let discoveredModels = LLMConfigCatalog.shared.configs[selectedProvider]?.discoveredModels ?? []
-                        if !discoveredModels.isEmpty {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("발견된 모델")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                                ForEach(discoveredModels.prefix(8), id: \.self) { model in
-                                    Button {
-                                        switch selectedProvider {
-                                        case .openAI:     openAIModelId = model
-                                        case .openRouter: openRouterModelId = model
-                                        default: break
-                                        }
-                                    } label: {
-                                        HStack {
-                                            Text(model)
-                                                .font(.caption)
-                                                .foregroundStyle(.primary)
-                                            Spacer()
-                                            if (selectedProvider == .openAI && openAIModelId == model) ||
-                                               (selectedProvider == .openRouter && openRouterModelId == model) {
-                                                Image(systemName: "checkmark")
-                                                    .font(.caption2)
-                                                    .foregroundStyle(.blue)
-                                            }
-                                        }
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                            .padding(.vertical, 4)
-                        } else {
-                            HStack {
-                                Text(selectedProvider == .openRouter ? "모델 ID를 직접 입력하세요" : "자동 선택 (검증 후 갱신)")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Button {
-                                    Task {
-                                        await LLMConfigCatalog.shared.refreshIfNeeded(selectedProvider)
-                                    }
-                                } label: {
-                                    Image(systemName: "arrow.clockwise")
-                                        .font(.caption)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    } label: {
-                        Label("고급 모델 설정", systemImage: "slider.horizontal.3")
-                    }
-                } else {
-                    LabeledContent("모델") {
-                        Text("Release pinned: \(AIModelPolicy.modelFamily)")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-
-            Section {
-                Button("저장") { saveSettings() }
-                    .buttonStyle(.borderedProminent)
-                    .frame(maxWidth: .infinity)
-            }
-        }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
-        .task(id: dailyBriefingRefreshToken) {
-            await refreshDailyBriefingPreview()
-        }
-    }
-
-    @MainActor
-    private func handleBriefingAction(_ suggestion: BriefingActionSuggestion) {
-        guard let roomID = manager.currentRoomID else { return }
-
-        Task {
-            await BriefingActionDispatcher.dispatch(
-                suggestion,
-                roomID: roomID,
-                manager: manager,
-                orchestrator: .shared
-            )
         }
     }
 
@@ -806,120 +594,6 @@ struct SettingsView: View {
                 CharacterGalleryView()
             }
         }
-    }
-
-
-    // MARK: - 내부 로직
-    private func currentKey(for provider: LLMProvider) -> String {
-        switch provider {
-        case .gemini:     return geminiKey
-        case .openAI:     return openAIKey
-        case .claude:     return claudeKey
-        case .openRouter: return openRouterKey
-        }
-    }
-
-    private func validateCurrentKey() {
-        validationStatus = .loading
-        let key = currentKey(for: selectedProvider)
-        let provider = selectedProvider.rawValue
-        Task {
-            do {
-                let result = try await AIService.shared.validateKey(provider: provider, apiKey: key)
-                await MainActor.run { validationStatus = .success(result) }
-            } catch {
-                await MainActor.run { validationStatus = .failure(error.localizedDescription) }
-            }
-        }
-    }
-
-    private func deleteCurrentKey() {
-        let provider = externalProvider(for: selectedProvider)
-        switch selectedProvider {
-        case .gemini:     geminiKey = ""
-        case .openAI:     openAIKey = ""
-        case .claude:     claudeKey = ""
-        case .openRouter: openRouterKey = ""
-        }
-        _ = SecureCredentialStore.shared.delete(provider: provider)
-        CredentialHealthService.shared.didDeleteKey(for: provider)
-        validationStatus = .idle
-    }
-
-    private func loadSettings() {
-        if let k = SecureCredentialStore.shared.read(provider: .gemini)     { geminiKey = k }
-        if let k = SecureCredentialStore.shared.read(provider: .openAI)     { openAIKey = k }
-        if let k = SecureCredentialStore.shared.read(provider: .anthropic)  { claudeKey = k }
-        if let k = SecureCredentialStore.shared.read(provider: .openRouter) { openRouterKey = k }
-        if AIModelPolicy.modelOverrideAllowed {
-            openAIModelId = UserDefaults.standard.string(forKey: "openAIModelId") ?? ""
-            openRouterModelId = UserDefaults.standard.string(forKey: "openRouterModelId") ?? ""
-        } else {
-            openAIModelId = ""
-            openRouterModelId = ""
-        }
-        if let raw = LLMProvider(rawValue: defaultProviderRaw) { selectedProvider = raw }
-        dailyBriefingRefreshToken = UUID()
-    }
-
-    private func saveSettings() {
-        saveOrDeleteCredential(provider: .gemini, key: geminiKey)
-        saveOrDeleteCredential(provider: .openAI, key: openAIKey)
-        saveOrDeleteCredential(provider: .anthropic, key: claudeKey)
-        saveOrDeleteCredential(provider: .openRouter, key: openRouterKey)
-        if AIModelPolicy.modelOverrideAllowed {
-            openAIModelId = openAIModelId.trimmingCharacters(in: .whitespacesAndNewlines)
-            openRouterModelId = openRouterModelId.trimmingCharacters(in: .whitespacesAndNewlines)
-            if openAIModelId.isEmpty {
-                UserDefaults.standard.removeObject(forKey: "openAIModelId")
-            } else {
-                UserDefaults.standard.set(openAIModelId, forKey: "openAIModelId")
-            }
-            if openRouterModelId.isEmpty {
-                UserDefaults.standard.removeObject(forKey: "openRouterModelId")
-            } else {
-                UserDefaults.standard.set(openRouterModelId, forKey: "openRouterModelId")
-            }
-        } else {
-            UserDefaults.standard.removeObject(forKey: "openAIModelId")
-            UserDefaults.standard.removeObject(forKey: "openRouterModelId")
-        }
-        defaultProviderRaw = selectedProvider.rawValue
-    }
-
-    private func saveOrDeleteCredential(provider: ExternalProvider, key: String) {
-        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty {
-            _ = SecureCredentialStore.shared.delete(provider: provider)
-            CredentialHealthService.shared.didDeleteKey(for: provider)
-        } else {
-            _ = SecureCredentialStore.shared.save(provider: provider, key: trimmed)
-            CredentialHealthService.shared.didSaveKey(for: provider)
-        }
-    }
-
-    private func externalProvider(for provider: LLMProvider) -> ExternalProvider {
-        switch provider {
-        case .gemini:
-            return .gemini
-        case .openAI:
-            return .openAI
-        case .claude:
-            return .anthropic
-        case .openRouter:
-            return .openRouter
-        }
-    }
-
-    @MainActor
-    private func refreshDailyBriefingPreview() async {
-        let provider = GoogleDailyBriefingCalendarProvider.shared
-        let briefing = await DailyBriefingService.makePreviewBriefing(
-            now: Date(),
-            calendarProvider: provider,
-            manager: AgentWindowManager.shared
-        )
-        dailyBriefingPreview = briefing
     }
 
 }

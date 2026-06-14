@@ -116,7 +116,7 @@ final class ToolExecutionLogStore: ObservableObject {
             finishedAt: nil,
             durationMs: nil,
             state: .running,
-            provider: descriptor.relatedProvider ?? descriptor.requiredCredential?.provider,
+            provider: descriptor.relatedProvider ?? descriptor.requiredCredential?.provider.externalProvider,
             failureMessage: nil,
             resultSummary: nil,
             timedOut: false,
