@@ -252,6 +252,12 @@ struct TeamStatusView: View {
                                     manager.openPersonalChat(for: agent.id)
                                 }
                             }
+                            .onTapGesture(count: 2) {
+                                Task { @MainActor in
+                                    manager.openPersonalChat(for: agent.id)
+                                    manager.showChat(for: agent)
+                                }
+                            }
                     }
                 }
                 .padding(.horizontal, 20)
@@ -349,6 +355,9 @@ struct TeamStatusView: View {
                             },
                             onApplyGeneralTemplate: {
                                 manager.applyRoomTemplate(.general, to: room.id)
+                            },
+                            onDelete: {
+                                roomToDelete = room
                             }
                         )
                         .onTapGesture {
@@ -1226,6 +1235,7 @@ struct TeamStatusView: View {
         var onRename: () -> Void
         var onApplyBlogTemplate: () -> Void
         var onApplyGeneralTemplate: () -> Void
+        var onDelete: () -> Void
 
         var body: some View {
             HStack(spacing: 6) {
@@ -1271,6 +1281,10 @@ struct TeamStatusView: View {
                     Button(action: onApplyGeneralTemplate) {
                         Label("일반 워크룸으로 전환", systemImage: "person.3.fill")
                     }
+                }
+                Divider()
+                Button(role: .destructive, action: onDelete) {
+                    Label("워크룸 삭제", systemImage: "trash")
                 }
             }
         }
