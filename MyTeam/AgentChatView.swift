@@ -854,9 +854,19 @@ struct AgentChatView: View {
                 agentColor: log.isUser ? .blue : currentAgent.color,
                 isDarkMode: manager.isDarkMode,
                 timestamp: log.timestamp,
-                sources: log.sources
+                sources: log.sources,
+                enableTypewriter: shouldTypewriteMessage(log)
             )
         }
+    }
+
+    private func shouldTypewriteMessage(_ log: AgentWindowManager.ChatLog) -> Bool {
+        guard log.agentID == "system" || log.isSystem else { return false }
+        return ChatTypingPolicy.shouldAnimate(
+            text: log.text,
+            isUser: log.isUser,
+            isSkillResult: log.skillID != nil
+        )
     }
 
     // MARK: - 입력창

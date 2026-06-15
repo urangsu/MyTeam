@@ -673,10 +673,22 @@ struct TeamStatusView: View {
                                                         .fill(Color.blue)
                                                 )
                                         } else {
-                                            MarkdownTextView(
-                                                text: log.text,
-                                                isDarkMode: manager.isDarkMode
-                                            )
+                                            Group {
+                                                if ChatTypingPolicy.shouldAnimate(
+                                                    text: log.text,
+                                                    isUser: log.isUser,
+                                                    isSkillResult: log.skillID != nil
+                                                ) {
+                                                    TypewriterTextView(text: log.text)
+                                                        .font(.system(size: 12))
+                                                        .foregroundColor(textColor)
+                                                } else {
+                                                    MarkdownTextView(
+                                                        text: log.text,
+                                                        isDarkMode: manager.isDarkMode
+                                                    )
+                                                }
+                                            }
                                             .padding(.horizontal, 10).padding(.vertical, 6)
                                             .background(
                                                 RoundedRectangle(cornerRadius: 12)

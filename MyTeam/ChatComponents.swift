@@ -1,6 +1,104 @@
 import SwiftUI
 import AppKit
 
+enum ChatTypingPolicy {
+    nonisolated static let normalCharactersPerSecond: Double = 18
+    nonisolated static let fastCharactersPerSecond: Double = 26
+    nonisolated static let punctuationPauseNanoseconds: UInt64 = 140_000_000
+    nonisolated static let maxAnimatedCharacters: Int = 220
+
+    nonisolated static func shouldAnimate(
+        text: String,
+        isUser: Bool,
+        isSkillResult: Bool = false
+    ) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !isUser, !isSkillResult else { return false }
+        guard !trimmed.isEmpty, trimmed.count <= maxAnimatedCharacters else { return false }
+        guard !trimmed.contains("```") else { return false }
+        guard !trimmed.contains("|---") else { return false }
+        if trimmed.split(separator: "\n").count > 4 { return false }
+        if trimmed.contains("\n- ") || trimmed.contains("\n1. ") { return false }
+        return true
+    }
+}
+
+struct TypewriterTextView: View {
+    let text: String
+    let isEnabled: Bool
+    let charactersPerSecond: Double
+    let punctuationPauseNanoseconds: UInt64
+    let maxAnimatedCharacters: Int
+    let onFinished: (() -> Void)?
+
+    @State private var displayedText: String = ""
+    @State private var renderTask: Task<Void, Never>?
+
+    init(
+        text: String,
+        isEnabled: Bool = true,
+        charactersPerSecond: Double = ChatTypingPolicy.normalCharactersPerSecond,
+        punctuationPauseNanoseconds: UInt64 = ChatTypingPolicy.punctuationPauseNanoseconds,
+        maxAnimatedCharacters: Int = ChatTypingPolicy.maxAnimatedCharacters,
+        onFinished: (() -> Void)? = nil
+    ) {
+        self.text = text
+        self.isEnabled = isEnabled
+        self.charactersPerSecond = charactersPerSecond
+        self.punctuationPauseNanoseconds = punctuationPauseNanoseconds
+        self.maxAnimatedCharacters = maxAnimatedCharacters
+        self.onFinished = onFinished
+    }
+
+    var body: some View {
+        Text(displayedText.isEmpty && !text.isEmpty ? " " : displayedText)
+            .onAppear { startRendering() }
+            .onDisappear { cancelRendering() }
+            .onChange(of: text) { _, _ in startRendering() }
+            .onChange(of: isEnabled) { _, _ in startRendering() }
+    }
+
+    private func startRendering() {
+        cancelRendering()
+        guard isEnabled, !text.isEmpty, text.count <= maxAnimatedCharacters else {
+            displayedText = text
+            onFinished?()
+            return
+        }
+        displayedText = ""
+        let characters = Array(text)
+        let baseDelay = UInt64(max(12_000_000, 1_000_000_000 / max(1, Int(charactersPerSecond))))
+        renderTask = Task {
+            var current = ""
+            for character in characters {
+                if Task.isCancelled { return }
+                current.append(character)
+                await MainActor.run {
+                    displayedText = current
+                }
+                let delay = punctuationCharacters.contains(character)
+                    ? baseDelay + punctuationPauseNanoseconds
+                    : baseDelay
+                try? await Task.sleep(nanoseconds: delay)
+            }
+            if !Task.isCancelled {
+                await MainActor.run {
+                    onFinished?()
+                }
+            }
+        }
+    }
+
+    private func cancelRendering() {
+        renderTask?.cancel()
+        renderTask = nil
+    }
+
+    private var punctuationCharacters: Set<Character> {
+        [".", ",", "!", "?", "…", "。", "，", "！", "？"]
+    }
+}
+
 // MARK: - 흔들기 이펙트 (AgentChatView에서 분리)
 struct JiggleEffect: ViewModifier {
     var isJiggling: Bool
@@ -46,6 +144,7 @@ struct IMMessageBubble: View {
     let isDarkMode: Bool
     let timestamp: Date?
     var sources: [AgentWindowManager.SourceReference] = []
+    var enableTypewriter: Bool = false
 
     private var bubbleBg: Color {
         isUser ? .blue : (isDarkMode ? Color.white.opacity(0.11) : Color.black.opacity(0.07))
@@ -97,10 +196,18 @@ struct IMMessageBubble: View {
                             }
                         }
                 } else {
-                    MarkdownTextView(
-                        text: text,
-                        isDarkMode: isDarkMode
-                    )
+                    Group {
+                        if enableTypewriter {
+                            TypewriterTextView(text: text)
+                                .font(.system(size: 14))
+                                .foregroundColor(isDarkMode ? .white.opacity(0.92) : .black.opacity(0.88))
+                        } else {
+                            MarkdownTextView(
+                                text: text,
+                                isDarkMode: isDarkMode
+                            )
+                        }
+                    }
                     .textSelection(.enabled)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 9)
