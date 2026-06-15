@@ -759,6 +759,10 @@ final class AppTerminationSpeechService {
     }
 
     func refreshForCurrentTeamLeader(manager: AgentWindowManager) {
+        guard manager.isVoiceMode else {
+            preparedFarewell = nil
+            return
+        }
         guard !manager.isSilentMode else {
             preparedFarewell = nil
             return
@@ -801,8 +805,12 @@ final class AppTerminationSpeechService {
 
     func playPreparedFarewell(completion: @MainActor @escaping @Sendable () -> Void) -> Bool {
         guard !isTerminationPlaybackPending else { return true }
-        guard !AgentWindowManager.shared.isSilentMode else { return false }
+        guard AgentWindowManager.shared.isVoiceMode, !AgentWindowManager.shared.isSilentMode else { return false }
         guard let prepared = preparedFarewell, !prepared.samples.isEmpty else { return false }
+        guard prepared.agentID == currentTeamLeaderAgentID() else {
+            AppLog.info("[AppTerminationSpeech] prepared farewell skipped: team leader changed")
+            return false
+        }
 
         isTerminationPlaybackPending = true
         Task(priority: .userInitiated) {
@@ -828,6 +836,11 @@ final class AppTerminationSpeechService {
             self.finishTermination(completion: completion)
         }
         return true
+    }
+
+    private func currentTeamLeaderAgentID() -> String? {
+        let manager = AgentWindowManager.shared
+        return manager.fallbackTeamLeader(for: manager.selectedTeamWorkroomID)?.id
     }
 
     private func finishTermination(completion: @MainActor @escaping @Sendable () -> Void) {
