@@ -29,6 +29,18 @@ FORBIDDEN_SETTINGS_SURFACE_PATTERNS = [
 ]
 
 
+FORBIDDEN_ACTIVE_SWIFT_PATTERNS = [
+    ("Apple TTS runtime", r"\bAVSpeechSynthesizer\s*\("),
+    ("Apple speech runtime", r"\bNSSpeechSynthesizer\s*\("),
+    ("Apple speech utterance", r"\bAVSpeechUtterance\s*\("),
+    ("legacy Animalese runtime", r"\bAnimalese\b"),
+    ("legacy Animal Crossing naming", r"\bAnimal\s+Crossing\b"),
+    ("legacy Chatterbox runtime", r"\bChatterbox\b"),
+    ("legacy Qwen runtime", r"\bQwen\b"),
+    ("legacy MLX runtime", r"\bMLX\b"),
+]
+
+
 def run(command: list[str]) -> None:
     result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True)
     if result.stdout:
@@ -110,6 +122,50 @@ def validate_settings_surface() -> None:
             raise SystemExit(f"FAIL: forbidden SettingsView surface found: {label}")
 
 
+def strip_swift_comments_and_strings(source: str) -> str:
+    source = re.sub(r"/\*.*?\*/", "", source, flags=re.S)
+    source = re.sub(r"//.*", "", source)
+    source = re.sub(r'#"(?:.|\n)*?"#', '""', source)
+    source = re.sub(r'"(?:\\.|[^"\\])*"', '""', source)
+    return source
+
+
+def is_active_swift_runtime_file(path: Path) -> bool:
+    relative = path.relative_to(ROOT).as_posix()
+    if not relative.startswith("MyTeam/") or not relative.endswith(".swift"):
+        return False
+    excluded_parts = (
+        "/tools/legacy/",
+        "/legacy/",
+        "/tmp/",
+        "/build/",
+        "/DerivedData/",
+        "/Tests/",
+    )
+    wrapped = f"/{relative}"
+    if any(part in wrapped for part in excluded_parts):
+        return False
+    name = path.name
+    if name.startswith("Preview") or name.startswith("Mock") or "Test" in name:
+        return False
+    return True
+
+
+def validate_active_swift_runtime() -> None:
+    failures: list[str] = []
+    for path in sorted((ROOT / "MyTeam").rglob("*.swift")):
+        if not is_active_swift_runtime_file(path):
+            continue
+        source = strip_swift_comments_and_strings(path.read_text())
+        relative = path.relative_to(ROOT).as_posix()
+        for label, pattern in FORBIDDEN_ACTIVE_SWIFT_PATTERNS:
+            if re.search(pattern, source):
+                failures.append(f"{relative}: {label}")
+    if failures:
+        details = "\n".join(f"- {failure}" for failure in failures)
+        raise SystemExit(f"FAIL: forbidden active Swift runtime pattern found:\n{details}")
+
+
 def main() -> None:
     for command in CHECKS:
         run(command)
@@ -117,6 +173,7 @@ def main() -> None:
         run_forbidden_grep(label, pattern)
     validate_tool_descriptors()
     validate_settings_surface()
+    validate_active_swift_runtime()
     print("PASS: MyTeam release validators")
 
 
