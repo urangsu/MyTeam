@@ -1393,110 +1393,177 @@ enum KSkillRunEngine {
 
     private static func dartDirectEvidence(query: String) async -> ToolEvidenceResult {
         let provider = ExternalProvider.dartDisclosure
-        guard await isCredentialConnected(provider) else {
-            return missingDirectCredentialEvidence(provider: provider)
-        }
-        guard let apiKey = credential(provider, fieldID: "apiKey") else {
-            return missingDirectCredentialEvidence(provider: provider)
-        }
+        let lookupQuery = cleanedLookupQuery(query, dropping: ["DART", "공시", "최근 이슈"])
 
         do {
-            let items = try await DARTDisclosureDirectConnector.recentDisclosures(
-                query: cleanedLookupQuery(query, dropping: ["DART", "공시", "최근 이슈"]),
-                apiKey: apiKey
+            let response = try await MyTeamBasicLookupProxyClient.shared.searchDARTDisclosures(query: lookupQuery)
+            return dartEvidenceResult(
+                items: response.directItems,
+                providerLabel: "MyTeam 기본 DART 조회",
+                emptyContext: "\n\n[DART 기본 조회]\n- 최근 공시 결과 없음"
             )
-            guard !items.isEmpty else {
-                return ToolEvidenceResult(promptContext: "\n\n[DART 직접 조회]\n- 최근 공시 결과 없음", sources: [])
-            }
-            let sources = items.map {
-                AgentWindowManager.SourceReference(
-                    title: "\($0.corporationName) - \($0.reportName)",
-                    url: $0.sourceURL.absoluteString,
-                    provider: provider.displayName,
-                    accessedAt: Date(),
-                    sourceType: .disclosure
-                )
-            }
-            let context = "\n\n[DART 직접 조회]\n" + items.map {
-                "- \($0.corporationName) / \($0.reportName)\n  rceptNo=\($0.receiptNumber), rceptDate=\($0.receiptDate)\n  \($0.sourceURL.absoluteString)"
-            }.joined(separator: "\n")
-            return ToolEvidenceResult(promptContext: context, sources: sources)
+        } catch MyTeamProxyError.noResults {
+            return ToolEvidenceResult(promptContext: "\n\n[DART 기본 조회]\n- 최근 공시 결과 없음", sources: [])
         } catch {
-            return directFailureEvidence(provider: provider, error: error)
+            guard await isCredentialConnected(provider), let apiKey = credential(provider, fieldID: "apiKey") else {
+                return directFailureEvidence(provider: provider, error: error)
+            }
+            do {
+                let items = try await DARTDisclosureDirectConnector.recentDisclosures(
+                    query: lookupQuery,
+                    apiKey: apiKey
+                )
+                return dartEvidenceResult(
+                    items: items,
+                    providerLabel: "DART 공시 · 개인 키",
+                    emptyContext: "\n\n[DART 직접 조회]\n- 최근 공시 결과 없음"
+                )
+            } catch {
+                return directFailureEvidence(provider: provider, error: error)
+            }
         }
+    }
+
+    private static func dartEvidenceResult(
+        items: [DARTDisclosureDirectItem],
+        providerLabel: String,
+        emptyContext: String
+    ) -> ToolEvidenceResult {
+        guard !items.isEmpty else {
+            return ToolEvidenceResult(promptContext: emptyContext, sources: [])
+        }
+        let sources = items.map {
+            AgentWindowManager.SourceReference(
+                title: "\($0.corporationName) - \($0.reportName)",
+                url: $0.sourceURL.absoluteString,
+                provider: providerLabel,
+                accessedAt: Date(),
+                sourceType: .disclosure
+            )
+        }
+        let context = "\n\n[\(providerLabel)]\n" + items.map {
+            "- \($0.corporationName) / \($0.reportName)\n  rceptNo=\($0.receiptNumber), rceptDate=\($0.receiptDate)\n  \($0.sourceURL.absoluteString)\n  공시 전문 분석이 아니라 DART 공시 목록과 공식 링크 기준입니다."
+        }.joined(separator: "\n")
+        return ToolEvidenceResult(promptContext: context, sources: sources)
     }
 
     private static func kmaDirectEvidence(query: String) async -> ToolEvidenceResult {
         let provider = ExternalProvider.kmaWeather
-        guard await isCredentialConnected(provider) else {
-            return missingDirectCredentialEvidence(provider: provider)
-        }
-        guard let serviceKey = credential(provider, fieldID: "serviceKey") else {
-            return missingDirectCredentialEvidence(provider: provider)
-        }
-
         let grid = weatherGrid(for: query)
         do {
-            let observations = try await KMAWeatherDirectConnector.ultraShortNowcast(
-                serviceKey: serviceKey,
+            let response = try await MyTeamBasicLookupProxyClient.shared.fetchKMANowcast(
                 nx: grid.nx,
                 ny: grid.ny
             )
-            let sourceURL = "https://www.data.go.kr/data/15084084/openapi.do"
-            let source = AgentWindowManager.SourceReference(
-                title: "기상청 초단기실황 - \(grid.name)",
-                url: sourceURL,
-                provider: provider.displayName,
-                accessedAt: Date(),
-                sourceType: .webPage
+            return kmaEvidenceResult(
+                observations: response.directObservations,
+                grid: grid,
+                providerLabel: "MyTeam 기본 기상청 조회"
             )
-            let context = "\n\n[기상청 직접 조회]\n- 지역: \(grid.name) nx=\(grid.nx) ny=\(grid.ny)\n" + observations.map {
+        } catch MyTeamProxyError.noResults {
+            return ToolEvidenceResult(promptContext: "\n\n[기상청 기본 조회]\n- 지역: \(grid.name) nx=\(grid.nx) ny=\(grid.ny)\n- 조회 결과 없음", sources: [])
+        } catch {
+            guard await isCredentialConnected(provider), let serviceKey = credential(provider, fieldID: "serviceKey") else {
+                return directFailureEvidence(provider: provider, error: error)
+            }
+            do {
+                let observations = try await KMAWeatherDirectConnector.ultraShortNowcast(
+                    serviceKey: serviceKey,
+                    nx: grid.nx,
+                    ny: grid.ny
+                )
+                return kmaEvidenceResult(
+                    observations: observations,
+                    grid: grid,
+                    providerLabel: "기상청 초단기실황 · 개인 키"
+                )
+            } catch {
+                return directFailureEvidence(provider: provider, error: error)
+            }
+        }
+    }
+
+    private static func kmaEvidenceResult(
+        observations: [KMAWeatherDirectObservation],
+        grid: (name: String, nx: Int, ny: Int),
+        providerLabel: String
+    ) -> ToolEvidenceResult {
+        let sourceURL = "https://www.data.go.kr/data/15084084/openapi.do"
+        let source = AgentWindowManager.SourceReference(
+            title: "기상청 초단기실황 - \(grid.name)",
+            url: sourceURL,
+            provider: providerLabel,
+            accessedAt: Date(),
+            sourceType: .webPage
+        )
+        guard !observations.isEmpty else {
+            return ToolEvidenceResult(promptContext: "\n\n[\(providerLabel)]\n- 지역: \(grid.name) nx=\(grid.nx) ny=\(grid.ny)\n- 조회 결과 없음", sources: [source])
+        }
+            let context = "\n\n[\(providerLabel)]\n- 지역: \(grid.name) nx=\(grid.nx) ny=\(grid.ny)\n" + observations.map {
                 "- \($0.category)=\($0.value) base=\($0.baseDate) \($0.baseTime)"
             }.joined(separator: "\n")
             return ToolEvidenceResult(promptContext: context, sources: [source])
-        } catch {
-            return directFailureEvidence(provider: provider, error: error)
-        }
     }
 
     private static func koreanLawDirectEvidence(query: String) async -> ToolEvidenceResult {
         let provider = ExternalProvider.koreanLaw
-        guard await isCredentialConnected(provider) else {
-            return missingDirectCredentialEvidence(provider: provider)
-        }
-        guard let lawOC = credential(provider, fieldID: "lawOC") else {
-            return missingDirectCredentialEvidence(provider: provider)
-        }
+        let lookupQuery = cleanedLookupQuery(query, dropping: ["법령", "조문", "출처"])
 
         do {
+            let response = try await MyTeamBasicLookupProxyClient.shared.searchKoreanLaw(query: lookupQuery)
+            return koreanLawEvidenceResult(
+                results: response.directResults,
+                providerLabel: "MyTeam 기본 법령 조회",
+                emptyContext: "\n\n[국가법령정보센터 기본 조회]\n- 공식 출처가 있는 결과 없음"
+            )
+        } catch MyTeamProxyError.noResults {
+            return ToolEvidenceResult(promptContext: "\n\n[국가법령정보센터 기본 조회]\n- 공식 출처가 있는 결과 없음", sources: [])
+        } catch {
+            guard await isCredentialConnected(provider), let lawOC = credential(provider, fieldID: "lawOC") else {
+                return directFailureEvidence(provider: provider, error: error)
+            }
             let request = KoreanLawSearchRequest(
-                query: cleanedLookupQuery(query, dropping: ["법령", "조문", "출처"]),
+                query: lookupQuery,
                 lawName: nil,
                 article: nil
             )
-            let results = try await KoreanLawDirectConnector.search(request, lawOC: lawOC)
-            let sourced = results.filter { !$0.sources.isEmpty }
-            guard !sourced.isEmpty else {
-                return ToolEvidenceResult(promptContext: "\n\n[국가법령정보센터 직접 조회]\n- 공식 출처가 있는 결과 없음", sources: [])
+            do {
+                let results = try await KoreanLawDirectConnector.search(request, lawOC: lawOC)
+                return koreanLawEvidenceResult(
+                    results: results,
+                    providerLabel: "국가법령정보센터 · 개인 키",
+                    emptyContext: "\n\n[국가법령정보센터 직접 조회]\n- 공식 출처가 있는 결과 없음"
+                )
+            } catch {
+                return directFailureEvidence(provider: provider, error: error)
             }
-            let sources = sourced.flatMap { result in
-                result.sources.map {
-                    AgentWindowManager.SourceReference(
-                        title: $0.title,
-                        url: $0.url.absoluteString,
-                        provider: $0.publisher,
-                        accessedAt: Date(),
-                        sourceType: .webPage
-                    )
-                }
-            }
-            let context = "\n\n[국가법령정보센터 직접 조회]\n" + sourced.map {
-                "- \($0.lawName)\n  status=\($0.verificationStatus), effectiveDate=\($0.effectiveDate ?? "미확인")\n  \($0.officialSourceURL?.absoluteString ?? "공식 URL 없음")\n  \(KoreanLawDirectConnector.disclaimer)"
-            }.joined(separator: "\n")
-            return ToolEvidenceResult(promptContext: context, sources: sources)
-        } catch {
-            return directFailureEvidence(provider: provider, error: error)
         }
+    }
+
+    private static func koreanLawEvidenceResult(
+        results: [KoreanLawResult],
+        providerLabel: String,
+        emptyContext: String
+    ) -> ToolEvidenceResult {
+        let sourced = results.filter { !$0.sources.isEmpty }
+        guard !sourced.isEmpty else {
+            return ToolEvidenceResult(promptContext: emptyContext, sources: [])
+        }
+        let sources = sourced.flatMap { result in
+            result.sources.map {
+                AgentWindowManager.SourceReference(
+                    title: $0.title,
+                    url: $0.url.absoluteString,
+                    provider: providerLabel,
+                    accessedAt: Date(),
+                    sourceType: .webPage
+                )
+            }
+        }
+        let context = "\n\n[\(providerLabel)]\n" + sourced.map {
+            "- \($0.lawName)\n  status=\($0.verificationStatus), effectiveDate=\($0.effectiveDate ?? "미확인")\n  \($0.officialSourceURL?.absoluteString ?? "공식 URL 없음")\n  \(KoreanLawDirectConnector.disclaimer)"
+        }.joined(separator: "\n")
+        return ToolEvidenceResult(promptContext: context, sources: sources)
     }
 
     private static func isCredentialConnected(_ provider: ExternalProvider) async -> Bool {

@@ -424,56 +424,108 @@ actor ToolExecutionRouter {
 
     private func runDART(input: MyTeamToolInput) async -> ToolExecutionState {
         let provider = ExternalProvider.dartDisclosure
-        guard let apiKey = await credentialValue(provider: provider, fieldID: "apiKey") else {
-            return .needsConnection(provider)
-        }
         let query = sanitizedQuery(input.query, fallback: "포스코")
-        let daysBack = min(max(input.daysBack ?? 30, 1), 365)
+        let daysBack = min(max(input.daysBack ?? 7, 1), 30)
 
         do {
-            let items = try await DARTDisclosureDirectConnector.recentDisclosures(
+            let response = try await MyTeamBasicLookupProxyClient.shared.searchDARTDisclosures(
                 query: query,
-                apiKey: apiKey,
-                daysBack: daysBack
+                daysBack: daysBack,
+                display: input.displayCount ?? 10
             )
-            if items.isEmpty {
-                return .succeeded(MyTeamToolResult(
-                    title: "최근 공시가 없습니다",
-                    summary: "'\(query)' 기준 최근 \(daysBack)일 공시를 찾지 못했습니다.",
-                    sourceLabel: "DART 공시",
-                    body: nil,
-                    items: [],
-                    nextActions: [
-                        MyTeamNextAction(id: "extendRange", title: "기간 늘리기", role: .normal),
-                        MyTeamNextAction(id: "changeKeyword", title: "키워드 바꾸기", role: .normal),
-                        MyTeamNextAction(id: "checkConnection", title: "연결 확인", role: .normal)
+            return dartResultState(
+                query: query,
+                daysBack: daysBack,
+                items: response.directItems,
+                sourceLabel: "MyTeam 기본 DART 조회",
+                modeNotice: "최근 공시 목록을 조회했습니다. 공시 전문 분석이 아니라 DART 공시 목록과 공식 링크 기준입니다."
+            )
+        } catch MyTeamProxyError.noResults {
+            return dartResultState(
+                query: query,
+                daysBack: daysBack,
+                items: [],
+                sourceLabel: "MyTeam 기본 DART 조회",
+                modeNotice: "최근 공시 목록을 조회했습니다. 공시 전문 분석이 아니라 DART 공시 목록과 공식 링크 기준입니다."
+            )
+        } catch {
+            guard let apiKey = await credentialValue(provider: provider, fieldID: "apiKey") else {
+                return .failed(MyTeamToolFailure(
+                    title: "공시 조회를 완료하지 못했습니다",
+                    message: "기본 조회 서버가 응답하지 않습니다. 잠시 후 다시 시도하거나 개인 OpenDART API Key를 연결하세요.",
+                    recoveryActions: [
+                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
+                        MyTeamNextAction(id: "openConnection", title: "개인 키 연결", role: .normal)
                     ]
                 ))
             }
+            do {
+                let items = try await DARTDisclosureDirectConnector.recentDisclosures(
+                    query: query,
+                    apiKey: apiKey,
+                    daysBack: daysBack
+                )
+                return dartResultState(
+                    query: query,
+                    daysBack: daysBack,
+                    items: items,
+                    sourceLabel: "DART 공시 · 개인 키",
+                    modeNotice: "기본 조회 서버가 응답하지 않아 개인 OpenDART API Key로 조회했습니다. 공시 전문 분석이 아니라 DART 공시 목록과 공식 링크 기준입니다."
+                )
+            } catch {
+                return .failed(MyTeamToolFailure(
+                    title: "공시 조회를 완료하지 못했습니다",
+                    message: "기본 조회 서버와 개인 OpenDART API Key 조회가 모두 실패했습니다. 잠시 후 다시 시도하거나 개인 키 권한을 확인하세요.",
+                    recoveryActions: [
+                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
+                        MyTeamNextAction(id: "openConnection", title: "개인 키 확인", role: .normal)
+                    ]
+                ))
+            }
+        }
+    }
 
+    private func dartResultState(
+        query: String,
+        daysBack: Int,
+        items: [DARTDisclosureDirectItem],
+        sourceLabel: String,
+        modeNotice: String
+    ) -> ToolExecutionState {
+        if items.isEmpty {
             return .succeeded(MyTeamToolResult(
-                title: "최근 공시를 찾았습니다",
-                summary: "최근 \(daysBack)일 기준 공시 \(items.count)건을 찾았습니다.",
-                sourceLabel: "DART 공시",
-                body: nil,
-                items: items.prefix(5).map { item in
-                    MyTeamToolResultItem(
-                        id: item.receiptNumber,
-                        title: item.reportName,
-                        subtitle: item.corporationName,
-                        metadata: "접수일 \(item.receiptDate)",
-                        sourceURL: item.sourceURL
-                    )
-                },
+                title: "최근 공시가 없습니다",
+                summary: "'\(query)' 기준 최근 \(daysBack)일 공시를 찾지 못했습니다.",
+                sourceLabel: sourceLabel,
+                body: modeNotice,
+                items: [],
                 nextActions: [
-                    MyTeamNextAction(id: "summarize", title: "요약하기", role: .normal),
-                    MyTeamNextAction(id: "draftReport", title: "보고서 문단", role: .normal),
+                    MyTeamNextAction(id: "extendRange", title: "기간 늘리기", role: .normal),
+                    MyTeamNextAction(id: "changeKeyword", title: "키워드 바꾸기", role: .normal),
                     MyTeamNextAction(id: "searchAgain", title: "다시 검색", role: .normal)
                 ]
             ))
-        } catch {
-            return failureState(error, provider: provider)
         }
+
+        return .succeeded(MyTeamToolResult(
+            title: "최근 공시를 찾았습니다",
+            summary: "최근 \(daysBack)일 기준 공시 \(items.count)건을 찾았습니다.",
+            sourceLabel: sourceLabel,
+            body: modeNotice,
+            items: items.prefix(5).map { item in
+                MyTeamToolResultItem(
+                    id: item.receiptNumber,
+                    title: item.reportName,
+                    subtitle: item.corporationName,
+                    metadata: "접수일 \(item.receiptDate)",
+                    sourceURL: item.sourceURL
+                )
+            },
+            nextActions: [
+                MyTeamNextAction(id: "draftReport", title: "보고서 문단", role: .normal),
+                MyTeamNextAction(id: "searchAgain", title: "다시 검색", role: .normal)
+            ]
+        ))
     }
 
     private func runNaverNews(input: MyTeamToolInput) async -> ToolExecutionState {
@@ -616,9 +668,6 @@ actor ToolExecutionRouter {
 
     private func runKMAWeather(input: MyTeamToolInput) async -> ToolExecutionState {
         let provider = ExternalProvider.kmaWeather
-        guard let serviceKey = await credentialValue(provider: provider, fieldID: "serviceKey") else {
-            return .needsConnection(provider)
-        }
         guard let region = KMARegionGridMapper.resolve(input.query) else {
             return .failed(MyTeamToolFailure(
                 title: "지역 격자를 찾지 못했습니다",
@@ -632,89 +681,196 @@ actor ToolExecutionRouter {
         let ny = input.ny ?? region.ny
 
         do {
-            let observations = try await KMAWeatherDirectConnector.ultraShortNowcast(
-                serviceKey: serviceKey,
+            let response = try await MyTeamBasicLookupProxyClient.shared.fetchKMANowcast(
                 nx: nx,
                 ny: ny
             )
-            let summaryParts = weatherSummaryParts(from: observations)
-            return .succeeded(MyTeamToolResult(
-                title: "현재 날씨를 확인했습니다",
-                summary: summaryParts.isEmpty
-                    ? "기상청 초단기실황 \(observations.count)개 항목을 가져왔습니다."
-                    : summaryParts.joined(separator: " · "),
-                sourceLabel: "기상청 초단기실황",
-                body: nil,
-                items: observations.prefix(5).map { observation in
-                    MyTeamToolResultItem(
-                        id: "\(observation.category)-\(observation.baseDate)-\(observation.baseTime)",
-                        title: weatherTitle(for: observation.category),
-                        subtitle: "\(observation.value)\(weatherUnit(for: observation.category))",
-                        metadata: "\(region.name) · 기준 \(observation.baseDate) \(observation.baseTime) · 격자 \(nx),\(ny)",
-                        sourceURL: kmaOfficialURL()
-                    )
-                },
-                nextActions: [
-                    MyTeamNextAction(id: "searchAgain", title: "다시 조회", role: .normal),
-                    MyTeamNextAction(id: "checkConnection", title: "연결 확인", role: .normal)
-                ]
-            ))
+            return weatherResultState(
+                regionName: region.name,
+                nx: nx,
+                ny: ny,
+                observations: response.directObservations,
+                sourceLabel: "MyTeam 기본 기상청 조회",
+                modeNotice: "기상청 단기예보 조회 결과입니다. 위치 좌표 기준의 공식 기상 데이터입니다."
+            )
+        } catch MyTeamProxyError.noResults {
+            return weatherResultState(
+                regionName: region.name,
+                nx: nx,
+                ny: ny,
+                observations: [],
+                sourceLabel: "MyTeam 기본 기상청 조회",
+                modeNotice: "기상청 단기예보 조회 결과입니다. 위치 좌표 기준의 공식 기상 데이터입니다."
+            )
         } catch {
-            return failureState(error, provider: provider)
+            guard let serviceKey = await credentialValue(provider: provider, fieldID: "serviceKey") else {
+                return .failed(MyTeamToolFailure(
+                    title: "날씨 조회를 완료하지 못했습니다",
+                    message: "기본 조회 서버가 응답하지 않습니다. 잠시 후 다시 시도하거나 개인 기상청 Service Key를 연결하세요.",
+                    recoveryActions: [
+                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
+                        MyTeamNextAction(id: "openConnection", title: "개인 키 연결", role: .normal)
+                    ]
+                ))
+            }
+            do {
+                let observations = try await KMAWeatherDirectConnector.ultraShortNowcast(
+                    serviceKey: serviceKey,
+                    nx: nx,
+                    ny: ny
+                )
+                return weatherResultState(
+                    regionName: region.name,
+                    nx: nx,
+                    ny: ny,
+                    observations: observations,
+                    sourceLabel: "기상청 초단기실황 · 개인 키",
+                    modeNotice: "기본 조회 서버가 응답하지 않아 개인 기상청 Service Key로 조회했습니다. 위치 좌표 기준의 공식 기상 데이터입니다."
+                )
+            } catch {
+                return .failed(MyTeamToolFailure(
+                    title: "날씨 조회를 완료하지 못했습니다",
+                    message: "기본 조회 서버와 개인 기상청 Service Key 조회가 모두 실패했습니다. 잠시 후 다시 시도하거나 개인 키 권한을 확인하세요.",
+                    recoveryActions: [
+                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
+                        MyTeamNextAction(id: "openConnection", title: "개인 키 확인", role: .normal)
+                    ]
+                ))
+            }
         }
+    }
+
+    private func weatherResultState(
+        regionName: String,
+        nx: Int,
+        ny: Int,
+        observations: [KMAWeatherDirectObservation],
+        sourceLabel: String,
+        modeNotice: String
+    ) -> ToolExecutionState {
+        let summaryParts = weatherSummaryParts(from: observations)
+        return .succeeded(MyTeamToolResult(
+            title: observations.isEmpty ? "날씨 조회 결과가 없습니다" : "현재 날씨를 확인했습니다",
+            summary: observations.isEmpty
+                ? "\(regionName) 격자 \(nx),\(ny) 기준 기상청 결과를 찾지 못했습니다."
+                : (summaryParts.isEmpty ? "기상청 초단기실황 \(observations.count)개 항목을 가져왔습니다." : summaryParts.joined(separator: " · ")),
+            sourceLabel: sourceLabel,
+            body: modeNotice,
+            items: observations.prefix(5).map { observation in
+                MyTeamToolResultItem(
+                    id: "\(observation.category)-\(observation.baseDate)-\(observation.baseTime)",
+                    title: weatherTitle(for: observation.category),
+                    subtitle: "\(observation.value)\(weatherUnit(for: observation.category))",
+                    metadata: "\(regionName) · 기준 \(observation.baseDate) \(observation.baseTime) · 격자 \(nx),\(ny)",
+                    sourceURL: kmaOfficialURL()
+                )
+            },
+            nextActions: [
+                MyTeamNextAction(id: "searchAgain", title: "다시 조회", role: .normal),
+                MyTeamNextAction(id: "changeKeyword", title: "지역 바꾸기", role: .normal)
+            ]
+        ))
     }
 
     private func runKoreanLaw(input: MyTeamToolInput) async -> ToolExecutionState {
         let provider = ExternalProvider.koreanLaw
-        guard let lawOC = await credentialValue(provider: provider, fieldID: "lawOC") else {
-            return .needsConnection(provider)
-        }
         let query = sanitizedQuery(input.query, fallback: "근로기준법")
 
         do {
-            let results = try await KoreanLawDirectConnector.search(
-                KoreanLawSearchRequest(query: query, lawName: nil, article: nil),
-                lawOC: lawOC
+            let response = try await MyTeamBasicLookupProxyClient.shared.searchKoreanLaw(
+                query: query,
+                display: input.displayCount ?? 10
             )
-            if results.isEmpty {
-                return .succeeded(MyTeamToolResult(
-                    title: "법령 검색 결과가 없습니다",
-                    summary: "'\(query)' 기준 공식 법령 검색 결과를 찾지 못했습니다.",
-                    sourceLabel: "국가법령정보센터",
-                    body: nil,
-                    items: [],
-                    nextActions: [
-                        MyTeamNextAction(id: "changeKeyword", title: "키워드 바꾸기", role: .normal),
-                        MyTeamNextAction(id: "checkConnection", title: "연결 확인", role: .normal)
+            return lawResultState(
+                query: query,
+                results: response.directResults,
+                sourceLabel: "MyTeam 기본 법령 조회",
+                modeNotice: response.notice ?? "법령 검색 결과입니다. 법률 자문이 아니며, 최종 판단은 공식 법령 원문을 확인해야 합니다."
+            )
+        } catch MyTeamProxyError.noResults {
+            return lawResultState(
+                query: query,
+                results: [],
+                sourceLabel: "MyTeam 기본 법령 조회",
+                modeNotice: "법령 검색 결과입니다. 법률 자문이 아니며, 최종 판단은 공식 법령 원문을 확인해야 합니다."
+            )
+        } catch {
+            guard let lawOC = await credentialValue(provider: provider, fieldID: "lawOC") else {
+                return .failed(MyTeamToolFailure(
+                    title: "법령 검색을 완료하지 못했습니다",
+                    message: "기본 조회 서버가 응답하지 않습니다. 잠시 후 다시 시도하거나 개인 국가법령정보센터 OC를 연결하세요.",
+                    recoveryActions: [
+                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
+                        MyTeamNextAction(id: "openConnection", title: "개인 키 연결", role: .normal)
                     ]
                 ))
             }
+            do {
+                let results = try await KoreanLawDirectConnector.search(
+                    KoreanLawSearchRequest(query: query, lawName: nil, article: nil),
+                    lawOC: lawOC
+                )
+                return lawResultState(
+                    query: query,
+                    results: results,
+                    sourceLabel: "국가법령정보센터 · 개인 키 · partial",
+                    modeNotice: "기본 조회 서버가 응답하지 않아 개인 국가법령정보센터 OC로 조회했습니다. 법률 자문이 아니며, 최종 판단은 공식 법령 원문을 확인해야 합니다."
+                )
+            } catch {
+                return .failed(MyTeamToolFailure(
+                    title: "법령 검색을 완료하지 못했습니다",
+                    message: "기본 조회 서버와 개인 국가법령정보센터 OC 조회가 모두 실패했습니다. 잠시 후 다시 시도하거나 개인 키 권한을 확인하세요.",
+                    recoveryActions: [
+                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
+                        MyTeamNextAction(id: "openConnection", title: "개인 키 확인", role: .normal)
+                    ]
+                ))
+            }
+        }
+    }
 
+    private func lawResultState(
+        query: String,
+        results: [KoreanLawResult],
+        sourceLabel: String,
+        modeNotice: String
+    ) -> ToolExecutionState {
+        if results.isEmpty {
             return .succeeded(MyTeamToolResult(
-                title: "공식 법령 검색 결과입니다",
-                summary: "법률 자문이 아닌 공식 출처 기반 검색 결과 \(results.count)건입니다. 조문 검증은 별도 확인이 필요합니다.",
-                sourceLabel: "국가법령정보센터 · partial",
-                body: nil,
-                items: results.prefix(5).map { result in
-                    MyTeamToolResultItem(
-                        id: "\(result.lawName)-\(result.effectiveDate ?? "unknown")",
-                        title: result.lawName,
-                        subtitle: result.summary,
-                        metadata: [
-                            result.effectiveDate.map { "시행일 \($0)" },
-                            "검증 상태 \(result.verificationStatus)"
-                        ].compactMap(\.self).joined(separator: " · "),
-                        sourceURL: result.officialSourceURL
-                    )
-                },
+                title: "법령 검색 결과가 없습니다",
+                summary: "'\(query)' 기준 공식 법령 검색 결과를 찾지 못했습니다.",
+                sourceLabel: sourceLabel,
+                body: modeNotice,
+                items: [],
                 nextActions: [
-                    MyTeamNextAction(id: "searchAgain", title: "다시 검색", role: .normal),
-                    MyTeamNextAction(id: "checkConnection", title: "연결 확인", role: .normal)
+                    MyTeamNextAction(id: "changeKeyword", title: "키워드 바꾸기", role: .normal),
+                    MyTeamNextAction(id: "searchAgain", title: "다시 검색", role: .normal)
                 ]
             ))
-        } catch {
-            return failureState(error, provider: provider)
         }
+
+        return .succeeded(MyTeamToolResult(
+            title: "공식 법령 검색 결과입니다",
+            summary: "법률 자문이 아닌 공식 출처 기반 검색 결과 \(results.count)건입니다. 조문 검증은 별도 확인이 필요합니다.",
+            sourceLabel: sourceLabel,
+            body: modeNotice,
+            items: results.prefix(5).map { result in
+                MyTeamToolResultItem(
+                    id: "\(result.lawName)-\(result.effectiveDate ?? "unknown")",
+                    title: result.lawName,
+                    subtitle: result.summary,
+                    metadata: [
+                        result.effectiveDate.map { "시행일 \($0)" },
+                        "검증 상태 \(result.verificationStatus)"
+                    ].compactMap(\.self).joined(separator: " · "),
+                    sourceURL: result.officialSourceURL
+                )
+            },
+            nextActions: [
+                MyTeamNextAction(id: "searchAgain", title: "다시 검색", role: .normal),
+                MyTeamNextAction(id: "openSource", title: "원문 확인", role: .normal)
+            ]
+        ))
     }
 
     private func credentialValue(provider: ExternalProvider, fieldID: String) async -> String? {
