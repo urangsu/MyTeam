@@ -1364,12 +1364,20 @@ struct AgentChatView: View {
                     AppLog.info("[DirectChat] response targetAgentID=\(targetID) provider=\(agentConfig?.llmProvider.displayName ?? "nil") silentMode=\(manager.isSilentMode) ttsProvider=\(ttsProvider?.rawValue ?? "nil")")
                     let roomIDAtSend = roomID
                     let targetIDAtSend = targetID
+                    let llmRequestID = UUID()
+                    let sourceSnippetCharacters = toolEvidence.promptContext.count
+                    let fileContextCharacters = attachmentContext.count
                     // ── 순차 스트리밍: SpeechManager 백그라운드 위임 ──
                     if manager.isSilentMode || ttsProvider == nil {
                         let tokenStream = AIService.shared.getResponseStream(
                             text: groundedText, agentID: targetIDAtSend,
                             chatHistory: history, agentConfig: agentConfig,
-                            requiresToolUse: requiresToolUse
+                            requiresToolUse: requiresToolUse,
+                            requestID: llmRequestID,
+                            toolDescriptorCount: requiresToolUse ? 1 : 0,
+                            sourceSnippetCharacters: sourceSnippetCharacters,
+                            fileContextCharacters: fileContextCharacters,
+                            selectedAgentCount: 1
                         )
                         AppLog.debug("[DirectChat] silent getResponseStream opened targetAgentID=\(targetIDAtSend)")
                         var accumulated = ""
@@ -1416,7 +1424,12 @@ struct AgentChatView: View {
                         // TTS에는 별도 proxy stream을 넘긴다. TTS chunk truncation이 채팅 로그를 훼손하면 안 된다.
                         let sourceStream = AIService.shared.getResponseStream(
                             text: groundedText, agentID: targetIDAtSend, chatHistory: history, agentConfig: agentConfig,
-                            requiresToolUse: requiresToolUse
+                            requiresToolUse: requiresToolUse,
+                            requestID: llmRequestID,
+                            toolDescriptorCount: requiresToolUse ? 1 : 0,
+                            sourceSnippetCharacters: sourceSnippetCharacters,
+                            fileContextCharacters: fileContextCharacters,
+                            selectedAgentCount: 1
                         )
                         let ttsStream = AsyncThrowingStream<String, Error> { continuation in
                             let relayTask = Task {

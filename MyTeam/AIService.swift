@@ -1,6 +1,129 @@
 import Foundation
 import Combine
 
+struct LLMTokenBudgetSnapshot: Sendable {
+    let requestID: UUID
+    let provider: String
+    let model: String?
+    let estimatedInputCharacters: Int
+    let estimatedInputTokens: Int
+    let messageCount: Int
+    let systemPromptCharacters: Int
+    let historyMessageCount: Int
+    let toolDescriptorCount: Int
+    let sourceSnippetCharacters: Int
+    let fileContextCharacters: Int
+    let selectedAgentCount: Int
+    let llmCallIndexForUserRequest: Int
+    let warnings: [String]
+}
+
+enum LLMTokenBudgetEstimator {
+    nonisolated static func estimateTokens(characters: Int) -> Int {
+        max(1, characters / 3)
+    }
+}
+
+actor LLMTokenBudgetAudit {
+    static let shared = LLMTokenBudgetAudit()
+
+    private var callCountsByRequestID: [UUID: Int] = [:]
+    private var requestOrder: [UUID] = []
+    private let maxTrackedRequests = 200
+
+    func record(
+        requestID: UUID,
+        provider: String,
+        model: String?,
+        text: String,
+        systemPrompt: String,
+        chatHistory: [AgentWindowManager.ChatLog],
+        toolDescriptorCount: Int,
+        sourceSnippetCharacters: Int,
+        fileContextCharacters: Int,
+        selectedAgentCount: Int
+    ) {
+        guard AppReleaseProfile.current != .appStore else { return }
+
+        let callIndex = nextCallIndex(for: requestID)
+        let recentHistory = Array(chatHistory.suffix(20))
+        let historyCharacters = recentHistory.reduce(0) { $0 + $1.text.count }
+        let inputCharacters = text.count + systemPrompt.count + historyCharacters
+        let estimatedTokens = LLMTokenBudgetEstimator.estimateTokens(characters: inputCharacters)
+        let warnings = warningsFor(
+            estimatedInputTokens: estimatedTokens,
+            messageCount: recentHistory.count + 1,
+            historyMessageCount: recentHistory.count,
+            toolDescriptorCount: toolDescriptorCount,
+            selectedAgentCount: selectedAgentCount,
+            llmCallIndex: callIndex,
+            fileContextCharacters: fileContextCharacters
+        )
+        let snapshot = LLMTokenBudgetSnapshot(
+            requestID: requestID,
+            provider: provider,
+            model: model,
+            estimatedInputCharacters: inputCharacters,
+            estimatedInputTokens: estimatedTokens,
+            messageCount: recentHistory.count + 1,
+            systemPromptCharacters: systemPrompt.count,
+            historyMessageCount: recentHistory.count,
+            toolDescriptorCount: toolDescriptorCount,
+            sourceSnippetCharacters: sourceSnippetCharacters,
+            fileContextCharacters: fileContextCharacters,
+            selectedAgentCount: selectedAgentCount,
+            llmCallIndexForUserRequest: callIndex,
+            warnings: warnings
+        )
+
+        AppLog.info(
+            "[LLMBudget] request=\(snapshot.requestID.uuidString.prefix(8)) provider=\(snapshot.provider) model=\(snapshot.model ?? "default") callIndex=\(snapshot.llmCallIndexForUserRequest) chars=\(snapshot.estimatedInputCharacters) estTokens=\(snapshot.estimatedInputTokens) messages=\(snapshot.messageCount) history=\(snapshot.historyMessageCount) systemChars=\(snapshot.systemPromptCharacters) tools=\(snapshot.toolDescriptorCount) sourcesChars=\(snapshot.sourceSnippetCharacters) fileChars=\(snapshot.fileContextCharacters) selectedAgents=\(snapshot.selectedAgentCount)",
+            .ai
+        )
+        if !warnings.isEmpty {
+            AppLog.warning(
+                "[LLMBudget] request=\(snapshot.requestID.uuidString.prefix(8)) warnings=\(warnings.joined(separator: ","))",
+                .ai
+            )
+        }
+    }
+
+    private func nextCallIndex(for requestID: UUID) -> Int {
+        if callCountsByRequestID[requestID] == nil {
+            requestOrder.append(requestID)
+            if requestOrder.count > maxTrackedRequests {
+                let overflow = requestOrder.count - maxTrackedRequests
+                for oldID in requestOrder.prefix(overflow) {
+                    callCountsByRequestID.removeValue(forKey: oldID)
+                }
+                requestOrder.removeFirst(overflow)
+            }
+        }
+        let next = (callCountsByRequestID[requestID] ?? 0) + 1
+        callCountsByRequestID[requestID] = next
+        return next
+    }
+
+    private func warningsFor(
+        estimatedInputTokens: Int,
+        messageCount: Int,
+        historyMessageCount: Int,
+        toolDescriptorCount: Int,
+        selectedAgentCount: Int,
+        llmCallIndex: Int,
+        fileContextCharacters: Int
+    ) -> [String] {
+        var warnings: [String] = []
+        if estimatedInputTokens > 12_000 { warnings.append("input_tokens_gt_12000") }
+        if messageCount > 30 { warnings.append("messages_gt_30") }
+        if historyMessageCount > 20 { warnings.append("history_gt_20") }
+        if toolDescriptorCount > 5 { warnings.append("tool_descriptors_gt_5") }
+        if selectedAgentCount > 1 && llmCallIndex > 1 { warnings.append("multi_agent_repeat_llm_call") }
+        if fileContextCharacters > 40_000 { warnings.append("file_context_gt_40000") }
+        if llmCallIndex >= 3 { warnings.append("llm_calls_for_request_gte_3") }
+        return warnings
+    }
+}
 
 // MARK: - LLMResponseMetadata
 // Round 269B: 실제 사용된 provider + model 정보를 포함한 응답 메타데이터.
@@ -52,7 +175,12 @@ final class AIService {
         agentID: String,
         chatHistory: [AgentWindowManager.ChatLog],
         agentConfig: AgentWindowManager.AgentConfig? = nil,
-        requiresToolUse: Bool = false
+        requiresToolUse: Bool = false,
+        requestID: UUID = UUID(),
+        toolDescriptorCount: Int = 0,
+        sourceSnippetCharacters: Int = 0,
+        fileContextCharacters: Int = 0,
+        selectedAgentCount: Int = 1
     ) -> AsyncThrowingStream<String, Error> {
         let preferredProvider = preferredProvider(for: agentConfig)
         let candidates = providerCandidates(preferred: preferredProvider, requiresToolUse: requiresToolUse)
@@ -70,6 +198,18 @@ final class AIService {
                     var didYieldToken = false
                     do {
                         AppLog.info("[AIService] provider candidate=\(provider.displayName) agent=\(agentID)")
+                        await LLMTokenBudgetAudit.shared.record(
+                            requestID: requestID,
+                            provider: provider.displayName,
+                            model: nil,
+                            text: text,
+                            systemPrompt: buildSystemPrompt(agentID: agentID),
+                            chatHistory: chatHistory,
+                            toolDescriptorCount: toolDescriptorCount,
+                            sourceSnippetCharacters: sourceSnippetCharacters,
+                            fileContextCharacters: fileContextCharacters,
+                            selectedAgentCount: selectedAgentCount
+                        )
                         let stream = streamForProvider(
                             provider,
                             text: text,
