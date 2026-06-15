@@ -296,6 +296,14 @@ struct NaverNewsDirectItem: Sendable, Equatable {
     let link: URL
     let originalLink: URL?
     let publishedAt: Date?
+
+    nonisolated var sourceURL: URL {
+        originalLink ?? link
+    }
+
+    nonisolated var sourceDomain: String {
+        sourceURL.host ?? "unknown"
+    }
 }
 
 struct DARTDisclosureDirectItem: Sendable, Equatable {
@@ -372,6 +380,194 @@ enum NaverNewsDirectConnector {
     }
 
     private static func parseNaverPubDate(_ raw: String?) -> Date? {
+        guard let raw else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss Z"
+        return formatter.date(from: raw)
+    }
+}
+
+nonisolated enum MyTeamBasicLookupProxyConfig {
+    nonisolated static let defaultBaseURLString = "https://late-waterfall-c95c.urange.workers.dev"
+    nonisolated static let userDefaultsKey = "myteam.basicLookupProxy.baseURL"
+
+    nonisolated static var baseURL: URL? {
+        let override = UserDefaults.standard.string(forKey: userDefaultsKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if let override, !override.isEmpty {
+            return URL(string: override)
+        }
+        return URL(string: defaultBaseURLString)
+    }
+}
+
+nonisolated struct MyTeamProxyHealth: Decodable, Sendable, Equatable {
+    let ok: Bool
+    let service: String?
+    let version: String?
+}
+
+nonisolated struct MyTeamProxyNewsSearchResponse: Decodable, Sendable, Equatable {
+    let ok: Bool
+    let provider: String
+    let query: String
+    let count: Int
+    let elapsedMs: Int?
+    let items: [MyTeamProxyNewsItem]
+}
+
+nonisolated struct MyTeamProxyNewsItem: Decodable, Identifiable, Sendable, Equatable {
+    nonisolated var id: String { dedupeKey }
+
+    let title: String
+    let description: String
+    let originallink: String?
+    let link: String?
+    let pubDate: String?
+
+    nonisolated var cleanedTitle: String {
+        cleanHTML(title)
+    }
+
+    nonisolated var cleanedDescription: String {
+        cleanHTML(description)
+    }
+
+    nonisolated var sourceURL: URL? {
+        if let originallink, let url = URL(string: originallink) { return url }
+        if let link, let url = URL(string: link) { return url }
+        return nil
+    }
+
+    nonisolated var sourceDomain: String {
+        sourceURL?.host ?? "unknown"
+    }
+
+    nonisolated var dedupeKey: String {
+        if let sourceURL {
+            return sourceURL.absoluteString
+        }
+        return cleanedTitle
+    }
+}
+
+nonisolated enum MyTeamProxyError: Error, LocalizedError {
+    case invalidBaseURL
+    case invalidResponse
+    case httpStatus(Int)
+    case providerUnavailable(String)
+    case decodingFailed
+    case queryTooShort
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidBaseURL:
+            return "기본 조회 서버 주소를 확인하지 못했습니다."
+        case .invalidResponse:
+            return "기본 조회 서버 응답을 확인하지 못했습니다."
+        case .httpStatus(let status):
+            return "기본 조회 서버가 HTTP \(status)을 반환했습니다."
+        case .providerUnavailable(let message):
+            return message
+        case .decodingFailed:
+            return "기본 조회 서버 응답 형식을 해석하지 못했습니다."
+        case .queryTooShort:
+            return "검색어는 두 글자 이상이어야 합니다."
+        }
+    }
+}
+
+actor MyTeamBasicLookupProxyClient {
+    static let shared = MyTeamBasicLookupProxyClient()
+
+    func health(session: URLSession = .shared) async throws -> MyTeamProxyHealth {
+        guard let baseURL = MyTeamBasicLookupProxyConfig.baseURL else {
+            throw MyTeamProxyError.invalidBaseURL
+        }
+        let url = baseURL.appending(path: "health")
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 8
+        let (data, response) = try await session.data(for: request)
+        try validateProxyHTTP(response)
+        do {
+            let health = try JSONDecoder().decode(MyTeamProxyHealth.self, from: data)
+            guard health.ok else {
+                throw MyTeamProxyError.providerUnavailable("기본 조회 서버가 준비되지 않았습니다.")
+            }
+            return health
+        } catch let error as MyTeamProxyError {
+            throw error
+        } catch {
+            throw MyTeamProxyError.decodingFailed
+        }
+    }
+
+    func searchNews(
+        query: String,
+        display: Int = 10,
+        session: URLSession = .shared
+    ) async throws -> MyTeamProxyNewsSearchResponse {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedQuery.count >= 2 else { throw MyTeamProxyError.queryTooShort }
+        guard let baseURL = MyTeamBasicLookupProxyConfig.baseURL else {
+            throw MyTeamProxyError.invalidBaseURL
+        }
+
+        var components = URLComponents(url: baseURL.appending(path: "news/search"), resolvingAgainstBaseURL: false)
+        components?.queryItems = [
+            URLQueryItem(name: "query", value: trimmedQuery),
+            URLQueryItem(name: "display", value: String(min(max(display, 1), 20)))
+        ]
+        guard let url = components?.url else { throw MyTeamProxyError.invalidBaseURL }
+
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 8
+        let (data, response) = try await session.data(for: request)
+        try validateProxyHTTP(response)
+        do {
+            let decoded = try JSONDecoder().decode(MyTeamProxyNewsSearchResponse.self, from: data)
+            guard decoded.ok else {
+                throw MyTeamProxyError.providerUnavailable("네이버 뉴스 기본 조회가 준비되지 않았습니다.")
+            }
+            return decoded
+        } catch let error as MyTeamProxyError {
+            throw error
+        } catch {
+            throw MyTeamProxyError.decodingFailed
+        }
+    }
+
+    private func validateProxyHTTP(_ response: URLResponse) throws {
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw MyTeamProxyError.invalidResponse
+        }
+        guard (200..<300).contains(httpResponse.statusCode) else {
+            throw MyTeamProxyError.httpStatus(httpResponse.statusCode)
+        }
+    }
+}
+
+extension MyTeamProxyNewsSearchResponse {
+    nonisolated var directItems: [NaverNewsDirectItem] {
+        var seen = Set<String>()
+        return items.compactMap { item in
+            let title = item.cleanedTitle
+            guard !title.isEmpty else { return nil }
+            guard let sourceURL = item.sourceURL else { return nil }
+            let dedupeKey = item.dedupeKey
+            guard seen.insert(dedupeKey).inserted else { return nil }
+            return NaverNewsDirectItem(
+                title: title,
+                description: item.cleanedDescription,
+                link: sourceURL,
+                originalLink: URL(string: item.originallink ?? ""),
+                publishedAt: parseNaverProxyPubDate(item.pubDate)
+            )
+        }
+    }
+
+    nonisolated private func parseNaverProxyPubDate(_ raw: String?) -> Date? {
         guard let raw else { return nil }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -524,7 +720,7 @@ private func validateDirectHTTP(_ response: URLResponse) throws {
     }
 }
 
-private func cleanHTML(_ raw: String) -> String {
+nonisolated private func cleanHTML(_ raw: String) -> String {
     var output = ""
     var insideTag = false
     for character in raw {

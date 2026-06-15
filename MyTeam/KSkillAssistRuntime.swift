@@ -1320,41 +1320,74 @@ enum KSkillRunEngine {
 
     private static func naverNewsDirectEvidence(query: String) async -> ToolEvidenceResult {
         let provider = ExternalProvider.naverNews
-        guard await isCredentialConnected(provider) else {
-            return missingDirectCredentialEvidence(provider: provider)
-        }
-        guard
-            let clientID = credential(provider, fieldID: "clientID"),
-            let clientSecret = credential(provider, fieldID: "clientSecret")
-        else {
-            return missingDirectCredentialEvidence(provider: provider)
-        }
+        let lookupQuery = cleanedLookupQuery(query, dropping: ["네이버 뉴스", "뉴스 검색", "최신 뉴스", "출처"])
 
         do {
-            let items = try await NaverNewsDirectConnector.search(
-                query: cleanedLookupQuery(query, dropping: ["네이버 뉴스", "뉴스 검색", "최신 뉴스", "출처"]),
-                clientID: clientID,
-                clientSecret: clientSecret
-            )
+            let response = try await MyTeamBasicLookupProxyClient.shared.searchNews(query: lookupQuery, display: 10)
+            let items = response.directItems
             guard !items.isEmpty else {
-                return ToolEvidenceResult(promptContext: "\n\n[네이버 뉴스 직접 조회]\n- 결과 없음", sources: [])
+                return ToolEvidenceResult(promptContext: "\n\n[뉴스 검색 결과 기반 브리핑]\n- 결과 없음", sources: [])
             }
             let sources = items.map {
                 AgentWindowManager.SourceReference(
                     title: $0.title,
-                    url: ($0.originalLink ?? $0.link).absoluteString,
-                    provider: provider.displayName,
+                    url: $0.sourceURL.absoluteString,
+                    provider: "MyTeam 기본 뉴스 조회",
                     accessedAt: Date(),
                     sourceType: .news
                 )
             }
-            let context = "\n\n[네이버 뉴스 직접 조회]\n" + items.map {
+            let context = """
+
+            [뉴스 검색 결과 기반 브리핑]
+            - 아래 데이터는 뉴스 검색 결과의 제목과 설명입니다.
+            - 기사 전문은 제공되지 않았습니다.
+            - 기사 전문을 읽은 것처럼 단정하지 마세요.
+            - 제목과 설명에서 확인 가능한 범위만 기준으로 공통 이슈를 정리하세요.
+            """ + "\n" + items.map {
                 let date = $0.publishedAt.map(formatEvidenceDate) ?? "날짜 미상"
-                return "- \($0.title)\n  \($0.description)\n  \((($0.originalLink ?? $0.link).absoluteString))\n  publishedAt=\(date)"
+                return "- \($0.title)\n  \($0.description)\n  \($0.sourceURL.absoluteString)\n  publishedAt=\(date)"
             }.joined(separator: "\n")
             return ToolEvidenceResult(promptContext: context, sources: sources)
         } catch {
-            return directFailureEvidence(provider: provider, error: error)
+            guard
+                await isCredentialConnected(provider),
+                let clientID = credential(provider, fieldID: "clientID"),
+                let clientSecret = credential(provider, fieldID: "clientSecret")
+            else {
+                return ToolEvidenceResult(
+                    promptContext: "\n\n[뉴스 검색 결과 기반 브리핑]\n- 기본 조회 서버가 응답하지 않습니다. 잠시 후 다시 시도하거나 개인 Naver API 키를 연결해야 합니다.",
+                    sources: []
+                )
+            }
+
+            do {
+                let items = try await NaverNewsDirectConnector.search(
+                    query: lookupQuery,
+                    clientID: clientID,
+                    clientSecret: clientSecret,
+                    display: 10
+                )
+                guard !items.isEmpty else {
+                    return ToolEvidenceResult(promptContext: "\n\n[뉴스 검색 결과 기반 브리핑]\n- 결과 없음", sources: [])
+                }
+                let sources = items.map {
+                    AgentWindowManager.SourceReference(
+                        title: $0.title,
+                        url: $0.sourceURL.absoluteString,
+                        provider: provider.displayName,
+                        accessedAt: Date(),
+                        sourceType: .news
+                    )
+                }
+                let context = "\n\n[뉴스 검색 결과 기반 브리핑 · 개인 키]\n" + items.map {
+                    let date = $0.publishedAt.map(formatEvidenceDate) ?? "날짜 미상"
+                    return "- \($0.title)\n  \($0.description)\n  \($0.sourceURL.absoluteString)\n  publishedAt=\(date)"
+                }.joined(separator: "\n")
+                return ToolEvidenceResult(promptContext: context, sources: sources)
+            } catch {
+                return directFailureEvidence(provider: provider, error: error)
+            }
         }
     }
 

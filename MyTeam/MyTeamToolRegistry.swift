@@ -86,10 +86,10 @@ enum MyTeamToolRegistry {
         ),
         MyTeamToolDescriptor(
             id: "news.search",
-            displayName: "뉴스 요약",
-            shortDescription: "네이버 뉴스 검색 결과를 출처와 함께 정리합니다.",
+            displayName: "뉴스 브리핑",
+            shortDescription: "뉴스 검색 결과의 제목과 설명을 출처와 함께 정리합니다.",
             category: .externalInfo,
-            requiredCredential: MyTeamCredentialRequirement(provider: .external(.naverNews), reason: "네이버 뉴스 검색에 Client ID와 Secret이 필요합니다."),
+            requiredCredential: nil,
             permissionLevel: .readOnly,
             isImplemented: true,
             isUserFacing: true,
@@ -272,7 +272,7 @@ enum MyTeamToolRegistry {
         case .kmaWeather:
             return ["오늘 날씨", "아침 브리핑"]
         case .naverNews:
-            return ["뉴스 요약", "경제 브리핑", "이슈 검색"]
+            return ["뉴스 브리핑", "경제 브리핑", "이슈 검색"]
         case .dartDisclosure:
             return ["공시 조회", "경제 브리핑", "기업 리포트"]
         case .koreanLaw:

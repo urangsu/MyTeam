@@ -61,7 +61,7 @@ struct ConnectionCenterView: View {
             providerSection(
                 icon: "building.columns.fill",
                 title: "데이터 연결",
-                subtitle: "날씨, 뉴스, 공시, 법령을 개인 키로 직접 연결합니다.",
+                subtitle: "뉴스는 기본 조회를 먼저 사용합니다. 날씨, 공시, 법령과 개인 키는 고급 연결에서 관리합니다.",
                 providers: visibleDataProviders
             )
 

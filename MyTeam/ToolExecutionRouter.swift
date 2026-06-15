@@ -478,59 +478,140 @@ actor ToolExecutionRouter {
 
     private func runNaverNews(input: MyTeamToolInput) async -> ToolExecutionState {
         let provider = ExternalProvider.naverNews
-        guard
-            let clientID = await credentialValue(provider: provider, fieldID: "clientID"),
-            let clientSecret = await credentialValue(provider: provider, fieldID: "clientSecret")
-        else {
-            return .needsConnection(provider)
-        }
         let query = sanitizedQuery(input.query, fallback: "경제")
-        let displayCount = min(max(input.displayCount ?? 5, 1), 10)
+        guard query.count >= 2 else {
+            return .failed(MyTeamToolFailure(
+                title: "검색어가 짧습니다",
+                message: "뉴스 검색어는 두 글자 이상 입력하세요.",
+                recoveryActions: [
+                    MyTeamNextAction(id: "changeKeyword", title: "검색어 바꾸기", role: .normal)
+                ]
+            ))
+        }
+        let displayCount = min(max(input.displayCount ?? 10, 1), 20)
 
         do {
-            let items = try await NaverNewsDirectConnector.search(
+            let response = try await MyTeamBasicLookupProxyClient.shared.searchNews(
                 query: query,
-                clientID: clientID,
-                clientSecret: clientSecret,
                 display: displayCount
             )
-            if items.isEmpty {
-                return .succeeded(MyTeamToolResult(
-                    title: "뉴스가 없습니다",
-                    summary: "'\(query)' 기준 최신 뉴스를 찾지 못했습니다.",
-                    sourceLabel: "Naver News",
-                    body: nil,
-                    items: [],
-                    nextActions: [
-                        MyTeamNextAction(id: "changeKeyword", title: "키워드 바꾸기", role: .normal),
-                        MyTeamNextAction(id: "checkConnection", title: "연결 확인", role: .normal)
-                    ]
-                ))
+            return newsResultState(
+                query: query,
+                items: response.directItems,
+                sourceLabel: "MyTeam 기본 뉴스 조회 · Naver News Search",
+                modeNotice: "이 브리핑은 뉴스 검색 결과의 제목과 설명을 기준으로 정리한 것입니다. 기사 전문은 원문 링크에서 확인하세요."
+            )
+        } catch {
+            if
+                let clientID = await credentialValue(provider: provider, fieldID: "clientID"),
+                let clientSecret = await credentialValue(provider: provider, fieldID: "clientSecret")
+            {
+                do {
+                    let items = try await NaverNewsDirectConnector.search(
+                        query: query,
+                        clientID: clientID,
+                        clientSecret: clientSecret,
+                        display: displayCount
+                    )
+                    return newsResultState(
+                        query: query,
+                        items: items,
+                        sourceLabel: "Naver News API · 개인 키",
+                        modeNotice: "기본 조회 서버가 응답하지 않아 개인 Naver API 키로 조회했습니다. 이 브리핑은 뉴스 검색 결과의 제목과 설명을 기준으로 정리한 것입니다."
+                    )
+                } catch {
+                    return .failed(MyTeamToolFailure(
+                        title: "뉴스 조회를 완료하지 못했습니다",
+                        message: "기본 조회 서버와 개인 Naver API 키 조회가 모두 실패했습니다. 잠시 후 다시 시도하거나 개인 키 권한을 확인하세요.",
+                        recoveryActions: [
+                            MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
+                            MyTeamNextAction(id: "openConnection", title: "개인 키 확인", role: .normal)
+                        ]
+                    ))
+                }
             }
 
+            return .failed(MyTeamToolFailure(
+                title: "뉴스 조회를 완료하지 못했습니다",
+                message: "기본 조회 서버가 응답하지 않습니다. 잠시 후 다시 시도하거나 개인 Naver API 키를 연결하세요.",
+                recoveryActions: [
+                    MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
+                    MyTeamNextAction(id: "openConnection", title: "개인 키 연결", role: .normal)
+                ]
+            ))
+        }
+    }
+
+    private func newsResultState(
+        query: String,
+        items: [NaverNewsDirectItem],
+        sourceLabel: String,
+        modeNotice: String
+    ) -> ToolExecutionState {
+        if items.isEmpty {
             return .succeeded(MyTeamToolResult(
-                title: "뉴스를 찾았습니다",
-                summary: "최신 뉴스 \(items.count)건을 가져왔습니다.",
-                sourceLabel: "Naver News",
-                body: nil,
-                items: items.prefix(5).map { item in
-                    MyTeamToolResultItem(
-                        id: (item.originalLink ?? item.link).absoluteString,
-                        title: item.title,
-                        subtitle: item.description,
-                        metadata: item.publishedAt.map(Self.displayDate) ?? "발행일 미확인",
-                        sourceURL: item.originalLink ?? item.link
-                    )
-                },
+                title: "뉴스 검색 결과가 없습니다",
+                summary: "'\(query)' 기준 뉴스 검색 결과를 찾지 못했습니다.",
+                sourceLabel: sourceLabel,
+                body: modeNotice,
+                items: [],
                 nextActions: [
-                    MyTeamNextAction(id: "summarize", title: "요약하기", role: .normal),
-                    MyTeamNextAction(id: "draftEvidence", title: "근거 정리", role: .normal),
+                    MyTeamNextAction(id: "changeKeyword", title: "키워드 바꾸기", role: .normal),
                     MyTeamNextAction(id: "searchAgain", title: "다시 검색", role: .normal)
                 ]
             ))
-        } catch {
-            return failureState(error, provider: provider)
         }
+
+        return .succeeded(MyTeamToolResult(
+            title: "뉴스 검색 결과를 정리했습니다",
+            summary: "\(query) 관련 최신 뉴스 \(items.count)건의 제목과 설명을 기준으로 공통 이슈를 묶었습니다.",
+            sourceLabel: sourceLabel,
+            body: newsBriefingBody(query: query, items: items, notice: modeNotice),
+            items: items.prefix(5).map { item in
+                MyTeamToolResultItem(
+                    id: item.sourceURL.absoluteString,
+                    title: item.title,
+                    subtitle: item.description.isEmpty ? "설명 없음" : item.description,
+                    metadata: [
+                        item.sourceDomain,
+                        item.publishedAt.map(Self.displayDate) ?? "발행일 미확인"
+                    ].joined(separator: " · "),
+                    sourceURL: item.sourceURL
+                )
+            },
+            nextActions: [
+                MyTeamNextAction(id: "draftEvidence", title: "근거 정리", role: .normal),
+                MyTeamNextAction(id: "searchAgain", title: "다시 검색", role: .normal),
+                MyTeamNextAction(id: "openConnection", title: "개인 키 설정", role: .normal)
+            ]
+        ))
+    }
+
+    private func newsBriefingBody(query: String, items: [NaverNewsDirectItem], notice: String) -> String {
+        var lines: [String] = [
+            "## 뉴스 검색 결과 기반 브리핑",
+            "",
+            "- 검색어: \(query)",
+            "- 결과 수: \(items.count)건",
+            "- 주의: \(notice)",
+            "",
+            "## 주요 기사"
+        ]
+
+        for (index, item) in items.prefix(10).enumerated() {
+            lines.append("\(index + 1). \(item.title)")
+            if !item.description.isEmpty {
+                lines.append("   - 설명: \(item.description)")
+            }
+            lines.append("   - 출처: \(item.sourceDomain)")
+            lines.append("   - 링크: \(item.sourceURL.absoluteString)")
+        }
+
+        lines.append("")
+        lines.append("## 확인할 점")
+        lines.append("- 이 내용은 검색 결과의 제목과 설명에서 확인 가능한 범위만 정리한 것입니다.")
+        lines.append("- 구체적인 사실관계와 세부 맥락은 각 원문 링크에서 확인하세요.")
+        return lines.joined(separator: "\n")
     }
 
     private func runKMAWeather(input: MyTeamToolInput) async -> ToolExecutionState {

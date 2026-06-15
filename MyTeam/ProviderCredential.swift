@@ -65,7 +65,7 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable, Hashable {
         case .kmaWeather:
             return "내일 비, 우산 여부, 세차 타이밍, 출장 날씨 판단에 사용합니다."
         case .naverNews:
-            return "국내 최신 뉴스를 검색하고 요약할 수 있습니다."
+            return "기본 뉴스 조회는 MyTeam 서버로 사용할 수 있습니다. 개인 API 키 연결은 고급 사용자를 위한 선택 사항입니다."
         case .dartDisclosure:
             return "기업 공시를 실시간으로 확인하고 분석할 수 있습니다."
         case .koreanLaw:
