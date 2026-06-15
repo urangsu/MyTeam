@@ -1161,7 +1161,12 @@ final class AIService {
         agentID: String,
         chatHistory: [AgentWindowManager.ChatLog],
         agentConfig: AgentWindowManager.AgentConfig? = nil,
-        requiresToolUse: Bool = false
+        requiresToolUse: Bool = false,
+        requestID: UUID = UUID(),
+        toolDescriptorCount: Int = 0,
+        sourceSnippetCharacters: Int = 0,
+        fileContextCharacters: Int = 0,
+        selectedAgentCount: Int = 1
     ) async throws -> (text: String, provider: String) {
         let preferred = preferredProvider(for: agentConfig)
         let candidates = providerCandidates(preferred: preferred, requiresToolUse: requiresToolUse)
@@ -1171,6 +1176,18 @@ final class AIService {
         for provider in candidates {
             do {
                 var fullText = ""
+                await LLMTokenBudgetAudit.shared.record(
+                    requestID: requestID,
+                    provider: provider.displayName,
+                    model: nil,
+                    text: text,
+                    systemPrompt: buildSystemPrompt(agentID: agentID),
+                    chatHistory: chatHistory,
+                    toolDescriptorCount: toolDescriptorCount,
+                    sourceSnippetCharacters: sourceSnippetCharacters,
+                    fileContextCharacters: fileContextCharacters,
+                    selectedAgentCount: selectedAgentCount
+                )
                 let stream = streamForProvider(
                     provider, text: text, agentID: agentID,
                     chatHistory: chatHistory, agentConfig: agentConfig
@@ -1193,7 +1210,12 @@ final class AIService {
         agentID: String,
         chatHistory: [AgentWindowManager.ChatLog],
         agentConfig: AgentWindowManager.AgentConfig? = nil,
-        requiresToolUse: Bool = false
+        requiresToolUse: Bool = false,
+        requestID: UUID = UUID(),
+        toolDescriptorCount: Int = 0,
+        sourceSnippetCharacters: Int = 0,
+        fileContextCharacters: Int = 0,
+        selectedAgentCount: Int = 1
     ) async throws -> (text: String, metadata: LLMResponseMetadata) {
         let preferred = preferredProvider(for: agentConfig)
         let candidates = providerCandidates(preferred: preferred, requiresToolUse: requiresToolUse)
@@ -1208,6 +1230,18 @@ final class AIService {
                     configuredModelID: provider == .openRouter
                         ? (agentConfig?.openRouterModelId ?? UserDefaults.standard.string(forKey: "openRouterModelId"))
                         : nil
+                )
+                await LLMTokenBudgetAudit.shared.record(
+                    requestID: requestID,
+                    provider: provider.displayName,
+                    model: resolvedCall.modelID,
+                    text: text,
+                    systemPrompt: buildSystemPrompt(agentID: agentID),
+                    chatHistory: chatHistory,
+                    toolDescriptorCount: toolDescriptorCount,
+                    sourceSnippetCharacters: sourceSnippetCharacters,
+                    fileContextCharacters: fileContextCharacters,
+                    selectedAgentCount: selectedAgentCount
                 )
                 let stream = streamForProvider(
                     provider, text: text, agentID: agentID,
