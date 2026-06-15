@@ -61,7 +61,7 @@ struct ConnectionCenterView: View {
             providerSection(
                 icon: "building.columns.fill",
                 title: "데이터 연결",
-                subtitle: "뉴스는 기본 조회를 먼저 사용합니다. 날씨, 공시, 법령과 개인 키는 고급 연결에서 관리합니다.",
+                subtitle: "뉴스, 날씨, 공시, 법령은 기본 조회를 먼저 사용합니다. 개인 키는 장애 대응과 고급 사용을 위한 선택 사항입니다.",
                 providers: visibleDataProviders
             )
 

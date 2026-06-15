@@ -63,13 +63,13 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable, Hashable {
         case .openRouter:
             return "여러 AI 모델을 하나의 키로 연결할 수 있습니다."
         case .kmaWeather:
-            return "내일 비, 우산 여부, 세차 타이밍, 출장 날씨 판단에 사용합니다."
+            return "기본 날씨 조회는 MyTeam 서버로 사용할 수 있습니다. 개인 Service Key 연결은 고급 사용자를 위한 선택 사항입니다."
         case .naverNews:
             return "기본 뉴스 조회는 MyTeam 서버로 사용할 수 있습니다. 개인 API 키 연결은 고급 사용자를 위한 선택 사항입니다."
         case .dartDisclosure:
-            return "기업 공시를 실시간으로 확인하고 분석할 수 있습니다."
+            return "기본 공시 조회는 MyTeam 서버로 사용할 수 있습니다. 개인 OpenDART API Key 연결은 고급 사용자를 위한 선택 사항입니다."
         case .koreanLaw:
-            return "공식 법령 API로 법령 검색, 조문 조회, 인용 검증을 준비합니다."
+            return "기본 법령 검색은 MyTeam 서버로 사용할 수 있습니다. 개인 국가법령정보센터 OC 연결은 고급 사용자를 위한 선택 사항입니다."
         }
     }
 

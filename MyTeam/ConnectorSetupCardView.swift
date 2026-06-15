@@ -226,8 +226,8 @@ struct ConnectorSetupCardView: View {
         if let testResultMessage { return testResultMessage }
         switch health.state {
         case .notConnected:
-            if provider == .naverNews {
-                return "기본 뉴스 조회는 MyTeam 서버로 사용할 수 있습니다. 개인 API 키 연결은 고급 사용자를 위한 선택 사항입니다."
+            if provider.isPublicAPIProvider {
+                return "기본 조회를 먼저 사용합니다. 개인 키 연결은 장애 대응과 고급 사용을 위한 선택 사항입니다."
             }
             return nil
         case .untested:
