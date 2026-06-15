@@ -452,6 +452,96 @@ nonisolated struct MyTeamProxyNewsItem: Decodable, Identifiable, Sendable, Equat
     }
 }
 
+nonisolated struct MyTeamProxyDARTSearchResponse: Decodable, Sendable, Equatable {
+    let ok: Bool
+    let provider: String
+    let count: Int?
+    let elapsedMs: Int?
+    let items: [MyTeamProxyDARTItem]
+}
+
+nonisolated struct MyTeamProxyDARTItem: Decodable, Identifiable, Sendable, Equatable {
+    nonisolated var id: String { receiptNo }
+
+    let corpName: String
+    let corpCode: String?
+    let stockCode: String?
+    let corpClass: String?
+    let reportName: String
+    let receiptNo: String
+    let receiptDate: String
+    let submitter: String?
+    let remark: String?
+    let sourceURL: String
+    let dedupeKey: String?
+}
+
+nonisolated struct MyTeamProxyKMAResponse: Decodable, Sendable, Equatable {
+    let ok: Bool
+    let provider: String
+    let type: String
+    let grid: MyTeamProxyKMAGrid
+    let baseDate: String
+    let baseTime: String
+    let elapsedMs: Int?
+    let items: [MyTeamProxyKMAItem]
+}
+
+nonisolated struct MyTeamProxyKMAGrid: Decodable, Sendable, Equatable {
+    let nx: Int
+    let ny: Int
+}
+
+nonisolated struct MyTeamProxyKMAItem: Decodable, Identifiable, Sendable, Equatable {
+    nonisolated var id: String {
+        [
+            category,
+            baseDate,
+            baseTime,
+            forecastDate ?? "",
+            forecastTime ?? ""
+        ].joined(separator: "-")
+    }
+
+    let category: String
+    let label: String
+    let value: String
+    let unit: String
+    let baseDate: String
+    let baseTime: String
+    let forecastDate: String?
+    let forecastTime: String?
+}
+
+nonisolated struct MyTeamProxyLawSearchResponse: Decodable, Sendable, Equatable {
+    let ok: Bool
+    let provider: String
+    let query: String
+    let count: Int?
+    let elapsedMs: Int?
+    let items: [MyTeamProxyLawItem]
+    let notice: String?
+}
+
+nonisolated struct MyTeamProxyLawItem: Decodable, Identifiable, Sendable, Equatable {
+    nonisolated var id: String { lawId }
+
+    let lawName: String
+    let lawId: String
+    let promulgationDate: String?
+    let enforcementDate: String?
+    let sourceURL: String
+    let dedupeKey: String?
+    let status: String?
+}
+
+nonisolated struct MyTeamProxyFailureResponse: Decodable, Sendable, Equatable {
+    let ok: Bool
+    let error: String?
+    let provider: String?
+    let message: String?
+}
+
 nonisolated enum MyTeamProxyError: Error, LocalizedError {
     case invalidBaseURL
     case invalidResponse
@@ -459,6 +549,7 @@ nonisolated enum MyTeamProxyError: Error, LocalizedError {
     case providerUnavailable(String)
     case decodingFailed
     case queryTooShort
+    case noResults
 
     var errorDescription: String? {
         switch self {
@@ -474,6 +565,8 @@ nonisolated enum MyTeamProxyError: Error, LocalizedError {
             return "기본 조회 서버 응답 형식을 해석하지 못했습니다."
         case .queryTooShort:
             return "검색어는 두 글자 이상이어야 합니다."
+        case .noResults:
+            return "기본 조회 결과가 없습니다."
         }
     }
 }
@@ -538,12 +631,122 @@ actor MyTeamBasicLookupProxyClient {
         }
     }
 
+    func searchDARTDisclosures(
+        query: String,
+        corpCode: String? = nil,
+        daysBack: Int = 7,
+        display: Int = 10,
+        session: URLSession = .shared
+    ) async throws -> MyTeamProxyDARTSearchResponse {
+        guard let baseURL = MyTeamBasicLookupProxyConfig.baseURL else {
+            throw MyTeamProxyError.invalidBaseURL
+        }
+        var components = URLComponents(url: baseURL.appending(path: "dart/recent"), resolvingAgainstBaseURL: false)
+        var queryItems: [URLQueryItem] = [
+            URLQueryItem(name: "days", value: String(min(max(daysBack, 1), 30))),
+            URLQueryItem(name: "display", value: String(min(max(display, 1), 20)))
+        ]
+        if let corpCode, !corpCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            queryItems.append(URLQueryItem(name: "corpCode", value: corpCode.trimmingCharacters(in: .whitespacesAndNewlines)))
+        } else {
+            queryItems.append(URLQueryItem(name: "corpName", value: query.trimmingCharacters(in: .whitespacesAndNewlines)))
+        }
+        components?.queryItems = queryItems
+        guard let url = components?.url else { throw MyTeamProxyError.invalidBaseURL }
+
+        return try await requestProxy(url: url, session: session, responseType: MyTeamProxyDARTSearchResponse.self)
+    }
+
+    func fetchKMANowcast(
+        nx: Int,
+        ny: Int,
+        session: URLSession = .shared
+    ) async throws -> MyTeamProxyKMAResponse {
+        try await fetchKMA(path: "weather/kma/nowcast", nx: nx, ny: ny, session: session)
+    }
+
+    func fetchKMAForecast(
+        nx: Int,
+        ny: Int,
+        session: URLSession = .shared
+    ) async throws -> MyTeamProxyKMAResponse {
+        try await fetchKMA(path: "weather/kma/forecast", nx: nx, ny: ny, session: session)
+    }
+
+    func searchKoreanLaw(
+        query: String,
+        display: Int = 10,
+        session: URLSession = .shared
+    ) async throws -> MyTeamProxyLawSearchResponse {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedQuery.count >= 2 else { throw MyTeamProxyError.queryTooShort }
+        guard let baseURL = MyTeamBasicLookupProxyConfig.baseURL else {
+            throw MyTeamProxyError.invalidBaseURL
+        }
+        var components = URLComponents(url: baseURL.appending(path: "law/search"), resolvingAgainstBaseURL: false)
+        components?.queryItems = [
+            URLQueryItem(name: "query", value: trimmedQuery),
+            URLQueryItem(name: "display", value: String(min(max(display, 1), 20)))
+        ]
+        guard let url = components?.url else { throw MyTeamProxyError.invalidBaseURL }
+
+        return try await requestProxy(url: url, session: session, responseType: MyTeamProxyLawSearchResponse.self)
+    }
+
     private func validateProxyHTTP(_ response: URLResponse) throws {
         guard let httpResponse = response as? HTTPURLResponse else {
             throw MyTeamProxyError.invalidResponse
         }
         guard (200..<300).contains(httpResponse.statusCode) else {
             throw MyTeamProxyError.httpStatus(httpResponse.statusCode)
+        }
+    }
+
+    private func fetchKMA(
+        path: String,
+        nx: Int,
+        ny: Int,
+        session: URLSession
+    ) async throws -> MyTeamProxyKMAResponse {
+        guard let baseURL = MyTeamBasicLookupProxyConfig.baseURL else {
+            throw MyTeamProxyError.invalidBaseURL
+        }
+        var components = URLComponents(url: baseURL.appending(path: path), resolvingAgainstBaseURL: false)
+        components?.queryItems = [
+            URLQueryItem(name: "nx", value: String(nx)),
+            URLQueryItem(name: "ny", value: String(ny))
+        ]
+        guard let url = components?.url else { throw MyTeamProxyError.invalidBaseURL }
+
+        return try await requestProxy(url: url, session: session, responseType: MyTeamProxyKMAResponse.self)
+    }
+
+    private func requestProxy<T: Decodable>(
+        url: URL,
+        session: URLSession,
+        responseType: T.Type
+    ) async throws -> T {
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 8
+        let (data, response) = try await session.data(for: request)
+        try validateProxyHTTP(response)
+        do {
+            if
+                let failure = try? JSONDecoder().decode(MyTeamProxyFailureResponse.self, from: data),
+                failure.ok == false
+            {
+                if failure.error == "no_results" {
+                    throw MyTeamProxyError.noResults
+                }
+                throw MyTeamProxyError.providerUnavailable(
+                    failure.message ?? "기본 조회 서버가 요청을 완료하지 못했습니다."
+                )
+            }
+            return try JSONDecoder().decode(responseType, from: data)
+        } catch let error as MyTeamProxyError {
+            throw error
+        } catch {
+            throw MyTeamProxyError.decodingFailed
         }
     }
 }
@@ -573,6 +776,55 @@ extension MyTeamProxyNewsSearchResponse {
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss Z"
         return formatter.date(from: raw)
+    }
+}
+
+extension MyTeamProxyDARTSearchResponse {
+    nonisolated var directItems: [DARTDisclosureDirectItem] {
+        items.compactMap { item in
+            guard let url = URL(string: item.sourceURL) else { return nil }
+            return DARTDisclosureDirectItem(
+                corporationName: item.corpName,
+                reportName: item.reportName,
+                receiptNumber: item.receiptNo,
+                receiptDate: item.receiptDate,
+                sourceURL: url
+            )
+        }
+    }
+}
+
+extension MyTeamProxyKMAResponse {
+    nonisolated var directObservations: [KMAWeatherDirectObservation] {
+        items.map {
+            KMAWeatherDirectObservation(
+                category: $0.category,
+                value: $0.value,
+                baseDate: $0.baseDate,
+                baseTime: $0.baseTime
+            )
+        }
+    }
+}
+
+extension MyTeamProxyLawSearchResponse {
+    nonisolated var directResults: [KoreanLawResult] {
+        items.compactMap { item in
+            guard let url = URL(string: item.sourceURL) else { return nil }
+            let source = KoreanLawSource(title: item.lawName, url: url, publisher: "국가법령정보센터")
+            return KoreanLawResult(
+                status: .partial,
+                lawName: item.lawName,
+                article: nil,
+                effectiveDate: item.enforcementDate,
+                officialSourceURL: url,
+                verificationStatus: item.status ?? "partial",
+                summary: "공식 법령 검색 결과입니다. 법률 자문이 아닙니다.",
+                mismatchDetails: [],
+                sources: [source],
+                disclaimer: KoreanLawDirectConnector.disclaimer
+            )
+        }
     }
 }
 
