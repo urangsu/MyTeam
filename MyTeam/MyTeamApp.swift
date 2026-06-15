@@ -86,9 +86,11 @@ struct MyTeamApp: App {
 }
 
 // MARK: - AppDelegate
+@MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     var statusItem: NSStatusItem?
+    private var isTerminationReplyPending = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if ProcessInfo.processInfo.environment["MYTEAM_TTS_PROBE"] == "1" {
@@ -108,6 +110,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // 앱 시작 시 팀 테이블 창 표시 (4명 한 번에)
         AgentWindowManager.shared.showTeam()
+        AppTerminationSpeechService.shared.scheduleInitialPrewarm(manager: AgentWindowManager.shared)
 
         // Dock 아이콘 숨기기 (백그라운드 앱)
         NSApp.setActivationPolicy(.accessory)
@@ -115,8 +118,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         AgentWindowManager.shared.savePosition()
-        // InferenceActor가 busy 상태면 Task dispatch가 큐에 쌓여 데드락 발생 가능.
-        // 추론은 OS가 프로세스 종료 시 강제 정리하므로 그냥 즉시 종료.
+        guard !isTerminationReplyPending else { return .terminateNow }
+        if AppTerminationSpeechService.shared.playPreparedFarewell(completion: { [weak sender] in
+            sender?.reply(toApplicationShouldTerminate: true)
+        }) {
+            isTerminationReplyPending = true
+            return .terminateLater
+        }
         return .terminateNow
     }
 

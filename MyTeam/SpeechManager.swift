@@ -718,6 +718,154 @@ struct BubbleSpeechPreviewResult: Sendable {
     }
 }
 
+struct PreparedTerminationFarewell: Sendable {
+    let agentID: String
+    let characterName: String
+    let text: String
+    let samples: [Float]
+    let sampleRate: Int
+    let pitch: Float
+    let rate: Float
+}
+
+struct TerminationFarewellRequest: Sendable {
+    let agentID: String
+    let characterName: String
+    let text: String
+    let spokenText: String
+    let preset: String
+    let speed: Float
+    let pitch: Float
+    let rate: Float
+}
+
+@MainActor
+final class AppTerminationSpeechService {
+    static let shared = AppTerminationSpeechService()
+
+    private var preparedFarewell: PreparedTerminationFarewell?
+    private var prepareTask: Task<Void, Never>?
+    private var isTerminationPlaybackPending = false
+
+    private init() {}
+
+    func scheduleInitialPrewarm(manager: AgentWindowManager) {
+        prepareTask?.cancel()
+        prepareTask = Task(priority: .utility) { [weak self, weak manager] in
+            try? await Task.sleep(nanoseconds: 3_500_000_000)
+            guard !Task.isCancelled, let self, let manager else { return }
+            self.refreshForCurrentTeamLeader(manager: manager)
+        }
+    }
+
+    func refreshForCurrentTeamLeader(manager: AgentWindowManager) {
+        guard !manager.isSilentMode else {
+            preparedFarewell = nil
+            return
+        }
+        guard TTSRoutingPolicy.selectedProvider() == .supertonic3 else {
+            preparedFarewell = nil
+            return
+        }
+        guard let leader = manager.fallbackTeamLeader(for: manager.selectedTeamWorkroomID),
+              let line = CharacterDialogues.leaderLine(for: leader.id, event: .appWillQuit) else {
+            preparedFarewell = nil
+            return
+        }
+
+        prepareTask?.cancel()
+        let emotion = SupertonicVoicePresetPolicy.emotionStyle(for: leader.id)
+        let request = TerminationFarewellRequest(
+            agentID: leader.id,
+            characterName: leader.name,
+            text: line.text,
+            spokenText: SupertonicProsodyTextProcessor.preprocess(line.text, agentID: leader.id, style: emotion),
+            preset: SupertonicVoicePresetPolicy.preset(for: leader.id),
+            speed: SupertonicVoicePresetPolicy.speed(for: leader.id, emotion: emotion),
+            pitch: SupertonicVoicePresetPolicy.pitch(for: leader.id, emotion: emotion),
+            rate: SupertonicVoicePresetPolicy.rate(for: leader.id, emotion: emotion)
+        )
+
+        prepareTask = Task(priority: .utility) { [weak self] in
+            let prepared = await AppTerminationSpeechService.synthesizePreparedFarewell(request)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard let self else { return }
+                self.preparedFarewell = prepared
+                if let prepared {
+                    AppLog.info("[AppTerminationSpeech] prepared farewell agentID=\(prepared.agentID) frames=\(prepared.samples.count)")
+                }
+            }
+        }
+    }
+
+    func playPreparedFarewell(completion: @MainActor @escaping @Sendable () -> Void) -> Bool {
+        guard !isTerminationPlaybackPending else { return true }
+        guard !AgentWindowManager.shared.isSilentMode else { return false }
+        guard let prepared = preparedFarewell, !prepared.samples.isEmpty else { return false }
+
+        isTerminationPlaybackPending = true
+        Task(priority: .userInitiated) {
+            let didPlay = await AudioPlaybackService.shared.playFloatSamples(
+                samples: prepared.samples,
+                sampleRate: prepared.sampleRate,
+                streamId: "termination-\(UUID().uuidString)",
+                characterName: prepared.characterName,
+                pitch: prepared.pitch,
+                rate: prepared.rate,
+                onPlaybackStarted: nil
+            )
+            if !didPlay {
+                await MainActor.run {
+                    AppLog.warning("[AppTerminationSpeech] prepared farewell playback failed")
+                    self.finishTermination(completion: completion)
+                }
+            }
+        }
+
+        Task(priority: .userInitiated) { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            self.finishTermination(completion: completion)
+        }
+        return true
+    }
+
+    private func finishTermination(completion: @MainActor @escaping @Sendable () -> Void) {
+        guard isTerminationPlaybackPending else { return }
+        isTerminationPlaybackPending = false
+        completion()
+    }
+
+    nonisolated private static func synthesizePreparedFarewell(_ request: TerminationFarewellRequest) async -> PreparedTerminationFarewell? {
+        do {
+            let result = try await Supertonic3ONNXRunner.shared.synthesize(
+                text: request.spokenText,
+                preset: request.preset,
+                lang: Supertonic3TTSConfig.selectedLanguage,
+                totalSteps: Supertonic3TTSConfig.totalStep,
+                speed: request.speed,
+                paths: Supertonic3ONNXModelPaths.defaultPaths()
+            )
+            guard !result.wavSamples.isEmpty else {
+                AppLog.warning("[AppTerminationSpeech] prepared synthesis returned empty samples")
+                return nil
+            }
+            return PreparedTerminationFarewell(
+                agentID: request.agentID,
+                characterName: request.characterName,
+                text: request.text,
+                samples: result.wavSamples,
+                sampleRate: result.sampleRate,
+                pitch: request.pitch,
+                rate: request.rate
+            )
+        } catch {
+            AppLog.warning("[AppTerminationSpeech] farewell prewarm failed: \(error)")
+            return nil
+        }
+    }
+}
+
 private extension Character {
     nonisolated var isTTSMeaningfulCharacter: Bool {
         unicodeScalars.contains { scalar in
