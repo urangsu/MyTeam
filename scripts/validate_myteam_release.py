@@ -13,6 +13,7 @@ CHECKS = [
     ["python3", "scripts/validate_skill_packages.py"],
     ["python3", "scripts/validate_app_store_profile.py"],
     ["python3", "scripts/validate_supertonic3_bundle.py", "--profile", "appstore"],
+    ["python3", "scripts/report_character_dialogues.py", "--check-only"],
 ]
 
 

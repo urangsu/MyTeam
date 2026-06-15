@@ -88,7 +88,8 @@ def is_active_swift_runtime_path(path: str) -> bool:
 
 def main() -> None:
     failures: list[str] = []
-    for path in staged_files():
+    staged = staged_files()
+    for path in staged:
         if any(blocked in path for blocked in BLOCKED_PATH_PATTERNS) or path.endswith(BLOCKED_FILE_SUFFIXES):
             failures.append(f"{path}: generated, local, or machine-specific file is blocked")
             continue
@@ -104,6 +105,15 @@ def main() -> None:
             for label, pattern in FORBIDDEN_SETTINGS_PATTERNS:
                 if re.search(pattern, source):
                     failures.append(f"{path}: {label}")
+
+    if "MyTeam/CharacterDialogues.swift" in staged:
+        result = run(["python3", "scripts/report_character_dialogues.py", "--check-only"])
+        if result.returncode != 0:
+            failures.append("MyTeam/CharacterDialogues.swift: character dialogue report check failed")
+            if result.stdout:
+                print(result.stdout, file=sys.stderr)
+            if result.stderr:
+                print(result.stderr, file=sys.stderr)
 
     if failures:
         print("precommit safety check failed:", file=sys.stderr)

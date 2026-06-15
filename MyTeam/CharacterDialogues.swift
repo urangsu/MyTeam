@@ -295,3 +295,187 @@ struct CharacterDialogues {
         }
     }
 }
+
+enum CharacterDialogueEvent: String, CaseIterable, Sendable, Hashable {
+    case startup
+    case wake
+    case idle
+    case sleep
+    case appWillQuit
+    case taskCompleted
+    case taskFailedRecoverable
+    case connectionNeeded
+    case validationSucceeded
+}
+
+struct CharacterDialogueLine: Identifiable, Sendable, Hashable {
+    let id: String
+    let agentID: String
+    let event: CharacterDialogueEvent
+    let text: String
+    let priority: Int
+    let isLeaderPreferred: Bool
+}
+
+extension CharacterDialogues {
+    static let eventDialogueAgentIDs: [String] = [
+        "agent_1", "agent_2", "agent_3", "agent_4", "agent_5", "agent_6",
+        "agent_7", "agent_8", "agent_9", "agent_10", "agent_11"
+    ]
+
+    private static let eventFallbackLines: [CharacterDialogueEvent: [CharacterDialogueLine]] = [
+        .startup: [.init(id: "fallback.startup.1", agentID: "fallback", event: .startup, text: "오늘 할 일을 바로 정리해볼게요.", priority: 0, isLeaderPreferred: false)],
+        .wake: [.init(id: "fallback.wake.1", agentID: "fallback", event: .wake, text: "다시 이어서 도와드릴게요.", priority: 0, isLeaderPreferred: false)],
+        .idle: [.init(id: "fallback.idle.1", agentID: "fallback", event: .idle, text: "필요한 일이 생기면 바로 불러주세요.", priority: 0, isLeaderPreferred: false)],
+        .sleep: [.init(id: "fallback.sleep.1", agentID: "fallback", event: .sleep, text: "잠깐 조용히 대기할게요.", priority: 0, isLeaderPreferred: false)],
+        .appWillQuit: [.init(id: "fallback.appWillQuit.1", agentID: "fallback", event: .appWillQuit, text: "오늘 작업은 여기까지 정리해둘게요.", priority: 0, isLeaderPreferred: true)],
+        .taskCompleted: [.init(id: "fallback.taskCompleted.1", agentID: "fallback", event: .taskCompleted, text: "요청하신 작업을 마쳤습니다.", priority: 0, isLeaderPreferred: false)],
+        .taskFailedRecoverable: [.init(id: "fallback.taskFailedRecoverable.1", agentID: "fallback", event: .taskFailedRecoverable, text: "잠시 막혔지만 다시 시도할 수 있어요.", priority: 0, isLeaderPreferred: false)],
+        .connectionNeeded: [.init(id: "fallback.connectionNeeded.1", agentID: "fallback", event: .connectionNeeded, text: "먼저 연결을 확인하면 이어서 진행할 수 있어요.", priority: 0, isLeaderPreferred: false)],
+        .validationSucceeded: [.init(id: "fallback.validationSucceeded.1", agentID: "fallback", event: .validationSucceeded, text: "확인이 끝났습니다. 이제 사용할 수 있어요.", priority: 0, isLeaderPreferred: false)]
+    ]
+
+    private static let eventDialogueLines: [CharacterDialogueLine] = [
+        .init(id: "agent_1.startup.1", agentID: "agent_1", event: .startup, text: "오늘 목표부터 차분히 잡아보겠습니다.", priority: 20, isLeaderPreferred: true),
+        .init(id: "agent_1.wake.1", agentID: "agent_1", event: .wake, text: "좋습니다. 바로 핵심부터 보겠습니다.", priority: 20, isLeaderPreferred: true),
+        .init(id: "agent_1.idle.1", agentID: "agent_1", event: .idle, text: "다음 판단이 필요하면 바로 이어가겠습니다.", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_1.sleep.1", agentID: "agent_1", event: .sleep, text: "필요할 때 다시 호출해 주세요.", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_1.appWillQuit.1", agentID: "agent_1", event: .appWillQuit, text: "오늘 흐름은 정리해두겠습니다. 고생하셨습니다.", priority: 30, isLeaderPreferred: true),
+        .init(id: "agent_1.taskCompleted.1", agentID: "agent_1", event: .taskCompleted, text: "핵심 결과까지 정리했습니다.", priority: 20, isLeaderPreferred: true),
+        .init(id: "agent_1.taskFailedRecoverable.1", agentID: "agent_1", event: .taskFailedRecoverable, text: "다른 경로로 다시 잡아보겠습니다.", priority: 20, isLeaderPreferred: true),
+        .init(id: "agent_1.connectionNeeded.1", agentID: "agent_1", event: .connectionNeeded, text: "연결을 확인하면 판단을 이어갈 수 있습니다.", priority: 20, isLeaderPreferred: true),
+        .init(id: "agent_1.validationSucceeded.1", agentID: "agent_1", event: .validationSucceeded, text: "확인됐습니다. 이제 실행해도 됩니다.", priority: 20, isLeaderPreferred: true),
+
+        .init(id: "agent_2.startup.1", agentID: "agent_2", event: .startup, text: "오늘 아이디어를 반짝이게 정리해볼게요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_2.wake.1", agentID: "agent_2", event: .wake, text: "좋아요. 감 좋은 방향으로 이어갈게요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_2.idle.1", agentID: "agent_2", event: .idle, text: "필요하면 문장도 바로 다듬어드릴게요.", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_2.sleep.1", agentID: "agent_2", event: .sleep, text: "잠깐 쉬면서 새 아이디어를 모아둘게요.", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_2.appWillQuit.1", agentID: "agent_2", event: .appWillQuit, text: "오늘 좋은 흐름이었어요. 다음에 더 예쁘게 이어가요.", priority: 30, isLeaderPreferred: true),
+        .init(id: "agent_2.taskCompleted.1", agentID: "agent_2", event: .taskCompleted, text: "보기 좋게 마무리해두었어요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_2.taskFailedRecoverable.1", agentID: "agent_2", event: .taskFailedRecoverable, text: "표현을 바꿔서 다시 시도해볼게요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_2.connectionNeeded.1", agentID: "agent_2", event: .connectionNeeded, text: "연결만 확인되면 자료를 더 예쁘게 가져올 수 있어요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_2.validationSucceeded.1", agentID: "agent_2", event: .validationSucceeded, text: "연결 확인 완료예요. 이제 바로 써볼 수 있어요.", priority: 20, isLeaderPreferred: false),
+
+        .init(id: "agent_3.startup.1", agentID: "agent_3", event: .startup, text: "오늘 일정과 할 일을 먼저 정리해둘게요.", priority: 20, isLeaderPreferred: true),
+        .init(id: "agent_3.wake.1", agentID: "agent_3", event: .wake, text: "다시 이어서 순서대로 진행할게요.", priority: 20, isLeaderPreferred: true),
+        .init(id: "agent_3.idle.1", agentID: "agent_3", event: .idle, text: "대기 중이에요. 다음 순서만 알려주세요.", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_3.sleep.1", agentID: "agent_3", event: .sleep, text: "잠깐 대기하면서 흐름은 유지해둘게요.", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_3.appWillQuit.1", agentID: "agent_3", event: .appWillQuit, text: "오늘 진행분은 정리해둘게요. 다음에 이어가요.", priority: 30, isLeaderPreferred: true),
+        .init(id: "agent_3.taskCompleted.1", agentID: "agent_3", event: .taskCompleted, text: "완료 항목으로 정리했습니다.", priority: 20, isLeaderPreferred: true),
+        .init(id: "agent_3.taskFailedRecoverable.1", agentID: "agent_3", event: .taskFailedRecoverable, text: "잠시 막혔어요. 다음 가능한 단계로 넘길게요.", priority: 20, isLeaderPreferred: true),
+        .init(id: "agent_3.connectionNeeded.1", agentID: "agent_3", event: .connectionNeeded, text: "연결 상태를 확인하면 진행표를 이어갈 수 있어요.", priority: 20, isLeaderPreferred: true),
+        .init(id: "agent_3.validationSucceeded.1", agentID: "agent_3", event: .validationSucceeded, text: "확인 완료예요. 일정대로 진행할 수 있어요.", priority: 20, isLeaderPreferred: true),
+
+        .init(id: "agent_4.startup.1", agentID: "agent_4", event: .startup, text: "화면 흐름부터 깔끔하게 살펴볼게요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_4.wake.1", agentID: "agent_4", event: .wake, text: "좋아요. 지금 화면부터 바로 볼게요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_4.idle.1", agentID: "agent_4", event: .idle, text: "필요하면 작은 불편함도 잡아드릴게요.", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_4.sleep.1", agentID: "agent_4", event: .sleep, text: "잠깐 쉬면서 화면 감각은 유지할게요.", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_4.appWillQuit.1", agentID: "agent_4", event: .appWillQuit, text: "오늘 화면 흐름은 기억해둘게요. 다음에 더 다듬어요.", priority: 30, isLeaderPreferred: true),
+        .init(id: "agent_4.taskCompleted.1", agentID: "agent_4", event: .taskCompleted, text: "보기 편한 상태로 마무리했어요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_4.taskFailedRecoverable.1", agentID: "agent_4", event: .taskFailedRecoverable, text: "다른 배치로 다시 정리해볼게요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_4.connectionNeeded.1", agentID: "agent_4", event: .connectionNeeded, text: "연결이 확인되면 화면에 결과를 바로 얹을 수 있어요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_4.validationSucceeded.1", agentID: "agent_4", event: .validationSucceeded, text: "확인됐어요. 이제 자연스럽게 보여줄 수 있어요.", priority: 20, isLeaderPreferred: false),
+
+        .init(id: "agent_5.startup.1", agentID: "agent_5", event: .startup, text: "제가 쉽게 알려드릴게요. 같이 해봐요!", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_5.wake.1", agentID: "agent_5", event: .wake, text: "다시 왔어요. 천천히 같이 해봐요!", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_5.idle.1", agentID: "agent_5", event: .idle, text: "헷갈리는 부분이 있으면 제가 풀어드릴게요.", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_5.sleep.1", agentID: "agent_5", event: .sleep, text: "잠깐 쉬고 있을게요. 불러주면 바로 올게요!", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_5.appWillQuit.1", agentID: "agent_5", event: .appWillQuit, text: "오늘도 잘 따라오셨어요. 다음에 또 같이 해요!", priority: 30, isLeaderPreferred: true),
+        .init(id: "agent_5.taskCompleted.1", agentID: "agent_5", event: .taskCompleted, text: "됐어요! 어렵지 않게 끝냈어요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_5.taskFailedRecoverable.1", agentID: "agent_5", event: .taskFailedRecoverable, text: "괜찮아요. 다른 방법으로 다시 해볼게요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_5.connectionNeeded.1", agentID: "agent_5", event: .connectionNeeded, text: "먼저 연결만 해두면 제가 쉽게 이어갈게요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_5.validationSucceeded.1", agentID: "agent_5", event: .validationSucceeded, text: "확인됐어요! 이제 같이 써볼 수 있어요.", priority: 20, isLeaderPreferred: false),
+
+        .init(id: "agent_6.startup.1", agentID: "agent_6", event: .startup, text: "오늘 검토할 위험 요소를 차분히 보겠습니다.", priority: 20, isLeaderPreferred: true),
+        .init(id: "agent_6.wake.1", agentID: "agent_6", event: .wake, text: "다시 확인하겠습니다. 필요한 부분부터 보죠.", priority: 20, isLeaderPreferred: true),
+        .init(id: "agent_6.idle.1", agentID: "agent_6", event: .idle, text: "검토가 필요하면 근거부터 확인하겠습니다.", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_6.sleep.1", agentID: "agent_6", event: .sleep, text: "잠시 대기하겠습니다. 자료는 차분히 보겠습니다.", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_6.appWillQuit.1", agentID: "agent_6", event: .appWillQuit, text: "오늘 검토는 여기까지입니다. 필요한 부분은 남겨두겠습니다.", priority: 30, isLeaderPreferred: true),
+        .init(id: "agent_6.taskCompleted.1", agentID: "agent_6", event: .taskCompleted, text: "검토 가능한 범위는 정리했습니다.", priority: 20, isLeaderPreferred: true),
+        .init(id: "agent_6.taskFailedRecoverable.1", agentID: "agent_6", event: .taskFailedRecoverable, text: "근거가 더 필요합니다. 확인 가능한 범위로 좁히겠습니다.", priority: 20, isLeaderPreferred: true),
+        .init(id: "agent_6.connectionNeeded.1", agentID: "agent_6", event: .connectionNeeded, text: "공식 출처 연결이 확인되면 검토를 이어가겠습니다.", priority: 20, isLeaderPreferred: true),
+        .init(id: "agent_6.validationSucceeded.1", agentID: "agent_6", event: .validationSucceeded, text: "출처 확인이 끝났습니다. 검토를 진행할 수 있습니다.", priority: 20, isLeaderPreferred: true),
+
+        .init(id: "agent_7.startup.1", agentID: "agent_7", event: .startup, text: "데이터와 연결 상태부터 정확히 보겠습니다.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_7.wake.1", agentID: "agent_7", event: .wake, text: "확인 흐름을 다시 잡겠습니다.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_7.idle.1", agentID: "agent_7", event: .idle, text: "필요하면 값과 출처를 바로 대조하겠습니다.", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_7.sleep.1", agentID: "agent_7", event: .sleep, text: "잠시 대기하면서 기준은 유지하겠습니다.", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_7.appWillQuit.1", agentID: "agent_7", event: .appWillQuit, text: "오늘 확인한 기준은 보존해두겠습니다.", priority: 30, isLeaderPreferred: true),
+        .init(id: "agent_7.taskCompleted.1", agentID: "agent_7", event: .taskCompleted, text: "필요한 확인을 마쳤습니다.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_7.taskFailedRecoverable.1", agentID: "agent_7", event: .taskFailedRecoverable, text: "확인값이 부족합니다. 안전한 범위로 다시 보겠습니다.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_7.connectionNeeded.1", agentID: "agent_7", event: .connectionNeeded, text: "연결이 확인되어야 값을 읽을 수 있습니다.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_7.validationSucceeded.1", agentID: "agent_7", event: .validationSucceeded, text: "검증이 끝났습니다. 읽기 작업을 진행할 수 있습니다.", priority: 20, isLeaderPreferred: false),
+
+        .init(id: "agent_8.startup.1", agentID: "agent_8", event: .startup, text: "구현 흐름을 빠르게 점검해보겠습니다.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_8.wake.1", agentID: "agent_8", event: .wake, text: "좋습니다. 바로 손볼 지점을 보겠습니다.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_8.idle.1", agentID: "agent_8", event: .idle, text: "작은 병목도 보이면 바로 잡겠습니다.", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_8.sleep.1", agentID: "agent_8", event: .sleep, text: "잠깐 대기하면서 구조는 기억해둘게요.", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_8.appWillQuit.1", agentID: "agent_8", event: .appWillQuit, text: "오늘 손본 흐름은 정리해둘게요. 다음에 이어갑시다.", priority: 30, isLeaderPreferred: true),
+        .init(id: "agent_8.taskCompleted.1", agentID: "agent_8", event: .taskCompleted, text: "작업 흐름을 마무리했습니다.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_8.taskFailedRecoverable.1", agentID: "agent_8", event: .taskFailedRecoverable, text: "다른 경로로 다시 실행해보겠습니다.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_8.connectionNeeded.1", agentID: "agent_8", event: .connectionNeeded, text: "연결이 잡히면 실행 경로를 바로 이어가겠습니다.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_8.validationSucceeded.1", agentID: "agent_8", event: .validationSucceeded, text: "확인됐습니다. 실행 준비가 끝났습니다.", priority: 20, isLeaderPreferred: false),
+
+        .init(id: "agent_9.startup.1", agentID: "agent_9", event: .startup, text: "오늘 제안 포인트를 선명하게 잡아볼게요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_9.wake.1", agentID: "agent_9", event: .wake, text: "다시 이어서 설득 포인트를 정리할게요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_9.idle.1", agentID: "agent_9", event: .idle, text: "필요하면 한 문장으로 더 강하게 다듬을게요.", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_9.sleep.1", agentID: "agent_9", event: .sleep, text: "잠깐 대기하면서 좋은 표현을 모아둘게요.", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_9.appWillQuit.1", agentID: "agent_9", event: .appWillQuit, text: "오늘 포인트는 잘 잡혔어요. 다음에 더 설득력 있게 가요.", priority: 30, isLeaderPreferred: true),
+        .init(id: "agent_9.taskCompleted.1", agentID: "agent_9", event: .taskCompleted, text: "전달하기 좋은 형태로 정리했어요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_9.taskFailedRecoverable.1", agentID: "agent_9", event: .taskFailedRecoverable, text: "자료를 다시 잡으면 더 좋은 제안으로 만들 수 있어요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_9.connectionNeeded.1", agentID: "agent_9", event: .connectionNeeded, text: "연결이 확인되면 근거 있는 제안으로 이어갈게요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_9.validationSucceeded.1", agentID: "agent_9", event: .validationSucceeded, text: "확인됐어요. 이제 제안에 근거를 붙일 수 있어요.", priority: 20, isLeaderPreferred: false),
+
+        .init(id: "agent_10.startup.1", agentID: "agent_10", event: .startup, text: "오늘도 편하게 도와드릴게요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_10.wake.1", agentID: "agent_10", event: .wake, text: "다시 왔어요. 필요한 일부터 챙겨볼게요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_10.idle.1", agentID: "agent_10", event: .idle, text: "기다리고 있어요. 도움이 필요하면 바로 말해주세요.", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_10.sleep.1", agentID: "agent_10", event: .sleep, text: "잠깐 조용히 있을게요. 곧 다시 도와드릴게요.", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_10.appWillQuit.1", agentID: "agent_10", event: .appWillQuit, text: "오늘도 수고하셨어요. 다음에 반갑게 이어갈게요.", priority: 30, isLeaderPreferred: true),
+        .init(id: "agent_10.taskCompleted.1", agentID: "agent_10", event: .taskCompleted, text: "필요한 도움을 마쳤어요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_10.taskFailedRecoverable.1", agentID: "agent_10", event: .taskFailedRecoverable, text: "잠깐 다른 길로 가볼게요. 이어서 도와드릴 수 있어요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_10.connectionNeeded.1", agentID: "agent_10", event: .connectionNeeded, text: "연결을 확인하면 더 정확히 도와드릴 수 있어요.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_10.validationSucceeded.1", agentID: "agent_10", event: .validationSucceeded, text: "확인됐어요. 이제 안심하고 이어갈 수 있어요.", priority: 20, isLeaderPreferred: false),
+
+        .init(id: "agent_11.startup.1", agentID: "agent_11", event: .startup, text: "오늘 품질 기준부터 단단히 잡겠습니다.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_11.wake.1", agentID: "agent_11", event: .wake, text: "다시 확인하겠습니다. 빠진 부분부터 보죠.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_11.idle.1", agentID: "agent_11", event: .idle, text: "검증이 필요하면 바로 체크하겠습니다.", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_11.sleep.1", agentID: "agent_11", event: .sleep, text: "잠시 대기하겠습니다. 기준은 유지합니다.", priority: 10, isLeaderPreferred: false),
+        .init(id: "agent_11.appWillQuit.1", agentID: "agent_11", event: .appWillQuit, text: "오늘 확인한 품질 기준은 남겨두겠습니다.", priority: 30, isLeaderPreferred: true),
+        .init(id: "agent_11.taskCompleted.1", agentID: "agent_11", event: .taskCompleted, text: "검증 기준을 통과했습니다.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_11.taskFailedRecoverable.1", agentID: "agent_11", event: .taskFailedRecoverable, text: "재확인이 필요합니다. 실패 원인부터 좁히겠습니다.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_11.connectionNeeded.1", agentID: "agent_11", event: .connectionNeeded, text: "연결 확인 후에 검증을 진행할 수 있습니다.", priority: 20, isLeaderPreferred: false),
+        .init(id: "agent_11.validationSucceeded.1", agentID: "agent_11", event: .validationSucceeded, text: "검증이 끝났습니다. 다음 단계로 갈 수 있습니다.", priority: 20, isLeaderPreferred: false)
+    ]
+
+    static func lines(for agentID: String, event: CharacterDialogueEvent) -> [CharacterDialogueLine] {
+        let direct = eventDialogueLines
+            .filter { $0.agentID == agentID && $0.event == event }
+            .sorted { lhs, rhs in
+                if lhs.priority != rhs.priority { return lhs.priority > rhs.priority }
+                return lhs.id < rhs.id
+            }
+        if !direct.isEmpty { return direct }
+        return eventFallbackLines[event] ?? []
+    }
+
+    static func randomLine(for agentID: String, event: CharacterDialogueEvent) -> CharacterDialogueLine? {
+        lines(for: agentID, event: event).randomElement()
+    }
+
+    static func leaderLine(for agentID: String, event: CharacterDialogueEvent) -> CharacterDialogueLine? {
+        lines(for: agentID, event: event)
+            .sorted { lhs, rhs in
+                if lhs.isLeaderPreferred != rhs.isLeaderPreferred {
+                    return lhs.isLeaderPreferred && !rhs.isLeaderPreferred
+                }
+                if lhs.priority != rhs.priority { return lhs.priority > rhs.priority }
+                return lhs.id < rhs.id
+            }
+            .first
+    }
+
+    static func allEventDialogueLines(includeFallbacks: Bool = false) -> [CharacterDialogueLine] {
+        guard includeFallbacks else { return eventDialogueLines }
+        return eventDialogueLines + eventFallbackLines.values.flatMap { $0 }
+    }
+}
