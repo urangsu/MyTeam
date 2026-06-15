@@ -7,6 +7,9 @@ Current production candidate:
 - Base URL: `https://late-waterfall-c95c.urange.workers.dev`
 - Health: `GET /health`
 - Naver News: `GET /news/search?query={query}&display={1...20}`
+- DART recent disclosures: `GET /dart/recent?corpCode={corpCode}&days={1...30}&display={1...20}`
+- KMA weather: `GET /weather/kma/nowcast?nx={nx}&ny={ny}`, `GET /weather/kma/forecast?nx={nx}&ny={ny}`
+- Korean Law search: `GET /law/search?query={query}&display={1...20}`
 
 ## Product Policy
 
@@ -28,6 +31,9 @@ Cloudflare Dashboard:
 5. Add secrets:
    - `NAVER_CLIENT_ID`
    - `NAVER_CLIENT_SECRET`
+   - `DART_API_KEY`
+   - `KMA_SERVICE_KEY`
+   - `LAW_OC`
 6. Deploy
 
 ## Naver Developer Setup
@@ -93,13 +99,15 @@ Known error codes:
 - `provider_system_error`
 - `invalid_upstream_json`
 - `upstream_error`
+- `invalid_provider_request`
+- `no_results`
 
 ## App Integration
 
 MyTeam uses:
 
-1. Proxy first: `MyTeamBasicLookupProxyClient.searchNews`
-2. BYOK fallback: `NaverNewsDirectConnector.search`
+1. Proxy first: `MyTeamBasicLookupProxyClient`
+2. BYOK fallback: direct provider connectors
 3. Failure state if neither path succeeds
 
 The UI must say:
@@ -120,7 +128,7 @@ The UI must not say:
 - Add optional `MYTEAM_PROXY_TOKEN` guard.
 - Add per-IP or per-device rate limiting.
 - Add `/version`.
-- Add DART, KMA, and Korean Law only after news proxy is stable.
+- Deploy Worker source from `workers/basic-lookup-api/worker.js` before marking DART, KMA, or Korean Law live.
 
 ## Worker Source
 
@@ -158,16 +166,16 @@ Future options:
 - Durable Objects per-client limiter
 - Supabase-backed account quota
 
-## Future Proxy Routes
+## Public Lookup Route Policy
 
-These are design targets only. Do not expose them as available until implemented and validated.
+These routes are implemented in the repository Worker source. Do not mark them production-live until the Cloudflare Worker is redeployed from this source and the live endpoint checks pass.
 
 ### DART
 
-Candidate routes:
+Routes:
 
 - `GET /dart/recent?corpName=삼성전자&days=7`
-- `GET /dart/search?corpCode=00126380&days=7`
+- `GET /dart/recent?corpCode=00126380&days=7`
 
 Required secret:
 
@@ -181,7 +189,7 @@ Response policy:
 
 ### KMA
 
-Candidate routes:
+Routes:
 
 - `GET /weather/kma/nowcast?nx=63&ny=89`
 - `GET /weather/kma/forecast?nx=63&ny=89`
@@ -198,7 +206,7 @@ Response policy:
 
 ### Korean Law
 
-Candidate route:
+Route:
 
 - `GET /law/search?query=근로기준법`
 
