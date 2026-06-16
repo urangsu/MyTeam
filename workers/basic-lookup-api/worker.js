@@ -41,16 +41,16 @@ export default {
         return await handleNewsSearch(url, env, startedAt);
       }
       if (url.pathname === "/dart/recent") {
-        return await handleDARTRecent(url, env, startedAt);
+        return await withProviderErrorBoundary(PROVIDERS.dart, () => handleDARTRecent(url, env, startedAt));
       }
       if (url.pathname === "/weather/kma/nowcast") {
-        return await handleKMA(url, env, startedAt, "nowcast");
+        return await withProviderErrorBoundary(PROVIDERS.kma, () => handleKMA(url, env, startedAt, "nowcast"));
       }
       if (url.pathname === "/weather/kma/forecast") {
-        return await handleKMA(url, env, startedAt, "forecast");
+        return await withProviderErrorBoundary(PROVIDERS.kma, () => handleKMA(url, env, startedAt, "forecast"));
       }
       if (url.pathname === "/law/search") {
-        return await handleLawSearch(url, env, startedAt);
+        return await withProviderErrorBoundary(PROVIDERS.law, () => handleLawSearch(url, env, startedAt));
       }
 
       return jsonError("not_found", "Route not found.", 404);
@@ -200,7 +200,7 @@ async function handleKMA(url, env, startedAt, type) {
 
   const base = kmaBaseDateTime(type, url.searchParams.get("base_date"), url.searchParams.get("base_time"));
   const upstreamURL = new URL(`https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/${type === "forecast" ? "getUltraSrtFcst" : "getUltraSrtNcst"}`);
-  upstreamURL.searchParams.set("serviceKey", env.KMA_SERVICE_KEY);
+  upstreamURL.searchParams.set("serviceKey", normalizePublicDataServiceKey(env.KMA_SERVICE_KEY));
   upstreamURL.searchParams.set("pageNo", "1");
   upstreamURL.searchParams.set("numOfRows", "1000");
   upstreamURL.searchParams.set("dataType", "JSON");
@@ -391,6 +391,19 @@ function missingSecret(provider, message) {
   return jsonError("missing_worker_secrets", message, 503, { provider });
 }
 
+async function withProviderErrorBoundary(provider, handler) {
+  try {
+    return await handler();
+  } catch {
+    return jsonError(
+      "provider_system_error",
+      "The lookup proxy could not complete the provider request.",
+      502,
+      { provider }
+    );
+  }
+}
+
 function noResults(provider, extra = {}) {
   return jsonResponse({
     ok: false,
@@ -493,6 +506,21 @@ function cleanHTML(value) {
 
 function normalizeText(value) {
   return String(value ?? "").replace(/\s+/g, " ").trim();
+}
+
+function normalizePublicDataServiceKey(value) {
+  const text = normalizeText(value || "");
+  if (!text) {
+    return "";
+  }
+  try {
+    if (text.includes("%")) {
+      return decodeURIComponent(text);
+    }
+  } catch {
+    return text;
+  }
+  return text;
 }
 
 function normalizeURLString(value) {

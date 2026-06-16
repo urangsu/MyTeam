@@ -36,3 +36,15 @@ Required live endpoints after deployment:
 - `GET /weather/kma/nowcast?nx=63&ny=89`
 - `GET /weather/kma/forecast?nx=63&ny=89`
 - `GET /law/search?query=근로기준법&display=2`
+
+## Live Gate Result
+
+- checkedAt: 2026-06-16 KST
+- workerVersion: 0.2.0
+- news.search: PASS, `ok: true`
+- dart.recent corpCode: BLOCKED, `provider_system_error`
+- dart.recent corpName: BLOCKED, `provider_system_error`
+- kma.nowcast: BLOCKED, `invalid_credentials`
+- kma.forecast: BLOCKED, `invalid_credentials`
+- law.search: PASS, `ok: true`
+- blocker: main merge remains blocked until DART no longer returns provider system error and KMA credentials are accepted by the upstream provider. No live route returned 404 after Worker 0.2.0 deployment, but provider-level failures remain.
