@@ -37,7 +37,7 @@ FORBIDDEN_SETTINGS_PATTERNS = (
     ("playwright diagnostics view", r"\bPlaywrightMCPStatusView\s*\("),
 )
 
-BASIC_LOOKUP_WORKER_VERSION = "0.2.0"
+BASIC_LOOKUP_WORKER_VERSION = "0.2.1"
 BASIC_LOOKUP_WORKER_ROUTES = (
     "/health",
     "/news/search?query=삼성전자",
@@ -121,6 +121,8 @@ def main() -> None:
             expected_version = f'const VERSION = "{BASIC_LOOKUP_WORKER_VERSION}";'
             if expected_version not in source:
                 failures.append(f"{path}: Worker version must be {BASIC_LOOKUP_WORKER_VERSION}")
+            if re.search(r'const\s+BUILD\s*=\s*"[^"]+";', source) is None:
+                failures.append(f"{path}: Worker BUILD marker missing")
             missing_routes = [route for route in BASIC_LOOKUP_WORKER_ROUTES if route not in source]
             if missing_routes:
                 failures.append(f"{path}: /health route list missing {', '.join(missing_routes)}")
