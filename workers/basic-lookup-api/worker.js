@@ -29,7 +29,7 @@ export default {
           routes: [
             "/health",
             "/news/search?query=삼성전자",
-            "/dart/recent?corpCode=00126380&days=7&display=2",
+            "/dart/recent?corpCode=00126380",
             "/weather/kma/nowcast?nx=63&ny=89",
             "/weather/kma/forecast?nx=63&ny=89",
             "/law/search?query=근로기준법&display=2"

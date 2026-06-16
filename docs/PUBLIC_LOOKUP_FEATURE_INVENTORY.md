@@ -24,6 +24,10 @@ Cloudflare production Worker must be updated from:
 
 - `/Users/su/Desktop/MyTeam/workers/basic-lookup-api/worker.js`
 
+## Main Merge Gate
+
+Do not merge this public lookup proxy work to `main` while any required live route still returns `404` from the production Worker. `/health` must report `version: "0.2.0"` and list the public lookup routes before merge.
+
 Required live endpoints after deployment:
 
 - `GET /health`

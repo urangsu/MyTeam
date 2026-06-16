@@ -25,6 +25,40 @@ Configure these in Cloudflare Dashboard -> Workers & Pages -> Worker -> Settings
 - `KMA_SERVICE_KEY`
 - `LAW_OC`
 
+## Cloudflare Dashboard Manual Deploy
+
+This Worker is currently deployed from the Cloudflare Dashboard, not from a repo-bound CI pipeline. After editing this source file, deploy the same source manually:
+
+1. Open Cloudflare Dashboard -> Workers & Pages -> `late-waterfall-c95c` -> Production.
+2. Confirm the required secrets above exist in Settings -> Variables and Secrets.
+3. Paste or sync `/Users/su/Desktop/MyTeam/workers/basic-lookup-api/worker.js` into the Worker editor.
+4. Save and deploy to Production.
+5. Verify `/health` before merging the app branch to `main`.
+
+The production `/health` response must show `version: "0.2.0"` and include these route names:
+
+```text
+/health
+/news/search?query=삼성전자
+/dart/recent?corpCode=00126380
+/weather/kma/nowcast?nx=63&ny=89
+/weather/kma/forecast?nx=63&ny=89
+/law/search?query=근로기준법&display=2
+```
+
+Live route checks:
+
+```bash
+curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/health'
+curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/news/search?query=%EC%82%BC%EC%84%B1%EC%A0%84%EC%9E%90&display=2'
+curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/dart/recent?corpCode=00126380&days=7&display=2'
+curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/weather/kma/nowcast?nx=63&ny=89'
+curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/weather/kma/forecast?nx=63&ny=89'
+curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/law/search?query=%EA%B7%BC%EB%A1%9C%EA%B8%B0%EC%A4%80%EB%B2%95&display=2'
+```
+
+If any required live route returns `404`, do not merge this branch to `main`.
+
 ## Naver Developer Setup
 
 In Naver Developers:
