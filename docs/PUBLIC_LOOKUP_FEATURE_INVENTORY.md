@@ -26,25 +26,34 @@ Cloudflare production Worker must be updated from:
 
 ## Main Merge Gate
 
-Do not merge this public lookup proxy work to `main` while any required live route still returns `404` from the production Worker. `/health` must report `version: "0.2.0"` and list the public lookup routes before merge.
+Do not merge this public lookup proxy work to `main` while any required live route still returns `404` from the production Worker. `/health` must report the current Worker source `version`, a non-empty `build` marker, and list the public lookup routes before merge.
 
 Required live endpoints after deployment:
 
 - `GET /health`
 - `GET /news/search?query=삼성전자&display=2`
-- `GET /dart/recent?corpCode=00126380&days=7&display=2`
+- `GET /dart/recent?corpCode=00126380&days=30&display=2`
 - `GET /weather/kma/nowcast?nx=63&ny=89`
 - `GET /weather/kma/forecast?nx=63&ny=89`
 - `GET /law/search?query=근로기준법&display=2`
 
+## KMA Secret Checklist
+
+- Confirm the KMA VilageFcst API application is approved in the public data portal.
+- Confirm the service key is active.
+- Prefer the Decoding key value in `KMA_SERVICE_KEY`.
+- If using the Encoding key, confirm Worker `normalizePublicDataServiceKey()` is deployed.
+- Confirm the Cloudflare variable type is Secret, not plaintext.
+
 ## Live Gate Result
 
-- checkedAt: 2026-06-16 KST
+- checkedAt: 2026-06-17 KST
 - workerVersion: 0.2.0
+- workerBuild: not present in deployed Worker
 - news.search: PASS, `ok: true`
 - dart.recent corpCode: BLOCKED, `provider_system_error`
 - dart.recent corpName: BLOCKED, `provider_system_error`
 - kma.nowcast: BLOCKED, `invalid_credentials`
 - kma.forecast: BLOCKED, `invalid_credentials`
 - law.search: PASS, `ok: true`
-- blocker: main merge remains blocked until DART no longer returns provider system error and KMA credentials are accepted by the upstream provider. No live route returned 404 after Worker 0.2.0 deployment, but provider-level failures remain.
+- blocker: main merge remains blocked until Worker 0.2.1 with build marker is deployed, DART no longer returns bare provider system error, and KMA returns either `ok: true` or an explicit provider-level credential failure with base date/time and grid detail.

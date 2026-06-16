@@ -1,5 +1,6 @@
 const SERVICE = "myteam-basic-lookup-api";
-const VERSION = "0.2.0";
+const VERSION = "0.2.1";
+const BUILD = "public-lookup-0.2.1";
 
 const PROVIDERS = {
   news: "naver-news",
@@ -26,6 +27,7 @@ export default {
           ok: true,
           service: SERVICE,
           version: VERSION,
+          build: BUILD,
           routes: [
             "/health",
             "/news/search?query=삼성전자",
@@ -109,81 +111,94 @@ async function handleNewsSearch(url, env, startedAt) {
 }
 
 async function handleDARTRecent(url, env, startedAt) {
-  if (!env.DART_API_KEY) {
-    return missingSecret(PROVIDERS.dart, "DART lookup is not configured.");
-  }
-  const corpCode = normalizeText(url.searchParams.get("corpCode") || "");
-  const corpName = normalizeText(url.searchParams.get("corpName") || "");
-  const days = clampInteger(url.searchParams.get("days"), 7, 1, 30);
-  const display = clampInteger(url.searchParams.get("display"), DEFAULT_DISPLAY, 1, MAX_DISPLAY);
-  if (!corpCode && corpName.length > 80) {
-    return jsonError("query_too_long", "Company name must be 80 characters or fewer.", 400, {
-      provider: PROVIDERS.dart
-    });
-  }
+  let stage = "dart_secret_check";
+  try {
+    if (!env.DART_API_KEY) {
+      return missingSecret(PROVIDERS.dart, "DART lookup is not configured.");
+    }
+    const corpCode = normalizeText(url.searchParams.get("corpCode") || "");
+    const corpName = normalizeText(url.searchParams.get("corpName") || "");
+    const days = clampInteger(url.searchParams.get("days"), 7, 1, 30);
+    const display = clampInteger(url.searchParams.get("display"), DEFAULT_DISPLAY, 1, MAX_DISPLAY);
+    if (!corpCode && corpName.length > 80) {
+      return jsonError("query_too_long", "Company name must be 80 characters or fewer.", 400, {
+        provider: PROVIDERS.dart
+      });
+    }
 
-  const now = new Date();
-  const begin = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-  const upstreamURL = new URL("https://opendart.fss.or.kr/api/list.json");
-  upstreamURL.searchParams.set("crtfc_key", env.DART_API_KEY);
-  upstreamURL.searchParams.set("bgn_de", formatDateYYYYMMDD(begin));
-  upstreamURL.searchParams.set("end_de", formatDateYYYYMMDD(now));
-  upstreamURL.searchParams.set("sort", "date");
-  upstreamURL.searchParams.set("sort_mth", "desc");
-  upstreamURL.searchParams.set("page_no", "1");
-  upstreamURL.searchParams.set("page_count", String(MAX_DISPLAY));
-  if (corpCode) {
-    upstreamURL.searchParams.set("corp_code", corpCode);
-  }
+    stage = "dart_build_request";
+    const now = new Date();
+    const begin = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    const upstreamURL = new URL("https://opendart.fss.or.kr/api/list.json");
+    upstreamURL.searchParams.set("crtfc_key", env.DART_API_KEY);
+    upstreamURL.searchParams.set("bgn_de", formatDateYYYYMMDD(begin));
+    upstreamURL.searchParams.set("end_de", formatDateYYYYMMDD(now));
+    upstreamURL.searchParams.set("sort", "date");
+    upstreamURL.searchParams.set("sort_mth", "desc");
+    upstreamURL.searchParams.set("page_no", "1");
+    upstreamURL.searchParams.set("page_count", String(MAX_DISPLAY));
+    if (corpCode) {
+      upstreamURL.searchParams.set("corp_code", corpCode);
+    }
 
-  const upstreamResponse = await fetch(upstreamURL);
-  if (!upstreamResponse.ok) {
-    return providerError(PROVIDERS.dart, upstreamResponse.status);
-  }
+    stage = "dart_fetch";
+    const upstreamResponse = await fetch(upstreamURL);
+    if (!upstreamResponse.ok) {
+      return providerError(PROVIDERS.dart, upstreamResponse.status, { stage });
+    }
 
-  const upstreamJSON = await safeJSON(upstreamResponse, PROVIDERS.dart);
-  if (upstreamJSON instanceof Response) {
-    return upstreamJSON;
-  }
+    stage = "dart_parse_json";
+    const upstreamJSON = await safeJSON(upstreamResponse, PROVIDERS.dart);
+    if (upstreamJSON instanceof Response) {
+      return upstreamJSON;
+    }
 
-  const status = normalizeText(upstreamJSON.status || "");
-  if (status && status !== "000") {
-    if (status === "013") {
+    stage = "dart_status_check";
+    const status = normalizeText(upstreamJSON.status || "");
+    const providerMessage = normalizeText(upstreamJSON.message || "");
+    if (status && status !== "000") {
+      if (status === "013") {
+        return noResults(PROVIDERS.dart, {
+          query: { corpName: corpName || null, corpCode: corpCode || null, days },
+          providerStatus: status,
+          providerMessage,
+          elapsedMs: Date.now() - startedAt
+        });
+      }
+      return dartError(status, providerMessage, stage);
+    }
+
+    stage = "dart_normalize_items";
+    const rawItems = Array.isArray(upstreamJSON.list) ? upstreamJSON.list : [];
+    const nameTokens = significantTokens(corpName);
+    const filtered = corpCode || nameTokens.length === 0
+      ? rawItems
+      : rawItems.filter((item) => {
+        const haystack = `${item.corp_name || ""} ${item.report_nm || ""}`.toLowerCase();
+        return nameTokens.some((token) => haystack.includes(token));
+      });
+    const items = filtered.map(normalizeDARTItem).filter(Boolean).slice(0, display);
+    if (items.length === 0) {
       return noResults(PROVIDERS.dart, {
         query: { corpName: corpName || null, corpCode: corpCode || null, days },
         elapsedMs: Date.now() - startedAt
       });
     }
-    return dartError(status);
-  }
-
-  const rawItems = Array.isArray(upstreamJSON.list) ? upstreamJSON.list : [];
-  const nameTokens = significantTokens(corpName);
-  const filtered = corpCode || nameTokens.length === 0
-    ? rawItems
-    : rawItems.filter((item) => {
-      const haystack = `${item.corp_name || ""} ${item.report_nm || ""}`.toLowerCase();
-      return nameTokens.some((token) => haystack.includes(token));
+    return jsonResponse({
+      ok: true,
+      provider: PROVIDERS.dart,
+      query: {
+        corpName: corpName || null,
+        corpCode: corpCode || null,
+        days
+      },
+      count: items.length,
+      elapsedMs: Date.now() - startedAt,
+      items
     });
-  const items = filtered.map(normalizeDARTItem).filter(Boolean).slice(0, display);
-  if (items.length === 0) {
-    return noResults(PROVIDERS.dart, {
-      query: { corpName: corpName || null, corpCode: corpCode || null, days },
-      elapsedMs: Date.now() - startedAt
-    });
+  } catch {
+    return providerStageError(PROVIDERS.dart, stage, "DART lookup failed during provider request.");
   }
-  return jsonResponse({
-    ok: true,
-    provider: PROVIDERS.dart,
-    query: {
-      corpName: corpName || null,
-      corpCode: corpCode || null,
-      days
-    },
-    count: items.length,
-    elapsedMs: Date.now() - startedAt,
-    items
-  });
 }
 
 async function handleKMA(url, env, startedAt, type) {
@@ -211,7 +226,7 @@ async function handleKMA(url, env, startedAt, type) {
 
   const upstreamResponse = await fetch(upstreamURL);
   if (!upstreamResponse.ok) {
-    return providerError(PROVIDERS.kma, upstreamResponse.status);
+    return kmaHTTPError(upstreamResponse.status, base, nx, ny);
   }
   const upstreamJSON = await safeJSON(upstreamResponse, PROVIDERS.kma);
   if (upstreamJSON instanceof Response) {
@@ -220,8 +235,9 @@ async function handleKMA(url, env, startedAt, type) {
 
   const header = upstreamJSON?.response?.header;
   const resultCode = normalizeText(header?.resultCode || "");
+  const resultMsg = normalizeText(header?.resultMsg || "");
   if (resultCode !== "00") {
-    return kmaError(resultCode);
+    return kmaError(resultCode, resultMsg, base, nx, ny);
   }
   const rawItems = upstreamJSON?.response?.body?.items?.item;
   const itemArray = Array.isArray(rawItems) ? rawItems : [];
@@ -414,23 +430,31 @@ function noResults(provider, extra = {}) {
   }, 200);
 }
 
-function providerError(provider, status) {
-  if (status === 401) {
-    return jsonError("invalid_credentials", "Provider credentials are invalid.", 502, { provider, status });
-  }
-  if (status === 403) {
-    return jsonError("provider_permission_denied", "Provider permission was denied.", 502, { provider, status });
-  }
-  if (status === 429) {
-    return jsonError("provider_quota_exceeded", "Provider quota was exceeded.", 503, { provider, status });
-  }
-  if (status >= 500) {
-    return jsonError("provider_system_error", "Provider is temporarily unavailable.", 502, { provider, status });
-  }
-  return jsonError("upstream_error", "Provider returned an error.", 502, { provider, status });
+function providerStageError(provider, stage, message, extra = {}) {
+  return jsonError("provider_system_error", message, 502, {
+    provider,
+    stage,
+    ...extra
+  });
 }
 
-function dartError(status) {
+function providerError(provider, status, extra = {}) {
+  if (status === 401) {
+    return jsonError("invalid_credentials", "Provider credentials are invalid.", 502, { provider, status, ...extra });
+  }
+  if (status === 403) {
+    return jsonError("provider_permission_denied", "Provider permission was denied.", 502, { provider, status, ...extra });
+  }
+  if (status === 429) {
+    return jsonError("provider_quota_exceeded", "Provider quota was exceeded.", 503, { provider, status, ...extra });
+  }
+  if (status >= 500) {
+    return jsonError("provider_system_error", "Provider is temporarily unavailable.", 502, { provider, status, ...extra });
+  }
+  return jsonError("upstream_error", "Provider returned an error.", 502, { provider, status, ...extra });
+}
+
+function dartError(status, providerMessage, stage) {
   const map = {
     "010": "invalid_credentials",
     "011": "invalid_credentials",
@@ -447,15 +471,34 @@ function dartError(status) {
   const httpStatus = code === "provider_quota_exceeded" ? 503 : 502;
   return jsonError(code, "DART provider returned an error.", httpStatus, {
     provider: PROVIDERS.dart,
-    status
+    stage,
+    providerStatus: status,
+    providerMessage
   });
 }
 
-function kmaError(resultCode) {
-  const code = resultCode === "03" ? "no_results" : "upstream_error";
+function kmaHTTPError(status, base, nx, ny) {
+  return providerError(PROVIDERS.kma, status, {
+    baseDate: base.date,
+    baseTime: base.time,
+    grid: { nx, ny }
+  });
+}
+
+function kmaError(resultCode, resultMsg, base, nx, ny) {
+  const normalizedMessage = resultMsg.toUpperCase();
+  const code = resultCode === "03"
+    ? "no_results"
+    : resultCode === "30" || normalizedMessage.includes("SERVICE") || normalizedMessage.includes("KEY")
+      ? "invalid_credentials"
+      : "upstream_error";
   return jsonError(code, "KMA provider returned an error.", code === "no_results" ? 200 : 502, {
     provider: PROVIDERS.kma,
-    status: resultCode || "unknown"
+    status: resultCode || "unknown",
+    providerMessage: resultMsg,
+    baseDate: base.date,
+    baseTime: base.time,
+    grid: { nx, ny }
   });
 }
 
