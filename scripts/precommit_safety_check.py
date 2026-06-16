@@ -37,6 +37,16 @@ FORBIDDEN_SETTINGS_PATTERNS = (
     ("playwright diagnostics view", r"\bPlaywrightMCPStatusView\s*\("),
 )
 
+BASIC_LOOKUP_WORKER_VERSION = "0.2.0"
+BASIC_LOOKUP_WORKER_ROUTES = (
+    "/health",
+    "/news/search?query=삼성전자",
+    "/dart/recent?corpCode=00126380",
+    "/weather/kma/nowcast?nx=63&ny=89",
+    "/weather/kma/forecast?nx=63&ny=89",
+    "/law/search?query=근로기준법&display=2",
+)
+
 
 def run(command: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(command, cwd=ROOT, text=True, capture_output=True)
@@ -105,6 +115,15 @@ def main() -> None:
             for label, pattern in FORBIDDEN_SETTINGS_PATTERNS:
                 if re.search(pattern, source):
                     failures.append(f"{path}: {label}")
+
+        if path == "workers/basic-lookup-api/worker.js":
+            source = staged_content(path)
+            expected_version = f'const VERSION = "{BASIC_LOOKUP_WORKER_VERSION}";'
+            if expected_version not in source:
+                failures.append(f"{path}: Worker version must be {BASIC_LOOKUP_WORKER_VERSION}")
+            missing_routes = [route for route in BASIC_LOOKUP_WORKER_ROUTES if route not in source]
+            if missing_routes:
+                failures.append(f"{path}: /health route list missing {', '.join(missing_routes)}")
 
     if "MyTeam/CharacterDialogues.swift" in staged:
         result = run(["python3", "scripts/report_character_dialogues.py", "--check-only"])

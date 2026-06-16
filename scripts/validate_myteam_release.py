@@ -42,6 +42,17 @@ FORBIDDEN_ACTIVE_SWIFT_PATTERNS = [
 ]
 
 
+BASIC_LOOKUP_WORKER_VERSION = "0.2.0"
+BASIC_LOOKUP_WORKER_ROUTES = [
+    "/health",
+    "/news/search?query=삼성전자",
+    "/dart/recent?corpCode=00126380",
+    "/weather/kma/nowcast?nx=63&ny=89",
+    "/weather/kma/forecast?nx=63&ny=89",
+    "/law/search?query=근로기준법&display=2",
+]
+
+
 def run(command: list[str]) -> None:
     result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True)
     if result.stdout:
@@ -167,6 +178,20 @@ def validate_active_swift_runtime() -> None:
         raise SystemExit(f"FAIL: forbidden active Swift runtime pattern found:\n{details}")
 
 
+def validate_basic_lookup_worker_source() -> None:
+    worker_path = ROOT / "workers" / "basic-lookup-api" / "worker.js"
+    if not worker_path.exists():
+        raise SystemExit("FAIL: basic lookup Worker source missing")
+    source = worker_path.read_text()
+    expected_version = f'const VERSION = "{BASIC_LOOKUP_WORKER_VERSION}";'
+    if expected_version not in source:
+        raise SystemExit(f"FAIL: basic lookup Worker version must be {BASIC_LOOKUP_WORKER_VERSION}")
+    missing_routes = [route for route in BASIC_LOOKUP_WORKER_ROUTES if route not in source]
+    if missing_routes:
+        joined = ", ".join(missing_routes)
+        raise SystemExit(f"FAIL: basic lookup Worker /health route list missing: {joined}")
+
+
 def main() -> None:
     for command in CHECKS:
         run(command)
@@ -175,6 +200,7 @@ def main() -> None:
     validate_tool_descriptors()
     validate_settings_surface()
     validate_active_swift_runtime()
+    validate_basic_lookup_worker_source()
     print("PASS: MyTeam release validators")
 
 
