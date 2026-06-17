@@ -7886,6 +7886,7 @@
 				<string>TLF002PERMISSIONFILE</string>
 				<string>TLF003EXECSTATEFILE</string>
 				<string>TLF004REGISTRYFILE</string>
+				<string>DARTRESOLVERFILE0000001</string>
 				<string>TLF005ROUTERFILE</string>
 				<string>TLF006ACTIONCARDFILE</string>
 					<string>TLF007RESULTCARDFILE</string>
@@ -9441,6 +9442,7 @@
 				<string>TLB002PERMISSIONBLD</string>
 				<string>TLB003EXECSTATEBLD</string>
 				<string>TLB004REGISTRYBLD</string>
+				<string>DARTRESOLVERBLD00000001</string>
 				<string>TLB005ROUTERBLD</string>
 				<string>TLB006ACTIONCARDBLD</string>
 				<string>TLB007RESULTCARDBLD</string>
@@ -17498,6 +17500,21 @@
 			<key>sourceTree</key>
 			<string>SOURCE_ROOT</string>
 		</dict>
+		<key>DARTRESOLVERFILE0000001</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>DARTCompanyResolver.swift</string>
+			<key>path</key>
+			<string>DARTCompanyResolver.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
 		<key>TLF005ROUTERFILE</key>
 		<dict>
 			<key>fileEncoding</key>
@@ -17688,6 +17705,13 @@
 		<dict>
 			<key>fileRef</key>
 			<string>TLF004REGISTRYFILE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>DARTRESOLVERBLD00000001</key>
+		<dict>
+			<key>fileRef</key>
+			<string>DARTRESOLVERFILE0000001</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>

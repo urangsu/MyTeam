@@ -191,7 +191,7 @@ struct ToolActionCardView: View {
     private var defaultQuery: String {
         switch descriptor.id {
         case "dart.disclosures.search":
-            return "00126380"
+            return "삼성전자"
         case "news.search":
             return "경제"
         case "weather.current":
