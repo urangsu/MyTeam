@@ -116,12 +116,10 @@ enum PublicAPIConnectorValidator {
         var components = URLComponents()
         components.scheme = "https"
         components.host = "opendart.fss.or.kr"
-        components.path = "/api/list.json"
+        components.path = "/api/company.json"
         components.queryItems = [
             URLQueryItem(name: "crtfc_key", value: apiKey),
-            URLQueryItem(name: "bgn_de", value: yyyymmdd(daysBefore: 1, clock: clock)),
-            URLQueryItem(name: "page_no", value: "1"),
-            URLQueryItem(name: "page_count", value: "1")
+            URLQueryItem(name: "corp_code", value: "00126380")
         ]
         guard let url = components.url else { throw ConnectorFailureCode.responseParseFailed }
         return URLRequest(url: url)
@@ -184,6 +182,11 @@ enum PublicAPIConnectorValidator {
             return false
         }
         let status = object["status"] as? String
+        if object["corp_name"] != nil || object["stock_code"] != nil {
+            return status == "000"
+                && (object["corp_name"] as? String)?.isEmpty == false
+                && object["stock_code"] as? String == "005930"
+        }
         return status == "000" || status == "013"
     }
 
@@ -308,9 +311,13 @@ struct NaverNewsDirectItem: Sendable, Equatable {
 
 struct DARTDisclosureDirectItem: Sendable, Equatable {
     let corporationName: String
+    let corpCode: String?
+    let stockCode: String?
     let reportName: String
     let receiptNumber: String
     let receiptDate: String
+    let submitterName: String?
+    let remark: String?
     let sourceURL: URL
 }
 
@@ -828,9 +835,13 @@ extension MyTeamProxyDARTSearchResponse {
             guard let url = URL(string: item.sourceURL) else { return nil }
             return DARTDisclosureDirectItem(
                 corporationName: item.corpName,
+                corpCode: item.corpCode,
+                stockCode: item.stockCode,
                 reportName: item.reportName,
                 receiptNumber: item.receiptNo,
                 receiptDate: item.receiptDate,
+                submitterName: item.submitter,
+                remark: item.remark,
                 sourceURL: url
             )
         }
@@ -926,9 +937,13 @@ enum DARTDisclosureDirectConnector {
         else { return nil }
         return DARTDisclosureDirectItem(
             corporationName: corpName,
+            corpCode: item["corp_code"] as? String,
+            stockCode: item["stock_code"] as? String,
             reportName: reportName,
             receiptNumber: receiptNumber,
             receiptDate: receiptDate,
+            submitterName: item["flr_nm"] as? String,
+            remark: item["rm"] as? String,
             sourceURL: sourceURL
         )
     }

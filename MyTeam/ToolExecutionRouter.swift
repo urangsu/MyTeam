@@ -424,16 +424,17 @@ actor ToolExecutionRouter {
 
     private func runDART(input: MyTeamToolInput) async -> ToolExecutionState {
         let provider = ExternalProvider.dartDisclosure
-        let query = sanitizedQuery(input.query, fallback: "00126380")
-        let daysBack = min(max(input.daysBack ?? 7, 1), 30)
+        let query = sanitizedQuery(input.query, fallback: "삼성전자")
+        let resolution = DARTCompanyResolver.resolve(input: query)
+        let daysBack = min(max(input.daysBack ?? 30, 1), 365)
         let displayCount = min(max(input.displayCount ?? 10, 1), 20)
 
-        guard let corpCode = dartCorpCode(from: query) else {
+        guard let corpCode = resolution.corpCode else {
             return .failed(MyTeamToolFailure(
-                title: "DART 고유번호가 필요합니다",
-                message: "현재 공시 조회는 OpenDART 8자리 고유번호로 직접 실행합니다. 예: 삼성전자 00126380. 회사명 자동 변환은 후속 작업입니다.",
+                title: "회사를 찾지 못했습니다",
+                message: "종목코드 또는 OpenDART 고유번호를 입력해 주세요. 예: 삼성전자, 005930, 00126380.",
                 recoveryActions: [
-                    MyTeamNextAction(id: "changeKeyword", title: "고유번호 입력", role: .normal)
+                    MyTeamNextAction(id: "changeKeyword", title: "다시 입력", role: .normal)
                 ]
             ))
         }
@@ -456,7 +457,7 @@ actor ToolExecutionRouter {
                 pageCount: displayCount
             )
             return dartResultState(
-                query: corpCode,
+                resolution: resolution,
                 daysBack: daysBack,
                 items: items,
                 sourceLabel: "DART 공시 · 개인 키",
@@ -468,18 +469,19 @@ actor ToolExecutionRouter {
     }
 
     private func dartResultState(
-        query: String,
+        resolution: DARTCompanyResolution,
         daysBack: Int,
         items: [DARTDisclosureDirectItem],
         sourceLabel: String,
         modeNotice: String
     ) -> ToolExecutionState {
+        let displayName = resolution.displayName
         if items.isEmpty {
             return .succeeded(MyTeamToolResult(
                 title: "조회된 공시가 없습니다",
-                summary: "OpenDART가 '\(query)' 기준 최근 \(daysBack)일 조회 결과 없음 상태를 반환했습니다.",
+                summary: "OpenDART가 '\(displayName)' 기준 최근 \(daysBack)일 조회 결과 없음 상태를 반환했습니다.",
                 sourceLabel: sourceLabel,
-                body: modeNotice,
+                body: dartBodyNotice(modeNotice: modeNotice, resolution: resolution),
                 items: [],
                 nextActions: [
                     MyTeamNextAction(id: "extendRange", title: "기간 늘리기", role: .normal),
@@ -491,15 +493,15 @@ actor ToolExecutionRouter {
 
         return .succeeded(MyTeamToolResult(
             title: "DART 공시 목록을 가져왔습니다",
-            summary: "최근 \(daysBack)일 기준 공시 \(items.count)건을 찾았습니다.",
+            summary: "\(displayName) 최근 \(daysBack)일 기준 공시 \(items.count)건을 찾았습니다.",
             sourceLabel: sourceLabel,
-            body: modeNotice,
+            body: dartBodyNotice(modeNotice: modeNotice, resolution: resolution),
             items: items.prefix(5).map { item in
                 MyTeamToolResultItem(
                     id: item.receiptNumber,
                     title: item.reportName,
-                    subtitle: item.corporationName,
-                    metadata: "접수일 \(item.receiptDate)",
+                    subtitle: [item.corporationName, item.stockCode].compactMap { $0 }.joined(separator: " · "),
+                    metadata: dartItemMetadata(item),
                     sourceURL: item.sourceURL
                 )
             },
@@ -508,6 +510,45 @@ actor ToolExecutionRouter {
                 MyTeamNextAction(id: "searchAgain", title: "다시 검색", role: .normal)
             ]
         ))
+    }
+
+    private func dartBodyNotice(
+        modeNotice: String,
+        resolution: DARTCompanyResolution
+    ) -> String {
+        var lines = [modeNotice]
+        if let corpCode = resolution.corpCode {
+            lines.append("조회 대상: \(resolution.displayName) · corpCode \(corpCode)")
+        }
+        lines.append("해석 방식: \(dartResolutionLabel(resolution.resolutionSource))")
+        return lines.joined(separator: "\n")
+    }
+
+    private func dartResolutionLabel(_ source: DARTCompanyResolutionSource) -> String {
+        switch source {
+        case .directCorpCode:
+            return "OpenDART 고유번호 직접 입력"
+        case .stockCodeCache:
+            return "종목코드 seed"
+        case .companyNameCache:
+            return "회사명 seed"
+        case .manualSeed:
+            return "내장 seed"
+        case .notFound:
+            return "미해석"
+        }
+    }
+
+    private func dartItemMetadata(_ item: DARTDisclosureDirectItem) -> String {
+        let remark = item.remark?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let remarkLabel = remark.flatMap { $0.isEmpty ? nil : "비고 \($0)" }
+        return [
+            "접수일 \(item.receiptDate)",
+            item.submitterName.map { "제출자 \($0)" },
+            remarkLabel
+        ]
+        .compactMap { $0 }
+        .joined(separator: " · ")
     }
 
     private func dartDirectFailureState(_ error: Error) -> ToolExecutionState {
@@ -947,13 +988,6 @@ actor ToolExecutionRouter {
     private func sanitizedQuery(_ query: String?, fallback: String) -> String {
         let trimmed = query?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmed.isEmpty ? fallback : trimmed
-    }
-
-    private func dartCorpCode(from query: String) -> String? {
-        guard let range = query.range(of: #"\b\d{8}\b"#, options: .regularExpression) else {
-            return nil
-        }
-        return String(query[range])
     }
 
     private func localBriefingItems(from snapshot: DailyBriefingLocalSnapshot) -> [MyTeamToolResultItem] {
