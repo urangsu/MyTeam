@@ -7,7 +7,7 @@ Current production candidate:
 - Base URL: `https://late-waterfall-c95c.urange.workers.dev`
 - Health: `GET /health`
 - Naver News: `GET /news/search?query={query}&display={1...20}`
-- DART recent disclosures: `GET /dart/recent?corpCode={corpCode}&days={1...30}&display={1...20}`
+- DART recent disclosures diagnostic: `GET /dart/recent?corpCode={corpCode}&days={1...30}&display={1...20}`
 - DART company diagnostic: `GET /dart/company?corpCode={corpCode}`
 - DART provider diagnostic: `GET /dart/diagnose?corpCode={corpCode}`
 - KMA weather: `GET /weather/kma/nowcast?nx={nx}&ny={ny}`, `GET /weather/kma/forecast?nx={nx}&ny={ny}`
@@ -20,6 +20,7 @@ Current production candidate:
 - News output is a search-result briefing, not a full article summary.
 - The app must preserve original links so users can inspect source articles.
 - If the proxy is unavailable, MyTeam may fall back to user-provided BYOK credentials.
+- DART is an exception: user-facing DART lookup uses app direct BYOK first. Cloudflare DART routes are operational diagnostics because production Worker calls to OpenDART currently fail with provider reachability `522`.
 - If both proxy and BYOK fail, show a failure state. Do not fake success.
 
 ## Cloudflare Setup
@@ -185,6 +186,12 @@ Required secret:
 
 - `DART_API_KEY`
 
+Product path:
+
+- User-facing DART lookup does not use the Cloudflare Worker by default.
+- MyTeam app reads the user's personal OpenDART API Key from Keychain and calls OpenDART directly.
+- If no personal key is connected, the app must show "DART 개인 API 키 연결 필요" rather than trying the Worker route.
+
 OpenDART guide alignment:
 
 - `GET /dart/recent` calls the official `https://opendart.fss.or.kr/api/list.json` endpoint.
@@ -205,6 +212,7 @@ Response policy:
 - Diagnostic responses may include `keyLength`; they must never include the key value or a full upstream URL containing `crtfc_key`.
 - `/dart/company` returns only minimal non-sensitive company fields and omits company registration numbers, business registration numbers, phone, and address fields.
 - `/dart/diagnose` calls `company.json` and `list.json` to distinguish credential, provider reachability, and list-specific failures. It is operational diagnostic output and is not exposed in the app UI.
+- Live production diagnostic status as of 2026-06-17: `/dart/recent` returns OpenDART fetch failure `522`; `/dart/company` and `/dart/diagnose` timed out in a 12s client check. These routes remain non-user-facing diagnostics.
 
 ### KMA
 
