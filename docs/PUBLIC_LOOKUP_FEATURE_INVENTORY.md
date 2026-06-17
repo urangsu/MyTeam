@@ -48,12 +48,13 @@ Required live endpoints after deployment:
 ## Live Gate Result
 
 - checkedAt: 2026-06-17 KST
-- workerVersion: 0.2.0
-- workerBuild: not present in deployed Worker
-- news.search: PASS, `ok: true`
-- dart.recent corpCode: BLOCKED, `provider_system_error`
-- dart.recent corpName: BLOCKED, `provider_system_error`
-- kma.nowcast: BLOCKED, `invalid_credentials`
-- kma.forecast: BLOCKED, `invalid_credentials`
-- law.search: PASS, `ok: true`
-- blocker: main merge remains blocked until Worker 0.2.1 with build marker is deployed, DART no longer returns bare provider system error, and KMA returns either `ok: true` or an explicit provider-level credential failure with base date/time and grid detail.
+- workerVersion: 0.2.1
+- workerBuild: public-lookup-0.2.1
+- news.search: PASS, HTTP 200, `ok: true`, provider `naver-news`
+- dart.recent corpCode: HOLD, HTTP 502, `provider_system_error`, provider `dart`, status `522`, stage `dart_fetch`
+- dart.recent corpName: HOLD, HTTP 502, `provider_system_error`, provider `dart`, stage `dart_fetch`
+- kma.nowcast: CONDITIONAL PASS, HTTP 502, `invalid_credentials`, provider `kma`, status `401`, baseDate `20260617`, baseTime `2030`, grid `63,89`
+- kma.forecast: CONDITIONAL PASS, HTTP 502, `invalid_credentials`, provider `kma`, status `401`, baseDate `20260617`, baseTime `2030`, grid `63,89`
+- law.search: PASS, HTTP 200, `ok: true`, provider `korean-law`, official `sourceURL` values present, legal advice notice present
+- appFailureSurface: PASS, proxy `no_results` is shown as an empty-result state; `invalid_credentials`, `provider_permission_denied`, and `provider_system_error` throw through the proxy client and render as failure or personal-key fallback, not success cards.
+- blocker: main merge remains on hold because DART still returns `provider_system_error` at `dart_fetch`. This is no longer a bare error, but the live provider request is not passing; verify OpenDART reachability/key/provider availability before merging to `main`.
