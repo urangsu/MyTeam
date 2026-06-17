@@ -7,8 +7,10 @@ Current route scope:
 - `GET /`
 - `GET /health`
 - `GET /news/search?query={query}&display={1...20}`
+- `GET /dart/company?corpCode={corpCode}`
 - `GET /dart/recent?corpCode={corpCode}&days={1...30}&display={1...20}`
 - `GET /dart/recent?corpName={corpName}&days={1...30}&display={1...20}`
+- `GET /dart/diagnose?corpCode={corpCode}`
 - `GET /weather/kma/nowcast?nx={nx}&ny={ny}`
 - `GET /weather/kma/forecast?nx={nx}&ny={ny}`
 - `GET /law/search?query={query}&display={1...20}`
@@ -35,12 +37,14 @@ This Worker is currently deployed from the Cloudflare Dashboard, not from a repo
 4. Save and deploy to Production.
 5. Verify `/health` before merging the app branch to `main`.
 
-The production `/health` response must show `version: "0.2.1"`, a non-empty `build` marker, and include these route names:
+The production `/health` response must show `version: "0.2.2"`, a non-empty `build` marker, and include these route names:
 
 ```text
 /health
 /news/search?query=삼성전자
+/dart/company?corpCode=00126380
 /dart/recent?corpCode=00126380
+/dart/diagnose?corpCode=00126380
 /weather/kma/nowcast?nx=63&ny=89
 /weather/kma/forecast?nx=63&ny=89
 /law/search?query=근로기준법&display=2
@@ -51,7 +55,9 @@ Live route checks:
 ```bash
 curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/health'
 curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/news/search?query=%EC%82%BC%EC%84%B1%EC%A0%84%EC%9E%90&display=2'
+curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/dart/company?corpCode=00126380'
 curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/dart/recent?corpCode=00126380&days=30&display=2'
+curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/dart/diagnose?corpCode=00126380'
 curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/weather/kma/nowcast?nx=63&ny=89'
 curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/weather/kma/forecast?nx=63&ny=89'
 curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/law/search?query=%EA%B7%BC%EB%A1%9C%EA%B8%B0%EC%A4%80%EB%B2%95&display=2'
@@ -81,6 +87,8 @@ https://late-waterfall-c95c.urange.workers.dev
 - Treat news output as search-result title/description snippets, not article full text.
 - Keep `/news/search` as a read-only GET route.
 - Treat DART output as disclosure lists and official links, not disclosure full-text analysis.
+- Treat DART `corpName` lookup as Worker-side best-effort filtering. It is not an official OpenDART `list.json` request parameter; prefer `corpCode` for reliable lookup.
+- Keep `/dart/company` and `/dart/diagnose` as operational diagnostics. Do not expose those routes as user-facing app features.
 - Treat Korean Law output as official search results, not legal advice.
 - Pass KMA grid coordinates only; do not accept raw address strings in Worker routes.
 

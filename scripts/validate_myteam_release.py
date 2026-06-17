@@ -42,11 +42,13 @@ FORBIDDEN_ACTIVE_SWIFT_PATTERNS = [
 ]
 
 
-BASIC_LOOKUP_WORKER_VERSION = "0.2.1"
+BASIC_LOOKUP_WORKER_VERSION = "0.2.2"
 BASIC_LOOKUP_WORKER_ROUTES = [
     "/health",
     "/news/search?query=삼성전자",
+    "/dart/company?corpCode=00126380",
     "/dart/recent?corpCode=00126380",
+    "/dart/diagnose?corpCode=00126380",
     "/weather/kma/nowcast?nx=63&ny=89",
     "/weather/kma/forecast?nx=63&ny=89",
     "/law/search?query=근로기준법&display=2",

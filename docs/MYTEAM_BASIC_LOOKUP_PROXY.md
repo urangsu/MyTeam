@@ -8,6 +8,8 @@ Current production candidate:
 - Health: `GET /health`
 - Naver News: `GET /news/search?query={query}&display={1...20}`
 - DART recent disclosures: `GET /dart/recent?corpCode={corpCode}&days={1...30}&display={1...20}`
+- DART company diagnostic: `GET /dart/company?corpCode={corpCode}`
+- DART provider diagnostic: `GET /dart/diagnose?corpCode={corpCode}`
 - KMA weather: `GET /weather/kma/nowcast?nx={nx}&ny={ny}`, `GET /weather/kma/forecast?nx={nx}&ny={ny}`
 - Korean Law search: `GET /law/search?query={query}&display={1...20}`
 
@@ -176,10 +178,20 @@ Routes:
 
 - `GET /dart/recent?corpName=삼성전자&days=7`
 - `GET /dart/recent?corpCode=00126380&days=7`
+- `GET /dart/company?corpCode=00126380`
+- `GET /dart/diagnose?corpCode=00126380`
 
 Required secret:
 
 - `DART_API_KEY`
+
+OpenDART guide alignment:
+
+- `GET /dart/recent` calls the official `https://opendart.fss.or.kr/api/list.json` endpoint.
+- Worker parameter `corpCode` maps to official OpenDART `corp_code`.
+- The Worker sends `crtfc_key`, `corp_code` when present, `bgn_de`, `end_de`, `sort=date`, `sort_mth=desc`, `page_no=1`, and `page_count=20`.
+- The Worker does not send `last_reprt_at`; OpenDART default `N` remains in effect.
+- `corpName` is not an official OpenDART `list.json` parameter. MyTeam only uses it as best-effort post-filtering over the returned disclosure list. Prefer `corpCode` for reliable lookup.
 
 Response policy:
 
@@ -189,6 +201,10 @@ Response policy:
 - provider reachability failures may return `provider_system_error` only when `stage`, `status`, and `classification: provider_reachability_failure` are present
 - DART fetch reachability failures should also return `retryable: true` and `mergeGate: conditional-pass`
 - do not treat DART `522` as `no_results`
+- `DART_API_KEY` is trimmed before use, but never returned or logged.
+- Diagnostic responses may include `keyLength`; they must never include the key value or a full upstream URL containing `crtfc_key`.
+- `/dart/company` returns only minimal non-sensitive company fields and omits company registration numbers, business registration numbers, phone, and address fields.
+- `/dart/diagnose` calls `company.json` and `list.json` to distinguish credential, provider reachability, and list-specific failures. It is operational diagnostic output and is not exposed in the app UI.
 
 ### KMA
 

@@ -13,6 +13,7 @@ This inventory tracks public-data lookup features that are visible in MyTeam. A 
 
 - News briefings use search-result titles and descriptions, not article full text.
 - DART results are disclosure lists and official links, not full disclosure analysis.
+- DART `corpCode` maps to OpenDART `corp_code`. DART `corpName` is MyTeam Worker best-effort post-filtering, not an official OpenDART `list.json` parameter.
 - KMA results are grid-based official weather data.
 - Korean Law results are search results and official links, not legal advice.
 - BYOK credentials are optional fallback for public-data lookups.
@@ -32,7 +33,9 @@ Required live endpoints after deployment:
 
 - `GET /health`
 - `GET /news/search?query=삼성전자&display=2`
+- `GET /dart/company?corpCode=00126380`
 - `GET /dart/recent?corpCode=00126380&days=30&display=2`
+- `GET /dart/diagnose?corpCode=00126380`
 - `GET /weather/kma/nowcast?nx=63&ny=89`
 - `GET /weather/kma/forecast?nx=63&ny=89`
 - `GET /law/search?query=근로기준법&display=2`
