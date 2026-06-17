@@ -540,13 +540,19 @@ nonisolated struct MyTeamProxyFailureResponse: Decodable, Sendable, Equatable {
     let error: String?
     let provider: String?
     let message: String?
+    let status: Int?
+    let stage: String?
+    let providerStatus: String?
+    let classification: String?
+    let retryable: Bool?
+    let mergeGate: String?
 }
 
 nonisolated enum MyTeamProxyError: Error, LocalizedError {
     case invalidBaseURL
     case invalidResponse
     case httpStatus(Int)
-    case providerUnavailable(String)
+    case providerUnavailable(MyTeamProxyFailureResponse)
     case decodingFailed
     case queryTooShort
     case noResults
@@ -559,8 +565,8 @@ nonisolated enum MyTeamProxyError: Error, LocalizedError {
             return "기본 조회 서버 응답을 확인하지 못했습니다."
         case .httpStatus(let status):
             return "기본 조회 서버가 HTTP \(status)을 반환했습니다."
-        case .providerUnavailable(let message):
-            return message
+        case .providerUnavailable(let failure):
+            return failure.userFacingMessage
         case .decodingFailed:
             return "기본 조회 서버 응답 형식을 해석하지 못했습니다."
         case .queryTooShort:
@@ -568,6 +574,19 @@ nonisolated enum MyTeamProxyError: Error, LocalizedError {
         case .noResults:
             return "기본 조회 결과가 없습니다."
         }
+    }
+}
+
+extension MyTeamProxyFailureResponse {
+    nonisolated var userFacingMessage: String {
+        let providerKey = provider?.lowercased() ?? ""
+        if providerKey == "dart", classification == "provider_reachability_failure" {
+            return "DART 제공기관 응답 지연으로 공시 조회를 완료하지 못했습니다. 잠시 후 다시 시도하거나, 개인 DART API 키 연결 상태를 확인하세요."
+        }
+        if providerKey == "kma", error == "invalid_credentials" {
+            return "기상청 조회 인증 설정을 확인해야 합니다. 관리자 기본 조회 키 또는 개인 API 키를 확인하세요."
+        }
+        return message ?? "기본 조회 서버가 요청을 완료하지 못했습니다."
     }
 }
 
@@ -586,7 +605,20 @@ actor MyTeamBasicLookupProxyClient {
         do {
             let health = try JSONDecoder().decode(MyTeamProxyHealth.self, from: data)
             guard health.ok else {
-                throw MyTeamProxyError.providerUnavailable("기본 조회 서버가 준비되지 않았습니다.")
+                throw MyTeamProxyError.providerUnavailable(
+                    MyTeamProxyFailureResponse(
+                        ok: false,
+                        error: "provider_unavailable",
+                        provider: nil,
+                        message: "기본 조회 서버가 준비되지 않았습니다.",
+                        status: nil,
+                        stage: nil,
+                        providerStatus: nil,
+                        classification: nil,
+                        retryable: nil,
+                        mergeGate: nil
+                    )
+                )
             }
             return health
         } catch let error as MyTeamProxyError {
@@ -621,7 +653,20 @@ actor MyTeamBasicLookupProxyClient {
         do {
             let decoded = try JSONDecoder().decode(MyTeamProxyNewsSearchResponse.self, from: data)
             guard decoded.ok else {
-                throw MyTeamProxyError.providerUnavailable("네이버 뉴스 기본 조회가 준비되지 않았습니다.")
+                throw MyTeamProxyError.providerUnavailable(
+                    MyTeamProxyFailureResponse(
+                        ok: false,
+                        error: "provider_unavailable",
+                        provider: "naver-news",
+                        message: "네이버 뉴스 기본 조회가 준비되지 않았습니다.",
+                        status: nil,
+                        stage: nil,
+                        providerStatus: nil,
+                        classification: nil,
+                        retryable: nil,
+                        mergeGate: nil
+                    )
+                )
             }
             return decoded
         } catch let error as MyTeamProxyError {
@@ -738,9 +783,7 @@ actor MyTeamBasicLookupProxyClient {
                 if failure.error == "no_results" {
                     throw MyTeamProxyError.noResults
                 }
-                throw MyTeamProxyError.providerUnavailable(
-                    failure.message ?? "기본 조회 서버가 요청을 완료하지 못했습니다."
-                )
+                throw MyTeamProxyError.providerUnavailable(failure)
             }
             return try JSONDecoder().decode(responseType, from: data)
         } catch let error as MyTeamProxyError {

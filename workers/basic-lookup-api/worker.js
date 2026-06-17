@@ -196,7 +196,15 @@ async function handleDARTRecent(url, env, startedAt) {
       elapsedMs: Date.now() - startedAt,
       items
     });
-  } catch {
+  } catch (error) {
+    if (stage === "dart_fetch") {
+      return providerStageError(PROVIDERS.dart, stage, "DART provider could not be reached from the lookup proxy.", {
+        status: providerReachabilityStatus(error),
+        classification: "provider_reachability_failure",
+        retryable: true,
+        mergeGate: "conditional-pass"
+      });
+    }
     return providerStageError(PROVIDERS.dart, stage, "DART lookup failed during provider request.");
   }
 }
@@ -448,6 +456,16 @@ function providerError(provider, status, extra = {}) {
   if (status === 429) {
     return jsonError("provider_quota_exceeded", "Provider quota was exceeded.", 503, { provider, status, ...extra });
   }
+  if (provider === PROVIDERS.dart && status === 522) {
+    return jsonError("provider_system_error", "DART provider could not be reached from the lookup proxy.", 502, {
+      provider,
+      status,
+      classification: "provider_reachability_failure",
+      retryable: true,
+      mergeGate: "conditional-pass",
+      ...extra
+    });
+  }
   if (status >= 500) {
     return jsonError("provider_system_error", "Provider is temporarily unavailable.", 502, { provider, status, ...extra });
   }
@@ -647,6 +665,21 @@ function kmaCategoryMeta(category) {
 
 function formatDateYYYYMMDD(date) {
   return `${date.getUTCFullYear()}${String(date.getUTCMonth() + 1).padStart(2, "0")}${String(date.getUTCDate()).padStart(2, "0")}`;
+}
+
+function providerReachabilityStatus(error) {
+  const candidates = [
+    error?.status,
+    error?.cause?.status,
+    error?.response?.status
+  ];
+  for (const candidate of candidates) {
+    const parsed = Number.parseInt(candidate, 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  return 522;
 }
 
 function jsonResponse(payload, status = 200) {

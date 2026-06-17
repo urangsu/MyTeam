@@ -192,6 +192,12 @@ def validate_basic_lookup_worker_source() -> None:
     if missing_routes:
         joined = ", ".join(missing_routes)
         raise SystemExit(f"FAIL: basic lookup Worker /health route list missing: {joined}")
+    if 'classification: "provider_reachability_failure"' not in source:
+        raise SystemExit("FAIL: basic lookup Worker must classify DART reachability failures")
+    if 'mergeGate: "conditional-pass"' not in source:
+        raise SystemExit("FAIL: basic lookup Worker must mark DART reachability failures as conditional-pass")
+    if 'retryable: true' not in source:
+        raise SystemExit("FAIL: basic lookup Worker must mark DART reachability failures as retryable")
 
 
 def main() -> None:

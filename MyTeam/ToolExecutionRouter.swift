@@ -448,6 +448,40 @@ actor ToolExecutionRouter {
                 sourceLabel: "MyTeam 기본 DART 조회",
                 modeNotice: "최근 공시 목록을 조회했습니다. 공시 전문 분석이 아니라 DART 공시 목록과 공식 링크 기준입니다."
             )
+        } catch let proxyError as MyTeamProxyError {
+            guard let apiKey = await credentialValue(provider: provider, fieldID: "apiKey") else {
+                return .failed(MyTeamToolFailure(
+                    title: "공시 조회를 완료하지 못했습니다",
+                    message: proxyError.errorDescription ?? "기본 조회 서버가 응답하지 않습니다. 잠시 후 다시 시도하거나 개인 OpenDART API Key를 연결하세요.",
+                    recoveryActions: [
+                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
+                        MyTeamNextAction(id: "openConnection", title: "개인 키 연결", role: .normal)
+                    ]
+                ))
+            }
+            do {
+                let items = try await DARTDisclosureDirectConnector.recentDisclosures(
+                    query: query,
+                    apiKey: apiKey,
+                    daysBack: daysBack
+                )
+                return dartResultState(
+                    query: query,
+                    daysBack: daysBack,
+                    items: items,
+                    sourceLabel: "DART 공시 · 개인 키",
+                    modeNotice: "기본 조회 서버가 응답하지 않아 개인 OpenDART API Key로 조회했습니다. 공시 전문 분석이 아니라 DART 공시 목록과 공식 링크 기준입니다."
+                )
+            } catch {
+                return .failed(MyTeamToolFailure(
+                    title: "공시 조회를 완료하지 못했습니다",
+                    message: "기본 조회 서버와 개인 OpenDART API Key 조회가 모두 실패했습니다. 잠시 후 다시 시도하거나 개인 키 권한을 확인하세요.",
+                    recoveryActions: [
+                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
+                        MyTeamNextAction(id: "openConnection", title: "개인 키 확인", role: .normal)
+                    ]
+                ))
+            }
         } catch {
             guard let apiKey = await credentialValue(provider: provider, fieldID: "apiKey") else {
                 return .failed(MyTeamToolFailure(
@@ -702,6 +736,41 @@ actor ToolExecutionRouter {
                 sourceLabel: "MyTeam 기본 기상청 조회",
                 modeNotice: "기상청 단기예보 조회 결과입니다. 위치 좌표 기준의 공식 기상 데이터입니다."
             )
+        } catch let proxyError as MyTeamProxyError {
+            guard let serviceKey = await credentialValue(provider: provider, fieldID: "serviceKey") else {
+                return .failed(MyTeamToolFailure(
+                    title: "날씨 조회를 완료하지 못했습니다",
+                    message: proxyError.errorDescription ?? "기본 조회 서버가 응답하지 않습니다. 잠시 후 다시 시도하거나 개인 기상청 Service Key를 연결하세요.",
+                    recoveryActions: [
+                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
+                        MyTeamNextAction(id: "openConnection", title: "개인 키 연결", role: .normal)
+                    ]
+                ))
+            }
+            do {
+                let observations = try await KMAWeatherDirectConnector.ultraShortNowcast(
+                    serviceKey: serviceKey,
+                    nx: nx,
+                    ny: ny
+                )
+                return weatherResultState(
+                    regionName: region.name,
+                    nx: nx,
+                    ny: ny,
+                    observations: observations,
+                    sourceLabel: "기상청 초단기실황 · 개인 키",
+                    modeNotice: "기본 조회 서버가 응답하지 않아 개인 기상청 Service Key로 조회했습니다. 위치 좌표 기준의 공식 기상 데이터입니다."
+                )
+            } catch {
+                return .failed(MyTeamToolFailure(
+                    title: "날씨 조회를 완료하지 못했습니다",
+                    message: "기본 조회 서버와 개인 기상청 Service Key 조회가 모두 실패했습니다. 잠시 후 다시 시도하거나 개인 키 권한을 확인하세요.",
+                    recoveryActions: [
+                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
+                        MyTeamNextAction(id: "openConnection", title: "개인 키 확인", role: .normal)
+                    ]
+                ))
+            }
         } catch {
             guard let serviceKey = await credentialValue(provider: provider, fieldID: "serviceKey") else {
                 return .failed(MyTeamToolFailure(

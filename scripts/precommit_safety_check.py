@@ -126,6 +126,12 @@ def main() -> None:
             missing_routes = [route for route in BASIC_LOOKUP_WORKER_ROUTES if route not in source]
             if missing_routes:
                 failures.append(f"{path}: /health route list missing {', '.join(missing_routes)}")
+            if 'classification: "provider_reachability_failure"' not in source:
+                failures.append(f"{path}: DART reachability failure classification missing")
+            if 'mergeGate: "conditional-pass"' not in source:
+                failures.append(f"{path}: DART conditional-pass merge gate marker missing")
+            if 'retryable: true' not in source:
+                failures.append(f"{path}: DART retryable marker missing")
 
     if "MyTeam/CharacterDialogues.swift" in staged:
         result = run(["python3", "scripts/report_character_dialogues.py", "--check-only"])
