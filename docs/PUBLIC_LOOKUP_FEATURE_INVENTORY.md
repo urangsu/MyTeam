@@ -5,9 +5,9 @@ This inventory tracks public-data lookup features that are visible in MyTeam. A 
 | User-facing feature | Tool ID / Skill | Current execution path | Provider | Worker secret | Proxy route | BYOK fallback | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 뉴스 브리핑 | `news.search`, `korean.news-search` | Cloudflare proxy first, Naver BYOK fallback | Naver News Search | `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` | `GET /news/search?query={query}&display={1...20}` | Client ID + Client Secret | done |
-| 공시 조회 | `dart.disclosures.search`, `korean.dart` | Cloudflare proxy first, OpenDART BYOK fallback | DART | `DART_API_KEY` | `GET /dart/recent?corpCode={corpCode}&days={1...30}&display={1...20}` or `corpName={name}` | OpenDART API Key | ready-after-worker-deploy |
-| 날씨 조회 | `weather.current`, `korean.weather` | Cloudflare proxy first, KMA BYOK fallback | KMA VilageFcst | `KMA_SERVICE_KEY` | `GET /weather/kma/nowcast?nx={nx}&ny={ny}` | Public Data Service Key | ready-after-worker-deploy |
-| 법령 검색 | `law.search`, `korean.law-search` | Cloudflare proxy first, Law.go.kr BYOK fallback | Korean Law | `LAW_OC` | `GET /law/search?query={query}&display={1...20}` | Law.go.kr OC | ready-after-worker-deploy |
+| 공시 조회 | `dart.disclosures.search`, `korean.dart` | Cloudflare proxy first, OpenDART BYOK fallback | DART | `DART_API_KEY` | `GET /dart/recent?corpCode={corpCode}&days={1...30}&display={1...20}` or `corpName={name}` | OpenDART API Key | conditional-pass |
+| 날씨 조회 | `weather.current`, `korean.weather` | Cloudflare proxy first, KMA BYOK fallback | KMA VilageFcst | `KMA_SERVICE_KEY` | `GET /weather/kma/nowcast?nx={nx}&ny={ny}` | Public Data Service Key | conditional-pass |
+| 법령 검색 | `law.search`, `korean.law-search` | Cloudflare proxy first, Law.go.kr BYOK fallback | Korean Law | `LAW_OC` | `GET /law/search?query={query}&display={1...20}` | Law.go.kr OC | done |
 
 ## Product Truth Rules
 
@@ -58,3 +58,14 @@ Required live endpoints after deployment:
 - law.search: PASS, HTTP 200, `ok: true`, provider `korean-law`, official `sourceURL` values present, legal advice notice present
 - appFailureSurface: PASS, proxy `no_results` is shown as an empty-result state; `invalid_credentials`, `provider_permission_denied`, and `provider_system_error` throw through the proxy client and render as failure or personal-key fallback, not success cards.
 - blocker: none for the proxy-to-main merge gate. DART stabilization remains a follow-up because the provider request still fails at `dart_fetch`, but the deployed Worker now returns provider/stage/status/classification and the app renders that state as failure rather than success.
+
+## App Manual QA
+
+- checkedAt: 2026-06-17 KST
+- appBuild: post-merge code path review complete; full tap-through QA remains
+- News: PASS by code path and live route. Result cards show source domain and links, and the notice stays scoped to titles/descriptions rather than article full text.
+- Law: PASS by code path and live route. Result cards keep official `sourceURL` links and the legal-disclaimer notice.
+- KMA: CONDITIONAL PASS by code path and live route. Current expected result is a failure card with credential guidance, not a success summary.
+- DART: CONDITIONAL PASS by code path and live route. Current expected result is a failure card with provider reachability guidance, not a disclosure summary.
+- fakeSuccess: PASS. `no_results` stays an empty-result state, and KMA/DART provider failures do not render as success cards.
+- notes: full in-app button-by-button manual QA is still pending; this section records the post-merge router/client surface and live proxy verification.
