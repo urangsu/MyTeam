@@ -1395,32 +1395,30 @@ enum KSkillRunEngine {
         let provider = ExternalProvider.dartDisclosure
         let lookupQuery = cleanedLookupQuery(query, dropping: ["DART", "공시", "최근 이슈"])
 
-        do {
-            let response = try await MyTeamBasicLookupProxyClient.shared.searchDARTDisclosures(query: lookupQuery)
-            return dartEvidenceResult(
-                items: response.directItems,
-                providerLabel: "MyTeam 기본 DART 조회",
-                emptyContext: "\n\n[DART 기본 조회]\n- 최근 공시 결과 없음"
+        guard await isCredentialConnected(provider), let apiKey = credential(provider, fieldID: "apiKey") else {
+            return ToolEvidenceResult(
+                promptContext: "\n\n[DART 직접 조회]\n- 상태: DART 공시 조회에는 검증된 개인 OpenDART API Key 연결이 필요합니다.",
+                sources: []
             )
-        } catch MyTeamProxyError.noResults {
-            return ToolEvidenceResult(promptContext: "\n\n[DART 기본 조회]\n- 최근 공시 결과 없음", sources: [])
+        }
+        guard let corpCode = dartCorpCode(from: lookupQuery) else {
+            return ToolEvidenceResult(
+                promptContext: "\n\n[DART 직접 조회]\n- 상태: 현재 공시 조회는 OpenDART 8자리 고유번호가 필요합니다. 예: 삼성전자 00126380. 회사명 자동 변환은 후속 작업입니다.",
+                sources: []
+            )
+        }
+        do {
+            let items = try await DARTDisclosureDirectConnector.recentDisclosures(
+                corpCode: corpCode,
+                apiKey: apiKey
+            )
+            return dartEvidenceResult(
+                items: items,
+                providerLabel: "DART 공시 · 개인 키",
+                emptyContext: "\n\n[DART 직접 조회]\n- OpenDART가 조회 결과 없음 상태를 반환했습니다."
+            )
         } catch {
-            guard await isCredentialConnected(provider), let apiKey = credential(provider, fieldID: "apiKey") else {
-                return directFailureEvidence(provider: provider, error: error)
-            }
-            do {
-                let items = try await DARTDisclosureDirectConnector.recentDisclosures(
-                    query: lookupQuery,
-                    apiKey: apiKey
-                )
-                return dartEvidenceResult(
-                    items: items,
-                    providerLabel: "DART 공시 · 개인 키",
-                    emptyContext: "\n\n[DART 직접 조회]\n- 최근 공시 결과 없음"
-                )
-            } catch {
-                return directFailureEvidence(provider: provider, error: error)
-            }
+            return directFailureEvidence(provider: provider, error: error)
         }
     }
 
@@ -1442,7 +1440,7 @@ enum KSkillRunEngine {
             )
         }
         let context = "\n\n[\(providerLabel)]\n" + items.map {
-            "- \($0.corporationName) / \($0.reportName)\n  rceptNo=\($0.receiptNumber), rceptDate=\($0.receiptDate)\n  \($0.sourceURL.absoluteString)\n  공시 전문 분석이 아니라 DART 공시 목록과 공식 링크 기준입니다."
+            "- \($0.corporationName) / \($0.reportName)\n  rceptNo=\($0.receiptNumber), rceptDate=\($0.receiptDate)\n  \($0.sourceURL.absoluteString)\n  DART 공시 목록과 공식 링크 기준입니다."
         }.joined(separator: "\n")
         return ToolEvidenceResult(promptContext: context, sources: sources)
     }
@@ -1606,6 +1604,13 @@ enum KSkillRunEngine {
             .replacingOccurrences(of: "찾아줘", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return cleaned.isEmpty ? query : cleaned
+    }
+
+    private static func dartCorpCode(from query: String) -> String? {
+        guard let range = query.range(of: #"\b\d{8}\b"#, options: .regularExpression) else {
+            return nil
+        }
+        return String(query[range])
     }
 
     private static func weatherGrid(for query: String) -> (name: String, nx: Int, ny: Int) {

@@ -873,26 +873,36 @@ extension MyTeamProxyLawSearchResponse {
 
 enum DARTDisclosureDirectConnector {
     static func recentDisclosures(
-        query: String,
+        corpCode: String,
         apiKey: String,
         daysBack: Int = 30,
+        pageCount: Int = 20,
         session: URLSession = .shared,
         clock: any PublicAPIClock = SystemPublicAPIClock()
     ) async throws -> [DARTDisclosureDirectItem] {
-        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedCorpCode = corpCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedCorpCode.range(of: #"^\d{8}$"#, options: .regularExpression) != nil else {
+            throw ConnectorFailureCode.responseParseFailed
+        }
         var components = URLComponents()
         components.scheme = "https"
         components.host = "opendart.fss.or.kr"
         components.path = "/api/list.json"
         components.queryItems = [
             URLQueryItem(name: "crtfc_key", value: apiKey.trimmingCharacters(in: .whitespacesAndNewlines)),
+            URLQueryItem(name: "corp_code", value: trimmedCorpCode),
             URLQueryItem(name: "bgn_de", value: directDateString(daysBefore: max(daysBack, 1), clock: clock)),
             URLQueryItem(name: "end_de", value: directDateString(daysBefore: 0, clock: clock)),
-            URLQueryItem(name: "page_count", value: "20")
+            URLQueryItem(name: "sort", value: "date"),
+            URLQueryItem(name: "sort_mth", value: "desc"),
+            URLQueryItem(name: "page_no", value: "1"),
+            URLQueryItem(name: "page_count", value: String(min(max(pageCount, 1), 100)))
         ]
         guard let url = components.url else { throw ConnectorFailureCode.responseParseFailed }
 
-        let (data, response) = try await session.data(for: URLRequest(url: url))
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 10
+        let (data, response) = try await session.data(for: request)
         try validateDirectHTTP(response)
         guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw ConnectorFailureCode.responseParseFailed
@@ -900,17 +910,10 @@ enum DARTDisclosureDirectConnector {
         let status = object["status"] as? String
         guard status == "000" else {
             if status == "013" { return [] }
-            throw ConnectorFailureCode.responseParseFailed
+            throw dartFailureCode(status)
         }
         guard let list = object["list"] as? [[String: Any]] else { return [] }
-        let parsed = list.compactMap(parseItem)
-        let queryTokens = significantTokens(from: trimmedQuery)
-        guard !queryTokens.isEmpty else { return Array(parsed.prefix(5)) }
-        let filtered = parsed.filter {
-            let haystack = "\($0.corporationName) \($0.reportName)".lowercased()
-            return queryTokens.contains { haystack.contains($0) }
-        }
-        return Array(filtered.prefix(5))
+        return Array(list.compactMap(parseItem).prefix(min(max(pageCount, 1), 100)))
     }
 
     private static func parseItem(_ item: [String: Any]) -> DARTDisclosureDirectItem? {
@@ -928,6 +931,23 @@ enum DARTDisclosureDirectConnector {
             receiptDate: receiptDate,
             sourceURL: sourceURL
         )
+    }
+
+    private static func dartFailureCode(_ status: String?) -> ConnectorFailureCode {
+        switch status {
+        case "010", "011", "901":
+            return .invalidAPIKey
+        case "012":
+            return .permissionDenied
+        case "020":
+            return .quotaExceeded
+        case "021", "100", "101":
+            return .responseParseFailed
+        case "800", "900":
+            return .providerUnavailable
+        default:
+            return .responseParseFailed
+        }
     }
 }
 

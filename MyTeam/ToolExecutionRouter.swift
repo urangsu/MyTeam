@@ -424,98 +424,46 @@ actor ToolExecutionRouter {
 
     private func runDART(input: MyTeamToolInput) async -> ToolExecutionState {
         let provider = ExternalProvider.dartDisclosure
-        let query = sanitizedQuery(input.query, fallback: "포스코")
+        let query = sanitizedQuery(input.query, fallback: "00126380")
         let daysBack = min(max(input.daysBack ?? 7, 1), 30)
+        let displayCount = min(max(input.displayCount ?? 10, 1), 20)
+
+        guard let corpCode = dartCorpCode(from: query) else {
+            return .failed(MyTeamToolFailure(
+                title: "DART 고유번호가 필요합니다",
+                message: "현재 공시 조회는 OpenDART 8자리 고유번호로 직접 실행합니다. 예: 삼성전자 00126380. 회사명 자동 변환은 후속 작업입니다.",
+                recoveryActions: [
+                    MyTeamNextAction(id: "changeKeyword", title: "고유번호 입력", role: .normal)
+                ]
+            ))
+        }
+
+        guard let apiKey = await credentialValue(provider: provider, fieldID: "apiKey") else {
+            return .failed(MyTeamToolFailure(
+                title: "DART 개인 API 키 연결이 필요합니다",
+                message: "DART 공시 조회에는 개인 DART API 키 연결이 필요합니다. 설정에서 DART API 키를 연결한 뒤 다시 시도하세요.",
+                recoveryActions: [
+                    MyTeamNextAction(id: "openConnection", title: "DART 키 연결", role: .normal)
+                ]
+            ))
+        }
 
         do {
-            let response = try await MyTeamBasicLookupProxyClient.shared.searchDARTDisclosures(
-                query: query,
+            let items = try await DARTDisclosureDirectConnector.recentDisclosures(
+                corpCode: corpCode,
+                apiKey: apiKey,
                 daysBack: daysBack,
-                display: input.displayCount ?? 10
+                pageCount: displayCount
             )
             return dartResultState(
-                query: query,
+                query: corpCode,
                 daysBack: daysBack,
-                items: response.directItems,
-                sourceLabel: "MyTeam 기본 DART 조회",
-                modeNotice: "최근 공시 목록을 조회했습니다. 공시 전문 분석이 아니라 DART 공시 목록과 공식 링크 기준입니다."
+                items: items,
+                sourceLabel: "DART 공시 · 개인 키",
+                modeNotice: "DART 공시 목록을 가져왔습니다. 공시 원문은 DART 공식 링크에서 확인하세요."
             )
-        } catch MyTeamProxyError.noResults {
-            return dartResultState(
-                query: query,
-                daysBack: daysBack,
-                items: [],
-                sourceLabel: "MyTeam 기본 DART 조회",
-                modeNotice: "최근 공시 목록을 조회했습니다. 공시 전문 분석이 아니라 DART 공시 목록과 공식 링크 기준입니다."
-            )
-        } catch let proxyError as MyTeamProxyError {
-            guard let apiKey = await credentialValue(provider: provider, fieldID: "apiKey") else {
-                return .failed(MyTeamToolFailure(
-                    title: "공시 조회를 완료하지 못했습니다",
-                    message: proxyError.errorDescription ?? "기본 조회 서버가 응답하지 않습니다. 잠시 후 다시 시도하거나 기본 조회 상태 또는 개인 OpenDART API Key 연결 상태를 확인하세요.",
-                    recoveryActions: [
-                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
-                        MyTeamNextAction(id: "openConnection", title: "개인 키 연결", role: .normal)
-                    ]
-                ))
-            }
-            do {
-                let items = try await DARTDisclosureDirectConnector.recentDisclosures(
-                    query: query,
-                    apiKey: apiKey,
-                    daysBack: daysBack
-                )
-                return dartResultState(
-                    query: query,
-                    daysBack: daysBack,
-                    items: items,
-                    sourceLabel: "DART 공시 · 개인 키",
-                    modeNotice: "기본 조회 서버가 응답하지 않아 개인 OpenDART API Key로 조회했습니다. 공시 전문 분석이 아니라 DART 공시 목록과 공식 링크 기준입니다."
-                )
-            } catch {
-                return .failed(MyTeamToolFailure(
-                    title: "공시 조회를 완료하지 못했습니다",
-                    message: "기본 조회 서버와 개인 OpenDART API Key 조회가 모두 실패했습니다. 잠시 후 다시 시도하거나 기본 조회 상태와 개인 키 권한을 확인하세요.",
-                    recoveryActions: [
-                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
-                        MyTeamNextAction(id: "openConnection", title: "개인 키 확인", role: .normal)
-                    ]
-                ))
-            }
         } catch {
-            guard let apiKey = await credentialValue(provider: provider, fieldID: "apiKey") else {
-                return .failed(MyTeamToolFailure(
-                    title: "공시 조회를 완료하지 못했습니다",
-                    message: "기본 조회 서버가 응답하지 않습니다. 잠시 후 다시 시도하거나 기본 조회 상태 또는 개인 OpenDART API Key 연결 상태를 확인하세요.",
-                    recoveryActions: [
-                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
-                        MyTeamNextAction(id: "openConnection", title: "개인 키 연결", role: .normal)
-                    ]
-                ))
-            }
-            do {
-                let items = try await DARTDisclosureDirectConnector.recentDisclosures(
-                    query: query,
-                    apiKey: apiKey,
-                    daysBack: daysBack
-                )
-                return dartResultState(
-                    query: query,
-                    daysBack: daysBack,
-                    items: items,
-                    sourceLabel: "DART 공시 · 개인 키",
-                    modeNotice: "기본 조회 서버가 응답하지 않아 개인 OpenDART API Key로 조회했습니다. 공시 전문 분석이 아니라 DART 공시 목록과 공식 링크 기준입니다."
-                )
-            } catch {
-                return .failed(MyTeamToolFailure(
-                    title: "공시 조회를 완료하지 못했습니다",
-                    message: "기본 조회 서버와 개인 OpenDART API Key 조회가 모두 실패했습니다. 잠시 후 다시 시도하거나 기본 조회 상태와 개인 키 권한을 확인하세요.",
-                    recoveryActions: [
-                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
-                        MyTeamNextAction(id: "openConnection", title: "개인 키 확인", role: .normal)
-                    ]
-                ))
-            }
+            return dartDirectFailureState(error)
         }
     }
 
@@ -528,8 +476,8 @@ actor ToolExecutionRouter {
     ) -> ToolExecutionState {
         if items.isEmpty {
             return .succeeded(MyTeamToolResult(
-                title: "최근 공시가 없습니다",
-                summary: "'\(query)' 기준 최근 \(daysBack)일 공시를 찾지 못했습니다.",
+                title: "조회된 공시가 없습니다",
+                summary: "OpenDART가 '\(query)' 기준 최근 \(daysBack)일 조회 결과 없음 상태를 반환했습니다.",
                 sourceLabel: sourceLabel,
                 body: modeNotice,
                 items: [],
@@ -542,7 +490,7 @@ actor ToolExecutionRouter {
         }
 
         return .succeeded(MyTeamToolResult(
-            title: "최근 공시를 찾았습니다",
+            title: "DART 공시 목록을 가져왔습니다",
             summary: "최근 \(daysBack)일 기준 공시 \(items.count)건을 찾았습니다.",
             sourceLabel: sourceLabel,
             body: modeNotice,
@@ -559,6 +507,47 @@ actor ToolExecutionRouter {
                 MyTeamNextAction(id: "draftReport", title: "보고서 문단", role: .normal),
                 MyTeamNextAction(id: "searchAgain", title: "다시 검색", role: .normal)
             ]
+        ))
+    }
+
+    private func dartDirectFailureState(_ error: Error) -> ToolExecutionState {
+        let failureCode = error as? ConnectorFailureCode
+        let message: String
+        let actions: [MyTeamNextAction]
+
+        switch failureCode {
+        case .invalidAPIKey?:
+            message = "DART API 키가 유효하지 않습니다. OpenDART 인증키 상태를 확인하세요."
+            actions = [
+                MyTeamNextAction(id: "openConnection", title: "DART 키 확인", role: .normal)
+            ]
+        case .permissionDenied?:
+            message = "DART API 키 권한 또는 접근 허용 상태를 확인하세요."
+            actions = [
+                MyTeamNextAction(id: "openConnection", title: "DART 키 확인", role: .normal)
+            ]
+        case .quotaExceeded?, .rateLimited?:
+            message = "OpenDART 요청 한도에 도달했습니다. 잠시 후 다시 시도하세요."
+            actions = [
+                MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal)
+            ]
+        case .providerUnavailable?, .networkError?:
+            message = "OpenDART 제공기관 응답 지연으로 공시 조회를 완료하지 못했습니다. 잠시 후 다시 시도하세요."
+            actions = [
+                MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal)
+            ]
+        default:
+            message = "DART 응답을 해석하지 못했습니다. 고유번호와 OpenDART 인증키 상태를 확인하세요."
+            actions = [
+                MyTeamNextAction(id: "openConnection", title: "DART 키 확인", role: .normal),
+                MyTeamNextAction(id: "changeKeyword", title: "고유번호 확인", role: .normal)
+            ]
+        }
+
+        return .failed(MyTeamToolFailure(
+            title: "공시 조회를 완료하지 못했습니다",
+            message: message,
+            recoveryActions: actions
         ))
     }
 
@@ -958,6 +947,13 @@ actor ToolExecutionRouter {
     private func sanitizedQuery(_ query: String?, fallback: String) -> String {
         let trimmed = query?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmed.isEmpty ? fallback : trimmed
+    }
+
+    private func dartCorpCode(from query: String) -> String? {
+        guard let range = query.range(of: #"\b\d{8}\b"#, options: .regularExpression) else {
+            return nil
+        }
+        return String(query[range])
     }
 
     private func localBriefingItems(from snapshot: DailyBriefingLocalSnapshot) -> [MyTeamToolResultItem] {
