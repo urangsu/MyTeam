@@ -21,6 +21,7 @@ Current production candidate:
 - The app must preserve original links so users can inspect source articles.
 - If the proxy is unavailable, MyTeam may fall back to user-provided BYOK credentials.
 - DART is an exception: user-facing DART lookup uses app direct BYOK first. Cloudflare DART routes are operational diagnostics because production Worker calls to OpenDART currently fail with provider reachability `522`.
+- DART app direct resolves user input before calling OpenDART. The MVP seed supports `삼성전자`, `삼성전자(주)`, `Samsung Electronics`, `005930`, and `00126380` as OpenDART corp code `00126380`.
 - If both proxy and BYOK fail, show a failure state. Do not fake success.
 
 ## Cloudflare Setup
@@ -177,7 +178,7 @@ These routes are implemented in the repository Worker source. Do not mark them p
 
 Routes:
 
-- `GET /dart/recent?corpName=삼성전자&days=7`
+- `GET /dart/recent?corpName=삼성전자&days=7` (diagnostic route only; app direct does not use Worker `corpName`)
 - `GET /dart/recent?corpCode=00126380&days=7`
 - `GET /dart/company?corpCode=00126380`
 - `GET /dart/diagnose?corpCode=00126380`
@@ -198,7 +199,8 @@ OpenDART guide alignment:
 - Worker parameter `corpCode` maps to official OpenDART `corp_code`.
 - The Worker sends `crtfc_key`, `corp_code` when present, `bgn_de`, `end_de`, `sort=date`, `sort_mth=desc`, `page_no=1`, and `page_count=20`.
 - The Worker does not send `last_reprt_at`; OpenDART default `N` remains in effect.
-- `corpName` is not an official OpenDART `list.json` parameter. MyTeam only uses it as best-effort post-filtering over the returned disclosure list. Prefer `corpCode` for reliable lookup.
+- `corpName` is not an official OpenDART `list.json` parameter. User-facing app direct lookup resolves `corpName` or stock code to `corp_code` before calling OpenDART. Worker-side `corpName` remains diagnostic-only and best-effort.
+- The current app direct seed supports Samsung Electronics only. Full cache is a follow-up: download OpenDART corpCode ZIP, parse `CORPCODE.xml`, cache company name / stock code / corp code, add TTL, and support manual refresh.
 
 Response policy:
 

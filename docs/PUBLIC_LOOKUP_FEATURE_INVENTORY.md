@@ -13,11 +13,13 @@ This inventory tracks public-data lookup features that are visible in MyTeam. A 
 
 - News briefings use search-result titles and descriptions, not article full text.
 - DART results are disclosure lists and official links, not full disclosure analysis.
-- DART `corpCode` maps to OpenDART `corp_code`. DART `corpName` is MyTeam Worker best-effort post-filtering, not an official OpenDART `list.json` parameter.
+- DART `corpCode` maps to OpenDART `corp_code`. OpenDART `list.json` does not accept `corpName`; the app resolves user input to `corp_code` before calling OpenDART.
 - OpenDART direct calls from the app are the user-facing DART path. Cloudflare DART routes remain operational diagnostics because production Worker calls to OpenDART return provider reachability `522`.
+- DART app direct MVP supports the Samsung seed: `삼성전자`, `삼성전자(주)`, `Samsung Electronics`, stock code `005930`, and corp code `00126380` all resolve to `00126380`.
+- Full corp code cache is a follow-up: download OpenDART corpCode ZIP, parse `CORPCODE.xml`, cache company name / stock code / corp code, add TTL, and support manual refresh.
 - KMA results are grid-based official weather data.
 - Korean Law results are search results and official links, not legal advice.
-- BYOK credentials are optional fallback for public-data lookups.
+- BYOK credentials are optional fallback for most public-data lookups. DART is direct BYOK-first and requires a personal OpenDART API Key.
 - If both proxy and BYOK fail, MyTeam must show failure, not success.
 
 ## Remaining Live Validation
@@ -71,6 +73,6 @@ Required live endpoints after deployment:
 - News: PASS by code path and live route. Result cards show source domain and links, and the notice stays scoped to titles/descriptions rather than article full text.
 - Law: PASS by code path and live route. Result cards keep official `sourceURL` links and the legal-disclaimer notice.
 - KMA: CONDITIONAL PASS by code path and live route. Current expected result is a failure card with credential guidance, not a success summary.
-- DART: PARTIAL by live app QA. Expected product path is app direct with personal OpenDART API Key. Cloudflare DART routes are diagnostic-only and should not render as user-facing success cards.
+- DART: PARTIAL by live app QA. Expected product path is app direct with personal OpenDART API Key. `삼성전자`, `005930`, and `00126380` should resolve to OpenDART corp code `00126380`; Cloudflare DART routes are diagnostic-only and should not render as user-facing success cards.
 - fakeSuccess: PASS. `no_results` stays an empty-result state, and KMA/DART provider failures do not render as success cards.
 - notes: full in-app button-by-button manual QA is still pending; this section records the post-merge router/client surface and live proxy verification.
