@@ -88,7 +88,7 @@ https://late-waterfall-c95c.urange.workers.dev
 - Keep `/news/search` as a read-only GET route.
 - Treat DART output as disclosure lists and official links, not disclosure full-text analysis.
 - Treat DART `corpName` lookup as Worker-side best-effort filtering. It is not an official OpenDART `list.json` request parameter; prefer `corpCode` for reliable lookup.
-- Keep `/dart/company` and `/dart/diagnose` as operational diagnostics. Do not expose those routes as user-facing app features.
+- Keep all `/dart/*` Worker routes as operational diagnostics. User-facing app DART lookup uses personal OpenDART API Key direct calls because production Worker outbound calls to OpenDART return provider reachability `522`.
 - Treat Korean Law output as official search results, not legal advice.
 - Pass KMA grid coordinates only; do not accept raw address strings in Worker routes.
 
