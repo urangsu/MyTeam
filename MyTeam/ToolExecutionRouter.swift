@@ -452,7 +452,7 @@ actor ToolExecutionRouter {
             guard let apiKey = await credentialValue(provider: provider, fieldID: "apiKey") else {
                 return .failed(MyTeamToolFailure(
                     title: "공시 조회를 완료하지 못했습니다",
-                    message: proxyError.errorDescription ?? "기본 조회 서버가 응답하지 않습니다. 잠시 후 다시 시도하거나 개인 OpenDART API Key를 연결하세요.",
+                    message: proxyError.errorDescription ?? "기본 조회 서버가 응답하지 않습니다. 잠시 후 다시 시도하거나 기본 조회 상태 또는 개인 OpenDART API Key 연결 상태를 확인하세요.",
                     recoveryActions: [
                         MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
                         MyTeamNextAction(id: "openConnection", title: "개인 키 연결", role: .normal)
@@ -475,7 +475,7 @@ actor ToolExecutionRouter {
             } catch {
                 return .failed(MyTeamToolFailure(
                     title: "공시 조회를 완료하지 못했습니다",
-                    message: "기본 조회 서버와 개인 OpenDART API Key 조회가 모두 실패했습니다. 잠시 후 다시 시도하거나 개인 키 권한을 확인하세요.",
+                    message: "기본 조회 서버와 개인 OpenDART API Key 조회가 모두 실패했습니다. 잠시 후 다시 시도하거나 기본 조회 상태와 개인 키 권한을 확인하세요.",
                     recoveryActions: [
                         MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
                         MyTeamNextAction(id: "openConnection", title: "개인 키 확인", role: .normal)
@@ -486,7 +486,7 @@ actor ToolExecutionRouter {
             guard let apiKey = await credentialValue(provider: provider, fieldID: "apiKey") else {
                 return .failed(MyTeamToolFailure(
                     title: "공시 조회를 완료하지 못했습니다",
-                    message: "기본 조회 서버가 응답하지 않습니다. 잠시 후 다시 시도하거나 개인 OpenDART API Key를 연결하세요.",
+                    message: "기본 조회 서버가 응답하지 않습니다. 잠시 후 다시 시도하거나 기본 조회 상태 또는 개인 OpenDART API Key 연결 상태를 확인하세요.",
                     recoveryActions: [
                         MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
                         MyTeamNextAction(id: "openConnection", title: "개인 키 연결", role: .normal)
@@ -509,7 +509,7 @@ actor ToolExecutionRouter {
             } catch {
                 return .failed(MyTeamToolFailure(
                     title: "공시 조회를 완료하지 못했습니다",
-                    message: "기본 조회 서버와 개인 OpenDART API Key 조회가 모두 실패했습니다. 잠시 후 다시 시도하거나 개인 키 권한을 확인하세요.",
+                    message: "기본 조회 서버와 개인 OpenDART API Key 조회가 모두 실패했습니다. 잠시 후 다시 시도하거나 기본 조회 상태와 개인 키 권한을 확인하세요.",
                     recoveryActions: [
                         MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
                         MyTeamNextAction(id: "openConnection", title: "개인 키 확인", role: .normal)
@@ -603,7 +603,7 @@ actor ToolExecutionRouter {
                         query: query,
                         items: items,
                         sourceLabel: "Naver News API · 개인 키",
-                        modeNotice: "기본 조회 서버가 응답하지 않아 개인 Naver API 키로 조회했습니다. 이 브리핑은 뉴스 검색 결과의 제목과 설명을 기준으로 정리한 것입니다."
+                        modeNotice: "기본 조회 서버가 응답하지 않아 개인 Naver API 키로 조회했습니다. 이 브리핑은 뉴스 검색 결과의 제목과 설명을 기준으로 정리한 것입니다. 기사 전문은 원문 링크에서 확인하세요."
                     )
                 } catch {
                     return .failed(MyTeamToolFailure(

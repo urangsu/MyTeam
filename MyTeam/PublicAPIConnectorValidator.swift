@@ -581,10 +581,10 @@ extension MyTeamProxyFailureResponse {
     nonisolated var userFacingMessage: String {
         let providerKey = provider?.lowercased() ?? ""
         if providerKey == "dart", classification == "provider_reachability_failure" {
-            return "DART 제공기관 응답 지연으로 공시 조회를 완료하지 못했습니다. 잠시 후 다시 시도하거나, 개인 DART API 키 연결 상태를 확인하세요."
+            return "DART 제공기관 응답 지연으로 공시 조회를 완료하지 못했습니다. 잠시 후 다시 시도하거나, 기본 조회 상태 또는 개인 DART API 키 연결 상태를 확인하세요."
         }
         if providerKey == "kma", error == "invalid_credentials" {
-            return "기상청 조회 인증 설정을 확인해야 합니다. 관리자 기본 조회 키 또는 개인 API 키를 확인하세요."
+            return "기상청 조회 인증 설정을 확인해야 합니다. 관리자 기본 조회 키 또는 개인 API 키 설정을 확인하세요."
         }
         return message ?? "기본 조회 서버가 요청을 완료하지 못했습니다."
     }
