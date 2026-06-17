@@ -101,7 +101,7 @@ enum MyTeamToolRegistry {
             displayName: "공시 조회",
             shortDescription: "DART 공시를 조회하고 원문 출처를 확인합니다.",
             category: .externalInfo,
-            requiredCredential: nil,
+            requiredCredential: MyTeamCredentialRequirement(provider: .external(.dartDisclosure), reason: "DART 개인 API 키 연결이 필요합니다."),
             permissionLevel: .readOnly,
             isImplemented: true,
             isUserFacing: true,
