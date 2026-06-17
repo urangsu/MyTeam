@@ -1,6 +1,6 @@
 const SERVICE = "myteam-basic-lookup-api";
-const VERSION = "0.2.1";
-const BUILD = "public-lookup-0.2.1";
+const VERSION = "0.2.2";
+const BUILD = "public-lookup-0.2.2";
 
 const PROVIDERS = {
   news: "naver-news",
@@ -31,7 +31,9 @@ export default {
           routes: [
             "/health",
             "/news/search?query=삼성전자",
+            "/dart/company?corpCode=00126380",
             "/dart/recent?corpCode=00126380",
+            "/dart/diagnose?corpCode=00126380",
             "/weather/kma/nowcast?nx=63&ny=89",
             "/weather/kma/forecast?nx=63&ny=89",
             "/law/search?query=근로기준법&display=2"
@@ -42,8 +44,14 @@ export default {
       if (url.pathname === "/news/search") {
         return await handleNewsSearch(url, env, startedAt);
       }
+      if (url.pathname === "/dart/company") {
+        return await withProviderErrorBoundary(PROVIDERS.dart, () => handleDARTCompany(url, env, startedAt));
+      }
       if (url.pathname === "/dart/recent") {
         return await withProviderErrorBoundary(PROVIDERS.dart, () => handleDARTRecent(url, env, startedAt));
+      }
+      if (url.pathname === "/dart/diagnose") {
+        return await withProviderErrorBoundary(PROVIDERS.dart, () => handleDARTDiagnose(url, env, startedAt));
       }
       if (url.pathname === "/weather/kma/nowcast") {
         return await withProviderErrorBoundary(PROVIDERS.kma, () => handleKMA(url, env, startedAt, "nowcast"));
@@ -113,13 +121,20 @@ async function handleNewsSearch(url, env, startedAt) {
 async function handleDARTRecent(url, env, startedAt) {
   let stage = "dart_secret_check";
   try {
-    if (!env.DART_API_KEY) {
+    const dartAPIKey = normalizeDARTAPIKey(env);
+    if (!dartAPIKey) {
       return missingSecret(PROVIDERS.dart, "DART lookup is not configured.");
     }
     const corpCode = normalizeText(url.searchParams.get("corpCode") || "");
     const corpName = normalizeText(url.searchParams.get("corpName") || "");
     const days = clampInteger(url.searchParams.get("days"), 7, 1, 30);
     const display = clampInteger(url.searchParams.get("display"), DEFAULT_DISPLAY, 1, MAX_DISPLAY);
+    if (corpCode) {
+      const corpCodeError = validateDARTCorpCode(corpCode, "recent");
+      if (corpCodeError) {
+        return corpCodeError;
+      }
+    }
     if (!corpCode && corpName.length > 80) {
       return jsonError("query_too_long", "Company name must be 80 characters or fewer.", 400, {
         provider: PROVIDERS.dart
@@ -130,7 +145,7 @@ async function handleDARTRecent(url, env, startedAt) {
     const now = new Date();
     const begin = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
     const upstreamURL = new URL("https://opendart.fss.or.kr/api/list.json");
-    upstreamURL.searchParams.set("crtfc_key", env.DART_API_KEY);
+    upstreamURL.searchParams.set("crtfc_key", dartAPIKey);
     upstreamURL.searchParams.set("bgn_de", formatDateYYYYMMDD(begin));
     upstreamURL.searchParams.set("end_de", formatDateYYYYMMDD(now));
     upstreamURL.searchParams.set("sort", "date");
@@ -162,6 +177,7 @@ async function handleDARTRecent(url, env, startedAt) {
           query: { corpName: corpName || null, corpCode: corpCode || null, days },
           providerStatus: status,
           providerMessage,
+          stage,
           elapsedMs: Date.now() - startedAt
         });
       }
@@ -207,6 +223,125 @@ async function handleDARTRecent(url, env, startedAt) {
     }
     return providerStageError(PROVIDERS.dart, stage, "DART lookup failed during provider request.");
   }
+}
+
+async function handleDARTCompany(url, env, startedAt) {
+  let stage = "dart_company_secret_check";
+  try {
+    const dartAPIKey = normalizeDARTAPIKey(env);
+    if (!dartAPIKey) {
+      return missingSecret(PROVIDERS.dart, "DART company lookup is not configured.");
+    }
+
+    const corpCode = normalizeText(url.searchParams.get("corpCode") || "");
+    const corpCodeError = validateDARTCorpCode(corpCode, "company");
+    if (corpCodeError) {
+      return corpCodeError;
+    }
+
+    stage = "dart_company_build_request";
+    const upstreamURL = new URL("https://opendart.fss.or.kr/api/company.json");
+    upstreamURL.searchParams.set("crtfc_key", dartAPIKey);
+    upstreamURL.searchParams.set("corp_code", corpCode);
+
+    stage = "dart_company_fetch";
+    const upstreamResponse = await fetch(upstreamURL);
+    if (!upstreamResponse.ok) {
+      return providerError(PROVIDERS.dart, upstreamResponse.status, {
+        type: "company",
+        stage,
+        keyLength: dartAPIKey.length
+      });
+    }
+
+    stage = "dart_company_parse_json";
+    const upstreamJSON = await safeJSON(upstreamResponse, PROVIDERS.dart);
+    if (upstreamJSON instanceof Response) {
+      return upstreamJSON;
+    }
+
+    stage = "dart_company_status_check";
+    const status = normalizeText(upstreamJSON.status || "");
+    const providerMessage = normalizeText(upstreamJSON.message || "");
+    if (status && status !== "000") {
+      return dartError(status, providerMessage, stage, {
+        type: "company",
+        keyLength: dartAPIKey.length
+      });
+    }
+
+    return jsonResponse({
+      ok: true,
+      provider: PROVIDERS.dart,
+      type: "company",
+      corpCode,
+      status: status || "000",
+      providerMessage,
+      keyLength: dartAPIKey.length,
+      elapsedMs: Date.now() - startedAt,
+      company: normalizeDARTCompany(upstreamJSON)
+    });
+  } catch (error) {
+    if (stage === "dart_company_fetch") {
+      return providerStageError(PROVIDERS.dart, stage, "DART company provider could not be reached from the lookup proxy.", {
+        type: "company",
+        status: providerReachabilityStatus(error),
+        classification: "provider_reachability_failure",
+        retryable: true,
+        mergeGate: "conditional-pass"
+      });
+    }
+    return providerStageError(PROVIDERS.dart, stage, "DART company lookup failed during provider request.", {
+      type: "company"
+    });
+  }
+}
+
+async function handleDARTDiagnose(url, env, startedAt) {
+  const dartAPIKey = normalizeDARTAPIKey(env);
+  if (!dartAPIKey) {
+    return missingSecret(PROVIDERS.dart, "DART diagnostic lookup is not configured.");
+  }
+
+  const corpCode = normalizeText(url.searchParams.get("corpCode") || "");
+  const corpCodeError = validateDARTCorpCode(corpCode, "diagnose");
+  if (corpCodeError) {
+    return corpCodeError;
+  }
+
+  const companyURL = new URL(url.toString());
+  companyURL.pathname = "/dart/company";
+  companyURL.searchParams.set("corpCode", corpCode);
+
+  const recentURL = new URL(url.toString());
+  recentURL.pathname = "/dart/recent";
+  recentURL.searchParams.set("corpCode", corpCode);
+  recentURL.searchParams.set("days", normalizeText(url.searchParams.get("days") || "30"));
+  recentURL.searchParams.set("display", normalizeText(url.searchParams.get("display") || "2"));
+
+  const companyResponse = await handleDARTCompany(companyURL, env, Date.now());
+  const companyPayload = await responsePayload(companyResponse);
+  const listResponse = await handleDARTRecent(recentURL, env, Date.now());
+  const listPayload = await responsePayload(listResponse);
+
+  const companyCheck = summarizeDARTDiagnosticCheck(companyPayload, companyResponse.status);
+  const listCheck = summarizeDARTDiagnosticCheck(listPayload, listResponse.status);
+  const conclusion = concludeDARTDiagnosis(companyCheck, listCheck);
+  const ok = companyCheck.ok && listCheck.ok;
+
+  return jsonResponse({
+    ok,
+    provider: PROVIDERS.dart,
+    type: "diagnose",
+    corpCode,
+    keyLength: dartAPIKey.length,
+    elapsedMs: Date.now() - startedAt,
+    checks: {
+      company: companyCheck,
+      list: listCheck
+    },
+    conclusion
+  });
 }
 
 async function handleKMA(url, env, startedAt, type) {
@@ -364,6 +499,21 @@ function normalizeDARTItem(item) {
   };
 }
 
+function normalizeDARTCompany(payload) {
+  return {
+    corpName: normalizeText(payload?.corp_name || ""),
+    corpNameEng: normalizeText(payload?.corp_name_eng || ""),
+    stockName: normalizeText(payload?.stock_name || ""),
+    stockCode: normalizeText(payload?.stock_code || ""),
+    ceoName: normalizeText(payload?.ceo_nm || ""),
+    corpClass: normalizeText(payload?.corp_cls || ""),
+    homepage: normalizeText(payload?.hm_url || ""),
+    industryCode: normalizeText(payload?.induty_code || ""),
+    establishedDate: normalizeText(payload?.est_dt || ""),
+    accountingMonth: normalizeText(payload?.acc_mt || "")
+  };
+}
+
 function normalizeKMAItem(item, type) {
   const category = normalizeText(item?.category || "");
   const value = normalizeText(item?.obsrValue ?? item?.fcstValue ?? "");
@@ -472,7 +622,7 @@ function providerError(provider, status, extra = {}) {
   return jsonError("upstream_error", "Provider returned an error.", 502, { provider, status, ...extra });
 }
 
-function dartError(status, providerMessage, stage) {
+function dartError(status, providerMessage, stage, extra = {}) {
   const map = {
     "010": "invalid_credentials",
     "011": "invalid_credentials",
@@ -491,7 +641,8 @@ function dartError(status, providerMessage, stage) {
     provider: PROVIDERS.dart,
     stage,
     providerStatus: status,
-    providerMessage
+    providerMessage,
+    ...extra
   });
 }
 
@@ -584,6 +735,10 @@ function normalizePublicDataServiceKey(value) {
   return text;
 }
 
+function normalizeDARTAPIKey(env) {
+  return normalizeText(env?.DART_API_KEY || "");
+}
+
 function normalizeURLString(value) {
   const text = normalizeText(value || "");
   if (!text) {
@@ -621,6 +776,16 @@ function clampInteger(value, fallback, minimum, maximum) {
     return fallback;
   }
   return Math.min(Math.max(parsed, minimum), maximum);
+}
+
+function validateDARTCorpCode(corpCode, type) {
+  if (!/^\d{8}$/.test(corpCode)) {
+    return jsonError("invalid_provider_request", "DART corpCode must be an 8 digit company code.", 400, {
+      provider: PROVIDERS.dart,
+      type
+    });
+  }
+  return null;
 }
 
 function parseGrid(value) {
@@ -680,6 +845,66 @@ function providerReachabilityStatus(error) {
     }
   }
   return 522;
+}
+
+async function responsePayload(response) {
+  try {
+    return await response.clone().json();
+  } catch {
+    return {
+      ok: false,
+      error: "invalid_proxy_response",
+      message: "Proxy diagnostic response was not JSON."
+    };
+  }
+}
+
+function summarizeDARTDiagnosticCheck(payload, httpStatus) {
+  return compactObject({
+    ok: payload?.ok === true,
+    httpStatus,
+    error: payload?.error || null,
+    status: payload?.status || null,
+    providerStatus: payload?.providerStatus || null,
+    providerMessage: payload?.providerMessage || null,
+    stage: payload?.stage || null,
+    classification: payload?.classification || null,
+    retryable: payload?.retryable === true ? true : null,
+    mergeGate: payload?.mergeGate || null,
+    elapsedMs: payload?.elapsedMs ?? null,
+    count: payload?.count ?? null
+  });
+}
+
+function concludeDARTDiagnosis(companyCheck, listCheck) {
+  if (companyCheck.ok && listCheck.ok) {
+    return "dart_ok";
+  }
+  if (companyCheck.error === "invalid_credentials") {
+    return "dart_key_invalid";
+  }
+  if (companyCheck.error === "provider_permission_denied") {
+    return "dart_key_or_ip_denied";
+  }
+  if (companyCheck.classification === "provider_reachability_failure") {
+    return "opendart_company_reachability_failure";
+  }
+  if (companyCheck.ok && listCheck.classification === "provider_reachability_failure") {
+    return "company_ok_list_fetch_failed";
+  }
+  if (companyCheck.ok && listCheck.error === "no_results") {
+    return "company_ok_list_no_results";
+  }
+  if (!companyCheck.ok && !listCheck.ok) {
+    return "dart_provider_or_key_failed";
+  }
+  return "dart_diagnostic_inconclusive";
+}
+
+function compactObject(value) {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, entry]) => entry !== null && entry !== undefined && entry !== "")
+  );
 }
 
 function jsonResponse(payload, status = 200) {
