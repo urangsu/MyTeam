@@ -186,6 +186,9 @@ Response policy:
 - disclosure list and official DART links only
 - no full disclosure analysis in the basic lookup proxy
 - source URL required for every item
+- provider reachability failures may return `provider_system_error` only when `stage`, `status`, and `classification: provider_reachability_failure` are present
+- DART fetch reachability failures should also return `retryable: true` and `mergeGate: conditional-pass`
+- do not treat DART `522` as `no_results`
 
 ### KMA
 

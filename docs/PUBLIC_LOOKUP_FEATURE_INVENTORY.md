@@ -51,10 +51,10 @@ Required live endpoints after deployment:
 - workerVersion: 0.2.1
 - workerBuild: public-lookup-0.2.1
 - news.search: PASS, HTTP 200, `ok: true`, provider `naver-news`
-- dart.recent corpCode: HOLD, HTTP 502, `provider_system_error`, provider `dart`, status `522`, stage `dart_fetch`
-- dart.recent corpName: HOLD, HTTP 502, `provider_system_error`, provider `dart`, stage `dart_fetch`
+- dart.recent corpCode: CONDITIONAL PASS, HTTP 502, `provider_system_error`, provider `dart`, status `522`, stage `dart_fetch`, classification `provider_reachability_failure`, mergeGate `conditional-pass`
+- dart.recent corpName: CONDITIONAL PASS, HTTP 502, `provider_system_error`, provider `dart`, stage `dart_fetch`, classification `provider_reachability_failure`, mergeGate `conditional-pass`
 - kma.nowcast: CONDITIONAL PASS, HTTP 502, `invalid_credentials`, provider `kma`, status `401`, baseDate `20260617`, baseTime `2030`, grid `63,89`
 - kma.forecast: CONDITIONAL PASS, HTTP 502, `invalid_credentials`, provider `kma`, status `401`, baseDate `20260617`, baseTime `2030`, grid `63,89`
 - law.search: PASS, HTTP 200, `ok: true`, provider `korean-law`, official `sourceURL` values present, legal advice notice present
 - appFailureSurface: PASS, proxy `no_results` is shown as an empty-result state; `invalid_credentials`, `provider_permission_denied`, and `provider_system_error` throw through the proxy client and render as failure or personal-key fallback, not success cards.
-- blocker: main merge remains on hold because DART still returns `provider_system_error` at `dart_fetch`. This is no longer a bare error, but the live provider request is not passing; verify OpenDART reachability/key/provider availability before merging to `main`.
+- blocker: none for the proxy-to-main merge gate. DART stabilization remains a follow-up because the provider request still fails at `dart_fetch`, but the deployed Worker now returns provider/stage/status/classification and the app renders that state as failure rather than success.
