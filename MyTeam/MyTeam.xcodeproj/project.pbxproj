@@ -9866,19 +9866,9 @@
 				<key>ENABLE_USER_SELECTED_FILES</key>
 				<string>readonly</string>
 				<key>GENERATE_INFOPLIST_FILE</key>
-				<string>YES</string>
-				<key>INFOPLIST_KEY_CFBundleURLTypes</key>
-				<string>{"CFBundleURLName"=&gt;"com.urang.MyTeam.oauth", "CFBundleURLSchemes"=&gt;["myteam"]}</string>
-				<key>INFOPLIST_KEY_NSHumanReadableCopyright</key>
-				<string>© 2026 DALGRACSTUDIO. All rights reserved.</string>
-				<key>INFOPLIST_KEY_NSLocationUsageDescription</key>
-				<string>날씨와 업무 브리핑의 기본 지역을 설정하기 위해 사용합니다.</string>
-				<key>INFOPLIST_KEY_NSMicrophoneUsageDescription</key>
-				<string>음성 입력으로 캐릭터에게 메시지를 전달하기 위해 사용합니다.</string>
-				<key>INFOPLIST_KEY_NSSpeechRecognitionUsageDescription</key>
-				<string>사용자가 말한 내용을 캐릭터와 업무비서에게 전달할 텍스트로 변환합니다.</string>
-				<key>INFOPLIST_KEY_MyTeamGoogleOAuthClientID</key>
-				<string>$(MYTEAM_GOOGLE_OAUTH_CLIENT_ID)</string>
+				<string>NO</string>
+				<key>INFOPLIST_FILE</key>
+				<string>Info.plist</string>
 				<key>LD_RUNPATH_SEARCH_PATHS</key>
 				<array>
 					<string>$(inherited)</string>
@@ -9965,19 +9955,9 @@
 				<key>ENABLE_USER_SELECTED_FILES</key>
 				<string>readonly</string>
 				<key>GENERATE_INFOPLIST_FILE</key>
-				<string>YES</string>
-				<key>INFOPLIST_KEY_CFBundleURLTypes</key>
-				<string>{"CFBundleURLName"=&gt;"com.urang.MyTeam.oauth", "CFBundleURLSchemes"=&gt;["myteam"]}</string>
-				<key>INFOPLIST_KEY_NSHumanReadableCopyright</key>
-				<string>© 2026 DALGRACSTUDIO. All rights reserved.</string>
-				<key>INFOPLIST_KEY_NSLocationUsageDescription</key>
-				<string>날씨와 업무 브리핑의 기본 지역을 설정하기 위해 사용합니다.</string>
-				<key>INFOPLIST_KEY_NSMicrophoneUsageDescription</key>
-				<string>음성 입력으로 캐릭터에게 메시지를 전달하기 위해 사용합니다.</string>
-				<key>INFOPLIST_KEY_NSSpeechRecognitionUsageDescription</key>
-				<string>사용자가 말한 내용을 캐릭터와 업무비서에게 전달할 텍스트로 변환합니다.</string>
-				<key>INFOPLIST_KEY_MyTeamGoogleOAuthClientID</key>
-				<string>$(MYTEAM_GOOGLE_OAUTH_CLIENT_ID)</string>
+				<string>NO</string>
+				<key>INFOPLIST_FILE</key>
+				<string>Info.plist</string>
 				<key>LD_RUNPATH_SEARCH_PATHS</key>
 				<array>
 					<string>$(inherited)</string>
