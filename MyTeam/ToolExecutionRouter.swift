@@ -556,7 +556,13 @@ actor ToolExecutionRouter {
         let message: String
         let actions: [MyTeamNextAction]
 
-        switch failureCode {
+        if error is URLError {
+            message = "OpenDART 보안 연결 또는 네트워크 연결을 만들지 못했습니다. 앱을 다시 실행한 뒤 재시도하세요."
+            actions = [
+                MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal)
+            ]
+        } else {
+            switch failureCode {
         case .invalidAPIKey?:
             message = "DART API 키가 유효하지 않습니다. OpenDART 인증키 상태를 확인하세요."
             actions = [
@@ -583,6 +589,7 @@ actor ToolExecutionRouter {
                 MyTeamNextAction(id: "openConnection", title: "DART 키 확인", role: .normal),
                 MyTeamNextAction(id: "changeKeyword", title: "고유번호 확인", role: .normal)
             ]
+            }
         }
 
         return .failed(MyTeamToolFailure(

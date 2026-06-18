@@ -64,7 +64,10 @@ enum PublicAPIConnectorValidator {
         } catch let code as ConnectorFailureCode {
             return CredentialTestResult(provider: request.provider, success: false, failureCode: code, message: code.userMessage(for: request.provider))
         } catch {
-            return CredentialTestResult(provider: request.provider, success: false, failureCode: .networkError, message: error.localizedDescription)
+            let message = request.provider == .dartDisclosure
+                ? "OpenDART 보안 연결을 만들지 못했습니다. 앱을 다시 실행한 뒤 재시도해 주세요."
+                : error.localizedDescription
+            return CredentialTestResult(provider: request.provider, success: false, failureCode: .networkError, message: message)
         }
     }
 
