@@ -13,6 +13,17 @@ Current route scope:
 - `GET /dart/diagnose?corpCode={corpCode}`
 - `GET /weather/kma/nowcast?nx={nx}&ny={ny}`
 - `GET /weather/kma/forecast?nx={nx}&ny={ny}`
+- `GET /weather/kma/ultra-forecast?nx={nx}&ny={ny}`
+- `GET /weather/kma/village-forecast?nx={nx}&ny={ny}`
+- `GET /weather/kma/version?nx={nx}&ny={ny}`
+- `GET /finance/krx/items?query={query}`
+- `GET /finance/stocks/prices?query={query}`
+- `GET /finance/index/stock?query={query}`
+- `GET /finance/index/bond?query={query}`
+- `GET /finance/index/derivatives?query={query}`
+- `GET /finance/company/summary?crno={crno}&bizYear={year}`
+- `GET /finance/company/balance-sheet?crno={crno}&bizYear={year}`
+- `GET /finance/company/income-statement?crno={crno}&bizYear={year}`
 - `GET /law/search?query={query}&display={1...20}`
 
 The Worker source is stored here for operational review and recovery. Cloudflare secrets are not stored in this repository.
@@ -37,7 +48,7 @@ This Worker is currently deployed from the Cloudflare Dashboard, not from a repo
 4. Save and deploy to Production.
 5. Verify `/health` before merging the app branch to `main`.
 
-The production `/health` response must show `version: "0.2.2"`, a non-empty `build` marker, and include these route names:
+The production `/health` response must show `version: "0.3.0"`, a non-empty `build` marker, and include these route names:
 
 ```text
 /health
@@ -47,6 +58,17 @@ The production `/health` response must show `version: "0.2.2"`, a non-empty `bui
 /dart/diagnose?corpCode=00126380
 /weather/kma/nowcast?nx=63&ny=89
 /weather/kma/forecast?nx=63&ny=89
+/weather/kma/ultra-forecast?nx=63&ny=89
+/weather/kma/village-forecast?nx=63&ny=89
+/weather/kma/version?nx=63&ny=89
+/finance/krx/items?query=삼성전자
+/finance/stocks/prices?query=삼성전자
+/finance/index/stock?query=코스피
+/finance/index/bond?query=채권
+/finance/index/derivatives?query=코스피200
+/finance/company/summary?crno=1101110000000&bizYear=2023
+/finance/company/balance-sheet?crno=1101110000000&bizYear=2023
+/finance/company/income-statement?crno=1101110000000&bizYear=2023
 /law/search?query=근로기준법&display=2
 ```
 
@@ -60,6 +82,12 @@ curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/dart/recent?corpCode=0
 curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/dart/diagnose?corpCode=00126380'
 curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/weather/kma/nowcast?nx=63&ny=89'
 curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/weather/kma/forecast?nx=63&ny=89'
+curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/weather/kma/ultra-forecast?nx=63&ny=89'
+curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/weather/kma/village-forecast?nx=63&ny=89'
+curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/weather/kma/version?nx=63&ny=89'
+curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/finance/krx/items?query=%EC%82%BC%EC%84%B1%EC%A0%84%EC%9E%90'
+curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/finance/stocks/prices?query=%EC%82%BC%EC%84%B1%EC%A0%84%EC%9E%90'
+curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/finance/index/stock?query=%EC%BD%94%EC%8A%A4%ED%94%BC'
 curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/law/search?query=%EA%B7%BC%EB%A1%9C%EA%B8%B0%EC%A4%80%EB%B2%95&display=2'
 ```
 
