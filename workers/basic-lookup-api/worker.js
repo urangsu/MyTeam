@@ -1,12 +1,13 @@
 const SERVICE = "myteam-basic-lookup-api";
-const VERSION = "0.2.2";
-const BUILD = "public-lookup-0.2.2";
+const VERSION = "0.3.0";
+const BUILD = "public-lookup-0.3.0";
 
 const PROVIDERS = {
   news: "naver-news",
   dart: "dart",
   kma: "kma",
-  law: "korean-law"
+  law: "korean-law",
+  publicData: "public-data-portal"
 };
 
 const MAX_DISPLAY = 20;
@@ -36,6 +37,17 @@ export default {
             "/dart/diagnose?corpCode=00126380",
             "/weather/kma/nowcast?nx=63&ny=89",
             "/weather/kma/forecast?nx=63&ny=89",
+            "/weather/kma/ultra-forecast?nx=63&ny=89",
+            "/weather/kma/village-forecast?nx=63&ny=89",
+            "/weather/kma/version?nx=63&ny=89",
+            "/finance/krx/items?query=삼성전자",
+            "/finance/stocks/prices?query=삼성전자",
+            "/finance/index/stock?query=코스피",
+            "/finance/index/bond?query=채권",
+            "/finance/index/derivatives?query=코스피200",
+            "/finance/company/summary?crno=1101110000000&bizYear=2023",
+            "/finance/company/balance-sheet?crno=1101110000000&bizYear=2023",
+            "/finance/company/income-statement?crno=1101110000000&bizYear=2023",
             "/law/search?query=근로기준법&display=2"
           ]
         });
@@ -58,6 +70,18 @@ export default {
       }
       if (url.pathname === "/weather/kma/forecast") {
         return await withProviderErrorBoundary(PROVIDERS.kma, () => handleKMA(url, env, startedAt, "forecast"));
+      }
+      if (url.pathname === "/weather/kma/ultra-forecast") {
+        return await withProviderErrorBoundary(PROVIDERS.kma, () => handleKMA(url, env, startedAt, "forecast"));
+      }
+      if (url.pathname === "/weather/kma/village-forecast") {
+        return await withProviderErrorBoundary(PROVIDERS.kma, () => handleKMA(url, env, startedAt, "village"));
+      }
+      if (url.pathname === "/weather/kma/version") {
+        return await withProviderErrorBoundary(PROVIDERS.kma, () => handleKMAVersion(url, env, startedAt));
+      }
+      if (url.pathname.startsWith("/finance/")) {
+        return await withProviderErrorBoundary(PROVIDERS.publicData, () => handleFinanceLookup(url, env, startedAt));
       }
       if (url.pathname === "/law/search") {
         return await withProviderErrorBoundary(PROVIDERS.law, () => handleLawSearch(url, env, startedAt));
@@ -357,7 +381,8 @@ async function handleKMA(url, env, startedAt, type) {
   }
 
   const base = kmaBaseDateTime(type, url.searchParams.get("base_date"), url.searchParams.get("base_time"));
-  const upstreamURL = new URL(`https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/${type === "forecast" ? "getUltraSrtFcst" : "getUltraSrtNcst"}`);
+  const operation = type === "village" ? "getVilageFcst" : type === "forecast" ? "getUltraSrtFcst" : "getUltraSrtNcst";
+  const upstreamURL = new URL(`https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/${operation}`);
   upstreamURL.searchParams.set("serviceKey", normalizePublicDataServiceKey(env.KMA_SERVICE_KEY));
   upstreamURL.searchParams.set("pageNo", "1");
   upstreamURL.searchParams.set("numOfRows", "1000");
@@ -402,6 +427,121 @@ async function handleKMA(url, env, startedAt, type) {
     baseDate: base.date,
     baseTime: base.time,
     elapsedMs: Date.now() - startedAt,
+    items
+  });
+}
+
+async function handleKMAVersion(url, env, startedAt) {
+  if (!env.KMA_SERVICE_KEY) {
+    return missingSecret(PROVIDERS.kma, "KMA lookup is not configured.");
+  }
+  const nx = parseGrid(url.searchParams.get("nx"));
+  const ny = parseGrid(url.searchParams.get("ny"));
+  if (nx === null || ny === null) {
+    return jsonError("invalid_provider_request", "KMA nx and ny must be integers between 1 and 149.", 400, {
+      provider: PROVIDERS.kma
+    });
+  }
+  const base = kmaBaseDateTime("forecast", url.searchParams.get("base_date"), url.searchParams.get("base_time"));
+  const upstreamURL = new URL("https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getFcstVersion");
+  upstreamURL.searchParams.set("serviceKey", normalizePublicDataServiceKey(env.KMA_SERVICE_KEY));
+  upstreamURL.searchParams.set("pageNo", "1");
+  upstreamURL.searchParams.set("numOfRows", "10");
+  upstreamURL.searchParams.set("dataType", "JSON");
+  upstreamURL.searchParams.set("base_date", base.date);
+  upstreamURL.searchParams.set("base_time", base.time);
+  upstreamURL.searchParams.set("nx", String(nx));
+  upstreamURL.searchParams.set("ny", String(ny));
+
+  const upstreamResponse = await fetch(upstreamURL);
+  if (!upstreamResponse.ok) {
+    return kmaHTTPError(upstreamResponse.status, base, nx, ny);
+  }
+  const upstreamJSON = await safeJSON(upstreamResponse, PROVIDERS.kma);
+  if (upstreamJSON instanceof Response) {
+    return upstreamJSON;
+  }
+  const header = upstreamJSON?.response?.header;
+  const resultCode = normalizeText(header?.resultCode || "");
+  const resultMsg = normalizeText(header?.resultMsg || "");
+  if (resultCode !== "00") {
+    return kmaError(resultCode, resultMsg, base, nx, ny);
+  }
+  const rawItems = upstreamJSON?.response?.body?.items?.item;
+  const itemArray = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
+  const items = itemArray.map((item) => normalizePublicDataItem(item)).filter(Boolean);
+  return jsonResponse({
+    ok: true,
+    provider: PROVIDERS.kma,
+    type: "version",
+    grid: { nx, ny },
+    baseDate: base.date,
+    baseTime: base.time,
+    elapsedMs: Date.now() - startedAt,
+    items
+  });
+}
+
+async function handleFinanceLookup(url, env, startedAt) {
+  if (!env.PUBLIC_DATA_SERVICE_KEY) {
+    return missingSecret(PROVIDERS.publicData, "Public data lookup is not configured.");
+  }
+  const route = financeRoute(url.pathname);
+  if (!route) {
+    return jsonError("not_found", "Finance route not found.", 404, { provider: PROVIDERS.publicData });
+  }
+
+  const display = clampInteger(url.searchParams.get("display"), DEFAULT_DISPLAY, 1, MAX_DISPLAY);
+  const upstreamURL = new URL(route.endpoint);
+  upstreamURL.searchParams.set("serviceKey", normalizePublicDataServiceKey(env.PUBLIC_DATA_SERVICE_KEY));
+  upstreamURL.searchParams.set("pageNo", normalizeText(url.searchParams.get("pageNo") || "1"));
+  upstreamURL.searchParams.set("numOfRows", String(display));
+  upstreamURL.searchParams.set("resultType", "json");
+
+  const query = normalizeText(url.searchParams.get("query") || "");
+  const baseDate = normalizeText(url.searchParams.get("basDt") || "");
+  if (baseDate) {
+    upstreamURL.searchParams.set("basDt", baseDate);
+  }
+  for (const [key, value] of financeQueryParams(route, url, query)) {
+    if (value) {
+      upstreamURL.searchParams.set(key, value);
+    }
+  }
+
+  const upstreamResponse = await fetch(upstreamURL);
+  if (!upstreamResponse.ok) {
+    return providerError(PROVIDERS.publicData, upstreamResponse.status, { route: route.id });
+  }
+  const upstreamJSON = await safeJSON(upstreamResponse, PROVIDERS.publicData);
+  if (upstreamJSON instanceof Response) {
+    return upstreamJSON;
+  }
+  const header = upstreamJSON?.response?.header;
+  const resultCode = normalizeText(header?.resultCode || "");
+  const resultMsg = normalizeText(header?.resultMsg || "");
+  if (resultCode && resultCode !== "00") {
+    return publicDataError(resultCode, resultMsg, route.id);
+  }
+  const rawItems = upstreamJSON?.response?.body?.items?.item;
+  const itemArray = Array.isArray(rawItems) ? rawItems : rawItems ? [rawItems] : [];
+  const items = itemArray.map((item) => normalizePublicDataItem(item)).filter(Boolean);
+  if (items.length === 0) {
+    return noResults(PROVIDERS.publicData, {
+      route: route.id,
+      query,
+      notice: route.notice,
+      elapsedMs: Date.now() - startedAt
+    });
+  }
+  return jsonResponse({
+    ok: true,
+    provider: PROVIDERS.publicData,
+    route: route.id,
+    query,
+    count: items.length,
+    elapsedMs: Date.now() - startedAt,
+    notice: route.notice,
     items
   });
 }
@@ -528,9 +668,26 @@ function normalizeKMAItem(item, type) {
     unit: meta.unit,
     baseDate: normalizeText(item?.baseDate || ""),
     baseTime: normalizeText(item?.baseTime || ""),
-    forecastDate: type === "forecast" ? normalizeText(item?.fcstDate || "") : null,
-    forecastTime: type === "forecast" ? normalizeText(item?.fcstTime || "") : null
+    forecastDate: type === "forecast" || type === "village" ? normalizeText(item?.fcstDate || "") : null,
+    forecastTime: type === "forecast" || type === "village" ? normalizeText(item?.fcstTime || "") : null
   };
+}
+
+function normalizePublicDataItem(item) {
+  if (!item || typeof item !== "object") {
+    return null;
+  }
+  const normalized = {};
+  for (const [key, value] of Object.entries(item)) {
+    if (value === null || value === undefined) {
+      continue;
+    }
+    const text = normalizeText(value);
+    if (text !== "") {
+      normalized[key] = text;
+    }
+  }
+  return Object.keys(normalized).length > 0 ? normalized : null;
 }
 
 function normalizeLawItem(item) {
@@ -668,6 +825,21 @@ function kmaError(resultCode, resultMsg, base, nx, ny) {
     baseDate: base.date,
     baseTime: base.time,
     grid: { nx, ny }
+  });
+}
+
+function publicDataError(resultCode, resultMsg, route) {
+  const normalizedMessage = resultMsg.toUpperCase();
+  const code = resultCode === "03"
+    ? "no_results"
+    : resultCode === "30" || normalizedMessage.includes("SERVICE") || normalizedMessage.includes("KEY")
+      ? "invalid_credentials"
+      : "upstream_error";
+  return jsonError(code, "Public data provider returned an error.", code === "no_results" ? 200 : 502, {
+    provider: PROVIDERS.publicData,
+    route,
+    status: resultCode || "unknown",
+    providerMessage: resultMsg
   });
 }
 
@@ -814,6 +986,93 @@ function kmaBaseDateTime(type, dateOverride, timeOverride) {
     date: `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, "0")}${String(now.getUTCDate()).padStart(2, "0")}`,
     time: `${hour}${minute}`
   };
+}
+
+function financeRoute(pathname) {
+  const routes = {
+    "/finance/krx/items": {
+      id: "krx-items",
+      endpoint: "https://apis.data.go.kr/1160100/service/GetKrxListedInfoService/getItemInfo",
+      queryKeys: ["likeItmsNm", "likeSrtnCd"],
+      notice: "KRX 상장종목정보 기준일 공공데이터입니다."
+    },
+    "/finance/stocks/prices": {
+      id: "stock-prices",
+      endpoint: "https://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService/getStockPriceInfo",
+      queryKeys: ["itmsNm", "srtnCd"],
+      notice: "금융위원회 주식시세정보 기준일 공공데이터입니다. 실시간 시세가 아닙니다."
+    },
+    "/finance/index/stock": {
+      id: "stock-index",
+      endpoint: "https://apis.data.go.kr/1160100/service/GetMarketIndexInfoService/getStockMarketIndex",
+      queryKeys: ["idxNm"],
+      notice: "금융위원회 지수시세정보 기준일 공공데이터입니다. 실시간 지수가 아닙니다."
+    },
+    "/finance/index/bond": {
+      id: "bond-index",
+      endpoint: "https://apis.data.go.kr/1160100/service/GetMarketIndexInfoService/getBondMarketIndex",
+      queryKeys: ["idxNm"],
+      notice: "금융위원회 채권지수 기준일 공공데이터입니다."
+    },
+    "/finance/index/derivatives": {
+      id: "derivatives-index",
+      endpoint: "https://apis.data.go.kr/1160100/service/GetMarketIndexInfoService/getDerivationProductMarketIndex",
+      queryKeys: ["idxNm"],
+      notice: "금융위원회 파생상품지수 기준일 공공데이터입니다."
+    },
+    "/finance/company/summary": {
+      id: "company-summary",
+      endpoint: "https://apis.data.go.kr/1160100/service/GetFinaStatInfoService_V2/getSummFinaStat_V2",
+      queryKeys: ["crno", "bizYear"],
+      notice: "금융위원회 기업 재무정보 기준 공공데이터입니다."
+    },
+    "/finance/company/balance-sheet": {
+      id: "company-balance-sheet",
+      endpoint: "https://apis.data.go.kr/1160100/service/GetFinaStatInfoService_V2/getBs_V2",
+      queryKeys: ["crno", "bizYear"],
+      notice: "금융위원회 재무상태표 기준 공공데이터입니다."
+    },
+    "/finance/company/income-statement": {
+      id: "company-income-statement",
+      endpoint: "https://apis.data.go.kr/1160100/service/GetFinaStatInfoService_V2/getIncoStat_V2",
+      queryKeys: ["crno", "bizYear"],
+      notice: "금융위원회 손익계산서 기준 공공데이터입니다."
+    }
+  };
+  return routes[pathname] || null;
+}
+
+function financeQueryParams(route, url, query) {
+  const params = [];
+  for (const key of route.queryKeys) {
+    const direct = normalizeText(url.searchParams.get(key) || "");
+    if (direct) {
+      params.push([key, direct]);
+    }
+  }
+  if (!query) {
+    return params;
+  }
+  if (route.queryKeys.includes("srtnCd") && /^\d{6}$/.test(query)) {
+    params.push(["srtnCd", query]);
+  } else if (route.queryKeys.includes("likeSrtnCd") && /^\d{6}$/.test(query)) {
+    params.push(["likeSrtnCd", query]);
+  } else if (route.queryKeys.includes("idxNm")) {
+    params.push(["idxNm", query]);
+  } else if (route.queryKeys.includes("itmsNm")) {
+    params.push(["itmsNm", query]);
+  } else if (route.queryKeys.includes("likeItmsNm")) {
+    params.push(["likeItmsNm", query]);
+  }
+
+  const tokens = query.split(/\s+/).filter(Boolean);
+  if (route.queryKeys.includes("crno") && tokens[0]) {
+    params.push(["crno", normalizeText(url.searchParams.get("crno") || tokens[0])]);
+  }
+  if (route.queryKeys.includes("bizYear") && tokens[1]) {
+    params.push(["bizYear", normalizeText(url.searchParams.get("bizYear") || tokens[1])]);
+  }
+  return params;
 }
 
 function kmaCategoryMeta(category) {

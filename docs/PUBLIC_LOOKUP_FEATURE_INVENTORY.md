@@ -7,6 +7,7 @@ This inventory tracks public-data lookup features that are visible in MyTeam. A 
 | 뉴스 브리핑 | `news.search`, `korean.news-search` | Cloudflare proxy first, Naver BYOK fallback | Naver News Search | `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` | `GET /news/search?query={query}&display={1...20}` | Client ID + Client Secret | done |
 | 공시 조회 | `dart.disclosures.search`, `korean.dart` | App direct BYOK first; Cloudflare DART routes are diagnostics only | DART | diagnostic only | Diagnostic: `GET /dart/company?corpCode={corpCode}`, `GET /dart/recent?corpCode={corpCode}`, `GET /dart/diagnose?corpCode={corpCode}` | OpenDART API Key required | partial |
 | 날씨 조회 | `weather.current`, `korean.weather` | Cloudflare proxy first, KMA BYOK fallback | KMA VilageFcst | `KMA_SERVICE_KEY` | `GET /weather/kma/nowcast?nx={nx}&ny={ny}` | Public Data Service Key | conditional-pass |
+| 금융 기준일 조회 | `finance.krx.stockPrice`, `finance.krx.index`, `finance.company.statement` | Cloudflare proxy first, 공공데이터포털 BYOK fallback | 금융위원회 공공데이터 | `PUBLIC_DATA_SERVICE_KEY` | `GET /finance/stocks/prices?query={종목명}`, `GET /finance/index/stock?query={지수명}`, `GET /finance/company/summary?crno={법인등록번호}&bizYear={연도}` | Public Data Service Key | partial |
 | 법령 검색 | `law.search`, `korean.law-search` | Cloudflare proxy first, Law.go.kr BYOK fallback | Korean Law | `LAW_OC` | `GET /law/search?query={query}&display={1...20}` | Law.go.kr OC | done |
 
 ## Product Truth Rules
@@ -15,6 +16,7 @@ This inventory tracks public-data lookup features that are visible in MyTeam. A 
 - DART results are disclosure lists and official links, not full disclosure analysis.
 - DART `corpCode` maps to OpenDART `corp_code`. OpenDART `list.json` does not accept `corpName`; the app resolves user input to `corp_code` before calling OpenDART.
 - OpenDART direct calls from the app are the user-facing DART path. Cloudflare DART routes remain operational diagnostics because production Worker calls to OpenDART return provider reachability `522`.
+- 금융위원회 금융 API는 기준일 공공데이터이며 실시간 시세나 투자 조언으로 표시하면 안 된다.
 - DART app direct MVP supports the Samsung seed: `삼성전자`, `삼성전자(주)`, `Samsung Electronics`, stock code `005930`, and corp code `00126380` all resolve to `00126380`.
 - Full corp code cache is a follow-up: download OpenDART corpCode ZIP, parse `CORPCODE.xml`, cache company name / stock code / corp code, add TTL, and support manual refresh.
 - KMA results are grid-based official weather data.

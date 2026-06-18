@@ -37,7 +37,7 @@ FORBIDDEN_SETTINGS_PATTERNS = (
     ("playwright diagnostics view", r"\bPlaywrightMCPStatusView\s*\("),
 )
 
-BASIC_LOOKUP_WORKER_VERSION = "0.2.2"
+BASIC_LOOKUP_WORKER_VERSION = "0.3.0"
 BASIC_LOOKUP_WORKER_ROUTES = (
     "/health",
     "/news/search?query=삼성전자",
@@ -46,6 +46,17 @@ BASIC_LOOKUP_WORKER_ROUTES = (
     "/dart/diagnose?corpCode=00126380",
     "/weather/kma/nowcast?nx=63&ny=89",
     "/weather/kma/forecast?nx=63&ny=89",
+    "/weather/kma/ultra-forecast?nx=63&ny=89",
+    "/weather/kma/village-forecast?nx=63&ny=89",
+    "/weather/kma/version?nx=63&ny=89",
+    "/finance/krx/items?query=삼성전자",
+    "/finance/stocks/prices?query=삼성전자",
+    "/finance/index/stock?query=코스피",
+    "/finance/index/bond?query=채권",
+    "/finance/index/derivatives?query=코스피200",
+    "/finance/company/summary?crno=1101110000000&bizYear=2023",
+    "/finance/company/balance-sheet?crno=1101110000000&bizYear=2023",
+    "/finance/company/income-statement?crno=1101110000000&bizYear=2023",
     "/law/search?query=근로기준법&display=2",
 )
 
