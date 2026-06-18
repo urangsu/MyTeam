@@ -210,6 +210,8 @@ struct ConnectorSetupCardView: View {
             return "chart.line.uptrend.xyaxis"
         case .koreanLaw:
             return "building.columns.fill"
+        case .publicDataPortal:
+            return "tablecells.fill"
         }
     }
 

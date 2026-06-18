@@ -150,12 +150,19 @@ actor ToolExecutionRouter {
             result = await runWithHardTimeout(descriptor) { await self.runNaverNews(input: input) }
         case "weather.current":
             result = await runWithHardTimeout(descriptor) { await self.runKMAWeather(input: input) }
+        case "finance.krx.stockPrice":
+            result = await runWithHardTimeout(descriptor) { await self.runFinance(path: "finance/stocks/prices", label: "주식 기준일 시세", input: input) }
+        case "finance.krx.index":
+            result = await runWithHardTimeout(descriptor) { await self.runFinance(path: "finance/index/stock", label: "시장 지수 기준일 조회", input: input) }
+        case "finance.company.statement":
+            result = await runWithHardTimeout(descriptor) { await self.runFinance(path: "finance/company/summary", label: "기업 재무 요약", input: input) }
         case "law.search":
             result = await runWithHardTimeout(descriptor) { await self.runKoreanLaw(input: input) }
         default:
             result = .unavailable("이 업무는 아직 실행 연결 전입니다.")
         }
-        await finishLog(id: logID, state: result)
+        let artifact = await persistArtifactIfPossible(descriptor: descriptor, result: result, input: input)
+        await finishLog(id: logID, state: result, artifact: artifact)
         return result
     }
 
@@ -165,10 +172,24 @@ actor ToolExecutionRouter {
         return .idle
     }
 
-    private func finishLog(id: UUID, state: ToolExecutionState) async {
+    private func finishLog(id: UUID, state: ToolExecutionState, artifact: IndexedArtifact? = nil) async {
         await MainActor.run {
-            ToolExecutionLogStore.shared.finish(id: id, state: state)
+            ToolExecutionLogStore.shared.finish(id: id, state: state, artifact: artifact)
         }
+    }
+
+    private func persistArtifactIfPossible(
+        descriptor: MyTeamToolDescriptor,
+        result state: ToolExecutionState,
+        input: MyTeamToolInput
+    ) async -> IndexedArtifact? {
+        guard case .succeeded(let result) = state else { return nil }
+        guard descriptor.category != .voice, descriptor.category != .system else { return nil }
+        return await ToolResultArtifactWriter.write(
+            descriptor: descriptor,
+            result: result,
+            input: input
+        )
     }
 
     private func runWithHardTimeout(
@@ -876,6 +897,153 @@ actor ToolExecutionRouter {
                 MyTeamNextAction(id: "changeKeyword", title: "지역 바꾸기", role: .normal)
             ]
         ))
+    }
+
+    private func runFinance(path: String, label: String, input: MyTeamToolInput) async -> ToolExecutionState {
+        let query = sanitizedQuery(input.query, fallback: label)
+        do {
+            let response = try await MyTeamBasicLookupProxyClient.shared.fetchFinance(
+                path: path,
+                query: query,
+                display: input.displayCount ?? 10
+            )
+            return financeResultState(
+                label: label,
+                query: query,
+                response: response,
+                sourceLabel: "MyTeam 기본 공공데이터 조회",
+                modeNotice: response.notice ?? "공공데이터포털 기준일 데이터입니다. 실시간 시세나 투자 조언이 아닙니다."
+            )
+        } catch MyTeamProxyError.noResults {
+            return .succeeded(MyTeamToolResult(
+                title: "\(label) 결과가 없습니다",
+                summary: "'\(query)' 기준 공공데이터 조회 결과를 찾지 못했습니다.",
+                sourceLabel: "MyTeam 기본 공공데이터 조회",
+                body: "공공데이터포털 기준일 데이터입니다. 실시간 시세나 투자 조언이 아닙니다.",
+                items: [],
+                nextActions: [
+                    MyTeamNextAction(id: "changeKeyword", title: "검색어 바꾸기", role: .normal),
+                    MyTeamNextAction(id: "searchAgain", title: "다시 조회", role: .normal)
+                ]
+            ))
+        } catch {
+            guard let serviceKey = await credentialValue(provider: .publicDataPortal, fieldID: "serviceKey") else {
+                return .failed(MyTeamToolFailure(
+                    title: "\(label)을 완료하지 못했습니다",
+                    message: "기본 조회 서버가 응답하지 않습니다. 잠시 후 다시 시도하거나 공공데이터포털 개인 Service Key를 연결하세요.",
+                    recoveryActions: [
+                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
+                        MyTeamNextAction(id: "openConnection", title: "개인 키 연결", role: .normal)
+                    ]
+                ))
+            }
+            do {
+                let direct = try await PublicDataPortalDirectConnector.finance(
+                    path: path,
+                    query: query,
+                    serviceKey: serviceKey,
+                    display: input.displayCount ?? 10
+                )
+                return financeResultState(
+                    label: label,
+                    query: query,
+                    response: MyTeamProxyPublicDataResponse(
+                        ok: true,
+                        provider: "public-data-portal",
+                        route: direct.route,
+                        query: query,
+                        count: direct.items.count,
+                        elapsedMs: nil,
+                        notice: direct.notice,
+                        items: direct.items
+                    ),
+                    sourceLabel: "공공데이터포털 · 개인 키",
+                    modeNotice: "기본 조회 서버가 응답하지 않아 개인 Service Key로 조회했습니다. \(direct.notice)"
+                )
+            } catch {
+                return .failed(MyTeamToolFailure(
+                    title: "\(label)을 완료하지 못했습니다",
+                    message: "기본 조회 서버와 공공데이터포털 개인 키 조회가 모두 실패했습니다. 개인 키 권한과 입력값을 확인하세요.",
+                    recoveryActions: [
+                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
+                        MyTeamNextAction(id: "openConnection", title: "개인 키 확인", role: .normal)
+                    ]
+                ))
+            }
+        }
+    }
+
+    private func financeResultState(
+        label: String,
+        query: String,
+        response: MyTeamProxyPublicDataResponse,
+        sourceLabel: String,
+        modeNotice: String
+    ) -> ToolExecutionState {
+        let items = response.items
+        return .succeeded(MyTeamToolResult(
+            title: "\(label)을 확인했습니다",
+            summary: "\(query) 기준 공공데이터 \(items.count)건을 가져왔습니다. 실시간 시세가 아닙니다.",
+            sourceLabel: sourceLabel,
+            body: financeBody(label: label, query: query, notice: modeNotice, items: items),
+            items: items.prefix(5).enumerated().map { index, item in
+                MyTeamToolResultItem(
+                    id: "\(response.route)-\(index)",
+                    title: financeTitle(from: item, fallback: "\(label) \(index + 1)"),
+                    subtitle: financeSubtitle(from: item),
+                    metadata: financeMetadata(from: item),
+                    sourceURL: URL(string: "https://www.data.go.kr/")
+                )
+            },
+            nextActions: [
+                MyTeamNextAction(id: "draftEvidence", title: "보고 문장", role: .normal),
+                MyTeamNextAction(id: "searchAgain", title: "다시 조회", role: .normal),
+                MyTeamNextAction(id: "openConnection", title: "개인 키 설정", role: .normal)
+            ]
+        ))
+    }
+
+    private func financeBody(label: String, query: String, notice: String, items: [[String: String]]) -> String {
+        var lines = [
+            "# \(label)",
+            "",
+            "- 조회어: \(query)",
+            "- 주의: \(notice)",
+            "- 해석: 기준일 공공데이터이며 실시간 시세나 투자 조언이 아닙니다.",
+            "",
+            "## 결과"
+        ]
+        for (index, item) in items.prefix(10).enumerated() {
+            lines.append("\(index + 1). \(financeTitle(from: item, fallback: "항목"))")
+            for (key, value) in item.sorted(by: { $0.key < $1.key }).prefix(8) {
+                lines.append("   - \(key): \(value)")
+            }
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private func financeTitle(from item: [String: String], fallback: String) -> String {
+        [
+            "itmsNm", "idxNm", "corpNm", "crno", "isinCd", "srtnCd", "basDt"
+        ].compactMap { item[$0] }.first ?? fallback
+    }
+
+    private func financeSubtitle(from item: [String: String]) -> String? {
+        [
+            item["clpr"].map { "종가 \($0)" },
+            item["mkp"].map { "시가 \($0)" },
+            item["fltRt"].map { "등락률 \($0)" },
+            item["trqu"].map { "거래량 \($0)" },
+            item["idxCsf"].map { "분류 \($0)" }
+        ].compactMap(\.self).prefix(3).joined(separator: " · ")
+    }
+
+    private func financeMetadata(from item: [String: String]) -> String? {
+        [
+            item["basDt"].map { "기준일 \($0)" },
+            item["mrktCtg"].map { "시장 \($0)" },
+            item["bizYear"].map { "사업연도 \($0)" }
+        ].compactMap(\.self).joined(separator: " · ")
     }
 
     private func runKoreanLaw(input: MyTeamToolInput) async -> ToolExecutionState {

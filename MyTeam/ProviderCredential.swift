@@ -38,6 +38,7 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable, Hashable {
     case naverNews     = "naverNews"
     case dartDisclosure = "dartDisclosure"
     case koreanLaw     = "koreanLaw"
+    case publicDataPortal = "publicDataPortal"
 
     nonisolated var displayName: String {
         switch self {
@@ -49,6 +50,7 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable, Hashable {
         case .naverNews:      return "네이버 뉴스"
         case .dartDisclosure: return "DART 공시"
         case .koreanLaw:      return "한국 법령"
+        case .publicDataPortal: return "공공데이터포털"
         }
     }
 
@@ -70,6 +72,8 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable, Hashable {
             return "DART 공시 조회는 개인 OpenDART API Key를 연결하면 앱에서 직접 실행합니다. API 키는 기기 Keychain에 저장됩니다."
         case .koreanLaw:
             return "기본 법령 검색은 MyTeam 서버로 사용할 수 있습니다. 개인 국가법령정보센터 OC 연결은 고급 사용자를 위한 선택 사항입니다."
+        case .publicDataPortal:
+            return "금융위원회, 기상청 등 공공데이터포털 조회에 사용할 개인 Service Key입니다. 기본 조회는 MyTeam 서버를 먼저 사용합니다."
         }
     }
 
@@ -102,7 +106,7 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable, Hashable {
                     isSecret: true
                 )
             ])
-        case .kmaWeather:
+        case .kmaWeather, .publicDataPortal:
             return ProviderCredentialSchema(fields: [
                 CredentialField(
                     id: "serviceKey",
@@ -137,7 +141,7 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable, Hashable {
 
     var executionModes: [ConnectorExecutionMode] {
         switch self {
-        case .kmaWeather, .naverNews, .koreanLaw:
+        case .kmaWeather, .naverNews, .koreanLaw, .publicDataPortal:
             return [.byokDirect, .proxyPlanned]
         case .dartDisclosure:
             return [.byokDirect]
@@ -148,7 +152,7 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable, Hashable {
 
     var isPublicAPIProvider: Bool {
         switch self {
-        case .kmaWeather, .naverNews, .dartDisclosure, .koreanLaw:
+        case .kmaWeather, .naverNews, .dartDisclosure, .koreanLaw, .publicDataPortal:
             return true
         case .openAI, .gemini, .anthropic, .openRouter:
             return false
@@ -157,7 +161,7 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable, Hashable {
 
     var hasLiveCredentialValidator: Bool {
         switch self {
-        case .kmaWeather, .naverNews, .dartDisclosure, .koreanLaw:
+        case .kmaWeather, .naverNews, .dartDisclosure, .koreanLaw, .publicDataPortal:
             return true
         case .openAI, .gemini, .anthropic, .openRouter:
             return true
@@ -182,6 +186,8 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable, Hashable {
             return URL(string: "https://opendart.fss.or.kr/uat/uia/egovLoginUsr.do")
         case .koreanLaw:
             return URL(string: "https://www.law.go.kr/LSO/openApi/guide.do")
+        case .publicDataPortal:
+            return URL(string: "https://www.data.go.kr/")
         }
     }
 
@@ -196,6 +202,7 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable, Hashable {
         case .naverNews:      return "naverNewsAPIKey"
         case .dartDisclosure: return "dartDisclosureAPIKey"
         case .koreanLaw:      return "koreanLawAPIKey"
+        case .publicDataPortal: return "publicDataPortalServiceKey"
         }
     }
 
@@ -203,7 +210,7 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable, Hashable {
     var isVisibleInAppStore: Bool {
         switch self {
         case .openAI, .gemini, .anthropic, .openRouter,
-             .kmaWeather, .naverNews, .dartDisclosure, .koreanLaw:
+             .kmaWeather, .naverNews, .dartDisclosure, .koreanLaw, .publicDataPortal:
             return true
         }
     }

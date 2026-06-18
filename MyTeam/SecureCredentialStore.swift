@@ -164,7 +164,7 @@ final class SecureCredentialStore {
             return LLMProvider.claude.rawValue
         case .openRouter:
             return LLMProvider.openRouter.rawValue
-        case .kmaWeather, .naverNews, .dartDisclosure, .koreanLaw:
+        case .kmaWeather, .naverNews, .dartDisclosure, .koreanLaw, .publicDataPortal:
             return nil
         }
     }

@@ -39,6 +39,8 @@ enum PublicAPIConnectorValidator {
             return try makeKMARequest(fields: request.fields, clock: request.clock)
         case .koreanLaw:
             return try makeKoreanLawRequest(fields: request.fields)
+        case .publicDataPortal:
+            return try makePublicDataPortalRequest(fields: request.fields)
         case .openAI, .gemini, .anthropic, .openRouter:
             throw ConnectorFailureCode.providerUnavailable
         }
@@ -81,6 +83,8 @@ enum PublicAPIConnectorValidator {
             return parseKMA(data)
         case .koreanLaw:
             return parseKoreanLaw(data)
+        case .publicDataPortal:
+            return parsePublicDataPortal(data)
         case .openAI, .gemini, .anthropic, .openRouter:
             return false
         }
@@ -110,6 +114,25 @@ enum PublicAPIConnectorValidator {
         request.setValue(clientID, forHTTPHeaderField: "X-Naver-Client-Id")
         request.setValue(clientSecret, forHTTPHeaderField: "X-Naver-Client-Secret")
         return request
+    }
+
+    private static func makePublicDataPortalRequest(fields: [String: String]) throws -> URLRequest {
+        guard let serviceKey = trimmed(fields["serviceKey"]) else {
+            throw ConnectorFailureCode.missingAPIKey
+        }
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "apis.data.go.kr"
+        components.path = "/1160100/service/GetKrxListedInfoService/getItemInfo"
+        components.queryItems = [
+            URLQueryItem(name: "serviceKey", value: serviceKey),
+            URLQueryItem(name: "pageNo", value: "1"),
+            URLQueryItem(name: "numOfRows", value: "1"),
+            URLQueryItem(name: "resultType", value: "json"),
+            URLQueryItem(name: "likeItmsNm", value: "삼성전자")
+        ]
+        guard let url = components.url else { throw ConnectorFailureCode.responseParseFailed }
+        return URLRequest(url: url)
     }
 
     private static func makeDARTRequest(fields: [String: String], clock: any PublicAPIClock) throws -> URLRequest {
@@ -240,6 +263,27 @@ enum PublicAPIConnectorValidator {
         }
         if let law = search["law"] as? [String: Any] {
             return law["법령명한글"] != nil && (law["법령ID"] != nil || law["법령일련번호"] != nil)
+        }
+        return false
+    }
+
+    private static func parsePublicDataPortal(_ data: Data) -> Bool {
+        guard
+            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let response = object["response"] as? [String: Any],
+            let header = response["header"] as? [String: Any],
+            let resultCode = header["resultCode"] as? String,
+            let body = response["body"] as? [String: Any],
+            let items = body["items"] as? [String: Any]
+        else {
+            return false
+        }
+        guard resultCode == "00" else { return false }
+        if let itemArray = items["item"] as? [[String: Any]] {
+            return !itemArray.isEmpty
+        }
+        if let singleItem = items["item"] as? [String: Any] {
+            return !singleItem.isEmpty
         }
         return false
     }
@@ -545,6 +589,17 @@ nonisolated struct MyTeamProxyLawItem: Decodable, Identifiable, Sendable, Equata
     let status: String?
 }
 
+nonisolated struct MyTeamProxyPublicDataResponse: Decodable, Sendable, Equatable {
+    let ok: Bool
+    let provider: String
+    let route: String
+    let query: String?
+    let count: Int?
+    let elapsedMs: Int?
+    let notice: String?
+    let items: [[String: String]]
+}
+
 nonisolated struct MyTeamProxyFailureResponse: Decodable, Sendable, Equatable {
     let ok: Bool
     let error: String?
@@ -726,6 +781,41 @@ actor MyTeamBasicLookupProxyClient {
         session: URLSession = .shared
     ) async throws -> MyTeamProxyKMAResponse {
         try await fetchKMA(path: "weather/kma/forecast", nx: nx, ny: ny, session: session)
+    }
+
+    func fetchKMAVillageForecast(
+        nx: Int,
+        ny: Int,
+        session: URLSession = .shared
+    ) async throws -> MyTeamProxyKMAResponse {
+        try await fetchKMA(path: "weather/kma/village-forecast", nx: nx, ny: ny, session: session)
+    }
+
+    func fetchKMAForecastVersion(
+        nx: Int,
+        ny: Int,
+        session: URLSession = .shared
+    ) async throws -> MyTeamProxyKMAResponse {
+        try await fetchKMA(path: "weather/kma/version", nx: nx, ny: ny, session: session)
+    }
+
+    func fetchFinance(
+        path: String,
+        query: String,
+        display: Int = 10,
+        session: URLSession = .shared
+    ) async throws -> MyTeamProxyPublicDataResponse {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let baseURL = MyTeamBasicLookupProxyConfig.baseURL else {
+            throw MyTeamProxyError.invalidBaseURL
+        }
+        var components = URLComponents(url: baseURL.appending(path: path), resolvingAgainstBaseURL: false)
+        components?.queryItems = [
+            URLQueryItem(name: "query", value: trimmedQuery),
+            URLQueryItem(name: "display", value: String(min(max(display, 1), 20)))
+        ]
+        guard let url = components?.url else { throw MyTeamProxyError.invalidBaseURL }
+        return try await requestProxy(url: url, session: session, responseType: MyTeamProxyPublicDataResponse.self)
     }
 
     func searchKoreanLaw(
@@ -1051,6 +1141,133 @@ private func validateDirectHTTP(_ response: URLResponse) throws {
     default:
         throw ConnectorFailureCode.networkError
     }
+}
+
+struct PublicDataPortalResult: Sendable, Equatable {
+    let route: String
+    let notice: String
+    let items: [[String: String]]
+}
+
+enum PublicDataPortalDirectConnector {
+    static func finance(
+        path: String,
+        query: String,
+        serviceKey: String,
+        display: Int = 10,
+        session: URLSession = .shared
+    ) async throws -> PublicDataPortalResult {
+        guard let route = routeConfig(for: path) else {
+            throw ConnectorFailureCode.responseParseFailed
+        }
+
+        var components = URLComponents(url: route.endpoint, resolvingAgainstBaseURL: false)
+        var queryItems: [URLQueryItem] = [
+            URLQueryItem(name: "serviceKey", value: serviceKey),
+            URLQueryItem(name: "pageNo", value: "1"),
+            URLQueryItem(name: "numOfRows", value: String(min(max(display, 1), 20))),
+            URLQueryItem(name: "resultType", value: "json")
+        ]
+        queryItems.append(contentsOf: route.queryItems(for: query))
+        components?.queryItems = queryItems
+        guard let url = components?.url else { throw ConnectorFailureCode.responseParseFailed }
+
+        let (data, response) = try await session.data(for: URLRequest(url: url))
+        try validateDirectHTTP(response)
+        let items = try parseItems(data)
+        return PublicDataPortalResult(route: route.id, notice: route.notice, items: items)
+    }
+
+    private static func parseItems(_ data: Data) throws -> [[String: String]] {
+        guard
+            let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let response = object["response"] as? [String: Any],
+            let header = response["header"] as? [String: Any],
+            let resultCode = header["resultCode"] as? String
+        else {
+            throw ConnectorFailureCode.responseParseFailed
+        }
+        guard resultCode == "00" else {
+            throw ConnectorFailureCode.responseParseFailed
+        }
+        guard
+            let body = response["body"] as? [String: Any],
+            let items = body["items"] as? [String: Any],
+            let rawItem = items["item"]
+        else {
+            return []
+        }
+        let rawItems = (rawItem as? [[String: Any]]) ?? (rawItem as? [String: Any]).map { [$0] } ?? []
+        return rawItems.compactMap(normalizeItem)
+    }
+
+    nonisolated private static func normalizeItem(_ item: [String: Any]) -> [String: String]? {
+        var normalized: [String: String] = [:]
+        for (key, value) in item {
+            let text = String(describing: value).trimmingCharacters(in: .whitespacesAndNewlines)
+            if !text.isEmpty {
+                normalized[key] = text
+            }
+        }
+        return normalized.isEmpty ? nil : normalized
+    }
+
+    private static func routeConfig(for path: String) -> PublicDataRouteConfig? {
+        PublicDataRouteConfig.all[path]
+    }
+}
+
+private struct PublicDataRouteConfig: Sendable {
+    let id: String
+    let endpoint: URL
+    let notice: String
+    let kind: Kind
+
+    enum Kind: Sendable {
+        case stockName
+        case indexName
+        case companyFinancial
+    }
+
+    func queryItems(for query: String) -> [URLQueryItem] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        switch kind {
+        case .stockName:
+            if trimmed.range(of: #"^\d{6}$"#, options: .regularExpression) != nil {
+                return [URLQueryItem(name: "srtnCd", value: trimmed)]
+            }
+            return [URLQueryItem(name: "itmsNm", value: trimmed)]
+        case .indexName:
+            return [URLQueryItem(name: "idxNm", value: trimmed)]
+        case .companyFinancial:
+            let tokens = trimmed.split(whereSeparator: { $0.isWhitespace || $0.isNewline }).map(String.init)
+            return [
+                URLQueryItem(name: "crno", value: tokens.first ?? trimmed),
+                URLQueryItem(name: "bizYear", value: tokens.dropFirst().first ?? "")
+            ]
+        }
+    }
+
+    static let all: [String: PublicDataRouteConfig] = [
+        "finance/stocks/prices": PublicDataRouteConfig(
+            id: "stock-prices",
+            endpoint: URL(string: "https://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService/getStockPriceInfo")!,
+            notice: "금융위원회 주식시세정보 기준일 공공데이터입니다. 실시간 시세가 아닙니다.",
+            kind: .stockName
+        ),
+        "finance/index/stock": PublicDataRouteConfig(
+            id: "stock-index",
+            endpoint: URL(string: "https://apis.data.go.kr/1160100/service/GetMarketIndexInfoService/getStockMarketIndex")!,
+            notice: "금융위원회 지수시세정보 기준일 공공데이터입니다. 실시간 지수가 아닙니다.",
+            kind: .indexName
+        ),
+        "finance/company/summary": PublicDataRouteConfig(
+            id: "company-summary",
+            endpoint: URL(string: "https://apis.data.go.kr/1160100/service/GetFinaStatInfoService_V2/getSummFinaStat_V2")!,
+            notice: "금융위원회 기업 재무정보 기준 공공데이터입니다.",
+            kind: .companyFinancial
+        )
+    ]
 }
 
 nonisolated private func cleanHTML(_ raw: String) -> String {

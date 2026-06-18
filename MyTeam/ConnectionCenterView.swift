@@ -10,7 +10,7 @@ struct ConnectionCenterView: View {
     @StateObject private var healthService = CredentialHealthService.shared
 
     private let aiProviders: [ExternalProvider] = [.gemini, .openAI, .anthropic, .openRouter]
-    private let dataProviders: [ExternalProvider] = [.kmaWeather, .naverNews, .dartDisclosure, .koreanLaw]
+    private let dataProviders: [ExternalProvider] = [.kmaWeather, .naverNews, .dartDisclosure, .koreanLaw, .publicDataPortal]
 
     private var connectedAIProviderCount: Int {
         aiProviders.filter { healthService.health(for: $0).state.isConnected }.count

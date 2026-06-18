@@ -27,12 +27,14 @@ struct ToolExecutionLogEntry: Identifiable, Codable, Sendable, Equatable {
     let provider: ExternalProvider?
     let failureMessage: String?
     let resultSummary: String?
+    let artifactID: String?
+    let artifactFilename: String?
     let timedOut: Bool
     let path: ToolExecutionPath
 
     enum CodingKeys: String, CodingKey {
         case id, toolID, displayName, permissionLevel, startedAt, firstVisibleFeedbackAt, finishedAt
-        case durationMs, state, provider, failureMessage, resultSummary, timedOut, path
+        case durationMs, state, provider, failureMessage, resultSummary, artifactID, artifactFilename, timedOut, path
     }
 
     init(
@@ -48,6 +50,8 @@ struct ToolExecutionLogEntry: Identifiable, Codable, Sendable, Equatable {
         provider: ExternalProvider?,
         failureMessage: String?,
         resultSummary: String?,
+        artifactID: String?,
+        artifactFilename: String?,
         timedOut: Bool,
         path: ToolExecutionPath
     ) {
@@ -63,6 +67,8 @@ struct ToolExecutionLogEntry: Identifiable, Codable, Sendable, Equatable {
         self.provider = provider
         self.failureMessage = failureMessage
         self.resultSummary = resultSummary
+        self.artifactID = artifactID
+        self.artifactFilename = artifactFilename
         self.timedOut = timedOut
         self.path = path
     }
@@ -81,6 +87,8 @@ struct ToolExecutionLogEntry: Identifiable, Codable, Sendable, Equatable {
         provider = try values.decodeIfPresent(ExternalProvider.self, forKey: .provider)
         failureMessage = try values.decodeIfPresent(String.self, forKey: .failureMessage)
         resultSummary = try values.decodeIfPresent(String.self, forKey: .resultSummary)
+        artifactID = try values.decodeIfPresent(String.self, forKey: .artifactID)
+        artifactFilename = try values.decodeIfPresent(String.self, forKey: .artifactFilename)
         timedOut = try values.decodeIfPresent(Bool.self, forKey: .timedOut) ?? false
         path = try values.decodeIfPresent(ToolExecutionPath.self, forKey: .path) ?? .toolCard
     }
@@ -119,6 +127,8 @@ final class ToolExecutionLogStore: ObservableObject {
             provider: descriptor.relatedProvider ?? descriptor.requiredCredential?.provider.externalProvider,
             failureMessage: nil,
             resultSummary: nil,
+            artifactID: nil,
+            artifactFilename: nil,
             timedOut: false,
             path: path
         )
@@ -127,7 +137,7 @@ final class ToolExecutionLogStore: ObservableObject {
         return id
     }
 
-    func finish(id: UUID, state: ToolExecutionState) {
+    func finish(id: UUID, state: ToolExecutionState, artifact: IndexedArtifact? = nil) {
         guard let index = entries.firstIndex(where: { $0.id == id }) else { return }
         let existing = entries[index]
         let finishedAt = Date()
@@ -144,6 +154,8 @@ final class ToolExecutionLogStore: ObservableObject {
             provider: existing.provider,
             failureMessage: failureMessage(for: state),
             resultSummary: resultSummary(for: state),
+            artifactID: artifact?.id ?? existing.artifactID,
+            artifactFilename: artifact?.filename ?? existing.artifactFilename,
             timedOut: isTimeout(state),
             path: existing.path
         )
@@ -243,5 +255,162 @@ final class ToolExecutionLogStore: ObservableObject {
             return String(text[..<end]) + "..."
         }
         return text
+    }
+}
+
+enum ToolResultArtifactWriter {
+    static func write(
+        descriptor: MyTeamToolDescriptor,
+        result: MyTeamToolResult,
+        input: MyTeamToolInput
+    ) async -> IndexedArtifact? {
+        let markdown = markdownBody(descriptor: descriptor, result: result, input: input)
+        let filename = filename(for: descriptor)
+        let store = ArtifactStore.shared
+        let fileURL = store.workspaceURL.appendingPathComponent(filename)
+
+        do {
+            try markdown.write(to: fileURL, atomically: true, encoding: .utf8)
+        } catch {
+            AppLog.warning("[ToolResultArtifactWriter] artifact write failed: \(error.localizedDescription)")
+            return nil
+        }
+
+        let now = Date()
+        let roomID = await MainActor.run { AgentWindowManager.shared.currentRoomID }
+        let workflowID = await MainActor.run { AgentWindowManager.shared.currentWorkflowID } ?? UUID()
+        let artifact = IndexedArtifact(
+            id: UUID().uuidString,
+            workflowID: workflowID.uuidString,
+            title: result.title,
+            type: artifactType(for: descriptor),
+            filename: filename,
+            relativePath: filename,
+            preview: String(result.summary.prefix(200)),
+            createdAt: ISO8601DateFormatter().string(from: now),
+            contentHash: StableContentHash.sha256Hex(markdown),
+            fileSizeBytes: Int64(markdown.utf8.count),
+            roomID: roomID?.uuidString
+        )
+        await store.registerArtifact(artifact)
+
+        if let roomID {
+            await MainActor.run {
+                let entry = RecentArtifactIndexEntry(
+                    artifactID: artifact.id,
+                    roomID: roomID,
+                    filename: filename,
+                    artifactType: artifact.type.rawValue,
+                    createdAt: now,
+                    contentHash: artifact.contentHash,
+                    fileSizeBytes: artifact.fileSizeBytes
+                )
+                AgentWindowManager.shared.addRecentArtifactIndexEntry(entry)
+            }
+        }
+
+        return artifact
+    }
+
+    private static func markdownBody(
+        descriptor: MyTeamToolDescriptor,
+        result: MyTeamToolResult,
+        input: MyTeamToolInput
+    ) -> String {
+        var lines: [String] = [
+            "# \(result.title)",
+            "",
+            "## 요약",
+            result.summary,
+            "",
+            "## 실행 정보",
+            "- 업무: \(descriptor.displayName)",
+            "- 입력: \(sanitizedInput(input.query))",
+            "- 근거: \(result.sourceLabel ?? "MyTeam")"
+        ]
+
+        if let body = result.body?.trimmingCharacters(in: .whitespacesAndNewlines), !body.isEmpty {
+            lines.append("")
+            lines.append("## 내용")
+            lines.append(body)
+        }
+
+        if !result.items.isEmpty {
+            lines.append("")
+            lines.append("## 근거와 항목")
+            for item in result.items {
+                lines.append("- \(item.title)")
+                if let subtitle = item.subtitle, !subtitle.isEmpty {
+                    lines.append("  - 설명: \(subtitle)")
+                }
+                if let metadata = item.metadata, !metadata.isEmpty {
+                    lines.append("  - 메타: \(metadata)")
+                }
+                if let url = item.sourceURL {
+                    lines.append("  - 출처: \(url.absoluteString)")
+                }
+            }
+        }
+
+        lines.append("")
+        lines.append("## 보고 문장")
+        lines.append(reportSentence(for: descriptor, result: result))
+
+        if descriptor.id.hasPrefix("finance.") {
+            lines.append("")
+            lines.append("> 이 금융 정보는 공공데이터포털 기준일 데이터입니다. 실시간 시세나 투자 조언이 아닙니다.")
+        }
+        if descriptor.id == "law.search" {
+            lines.append("")
+            lines.append("> 이 법령 정보는 공식 출처 확인용이며 법률 자문이 아닙니다.")
+        }
+
+        return lines.joined(separator: "\n")
+    }
+
+    private static func reportSentence(for descriptor: MyTeamToolDescriptor, result: MyTeamToolResult) -> String {
+        switch descriptor.category {
+        case .externalInfo:
+            return "\(descriptor.displayName) 결과는 \(result.sourceLabel ?? "공식 출처") 기준으로 확인되며, \(result.summary)"
+        case .calendar:
+            return "오늘 일정 확인 결과, \(result.summary)"
+        case .spreadsheet:
+            return "스프레드시트 확인 결과, \(result.summary)"
+        default:
+            return result.summary
+        }
+    }
+
+    private static func filename(for descriptor: MyTeamToolDescriptor) -> String {
+        let timestamp = ISO8601DateFormatter()
+            .string(from: Date())
+            .replacingOccurrences(of: ":", with: "-")
+        let slug = descriptor.id
+            .replacingOccurrences(of: ".", with: "-")
+            .replacingOccurrences(of: "/", with: "-")
+        return "tool-result-\(slug)-\(timestamp).md"
+    }
+
+    private static func sanitizedInput(_ value: String?) -> String {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if trimmed.isEmpty { return "입력 없음" }
+        if trimmed.count > 160 {
+            let end = trimmed.index(trimmed.startIndex, offsetBy: 160)
+            return String(trimmed[..<end]) + "..."
+        }
+        return trimmed
+    }
+
+    private static func artifactType(for descriptor: MyTeamToolDescriptor) -> ArtifactType {
+        switch descriptor.category {
+        case .spreadsheet:
+            return .spreadsheet
+        case .externalInfo, .briefing, .calendar:
+            return .report
+        case .document:
+            return .text
+        default:
+            return .text
+        }
     }
 }

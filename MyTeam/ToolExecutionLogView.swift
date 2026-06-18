@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct ToolExecutionLogView: View {
@@ -77,9 +78,25 @@ struct ToolExecutionLogView: View {
             }
 
             Spacer(minLength: 0)
+
+            if let filename = entry.artifactFilename {
+                Button {
+                    openArtifact(filename: filename)
+                } label: {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                .buttonStyle(.plain)
+                .help("결과 다시 열기")
+            }
         }
         .padding(8)
         .background(Color(NSColor.windowBackgroundColor), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+    }
+
+    private func openArtifact(filename: String) {
+        let url = ArtifactStore.shared.workspaceURL.appendingPathComponent(filename)
+        NSWorkspace.shared.open(url)
     }
 
     private func detail(for entry: ToolExecutionLogEntry) -> String {

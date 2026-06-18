@@ -133,6 +133,42 @@ enum MyTeamToolRegistry {
             relatedProvider: .koreanLaw
         ),
         MyTeamToolDescriptor(
+            id: "finance.krx.stockPrice",
+            displayName: "주식 기준일 시세",
+            shortDescription: "공공데이터포털 기준일 주식 시세를 확인합니다. 실시간 시세가 아닙니다.",
+            category: .externalInfo,
+            requiredCredential: nil,
+            permissionLevel: .readOnly,
+            isImplemented: true,
+            isUserFacing: true,
+            supportedDistributionChannels: [.appStore, .direct, .developer],
+            relatedProvider: .publicDataPortal
+        ),
+        MyTeamToolDescriptor(
+            id: "finance.krx.index",
+            displayName: "시장 지수 기준일 조회",
+            shortDescription: "코스피, 코스닥, KRX300 등 기준일 지수 정보를 확인합니다.",
+            category: .externalInfo,
+            requiredCredential: nil,
+            permissionLevel: .readOnly,
+            isImplemented: true,
+            isUserFacing: true,
+            supportedDistributionChannels: [.appStore, .direct, .developer],
+            relatedProvider: .publicDataPortal
+        ),
+        MyTeamToolDescriptor(
+            id: "finance.company.statement",
+            displayName: "기업 재무 요약",
+            shortDescription: "법인등록번호와 사업연도 기준 요약재무제표를 확인합니다.",
+            category: .externalInfo,
+            requiredCredential: nil,
+            permissionLevel: .readOnly,
+            isImplemented: true,
+            isUserFacing: true,
+            supportedDistributionChannels: [.appStore, .direct, .developer],
+            relatedProvider: .publicDataPortal
+        ),
+        MyTeamToolDescriptor(
             id: "calendar.events.today",
             displayName: "일정 확인",
             shortDescription: "오늘 일정과 회의 준비 사항을 확인합니다.",
@@ -277,6 +313,8 @@ enum MyTeamToolRegistry {
             return ["공시 조회", "경제 브리핑", "기업 리포트"]
         case .koreanLaw:
             return ["법령 검색", "규정 검토"]
+        case .publicDataPortal:
+            return ["주식 기준일 시세", "시장 지수 조회", "기업 재무 요약", "기상청 예보"]
         }
     }
 }

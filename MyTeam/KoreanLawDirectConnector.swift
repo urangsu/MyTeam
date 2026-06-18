@@ -41,7 +41,7 @@ struct KoreanLawResult: Sendable, Equatable {
 }
 
 enum KoreanLawDirectConnector {
-    static let disclaimer = "법률 자문이 아닌 공식 출처 기반 법령 조사 결과입니다."
+    nonisolated static let disclaimer = "법률 자문이 아닌 공식 출처 기반 법령 조사 결과입니다."
 
     static func makeSearchRequest(_ request: KoreanLawSearchRequest, lawOC: String) throws -> URLRequest {
         let query = request.lawName ?? request.query

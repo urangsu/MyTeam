@@ -12,7 +12,10 @@ struct HomeDashboardView: View {
         "document.rewrite": "다듬을 문장이나 문서를 붙여넣으세요.",
         "spreadsheet.postprocess": "표 내용을 붙여넣으세요.",
         "spreadsheet.googleSheets.read": "",
-        "dart.disclosures.search": "포스코",
+        "dart.disclosures.search": "삼성전자",
+        "finance.krx.stockPrice": "삼성전자",
+        "finance.krx.index": "코스피",
+        "finance.company.statement": "1101110000000 2023",
         "news.search": "경제",
         "weather.current": "서울",
         "law.search": "근로기준법"
@@ -28,6 +31,9 @@ struct HomeDashboardView: View {
         "spreadsheet.googleSheets.read",
         "calendar.events.today",
         "weather.current",
+        "finance.krx.stockPrice",
+        "finance.krx.index",
+        "finance.company.statement",
         "dart.disclosures.search",
         "news.search",
         "law.search",
@@ -139,7 +145,7 @@ struct HomeDashboardView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("업무")
                 .font(.system(size: 20, weight: .bold))
-            Text("필요한 연결을 확인한 뒤 스킬과 업무창으로 이어집니다.")
+            Text("조회, 정리, 보고 문장까지 하나의 업무 결과로 남깁니다.")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
         }
@@ -187,7 +193,13 @@ struct HomeDashboardView: View {
     private func defaultQuery(for descriptor: MyTeamToolDescriptor) -> String {
         switch descriptor.id {
         case "dart.disclosures.search":
-            return "포스코"
+            return "삼성전자"
+        case "finance.krx.stockPrice":
+            return "삼성전자"
+        case "finance.krx.index":
+            return "코스피"
+        case "finance.company.statement":
+            return "법인등록번호 사업연도"
         case "news.search":
             return "경제"
         case "weather.current":
@@ -248,6 +260,9 @@ struct HomeDashboardView: View {
     private var inlineRunnableToolIDs: Set<String> {
         [
             "dart.disclosures.search",
+            "finance.krx.stockPrice",
+            "finance.krx.index",
+            "finance.company.statement",
             "news.search",
             "weather.current",
             "law.search",
