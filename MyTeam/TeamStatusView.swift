@@ -808,61 +808,97 @@ struct TeamStatusView: View {
                         .padding(.top, 4)
                 }
 
-                HStack(spacing: 8) {
-                Button(action: openTeamFilePicker) {
-                    Image(systemName: "paperclip")
-                        .font(.system(size: 14))
-                        .foregroundColor(.secondary)
-                }
-                .buttonStyle(PlainButtonStyle())
-
-                // ── 빠른 기능 메뉴 (두루마리 아이콘) ──
-                Button(action: { isQuickActionMenuPresented.toggle() }) {
-                    Image(systemName: "scroll")
-                        .font(.system(size: 14))
-                        .foregroundColor(isQuickActionMenuPresented ? .blue : .secondary.opacity(0.7))
-                }
-                .buttonStyle(PlainButtonStyle())
-                .help("할 수 있는 것 보기")
-                .popover(isPresented: $isQuickActionMenuPresented, arrowEdge: .bottom) {
-                    quickActionMenuView
-                }
-
-                TextField("팀원들에게 메시지...", text: $inputText)
-                    .textFieldStyle(PlainTextFieldStyle())
-                    .foregroundColor(.mtTextPrimary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(isTargetedForDrop ? Color.blue.opacity(0.1) : Color.mtInputBackground)
-                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(isTargetedForDrop ? Color.blue : Color.mtCardBorder, lineWidth: 1))
-                    )
-                    .onSubmit { sendTeamMessage() }
-
-                // ── 중지 버튼 (workflow 실행 중일 때만 표시) ──
-                if manager.isWorkflowRunning {
-                    Button(action: {
-                        // Round 241A: selectedTeamWorkroomID 기준
-                        guard let roomID = manager.selectedTeamWorkroomID else { return }
-                        WorkflowOrchestrator.shared.cancelCurrentWorkflow(roomID: roomID, manager: manager)
-                    }) {
-                        Image(systemName: "stop.circle.fill")
-                            .font(.system(size: 16))
-                            .foregroundColor(.red.opacity(0.8))
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "bubble.left.and.text.bubble.right.fill")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.blue.opacity(0.78))
+                        Text("팀 워크룸 입력")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(textColor.opacity(0.58))
+                        if let roomName = manager.rooms.first(where: { $0.id == activeRoomID })?.name {
+                            Text(roomName)
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(textColor.opacity(0.38))
+                                .lineLimit(1)
+                        }
+                        Spacer()
                     }
-                    .buttonStyle(PlainButtonStyle())
-                    .help("작업 중지")
-                } else {
-                    Button(action: sendTeamMessage) {
-                        Image(systemName: "paperplane.fill")
-                            .foregroundColor((inputText.isEmpty && pendingAttachments.isEmpty) ? .gray.opacity(0.4) : .blue)
+
+                    HStack(spacing: 8) {
+                        Button(action: openTeamFilePicker) {
+                            Image(systemName: "paperclip")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                                .frame(width: 24, height: 28)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+
+                        // ── 빠른 기능 메뉴 (두루마리 아이콘) ──
+                        Button(action: { isQuickActionMenuPresented.toggle() }) {
+                            Image(systemName: "scroll")
+                                .font(.system(size: 14))
+                                .foregroundColor(isQuickActionMenuPresented ? .blue : .secondary.opacity(0.7))
+                                .frame(width: 24, height: 28)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .help("할 수 있는 것 보기")
+                        .popover(isPresented: $isQuickActionMenuPresented, arrowEdge: .bottom) {
+                            quickActionMenuView
+                        }
+
+                        TextField("팀원들에게 업무나 메시지를 입력하세요", text: $inputText)
+                            .textFieldStyle(PlainTextFieldStyle())
+                            .foregroundColor(.mtTextPrimary)
+                            .padding(.horizontal, 12)
+                            .frame(minHeight: 36)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(isTargetedForDrop ? Color.blue.opacity(0.1) : Color.mtInputBackground)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(isTargetedForDrop ? Color.blue : Color.mtCardBorder, lineWidth: 1)
+                                    )
+                            )
+                            .onSubmit { sendTeamMessage() }
+
+                        // ── 중지 버튼 (workflow 실행 중일 때만 표시) ──
+                        if manager.isWorkflowRunning {
+                            Button(action: {
+                                // Round 241A: selectedTeamWorkroomID 기준
+                                guard let roomID = manager.selectedTeamWorkroomID else { return }
+                                WorkflowOrchestrator.shared.cancelCurrentWorkflow(roomID: roomID, manager: manager)
+                            }) {
+                                Image(systemName: "stop.circle.fill")
+                                    .font(.system(size: 17))
+                                    .foregroundColor(.red.opacity(0.8))
+                                    .frame(width: 28, height: 28)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .help("작업 중지")
+                        } else {
+                            Button(action: sendTeamMessage) {
+                                Image(systemName: "paperplane.fill")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundColor((inputText.isEmpty && pendingAttachments.isEmpty) ? .gray.opacity(0.4) : .blue)
+                                    .frame(width: 28, height: 28)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .disabled(inputText.isEmpty && pendingAttachments.isEmpty)
+                        }
                     }
-                    .buttonStyle(PlainButtonStyle())
-                    .disabled(inputText.isEmpty && pendingAttachments.isEmpty)
                 }
-            }
-            .padding(10)
+                .padding(10)
+                .background(
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(Color.mtCardBackground.opacity(manager.isDarkMode ? 0.96 : 0.98))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(Color.mtCardBorder, lineWidth: 0.6)
+                        )
+                )
+                .padding(.horizontal, 8)
+                .padding(.vertical, 8)
             .onDrop(of: [.fileURL], isTargeted: $isTargetedForDrop) { providers in
                 for provider in providers {
                     _ = provider.loadObject(ofClass: URL.self) { url, _ in

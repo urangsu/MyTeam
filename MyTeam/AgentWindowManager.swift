@@ -1359,8 +1359,9 @@ class AgentWindowManager: ObservableObject {
     // MARK: - 환경 설정 창 띄우기 (API 키 등)
     func showSettingsWindow() {
         if settingsPanel != nil {
-            settingsPanel?.orderFront(nil)
-            settingsPanel?.makeKey()
+            NSApp.activate(ignoringOtherApps: true)
+            settingsPanel?.orderFrontRegardless()
+            settingsPanel?.makeKeyAndOrderFront(nil)
             return
         }
         
@@ -1385,8 +1386,9 @@ class AgentWindowManager: ObservableObject {
             .environmentObject(self)
         
         panel.contentViewController = NSHostingController(rootView: view)
-        panel.orderFront(nil)
-        panel.makeKey()
+        NSApp.activate(ignoringOtherApps: true)
+        panel.orderFrontRegardless()
+        panel.makeKeyAndOrderFront(nil)
         settingsPanel = panel
     }
     
