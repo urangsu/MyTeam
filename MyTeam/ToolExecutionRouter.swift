@@ -981,17 +981,18 @@ actor ToolExecutionRouter {
         modeNotice: String
     ) -> ToolExecutionState {
         let items = response.items
+        let kind = financeDisplayKind(for: response.route)
         return .succeeded(MyTeamToolResult(
             title: "\(label)을 확인했습니다",
-            summary: "\(query) 기준 공공데이터 \(items.count)건을 가져왔습니다. 실시간 시세가 아닙니다.",
+            summary: financeSummary(kind: kind, query: query, items: items),
             sourceLabel: sourceLabel,
-            body: financeBody(label: label, query: query, notice: modeNotice, items: items),
+            body: financeBody(label: label, query: query, notice: modeNotice, kind: kind, items: items),
             items: items.prefix(5).enumerated().map { index, item in
                 MyTeamToolResultItem(
                     id: "\(response.route)-\(index)",
-                    title: financeTitle(from: item, fallback: "\(label) \(index + 1)"),
-                    subtitle: financeSubtitle(from: item),
-                    metadata: financeMetadata(from: item),
+                    title: financeTitle(from: item, route: response.route, fallback: "\(label) \(index + 1)"),
+                    subtitle: financeSubtitle(from: item, route: response.route),
+                    metadata: financeMetadata(from: item, route: response.route),
                     sourceURL: URL(string: "https://www.data.go.kr/")
                 )
             },
@@ -1003,47 +1004,296 @@ actor ToolExecutionRouter {
         ))
     }
 
-    private func financeBody(label: String, query: String, notice: String, items: [[String: String]]) -> String {
+    private func financeBody(
+        label: String,
+        query: String,
+        notice: String,
+        kind: FinanceDisplayKind,
+        items: [[String: String]]
+    ) -> String {
         var lines = [
             "# \(label)",
             "",
             "- 조회어: \(query)",
             "- 주의: \(notice)",
             "- 해석: 기준일 공공데이터이며 실시간 시세나 투자 조언이 아닙니다.",
-            "",
-            "## 결과"
         ]
-        for (index, item) in items.prefix(10).enumerated() {
-            lines.append("\(index + 1). \(financeTitle(from: item, fallback: "항목"))")
-            for (key, value) in item.sorted(by: { $0.key < $1.key }).prefix(8) {
-                lines.append("   - \(key): \(value)")
+
+        guard !items.isEmpty else {
+            return lines.joined(separator: "\n")
+        }
+
+        lines.append("")
+        lines.append("## 핵심 결과")
+
+        if let first = items.first {
+            for line in financePrimaryLines(kind: kind, item: first) {
+                lines.append("- \(line)")
             }
         }
+
+        let extraItems = Array(items.dropFirst().prefix(4))
+        if !extraItems.isEmpty {
+            lines.append("")
+            lines.append("## 추가 기준일 항목")
+            for (index, item) in extraItems.enumerated() {
+                lines.append("\(index + 1). \(financeTitle(from: item, route: kind.routeName, fallback: "항목"))")
+                let details = financeCompactDetails(kind: kind, item: item)
+                for detail in details {
+                    lines.append("   - \(detail)")
+                }
+            }
+        }
+
+        lines.append("")
+        lines.append("## 고지")
+        lines.append("- 금융위원회 기준일 공공데이터이며 실시간 시세가 아닙니다.")
+        lines.append("- 투자 조언이 아닙니다.")
         return lines.joined(separator: "\n")
     }
 
-    private func financeTitle(from item: [String: String], fallback: String) -> String {
-        [
-            "itmsNm", "idxNm", "corpNm", "crno", "isinCd", "srtnCd", "basDt"
-        ].compactMap { item[$0] }.first ?? fallback
+    private enum FinanceDisplayKind {
+        case krxItems
+        case stockPrices
+        case stockIndex
+        case companySummary
+        case generic(String)
+
+        var routeName: String {
+            switch self {
+            case .krxItems: return "krx-items"
+            case .stockPrices: return "stock-prices"
+            case .stockIndex: return "stock-index"
+            case .companySummary: return "company-summary"
+            case .generic(let route): return route
+            }
+        }
     }
 
-    private func financeSubtitle(from item: [String: String]) -> String? {
-        [
-            item["clpr"].map { "종가 \($0)" },
-            item["mkp"].map { "시가 \($0)" },
-            item["fltRt"].map { "등락률 \($0)" },
-            item["trqu"].map { "거래량 \($0)" },
-            item["idxCsf"].map { "분류 \($0)" }
-        ].compactMap(\.self).prefix(3).joined(separator: " · ")
+    private func financeDisplayKind(for route: String) -> FinanceDisplayKind {
+        switch route {
+        case "krx-items":
+            return .krxItems
+        case "stock-prices":
+            return .stockPrices
+        case "stock-index":
+            return .stockIndex
+        case "company-summary":
+            return .companySummary
+        default:
+            return .generic(route)
+        }
     }
 
-    private func financeMetadata(from item: [String: String]) -> String? {
-        [
-            item["basDt"].map { "기준일 \($0)" },
-            item["mrktCtg"].map { "시장 \($0)" },
-            item["bizYear"].map { "사업연도 \($0)" }
-        ].compactMap(\.self).joined(separator: " · ")
+    private func financeSummary(kind: FinanceDisplayKind, query: String, items: [[String: String]]) -> String {
+        guard let first = items.first else {
+            return "'\(query)' 기준 공공데이터 조회 결과를 찾지 못했습니다."
+        }
+        switch kind {
+        case .krxItems:
+            return "\(query) 상장종목 정보를 정리했습니다. 기준일 공공데이터이며 실시간 시세가 아닙니다."
+        case .stockPrices:
+            let date = financeDisplayDate(first["basDt"] ?? "-")
+            let close = first["clpr"].map(formatNumberString) ?? "-"
+            return "\(query) 기준일 시세를 정리했습니다. 기준일 \(date), 종가 \(close)입니다."
+        case .stockIndex:
+            let date = financeDisplayDate(first["basDt"] ?? "-")
+            let close = first["clpr"].map(formatNumberString) ?? "-"
+            return "\(query) 시장 지수 기준일 정보를 정리했습니다. 기준일 \(date), 종가 \(close)입니다."
+        case .companySummary:
+            let year = first["bizYear"] ?? query
+            return "기업 재무 요약 \(items.count)건을 정리했습니다. 사업연도 \(year) 기준 공공데이터입니다."
+        case .generic:
+            return "\(query) 기준 공공데이터 \(items.count)건을 가져왔습니다. 실시간 시세가 아닙니다."
+        }
+    }
+
+    private func financeTitle(from item: [String: String], route: String, fallback: String) -> String {
+        switch financeDisplayKind(for: route) {
+        case .krxItems, .stockPrices:
+            return item["itmsNm"] ?? item["corpNm"] ?? fallback
+        case .stockIndex:
+            return item["idxNm"] ?? fallback
+        case .companySummary:
+            return item["accountNm"] ?? item["fnclDcdNm"] ?? fallback
+        case .generic:
+            return [
+                "itmsNm", "idxNm", "corpNm", "crno", "isinCd", "srtnCd", "basDt"
+            ].compactMap { item[$0] }.first ?? fallback
+        }
+    }
+
+    private func financeSubtitle(from item: [String: String], route: String) -> String? {
+        switch financeDisplayKind(for: route) {
+        case .krxItems:
+            return [
+                item["srtnCd"].map { "단축코드 \($0)" },
+                item["mrktCtg"].map { "시장 \($0)" },
+                item["isinCd"].map { "ISIN \($0)" }
+            ].compactMap(\.self).joined(separator: " · ")
+        case .stockPrices:
+            return [
+                item["clpr"].map { "종가 \(formatNumberString($0))" },
+                item["vs"].map { "전일대비 \(formatSignedNumberString($0))" },
+                item["fltRt"].map { "등락률 \(appendPercentIfNeeded($0))" }
+            ].compactMap(\.self).joined(separator: " · ")
+        case .stockIndex:
+            return [
+                item["clpr"].map { "종가 \(formatNumberString($0))" },
+                item["vs"].map { "전일대비 \(formatSignedNumberString($0))" },
+                item["fltRt"].map { "등락률 \(appendPercentIfNeeded($0))" }
+            ].compactMap(\.self).joined(separator: " · ")
+        case .companySummary:
+            return [
+                item["bizYear"].map { "사업연도 \($0)" },
+                item["fnclDcdNm"].map { "구분 \($0)" },
+                item["accountNm"].map { "항목 \($0)" }
+            ].compactMap(\.self).joined(separator: " · ")
+        case .generic:
+            return [
+                item["clpr"].map { "종가 \($0)" },
+                item["mkp"].map { "시가 \($0)" },
+                item["fltRt"].map { "등락률 \($0)" },
+                item["trqu"].map { "거래량 \($0)" },
+                item["idxCsf"].map { "분류 \($0)" }
+            ].compactMap(\.self).prefix(3).joined(separator: " · ")
+        }
+    }
+
+    private func financeMetadata(from item: [String: String], route: String) -> String? {
+        switch financeDisplayKind(for: route) {
+        case .krxItems:
+            return [
+                item["basDt"].map { "기준일 \(financeDisplayDate($0))" },
+                item["corpNm"].map { "법인명 \($0)" },
+                item["crno"].map { "법인등록번호 \($0)" }
+            ].compactMap(\.self).joined(separator: " · ")
+        case .stockPrices, .stockIndex:
+            return [
+                item["basDt"].map { "기준일 \(financeDisplayDate($0))" },
+                item["mrktCtg"].map { "시장 \($0)" },
+                item["idxCsf"].map { "분류 \($0)" }
+            ].compactMap(\.self).joined(separator: " · ")
+        case .companySummary:
+            return [
+                item["bizYear"].map { "사업연도 \($0)" },
+                item["crno"].map { "법인등록번호 \($0)" }
+            ].compactMap(\.self).joined(separator: " · ")
+        case .generic:
+            return [
+                item["basDt"].map { "기준일 \($0)" },
+                item["mrktCtg"].map { "시장 \($0)" },
+                item["bizYear"].map { "사업연도 \($0)" }
+            ].compactMap(\.self).joined(separator: " · ")
+        }
+    }
+
+    private func financePrimaryLines(kind: FinanceDisplayKind, item: [String: String]) -> [String] {
+        switch kind {
+        case .krxItems:
+            return [
+                item["basDt"].map { "기준일: \(financeDisplayDate($0))" },
+                item["itmsNm"].map { "종목명: \($0)" },
+                item["srtnCd"].map { "단축코드: \($0)" },
+                item["isinCd"].map { "ISIN: \($0)" },
+                item["mrktCtg"].map { "시장: \($0)" },
+                item["crno"].map { "법인등록번호: \($0)" },
+                item["corpNm"].map { "법인명: \($0)" }
+            ].compactMap(\.self)
+        case .stockPrices:
+            return [
+                item["basDt"].map { "기준일: \(financeDisplayDate($0))" },
+                item["itmsNm"].map { "종목명: \($0)" },
+                item["clpr"].map { "종가: \(formatNumberString($0))" },
+                item["vs"].map { "전일대비: \(formatSignedNumberString($0))" },
+                item["fltRt"].map { "등락률: \(appendPercentIfNeeded($0))" },
+                item["mkp"].map { "시가: \(formatNumberString($0))" },
+                item["hipr"].map { "고가: \(formatNumberString($0))" },
+                item["lopr"].map { "저가: \(formatNumberString($0))" },
+                item["trqu"].map { "거래량: \(formatNumberString($0))" },
+                item["mrktCtg"].map { "시장: \($0)" }
+            ].compactMap(\.self)
+        case .stockIndex:
+            return [
+                item["basDt"].map { "기준일: \(financeDisplayDate($0))" },
+                item["idxNm"].map { "지수명: \($0)" },
+                item["clpr"].map { "종가: \(formatNumberString($0))" },
+                item["vs"].map { "전일대비: \(formatSignedNumberString($0))" },
+                item["fltRt"].map { "등락률: \(appendPercentIfNeeded($0))" },
+                item["trqu"].map { "거래량: \(formatNumberString($0))" },
+                item["trPrc"].map { "거래대금: \(formatNumberString($0))" }
+            ].compactMap(\.self)
+        case .companySummary:
+            return [
+                item["bizYear"].map { "사업연도: \($0)" },
+                item["fnclDcdNm"].map { "재무제표 구분: \($0)" },
+                item["accountNm"].map { "계정과목: \($0)" },
+                item["thstrmAmount"].map { "당기금액: \(formatNumberString($0))" },
+                item["frmtrmAmount"].map { "전기금액: \(formatNumberString($0))" },
+                item["bfefrmtrmAmount"].map { "전전기금액: \(formatNumberString($0))" }
+            ].compactMap(\.self)
+        case .generic:
+            return item.sorted(by: { $0.key < $1.key }).prefix(8).map { "\($0.key): \($0.value)" }
+        }
+    }
+
+    private func financeCompactDetails(kind: FinanceDisplayKind, item: [String: String]) -> [String] {
+        switch kind {
+        case .krxItems:
+            return [
+                item["basDt"].map { "기준일 \(financeDisplayDate($0))" },
+                item["srtnCd"].map { "단축코드 \($0)" },
+                item["mrktCtg"].map { "시장 \($0)" }
+            ].compactMap(\.self)
+        case .stockPrices:
+            return [
+                item["basDt"].map { "기준일 \(financeDisplayDate($0))" },
+                item["clpr"].map { "종가 \(formatNumberString($0))" },
+                item["fltRt"].map { "등락률 \(appendPercentIfNeeded($0))" }
+            ].compactMap(\.self)
+        case .stockIndex:
+            return [
+                item["basDt"].map { "기준일 \(financeDisplayDate($0))" },
+                item["clpr"].map { "종가 \(formatNumberString($0))" },
+                item["fltRt"].map { "등락률 \(appendPercentIfNeeded($0))" }
+            ].compactMap(\.self)
+        case .companySummary:
+            return [
+                item["accountNm"].map { "계정과목 \($0)" },
+                item["thstrmAmount"].map { "당기금액 \(formatNumberString($0))" },
+                item["frmtrmAmount"].map { "전기금액 \(formatNumberString($0))" }
+            ].compactMap(\.self)
+        case .generic:
+            return item.sorted(by: { $0.key < $1.key }).prefix(3).map { "\($0.key) \($0.value)" }
+        }
+    }
+
+    private func financeDisplayDate(_ raw: String) -> String {
+        guard raw.count == 8 else { return raw }
+        let year = raw.prefix(4)
+        let month = raw.dropFirst(4).prefix(2)
+        let day = raw.suffix(2)
+        return "\(year)-\(month)-\(day)"
+    }
+
+    private func formatNumberString(_ raw: String) -> String {
+        let normalized = raw.replacingOccurrences(of: ",", with: "")
+        guard let number = Int64(normalized) else { return raw }
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.groupingSeparator = ","
+        return formatter.string(from: NSNumber(value: number)) ?? raw
+    }
+
+    private func formatSignedNumberString(_ raw: String) -> String {
+        let normalized = raw.replacingOccurrences(of: ",", with: "")
+        guard let number = Int64(normalized) else { return raw }
+        let prefix = number > 0 ? "+" : ""
+        return "\(prefix)\(formatNumberString(String(number)))"
+    }
+
+    private func appendPercentIfNeeded(_ raw: String) -> String {
+        raw.contains("%") ? raw : "\(raw)%"
     }
 
     private func runKoreanLaw(input: MyTeamToolInput) async -> ToolExecutionState {
