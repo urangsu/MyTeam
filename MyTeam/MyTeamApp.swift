@@ -121,6 +121,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         AgentWindowManager.shared.savePosition()
+        startHardQuitWatchdog()
         guard !isTerminationReplyPending else { return .terminateNow }
         if AppTerminationSpeechService.shared.playPreparedFarewell(completion: { [weak self, weak sender] in
             self?.replyToTermination(sender)
