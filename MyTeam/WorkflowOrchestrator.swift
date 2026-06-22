@@ -2803,6 +2803,71 @@ final class WorkflowOrchestrator {
         roomID: UUID,
         manager: AgentWindowManager
     ) async -> Bool {
+        let naturalContext = await MainActor.run {
+            NaturalWorkContext(
+                roomID: roomID,
+                activeArtifactID: nil,
+                recentArtifacts: [],
+                pendingAttachments: [],
+                recentMessageTexts: manager.rooms
+                    .first(where: { $0.id == roomID })?
+                    .messages
+                    .suffix(8)
+                    .filter { !$0.isSystem }
+                    .map(\.text) ?? [],
+                lastCompanyIdentity: nil,
+                lastWorkType: nil,
+                userLocation: nil
+            )
+        }
+        if let naturalPlan = NaturalWorkRouter.plan(for: userMessage, context: naturalContext) {
+            guard naturalPlan.steps.allSatisfy({ step in
+                guard let descriptor = MyTeamToolRegistry.descriptor(id: step.toolID) else { return false }
+                return descriptor.permissionLevel == .readOnly || descriptor.permissionLevel == .draftOnly
+            }) else {
+                AppLog.warning("[WorkflowOrchestrator] natural work blocked by permission level title=\(naturalPlan.title)")
+                return false
+            }
+            let progressMessageID = await MainActor.run {
+                manager.addChatLog(
+                    roomID: roomID,
+                    agentID: "system",
+                    agentName: "업무 실행",
+                    text: NaturalWorkRouter.runningMarkdown(for: naturalPlan),
+                    isUser: false
+                )
+            }
+            await MainActor.run {
+                manager.isWorkflowRunning = true
+                manager.setWorkflowStatus("업무 조회 중: \(naturalPlan.title)", for: roomID)
+            }
+            let naturalResult = await NaturalWorkPlanExecutor.execute(naturalPlan, path: .planner)
+            _ = await CompositeWorkArtifactWriter.write(
+                result: naturalResult,
+                originalText: userMessage
+            )
+            await MainActor.run {
+                if let progressMessageID {
+                    manager.updateChatLogText(
+                        roomID: roomID,
+                        messageID: progressMessageID,
+                        text: naturalResult.artifactMarkdown
+                    )
+                } else {
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "업무 실행",
+                        text: naturalResult.artifactMarkdown,
+                        isUser: false
+                    )
+                }
+                manager.clearWorkflowStatus(for: roomID)
+                manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0
+            }
+            return true
+        }
+
         let matches = MyTeamToolFastPathRouter.matchMany(userMessage)
         guard !matches.isEmpty else { return false }
         guard matches.allSatisfy({ $0.descriptor.permissionLevel == .readOnly || $0.descriptor.permissionLevel == .draftOnly }) else {

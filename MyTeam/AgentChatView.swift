@@ -1177,6 +1177,23 @@ struct AgentChatView: View {
             // 첨부파일 컨텍스트를 메시지에 포함
             let attachmentContext = ConversationMemory.buildAttachmentContext(from: attachments)
             let fullText = attachmentContext.isEmpty ? text : text + attachmentContext
+            let naturalContext = await MainActor.run {
+                NaturalWorkContext(
+                    roomID: roomID,
+                    activeArtifactID: nil,
+                    recentArtifacts: [],
+                    pendingAttachments: attachments,
+                    recentMessageTexts: manager.rooms
+                        .first(where: { $0.id == roomID })?
+                        .messages
+                        .suffix(8)
+                        .filter { !$0.isSystem }
+                        .map(\.text) ?? [],
+                    lastCompanyIdentity: nil,
+                    lastWorkType: nil,
+                    userLocation: nil
+                )
+            }
 
             let userMessageID = await MainActor.run {
                 manager.addChatLog(
@@ -1184,6 +1201,47 @@ struct AgentChatView: View {
                     text: text.isEmpty ? "[첨부파일 \(attachments.count)개]" : text,
                     isUser: true
                 )
+            }
+
+            if let naturalPlan = NaturalWorkRouter.plan(for: fullText, context: naturalContext) {
+                if targetID != "team_all" {
+                    setTyping(targetID, true)
+                }
+                let progressMessageID = await MainActor.run {
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "업무 실행",
+                        text: NaturalWorkRouter.runningMarkdown(for: naturalPlan),
+                        isUser: false
+                    )
+                }
+                let naturalResult = await NaturalWorkPlanExecutor.execute(naturalPlan, path: .chatFastPath)
+                _ = await CompositeWorkArtifactWriter.write(
+                    result: naturalResult,
+                    originalText: fullText
+                )
+                await MainActor.run {
+                    if targetID != "team_all" {
+                        manager.typingAgentIDs.remove(targetID)
+                    }
+                    if let progressMessageID {
+                        manager.updateChatLogText(
+                            roomID: roomID,
+                            messageID: progressMessageID,
+                            text: naturalResult.artifactMarkdown
+                        )
+                    } else {
+                        manager.addChatLog(
+                            roomID: roomID,
+                            agentID: "system",
+                            agentName: "업무 실행",
+                            text: naturalResult.artifactMarkdown,
+                            isUser: false
+                        )
+                    }
+                }
+                return
             }
 
             let fastPathMatches = MyTeamToolFastPathRouter.matchMany(fullText)

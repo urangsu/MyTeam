@@ -7893,6 +7893,7 @@
 						<string>TLF008HOMEDASHFILE</string>
 						<string>TLF009EXECLOGFILE</string>
 						<string>TLF015FASTPATHFILE</string>
+						<string>NLW001ROUTINGFILE</string>
 						<string>TLF016ST3SOURCEFILE</string>
 						<string>TLF017ST3BUNDLEDFILE</string>
 						<string>TLF018ST3EXTERNALFILE</string>
@@ -9454,6 +9455,7 @@
 						<string>TLB013KMAREGIONBLD</string>
 						<string>TLB014GOOGLESHEETSBLD</string>
 						<string>TLB015FASTPATHBLD</string>
+						<string>NLW001ROUTINGBLD</string>
 						<string>TLB016ST3SOURCEBLD</string>
 						<string>TLB017ST3BUNDLEDBLD</string>
 						<string>TLB018ST3EXTERNALBLD</string>
@@ -17769,6 +17771,28 @@
 				<dict>
 					<key>fileRef</key>
 					<string>TLF015FASTPATHFILE</string>
+					<key>isa</key>
+					<string>PBXBuildFile</string>
+				</dict>
+				<key>NLW001ROUTINGFILE</key>
+				<dict>
+					<key>fileEncoding</key>
+					<integer>4</integer>
+					<key>isa</key>
+					<string>PBXFileReference</string>
+					<key>lastKnownFileType</key>
+					<string>sourcecode.swift</string>
+					<key>name</key>
+					<string>NaturalWorkRouting.swift</string>
+					<key>path</key>
+					<string>NaturalWorkRouting.swift</string>
+					<key>sourceTree</key>
+					<string>SOURCE_ROOT</string>
+				</dict>
+				<key>NLW001ROUTINGBLD</key>
+				<dict>
+					<key>fileRef</key>
+					<string>NLW001ROUTINGFILE</string>
 					<key>isa</key>
 					<string>PBXBuildFile</string>
 				</dict>
