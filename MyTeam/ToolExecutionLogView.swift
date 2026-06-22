@@ -4,6 +4,7 @@ import SwiftUI
 struct ToolExecutionLogView: View {
     @ObservedObject var store: ToolExecutionLogStore
     @State private var showsAllEntries = false
+    @State private var selectedEntry: ToolExecutionLogEntry?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -47,6 +48,10 @@ struct ToolExecutionLogView: View {
                 }
             }
         }
+        .sheet(item: $selectedEntry) { entry in
+            ToolExecutionLogDetailView(entry: entry)
+                .frame(minWidth: 420, minHeight: 320)
+        }
     }
 
     private func logRow(_ entry: ToolExecutionLogEntry) -> some View {
@@ -89,6 +94,10 @@ struct ToolExecutionLogView: View {
                 .buttonStyle(.plain)
                 .help("결과 다시 열기")
             }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            selectedEntry = entry
         }
         .padding(8)
         .background(Color(NSColor.windowBackgroundColor), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
@@ -136,6 +145,111 @@ struct ToolExecutionLogView: View {
         case .succeeded: return .green
         case .failed: return .orange
         case .blocked: return .secondary
+        }
+    }
+
+    private func pathLabel(_ path: ToolExecutionPath) -> String {
+        switch path {
+        case .toolCard: return "업무 카드"
+        case .chatFastPath: return "채팅 빠른 실행"
+        case .planner: return "계획 실행"
+        }
+    }
+}
+
+struct ToolExecutionLogDetailView: View {
+    let entry: ToolExecutionLogEntry
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(entry.displayName)
+                        .font(.system(size: 18, weight: .bold))
+                    Text(statusText)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(statusTint)
+                }
+                Spacer()
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                detailRow("실행 경로", pathLabel(entry.path))
+                detailRow("권한", entry.permissionLevel.rawValue)
+                if let duration = entry.durationMs {
+                    detailRow("소요 시간", "\(duration)ms")
+                }
+                if let provider = entry.provider {
+                    detailRow("연결", provider.displayName)
+                }
+                if entry.timedOut {
+                    detailRow("상태", "시간 초과")
+                }
+            }
+
+            if let failure = entry.failureMessage, !failure.isEmpty {
+                detailBlock(title: "실패 원인", text: failure)
+            } else if let summary = entry.resultSummary, !summary.isEmpty {
+                detailBlock(title: "요약", text: summary)
+            } else {
+                detailBlock(title: "상세", text: "저장된 상세 결과가 없습니다. 다음 실행부터 결과 요약과 artifact가 함께 남습니다.")
+            }
+
+            Spacer()
+
+            HStack {
+                if let filename = entry.artifactFilename {
+                    Button("외부 파일 열기") {
+                        NSWorkspace.shared.open(ArtifactStore.shared.workspaceURL.appendingPathComponent(filename))
+                    }
+                    .buttonStyle(.bordered)
+                }
+                Spacer()
+            }
+        }
+        .padding(18)
+    }
+
+    private var statusText: String {
+        switch entry.state {
+        case .running: return "실행 중"
+        case .succeeded: return "완료"
+        case .failed: return "실패"
+        case .blocked: return "차단"
+        }
+    }
+
+    private var statusTint: Color {
+        switch entry.state {
+        case .running: return .blue
+        case .succeeded: return .green
+        case .failed: return .orange
+        case .blocked: return .secondary
+        }
+    }
+
+    private func detailRow(_ label: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 72, alignment: .leading)
+            Text(value)
+                .font(.system(size: 11))
+                .textSelection(.enabled)
+        }
+    }
+
+    private func detailBlock(title: String, text: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.system(size: 12, weight: .semibold))
+            Text(text)
+                .font(.system(size: 11))
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(10)
+                .background(Color(NSColor.windowBackgroundColor), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
         }
     }
 

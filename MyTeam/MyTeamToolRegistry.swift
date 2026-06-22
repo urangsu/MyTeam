@@ -74,8 +74,8 @@ enum MyTeamToolRegistry {
     nonisolated static let all: [MyTeamToolDescriptor] = [
         MyTeamToolDescriptor(
             id: "briefing.today",
-            displayName: "오늘 브리핑",
-            shortDescription: "날씨, 일정, 뉴스, 공시를 업무 시작용으로 묶어 봅니다.",
+            displayName: "오늘 로컬 업무 브리핑",
+            shortDescription: "로컬 작업 상태와 최근 산출물을 기준으로 오늘 할 일을 정리합니다.",
             category: .briefing,
             requiredCredential: nil,
             permissionLevel: .readOnly,
@@ -159,12 +159,12 @@ enum MyTeamToolRegistry {
         MyTeamToolDescriptor(
             id: "finance.company.statement",
             displayName: "기업 재무 요약",
-            shortDescription: "법인등록번호와 사업연도 기준 요약재무제표를 확인합니다.",
+            shortDescription: "법인등록번호와 사업연도 입력이 필요한 공공데이터 조회입니다.",
             category: .externalInfo,
             requiredCredential: nil,
             permissionLevel: .readOnly,
             isImplemented: true,
-            isUserFacing: true,
+            isUserFacing: false,
             supportedDistributionChannels: [.appStore, .direct, .developer],
             relatedProvider: .publicDataPortal
         ),
@@ -206,8 +206,8 @@ enum MyTeamToolRegistry {
         ),
         MyTeamToolDescriptor(
             id: "spreadsheet.postprocess",
-            displayName: "엑셀 후처리",
-            shortDescription: "표 정리, 요약, 보고용 형태 변환을 준비합니다.",
+            displayName: "표 정리 계획",
+            shortDescription: "붙여넣은 표나 메모를 기준으로 정리·검산·보고용 변환 계획을 만듭니다.",
             category: .spreadsheet,
             requiredCredential: nil,
             permissionLevel: .draftOnly,

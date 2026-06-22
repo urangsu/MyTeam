@@ -874,7 +874,7 @@ actor MyTeamBasicLookupProxyClient {
         var request = URLRequest(url: url)
         request.timeoutInterval = 8
         let (data, response) = try await session.data(for: request)
-        try validateProxyHTTP(response)
+        let httpStatus = (response as? HTTPURLResponse)?.statusCode
         do {
             if
                 let failure = try? JSONDecoder().decode(MyTeamProxyFailureResponse.self, from: data),
@@ -885,10 +885,14 @@ actor MyTeamBasicLookupProxyClient {
                 }
                 throw MyTeamProxyError.providerUnavailable(failure)
             }
+            try validateProxyHTTP(response)
             return try JSONDecoder().decode(responseType, from: data)
         } catch let error as MyTeamProxyError {
             throw error
         } catch {
+            if let httpStatus, !(200..<300).contains(httpStatus) {
+                throw MyTeamProxyError.httpStatus(httpStatus)
+            }
             throw MyTeamProxyError.decodingFailed
         }
     }

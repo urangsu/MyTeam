@@ -174,7 +174,7 @@ struct ToolActionCardView: View {
         case "law.search", "news.search":
             return "검색"
         case "briefing.today":
-            return "브리핑"
+            return "정리"
         case "document.meetingMinutes", "document.rewrite":
             return "초안"
         case "spreadsheet.postprocess":
@@ -199,13 +199,13 @@ struct ToolActionCardView: View {
         case "law.search":
             return "근로기준법"
         case "briefing.today":
-            return "오늘 업무 브리핑"
+            return "오늘 로컬 업무 브리핑"
         case "document.meetingMinutes":
             return "회의 내용을 붙여넣으세요."
         case "document.rewrite":
             return "다듬을 문장이나 문서를 붙여넣으세요."
         case "spreadsheet.postprocess":
-            return "표 내용을 붙여넣으세요."
+            return "붙여넣은 표나 메모를 입력하세요."
         case "spreadsheet.googleSheets.read":
             return "Sheets URL 또는 ID Sheet1!A1:Z100"
         case "calendar.events.today":

@@ -228,7 +228,7 @@ actor ToolExecutionRouter {
         }
         let body = localBriefingBody(from: snapshot)
         return .succeeded(MyTeamToolResult(
-            title: "오늘 브리핑을 준비했습니다",
+            title: "오늘 로컬 업무 브리핑을 준비했습니다",
             summary: snapshot.summary,
             sourceLabel: "로컬 작업 상태",
             body: body,
@@ -284,9 +284,9 @@ actor ToolExecutionRouter {
         let columnGuess = rows.map(estimatedColumnCount).max() ?? 0
         let body = spreadsheetPostprocessBody(source: source, rowCount: rows.count, columnGuess: columnGuess)
         return .succeeded(MyTeamToolResult(
-            title: "엑셀 후처리 계획을 만들었습니다",
-            summary: "입력된 표/메모를 기준으로 정리, 검산, 보고용 변환 단계를 제안했습니다.",
-            sourceLabel: "MyTeam 로컬 스프레드시트 런타임",
+            title: "표 정리 계획을 만들었습니다",
+            summary: "붙여넣은 표/메모를 기준으로 정리, 검산, 보고용 변환 단계를 제안했습니다. 실제 Excel 파일은 편집하지 않았습니다.",
+            sourceLabel: "MyTeam 로컬 표 정리 런타임",
             body: body,
             items: [
                 MyTeamToolResultItem(
@@ -1439,7 +1439,7 @@ actor ToolExecutionRouter {
 
     private func localBriefingBody(from snapshot: DailyBriefingLocalSnapshot) -> String {
         var lines: [String] = [
-            "# 오늘 브리핑",
+            "# 오늘 로컬 업무 브리핑",
             "",
             "## 요약",
             "- \(snapshot.summary)",
@@ -1636,7 +1636,7 @@ actor ToolExecutionRouter {
 
     private func spreadsheetPostprocessBody(source: String, rowCount: Int, columnGuess: Int) -> String {
         """
-        # 엑셀 후처리 계획
+        # 표 정리 계획
 
         ## 1. 입력 진단
         - 감지한 행: \(rowCount)개

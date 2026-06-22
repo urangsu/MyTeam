@@ -15,7 +15,6 @@ struct HomeDashboardView: View {
         "dart.disclosures.search": "삼성전자",
         "finance.krx.stockPrice": "삼성전자",
         "finance.krx.index": "코스피",
-        "finance.company.statement": "1101110000000 2023",
         "news.search": "경제",
         "weather.current": "서울",
         "law.search": "근로기준법"
@@ -33,7 +32,6 @@ struct HomeDashboardView: View {
         "weather.current",
         "finance.krx.stockPrice",
         "finance.krx.index",
-        "finance.company.statement",
         "dart.disclosures.search",
         "news.search",
         "law.search",
@@ -71,7 +69,7 @@ struct HomeDashboardView: View {
                     )
                 }
 
-                dashboardSection(title: "업무 바로가기") {
+                dashboardSection(title: "할 수 있는 것") {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 10)], spacing: 10) {
                         ForEach(quickTools) { descriptor in
                             ToolActionCardView(
@@ -207,7 +205,7 @@ struct HomeDashboardView: View {
         case "law.search":
             return "근로기준법"
         case "briefing.today":
-            return "오늘 업무 브리핑"
+            return "오늘 로컬 업무 브리핑"
         case "document.meetingMinutes":
             return "회의 내용을 붙여넣으세요."
         case "document.rewrite":
@@ -262,7 +260,6 @@ struct HomeDashboardView: View {
             "dart.disclosures.search",
             "finance.krx.stockPrice",
             "finance.krx.index",
-            "finance.company.statement",
             "news.search",
             "weather.current",
             "law.search",

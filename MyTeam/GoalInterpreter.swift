@@ -8,8 +8,8 @@ enum GoalInterpreter {
             return makeGoal(
                 preview: message,
                 type: .dailyBriefing,
-                title: "오늘 브리핑",
-                outputs: ["오늘 일정", "새 메일", "중요 메일 후보", "오늘 할 일", "확인 필요 항목"],
+                title: "오늘 로컬 업무 브리핑",
+                outputs: ["로컬 작업 상태", "최근 산출물", "오늘 할 일", "확인 필요 항목"],
                 capabilities: [.dailyBriefingPreview, .calendarRead, .mailMetadataRead]
             )
         }
