@@ -7,51 +7,59 @@ struct MyTeamToolFastPathMatch: Sendable, Equatable {
 
 enum MyTeamToolFastPathRouter {
     static func match(_ message: String) -> MyTeamToolFastPathMatch? {
+        matchMany(message).first
+    }
+
+    static func matchMany(_ message: String) -> [MyTeamToolFastPathMatch] {
         let normalized = message.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !normalized.isEmpty else { return nil }
+        guard !normalized.isEmpty else { return [] }
         let lower = normalized.lowercased()
 
+        if let marketMatches = marketBriefingMatches(normalized, lower: lower), !marketMatches.isEmpty {
+            return marketMatches
+        }
+
         if isGoogleSheetsReadRequest(normalized, lower: lower) {
-            return make("spreadsheet.googleSheets.read", query: normalized)
+            return compact([make("spreadsheet.googleSheets.read", query: normalized)])
         }
 
         if containsAny(lower, ["오늘 일정", "오늘 회의", "일정 확인", "일정 조회", "캘린더 확인", "캘린더 일정", "calendar events"]) {
-            return make("calendar.events.today", query: "오늘 일정")
+            return compact([make("calendar.events.today", query: "오늘 일정")])
         }
 
         if isWeatherReadRequest(normalized, lower: lower) {
-            return make("weather.current", query: query(afterRemoving: ["날씨", "조회", "기상청"], from: normalized, fallback: "서울"))
+            return compact([make("weather.current", query: query(afterRemoving: ["날씨", "조회", "기상청"], from: normalized, fallback: "서울"))])
         }
 
         if containsAny(lower, ["뉴스 검색", "뉴스 찾아", "뉴스 조회", "최신 뉴스", "news search"]) {
-            return make("news.search", query: query(afterRemoving: ["뉴스", "검색", "요약", "찾아줘"], from: normalized, fallback: "경제"))
+            return compact([make("news.search", query: query(afterRemoving: ["뉴스", "검색", "요약", "찾아줘"], from: normalized, fallback: "경제"))])
         }
 
         if isDARTReadRequest(normalized, lower: lower) {
-            return make("dart.disclosures.search", query: query(afterRemoving: ["공시", "조회", "검색", "DART", "다트"], from: normalized, fallback: "포스코"))
+            return compact([make("dart.disclosures.search", query: query(afterRemoving: ["공시", "조회", "검색", "DART", "다트"], from: normalized, fallback: "포스코"))])
         }
 
         if isCompanyFinanceRequest(normalized, lower: lower) {
-            return make("finance.company.statement", query: financeQuery(from: normalized))
+            return compact([make("finance.company.statement", query: financeQuery(from: normalized))])
         }
 
         if containsAny(lower, ["법령 검색", "법령 찾아", "법률 검색", "조문 조회", "조문 찾아", "law search"]) {
-            return make("law.search", query: query(afterRemoving: ["법령", "법률", "조문", "검색", "찾아줘"], from: normalized, fallback: "근로기준법"))
+            return compact([make("law.search", query: query(afterRemoving: ["법령", "법률", "조문", "검색", "찾아줘"], from: normalized, fallback: "근로기준법"))])
         }
 
         if containsAny(lower, ["회의록", "회의 메모"]) {
-            return make("document.meetingMinutes", query: normalized)
+            return compact([make("document.meetingMinutes", query: normalized)])
         }
 
         if containsAny(lower, ["문서 다듬", "문장 다듬", "다듬어", "rewrite"]) {
-            return make("document.rewrite", query: normalized)
+            return compact([make("document.rewrite", query: normalized)])
         }
 
         if containsAny(lower, ["엑셀 후처리", "표 정리", "스프레드시트 정리"]) {
-            return make("spreadsheet.postprocess", query: normalized)
+            return compact([make("spreadsheet.postprocess", query: normalized)])
         }
 
-        return nil
+        return []
     }
 
     static func markdown(for state: ToolExecutionState, descriptor: MyTeamToolDescriptor) -> String {
@@ -106,6 +114,42 @@ enum MyTeamToolFastPathRouter {
         """
     }
 
+    static func runningMarkdown(for matches: [MyTeamToolFastPathMatch]) -> String {
+        guard matches.count > 1 else {
+            return matches.first.map { runningMarkdown(for: $0.descriptor) } ?? "업무 실행 상태를 확인 중입니다."
+        }
+        let names = matches.map { "- \($0.descriptor.displayName)" }.joined(separator: "\n")
+        return """
+        ### 업무 실행 중
+
+        요청을 여러 업무로 나누어 확인합니다.
+
+        \(names)
+        """
+    }
+
+    static func markdown(for results: [(match: MyTeamToolFastPathMatch, state: ToolExecutionState)]) -> String {
+        guard results.count > 1 else {
+            if let first = results.first {
+                return markdown(for: first.state, descriptor: first.match.descriptor)
+            }
+            return "실행한 업무가 없습니다."
+        }
+
+        var lines = [
+            "### 요청한 업무를 묶어서 확인했습니다",
+            "",
+            "아래 결과는 각 공식/공공 데이터 조회를 분리해 가져온 것입니다."
+        ]
+        for result in results {
+            lines.append("")
+            lines.append("---")
+            lines.append("")
+            lines.append(markdown(for: result.state, descriptor: result.match.descriptor))
+        }
+        return lines.joined(separator: "\n")
+    }
+
     private static func make(_ id: String, query: String) -> MyTeamToolFastPathMatch? {
         guard let descriptor = MyTeamToolRegistry.descriptor(id: id), descriptor.isUserFacing else { return nil }
         return MyTeamToolFastPathMatch(
@@ -117,6 +161,45 @@ enum MyTeamToolFastPathRouter {
                 providerHint: descriptor.requiredCredential?.provider.externalProvider
             )
         )
+    }
+
+    private static func compact(_ matches: [MyTeamToolFastPathMatch?]) -> [MyTeamToolFastPathMatch] {
+        matches.compactMap { $0 }
+    }
+
+    private static func marketBriefingMatches(_ message: String, lower: String) -> [MyTeamToolFastPathMatch]? {
+        let hasMarketIntent = containsAny(lower, [
+            "주가", "주식", "시세", "공시", "공시사항", "재무", "재무상황", "재무제표", "실적", "뉴스", "최근 소식"
+        ])
+        guard hasMarketIntent else { return nil }
+        guard let company = companyQuery(from: message), !company.isEmpty else { return nil }
+
+        var matches: [MyTeamToolFastPathMatch?] = []
+        if containsAny(lower, ["주가", "주식", "시세"]) {
+            matches.append(make("finance.krx.stockPrice", query: company))
+        }
+        if containsAny(lower, ["공시", "공시사항", "dart", "다트"]) {
+            matches.append(make("dart.disclosures.search", query: company))
+        }
+        if containsAny(lower, ["재무", "재무상황", "재무제표", "실적", "손익계산서", "재무상태표"]) {
+            matches.append(make("finance.company.statement", query: financeQuery(from: "\(company) \(message)")))
+        }
+        if containsAny(lower, ["뉴스", "최근 소식", "이슈"]) {
+            matches.append(make("news.search", query: company))
+        }
+
+        let resolved = deduplicated(compact(matches))
+        return resolved.isEmpty ? nil : resolved
+    }
+
+    private static func deduplicated(_ matches: [MyTeamToolFastPathMatch]) -> [MyTeamToolFastPathMatch] {
+        var seen = Set<String>()
+        var output: [MyTeamToolFastPathMatch] = []
+        for match in matches where !seen.contains(match.descriptor.id) {
+            seen.insert(match.descriptor.id)
+            output.append(match)
+        }
+        return output
     }
 
     private static func containsAny(_ text: String, _ needles: [String]) -> Bool {
@@ -167,13 +250,46 @@ enum MyTeamToolFastPathRouter {
     }
 
     private static func financeQuery(from message: String) -> String {
-        let query = query(
+        var query = companyQuery(from: message) ?? query(
             afterRemoving: ["재무", "요약", "요약재무", "재무제표", "손익계산서", "재무상태표", "기업", "조회", "확인", "정리"],
             from: message,
             fallback: "삼성전자 2024"
         )
+        if
+            query.range(of: #"(19|20)\d{2}"#, options: .regularExpression) == nil,
+            let yearRange = message.range(of: #"(19|20)\d{2}"#, options: .regularExpression)
+        {
+            query += " \(message[yearRange])"
+        }
         let hasYear = query.range(of: #"(19|20)\d{2}"#, options: .regularExpression) != nil
         return hasYear ? query : "\(query) \(Calendar.current.component(.year, from: Date()) - 1)"
+    }
+
+    private static func companyQuery(from message: String) -> String? {
+        var normalized = message
+            .replacingOccurrences(of: ",", with: " ")
+            .replacingOccurrences(of: "，", with: " ")
+            .replacingOccurrences(of: "/", with: " ")
+            .replacingOccurrences(of: "·", with: " ")
+
+        let stopWords = [
+            "주가", "주식", "시세", "기준일", "공시사항", "공시", "DART", "다트",
+            "재무상황", "재무", "재무제표", "요약재무", "손익계산서", "재무상태표", "실적",
+            "뉴스", "최근", "소식", "이슈", "알려줘", "보여줘", "정리해줘", "조회해줘",
+            "알려", "정리", "조회", "확인", "분석", "그리고", "랑", "와", "과", "도", "좀", "해줘"
+        ]
+        for word in stopWords {
+            normalized = normalized.replacingOccurrences(of: word, with: " ", options: [.caseInsensitive])
+        }
+
+        let tokens = normalized
+            .split(whereSeparator: { $0.isWhitespace || $0.isNewline })
+            .map(String.init)
+            .filter { token in
+                token.range(of: #"^(19|20)\d{2}$"#, options: .regularExpression) == nil
+            }
+        guard let first = tokens.first else { return nil }
+        return first.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private static func query(afterRemoving tokens: [String], from message: String, fallback: String) -> String {

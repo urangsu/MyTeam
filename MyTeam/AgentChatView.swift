@@ -1186,7 +1186,8 @@ struct AgentChatView: View {
                 )
             }
 
-            if let fastPath = MyTeamToolFastPathRouter.match(fullText) {
+            let fastPathMatches = MyTeamToolFastPathRouter.matchMany(fullText)
+            if !fastPathMatches.isEmpty {
                 if targetID != "team_all" {
                     setTyping(targetID, true)
                 }
@@ -1195,20 +1196,21 @@ struct AgentChatView: View {
                         roomID: roomID,
                         agentID: "system",
                         agentName: "업무 실행",
-                        text: MyTeamToolFastPathRouter.runningMarkdown(for: fastPath.descriptor),
+                        text: MyTeamToolFastPathRouter.runningMarkdown(for: fastPathMatches),
                         isUser: false
                     )
                 }
-                let state = await ToolExecutionRouter.shared.run(
-                    fastPath.descriptor,
-                    input: fastPath.input,
-                    bypassApproval: false,
-                    path: .chatFastPath
-                )
-                let responseText = MyTeamToolFastPathRouter.markdown(
-                    for: state,
-                    descriptor: fastPath.descriptor
-                )
+                var results: [(match: MyTeamToolFastPathMatch, state: ToolExecutionState)] = []
+                for fastPath in fastPathMatches {
+                    let state = await ToolExecutionRouter.shared.run(
+                        fastPath.descriptor,
+                        input: fastPath.input,
+                        bypassApproval: false,
+                        path: .chatFastPath
+                    )
+                    results.append((match: fastPath, state: state))
+                }
+                let responseText = MyTeamToolFastPathRouter.markdown(for: results)
                 await MainActor.run {
                     if targetID != "team_all" {
                         manager.typingAgentIDs.remove(targetID)

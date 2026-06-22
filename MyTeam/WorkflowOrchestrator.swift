@@ -2803,12 +2803,13 @@ final class WorkflowOrchestrator {
         roomID: UUID,
         manager: AgentWindowManager
     ) async -> Bool {
-        guard let match = MyTeamToolFastPathRouter.match(userMessage) else { return false }
-        guard match.descriptor.permissionLevel == .readOnly || match.descriptor.permissionLevel == .draftOnly else {
-            AppLog.warning("[WorkflowOrchestrator] fast-path blocked by permission level toolID=\(match.descriptor.id) permission=\(match.descriptor.permissionLevel.rawValue)")
+        let matches = MyTeamToolFastPathRouter.matchMany(userMessage)
+        guard !matches.isEmpty else { return false }
+        guard matches.allSatisfy({ $0.descriptor.permissionLevel == .readOnly || $0.descriptor.permissionLevel == .draftOnly }) else {
+            AppLog.warning("[WorkflowOrchestrator] fast-path blocked by permission level tools=\(matches.map { $0.descriptor.id }.joined(separator: ","))")
             return false
         }
-        let progressText = MyTeamToolFastPathRouter.runningMarkdown(for: match.descriptor)
+        let progressText = MyTeamToolFastPathRouter.runningMarkdown(for: matches)
         let progressMessageID = await MainActor.run {
             manager.addChatLog(
                 roomID: roomID,
@@ -2820,18 +2821,20 @@ final class WorkflowOrchestrator {
         }
         await MainActor.run {
             manager.isWorkflowRunning = true
-            manager.setWorkflowStatus("업무 도구 실행 중: \(match.descriptor.displayName)", for: roomID)
+            let statusName = matches.count == 1 ? matches[0].descriptor.displayName : "\(matches.count)개 업무"
+            manager.setWorkflowStatus("업무 도구 실행 중: \(statusName)", for: roomID)
         }
-        let state = await ToolExecutionRouter.shared.run(
-            match.descriptor,
-            input: match.input,
-            bypassApproval: false,
-            path: .planner
-        )
-        let responseText = MyTeamToolFastPathRouter.markdown(
-            for: state,
-            descriptor: match.descriptor
-        )
+        var results: [(match: MyTeamToolFastPathMatch, state: ToolExecutionState)] = []
+        for match in matches {
+            let state = await ToolExecutionRouter.shared.run(
+                match.descriptor,
+                input: match.input,
+                bypassApproval: false,
+                path: .planner
+            )
+            results.append((match: match, state: state))
+        }
+        let responseText = MyTeamToolFastPathRouter.markdown(for: results)
         await MainActor.run {
             if let progressMessageID {
                 manager.updateChatLogText(
