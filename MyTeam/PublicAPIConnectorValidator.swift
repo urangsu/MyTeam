@@ -1228,6 +1228,7 @@ private struct PublicDataRouteConfig: Sendable {
     let kind: Kind
 
     enum Kind: Sendable {
+        case krxListedItem
         case stockName
         case indexName
         case companyFinancial
@@ -1236,6 +1237,11 @@ private struct PublicDataRouteConfig: Sendable {
     func queryItems(for query: String) -> [URLQueryItem] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         switch kind {
+        case .krxListedItem:
+            if trimmed.range(of: #"^\d{6}$"#, options: .regularExpression) != nil {
+                return [URLQueryItem(name: "likeSrtnCd", value: trimmed)]
+            }
+            return [URLQueryItem(name: "likeItmsNm", value: trimmed)]
         case .stockName:
             if trimmed.range(of: #"^\d{6}$"#, options: .regularExpression) != nil {
                 return [URLQueryItem(name: "srtnCd", value: trimmed)]
@@ -1253,6 +1259,12 @@ private struct PublicDataRouteConfig: Sendable {
     }
 
     static let all: [String: PublicDataRouteConfig] = [
+        "finance/krx/items": PublicDataRouteConfig(
+            id: "krx-items",
+            endpoint: URL(string: "https://apis.data.go.kr/1160100/service/GetKrxListedInfoService/getItemInfo")!,
+            notice: "금융위원회 KRX 상장종목정보 기준 공공데이터입니다.",
+            kind: .krxListedItem
+        ),
         "finance/stocks/prices": PublicDataRouteConfig(
             id: "stock-prices",
             endpoint: URL(string: "https://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService/getStockPriceInfo")!,

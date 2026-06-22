@@ -15,6 +15,7 @@ struct HomeDashboardView: View {
         "dart.disclosures.search": "삼성전자",
         "finance.krx.stockPrice": "삼성전자",
         "finance.krx.index": "코스피",
+        "finance.company.statement": "삼성전자 2024",
         "news.search": "경제",
         "weather.current": "서울",
         "law.search": "근로기준법"
@@ -32,6 +33,7 @@ struct HomeDashboardView: View {
         "weather.current",
         "finance.krx.stockPrice",
         "finance.krx.index",
+        "finance.company.statement",
         "dart.disclosures.search",
         "news.search",
         "law.search",
@@ -197,7 +199,7 @@ struct HomeDashboardView: View {
         case "finance.krx.index":
             return "코스피"
         case "finance.company.statement":
-            return "법인등록번호 사업연도"
+            return "삼성전자 2024"
         case "news.search":
             return "경제"
         case "weather.current":
@@ -260,6 +262,7 @@ struct HomeDashboardView: View {
             "dart.disclosures.search",
             "finance.krx.stockPrice",
             "finance.krx.index",
+            "finance.company.statement",
             "news.search",
             "weather.current",
             "law.search",

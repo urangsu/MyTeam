@@ -159,12 +159,12 @@ enum MyTeamToolRegistry {
         MyTeamToolDescriptor(
             id: "finance.company.statement",
             displayName: "기업 재무 요약",
-            shortDescription: "법인등록번호와 사업연도 입력이 필요한 공공데이터 조회입니다.",
+            shortDescription: "회사명이나 종목코드로 법인등록번호를 확인한 뒤 기준연도 재무 요약을 조회합니다.",
             category: .externalInfo,
             requiredCredential: nil,
             permissionLevel: .readOnly,
             isImplemented: true,
-            isUserFacing: false,
+            isUserFacing: true,
             supportedDistributionChannels: [.appStore, .direct, .developer],
             relatedProvider: .publicDataPortal
         ),

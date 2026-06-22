@@ -31,6 +31,10 @@ enum MyTeamToolFastPathRouter {
             return make("dart.disclosures.search", query: query(afterRemoving: ["공시", "조회", "검색", "DART", "다트"], from: normalized, fallback: "포스코"))
         }
 
+        if isCompanyFinanceRequest(normalized, lower: lower) {
+            return make("finance.company.statement", query: financeQuery(from: normalized))
+        }
+
         if containsAny(lower, ["법령 검색", "법령 찾아", "법률 검색", "조문 조회", "조문 찾아", "law search"]) {
             return make("law.search", query: query(afterRemoving: ["법령", "법률", "조문", "검색", "찾아줘"], from: normalized, fallback: "근로기준법"))
         }
@@ -150,6 +154,26 @@ enum MyTeamToolFastPathRouter {
         if containsAny(lower, ["문장", "형식", "예시", "작성"]) { return false }
         let compact = message.replacingOccurrences(of: "공시", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
         return !compact.isEmpty && compact.count <= 16
+    }
+
+    private static func isCompanyFinanceRequest(_ message: String, lower: String) -> Bool {
+        if containsAny(lower, ["재무 요약", "요약재무", "재무제표", "손익계산서", "재무상태표", "기업 재무"]) {
+            return true
+        }
+        guard lower.contains("재무") else { return false }
+        if containsAny(lower, ["문장처럼", "형식", "예시", "표현"]) { return false }
+        let compact = message.replacingOccurrences(of: "재무", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return !compact.isEmpty && compact.count <= 24
+    }
+
+    private static func financeQuery(from message: String) -> String {
+        let query = query(
+            afterRemoving: ["재무", "요약", "요약재무", "재무제표", "손익계산서", "재무상태표", "기업", "조회", "확인", "정리"],
+            from: message,
+            fallback: "삼성전자 2024"
+        )
+        let hasYear = query.range(of: #"(19|20)\d{2}"#, options: .regularExpression) != nil
+        return hasYear ? query : "\(query) \(Calendar.current.component(.year, from: Date()) - 1)"
     }
 
     private static func query(afterRemoving tokens: [String], from message: String, fallback: String) -> String {

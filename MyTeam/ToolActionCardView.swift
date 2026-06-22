@@ -159,6 +159,7 @@ struct ToolActionCardView: View {
     private var supportsInlineRun: Bool {
         switch descriptor.id {
         case "dart.disclosures.search", "news.search", "weather.current", "law.search",
+             "finance.krx.stockPrice", "finance.krx.index", "finance.company.statement",
              "briefing.today", "document.meetingMinutes", "document.rewrite", "spreadsheet.postprocess",
              "spreadsheet.googleSheets.read", "calendar.events.today":
             return true
@@ -169,7 +170,7 @@ struct ToolActionCardView: View {
 
     private var runtimeButtonTitle: String {
         switch descriptor.id {
-        case "dart.disclosures.search", "weather.current":
+        case "dart.disclosures.search", "weather.current", "finance.krx.stockPrice", "finance.krx.index", "finance.company.statement":
             return "조회"
         case "law.search", "news.search":
             return "검색"
@@ -196,6 +197,12 @@ struct ToolActionCardView: View {
             return "경제"
         case "weather.current":
             return "서울"
+        case "finance.krx.stockPrice":
+            return "삼성전자"
+        case "finance.krx.index":
+            return "코스피"
+        case "finance.company.statement":
+            return "삼성전자 2024"
         case "law.search":
             return "근로기준법"
         case "briefing.today":
