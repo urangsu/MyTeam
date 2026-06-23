@@ -1178,13 +1178,17 @@ enum NaturalWorkPlanValidator {
 }
 
 enum NaturalWorkPlanExecutor {
-    static func execute(_ plan: NaturalWorkPlan, path: ToolExecutionPath) async -> NaturalWorkResult {
+    static func execute(
+        _ plan: NaturalWorkPlan,
+        path: ToolExecutionPath,
+        options: ToolExecutionOptions = .composite(parentWorkID: nil)
+    ) async -> NaturalWorkResult {
         let validatedPlan = NaturalWorkPlanValidator.planAfterValidation(plan)
         var executions: [NaturalStepExecution] = []
         await withTaskGroup(of: (Int, NaturalStepExecution).self) { group in
             for (index, step) in validatedPlan.steps.enumerated() {
                 group.addTask(priority: .userInitiated) {
-                    (index, await execute(step, path: path))
+                    (index, await execute(step, path: path, options: options))
                 }
             }
             for await pair in group {
@@ -1199,7 +1203,11 @@ enum NaturalWorkPlanExecutor {
         return NaturalResultComposer.compose(plan: validatedPlan, executions: executions)
     }
 
-    private static func execute(_ step: NaturalToolStep, path: ToolExecutionPath) async -> NaturalStepExecution {
+    private static func execute(
+        _ step: NaturalToolStep,
+        path: ToolExecutionPath,
+        options: ToolExecutionOptions
+    ) async -> NaturalStepExecution {
         guard let descriptor = MyTeamToolRegistry.descriptor(id: step.toolID) else {
             return NaturalStepExecution(
                 step: step,
@@ -1218,7 +1226,7 @@ enum NaturalWorkPlanExecutor {
             input: step.input,
             bypassApproval: false,
             path: path,
-            persistArtifact: false
+            options: options
         )
         if case .succeeded = state {
             return NaturalStepExecution(step: step, descriptor: descriptor, state: state)
@@ -1230,7 +1238,7 @@ enum NaturalWorkPlanExecutor {
                 input: fallback,
                 bypassApproval: false,
                 path: path,
-                persistArtifact: false
+                options: options
             )
             state = fallbackState
             if case .succeeded = fallbackState {
@@ -1406,6 +1414,22 @@ enum NaturalResultComposer {
 
 enum CompositeWorkArtifactWriter {
     static func write(result: NaturalWorkResult, originalText: String) async -> IndexedArtifact? {
+        let roomID = await MainActor.run { AgentWindowManager.shared.currentRoomID }
+        let workflowID = await MainActor.run { roomID.flatMap { AgentWindowManager.shared.currentWorkflowID(for: $0) } ?? AgentWindowManager.shared.currentWorkflowID }
+        return await write(
+            result: result,
+            originalText: originalText,
+            roomID: roomID,
+            workflowID: workflowID
+        )
+    }
+
+    static func write(
+        result: NaturalWorkResult,
+        originalText: String,
+        roomID: UUID?,
+        workflowID: UUID?
+    ) async -> IndexedArtifact? {
         let filename = filename(for: result.artifactTitle)
         let store = ArtifactStore.shared
         let fileURL = store.workspaceURL.appendingPathComponent(filename)
@@ -1417,11 +1441,9 @@ enum CompositeWorkArtifactWriter {
         }
 
         let now = Date()
-        let roomID = await MainActor.run { AgentWindowManager.shared.currentRoomID }
-        let workflowID = await MainActor.run { AgentWindowManager.shared.currentWorkflowID } ?? UUID()
         let artifact = IndexedArtifact(
             id: UUID().uuidString,
-            workflowID: workflowID.uuidString,
+            workflowID: (workflowID ?? UUID()).uuidString,
             title: result.artifactTitle,
             type: .report,
             filename: filename,

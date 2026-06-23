@@ -41,6 +41,12 @@ def main() -> None:
 
     workflow = read("MyTeam/WorkflowOrchestrator.swift")
     workflow_input = read("MyTeam/WorkflowInputCoordinator.swift")
+    context_provider = read("MyTeam/NaturalWorkContextProvider.swift")
+    pending_coordinator = read("MyTeam/PendingNaturalWorkCoordinator.swift")
+    entry_point = read("MyTeam/NaturalWorkEntryPoint.swift")
+    plan_runner = read("MyTeam/NaturalWorkPlanRunner.swift")
+    chat_sink = read("MyTeam/ChatResponseSink.swift")
+    artifact_recorder = read("MyTeam/CompositeArtifactRecorder.swift")
     agent_chat = read("MyTeam/AgentChatView.swift")
     team_status = read("MyTeam/TeamStatusView.swift")
     tool_router = read("MyTeam/ToolExecutionRouter.swift")
@@ -56,19 +62,64 @@ def main() -> None:
             failures.append(f"WorkflowOrchestrator.handleToolFastPath still owns routing detail: {token}")
 
     for token in [
-        "PendingNaturalWorkRequestStore.shared.pending",
-        "NaturalWorkRouter.route",
-        "AgenticToolOrchestrator.plan",
+        "NaturalWorkContextProvider.snapshot",
+        "PendingNaturalWorkCoordinator.resolve",
+        "NaturalWorkEntryPoint.resolve",
         "LegacyWorkflowFallbackRouter.shared.handle",
     ]:
         if token not in workflow_input:
             failures.append(f"WorkflowInputCoordinator missing expected step: {token}")
+    for token in [
+        "CompositeWorkArtifactWriter",
+        "PendingNaturalWorkRequestStore.shared",
+        "NaturalWorkContext(",
+        "NaturalWorkRouter.route",
+        "AgenticToolOrchestrator.plan",
+    ]:
+        if token in workflow_input:
+            failures.append(f"WorkflowInputCoordinator owns a responsibility that must be delegated: {token}")
+    if workflow_input.count("manager.addChatLog") >= 2:
+        failures.append("WorkflowInputCoordinator must not directly create multiple chat log messages")
 
-    if "WorkflowInputCoordinator.swift" not in project:
-        failures.append("WorkflowInputCoordinator.swift is not included in the Xcode project")
+    if "PendingNaturalWorkRequestStore.shared" not in pending_coordinator:
+        failures.append("PendingNaturalWorkCoordinator must own PendingNaturalWorkRequestStore access")
+    if "NaturalWorkRouter.route" not in entry_point or "AgenticToolOrchestrator.plan" not in entry_point:
+        failures.append("NaturalWorkEntryPoint must own deterministic and agentic planning order")
+    if "NaturalWorkPlanValidator.planAfterValidation" not in plan_runner:
+        failures.append("NaturalWorkPlanRunner must validate plans before execution")
+    if "options: .composite" not in plan_runner:
+        failures.append("NaturalWorkPlanRunner must execute composite work with ToolExecutionOptions.composite")
+    if "ChatResponseSink.addProgress" not in plan_runner or "ChatResponseSink.updateOrAppend" not in plan_runner:
+        failures.append("NaturalWorkPlanRunner must delegate chat message writes to ChatResponseSink")
+    if "CompositeArtifactRecorder.write" not in plan_runner:
+        failures.append("NaturalWorkPlanRunner must delegate artifact writes to CompositeArtifactRecorder")
+    if "manager.addChatLog" not in chat_sink or "manager.updateChatLogText" not in chat_sink:
+        failures.append("ChatResponseSink must own natural work chat response writes")
+    if "CompositeWorkArtifactWriter.write" not in artifact_recorder:
+        failures.append("CompositeArtifactRecorder must own composite artifact writer calls")
+    if "activeArtifactID: nil" in workflow_input or "recentArtifacts: []" in workflow_input:
+        failures.append("WorkflowInputCoordinator must not hard-code empty natural context fields")
+
+    for file_name in [
+        "WorkflowInputCoordinator.swift",
+        "NaturalWorkContextProvider.swift",
+        "PendingNaturalWorkCoordinator.swift",
+        "NaturalWorkEntryPoint.swift",
+        "NaturalWorkPlanRunner.swift",
+        "ChatResponseSink.swift",
+        "CompositeArtifactRecorder.swift",
+    ]:
+        if file_name not in project:
+            failures.append(f"{file_name} is not included in the Xcode project")
 
     if re.search(r"\bToolNeedClassifier\b", agent_chat):
         failures.append("AgentChatView must not contain ToolNeedClassifier")
+    if "ToolExecutionOptions" not in tool_router:
+        failures.append("ToolExecutionRouter.run must accept ToolExecutionOptions")
+    if "options.persistIndividualArtifact" not in tool_router:
+        failures.append("ToolExecutionRouter must gate artifact persistence through ToolExecutionOptions")
+    if "persistArtifact:" in tool_router:
+        failures.append("ToolExecutionRouter.run must not expose legacy persistArtifact parameter")
 
     if "userRoutes: USER_ROUTES" not in worker or "diagnosticRoutes: DIAGNOSTIC_ROUTES" not in worker:
         failures.append("Worker /health must expose userRoutes and diagnosticRoutes")

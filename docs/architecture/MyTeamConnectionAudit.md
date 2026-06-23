@@ -87,9 +87,9 @@ Branch: `codex/main-product-stabilization-p0`
 ## Current P0 Boundary
 
 - 개인 채팅: `AgentChatView`에서 pending clarification과 natural work가 처리됨. P1에서 `ChatInputDispatcher`로 이동 필요.
-- 팀 워크룸: `WorkflowOrchestrator.dispatch`가 `WorkflowInputCoordinator`를 호출하고, coordinator가 pending clarification, natural route, agentic route, legacy fast path를 순서대로 처리함.
-- ToolExecution: 아직 `ToolExecutionRouter`가 runner/formatter/persistence 일부를 함께 보유. P1 분리 대상.
-- Artifact: composite natural work artifact는 저장되지만 최근 실행 상세는 내부 artifact detail 중심으로 완전히 전환되지 않음.
+- 팀 워크룸: `WorkflowOrchestrator.dispatch`가 `WorkflowInputCoordinator`를 호출하고, coordinator는 순서 제어만 담당함. context, pending clarification, natural/agentic entrypoint, plan execution, chat response, artifact recording은 별도 타입으로 분리됨.
+- ToolExecution: `ToolExecutionOptions`로 standalone/composite 실행을 구분함. Composite natural work는 개별 step artifact를 만들지 않음. Provider runner/formatter 분리는 아직 P1.
+- Artifact: composite natural work artifact는 roomID 기준으로 저장됨. 최근 실행 상세는 아직 내부 artifact detail 중심으로 완전히 전환되지 않음.
 - Worker: DART는 diagnostic route에만 표시하고 user route에서는 제외함.
 
 ## Next Refactor Order

@@ -11,66 +11,40 @@ struct WorkflowInputCoordinator {
         manager: AgentWindowManager
     ) async -> Bool {
         let naturalSnapshot = await MainActor.run {
-            let recentMessages = manager.rooms
-                .first(where: { $0.id == roomID })?
-                .messages
-                .suffix(8)
-                .filter { !$0.isSystem } ?? []
-            return (context: NaturalWorkContext(
+            NaturalWorkContextProvider.snapshot(roomID: roomID, manager: manager)
+        }
+        let pendingResolution = await MainActor.run {
+            PendingNaturalWorkCoordinator.resolve(
+                userMessage: userMessage,
                 roomID: roomID,
-                activeArtifactID: nil,
-                recentArtifacts: [],
-                pendingAttachments: [],
-                recentMessageTexts: recentMessages.map(\.text),
-                lastCompanyIdentity: nil,
-                lastWorkType: nil,
-                userLocation: nil
-            ), chatHistory: Array(recentMessages))
+                manager: manager
+            )
         }
-
-        let pendingNaturalRequest = await MainActor.run {
-            PendingNaturalWorkRequestStore.shared.pending(roomID: roomID)
-        }
-        if pendingNaturalRequest != nil,
-           PendingNaturalWorkRequestStore.isCancellation(userMessage) {
-            await MainActor.run {
-                PendingNaturalWorkRequestStore.shared.clear(roomID: roomID)
-                manager.addChatLog(
-                    roomID: roomID,
-                    agentID: "system",
-                    agentName: "업무 실행",
-                    text: "요청을 취소했습니다.",
-                    isUser: false
-                )
-            }
+        guard let naturalRouteText = pendingResolution.routeText else {
             return true
         }
 
-        let naturalRouteText = await MainActor.run { () -> String in
-            guard let pendingNaturalRequest else { return userMessage }
-            return PendingNaturalWorkRequestStore.shared.mergedText(userMessage, into: pendingNaturalRequest)
-        }
-
-        switch NaturalWorkRouter.route(for: naturalRouteText, context: naturalSnapshot.context) {
+        switch await NaturalWorkEntryPoint.resolve(
+            text: naturalRouteText,
+            context: naturalSnapshot.context,
+            chatHistory: naturalSnapshot.chatHistory
+        ) {
         case .clarification(let request):
             await MainActor.run {
-                PendingNaturalWorkRequestStore.shared.set(request, roomID: roomID)
-                manager.addChatLog(
+                PendingNaturalWorkCoordinator.storeClarification(
+                    request,
                     roomID: roomID,
-                    agentID: "system",
-                    agentName: "업무 실행",
-                    text: NaturalWorkRouter.clarificationMarkdown(for: request),
-                    isUser: false
+                    manager: manager
                 )
             }
             return true
         case .plan(let naturalPlan):
-            return await runNaturalPlan(
+            return await NaturalWorkPlanRunner.run(
                 naturalPlan,
                 originalText: userMessage,
                 roomID: roomID,
                 manager: manager,
-                shouldClearPending: pendingNaturalRequest != nil
+                shouldClearPending: pendingResolution.shouldClearAfterPlan
             )
         case .unsupported:
             return false
@@ -78,89 +52,11 @@ struct WorkflowInputCoordinator {
             break
         }
 
-        if let naturalPlan = await AgenticToolOrchestrator.plan(
-            for: naturalRouteText,
-            context: naturalSnapshot.context,
-            chatHistory: naturalSnapshot.chatHistory,
-            agentID: "team_all",
-            agentConfig: nil
-        ) {
-            return await runNaturalPlan(
-                naturalPlan,
-                originalText: userMessage,
-                roomID: roomID,
-                manager: manager,
-                shouldClearPending: pendingNaturalRequest != nil
-            )
-        }
-
         return await LegacyWorkflowFallbackRouter.shared.handle(
             text: naturalRouteText,
             roomID: roomID,
             manager: manager
         )
-    }
-
-    private func runNaturalPlan(
-        _ naturalPlan: NaturalWorkPlan,
-        originalText: String,
-        roomID: UUID,
-        manager: AgentWindowManager,
-        shouldClearPending: Bool
-    ) async -> Bool {
-        if shouldClearPending {
-            await MainActor.run {
-                PendingNaturalWorkRequestStore.shared.clear(roomID: roomID)
-            }
-        }
-        guard naturalPlan.steps.allSatisfy({ step in
-            guard let descriptor = MyTeamToolRegistry.descriptor(id: step.toolID) else { return false }
-            return descriptor.permissionLevel == .readOnly || descriptor.permissionLevel == .draftOnly
-        }) else {
-            AppLog.warning("[WorkflowInputCoordinator] natural work blocked by permission level title=\(naturalPlan.title)")
-            return false
-        }
-
-        let progressMessageID = await MainActor.run {
-            manager.addChatLog(
-                roomID: roomID,
-                agentID: "system",
-                agentName: "업무 실행",
-                text: NaturalWorkRouter.runningMarkdown(for: naturalPlan),
-                isUser: false
-            )
-        }
-        await MainActor.run {
-            manager.isWorkflowRunning = true
-            manager.setWorkflowStatus("업무 조회 중: \(naturalPlan.title)", for: roomID)
-        }
-
-        let naturalResult = await NaturalWorkPlanExecutor.execute(naturalPlan, path: .planner)
-        _ = await CompositeWorkArtifactWriter.write(
-            result: naturalResult,
-            originalText: originalText
-        )
-
-        await MainActor.run {
-            if let progressMessageID {
-                manager.updateChatLogText(
-                    roomID: roomID,
-                    messageID: progressMessageID,
-                    text: naturalResult.artifactMarkdown
-                )
-            } else {
-                manager.addChatLog(
-                    roomID: roomID,
-                    agentID: "system",
-                    agentName: "업무 실행",
-                    text: naturalResult.artifactMarkdown,
-                    isUser: false
-                )
-            }
-            manager.clearWorkflowStatus(for: roomID)
-            manager.isWorkflowRunning = manager.activeWorkflowTaskCount() > 0
-        }
-        return true
     }
 }
 
@@ -183,12 +79,10 @@ struct LegacyWorkflowFallbackRouter {
 
         let progressText = MyTeamToolFastPathRouter.runningMarkdown(for: matches)
         let progressMessageID = await MainActor.run {
-            manager.addChatLog(
+            ChatResponseSink.addProgress(
                 roomID: roomID,
-                agentID: "system",
-                agentName: "업무 실행",
-                text: progressText,
-                isUser: false
+                manager: manager,
+                text: progressText
             )
         }
         await MainActor.run {
@@ -210,21 +104,13 @@ struct LegacyWorkflowFallbackRouter {
 
         let responseText = MyTeamToolFastPathRouter.markdown(for: results)
         await MainActor.run {
-            if let progressMessageID {
-                manager.updateChatLogText(
-                    roomID: roomID,
-                    messageID: progressMessageID,
-                    text: responseText
-                )
-            } else {
-                manager.addChatLog(
-                    roomID: roomID,
-                    agentID: "system",
-                    agentName: "업무 실행",
-                    text: responseText,
-                    isUser: false
-                )
-            }
+            ChatResponseSink.updateOrAppend(
+                roomID: roomID,
+                manager: manager,
+                messageID: progressMessageID,
+                text: responseText,
+                agentName: "업무 실행"
+            )
             manager.clearWorkflowStatus(for: roomID)
             manager.isWorkflowRunning = manager.activeWorkflowTaskCount() > 0
         }

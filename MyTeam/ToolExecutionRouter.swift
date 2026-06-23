@@ -120,7 +120,7 @@ actor ToolExecutionRouter {
         input: MyTeamToolInput,
         bypassApproval: Bool,
         path: ToolExecutionPath = .toolCard,
-        persistArtifact: Bool = true
+        options: ToolExecutionOptions = .standalone
     ) async -> ToolExecutionState {
         let logID = await MainActor.run {
             ToolExecutionLogStore.shared.start(descriptor: descriptor, path: path)
@@ -162,7 +162,7 @@ actor ToolExecutionRouter {
         default:
             result = .unavailable("이 업무는 아직 실행 연결 전입니다.")
         }
-        let artifact = persistArtifact
+        let artifact = options.persistIndividualArtifact
             ? await persistArtifactIfPossible(descriptor: descriptor, result: result, input: input)
             : nil
         await finishLog(id: logID, state: result, artifact: artifact)

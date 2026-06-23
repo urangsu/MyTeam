@@ -7897,6 +7897,12 @@
 						<string>NLW001ROUTINGFILE</string>
 						<string>WIC001COORDINATORFILE</string>
 						<string>RIP001PRECHECKFILE</string>
+						<string>NCP001CTXPROVIDERFILE</string>
+						<string>PNC001PENDINGCOORDFILE</string>
+						<string>NEP001ENTRYPOINTFILE</string>
+						<string>NPR001PLANRUNNERFILE</string>
+						<string>CRS001CHATSINKFILE</string>
+						<string>CAR001ARTRECORDERFILE</string>
 						<string>TLF016ST3SOURCEFILE</string>
 						<string>TLF017ST3BUNDLEDFILE</string>
 						<string>TLF018ST3EXTERNALFILE</string>
@@ -9462,6 +9468,12 @@
 						<string>NLW001ROUTINGBLD</string>
 						<string>WIC001COORDINATORBLD</string>
 						<string>RIP001PRECHECKBLD</string>
+						<string>NCP001CTXPROVIDERBLD</string>
+						<string>PNC001PENDINGCOORDBLD</string>
+						<string>NEP001ENTRYPOINTBLD</string>
+						<string>NPR001PLANRUNNERBLD</string>
+						<string>CRS001CHATSINKBLD</string>
+						<string>CAR001ARTRECORDERBLD</string>
 						<string>TLB016ST3SOURCEBLD</string>
 						<string>TLB017ST3BUNDLEDBLD</string>
 						<string>TLB018ST3EXTERNALBLD</string>
@@ -17840,6 +17852,96 @@
 					<key>sourceTree</key>
 					<string>SOURCE_ROOT</string>
 				</dict>
+				<key>NCP001CTXPROVIDERFILE</key>
+				<dict>
+					<key>fileEncoding</key>
+					<integer>4</integer>
+					<key>isa</key>
+					<string>PBXFileReference</string>
+					<key>lastKnownFileType</key>
+					<string>sourcecode.swift</string>
+					<key>name</key>
+					<string>NaturalWorkContextProvider.swift</string>
+					<key>path</key>
+					<string>NaturalWorkContextProvider.swift</string>
+					<key>sourceTree</key>
+					<string>SOURCE_ROOT</string>
+				</dict>
+				<key>PNC001PENDINGCOORDFILE</key>
+				<dict>
+					<key>fileEncoding</key>
+					<integer>4</integer>
+					<key>isa</key>
+					<string>PBXFileReference</string>
+					<key>lastKnownFileType</key>
+					<string>sourcecode.swift</string>
+					<key>name</key>
+					<string>PendingNaturalWorkCoordinator.swift</string>
+					<key>path</key>
+					<string>PendingNaturalWorkCoordinator.swift</string>
+					<key>sourceTree</key>
+					<string>SOURCE_ROOT</string>
+				</dict>
+				<key>NEP001ENTRYPOINTFILE</key>
+				<dict>
+					<key>fileEncoding</key>
+					<integer>4</integer>
+					<key>isa</key>
+					<string>PBXFileReference</string>
+					<key>lastKnownFileType</key>
+					<string>sourcecode.swift</string>
+					<key>name</key>
+					<string>NaturalWorkEntryPoint.swift</string>
+					<key>path</key>
+					<string>NaturalWorkEntryPoint.swift</string>
+					<key>sourceTree</key>
+					<string>SOURCE_ROOT</string>
+				</dict>
+				<key>NPR001PLANRUNNERFILE</key>
+				<dict>
+					<key>fileEncoding</key>
+					<integer>4</integer>
+					<key>isa</key>
+					<string>PBXFileReference</string>
+					<key>lastKnownFileType</key>
+					<string>sourcecode.swift</string>
+					<key>name</key>
+					<string>NaturalWorkPlanRunner.swift</string>
+					<key>path</key>
+					<string>NaturalWorkPlanRunner.swift</string>
+					<key>sourceTree</key>
+					<string>SOURCE_ROOT</string>
+				</dict>
+				<key>CRS001CHATSINKFILE</key>
+				<dict>
+					<key>fileEncoding</key>
+					<integer>4</integer>
+					<key>isa</key>
+					<string>PBXFileReference</string>
+					<key>lastKnownFileType</key>
+					<string>sourcecode.swift</string>
+					<key>name</key>
+					<string>ChatResponseSink.swift</string>
+					<key>path</key>
+					<string>ChatResponseSink.swift</string>
+					<key>sourceTree</key>
+					<string>SOURCE_ROOT</string>
+				</dict>
+				<key>CAR001ARTRECORDERFILE</key>
+				<dict>
+					<key>fileEncoding</key>
+					<integer>4</integer>
+					<key>isa</key>
+					<string>PBXFileReference</string>
+					<key>lastKnownFileType</key>
+					<string>sourcecode.swift</string>
+					<key>name</key>
+					<string>CompositeArtifactRecorder.swift</string>
+					<key>path</key>
+					<string>CompositeArtifactRecorder.swift</string>
+					<key>sourceTree</key>
+					<string>SOURCE_ROOT</string>
+				</dict>
 				<key>NLW001ROUTINGBLD</key>
 				<dict>
 					<key>fileRef</key>
@@ -17865,6 +17967,48 @@
 				<dict>
 					<key>fileRef</key>
 					<string>RIP001PRECHECKFILE</string>
+					<key>isa</key>
+					<string>PBXBuildFile</string>
+				</dict>
+				<key>NCP001CTXPROVIDERBLD</key>
+				<dict>
+					<key>fileRef</key>
+					<string>NCP001CTXPROVIDERFILE</string>
+					<key>isa</key>
+					<string>PBXBuildFile</string>
+				</dict>
+				<key>PNC001PENDINGCOORDBLD</key>
+				<dict>
+					<key>fileRef</key>
+					<string>PNC001PENDINGCOORDFILE</string>
+					<key>isa</key>
+					<string>PBXBuildFile</string>
+				</dict>
+				<key>NEP001ENTRYPOINTBLD</key>
+				<dict>
+					<key>fileRef</key>
+					<string>NEP001ENTRYPOINTFILE</string>
+					<key>isa</key>
+					<string>PBXBuildFile</string>
+				</dict>
+				<key>NPR001PLANRUNNERBLD</key>
+				<dict>
+					<key>fileRef</key>
+					<string>NPR001PLANRUNNERFILE</string>
+					<key>isa</key>
+					<string>PBXBuildFile</string>
+				</dict>
+				<key>CRS001CHATSINKBLD</key>
+				<dict>
+					<key>fileRef</key>
+					<string>CRS001CHATSINKFILE</string>
+					<key>isa</key>
+					<string>PBXBuildFile</string>
+				</dict>
+				<key>CAR001ARTRECORDERBLD</key>
+				<dict>
+					<key>fileRef</key>
+					<string>CAR001ARTRECORDERFILE</string>
 					<key>isa</key>
 					<string>PBXBuildFile</string>
 				</dict>

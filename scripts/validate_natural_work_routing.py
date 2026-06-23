@@ -38,6 +38,10 @@ def main() -> None:
     natural = read("MyTeam/NaturalWorkRouting.swift")
     chat = read("MyTeam/AgentChatView.swift")
     workflow = read("MyTeam/WorkflowOrchestrator.swift")
+    workflow_input = read("MyTeam/WorkflowInputCoordinator.swift")
+    entry_point = read("MyTeam/NaturalWorkEntryPoint.swift")
+    pending = read("MyTeam/PendingNaturalWorkCoordinator.swift")
+    runner = read("MyTeam/NaturalWorkPlanRunner.swift")
     router = read("MyTeam/ToolExecutionRouter.swift")
     pbxproj = read("MyTeam/MyTeam.xcodeproj/project.pbxproj")
 
@@ -49,28 +53,34 @@ def main() -> None:
     require_contains("NaturalWorkPlanValidationResult", natural, "struct NaturalWorkPlanValidationResult")
     require_contains("NaturalWorkPlanValidator", natural, "enum NaturalWorkPlanValidator")
 
-    require_contains("AgentChatView natural route", chat, "NaturalWorkRouter.route")
-    require_contains("AgentChatView pending", chat, "PendingNaturalWorkRequestStore.shared.pending")
-    require_contains("AgentChatView artifact", chat, "CompositeWorkArtifactWriter.write")
+    require_contains("NaturalWorkEntryPoint route", entry_point, "NaturalWorkRouter.route")
+    require_contains("NaturalWorkEntryPoint agentic", entry_point, "AgenticToolOrchestrator.plan")
+    require_contains("PendingNaturalWorkCoordinator pending", pending, "PendingNaturalWorkRequestStore.shared.pending")
+    require_contains("NaturalWorkPlanRunner artifact", runner, "CompositeArtifactRecorder.write")
+    require_contains("AgentChatView natural entrypoint", chat, "NaturalWorkEntryPoint.resolve")
+    require_contains("AgentChatView pending coordinator", chat, "PendingNaturalWorkCoordinator.resolve")
+    require_contains("AgentChatView runner", chat, "NaturalWorkPlanRunner.run")
     require_order(
         "AgentChatView routing order",
         chat,
-        "NaturalWorkRouter.route",
+        "NaturalWorkEntryPoint.resolve",
         "MyTeamToolFastPathRouter.matchMany",
     )
 
-    require_contains("WorkflowOrchestrator natural route", workflow, "NaturalWorkRouter.route")
-    require_contains("WorkflowOrchestrator pending", workflow, "PendingNaturalWorkRequestStore.shared.pending")
-    require_contains("WorkflowOrchestrator artifact", workflow, "CompositeWorkArtifactWriter.write")
+    require_contains("WorkflowOrchestrator coordinator", workflow, "WorkflowInputCoordinator.shared.handle")
+    require_contains("WorkflowInputCoordinator entrypoint", workflow_input, "NaturalWorkEntryPoint.resolve")
+    require_contains("WorkflowInputCoordinator pending coordinator", workflow_input, "PendingNaturalWorkCoordinator.resolve")
+    require_contains("WorkflowInputCoordinator runner", workflow_input, "NaturalWorkPlanRunner.run")
     require_order(
-        "WorkflowOrchestrator routing order",
-        workflow,
-        "NaturalWorkRouter.route",
+        "WorkflowInputCoordinator routing order",
+        workflow_input,
+        "NaturalWorkEntryPoint.resolve",
         "MyTeamToolFastPathRouter.matchMany",
     )
 
-    require_contains("Composite route artifact suppression", natural, "persistArtifact: false")
-    require_contains("ToolExecutionRouter persist option", router, "persistArtifact: Bool = true")
+    require_contains("Composite route artifact suppression", natural, "options: options")
+    require_contains("ToolExecutionRouter options", router, "options: ToolExecutionOptions = .standalone")
+    require_contains("ToolExecutionRouter option gate", router, "options.persistIndividualArtifact")
 
     false_positive_phrases = [
         "뉴스 기사처럼",

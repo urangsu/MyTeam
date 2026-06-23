@@ -25,6 +25,31 @@ struct MyTeamToolInput: Sendable, Equatable {
     }
 }
 
+enum ToolExecutionMode: String, Codable, Sendable {
+    case standalone
+    case compositeWork
+}
+
+struct ToolExecutionOptions: Sendable {
+    let persistIndividualArtifact: Bool
+    let parentWorkID: UUID?
+    let executionMode: ToolExecutionMode
+
+    nonisolated static let standalone = ToolExecutionOptions(
+        persistIndividualArtifact: true,
+        parentWorkID: nil,
+        executionMode: .standalone
+    )
+
+    nonisolated static func composite(parentWorkID: UUID?) -> ToolExecutionOptions {
+        ToolExecutionOptions(
+            persistIndividualArtifact: false,
+            parentWorkID: parentWorkID,
+            executionMode: .compositeWork
+        )
+    }
+}
+
 enum ToolExecutionState: Sendable, Equatable {
     case idle
     case checkingReadiness

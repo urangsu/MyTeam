@@ -1148,21 +1148,11 @@ struct AgentChatView: View {
             let attachmentContext = ConversationMemory.buildAttachmentContext(from: attachments)
             let fullText = attachmentContext.isEmpty ? text : text + attachmentContext
             let naturalSnapshot = await MainActor.run {
-                let recentMessages = manager.rooms
-                    .first(where: { $0.id == roomID })?
-                    .messages
-                    .suffix(8)
-                    .filter { !$0.isSystem } ?? []
-                return (context: NaturalWorkContext(
+                NaturalWorkContextProvider.snapshot(
                     roomID: roomID,
-                    activeArtifactID: nil,
-                    recentArtifacts: [],
-                    pendingAttachments: attachments,
-                    recentMessageTexts: recentMessages.map(\.text),
-                    lastCompanyIdentity: nil,
-                    lastWorkType: nil,
-                    userLocation: nil
-                ), chatHistory: Array(recentMessages))
+                    manager: manager,
+                    pendingAttachments: attachments
+                )
             }
 
             let userMessageID = await MainActor.run {
@@ -1173,83 +1163,45 @@ struct AgentChatView: View {
                 )
             }
 
-            let pendingNaturalRequest = await MainActor.run {
-                PendingNaturalWorkRequestStore.shared.pending(roomID: roomID)
+            let pendingResolution = await MainActor.run {
+                PendingNaturalWorkCoordinator.resolve(
+                    userMessage: text,
+                    roomID: roomID,
+                    manager: manager
+                )
             }
-            if pendingNaturalRequest != nil,
-               PendingNaturalWorkRequestStore.isCancellation(text) {
-                await MainActor.run {
-                    PendingNaturalWorkRequestStore.shared.clear(roomID: roomID)
-                    manager.addChatLog(
-                        roomID: roomID,
-                        agentID: "system",
-                        agentName: "업무 실행",
-                        text: "요청을 취소했습니다.",
-                        isUser: false
-                    )
-                }
+            guard let naturalRouteText = pendingResolution.routeText else {
                 return
             }
 
-            let naturalRouteText = await MainActor.run { () -> String in
-                guard let pendingNaturalRequest else { return text }
-                return PendingNaturalWorkRequestStore.shared.mergedText(fullText, into: pendingNaturalRequest)
-            }
-            switch NaturalWorkRouter.route(for: naturalRouteText, context: naturalSnapshot.context) {
+            switch await NaturalWorkEntryPoint.resolve(
+                text: naturalRouteText,
+                context: naturalSnapshot.context,
+                chatHistory: naturalSnapshot.chatHistory
+            ) {
             case .clarification(let request):
                 await MainActor.run {
-                    PendingNaturalWorkRequestStore.shared.set(request, roomID: roomID)
-                    manager.addChatLog(
+                    PendingNaturalWorkCoordinator.storeClarification(
+                        request,
                         roomID: roomID,
-                        agentID: "system",
-                        agentName: "업무 실행",
-                        text: NaturalWorkRouter.clarificationMarkdown(for: request),
-                        isUser: false
+                        manager: manager
                     )
                 }
                 return
             case .plan(let naturalPlan):
-                if pendingNaturalRequest != nil {
-                    await MainActor.run {
-                        PendingNaturalWorkRequestStore.shared.clear(roomID: roomID)
-                    }
-                }
                 if targetID != "team_all" {
                     setTyping(targetID, true)
                 }
-                let progressMessageID = await MainActor.run {
-                    manager.addChatLog(
-                        roomID: roomID,
-                        agentID: "system",
-                        agentName: "업무 실행",
-                        text: NaturalWorkRouter.runningMarkdown(for: naturalPlan),
-                        isUser: false
-                    )
-                }
-                let naturalResult = await NaturalWorkPlanExecutor.execute(naturalPlan, path: .chatFastPath)
-                _ = await CompositeWorkArtifactWriter.write(
-                    result: naturalResult,
-                    originalText: fullText
+                _ = await NaturalWorkPlanRunner.run(
+                    naturalPlan,
+                    originalText: fullText,
+                    roomID: roomID,
+                    manager: manager,
+                    shouldClearPending: pendingResolution.shouldClearAfterPlan,
+                    path: .chatFastPath
                 )
-                await MainActor.run {
-                    if targetID != "team_all" {
-                        manager.typingAgentIDs.remove(targetID)
-                    }
-                    if let progressMessageID {
-                        manager.updateChatLogText(
-                            roomID: roomID,
-                            messageID: progressMessageID,
-                            text: naturalResult.artifactMarkdown
-                        )
-                    } else {
-                        manager.addChatLog(
-                            roomID: roomID,
-                            agentID: "system",
-                            agentName: "업무 실행",
-                            text: naturalResult.artifactMarkdown,
-                            isUser: false
-                        )
-                    }
+                if targetID != "team_all" {
+                    setTyping(targetID, false)
                 }
                 return
             case .unsupported(let reason):
@@ -1265,58 +1217,6 @@ struct AgentChatView: View {
                 return
             case .fallback:
                 break
-            }
-
-            if let naturalPlan = await AgenticToolOrchestrator.plan(
-                for: naturalRouteText,
-                context: naturalSnapshot.context,
-                chatHistory: naturalSnapshot.chatHistory,
-                agentID: targetID,
-                agentConfig: currentAgent
-            ) {
-                if pendingNaturalRequest != nil {
-                    await MainActor.run {
-                        PendingNaturalWorkRequestStore.shared.clear(roomID: roomID)
-                    }
-                }
-                if targetID != "team_all" {
-                    setTyping(targetID, true)
-                }
-                let progressMessageID = await MainActor.run {
-                    manager.addChatLog(
-                        roomID: roomID,
-                        agentID: "system",
-                        agentName: "업무 실행",
-                        text: NaturalWorkRouter.runningMarkdown(for: naturalPlan),
-                        isUser: false
-                    )
-                }
-                let naturalResult = await NaturalWorkPlanExecutor.execute(naturalPlan, path: .chatFastPath)
-                _ = await CompositeWorkArtifactWriter.write(
-                    result: naturalResult,
-                    originalText: fullText
-                )
-                await MainActor.run {
-                    if targetID != "team_all" {
-                        manager.typingAgentIDs.remove(targetID)
-                    }
-                    if let progressMessageID {
-                        manager.updateChatLogText(
-                            roomID: roomID,
-                            messageID: progressMessageID,
-                            text: naturalResult.artifactMarkdown
-                        )
-                    } else {
-                        manager.addChatLog(
-                            roomID: roomID,
-                            agentID: "system",
-                            agentName: "업무 실행",
-                            text: naturalResult.artifactMarkdown,
-                            isUser: false
-                        )
-                    }
-                }
-                return
             }
 
             let fastPathMatches = MyTeamToolFastPathRouter.matchMany(naturalRouteText)
