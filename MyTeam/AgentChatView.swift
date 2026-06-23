@@ -1204,7 +1204,7 @@ struct AgentChatView: View {
             }
 
             if let naturalPlan = await AgenticToolOrchestrator.plan(
-                for: fullText,
+                for: text,
                 context: naturalSnapshot.context,
                 chatHistory: naturalSnapshot.chatHistory,
                 agentID: targetID,
