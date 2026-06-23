@@ -2820,13 +2820,110 @@ final class WorkflowOrchestrator {
                 userLocation: nil
             ), chatHistory: Array(recentMessages))
         }
+        let pendingNaturalRequest = await MainActor.run {
+            PendingNaturalWorkRequestStore.shared.pending(roomID: roomID)
+        }
+        if pendingNaturalRequest != nil,
+           PendingNaturalWorkRequestStore.isCancellation(userMessage) {
+            await MainActor.run {
+                PendingNaturalWorkRequestStore.shared.clear(roomID: roomID)
+                manager.addChatLog(
+                    roomID: roomID,
+                    agentID: "system",
+                    agentName: "업무 실행",
+                    text: "요청을 취소했습니다.",
+                    isUser: false
+                )
+            }
+            return true
+        }
+
+        let naturalRouteText = await MainActor.run { () -> String in
+            guard let pendingNaturalRequest else { return userMessage }
+            return PendingNaturalWorkRequestStore.shared.mergedText(userMessage, into: pendingNaturalRequest)
+        }
+        switch NaturalWorkRouter.route(for: naturalRouteText, context: naturalSnapshot.context) {
+        case .clarification(let request):
+            await MainActor.run {
+                PendingNaturalWorkRequestStore.shared.set(request, roomID: roomID)
+                manager.addChatLog(
+                    roomID: roomID,
+                    agentID: "system",
+                    agentName: "업무 실행",
+                    text: NaturalWorkRouter.clarificationMarkdown(for: request),
+                    isUser: false
+                )
+            }
+            return true
+        case .plan(let naturalPlan):
+            if pendingNaturalRequest != nil {
+                await MainActor.run {
+                    PendingNaturalWorkRequestStore.shared.clear(roomID: roomID)
+                }
+            }
+            guard naturalPlan.steps.allSatisfy({ step in
+                guard let descriptor = MyTeamToolRegistry.descriptor(id: step.toolID) else { return false }
+                return descriptor.permissionLevel == .readOnly || descriptor.permissionLevel == .draftOnly
+            }) else {
+                AppLog.warning("[WorkflowOrchestrator] natural work blocked by permission level title=\(naturalPlan.title)")
+                return false
+            }
+            let progressMessageID = await MainActor.run {
+                manager.addChatLog(
+                    roomID: roomID,
+                    agentID: "system",
+                    agentName: "업무 실행",
+                    text: NaturalWorkRouter.runningMarkdown(for: naturalPlan),
+                    isUser: false
+                )
+            }
+            await MainActor.run {
+                manager.isWorkflowRunning = true
+                manager.setWorkflowStatus("업무 조회 중: \(naturalPlan.title)", for: roomID)
+            }
+            let naturalResult = await NaturalWorkPlanExecutor.execute(naturalPlan, path: .planner)
+            _ = await CompositeWorkArtifactWriter.write(
+                result: naturalResult,
+                originalText: userMessage
+            )
+            await MainActor.run {
+                if let progressMessageID {
+                    manager.updateChatLogText(
+                        roomID: roomID,
+                        messageID: progressMessageID,
+                        text: naturalResult.artifactMarkdown
+                    )
+                } else {
+                    manager.addChatLog(
+                        roomID: roomID,
+                        agentID: "system",
+                        agentName: "업무 실행",
+                        text: naturalResult.artifactMarkdown,
+                        isUser: false
+                    )
+                }
+                manager.clearWorkflowStatus(for: roomID)
+                manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0
+            }
+            return true
+        case .unsupported:
+            return false
+        case .fallback:
+            break
+        }
+
         if let naturalPlan = await AgenticToolOrchestrator.plan(
-            for: userMessage,
+            for: naturalRouteText,
             context: naturalSnapshot.context,
             chatHistory: naturalSnapshot.chatHistory,
             agentID: "team_all",
             agentConfig: nil
         ) {
+            if pendingNaturalRequest != nil {
+                await MainActor.run {
+                    PendingNaturalWorkRequestStore.shared.clear(roomID: roomID)
+                }
+            }
             guard naturalPlan.steps.allSatisfy({ step in
                 guard let descriptor = MyTeamToolRegistry.descriptor(id: step.toolID) else { return false }
                 return descriptor.permissionLevel == .readOnly || descriptor.permissionLevel == .draftOnly
@@ -2874,7 +2971,7 @@ final class WorkflowOrchestrator {
             return true
         }
 
-        let matches = MyTeamToolFastPathRouter.matchMany(userMessage)
+        let matches = MyTeamToolFastPathRouter.matchMany(naturalRouteText)
         guard !matches.isEmpty else { return false }
         guard matches.allSatisfy({ $0.descriptor.permissionLevel == .readOnly || $0.descriptor.permissionLevel == .draftOnly }) else {
             AppLog.warning("[WorkflowOrchestrator] fast-path blocked by permission level tools=\(matches.map { $0.descriptor.id }.joined(separator: ","))")

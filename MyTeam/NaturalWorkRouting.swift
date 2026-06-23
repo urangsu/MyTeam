@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 enum NaturalWorkConfidence: String, Sendable, Equatable {
     case high
@@ -34,7 +35,7 @@ enum NaturalEntity: Sendable, Equatable {
     case documentType(String)
 }
 
-enum NaturalWorkType: String, Sendable, Equatable {
+enum NaturalWorkType: String, Sendable, Equatable, Codable {
     case companyBriefing
     case meetingMinutes
     case reportDraft
@@ -47,6 +48,56 @@ enum NaturalWorkType: String, Sendable, Equatable {
     case disclosureReview
     case evidenceCheck
     case fileSummary
+}
+
+enum NaturalWorkRouteDecision: Sendable, Equatable {
+    case plan(NaturalWorkPlan)
+    case clarification(NaturalClarificationRequest)
+    case fallback
+    case unsupported(String)
+}
+
+struct NaturalClarificationRequest: Identifiable, Sendable, Equatable, Codable {
+    let id: UUID
+    let originalText: String
+    let workType: NaturalWorkType
+    let missingSlots: [NaturalWorkSlot]
+    let question: String
+    let suggestions: [String]
+    let createdAt: Date
+    let roomID: UUID?
+}
+
+enum NaturalWorkSlot: String, Sendable, Equatable, Codable {
+    case targetCompany
+    case sourceText
+    case sourceFile
+    case targetPeriod
+    case reportAudience
+    case outputFormat
+    case region
+    case lawTopic
+    case spreadsheetRange
+}
+
+struct NaturalMissingStep: Sendable, Equatable {
+    let stepID: String
+    let title: String
+    let reason: String
+    let nextAction: String?
+}
+
+struct NaturalBlockedStep: Sendable, Equatable {
+    let stepID: String
+    let title: String
+    let reason: String
+}
+
+struct NaturalWorkPlanValidationResult: Sendable, Equatable {
+    let executableSteps: [NaturalToolStep]
+    let missingSteps: [NaturalMissingStep]
+    let blockedSteps: [NaturalBlockedStep]
+    let needsClarification: NaturalClarificationRequest?
 }
 
 enum NaturalWorkCompositionStyle: String, Sendable, Equatable {
@@ -180,6 +231,69 @@ struct NaturalStepExecution: Sendable, Equatable {
     let state: ToolExecutionState
 }
 
+@MainActor
+final class PendingNaturalWorkRequestStore: ObservableObject {
+    static let shared = PendingNaturalWorkRequestStore()
+
+    @Published private var pendingByRoomKey: [String: NaturalClarificationRequest] = [:]
+
+    private init() {}
+
+    func set(_ request: NaturalClarificationRequest, roomID: UUID?) {
+        pendingByRoomKey[key(for: roomID)] = request
+    }
+
+    func pending(roomID: UUID?) -> NaturalClarificationRequest? {
+        pendingByRoomKey[key(for: roomID)]
+    }
+
+    func clear(roomID: UUID?) {
+        pendingByRoomKey.removeValue(forKey: key(for: roomID))
+    }
+
+    func mergeAnswer(_ answer: String, into request: NaturalClarificationRequest) -> NaturalWorkRequest {
+        NaturalWorkRequest(
+            originalText: mergedText(answer, into: request),
+            entities: [],
+            intents: intents(for: request.workType),
+            confidence: .medium,
+            clarificationQuestion: nil
+        )
+    }
+
+    func mergedText(_ answer: String, into request: NaturalClarificationRequest) -> String {
+        let trimmedAnswer = answer.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedAnswer.isEmpty { return request.originalText }
+        return "\(request.originalText)\n\n\(trimmedAnswer)"
+    }
+
+    nonisolated static func isCancellation(_ text: String) -> Bool {
+        let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return ["취소", "그만", "아니 됐어", "됐어", "취소해줘", "중단"].contains(normalized)
+    }
+
+    private func key(for roomID: UUID?) -> String {
+        roomID?.uuidString ?? "global"
+    }
+
+    private func intents(for workType: NaturalWorkType) -> [NaturalIntent] {
+        switch workType {
+        case .companyBriefing: return [.companyOverview]
+        case .meetingMinutes: return [.meetingMinutes]
+        case .reportDraft: return [.documentDraft]
+        case .budgetReview: return [.budgetReview]
+        case .closingVarianceAnalysis: return [.closingVarianceAnalysis]
+        case .tableCleanupPlan: return [.tableCleanupPlan]
+        case .lawIssueReview: return [.law]
+        case .schedulePreparation: return [.schedulePreparation]
+        case .newsBriefing: return [.news]
+        case .disclosureReview: return [.disclosure]
+        case .evidenceCheck: return [.evidenceCheck]
+        case .fileSummary: return [.fileSummary]
+        }
+    }
+}
+
 enum CompanyIdentityResolver {
     static func resolve(from text: String) -> CompanyIdentity? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -248,6 +362,19 @@ enum CompanyIdentityResolver {
 }
 
 enum NaturalWorkRouter {
+    static func route(for message: String, context: NaturalWorkContext = .empty) -> NaturalWorkRouteDecision {
+        let normalized = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty else { return .fallback }
+
+        if let clarification = clarificationRequest(for: normalized, context: context) {
+            return .clarification(clarification)
+        }
+        if let plan = plan(for: normalized, context: context) {
+            return .plan(plan)
+        }
+        return .fallback
+    }
+
     static func plan(for message: String) -> NaturalWorkPlan? {
         plan(for: message, context: .empty)
     }
@@ -320,12 +447,113 @@ enum NaturalWorkRouter {
         return nil
     }
 
+    private static func clarificationRequest(for text: String, context: NaturalWorkContext) -> NaturalClarificationRequest? {
+        let lower = text.lowercased()
+        let roomID = context.roomID
+
+        if isAmbiguousCompanyRequest(lower),
+           context.lastCompanyIdentity == nil,
+           CompanyIdentityResolver.resolve(from: text) == nil {
+            return NaturalClarificationRequest(
+                id: UUID(),
+                originalText: text,
+                workType: .companyBriefing,
+                missingSlots: [.targetCompany],
+                question: "어느 회사를 기준으로 볼까요?\n회사명이나 종목코드를 입력해 주세요. 예: 삼성전자, 005930",
+                suggestions: ["삼성전자", "005930", "포스코홀딩스"],
+                createdAt: Date(),
+                roomID: roomID
+            )
+        }
+
+        if isWeatherRequest(lower),
+           context.userLocation == nil,
+           weatherRegionCandidate(from: text).isEmpty {
+            return NaturalClarificationRequest(
+                id: UUID(),
+                originalText: text,
+                workType: .schedulePreparation,
+                missingSlots: [.region],
+                question: "어느 지역의 날씨를 확인할까요?\n예: 광양, 포항, 서울",
+                suggestions: ["광양", "포항", "서울"],
+                createdAt: Date(),
+                roomID: roomID
+            )
+        }
+
+        if isMeetingMinutesRequest(lower) && !hasUsableSource(bestSourceText(for: text, context: context), originalText: text) {
+            return NaturalClarificationRequest(
+                id: UUID(),
+                originalText: text,
+                workType: .meetingMinutes,
+                missingSlots: [.sourceText, .sourceFile],
+                question: "회의록으로 정리할 내용이 필요합니다.\n회의 녹취록, 메모, 또는 파일을 붙여넣어 주세요.",
+                suggestions: ["회의 메모 붙여넣기", "녹취록 첨부", "파일 첨부"],
+                createdAt: Date(),
+                roomID: roomID
+            )
+        }
+
+        if isBudgetReviewRequest(lower) || isClosingVarianceRequest(lower) || isTableCleanupRequest(lower) {
+            let source = bestSourceText(for: text, context: context)
+            guard hasTabularCue(source) || hasAttachmentOrRecentContext(context) else {
+                let workType: NaturalWorkType = isClosingVarianceRequest(lower) ? .closingVarianceAnalysis : (isBudgetReviewRequest(lower) ? .budgetReview : .tableCleanupPlan)
+                return NaturalClarificationRequest(
+                    id: UUID(),
+                    originalText: text,
+                    workType: workType,
+                    missingSlots: [.sourceFile, .sourceText, .targetPeriod],
+                    question: "분석할 표나 파일이 필요합니다.\n예산/실적 표를 붙여넣거나 엑셀 파일을 첨부해 주세요.\n기준은 전년 대비, 계획 대비, 예산 대비 중 무엇인지도 알려주세요.",
+                    suggestions: ["표 붙여넣기", "엑셀 파일 첨부", "계획 대비 기준"],
+                    createdAt: Date(),
+                    roomID: roomID
+                )
+            }
+        }
+
+        if isDocumentDraftRequest(lower) || isFollowUpRewriteRequest(lower) || isFileSummaryRequest(lower) {
+            let source = bestSourceText(for: text, context: context)
+            if !hasUsableSource(source, originalText: text),
+               !hasAttachmentOrRecentContext(context),
+               isSourceRequiredDraftRequest(lower) {
+                return NaturalClarificationRequest(
+                    id: UUID(),
+                    originalText: text,
+                    workType: .reportDraft,
+                    missingSlots: [.sourceText, .sourceFile, .outputFormat],
+                    question: "정리할 자료가 필요합니다. 텍스트를 붙여넣거나 파일을 첨부해 주세요.\n원하는 결과 형식이 회의록, 보고문구, 체크리스트 중 무엇인지도 알려주시면 더 정확합니다.",
+                    suggestions: ["텍스트 붙여넣기", "파일 첨부", "보고문구", "체크리스트"],
+                    createdAt: Date(),
+                    roomID: roomID
+                )
+            }
+        }
+
+        return nil
+    }
+
     static func runningMarkdown(for plan: NaturalWorkPlan) -> String {
         """
         ### 요청을 확인하고 있습니다
 
         \(plan.userFacingSummary)
         """
+    }
+
+    static func clarificationMarkdown(for request: NaturalClarificationRequest) -> String {
+        var lines = [
+            "### 정보가 더 필요합니다",
+            "",
+            request.question
+        ]
+        if !request.suggestions.isEmpty {
+            lines.append("")
+            lines.append("예시")
+            for suggestion in request.suggestions.prefix(4) {
+                lines.append("- \(suggestion)")
+            }
+        }
+        return lines.joined(separator: "\n")
     }
 
     private static func companyPlan(
@@ -778,6 +1006,27 @@ enum NaturalWorkRouter {
         containsAny(lower, ["이 파일", "첨부파일", "자료 요약", "중요한 것", "핵심만"])
     }
 
+    private static func isAmbiguousCompanyRequest(_ lower: String) -> Bool {
+        containsAny(lower, ["그 회사", "이 회사", "저 회사"]) &&
+        containsAny(lower, ["봐줘", "알려줘", "재무", "공시", "주가", "시세", "뉴스"])
+    }
+
+    private static func isSourceRequiredDraftRequest(_ lower: String) -> Bool {
+        containsAny(lower, [
+            "이거 정리", "요약해줘", "보고자료로", "보고문구", "임원 보고",
+            "뉴스 기사처럼", "캘린더 형식", "공시 양식처럼", "짧게 써줘",
+            "자료 요약", "첨부파일", "이 파일"
+        ])
+    }
+
+    private static func weatherRegionCandidate(from text: String) -> String {
+        cleaned(
+            text,
+            removing: ["출장", "외근", "현장작업", "날씨", "오늘", "괜찮아", "알려줘", "봐줘"],
+            fallback: ""
+        )
+    }
+
     private static func containsAny(_ text: String, _ needles: [String]) -> Bool {
         needles.contains { text.contains($0.lowercased()) }
     }
@@ -839,11 +1088,101 @@ enum NaturalWorkRouter {
     }
 }
 
+enum NaturalWorkPlanValidator {
+    static func validate(_ plan: NaturalWorkPlan) -> NaturalWorkPlanValidationResult {
+        var executableSteps: [NaturalToolStep] = []
+        var missingSteps: [NaturalMissingStep] = []
+        var blockedSteps: [NaturalBlockedStep] = []
+
+        for step in plan.steps {
+            guard let descriptor = MyTeamToolRegistry.descriptor(id: step.toolID) else {
+                blockedSteps.append(NaturalBlockedStep(
+                    stepID: step.id,
+                    title: step.sectionTitle,
+                    reason: "현재 앱에서 실행할 수 없는 항목입니다."
+                ))
+                continue
+            }
+            guard descriptor.isImplemented, descriptor.isUserFacing else {
+                blockedSteps.append(NaturalBlockedStep(
+                    stepID: step.id,
+                    title: descriptor.displayName,
+                    reason: "아직 사용자에게 제공할 수 없는 항목입니다."
+                ))
+                continue
+            }
+            guard descriptor.permissionLevel == .readOnly || descriptor.permissionLevel == .draftOnly else {
+                blockedSteps.append(NaturalBlockedStep(
+                    stepID: step.id,
+                    title: descriptor.displayName,
+                    reason: "사용자 승인 없이 실행할 수 없는 작업입니다."
+                ))
+                continue
+            }
+            let query = step.input.query?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            guard !query.isEmpty else {
+                missingSteps.append(NaturalMissingStep(
+                    stepID: step.id,
+                    title: descriptor.displayName,
+                    reason: "실행에 필요한 입력이 부족합니다.",
+                    nextAction: "대상, 파일, 표, 또는 검색어를 추가로 알려주세요."
+                ))
+                continue
+            }
+            executableSteps.append(step)
+        }
+
+        let clarification: NaturalClarificationRequest?
+        if executableSteps.isEmpty, let firstMissing = missingSteps.first {
+            clarification = NaturalClarificationRequest(
+                id: UUID(),
+                originalText: plan.request.originalText,
+                workType: plan.workType,
+                missingSlots: [.sourceText],
+                question: firstMissing.nextAction ?? "실행에 필요한 정보를 추가로 알려주세요.",
+                suggestions: [],
+                createdAt: Date(),
+                roomID: nil
+            )
+        } else {
+            clarification = nil
+        }
+
+        return NaturalWorkPlanValidationResult(
+            executableSteps: executableSteps,
+            missingSteps: missingSteps,
+            blockedSteps: blockedSteps,
+            needsClarification: clarification
+        )
+    }
+
+    static func planAfterValidation(_ plan: NaturalWorkPlan) -> NaturalWorkPlan {
+        let validation = validate(plan)
+        let missingSections = validation.missingSteps.map {
+            NaturalMissingSection(title: $0.title, reason: $0.reason, nextAction: $0.nextAction)
+        } + validation.blockedSteps.map {
+            NaturalMissingSection(title: $0.title, reason: $0.reason, nextAction: "다른 입력으로 다시 시도하세요.")
+        }
+
+        return NaturalWorkPlan(
+            request: plan.request,
+            workType: plan.workType,
+            title: plan.title,
+            userFacingSummary: plan.userFacingSummary,
+            steps: validation.executableSteps,
+            compositionStyle: plan.compositionStyle,
+            userNotice: plan.userNotice,
+            preflightMissingSections: plan.preflightMissingSections + missingSections
+        )
+    }
+}
+
 enum NaturalWorkPlanExecutor {
     static func execute(_ plan: NaturalWorkPlan, path: ToolExecutionPath) async -> NaturalWorkResult {
+        let validatedPlan = NaturalWorkPlanValidator.planAfterValidation(plan)
         var executions: [NaturalStepExecution] = []
         await withTaskGroup(of: (Int, NaturalStepExecution).self) { group in
-            for (index, step) in plan.steps.enumerated() {
+            for (index, step) in validatedPlan.steps.enumerated() {
                 group.addTask(priority: .userInitiated) {
                     (index, await execute(step, path: path))
                 }
@@ -853,11 +1192,11 @@ enum NaturalWorkPlanExecutor {
             }
         }
         executions.sort { lhs, rhs in
-            let left = plan.steps.firstIndex(where: { $0.id == lhs.step.id }) ?? 0
-            let right = plan.steps.firstIndex(where: { $0.id == rhs.step.id }) ?? 0
+            let left = validatedPlan.steps.firstIndex(where: { $0.id == lhs.step.id }) ?? 0
+            let right = validatedPlan.steps.firstIndex(where: { $0.id == rhs.step.id }) ?? 0
             return left < right
         }
-        return NaturalResultComposer.compose(plan: plan, executions: executions)
+        return NaturalResultComposer.compose(plan: validatedPlan, executions: executions)
     }
 
     private static func execute(_ step: NaturalToolStep, path: ToolExecutionPath) async -> NaturalStepExecution {
