@@ -41,6 +41,49 @@ private final class ToolExecutionRaceBox: @unchecked Sendable {
     }
 }
 
+private enum ToolExecutionDispatcher {
+    static func run(
+        descriptor: MyTeamToolDescriptor,
+        input: MyTeamToolInput,
+        router: ToolExecutionRouter
+    ) async -> ToolExecutionState {
+        switch descriptor.id {
+        case "briefing.today":
+            return await router.runTodayBriefing()
+        case "document.meetingMinutes":
+            return await router.runUniversalDocument(type: .meetingMinutes, input: input)
+        case "document.rewrite":
+            return await router.runUniversalDocument(type: .summary, input: input)
+        case "spreadsheet.postprocess":
+            return await router.runSpreadsheetPostprocess(input: input)
+        case "spreadsheet.googleSheets.read":
+            return await router.runWithHardTimeout(descriptor) { await router.runGoogleSheetsRead(input: input) }
+        case "calendar.events.today":
+            return await router.runWithHardTimeout(descriptor) { await router.runGoogleCalendarToday() }
+        case "dart.disclosures.search":
+            return await router.runWithHardTimeout(descriptor) { await router.runDART(input: input) }
+        case "news.search":
+            return await router.runWithHardTimeout(descriptor) { await router.runNaverNews(input: input) }
+        case "weather.current":
+            return await router.runWithHardTimeout(descriptor) { await router.runKMAWeather(input: input) }
+        case "finance.krx.stockPrice":
+            return await router.runWithHardTimeout(descriptor) {
+                await router.runFinance(path: "finance/stocks/prices", label: "주식 기준일 시세", input: input)
+            }
+        case "finance.krx.index":
+            return await router.runWithHardTimeout(descriptor) {
+                await router.runFinance(path: "finance/index/stock", label: "시장 지수 기준일 조회", input: input)
+            }
+        case "finance.company.statement":
+            return await router.runWithHardTimeout(descriptor) { await router.runCompanyFinanceSummary(input: input) }
+        case "law.search":
+            return await router.runWithHardTimeout(descriptor) { await router.runKoreanLaw(input: input) }
+        default:
+            return .unavailable("이 업무는 아직 실행 연결 전입니다.")
+        }
+    }
+}
+
 actor ToolExecutionRouter {
     static let shared = ToolExecutionRouter()
     private let externalReadHardTimeoutNanoseconds: UInt64 = 10_000_000_000
@@ -131,37 +174,11 @@ actor ToolExecutionRouter {
             return state
         }
 
-        let result: ToolExecutionState
-        switch descriptor.id {
-        case "briefing.today":
-            result = await runTodayBriefing()
-        case "document.meetingMinutes":
-            result = await runUniversalDocument(type: .meetingMinutes, input: input)
-        case "document.rewrite":
-            result = await runUniversalDocument(type: .summary, input: input)
-        case "spreadsheet.postprocess":
-            result = runSpreadsheetPostprocess(input: input)
-        case "spreadsheet.googleSheets.read":
-            result = await runWithHardTimeout(descriptor) { await self.runGoogleSheetsRead(input: input) }
-        case "calendar.events.today":
-            result = await runWithHardTimeout(descriptor) { await self.runGoogleCalendarToday() }
-        case "dart.disclosures.search":
-            result = await runWithHardTimeout(descriptor) { await self.runDART(input: input) }
-        case "news.search":
-            result = await runWithHardTimeout(descriptor) { await self.runNaverNews(input: input) }
-        case "weather.current":
-            result = await runWithHardTimeout(descriptor) { await self.runKMAWeather(input: input) }
-        case "finance.krx.stockPrice":
-            result = await runWithHardTimeout(descriptor) { await self.runFinance(path: "finance/stocks/prices", label: "주식 기준일 시세", input: input) }
-        case "finance.krx.index":
-            result = await runWithHardTimeout(descriptor) { await self.runFinance(path: "finance/index/stock", label: "시장 지수 기준일 조회", input: input) }
-        case "finance.company.statement":
-            result = await runWithHardTimeout(descriptor) { await self.runCompanyFinanceSummary(input: input) }
-        case "law.search":
-            result = await runWithHardTimeout(descriptor) { await self.runKoreanLaw(input: input) }
-        default:
-            result = .unavailable("이 업무는 아직 실행 연결 전입니다.")
-        }
+        let result = await ToolExecutionDispatcher.run(
+            descriptor: descriptor,
+            input: input,
+            router: self
+        )
         let artifact = options.persistIndividualArtifact
             ? await persistArtifactIfPossible(descriptor: descriptor, result: result, input: input)
             : nil
@@ -195,7 +212,7 @@ actor ToolExecutionRouter {
         )
     }
 
-    private func runWithHardTimeout(
+    fileprivate func runWithHardTimeout(
         _ descriptor: MyTeamToolDescriptor,
         operation: @escaping @Sendable () async -> ToolExecutionState
     ) async -> ToolExecutionState {
@@ -222,7 +239,7 @@ actor ToolExecutionRouter {
         }
     }
 
-    private func runTodayBriefing() async -> ToolExecutionState {
+    fileprivate func runTodayBriefing() async -> ToolExecutionState {
         let snapshot = await MainActor.run {
             DailyBriefingLocalProvider.makeSnapshot(
                 roomID: AgentWindowManager.shared.currentRoomID,
@@ -242,7 +259,7 @@ actor ToolExecutionRouter {
         ))
     }
 
-    private func runUniversalDocument(type: UniversalDocumentSkillType, input: MyTeamToolInput) async -> ToolExecutionState {
+    fileprivate func runUniversalDocument(type: UniversalDocumentSkillType, input: MyTeamToolInput) async -> ToolExecutionState {
         let fallback = type == .meetingMinutes ? "회의 내용을 붙여넣으면 회의록 초안을 만듭니다." : "다듬을 문장이나 문서 내용을 붙여넣으세요."
         let source = sanitizedQuery(input.query, fallback: fallback)
         let documentPayload = await MainActor.run {
@@ -278,7 +295,7 @@ actor ToolExecutionRouter {
         ))
     }
 
-    private func runSpreadsheetPostprocess(input: MyTeamToolInput) -> ToolExecutionState {
+    fileprivate func runSpreadsheetPostprocess(input: MyTeamToolInput) -> ToolExecutionState {
         let source = sanitizedQuery(input.query, fallback: "표 내용을 붙여넣으면 정리 계획을 만듭니다.")
         let rows = source
             .split(whereSeparator: \.isNewline)
@@ -313,7 +330,7 @@ actor ToolExecutionRouter {
         ))
     }
 
-    private func runGoogleSheetsRead(input: MyTeamToolInput) async -> ToolExecutionState {
+    fileprivate func runGoogleSheetsRead(input: MyTeamToolInput) async -> ToolExecutionState {
         let hasSheetsToken = await MainActor.run {
             GoogleOAuthTokenStore.shared.hasToken(for: .googleSheets)
         }
@@ -385,7 +402,7 @@ actor ToolExecutionRouter {
         }
     }
 
-    private func runGoogleCalendarToday() async -> ToolExecutionState {
+    fileprivate func runGoogleCalendarToday() async -> ToolExecutionState {
         let hasToken = await MainActor.run {
             GoogleOAuthTokenStore.shared.hasToken(for: .googleCalendar)
         }
@@ -446,7 +463,7 @@ actor ToolExecutionRouter {
         ))
     }
 
-    private func runDART(input: MyTeamToolInput) async -> ToolExecutionState {
+    fileprivate func runDART(input: MyTeamToolInput) async -> ToolExecutionState {
         let provider = ExternalProvider.dartDisclosure
         let query = sanitizedQuery(input.query, fallback: "삼성전자")
         let resolution = DARTCompanyResolver.resolve(input: query)
@@ -623,7 +640,7 @@ actor ToolExecutionRouter {
         ))
     }
 
-    private func runNaverNews(input: MyTeamToolInput) async -> ToolExecutionState {
+    fileprivate func runNaverNews(input: MyTeamToolInput) async -> ToolExecutionState {
         let provider = ExternalProvider.naverNews
         let query = sanitizedQuery(input.query, fallback: "경제")
         guard query.count >= 2 else {
@@ -761,7 +778,7 @@ actor ToolExecutionRouter {
         return lines.joined(separator: "\n")
     }
 
-    private func runKMAWeather(input: MyTeamToolInput) async -> ToolExecutionState {
+    fileprivate func runKMAWeather(input: MyTeamToolInput) async -> ToolExecutionState {
         let provider = ExternalProvider.kmaWeather
         guard let region = KMARegionGridMapper.resolve(input.query) else {
             return .failed(MyTeamToolFailure(
@@ -902,7 +919,7 @@ actor ToolExecutionRouter {
         ))
     }
 
-    private func runFinance(path: String, label: String, input: MyTeamToolInput) async -> ToolExecutionState {
+    fileprivate func runFinance(path: String, label: String, input: MyTeamToolInput) async -> ToolExecutionState {
         let query = sanitizedQuery(input.query, fallback: label)
         do {
             let fetched = try await fetchFinanceData(
@@ -1029,7 +1046,7 @@ actor ToolExecutionRouter {
         }
     }
 
-    private func runCompanyFinanceSummary(input: MyTeamToolInput) async -> ToolExecutionState {
+    fileprivate func runCompanyFinanceSummary(input: MyTeamToolInput) async -> ToolExecutionState {
         let request = companyFinanceRequest(from: input)
         guard !request.companyQuery.isEmpty || request.directCorporateRegistrationNumber != nil else {
             return .failed(MyTeamToolFailure(
@@ -1529,7 +1546,7 @@ actor ToolExecutionRouter {
         raw.contains("%") ? raw : "\(raw)%"
     }
 
-    private func runKoreanLaw(input: MyTeamToolInput) async -> ToolExecutionState {
+    fileprivate func runKoreanLaw(input: MyTeamToolInput) async -> ToolExecutionState {
         let provider = ExternalProvider.koreanLaw
         let query = sanitizedQuery(input.query, fallback: "근로기준법")
 

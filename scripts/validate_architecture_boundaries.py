@@ -120,6 +120,8 @@ def main() -> None:
         failures.append("ToolExecutionRouter must gate artifact persistence through ToolExecutionOptions")
     if "persistArtifact:" in tool_router:
         failures.append("ToolExecutionRouter.run must not expose legacy persistArtifact parameter")
+    if "ToolExecutionDispatcher" not in tool_router or "ToolExecutionDispatcher.run" not in tool_router:
+        failures.append("ToolExecutionRouter must delegate tool ID dispatch to ToolExecutionDispatcher")
 
     if "userRoutes: USER_ROUTES" not in worker or "diagnosticRoutes: DIAGNOSTIC_ROUTES" not in worker:
         failures.append("Worker /health must expose userRoutes and diagnosticRoutes")
@@ -132,7 +134,7 @@ def main() -> None:
     if "NSWorkspace.shared.open" in tool_log_view and "WorkArtifactDetailView" not in tool_log_view:
         warnings.append("ToolExecutionLogView still relies on external file open for artifact detail")
 
-    if "private func run" in tool_router and "case \"news.search\"" in tool_router:
+    if "ToolExecutionDispatcher" not in tool_router and "case \"news.search\"" in tool_router:
         warnings.append("ToolExecutionRouter still mixes runner dispatch and provider-specific execution")
     if "ToolResultFormatter" not in tool_router and "markdown" in tool_router.lower():
         warnings.append("ToolExecutionRouter still appears to own result formatting")
