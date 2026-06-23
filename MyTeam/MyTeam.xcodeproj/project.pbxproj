@@ -7893,6 +7893,7 @@
 						<string>TLF008HOMEDASHFILE</string>
 						<string>TLF009EXECLOGFILE</string>
 						<string>TLF015FASTPATHFILE</string>
+						<string>ATG001ORCHFILE</string>
 						<string>NLW001ROUTINGFILE</string>
 						<string>TLF016ST3SOURCEFILE</string>
 						<string>TLF017ST3BUNDLEDFILE</string>
@@ -9455,6 +9456,7 @@
 						<string>TLB013KMAREGIONBLD</string>
 						<string>TLB014GOOGLESHEETSBLD</string>
 						<string>TLB015FASTPATHBLD</string>
+						<string>ATG001ORCHBLD</string>
 						<string>NLW001ROUTINGBLD</string>
 						<string>TLB016ST3SOURCEBLD</string>
 						<string>TLB017ST3BUNDLEDBLD</string>
@@ -17789,10 +17791,32 @@
 					<key>sourceTree</key>
 					<string>SOURCE_ROOT</string>
 				</dict>
+				<key>ATG001ORCHFILE</key>
+				<dict>
+					<key>fileEncoding</key>
+					<integer>4</integer>
+					<key>isa</key>
+					<string>PBXFileReference</string>
+					<key>lastKnownFileType</key>
+					<string>sourcecode.swift</string>
+					<key>name</key>
+					<string>AgenticToolOrchestration.swift</string>
+					<key>path</key>
+					<string>AgenticToolOrchestration.swift</string>
+					<key>sourceTree</key>
+					<string>SOURCE_ROOT</string>
+				</dict>
 				<key>NLW001ROUTINGBLD</key>
 				<dict>
 					<key>fileRef</key>
 					<string>NLW001ROUTINGFILE</string>
+					<key>isa</key>
+					<string>PBXBuildFile</string>
+				</dict>
+				<key>ATG001ORCHBLD</key>
+				<dict>
+					<key>fileRef</key>
+					<string>ATG001ORCHFILE</string>
 					<key>isa</key>
 					<string>PBXBuildFile</string>
 				</dict>

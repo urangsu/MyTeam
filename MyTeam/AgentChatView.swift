@@ -1177,22 +1177,22 @@ struct AgentChatView: View {
             // 첨부파일 컨텍스트를 메시지에 포함
             let attachmentContext = ConversationMemory.buildAttachmentContext(from: attachments)
             let fullText = attachmentContext.isEmpty ? text : text + attachmentContext
-            let naturalContext = await MainActor.run {
-                NaturalWorkContext(
+            let naturalSnapshot = await MainActor.run {
+                let recentMessages = manager.rooms
+                    .first(where: { $0.id == roomID })?
+                    .messages
+                    .suffix(8)
+                    .filter { !$0.isSystem } ?? []
+                return (context: NaturalWorkContext(
                     roomID: roomID,
                     activeArtifactID: nil,
                     recentArtifacts: [],
                     pendingAttachments: attachments,
-                    recentMessageTexts: manager.rooms
-                        .first(where: { $0.id == roomID })?
-                        .messages
-                        .suffix(8)
-                        .filter { !$0.isSystem }
-                        .map(\.text) ?? [],
+                    recentMessageTexts: recentMessages.map(\.text),
                     lastCompanyIdentity: nil,
                     lastWorkType: nil,
                     userLocation: nil
-                )
+                ), chatHistory: Array(recentMessages))
             }
 
             let userMessageID = await MainActor.run {
@@ -1203,7 +1203,13 @@ struct AgentChatView: View {
                 )
             }
 
-            if let naturalPlan = NaturalWorkRouter.plan(for: fullText, context: naturalContext) {
+            if let naturalPlan = await AgenticToolOrchestrator.plan(
+                for: fullText,
+                context: naturalSnapshot.context,
+                chatHistory: naturalSnapshot.chatHistory,
+                agentID: targetID,
+                agentConfig: currentAgent
+            ) {
                 if targetID != "team_all" {
                     setTyping(targetID, true)
                 }

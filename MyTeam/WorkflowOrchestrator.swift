@@ -2803,24 +2803,30 @@ final class WorkflowOrchestrator {
         roomID: UUID,
         manager: AgentWindowManager
     ) async -> Bool {
-        let naturalContext = await MainActor.run {
-            NaturalWorkContext(
+        let naturalSnapshot = await MainActor.run {
+            let recentMessages = manager.rooms
+                .first(where: { $0.id == roomID })?
+                .messages
+                .suffix(8)
+                .filter { !$0.isSystem } ?? []
+            return (context: NaturalWorkContext(
                 roomID: roomID,
                 activeArtifactID: nil,
                 recentArtifacts: [],
                 pendingAttachments: [],
-                recentMessageTexts: manager.rooms
-                    .first(where: { $0.id == roomID })?
-                    .messages
-                    .suffix(8)
-                    .filter { !$0.isSystem }
-                    .map(\.text) ?? [],
+                recentMessageTexts: recentMessages.map(\.text),
                 lastCompanyIdentity: nil,
                 lastWorkType: nil,
                 userLocation: nil
-            )
+            ), chatHistory: Array(recentMessages))
         }
-        if let naturalPlan = NaturalWorkRouter.plan(for: userMessage, context: naturalContext) {
+        if let naturalPlan = await AgenticToolOrchestrator.plan(
+            for: userMessage,
+            context: naturalSnapshot.context,
+            chatHistory: naturalSnapshot.chatHistory,
+            agentID: "team_all",
+            agentConfig: nil
+        ) {
             guard naturalPlan.steps.allSatisfy({ step in
                 guard let descriptor = MyTeamToolRegistry.descriptor(id: step.toolID) else { return false }
                 return descriptor.permissionLevel == .readOnly || descriptor.permissionLevel == .draftOnly
