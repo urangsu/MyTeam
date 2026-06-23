@@ -7895,6 +7895,8 @@
 						<string>TLF015FASTPATHFILE</string>
 						<string>ATG001ORCHFILE</string>
 						<string>NLW001ROUTINGFILE</string>
+						<string>WIC001COORDINATORFILE</string>
+						<string>RIP001PRECHECKFILE</string>
 						<string>TLF016ST3SOURCEFILE</string>
 						<string>TLF017ST3BUNDLEDFILE</string>
 						<string>TLF018ST3EXTERNALFILE</string>
@@ -9458,6 +9460,8 @@
 						<string>TLB015FASTPATHBLD</string>
 						<string>ATG001ORCHBLD</string>
 						<string>NLW001ROUTINGBLD</string>
+						<string>WIC001COORDINATORBLD</string>
+						<string>RIP001PRECHECKBLD</string>
 						<string>TLB016ST3SOURCEBLD</string>
 						<string>TLB017ST3BUNDLEDBLD</string>
 						<string>TLB018ST3EXTERNALBLD</string>
@@ -17806,6 +17810,36 @@
 					<key>sourceTree</key>
 					<string>SOURCE_ROOT</string>
 				</dict>
+				<key>WIC001COORDINATORFILE</key>
+				<dict>
+					<key>fileEncoding</key>
+					<integer>4</integer>
+					<key>isa</key>
+					<string>PBXFileReference</string>
+					<key>lastKnownFileType</key>
+					<string>sourcecode.swift</string>
+					<key>name</key>
+					<string>WorkflowInputCoordinator.swift</string>
+					<key>path</key>
+					<string>WorkflowInputCoordinator.swift</string>
+					<key>sourceTree</key>
+					<string>SOURCE_ROOT</string>
+				</dict>
+				<key>RIP001PRECHECKFILE</key>
+				<dict>
+					<key>fileEncoding</key>
+					<integer>4</integer>
+					<key>isa</key>
+					<string>PBXFileReference</string>
+					<key>lastKnownFileType</key>
+					<string>sourcecode.swift</string>
+					<key>name</key>
+					<string>RoutingIntentPrecheck.swift</string>
+					<key>path</key>
+					<string>RoutingIntentPrecheck.swift</string>
+					<key>sourceTree</key>
+					<string>SOURCE_ROOT</string>
+				</dict>
 				<key>NLW001ROUTINGBLD</key>
 				<dict>
 					<key>fileRef</key>
@@ -17817,6 +17851,20 @@
 				<dict>
 					<key>fileRef</key>
 					<string>ATG001ORCHFILE</string>
+					<key>isa</key>
+					<string>PBXBuildFile</string>
+				</dict>
+				<key>WIC001COORDINATORBLD</key>
+				<dict>
+					<key>fileRef</key>
+					<string>WIC001COORDINATORFILE</string>
+					<key>isa</key>
+					<string>PBXBuildFile</string>
+				</dict>
+				<key>RIP001PRECHECKBLD</key>
+				<dict>
+					<key>fileRef</key>
+					<string>RIP001PRECHECKFILE</string>
 					<key>isa</key>
 					<string>PBXBuildFile</string>
 				</dict>

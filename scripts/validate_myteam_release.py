@@ -205,6 +205,17 @@ def validate_basic_lookup_worker_source() -> None:
     if missing_routes:
         joined = ", ".join(missing_routes)
         raise SystemExit(f"FAIL: basic lookup Worker /health route list missing: {joined}")
+    user_routes_match = re.search(r"const\s+USER_ROUTES\s*=\s*\[(.*?)\];", source, re.S)
+    diagnostic_routes_match = re.search(r"const\s+DIAGNOSTIC_ROUTES\s*=\s*\[(.*?)\];", source, re.S)
+    if user_routes_match is None or diagnostic_routes_match is None:
+        raise SystemExit("FAIL: basic lookup Worker /health must split userRoutes and diagnosticRoutes")
+    if "/dart/" in user_routes_match.group(1):
+        raise SystemExit("FAIL: DART routes must not appear in basic lookup userRoutes")
+    for route in ["/dart/company?corpCode=00126380", "/dart/recent?corpCode=00126380", "/dart/diagnose?corpCode=00126380"]:
+        if route not in diagnostic_routes_match.group(1):
+            raise SystemExit(f"FAIL: DART diagnostic route missing from diagnosticRoutes: {route}")
+    if "userRoutes: USER_ROUTES" not in source or "diagnosticRoutes: DIAGNOSTIC_ROUTES" not in source:
+        raise SystemExit("FAIL: basic lookup Worker /health must expose userRoutes and diagnosticRoutes")
     if 'classification: "provider_reachability_failure"' not in source:
         raise SystemExit("FAIL: basic lookup Worker must classify DART reachability failures")
     if 'mergeGate: "conditional-pass"' not in source:
