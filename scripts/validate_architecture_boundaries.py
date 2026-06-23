@@ -50,7 +50,9 @@ def main() -> None:
     agent_chat = read("MyTeam/AgentChatView.swift")
     team_status = read("MyTeam/TeamStatusView.swift")
     tool_router = read("MyTeam/ToolExecutionRouter.swift")
+    tool_formatters = read("MyTeam/ToolResultFormatters.swift")
     tool_log_view = read("MyTeam/ToolExecutionLogView.swift")
+    work_artifact_detail = read("MyTeam/WorkArtifactDetailView.swift")
     worker = read("workers/basic-lookup-api/worker.js")
     project = read("MyTeam/MyTeam.xcodeproj/project.pbxproj")
 
@@ -122,6 +124,34 @@ def main() -> None:
         failures.append("ToolExecutionRouter.run must not expose legacy persistArtifact parameter")
     if "ToolExecutionDispatcher" not in tool_router or "ToolExecutionDispatcher.run" not in tool_router:
         failures.append("ToolExecutionRouter must delegate tool ID dispatch to ToolExecutionDispatcher")
+    if "ResultFormatter" not in tool_formatters:
+        failures.append("ToolResultFormatters.swift must define result formatter types")
+    for file_name in ["ToolResultFormatters.swift", "WorkArtifactDetailView.swift"]:
+        if file_name not in project:
+            failures.append(f"{file_name} is not included in the Xcode project")
+    if "struct WorkArtifactDetailView" in tool_log_view:
+        failures.append("WorkArtifactDetailView implementation must live outside ToolExecutionLogView.swift")
+    if "struct WorkArtifactDetailView" not in work_artifact_detail:
+        failures.append("WorkArtifactDetailView.swift must define WorkArtifactDetailView")
+    if "artifactID != nil || entry.artifactFilename != nil" not in tool_log_view:
+        failures.append("ToolExecutionLogView must expose artifact detail button for artifactID-only entries")
+
+    markdown_sections_in_router = len(re.findall(r'"## ', tool_router))
+    if markdown_sections_in_router > 0:
+        failures.append("ToolExecutionRouter must not own Markdown section body formatting")
+    formatter_residue = [
+        "newsBriefingBody",
+        "financeBody",
+        "weatherSummaryParts",
+        "spreadsheetPostprocessBody",
+        "googleSheetsTableBody",
+        "localBriefingBody",
+        "dartBodyNotice",
+        "lawResultState",
+    ]
+    for token in formatter_residue:
+        if token in tool_router:
+            failures.append(f"ToolExecutionRouter still owns formatter responsibility: {token}")
 
     if "userRoutes: USER_ROUTES" not in worker or "diagnosticRoutes: DIAGNOSTIC_ROUTES" not in worker:
         failures.append("Worker /health must expose userRoutes and diagnosticRoutes")
@@ -136,8 +166,8 @@ def main() -> None:
 
     if "ToolExecutionDispatcher" not in tool_router and "case \"news.search\"" in tool_router:
         warnings.append("ToolExecutionRouter still mixes runner dispatch and provider-specific execution")
-    if "ToolResultFormatter" not in tool_router and "markdown" in tool_router.lower():
-        warnings.append("ToolExecutionRouter still appears to own result formatting")
+    if "case \"news.search\"" in tool_router:
+        warnings.append("ToolExecutionRouter still owns provider-specific execution body")
 
     team_status_markers = [
         "sendTeamMessage",

@@ -9459,6 +9459,8 @@
 				<string>TLB008HOMEDASHBLD</string>
 				<string>TLB009EXECLOGBLD</string>
 				<string>TLB010EXECLOGVIEWBLD</string>
+				<string>TLB021FORMATTERBLD</string>
+				<string>TLB022ARTDETAILBLD</string>
 				<string>TLB011APPROVALREQBLD</string>
 					<string>TLB012APPROVALVIEWBLD</string>
 						<string>TLB013KMAREGIONBLD</string>
@@ -17605,6 +17607,36 @@
 			<key>sourceTree</key>
 			<string>SOURCE_ROOT</string>
 		</dict>
+		<key>TLF021FORMATTERFILE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>ToolResultFormatters.swift</string>
+			<key>path</key>
+			<string>ToolResultFormatters.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>TLF022ARTDETAILFILE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>WorkArtifactDetailView.swift</string>
+			<key>path</key>
+			<string>WorkArtifactDetailView.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
 		<key>TLF011APPROVALREQFILE</key>
 		<dict>
 			<key>fileEncoding</key>
@@ -17754,6 +17786,20 @@
 		<dict>
 			<key>fileRef</key>
 			<string>TLF010EXECLOGVIEWFILE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>TLB021FORMATTERBLD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>TLF021FORMATTERFILE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>TLB022ARTDETAILBLD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>TLF022ARTDETAILFILE</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
