@@ -1016,6 +1016,85 @@
       "notes": [
         "Finance, DART, Google Sheets, and Google Calendar runner splits remain as explicit architecture warnings for later P0/P1 passes."
       ]
+    },
+    {
+      "id": "P0-010-finance-dart-runner-boundary-split",
+      "priority": "P0",
+      "status": "done",
+      "category": "architecture",
+      "title": "Split Finance and DART provider runners from ToolExecutionRouter",
+      "why": "Finance and DART execution paths were still embedded in ToolExecutionRouter after the first lookup runner split. That kept provider fallback, BYOK/direct lookup policy, and product truth wording close to dispatcher code and made natural work routing harder to extend safely.",
+      "scope": {
+        "include": [
+          "Finance runner split for stock price, stock index, and company statement tools",
+          "DART runner split for direct OpenDART BYOK disclosure lookup",
+          "Shared public lookup runner support for finance proxy and direct fallback",
+          "Finance no-result formatting moved to ToolResultFormatters",
+          "Xcode target membership for new runner files",
+          "Architecture validator guard for Finance and DART runner boundaries"
+        ],
+        "exclude": [
+          "Google Calendar runner split",
+          "Google Sheets runner split",
+          "New finance API routes",
+          "DART Cloudflare product route",
+          "Manual live finance/DART QA"
+        ]
+      },
+      "acceptance_criteria": [
+        "ToolExecutionRouter dispatches dart.disclosures.search through DARTToolRunner",
+        "ToolExecutionRouter dispatches finance.krx.stockPrice through FinanceToolRunner.runStockPrice",
+        "ToolExecutionRouter dispatches finance.krx.index through FinanceToolRunner.runMarketIndex",
+        "ToolExecutionRouter dispatches finance.company.statement through FinanceToolRunner.runCompanyStatement",
+        "ToolExecutionRouter no longer defines runDART, runFinance, runCompanyFinanceSummary, fetchFinanceData, or dartDirectFailureState",
+        "Finance runner rejects missing company, index, or business year inputs instead of defaulting silently",
+        "DART runner keeps App Direct BYOK guidance and does not introduce a Cloudflare DART product route"
+      ],
+      "failure_conditions": [
+        "Finance or DART provider execution body returns to ToolExecutionRouter",
+        "Runner files are not included in the Xcode project",
+        "Missing finance input silently defaults to Samsung Electronics, 2024, or any hard-coded company/year",
+        "DART lookup uses Cloudflare as a product path instead of App Direct BYOK",
+        "Finance output implies real-time/current prices or investment advice"
+      ],
+      "verification": {
+        "commands": [
+          "git diff --check",
+          "node --check workers/basic-lookup-api/worker.js",
+          "python3 scripts/validate_architecture_boundaries.py",
+          "python3 scripts/validate_natural_work_routing.py",
+          "python3 scripts/audit_product_completeness.py",
+          "python3 scripts/validate_myteam_release.py",
+          "python3 scripts/validate_release_checklist.py",
+          "python3 scripts/validate_skill_packages.py",
+          "python3 scripts/precommit_safety_check.py",
+          "python3 scripts/report_character_dialogues.py --check-only",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' build",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Release -destination 'platform=OS X,arch=arm64' build"
+        ],
+        "manual_checks": [
+          "Manual live DART valid-key and finance public-data QA remains tracked separately by provider-specific tasks"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": "10b9948,ca546bc",
+        "files_changed": [
+          "MyTeam/ToolExecutionRouter.swift",
+          "MyTeam/ToolResultFormatters.swift",
+          "MyTeam/ToolRunners/FinanceToolRunner.swift",
+          "MyTeam/ToolRunners/DARTToolRunner.swift",
+          "MyTeam/ToolRunners/PublicLookupRunnerSupport.swift",
+          "MyTeam/MyTeam.xcodeproj/project.pbxproj",
+          "scripts/validate_architecture_boundaries.py"
+        ],
+        "validation_summary": "2026-06-24: Architecture, natural work routing, product completeness, release checklist, skill package, precommit, and character dialogue validators passed. Debug and Release builds passed. Architecture validator now fails if Finance or DART runner bodies return to ToolExecutionRouter, if Finance silently defaults business year/company, or if DART introduces a Cloudflare product route.",
+        "screenshots": []
+      },
+      "notes": [
+        "Google Sheets and Google Calendar runner splits remain explicit architecture warnings for later passes.",
+        "Finance remains 기준일 공공데이터; live quote wording and investment advice are still forbidden."
+      ]
     }
   ]
 }
