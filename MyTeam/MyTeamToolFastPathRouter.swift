@@ -28,23 +28,28 @@ enum MyTeamToolFastPathRouter {
         }
 
         if isWeatherReadRequest(normalized, lower: lower) {
-            return compact([make("weather.current", query: query(afterRemoving: ["날씨", "조회", "기상청"], from: normalized, fallback: "서울"))])
+            guard let query = query(afterRemoving: ["날씨", "조회", "기상청"], from: normalized) else { return [] }
+            return compact([make("weather.current", query: query)])
         }
 
         if containsAny(lower, ["뉴스 검색", "뉴스 찾아", "뉴스 조회", "최신 뉴스", "news search"]) {
-            return compact([make("news.search", query: query(afterRemoving: ["뉴스", "검색", "요약", "찾아줘"], from: normalized, fallback: "경제"))])
+            guard let query = query(afterRemoving: ["뉴스", "검색", "요약", "찾아줘"], from: normalized) else { return [] }
+            return compact([make("news.search", query: query)])
         }
 
         if isDARTReadRequest(normalized, lower: lower) {
-            return compact([make("dart.disclosures.search", query: query(afterRemoving: ["공시", "조회", "검색", "DART", "다트"], from: normalized, fallback: "포스코"))])
+            guard let query = query(afterRemoving: ["공시", "조회", "검색", "DART", "다트"], from: normalized) else { return [] }
+            return compact([make("dart.disclosures.search", query: query)])
         }
 
         if isCompanyFinanceRequest(normalized, lower: lower) {
-            return compact([make("finance.company.statement", query: financeQuery(from: normalized))])
+            guard let query = financeQuery(from: normalized) else { return [] }
+            return compact([make("finance.company.statement", query: query)])
         }
 
         if containsAny(lower, ["법령 검색", "법령 찾아", "법률 검색", "조문 조회", "조문 찾아", "law search"]) {
-            return compact([make("law.search", query: query(afterRemoving: ["법령", "법률", "조문", "검색", "찾아줘"], from: normalized, fallback: "근로기준법"))])
+            guard let query = query(afterRemoving: ["법령", "법률", "조문", "검색", "찾아줘"], from: normalized) else { return [] }
+            return compact([make("law.search", query: query)])
         }
 
         if containsAny(lower, ["회의록", "회의 메모"]) {
@@ -182,7 +187,9 @@ enum MyTeamToolFastPathRouter {
             matches.append(make("dart.disclosures.search", query: company))
         }
         if containsAny(lower, ["재무", "재무상황", "재무제표", "실적", "손익계산서", "재무상태표"]) {
-            matches.append(make("finance.company.statement", query: financeQuery(from: "\(company) \(message)")))
+            if let query = financeQuery(from: "\(company) \(message)") {
+                matches.append(make("finance.company.statement", query: query))
+            }
         }
         if containsAny(lower, ["뉴스", "최근 소식", "이슈"]) {
             matches.append(make("news.search", query: company))
@@ -249,12 +256,11 @@ enum MyTeamToolFastPathRouter {
         return !compact.isEmpty && compact.count <= 24
     }
 
-    private static func financeQuery(from message: String) -> String {
-        var query = companyQuery(from: message) ?? query(
+    private static func financeQuery(from message: String) -> String? {
+        guard var query = companyQuery(from: message) ?? query(
             afterRemoving: ["재무", "요약", "요약재무", "재무제표", "손익계산서", "재무상태표", "기업", "조회", "확인", "정리"],
-            from: message,
-            fallback: "삼성전자 2024"
-        )
+            from: message
+        ) else { return nil }
         if
             query.range(of: #"(19|20)\d{2}"#, options: .regularExpression) == nil,
             let yearRange = message.range(of: #"(19|20)\d{2}"#, options: .regularExpression)
@@ -292,7 +298,7 @@ enum MyTeamToolFastPathRouter {
         return first.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private static func query(afterRemoving tokens: [String], from message: String, fallback: String) -> String {
+    private static func query(afterRemoving tokens: [String], from message: String) -> String? {
         var result = message
         for token in tokens {
             result = result.replacingOccurrences(of: token, with: "", options: [.caseInsensitive])
@@ -301,6 +307,6 @@ enum MyTeamToolFastPathRouter {
             .replacingOccurrences(of: "해줘", with: "")
             .replacingOccurrences(of: "알려줘", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        return result.isEmpty ? fallback : result
+        return result.isEmpty ? nil : result
     }
 }

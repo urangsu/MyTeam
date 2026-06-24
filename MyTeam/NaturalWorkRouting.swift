@@ -76,6 +76,7 @@ enum NaturalWorkSlot: String, Sendable, Equatable, Codable {
     case reportAudience
     case outputFormat
     case region
+    case newsTopic
     case lawTopic
     case spreadsheetRange
 }
@@ -430,7 +431,7 @@ enum NaturalWorkRouter {
             return fileSummaryPlan(for: normalized, context: context)
         }
         if isWeatherRequest(lower) {
-            return weatherPlan(for: normalized)
+            return weatherPlan(for: normalized, context: context)
         }
         if isLawRequest(lower) {
             return lawPlan(for: normalized)
@@ -476,6 +477,35 @@ enum NaturalWorkRouter {
                 missingSlots: [.region],
                 question: "어느 지역의 날씨를 확인할까요?\n예: 광양, 포항, 서울",
                 suggestions: ["광양", "포항", "서울"],
+                createdAt: Date(),
+                roomID: roomID
+            )
+        }
+
+        if isNewsRequest(lower),
+           !hasCompanyCompositeCue(lower),
+           cleaned(text, removing: ["뉴스", "검색", "찾아줘", "조회", "브리핑", "최신"], fallback: "").isEmpty {
+            return NaturalClarificationRequest(
+                id: UUID(),
+                originalText: text,
+                workType: .newsBriefing,
+                missingSlots: [.newsTopic],
+                question: "어떤 주제의 뉴스를 확인할까요?\n회사명, 산업, 키워드를 입력해 주세요. 예: 삼성전자, 리튬, 반도체",
+                suggestions: ["삼성전자", "리튬", "반도체"],
+                createdAt: Date(),
+                roomID: roomID
+            )
+        }
+
+        if isLawRequest(lower),
+           cleaned(text, removing: ["법령", "법률", "조문", "검색", "찾아줘", "조회", "관련해서", "뭘", "봐야", "해"], fallback: "").isEmpty {
+            return NaturalClarificationRequest(
+                id: UUID(),
+                originalText: text,
+                workType: .lawIssueReview,
+                missingSlots: [.lawTopic],
+                question: "어떤 법령이나 쟁점을 확인할까요?\n법령명이나 주제를 입력해 주세요. 예: 근로기준법 연차, 주52시간",
+                suggestions: ["근로기준법 연차", "주52시간", "산업안전보건법"],
                 createdAt: Date(),
                 roomID: roomID
             )
@@ -670,7 +700,19 @@ enum NaturalWorkRouter {
     }
 
     private static func newsPlan(for text: String) -> NaturalWorkPlan {
-        let query = cleaned(text, removing: ["뉴스", "검색", "찾아줘", "조회", "브리핑", "최신"], fallback: "경제")
+        let query = cleaned(text, removing: ["뉴스", "검색", "찾아줘", "조회", "브리핑", "최신"], fallback: "")
+        guard !query.isEmpty else {
+            return missingInputPlan(
+                originalText: text,
+                workType: .newsBriefing,
+                intent: .news,
+                title: "뉴스 주제 확인",
+                summary: "뉴스 검색 주제가 필요합니다.",
+                missingTitle: "뉴스 주제",
+                reason: "회사명, 산업, 키워드가 있어야 뉴스 검색 결과를 정확히 가져올 수 있습니다.",
+                nextAction: "예: 삼성전자 뉴스, 리튬 관련 뉴스처럼 주제를 입력하세요."
+            )
+        }
         return singleStepPlan(
             originalText: text,
             title: "\(query) 뉴스 브리핑",
@@ -684,8 +726,24 @@ enum NaturalWorkRouter {
         )
     }
 
-    private static func weatherPlan(for text: String) -> NaturalWorkPlan {
-        let query = cleaned(text, removing: ["출장", "외근", "현장작업", "날씨", "오늘", "괜찮아", "알려줘", "봐줘"], fallback: "서울")
+    private static func weatherPlan(for text: String, context: NaturalWorkContext) -> NaturalWorkPlan {
+        let query = cleaned(
+            text,
+            removing: ["출장", "외근", "현장작업", "날씨", "오늘", "괜찮아", "알려줘", "봐줘"],
+            fallback: context.userLocation ?? ""
+        )
+        guard !query.isEmpty else {
+            return missingInputPlan(
+                originalText: text,
+                workType: .schedulePreparation,
+                intent: .weather,
+                title: "날씨 지역 확인",
+                summary: "확인할 지역이 필요합니다.",
+                missingTitle: "지역",
+                reason: "날씨 조회에는 지역명이 필요합니다.",
+                nextAction: "예: 광양 날씨, 포항 현장작업 날씨처럼 지역을 입력하세요."
+            )
+        }
         return singleStepPlan(
             originalText: text,
             title: "\(query) 날씨 확인",
@@ -699,7 +757,19 @@ enum NaturalWorkRouter {
     }
 
     private static func lawPlan(for text: String) -> NaturalWorkPlan {
-        let query = cleaned(text, removing: ["법령", "법률", "조문", "검색", "찾아줘", "조회", "관련해서", "뭘", "봐야", "해"], fallback: "근로기준법")
+        let query = cleaned(text, removing: ["법령", "법률", "조문", "검색", "찾아줘", "조회", "관련해서", "뭘", "봐야", "해"], fallback: "")
+        guard !query.isEmpty else {
+            return missingInputPlan(
+                originalText: text,
+                workType: .lawIssueReview,
+                intent: .law,
+                title: "법령 주제 확인",
+                summary: "확인할 법령명이나 쟁점이 필요합니다.",
+                missingTitle: "법령 또는 쟁점",
+                reason: "법령 검색에는 법령명, 조문, 또는 쟁점 키워드가 필요합니다.",
+                nextAction: "예: 근로기준법 연차, 주52시간 관련 조문처럼 입력하세요."
+            )
+        }
         return singleStepPlan(
             originalText: text,
             title: "\(query) 법령 확인",

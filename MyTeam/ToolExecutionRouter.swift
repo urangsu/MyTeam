@@ -465,7 +465,15 @@ actor ToolExecutionRouter {
 
     fileprivate func runDART(input: MyTeamToolInput) async -> ToolExecutionState {
         let provider = ExternalProvider.dartDisclosure
-        let query = sanitizedQuery(input.query, fallback: "삼성전자")
+        guard let query = requiredQuery(input.query) else {
+            return .failed(MyTeamToolFailure(
+                title: "공시 조회 입력이 필요합니다",
+                message: "조회할 회사명, 6자리 종목코드, 또는 OpenDART 고유번호를 입력해 주세요. 예: 삼성전자, 005930, 00126380.",
+                recoveryActions: [
+                    MyTeamNextAction(id: "changeKeyword", title: "회사 입력", role: .normal)
+                ]
+            ))
+        }
         let resolution = DARTCompanyResolver.resolve(input: query)
         let daysBack = min(max(input.daysBack ?? 30, 1), 365)
         let displayCount = min(max(input.displayCount ?? 10, 1), 20)
@@ -559,7 +567,15 @@ actor ToolExecutionRouter {
 
     fileprivate func runNaverNews(input: MyTeamToolInput) async -> ToolExecutionState {
         let provider = ExternalProvider.naverNews
-        let query = sanitizedQuery(input.query, fallback: "경제")
+        guard let query = requiredQuery(input.query) else {
+            return .failed(MyTeamToolFailure(
+                title: "뉴스 검색어가 필요합니다",
+                message: "회사명, 산업, 키워드처럼 확인할 뉴스 주제를 입력해 주세요. 예: 삼성전자 뉴스, 리튬 관련 뉴스.",
+                recoveryActions: [
+                    MyTeamNextAction(id: "changeKeyword", title: "검색어 입력", role: .normal)
+                ]
+            ))
+        }
         guard query.count >= 2 else {
             return .failed(MyTeamToolFailure(
                 title: "검색어가 짧습니다",
@@ -733,7 +749,15 @@ actor ToolExecutionRouter {
     }
 
     fileprivate func runFinance(path: String, label: String, input: MyTeamToolInput) async -> ToolExecutionState {
-        let query = sanitizedQuery(input.query, fallback: label)
+        guard let query = requiredQuery(input.query) else {
+            return .failed(MyTeamToolFailure(
+                title: "\(label) 입력이 필요합니다",
+                message: "조회할 회사명, 종목코드, 지수명, 또는 기준 키워드를 입력해 주세요.",
+                recoveryActions: [
+                    MyTeamNextAction(id: "changeKeyword", title: "검색어 입력", role: .normal)
+                ]
+            ))
+        }
         do {
             let fetched = try await fetchFinanceData(
                 path: path,
@@ -962,7 +986,7 @@ actor ToolExecutionRouter {
     }
 
     private func companyFinanceRequest(from input: MyTeamToolInput) -> CompanyFinanceRequest {
-        let raw = sanitizedQuery(input.query, fallback: "삼성전자 2024")
+        let raw = input.query?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let tokens = raw.split(whereSeparator: { $0.isWhitespace || $0.isNewline }).map(String.init)
         let year = tokens.first { token in
             token.range(of: #"^(19|20)\d{2}$"#, options: .regularExpression) != nil
@@ -1038,7 +1062,15 @@ actor ToolExecutionRouter {
 
     fileprivate func runKoreanLaw(input: MyTeamToolInput) async -> ToolExecutionState {
         let provider = ExternalProvider.koreanLaw
-        let query = sanitizedQuery(input.query, fallback: "근로기준법")
+        guard let query = requiredQuery(input.query) else {
+            return .failed(MyTeamToolFailure(
+                title: "법령 검색어가 필요합니다",
+                message: "확인할 법령명, 조문, 또는 쟁점 키워드를 입력해 주세요. 예: 근로기준법 연차, 주52시간.",
+                recoveryActions: [
+                    MyTeamNextAction(id: "changeKeyword", title: "검색어 입력", role: .normal)
+                ]
+            ))
+        }
 
         do {
             let response = try await MyTeamBasicLookupProxyClient.shared.searchKoreanLaw(
@@ -1109,6 +1141,11 @@ actor ToolExecutionRouter {
     private func sanitizedQuery(_ query: String?, fallback: String) -> String {
         let trimmed = query?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmed.isEmpty ? fallback : trimmed
+    }
+
+    private func requiredQuery(_ query: String?) -> String? {
+        let trimmed = query?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     private func googleSheetsReadRequest(from query: String?) -> GoogleSheetsReadRequest? {
