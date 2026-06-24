@@ -53,6 +53,9 @@ def main() -> None:
     news_runner = read("MyTeam/ToolRunners/NewsToolRunner.swift")
     law_runner = read("MyTeam/ToolRunners/LawToolRunner.swift")
     weather_runner = read("MyTeam/ToolRunners/WeatherToolRunner.swift")
+    finance_runner = read("MyTeam/ToolRunners/FinanceToolRunner.swift")
+    dart_runner = read("MyTeam/ToolRunners/DARTToolRunner.swift")
+    lookup_support = read("MyTeam/ToolRunners/PublicLookupRunnerSupport.swift")
     tool_formatters = read("MyTeam/ToolResultFormatters.swift")
     tool_log_view = read("MyTeam/ToolExecutionLogView.swift")
     work_artifact_detail = read("MyTeam/WorkArtifactDetailView.swift")
@@ -132,7 +135,14 @@ def main() -> None:
     for file_name in ["ToolResultFormatters.swift", "WorkArtifactDetailView.swift"]:
         if file_name not in project:
             failures.append(f"{file_name} is not included in the Xcode project")
-    for file_name in ["NewsToolRunner.swift", "LawToolRunner.swift", "WeatherToolRunner.swift"]:
+    for file_name in [
+        "NewsToolRunner.swift",
+        "LawToolRunner.swift",
+        "WeatherToolRunner.swift",
+        "FinanceToolRunner.swift",
+        "DARTToolRunner.swift",
+        "PublicLookupRunnerSupport.swift",
+    ]:
         if file_name not in project:
             failures.append(f"{file_name} is not included in the Xcode project")
     if "struct WorkArtifactDetailView" in tool_log_view:
@@ -158,13 +168,28 @@ def main() -> None:
     for token in formatter_residue:
         if token in tool_router:
             failures.append(f"ToolExecutionRouter still owns formatter responsibility: {token}")
-    for token in ["runNaverNews", "runKMAWeather", "runKoreanLaw"]:
+    for token in [
+        "runNaverNews",
+        "runKMAWeather",
+        "runKoreanLaw",
+        "runFinance",
+        "runCompanyFinanceSummary",
+        "runDART",
+        "fetchFinanceData",
+        "dartDirectFailureState",
+        "CompanyFinanceRequest",
+        "FinanceFetchResult",
+    ]:
         if token in tool_router:
             failures.append(f"ToolExecutionRouter still owns provider runner body: {token}")
     expected_runner_dispatch = {
         "news.search": "NewsToolRunner.run",
         "weather.current": "WeatherToolRunner.run",
         "law.search": "LawToolRunner.run",
+        "dart.disclosures.search": "DARTToolRunner.run",
+        "finance.krx.stockPrice": "FinanceToolRunner.runStockPrice",
+        "finance.krx.index": "FinanceToolRunner.runMarketIndex",
+        "finance.company.statement": "FinanceToolRunner.runCompanyStatement",
     }
     for tool_id, runner_call in expected_runner_dispatch.items():
         if runner_call not in tool_router:
@@ -173,6 +198,7 @@ def main() -> None:
         "NewsToolRunner": news_runner,
         "LawToolRunner": law_runner,
         "WeatherToolRunner": weather_runner,
+        "DARTToolRunner": dart_runner,
     }
     for type_name, source in runner_contracts.items():
         if f"enum {type_name}" not in source:
@@ -185,6 +211,38 @@ def main() -> None:
         failures.append("WeatherToolRunner must reject missing region instead of defaulting to Seoul")
     if "법령 검색어가 필요합니다" not in law_runner:
         failures.append("LawToolRunner must reject missing law query instead of defaulting")
+    if "enum FinanceToolRunner" not in finance_runner:
+        failures.append("FinanceToolRunner.swift must define enum FinanceToolRunner")
+    for signature in [
+        "static func runStockPrice(input: MyTeamToolInput) async -> ToolExecutionState",
+        "static func runMarketIndex(input: MyTeamToolInput) async -> ToolExecutionState",
+        "static func runCompanyStatement(input: MyTeamToolInput) async -> ToolExecutionState",
+    ]:
+        if signature not in finance_runner:
+            failures.append(f"FinanceToolRunner missing expected runner contract: {signature}")
+    if "enum PublicLookupRunnerSupport" not in lookup_support:
+        failures.append("PublicLookupRunnerSupport.swift must define enum PublicLookupRunnerSupport")
+    for phrase in [
+        "주식 기준일 시세 입력이 필요합니다",
+        "시장 지수 입력이 필요합니다",
+        "사업연도가 필요합니다",
+    ]:
+        if phrase not in finance_runner:
+            failures.append(f"FinanceToolRunner must reject missing inputs with explicit guidance: {phrase}")
+    if "Calendar.current.component" in finance_runner:
+        failures.append("FinanceToolRunner must not silently default company finance business year")
+    for token in [
+        'fallback: "삼성전자"',
+        'fallback: "삼성전자 2024"',
+        'fallback: "포스코"',
+    ]:
+        if token in finance_runner or token in tool_router:
+            failures.append(f"Finance/DART runners must not use silent default fallback: {token}")
+    if "Cloudflare DART" in dart_runner or "/dart/" in dart_runner:
+        failures.append("DARTToolRunner must not use Cloudflare DART product routes")
+    for phrase in ["개인 OpenDART API 키", "연결 설정에서 DART 키"]:
+        if phrase not in dart_runner:
+            failures.append(f"DARTToolRunner missing BYOK guidance phrase: {phrase}")
 
     if "userRoutes: USER_ROUTES" not in worker or "diagnosticRoutes: DIAGNOSTIC_ROUTES" not in worker:
         failures.append("Worker /health must expose userRoutes and diagnosticRoutes")
@@ -199,7 +257,7 @@ def main() -> None:
 
     if "ToolExecutionDispatcher" not in tool_router and "case \"news.search\"" in tool_router:
         warnings.append("ToolExecutionRouter still mixes runner dispatch and provider-specific execution")
-    for token in ["runFinance(", "runCompanyFinanceSummary(", "runDART(", "runGoogleSheetsRead(", "runGoogleCalendarToday("]:
+    for token in ["runGoogleSheetsRead(", "runGoogleCalendarToday("]:
         if token in tool_router:
             warnings.append(f"ToolExecutionRouter still owns unsplit runner body: {token}")
 
