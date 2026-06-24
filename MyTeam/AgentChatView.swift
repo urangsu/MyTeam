@@ -1219,49 +1219,15 @@ struct AgentChatView: View {
                 break
             }
 
-            let fastPathMatches = MyTeamToolFastPathRouter.matchMany(naturalRouteText)
-            if !fastPathMatches.isEmpty {
+            if await LegacyWorkflowFallbackRouter.shared.handle(
+                text: naturalRouteText,
+                roomID: roomID,
+                manager: manager,
+                path: .chatFastPath
+            ) {
                 if targetID != "team_all" {
-                    setTyping(targetID, true)
-                }
-                let progressMessageID = await MainActor.run {
-                    manager.addChatLog(
-                        roomID: roomID,
-                        agentID: "system",
-                        agentName: "업무 실행",
-                        text: MyTeamToolFastPathRouter.runningMarkdown(for: fastPathMatches),
-                        isUser: false
-                    )
-                }
-                var results: [(match: MyTeamToolFastPathMatch, state: ToolExecutionState)] = []
-                for fastPath in fastPathMatches {
-                    let state = await ToolExecutionRouter.shared.run(
-                        fastPath.descriptor,
-                        input: fastPath.input,
-                        bypassApproval: false,
-                        path: .chatFastPath
-                    )
-                    results.append((match: fastPath, state: state))
-                }
-                let responseText = MyTeamToolFastPathRouter.markdown(for: results)
-                await MainActor.run {
-                    if targetID != "team_all" {
-                        manager.typingAgentIDs.remove(targetID)
-                    }
-                    if let progressMessageID {
-                        manager.updateChatLogText(
-                            roomID: roomID,
-                            messageID: progressMessageID,
-                            text: responseText
-                        )
-                    } else {
-                        manager.addChatLog(
-                            roomID: roomID,
-                            agentID: "system",
-                            agentName: "업무 실행",
-                            text: responseText,
-                            isUser: false
-                        )
+                    await MainActor.run {
+                        _ = manager.typingAgentIDs.remove(targetID)
                     }
                 }
                 return

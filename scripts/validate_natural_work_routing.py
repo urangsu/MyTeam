@@ -60,11 +60,14 @@ def main() -> None:
     require_contains("AgentChatView natural entrypoint", chat, "NaturalWorkEntryPoint.resolve")
     require_contains("AgentChatView pending coordinator", chat, "PendingNaturalWorkCoordinator.resolve")
     require_contains("AgentChatView runner", chat, "NaturalWorkPlanRunner.run")
+    require_contains("AgentChatView shared legacy fallback", chat, "LegacyWorkflowFallbackRouter.shared.handle")
+    if "MyTeamToolFastPathRouter.matchMany" in chat:
+        fail("AgentChatView must not directly own legacy fast-path matching")
     require_order(
         "AgentChatView routing order",
         chat,
         "NaturalWorkEntryPoint.resolve",
-        "MyTeamToolFastPathRouter.matchMany",
+        "LegacyWorkflowFallbackRouter.shared.handle",
     )
 
     require_contains("WorkflowOrchestrator coordinator", workflow, "WorkflowInputCoordinator.shared.handle")

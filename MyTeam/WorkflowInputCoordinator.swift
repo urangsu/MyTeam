@@ -68,7 +68,8 @@ struct LegacyWorkflowFallbackRouter {
     func handle(
         text: String,
         roomID: UUID,
-        manager: AgentWindowManager
+        manager: AgentWindowManager,
+        path: ToolExecutionPath = .planner
     ) async -> Bool {
         let matches = MyTeamToolFastPathRouter.matchMany(text)
         guard !matches.isEmpty else { return false }
@@ -97,7 +98,7 @@ struct LegacyWorkflowFallbackRouter {
                 match.descriptor,
                 input: match.input,
                 bypassApproval: false,
-                path: .planner
+                path: path
             )
             results.append((match: match, state: state))
         }
