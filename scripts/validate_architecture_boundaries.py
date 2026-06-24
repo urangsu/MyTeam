@@ -50,6 +50,9 @@ def main() -> None:
     agent_chat = read("MyTeam/AgentChatView.swift")
     team_status = read("MyTeam/TeamStatusView.swift")
     tool_router = read("MyTeam/ToolExecutionRouter.swift")
+    news_runner = read("MyTeam/ToolRunners/NewsToolRunner.swift")
+    law_runner = read("MyTeam/ToolRunners/LawToolRunner.swift")
+    weather_runner = read("MyTeam/ToolRunners/WeatherToolRunner.swift")
     tool_formatters = read("MyTeam/ToolResultFormatters.swift")
     tool_log_view = read("MyTeam/ToolExecutionLogView.swift")
     work_artifact_detail = read("MyTeam/WorkArtifactDetailView.swift")
@@ -129,6 +132,9 @@ def main() -> None:
     for file_name in ["ToolResultFormatters.swift", "WorkArtifactDetailView.swift"]:
         if file_name not in project:
             failures.append(f"{file_name} is not included in the Xcode project")
+    for file_name in ["NewsToolRunner.swift", "LawToolRunner.swift", "WeatherToolRunner.swift"]:
+        if file_name not in project:
+            failures.append(f"{file_name} is not included in the Xcode project")
     if "struct WorkArtifactDetailView" in tool_log_view:
         failures.append("WorkArtifactDetailView implementation must live outside ToolExecutionLogView.swift")
     if "struct WorkArtifactDetailView" not in work_artifact_detail:
@@ -152,6 +158,33 @@ def main() -> None:
     for token in formatter_residue:
         if token in tool_router:
             failures.append(f"ToolExecutionRouter still owns formatter responsibility: {token}")
+    for token in ["runNaverNews", "runKMAWeather", "runKoreanLaw"]:
+        if token in tool_router:
+            failures.append(f"ToolExecutionRouter still owns provider runner body: {token}")
+    expected_runner_dispatch = {
+        "news.search": "NewsToolRunner.run",
+        "weather.current": "WeatherToolRunner.run",
+        "law.search": "LawToolRunner.run",
+    }
+    for tool_id, runner_call in expected_runner_dispatch.items():
+        if runner_call not in tool_router:
+            failures.append(f"ToolExecutionDispatcher must route {tool_id} through {runner_call}")
+    runner_contracts = {
+        "NewsToolRunner": news_runner,
+        "LawToolRunner": law_runner,
+        "WeatherToolRunner": weather_runner,
+    }
+    for type_name, source in runner_contracts.items():
+        if f"enum {type_name}" not in source:
+            failures.append(f"{type_name}.swift must define enum {type_name}")
+        if "static func run(input: MyTeamToolInput) async -> ToolExecutionState" not in source:
+            failures.append(f"{type_name} must expose static run(input:) returning ToolExecutionState")
+    if "뉴스 검색어가 필요합니다" not in news_runner:
+        failures.append("NewsToolRunner must reject missing search terms instead of silently defaulting")
+    if "날씨 지역이 필요합니다" not in weather_runner:
+        failures.append("WeatherToolRunner must reject missing region instead of defaulting to Seoul")
+    if "법령 검색어가 필요합니다" not in law_runner:
+        failures.append("LawToolRunner must reject missing law query instead of defaulting")
 
     if "userRoutes: USER_ROUTES" not in worker or "diagnosticRoutes: DIAGNOSTIC_ROUTES" not in worker:
         failures.append("Worker /health must expose userRoutes and diagnosticRoutes")
@@ -166,8 +199,9 @@ def main() -> None:
 
     if "ToolExecutionDispatcher" not in tool_router and "case \"news.search\"" in tool_router:
         warnings.append("ToolExecutionRouter still mixes runner dispatch and provider-specific execution")
-    if "case \"news.search\"" in tool_router:
-        warnings.append("ToolExecutionRouter still owns provider-specific execution body")
+    for token in ["runFinance(", "runCompanyFinanceSummary(", "runDART(", "runGoogleSheetsRead(", "runGoogleCalendarToday("]:
+        if token in tool_router:
+            warnings.append(f"ToolExecutionRouter still owns unsplit runner body: {token}")
 
     team_status_markers = [
         "sendTeamMessage",
