@@ -74,7 +74,7 @@ struct ToolActionCardView: View {
                         .controlSize(.small)
                 } else if case .needsApproval(let reason) = state {
                     Button("승인", action: {
-                        onRequestApproval?(descriptor, query?.wrappedValue ?? defaultQuery, reason)
+                        onRequestApproval?(descriptor, query?.wrappedValue ?? "", reason)
                     })
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
@@ -192,19 +192,19 @@ struct ToolActionCardView: View {
     private var defaultQuery: String {
         switch descriptor.id {
         case "dart.disclosures.search":
-            return "삼성전자"
+            return "회사명, 종목코드, 또는 OpenDART 고유번호"
         case "news.search":
-            return "경제"
+            return "검색할 뉴스 키워드"
         case "weather.current":
-            return "서울"
+            return "지역명"
         case "finance.krx.stockPrice":
-            return "삼성전자"
+            return "회사명 또는 종목코드"
         case "finance.krx.index":
-            return "코스피"
+            return "코스피, 코스닥, KRX300"
         case "finance.company.statement":
-            return "삼성전자 2024"
+            return "회사명 또는 종목코드와 사업연도"
         case "law.search":
-            return "근로기준법"
+            return "법령명 또는 확인할 쟁점"
         case "briefing.today":
             return "오늘 로컬 업무 브리핑"
         case "document.meetingMinutes":

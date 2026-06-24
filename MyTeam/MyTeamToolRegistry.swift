@@ -212,7 +212,7 @@ enum MyTeamToolRegistry {
             requiredCredential: nil,
             permissionLevel: .draftOnly,
             isImplemented: true,
-            isUserFacing: true,
+            isUserFacing: false,
             supportedDistributionChannels: [.appStore, .direct, .developer],
             relatedProvider: nil
         ),
@@ -224,7 +224,7 @@ enum MyTeamToolRegistry {
             requiredCredential: MyTeamCredentialRequirement(provider: .assistant(.googleSheets), reason: "Google Sheets 읽기 연결이 필요합니다."),
             permissionLevel: .readOnly,
             isImplemented: true,
-            isUserFacing: true,
+            isUserFacing: false,
             supportedDistributionChannels: [.appStore, .direct, .developer],
             relatedProvider: nil
         ),

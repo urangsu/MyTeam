@@ -7,18 +7,7 @@ struct HomeDashboardView: View {
 
     @State private var toolStates: [String: ToolExecutionState] = [:]
     @State private var toolQueries: [String: String] = [
-        "briefing.today": "오늘 업무 브리핑",
-        "document.meetingMinutes": "회의 내용을 붙여넣으세요.",
-        "document.rewrite": "다듬을 문장이나 문서를 붙여넣으세요.",
-        "spreadsheet.postprocess": "표 내용을 붙여넣으세요.",
-        "spreadsheet.googleSheets.read": "",
-        "dart.disclosures.search": "삼성전자",
-        "finance.krx.stockPrice": "삼성전자",
-        "finance.krx.index": "코스피",
-        "finance.company.statement": "삼성전자 2024",
-        "news.search": "경제",
-        "weather.current": "서울",
-        "law.search": "근로기준법"
+        "briefing.today": "오늘 로컬 업무 브리핑"
     ]
     @State private var selectedState: ToolExecutionState? = nil
     @State private var selectedDescriptor: MyTeamToolDescriptor? = nil
@@ -27,17 +16,10 @@ struct HomeDashboardView: View {
 
     private let quickToolIDs = [
         "document.meetingMinutes",
-        "spreadsheet.postprocess",
-        "spreadsheet.googleSheets.read",
-        "calendar.events.today",
-        "weather.current",
         "finance.krx.stockPrice",
         "finance.krx.index",
-        "finance.company.statement",
-        "dart.disclosures.search",
         "news.search",
-        "law.search",
-        "voice.bubbleSpeech.preview"
+        "law.search"
     ]
 
     private var quickTools: [MyTeamToolDescriptor] {
@@ -46,6 +28,7 @@ struct HomeDashboardView: View {
 
     private var connectionTools: [MyTeamToolDescriptor] {
         MyTeamToolRegistry.userFacingTools.filter {
+            guard $0.category != .spreadsheet else { return false }
             if case .needsConnection = state(for: $0) { return true }
             if case .needsAssistantConnection = state(for: $0) { return true }
             if case .needsValidation = state(for: $0) { return true }
@@ -185,39 +168,15 @@ struct HomeDashboardView: View {
             return nil
         }
         return Binding(
-            get: { toolQueries[descriptor.id] ?? defaultQuery(for: descriptor) },
+            get: { toolQueries[descriptor.id] ?? "" },
             set: { toolQueries[descriptor.id] = $0 }
         )
     }
 
     private func defaultQuery(for descriptor: MyTeamToolDescriptor) -> String {
         switch descriptor.id {
-        case "dart.disclosures.search":
-            return "삼성전자"
-        case "finance.krx.stockPrice":
-            return "삼성전자"
-        case "finance.krx.index":
-            return "코스피"
-        case "finance.company.statement":
-            return "삼성전자 2024"
-        case "news.search":
-            return "경제"
-        case "weather.current":
-            return "서울"
-        case "law.search":
-            return "근로기준법"
         case "briefing.today":
             return "오늘 로컬 업무 브리핑"
-        case "document.meetingMinutes":
-            return "회의 내용을 붙여넣으세요."
-        case "document.rewrite":
-            return "다듬을 문장이나 문서를 붙여넣으세요."
-        case "spreadsheet.postprocess":
-            return "표 내용을 붙여넣으세요."
-        case "spreadsheet.googleSheets.read":
-            return "Sheets URL 또는 ID Sheet1!A1:Z100"
-        case "calendar.events.today":
-            return "오늘 일정"
         default:
             return ""
         }
@@ -268,10 +227,7 @@ struct HomeDashboardView: View {
             "law.search",
             "briefing.today",
             "document.meetingMinutes",
-            "document.rewrite",
-            "spreadsheet.postprocess",
-            "spreadsheet.googleSheets.read",
-            "calendar.events.today"
+            "document.rewrite"
         ]
     }
 
@@ -283,7 +239,7 @@ struct HomeDashboardView: View {
         case "openAssistantConnection":
             onOpenAssistantConnection(descriptor.requiredCredential?.provider.assistantProvider)
         case "searchAgain", "extendRange", "changeKeyword":
-            run(descriptor, query: toolQueries[descriptor.id] ?? defaultQuery(for: descriptor))
+            run(descriptor, query: toolQueries[descriptor.id] ?? "")
         default:
             break
         }
