@@ -63,9 +63,9 @@ private enum ToolExecutionDispatcher {
         case "dart.disclosures.search":
             return await router.runWithHardTimeout(descriptor) { await router.runDART(input: input) }
         case "news.search":
-            return await router.runWithHardTimeout(descriptor) { await router.runNaverNews(input: input) }
+            return await router.runWithHardTimeout(descriptor) { await NewsToolRunner.run(input: input) }
         case "weather.current":
-            return await router.runWithHardTimeout(descriptor) { await router.runKMAWeather(input: input) }
+            return await router.runWithHardTimeout(descriptor) { await WeatherToolRunner.run(input: input) }
         case "finance.krx.stockPrice":
             return await router.runWithHardTimeout(descriptor) {
                 await router.runFinance(path: "finance/stocks/prices", label: "주식 기준일 시세", input: input)
@@ -77,7 +77,7 @@ private enum ToolExecutionDispatcher {
         case "finance.company.statement":
             return await router.runWithHardTimeout(descriptor) { await router.runCompanyFinanceSummary(input: input) }
         case "law.search":
-            return await router.runWithHardTimeout(descriptor) { await router.runKoreanLaw(input: input) }
+            return await router.runWithHardTimeout(descriptor) { await LawToolRunner.run(input: input) }
         default:
             return .unavailable("이 업무는 아직 실행 연결 전입니다.")
         }
@@ -565,188 +565,7 @@ actor ToolExecutionRouter {
         ))
     }
 
-    fileprivate func runNaverNews(input: MyTeamToolInput) async -> ToolExecutionState {
-        let provider = ExternalProvider.naverNews
-        guard let query = requiredQuery(input.query) else {
-            return .failed(MyTeamToolFailure(
-                title: "뉴스 검색어가 필요합니다",
-                message: "회사명, 산업, 키워드처럼 확인할 뉴스 주제를 입력해 주세요. 예: 삼성전자 뉴스, 리튬 관련 뉴스.",
-                recoveryActions: [
-                    MyTeamNextAction(id: "changeKeyword", title: "검색어 입력", role: .normal)
-                ]
-            ))
-        }
-        guard query.count >= 2 else {
-            return .failed(MyTeamToolFailure(
-                title: "검색어가 짧습니다",
-                message: "뉴스 검색어는 두 글자 이상 입력하세요.",
-                recoveryActions: [
-                    MyTeamNextAction(id: "changeKeyword", title: "검색어 바꾸기", role: .normal)
-                ]
-            ))
-        }
-        let displayCount = min(max(input.displayCount ?? 10, 1), 20)
 
-        do {
-            let response = try await MyTeamBasicLookupProxyClient.shared.searchNews(
-                query: query,
-                display: displayCount
-            )
-            return NewsResultFormatter.resultState(
-                query: query,
-                items: response.directItems,
-                sourceLabel: "MyTeam 기본 뉴스 조회 · Naver News Search",
-                modeNotice: "이 브리핑은 뉴스 검색 결과의 제목과 설명을 기준으로 정리한 것입니다. 기사 전문은 원문 링크에서 확인하세요."
-            )
-        } catch {
-            if
-                let clientID = await credentialValue(provider: provider, fieldID: "clientID"),
-                let clientSecret = await credentialValue(provider: provider, fieldID: "clientSecret")
-            {
-                do {
-                    let items = try await NaverNewsDirectConnector.search(
-                        query: query,
-                        clientID: clientID,
-                        clientSecret: clientSecret,
-                        display: displayCount
-                    )
-                    return NewsResultFormatter.resultState(
-                        query: query,
-                        items: items,
-                        sourceLabel: "Naver News API · 개인 키",
-                        modeNotice: "기본 조회 서버가 응답하지 않아 개인 Naver API 키로 조회했습니다. 이 브리핑은 뉴스 검색 결과의 제목과 설명을 기준으로 정리한 것입니다. 기사 전문은 원문 링크에서 확인하세요."
-                    )
-                } catch {
-                    return .failed(MyTeamToolFailure(
-                        title: "뉴스 조회를 완료하지 못했습니다",
-                        message: "기본 조회 서버와 개인 Naver API 키 조회가 모두 실패했습니다. 잠시 후 다시 시도하거나 개인 키 권한을 확인하세요.",
-                        recoveryActions: [
-                            MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
-                            MyTeamNextAction(id: "openConnection", title: "개인 키 확인", role: .normal)
-                        ]
-                    ))
-                }
-            }
-
-            return .failed(MyTeamToolFailure(
-                title: "뉴스 조회를 완료하지 못했습니다",
-                message: "기본 조회 서버가 응답하지 않습니다. 잠시 후 다시 시도하거나 개인 Naver API 키를 연결하세요.",
-                recoveryActions: [
-                    MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
-                    MyTeamNextAction(id: "openConnection", title: "개인 키 연결", role: .normal)
-                ]
-            ))
-        }
-    }
-
-    fileprivate func runKMAWeather(input: MyTeamToolInput) async -> ToolExecutionState {
-        let provider = ExternalProvider.kmaWeather
-        guard let region = KMARegionGridMapper.resolve(input.query) else {
-            return .failed(MyTeamToolFailure(
-                title: "지역 격자를 찾지 못했습니다",
-                message: KMARegionGridMapper.userFacingUnsupportedMessage(for: input.query),
-                recoveryActions: [
-                    MyTeamNextAction(id: "changeKeyword", title: "지역 바꾸기", role: .normal)
-                ]
-            ))
-        }
-        let nx = input.nx ?? region.nx
-        let ny = input.ny ?? region.ny
-
-        do {
-            let response = try await MyTeamBasicLookupProxyClient.shared.fetchKMANowcast(
-                nx: nx,
-                ny: ny
-            )
-            return WeatherResultFormatter.resultState(
-                regionName: region.name,
-                nx: nx,
-                ny: ny,
-                observations: response.directObservations,
-                sourceLabel: "MyTeam 기본 기상청 조회",
-                modeNotice: "기상청 단기예보 조회 결과입니다. 위치 좌표 기준의 공식 기상 데이터입니다."
-            )
-        } catch MyTeamProxyError.noResults {
-            return WeatherResultFormatter.resultState(
-                regionName: region.name,
-                nx: nx,
-                ny: ny,
-                observations: [],
-                sourceLabel: "MyTeam 기본 기상청 조회",
-                modeNotice: "기상청 단기예보 조회 결과입니다. 위치 좌표 기준의 공식 기상 데이터입니다."
-            )
-        } catch let proxyError as MyTeamProxyError {
-            guard let serviceKey = await credentialValue(provider: provider, fieldID: "serviceKey") else {
-                return .failed(MyTeamToolFailure(
-                    title: "날씨 조회를 완료하지 못했습니다",
-                    message: proxyError.errorDescription ?? "기본 조회 서버가 응답하지 않습니다. 잠시 후 다시 시도하거나 개인 기상청 Service Key를 연결하세요.",
-                    recoveryActions: [
-                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
-                        MyTeamNextAction(id: "openConnection", title: "개인 키 연결", role: .normal)
-                    ]
-                ))
-            }
-            do {
-                let observations = try await KMAWeatherDirectConnector.ultraShortNowcast(
-                    serviceKey: serviceKey,
-                    nx: nx,
-                    ny: ny
-                )
-                return WeatherResultFormatter.resultState(
-                    regionName: region.name,
-                    nx: nx,
-                    ny: ny,
-                    observations: observations,
-                    sourceLabel: "기상청 초단기실황 · 개인 키",
-                    modeNotice: "기본 조회 서버가 응답하지 않아 개인 기상청 Service Key로 조회했습니다. 위치 좌표 기준의 공식 기상 데이터입니다."
-                )
-            } catch {
-                return .failed(MyTeamToolFailure(
-                    title: "날씨 조회를 완료하지 못했습니다",
-                    message: "기본 조회 서버와 개인 기상청 Service Key 조회가 모두 실패했습니다. 잠시 후 다시 시도하거나 개인 키 권한을 확인하세요.",
-                    recoveryActions: [
-                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
-                        MyTeamNextAction(id: "openConnection", title: "개인 키 확인", role: .normal)
-                    ]
-                ))
-            }
-        } catch {
-            guard let serviceKey = await credentialValue(provider: provider, fieldID: "serviceKey") else {
-                return .failed(MyTeamToolFailure(
-                    title: "날씨 조회를 완료하지 못했습니다",
-                    message: "기본 조회 서버가 응답하지 않습니다. 잠시 후 다시 시도하거나 개인 기상청 Service Key를 연결하세요.",
-                    recoveryActions: [
-                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
-                        MyTeamNextAction(id: "openConnection", title: "개인 키 연결", role: .normal)
-                    ]
-                ))
-            }
-            do {
-                let observations = try await KMAWeatherDirectConnector.ultraShortNowcast(
-                    serviceKey: serviceKey,
-                    nx: nx,
-                    ny: ny
-                )
-                return WeatherResultFormatter.resultState(
-                    regionName: region.name,
-                    nx: nx,
-                    ny: ny,
-                    observations: observations,
-                    sourceLabel: "기상청 초단기실황 · 개인 키",
-                    modeNotice: "기본 조회 서버가 응답하지 않아 개인 기상청 Service Key로 조회했습니다. 위치 좌표 기준의 공식 기상 데이터입니다."
-                )
-            } catch {
-                return .failed(MyTeamToolFailure(
-                    title: "날씨 조회를 완료하지 못했습니다",
-                    message: "기본 조회 서버와 개인 기상청 Service Key 조회가 모두 실패했습니다. 잠시 후 다시 시도하거나 개인 키 권한을 확인하세요.",
-                    recoveryActions: [
-                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
-                        MyTeamNextAction(id: "openConnection", title: "개인 키 확인", role: .normal)
-                    ]
-                ))
-            }
-        }
-    }
 
     fileprivate func runFinance(path: String, label: String, input: MyTeamToolInput) async -> ToolExecutionState {
         guard let query = requiredQuery(input.query) else {
@@ -1060,70 +879,6 @@ actor ToolExecutionRouter {
         ))
     }
 
-    fileprivate func runKoreanLaw(input: MyTeamToolInput) async -> ToolExecutionState {
-        let provider = ExternalProvider.koreanLaw
-        guard let query = requiredQuery(input.query) else {
-            return .failed(MyTeamToolFailure(
-                title: "법령 검색어가 필요합니다",
-                message: "확인할 법령명, 조문, 또는 쟁점 키워드를 입력해 주세요. 예: 근로기준법 연차, 주52시간.",
-                recoveryActions: [
-                    MyTeamNextAction(id: "changeKeyword", title: "검색어 입력", role: .normal)
-                ]
-            ))
-        }
-
-        do {
-            let response = try await MyTeamBasicLookupProxyClient.shared.searchKoreanLaw(
-                query: query,
-                display: input.displayCount ?? 10
-            )
-            return LawResultFormatter.resultState(
-                query: query,
-                results: response.directResults,
-                sourceLabel: "MyTeam 기본 법령 조회",
-                modeNotice: response.notice ?? "법령 검색 결과입니다. 법률 자문이 아니며, 최종 판단은 공식 법령 원문을 확인해야 합니다."
-            )
-        } catch MyTeamProxyError.noResults {
-            return LawResultFormatter.resultState(
-                query: query,
-                results: [],
-                sourceLabel: "MyTeam 기본 법령 조회",
-                modeNotice: "법령 검색 결과입니다. 법률 자문이 아니며, 최종 판단은 공식 법령 원문을 확인해야 합니다."
-            )
-        } catch {
-            guard let lawOC = await credentialValue(provider: provider, fieldID: "lawOC") else {
-                return .failed(MyTeamToolFailure(
-                    title: "법령 검색을 완료하지 못했습니다",
-                    message: "기본 조회 서버가 응답하지 않습니다. 잠시 후 다시 시도하거나 개인 국가법령정보센터 OC를 연결하세요.",
-                    recoveryActions: [
-                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
-                        MyTeamNextAction(id: "openConnection", title: "개인 키 연결", role: .normal)
-                    ]
-                ))
-            }
-            do {
-                let results = try await KoreanLawDirectConnector.search(
-                    KoreanLawSearchRequest(query: query, lawName: nil, article: nil),
-                    lawOC: lawOC
-                )
-                return LawResultFormatter.resultState(
-                    query: query,
-                    results: results,
-                    sourceLabel: "국가법령정보센터 · 개인 키 · partial",
-                    modeNotice: "기본 조회 서버가 응답하지 않아 개인 국가법령정보센터 OC로 조회했습니다. 법률 자문이 아니며, 최종 판단은 공식 법령 원문을 확인해야 합니다."
-                )
-            } catch {
-                return .failed(MyTeamToolFailure(
-                    title: "법령 검색을 완료하지 못했습니다",
-                    message: "기본 조회 서버와 개인 국가법령정보센터 OC 조회가 모두 실패했습니다. 잠시 후 다시 시도하거나 개인 키 권한을 확인하세요.",
-                    recoveryActions: [
-                        MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
-                        MyTeamNextAction(id: "openConnection", title: "개인 키 확인", role: .normal)
-                    ]
-                ))
-            }
-        }
-    }
 
     private func credentialValue(provider: ExternalProvider, fieldID: String) async -> String? {
         await MainActor.run {

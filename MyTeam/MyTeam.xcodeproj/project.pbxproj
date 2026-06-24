@@ -7888,6 +7888,9 @@
 				<string>TLF004REGISTRYFILE</string>
 				<string>DARTRESOLVERFILE0000001</string>
 				<string>TLF005ROUTERFILE</string>
+				<string>TLF023NEWSRUNNERFILE</string>
+				<string>TLF024LAWRUNNERFILE</string>
+				<string>TLF025WEATHERRUNNERFILE</string>
 				<string>TLF006ACTIONCARDFILE</string>
 					<string>TLF007RESULTCARDFILE</string>
 						<string>TLF008HOMEDASHFILE</string>
@@ -9454,6 +9457,9 @@
 				<string>TLB004REGISTRYBLD</string>
 				<string>DARTRESOLVERBLD00000001</string>
 				<string>TLB005ROUTERBLD</string>
+				<string>TLB023NEWSRUNNERBLD</string>
+				<string>TLB024LAWRUNNERBLD</string>
+				<string>TLB025WEATHERRUNNERBLD</string>
 				<string>TLB006ACTIONCARDBLD</string>
 				<string>TLB007RESULTCARDBLD</string>
 				<string>TLB008HOMEDASHBLD</string>
@@ -17532,6 +17538,51 @@
 			<key>sourceTree</key>
 			<string>SOURCE_ROOT</string>
 		</dict>
+		<key>TLF023NEWSRUNNERFILE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>NewsToolRunner.swift</string>
+			<key>path</key>
+			<string>ToolRunners/NewsToolRunner.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>TLF024LAWRUNNERFILE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>LawToolRunner.swift</string>
+			<key>path</key>
+			<string>ToolRunners/LawToolRunner.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>TLF025WEATHERRUNNERFILE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>WeatherToolRunner.swift</string>
+			<key>path</key>
+			<string>ToolRunners/WeatherToolRunner.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
 		<key>TLF006ACTIONCARDFILE</key>
 		<dict>
 			<key>fileEncoding</key>
@@ -17751,6 +17802,27 @@
 		<dict>
 			<key>fileRef</key>
 			<string>TLF005ROUTERFILE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>TLB023NEWSRUNNERBLD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>TLF023NEWSRUNNERFILE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>TLB024LAWRUNNERBLD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>TLF024LAWRUNNERFILE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>TLB025WEATHERRUNNERBLD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>TLF025WEATHERRUNNERFILE</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
