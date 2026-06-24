@@ -399,6 +399,52 @@ enum FinanceResultFormatter {
         ))
     }
 
+    nonisolated static func noResultsState(
+        label: String,
+        query: String,
+        sourceLabel: String
+    ) -> ToolExecutionState {
+        .succeeded(MyTeamToolResult(
+            title: "\(label) 결과가 없습니다",
+            summary: "'\(query)' 기준 공공데이터 조회 결과를 찾지 못했습니다.",
+            sourceLabel: sourceLabel,
+            body: "공공데이터포털 기준일 데이터입니다. 실시간 시세나 투자 조언이 아닙니다.",
+            items: [],
+            nextActions: [
+                MyTeamNextAction(id: "changeKeyword", title: "검색어 바꾸기", role: .normal),
+                MyTeamNextAction(id: "searchAgain", title: "다시 조회", role: .normal)
+            ]
+        ))
+    }
+
+    nonisolated static func companyNoSummaryState(
+        company: String,
+        crno: String,
+        businessYear: String,
+        sourceLabel: String,
+        notice: String
+    ) -> ToolExecutionState {
+        .succeeded(MyTeamToolResult(
+            title: "기업 재무 요약 결과가 없습니다",
+            summary: "\(company) 법인등록번호 \(crno), 사업연도 \(businessYear) 기준 요약재무제표 결과를 찾지 못했습니다.",
+            sourceLabel: sourceLabel,
+            body: """
+            # 기업 재무 요약
+
+            - 회사: \(company)
+            - 법인등록번호: \(crno)
+            - 사업연도: \(businessYear)
+            - 조회 단계: \(notice)
+            - 해석: 공공데이터포털 기업 재무정보 기준 결과가 비어 있습니다. 다른 사업연도를 입력해 보세요.
+            """,
+            items: [],
+            nextActions: [
+                MyTeamNextAction(id: "changeKeyword", title: "사업연도 바꾸기", role: .normal),
+                MyTeamNextAction(id: "searchAgain", title: "다시 조회", role: .normal)
+            ]
+        ))
+    }
+
     private enum FinanceDisplayKind {
         case krxItems
         case stockPrices

@@ -7891,6 +7891,9 @@
 				<string>TLF023NEWSRUNNERFILE</string>
 				<string>TLF024LAWRUNNERFILE</string>
 				<string>TLF025WEATHERRUNNERFILE</string>
+				<string>TLF026FINANCERUNNERFILE</string>
+				<string>TLF027DARTRUNNERFILE</string>
+				<string>TLF028RUNNERSUPPORTFILE</string>
 				<string>TLF006ACTIONCARDFILE</string>
 					<string>TLF007RESULTCARDFILE</string>
 						<string>TLF008HOMEDASHFILE</string>
@@ -9460,6 +9463,9 @@
 				<string>TLB023NEWSRUNNERBLD</string>
 				<string>TLB024LAWRUNNERBLD</string>
 				<string>TLB025WEATHERRUNNERBLD</string>
+				<string>TLB026FINANCERUNNERBLD</string>
+				<string>TLB027DARTRUNNERBLD</string>
+				<string>TLB028RUNNERSUPPORTBLD</string>
 				<string>TLB006ACTIONCARDBLD</string>
 				<string>TLB007RESULTCARDBLD</string>
 				<string>TLB008HOMEDASHBLD</string>
@@ -17583,6 +17589,51 @@
 			<key>sourceTree</key>
 			<string>SOURCE_ROOT</string>
 		</dict>
+		<key>TLF026FINANCERUNNERFILE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>FinanceToolRunner.swift</string>
+			<key>path</key>
+			<string>ToolRunners/FinanceToolRunner.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>TLF027DARTRUNNERFILE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>DARTToolRunner.swift</string>
+			<key>path</key>
+			<string>ToolRunners/DARTToolRunner.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>TLF028RUNNERSUPPORTFILE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>PublicLookupRunnerSupport.swift</string>
+			<key>path</key>
+			<string>ToolRunners/PublicLookupRunnerSupport.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
 		<key>TLF006ACTIONCARDFILE</key>
 		<dict>
 			<key>fileEncoding</key>
@@ -17823,6 +17874,27 @@
 		<dict>
 			<key>fileRef</key>
 			<string>TLF025WEATHERRUNNERFILE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>TLB026FINANCERUNNERBLD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>TLF026FINANCERUNNERFILE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>TLB027DARTRUNNERBLD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>TLF027DARTRUNNERFILE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>TLB028RUNNERSUPPORTBLD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>TLF028RUNNERSUPPORTFILE</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
