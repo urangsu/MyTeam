@@ -1449,7 +1449,7 @@ struct TeamStatusView: View {
         case .planned:
             message = """
             이 파일 형식은 아직 준비 중입니다.
-            먼저 txt, md, csv 파일을 지원합니다.
+            현재는 TXT, MD, CSV, PDF, XLSX, DOCX, PPTX, HWP, HWPX의 텍스트 추출 중심 처리를 지원합니다.
             """
         case .blocked:
             message = result.userMessage

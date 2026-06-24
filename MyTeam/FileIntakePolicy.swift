@@ -37,7 +37,7 @@ enum FileIntakePolicy {
         }
 
         if readableExtensions.contains(ext) {
-            return .init(status: .allowed, message: "이 파일을 읽을 수 있습니다. 바로 문서 작업을 진행할 수 있습니다.")
+            return .init(status: .allowed, message: "이 파일은 텍스트 추출과 요약 카드 생성까지 지원합니다. 표 파싱·근거 위치 추적은 파일 형식에 따라 제한될 수 있습니다.")
         }
 
         if plannedExtensions.contains(ext) {
@@ -55,7 +55,7 @@ enum FileIntakePolicy {
         case "pptx":
             return "PowerPoint 읽기는 준비 중입니다. 지금은 슬라이드 내용을 텍스트로 붙여 넣어 요약할 수 있습니다."
         default:
-            return "이 파일 형식은 준비 중입니다. 현재는 텍스트/마크다운/CSV/PDF/XLSX/DOCX/PPTX를 지원합니다."
+            return "이 파일 형식은 준비 중입니다. 현재는 TXT, MD, CSV, PDF, XLSX, DOCX, PPTX, HWP, HWPX의 텍스트 추출 중심 처리를 지원합니다."
         }
     }
 }

@@ -585,14 +585,9 @@ struct SettingsView: View {
     private var charactersTab: some View {
         ScrollView {
             VStack(spacing: 16) {
-                // 스토어 스켈레톤 (기존 캐릭터 역할/말투 수정 없음)
-                CharacterStoreSkeletonView()
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-
-                // 기존 갤러리
                 CharacterGalleryView()
             }
+            .padding(.top, 12)
         }
     }
 
