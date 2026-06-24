@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "project": "MyTeam",
   "purpose": "Long-term productization backlog. task.md is only for short-running daily work.",
-  "last_updated": "2026-06-01",
+  "last_updated": "2026-06-24",
   "rules": {
     "task_md_is_short_term_only": true,
     "do_not_modify_character_personas": true,
@@ -1094,6 +1094,81 @@
       "notes": [
         "Google Sheets and Google Calendar runner splits remain explicit architecture warnings for later passes.",
         "Finance remains 기준일 공공데이터; live quote wording and investment advice are still forbidden."
+      ]
+    },
+    {
+      "id": "P0-011-product-value-pruning",
+      "priority": "P0",
+      "status": "done",
+      "category": "product",
+      "title": "Prune low-value user-facing surfaces",
+      "why": "Home and tool surfaces must not make partial, low-value, or under-validated features look like primary product capabilities. Spreadsheet/Excel-like features remain hidden until they support real product workflows and live QA.",
+      "scope": {
+        "include": [
+          "HomeDashboardView primary tool surface",
+          "Spreadsheet and Google Sheets user-facing exposure",
+          "ToolActionCard default query behavior",
+          "Product completeness audit rules",
+          "Product completeness inventory recommended surface labels"
+        ],
+        "exclude": [
+          "Supertonic3 and BubbleSpeech runtime",
+          "Google OAuth scope policy",
+          "New public lookup APIs",
+          "Actual Excel file editing implementation"
+        ]
+      },
+      "acceptance_criteria": [
+        "Excel/spreadsheet-related tools are not user-facing primary product cards",
+        "Google Sheets read is hidden until live QA and product-quality UX are complete",
+        "Home quick actions only show high-value, defensible surfaces",
+        "Tool cards do not execute silent default lookup values when input is missing",
+        "Product audit fails if hidden/low-value spreadsheet tools reappear as user-facing or primary Home tools"
+      ],
+      "failure_conditions": [
+        "Spreadsheet or Google Sheets tools appear as primary executable product cards",
+        "Silent default queries such as Seoul, economy news, Labor Standards Act, Samsung 2024 execute from empty input",
+        "Unverified finance/company/weather/DART/calendar tools appear as primary Home shortcuts",
+        "Product inventory lacks recommended user-facing surface classification"
+      ],
+      "verification": {
+        "commands": [
+          "git diff --check",
+          "python3 scripts/audit_product_completeness.py",
+          "python3 scripts/validate_natural_work_routing.py",
+          "python3 scripts/validate_architecture_boundaries.py",
+          "node --check workers/basic-lookup-api/worker.js",
+          "python3 scripts/validate_myteam_release.py",
+          "python3 scripts/validate_release_checklist.py",
+          "python3 scripts/validate_skill_packages.py",
+          "python3 scripts/precommit_safety_check.py",
+          "python3 scripts/report_character_dialogues.py --check-only",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' build",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Release -destination 'platform=OS X,arch=arm64' build"
+        ],
+        "manual_checks": [
+          "Home shows pruned, high-value work surfaces only",
+          "Spreadsheet/Google Sheets tools are not visible as ordinary executable product cards",
+          "Empty tool inputs do not silently run hard-coded default lookups"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": "0d6f074, cb98f78",
+        "files_changed": [
+          "MyTeam/HomeDashboardView.swift",
+          "MyTeam/MyTeamToolRegistry.swift",
+          "MyTeam/ToolActionCardView.swift",
+          "docs/qa/ProductCompletenessInventory.md",
+          "scripts/audit_product_completeness.py"
+        ],
+        "validation_summary": "2026-06-24: Commits 0d6f074 and cb98f78 pruned low-value Home quick actions, hid spreadsheet.postprocess and spreadsheet.googleSheets.read from user-facing registry exposure, removed silent default query execution from tool cards, added recommended surface labels to ProductCompletenessInventory, and extended audit_product_completeness.py to fail spreadsheet/Google Sheets re-exposure and silent default seeds. git diff --check, product completeness audit, natural work routing validation, architecture boundary validation, release validators, skill validators, precommit safety check, character dialogue check, and Debug/Release xcodebuild passed. Architecture validator still reports existing runner-split warnings for Google Calendar/Google Sheets.",
+        "screenshots": []
+      },
+      "notes": [
+        "Excel/spreadsheet functionality is hidden rather than deleted so it can return after real file/Sheets workflow QA.",
+        "Google Sheets OAuth/scope policy was not changed.",
+        "Manual UI walkthrough remains useful before release, but static audit/build gates now prevent the main fake-ready regressions in this area."
       ]
     }
   ]
