@@ -870,6 +870,79 @@
         "screenshots": []
       },
       "notes": []
+    },
+    {
+      "id": "P0-008-product-completeness-truth-audit",
+      "priority": "P0",
+      "status": "done",
+      "category": "product-truth",
+      "title": "Product completeness truth audit and P0 cleanup",
+      "why": "기능처럼 보이지만 실제 제품 역할을 못하는 표면이 쌓이면 fake success, fake readiness, 엉뚱한 기본값 조회로 사용자 신뢰가 깨진다.",
+      "scope": {
+        "include": [
+          "제품 완성도 inventory",
+          "외부 조회 silent default fallback 제거",
+          "개인 채팅 legacy fast-path 공통 runner 사용",
+          "파일 지원 문구 정합성",
+          "캐릭터 스토어 skeleton 설정 표면 제거",
+          "제품성 감사 validator"
+        ],
+        "exclude": [
+          "Supertonic3/BubbleSpeech 런타임 변경",
+          "Cloudflare live route 구현 변경",
+          "Google OAuth live QA",
+          "실제 Excel 파일 편집 구현"
+        ]
+      },
+      "acceptance_criteria": [
+        "뉴스/날씨/법령/공시/재무 조회가 빈 입력을 특정 기본값으로 실행하지 않음",
+        "AgentChatView가 MyTeamToolFastPathRouter.matchMany를 직접 실행하지 않음",
+        "파일 지원 문구가 텍스트 추출 중심 처리로 표시됨",
+        "CharacterStoreSkeletonView가 SettingsView에 노출되지 않음",
+        "audit_product_completeness.py가 release validator에 포함됨"
+      ],
+      "failure_conditions": [
+        "외부 조회 빈 입력이 경제/서울/근로기준법/삼성전자/포스코로 둔갑",
+        "개인 채팅과 팀 워크룸 fallback 실행 경로가 다시 분리",
+        "StoreKit 없는 캐릭터 스토어 skeleton이 제품 기능처럼 노출",
+        "파일 intake가 표 파싱/근거 링크를 보장하는 것처럼 안내"
+      ],
+      "verification": {
+        "commands": [
+          "git diff --check",
+          "python3 scripts/validate_architecture_boundaries.py",
+          "python3 scripts/validate_natural_work_routing.py",
+          "python3 scripts/audit_product_completeness.py",
+          "python3 scripts/validate_myteam_release.py",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' build",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Release -destination 'platform=OS X,arch=arm64' build"
+        ],
+        "manual_checks": [
+          "Live API valid-key QA remains tracked by connector-specific tasks"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": "d6fe1b3,9385bc9,964c9ba,33c7f7f",
+        "files_changed": [
+          "MyTeam/AgentChatView.swift",
+          "MyTeam/MyTeamToolFastPathRouter.swift",
+          "MyTeam/NaturalWorkRouting.swift",
+          "MyTeam/ToolExecutionRouter.swift",
+          "MyTeam/FileIntakePolicy.swift",
+          "MyTeam/TeamStatusView.swift",
+          "MyTeam/SettingsView.swift",
+          "docs/qa/ProductCompletenessInventory.md",
+          "scripts/audit_product_completeness.py",
+          "scripts/validate_myteam_release.py",
+          "scripts/validate_natural_work_routing.py"
+        ],
+        "validation_summary": "2026-06-24: Debug and Release builds passed. Product completeness audit added to release validator. External lookup silent fallback defaults removed from natural routing, fast-path, and tool execution paths.",
+        "screenshots": []
+      },
+      "notes": [
+        "ToolExecutionRouter provider-specific runner split remains a structural warning, not closed by this P0 cleanup."
+      ]
     }
   ]
 }
