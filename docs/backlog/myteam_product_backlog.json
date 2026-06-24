@@ -943,6 +943,79 @@
       "notes": [
         "ToolExecutionRouter provider-specific runner split remains a structural warning, not closed by this P0 cleanup."
       ]
+    },
+    {
+      "id": "P0-009-tool-runner-boundary-split",
+      "priority": "P0",
+      "status": "done",
+      "category": "architecture",
+      "title": "Split lookup provider runners from ToolExecutionRouter",
+      "why": "ToolExecutionRouter had accumulated dispatch, timeout, provider execution, fallback, and result formatting responsibilities. Keeping provider bodies in the router makes natural work routing harder to extend and reintroduces duplicate product-state decisions.",
+      "scope": {
+        "include": [
+          "News lookup runner split",
+          "KMA weather lookup runner split",
+          "Korean law lookup runner split",
+          "Xcode target membership for new runner files",
+          "Architecture validator guard for runner boundaries"
+        ],
+        "exclude": [
+          "DART runner split",
+          "Finance runner split",
+          "Google Calendar runner split",
+          "Google Sheets runner split",
+          "Runtime behavior or UI changes"
+        ]
+      },
+      "acceptance_criteria": [
+        "ToolExecutionRouter dispatches news.search through NewsToolRunner",
+        "ToolExecutionRouter dispatches weather.current through WeatherToolRunner",
+        "ToolExecutionRouter dispatches law.search through LawToolRunner",
+        "ToolExecutionRouter no longer defines runNaverNews, runKMAWeather, or runKoreanLaw",
+        "Architecture validator fails if those runner bodies return to ToolExecutionRouter"
+      ],
+      "failure_conditions": [
+        "News, weather, or law provider execution body remains in ToolExecutionRouter",
+        "Runner files are not included in the Xcode project",
+        "Missing query silently defaults to economy, Seoul, or Labor Standards Act",
+        "KMA invalid credential messaging is replaced with a generic success or empty result"
+      ],
+      "verification": {
+        "commands": [
+          "git diff --check",
+          "node --check workers/basic-lookup-api/worker.js",
+          "python3 scripts/validate_architecture_boundaries.py",
+          "python3 scripts/validate_natural_work_routing.py",
+          "python3 scripts/audit_product_completeness.py",
+          "python3 scripts/validate_myteam_release.py",
+          "python3 scripts/validate_release_checklist.py",
+          "python3 scripts/validate_skill_packages.py",
+          "python3 scripts/precommit_safety_check.py",
+          "python3 scripts/report_character_dialogues.py --check-only",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' build",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Release -destination 'platform=OS X,arch=arm64' build"
+        ],
+        "manual_checks": [
+          "Manual live lookup QA remains tracked separately by provider-specific tasks"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": "a8ff48f,00f5e46",
+        "files_changed": [
+          "MyTeam/ToolExecutionRouter.swift",
+          "MyTeam/ToolRunners/NewsToolRunner.swift",
+          "MyTeam/ToolRunners/LawToolRunner.swift",
+          "MyTeam/ToolRunners/WeatherToolRunner.swift",
+          "MyTeam/MyTeam.xcodeproj/project.pbxproj",
+          "scripts/validate_architecture_boundaries.py"
+        ],
+        "validation_summary": "2026-06-24: Architecture, natural work routing, product completeness, release checklist, skill package, precommit, and character dialogue validators passed. Debug and Release builds passed after runner split. Architecture validator now fails if news/weather/law runner bodies return to ToolExecutionRouter.",
+        "screenshots": []
+      },
+      "notes": [
+        "Finance, DART, Google Sheets, and Google Calendar runner splits remain as explicit architecture warnings for later P0/P1 passes."
+      ]
     }
   ]
 }
