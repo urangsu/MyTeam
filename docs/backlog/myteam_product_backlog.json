@@ -278,7 +278,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": null,
+        "commit_sha": "43e4d46, 20a5a51",
         "files_changed": [],
         "validation_summary": "2026-06-05: rg \"UserDefaults.*apiKey|UserDefaults.*token|apiKey.*UserDefaults|token.*UserDefaults|estimated.*cost|usage.*limit|무료.*호출|잔여.*량\" MyTeam --glob \"*.swift\" returned no matches. Partial because Settings/Connection Center manual UI review for cost/usage wording remains.",
         "screenshots": []
@@ -1264,6 +1264,94 @@
         "This is a code/static/build stabilization gate, not a manual release sign-off.",
         "Google Calendar and Sheets behavior remains read-only and scope policy was not changed.",
         "ProductSurfacePolicy hides or lowers non-primary surfaces rather than deleting feature code."
+      ]
+    },
+    {
+      "id": "P0-013-main-product-stabilization-qa-gate",
+      "priority": "P0",
+      "status": "partial",
+      "category": "release-readiness",
+      "title": "Add manual QA evidence gate for main product stabilization",
+      "why": "The stabilization branch had static validators and builds, but main merge readiness still required explicit manual QA evidence for app termination, natural work routing, artifact reopen, Home surface, and live provider behavior. Missing evidence must block merge instead of being implied as complete.",
+      "scope": {
+        "include": [
+          "Manual QA documents for app termination, natural work E2E, artifact reopen, Home surface, and live providers",
+          "Main product stabilization merge gate document",
+          "Release QA evidence validator with non-strict and strict modes",
+          "Non-strict QA evidence check in validate_myteam_release.py"
+        ],
+        "exclude": [
+          "New runtime features",
+          "New API routes",
+          "Live provider execution",
+          "Manual UI QA completion",
+          "Release tag approval"
+        ]
+      },
+      "acceptance_criteria": [
+        "Required QA documents exist",
+        "Required case IDs are present",
+        "Every case records PASS, FAIL, or BLOCKED",
+        "BLOCKED/FAIL cases include reason or next action",
+        "Non-strict release QA evidence validation passes while manual QA remains incomplete",
+        "Strict release QA evidence validation fails until manual main-merge QA cases pass",
+        "Release tag is explicitly blocked"
+      ],
+      "failure_conditions": [
+        "QA documents imply main merge is possible while manual QA is incomplete",
+        "QA documents imply release tag is possible",
+        "Required manual QA case IDs are missing",
+        "BLOCKED cases omit reason or next action",
+        "validate_myteam_release.py is blocked by expected manual QA incompletion in normal non-strict mode"
+      ],
+      "verification": {
+        "commands": [
+          "python3 scripts/validate_release_qa_evidence.py",
+          "python3 scripts/validate_release_qa_evidence.py --strict",
+          "git diff --check",
+          "node --check workers/basic-lookup-api/worker.js",
+          "python3 scripts/validate_app_termination_architecture.py",
+          "python3 scripts/smoke_natural_work_e2e.py",
+          "python3 scripts/audit_product_completeness.py",
+          "python3 scripts/validate_architecture_boundaries.py",
+          "python3 scripts/validate_natural_work_routing.py",
+          "python3 scripts/validate_myteam_release.py",
+          "python3 scripts/validate_release_checklist.py",
+          "python3 scripts/validate_skill_packages.py",
+          "python3 scripts/precommit_safety_check.py",
+          "python3 scripts/report_character_dialogues.py --check-only",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' build",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Release -destination 'platform=OS X,arch=arm64' build"
+        ],
+        "manual_checks": [
+          "APPTERM-001 through APPTERM-006 remain BLOCKED until interactive QA",
+          "NW-001 through NW-013 remain BLOCKED until interactive QA",
+          "ART-001 through ART-004 remain BLOCKED until artifact runtime QA",
+          "HOME-001 through HOME-006 remain BLOCKED until UI walkthrough",
+          "Live provider cases remain BLOCKED until provider/OAuth/Worker checks"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": null,
+        "files_changed": [
+          "docs/qa/MainProductStabilizationMergeGate.md",
+          "docs/qa/AppTerminationManualQA.md",
+          "docs/qa/NaturalWorkE2EManualQA.md",
+          "docs/qa/ArtifactReopenManualQA.md",
+          "docs/qa/HomeSurfaceManualQA.md",
+          "docs/qa/LiveProviderQAMatrix.md",
+          "scripts/validate_release_qa_evidence.py",
+          "scripts/validate_myteam_release.py",
+          "docs/backlog/myteam_product_backlog.json"
+        ],
+        "validation_summary": "2026-06-25: Non-strict release QA evidence validator passed, strict validator failed as intended because manual app termination, natural work, artifact, and Home QA cases remain BLOCKED. Static validators, release validator, precommit safety check, character dialogue check, Debug build, and Release build passed. Main merge and release tag remain blocked pending manual QA evidence.",
+        "screenshots": []
+      },
+      "notes": [
+        "This task intentionally does not mark manual runtime QA as complete.",
+        "Strict mode is the main-merge evidence gate; normal validate_myteam_release.py remains non-strict to keep development validation usable.",
+        "Release tag remains forbidden."
       ]
     }
   ]
