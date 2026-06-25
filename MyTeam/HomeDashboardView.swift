@@ -14,25 +14,15 @@ struct HomeDashboardView: View {
     @State private var pendingApproval: ToolApprovalRequest? = nil
     @StateObject private var executionLogStore = ToolExecutionLogStore.shared
 
-    private let quickToolIDs = [
-        "document.meetingMinutes",
-        "finance.krx.stockPrice",
-        "finance.krx.index",
-        "news.search",
-        "law.search"
-    ]
-
     private var quickTools: [MyTeamToolDescriptor] {
-        quickToolIDs.compactMap(MyTeamToolRegistry.descriptor)
+        MyTeamToolRegistry.userFacingTools.filter {
+            ProductSurfacePolicy.shouldShowInHomePrimary($0)
+        }
     }
 
     private var connectionTools: [MyTeamToolDescriptor] {
         MyTeamToolRegistry.userFacingTools.filter {
-            guard $0.category != .spreadsheet else { return false }
-            if case .needsConnection = state(for: $0) { return true }
-            if case .needsAssistantConnection = state(for: $0) { return true }
-            if case .needsValidation = state(for: $0) { return true }
-            return false
+            ProductSurfacePolicy.shouldShowInConnectionSection($0, state: state(for: $0))
         }
     }
 
@@ -171,15 +161,6 @@ struct HomeDashboardView: View {
             get: { toolQueries[descriptor.id] ?? "" },
             set: { toolQueries[descriptor.id] = $0 }
         )
-    }
-
-    private func defaultQuery(for descriptor: MyTeamToolDescriptor) -> String {
-        switch descriptor.id {
-        case "briefing.today":
-            return "오늘 로컬 업무 브리핑"
-        default:
-            return ""
-        }
     }
 
     private func run(_ descriptor: MyTeamToolDescriptor, query: String) {

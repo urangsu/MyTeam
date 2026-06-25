@@ -27,6 +27,7 @@ def main() -> None:
     tool_router = read("MyTeam/ToolExecutionRouter.swift")
     settings = read("MyTeam/SettingsView.swift")
     home = read("MyTeam/HomeDashboardView.swift")
+    surface_policy = read("MyTeam/ProductSurfacePolicy.swift")
     registry = read("MyTeam/MyTeamToolRegistry.swift")
     tool_card = read("MyTeam/ToolActionCardView.swift")
     file_policy = read("MyTeam/FileIntakePolicy.swift")
@@ -73,6 +74,7 @@ def main() -> None:
         "developerOnly",
         "blocked",
         "Recommended surface",
+        "Code policy",
         "primary",
         "secondary",
         "naturalOnly",
@@ -99,23 +101,48 @@ def main() -> None:
     if "CharacterStoreSkeletonView.swift" in inventory and "plannedHidden" not in inventory:
         failures.append("Character store skeleton must be tracked as plannedHidden")
 
-    quick_match = re.search(r"private\s+let\s+quickToolIDs\s*=\s*\[(.*?)\]", home, re.S)
-    if not quick_match:
-        failures.append("HomeDashboardView must define an auditable quickToolIDs list")
-    else:
-        quick_body = quick_match.group(1)
-        forbidden_primary_tools = {
-            "spreadsheet.postprocess": "spreadsheet review is hidden until it produces stronger artifacts",
-            "spreadsheet.googleSheets.read": "Google Sheets read is hidden from primary surface until live QA is complete",
-            "finance.company.statement": "company finance requires company/year context and belongs inside natural work",
-            "weather.current": "weather requires explicit region and validated KMA readiness",
-            "dart.disclosures.search": "DART requires BYOK and belongs inside company/disclosure natural work",
-            "calendar.events.today": "Calendar read belongs behind natural intent/connection state",
-            "voice.bubbleSpeech.preview": "voice lab is not a primary work dashboard action",
-        }
-        for tool_id, reason in forbidden_primary_tools.items():
-            if f'"{tool_id}"' in quick_body:
-                failures.append(f"HomeDashboardView primary quickToolIDs must not include {tool_id}: {reason}")
+    if "private let quickToolIDs" in home:
+        failures.append("HomeDashboardView must use ProductSurfacePolicy instead of a direct quickToolIDs array")
+    if "ProductSurfacePolicy.shouldShowInHomePrimary" not in home:
+        failures.append("HomeDashboardView primary surface must be driven by ProductSurfacePolicy")
+    if "ProductSurfacePolicy.shouldShowInConnectionSection" not in home:
+        failures.append("HomeDashboardView connection surface must be driven by ProductSurfacePolicy")
+
+    for required in [
+        "enum ProductSurfaceTier",
+        "case primary",
+        "case secondary",
+        "case naturalOnly",
+        "case connectionOnly",
+        "case developerOnly",
+        "case hidden",
+        "static func tier(for descriptor: MyTeamToolDescriptor)",
+        "static func shouldShowInHomePrimary",
+        "static func shouldShowInHomeSecondary",
+        "static func shouldShowInConnectionSection",
+    ]:
+        if required not in surface_policy:
+            failures.append(f"ProductSurfacePolicy missing required product surface contract: {required}")
+
+    required_surface_mappings = {
+        '"spreadsheet.postprocess"': ".hidden",
+        '"spreadsheet.googleSheets.read"': ".hidden",
+        '"spreadsheet.merge"': ".hidden",
+        '"dart.disclosures.search"': ".naturalOnly",
+        '"weather.current"': ".naturalOnly",
+        '"calendar.events.today"': ".naturalOnly",
+        '"finance.company.statement"': ".naturalOnly",
+        '"voice.supertonic.preview"': ".developerOnly",
+        '"voice.bubbleSpeech.preview"': ".developerOnly",
+    }
+    for tool_id, expected_tier in required_surface_mappings.items():
+        index = surface_policy.find(tool_id)
+        if index == -1:
+            failures.append(f"ProductSurfacePolicy missing tier mapping for {tool_id}")
+            continue
+        window = surface_policy[index:index + 240]
+        if expected_tier not in window:
+            failures.append(f"ProductSurfacePolicy must map {tool_id} to {expected_tier}")
 
     for tool_id in ["spreadsheet.postprocess", "spreadsheet.googleSheets.read"]:
         descriptor_match = re.search(
