@@ -15,6 +15,8 @@ CHECKS = [
     ["python3", "scripts/validate_supertonic3_bundle.py", "--profile", "appstore"],
     ["python3", "scripts/report_character_dialogues.py", "--check-only"],
     ["python3", "scripts/audit_product_completeness.py"],
+    ["python3", "scripts/validate_app_termination_architecture.py"],
+    ["python3", "scripts/smoke_natural_work_e2e.py"],
 ]
 
 
