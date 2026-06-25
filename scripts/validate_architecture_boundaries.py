@@ -56,6 +56,9 @@ def main() -> None:
     finance_runner = read("MyTeam/ToolRunners/FinanceToolRunner.swift")
     dart_runner = read("MyTeam/ToolRunners/DARTToolRunner.swift")
     lookup_support = read("MyTeam/ToolRunners/PublicLookupRunnerSupport.swift")
+    google_support = read("MyTeam/ToolRunners/GoogleRunnerSupport.swift")
+    google_calendar_runner = read("MyTeam/ToolRunners/GoogleCalendarToolRunner.swift")
+    google_sheets_runner = read("MyTeam/ToolRunners/GoogleSheetsToolRunner.swift")
     tool_formatters = read("MyTeam/ToolResultFormatters.swift")
     tool_log_view = read("MyTeam/ToolExecutionLogView.swift")
     work_artifact_detail = read("MyTeam/WorkArtifactDetailView.swift")
@@ -142,6 +145,9 @@ def main() -> None:
         "FinanceToolRunner.swift",
         "DARTToolRunner.swift",
         "PublicLookupRunnerSupport.swift",
+        "GoogleRunnerSupport.swift",
+        "GoogleCalendarToolRunner.swift",
+        "GoogleSheetsToolRunner.swift",
     ]:
         if file_name not in project:
             failures.append(f"{file_name} is not included in the Xcode project")
@@ -179,6 +185,11 @@ def main() -> None:
         "dartDirectFailureState",
         "CompanyFinanceRequest",
         "FinanceFetchResult",
+        "runGoogleSheetsRead",
+        "runGoogleCalendarToday",
+        "GoogleSheetsReadRequest",
+        "googleSheetsFailureState",
+        "calendarFailureState",
     ]:
         if token in tool_router:
             failures.append(f"ToolExecutionRouter still owns provider runner body: {token}")
@@ -190,6 +201,8 @@ def main() -> None:
         "finance.krx.stockPrice": "FinanceToolRunner.runStockPrice",
         "finance.krx.index": "FinanceToolRunner.runMarketIndex",
         "finance.company.statement": "FinanceToolRunner.runCompanyStatement",
+        "calendar.events.today": "GoogleCalendarToolRunner.runToday",
+        "spreadsheet.googleSheets.read": "GoogleSheetsToolRunner.runRead",
     }
     for tool_id, runner_call in expected_runner_dispatch.items():
         if runner_call not in tool_router:
@@ -243,6 +256,25 @@ def main() -> None:
     for phrase in ["개인 OpenDART API 키", "연결 설정에서 DART 키"]:
         if phrase not in dart_runner:
             failures.append(f"DARTToolRunner missing BYOK guidance phrase: {phrase}")
+    if "enum GoogleRunnerSupport" not in google_support:
+        failures.append("GoogleRunnerSupport.swift must define enum GoogleRunnerSupport")
+    if "enum GoogleCalendarToolRunner" not in google_calendar_runner:
+        failures.append("GoogleCalendarToolRunner.swift must define enum GoogleCalendarToolRunner")
+    if "static func runToday(input: MyTeamToolInput) async -> ToolExecutionState" not in google_calendar_runner:
+        failures.append("GoogleCalendarToolRunner must expose static runToday(input:) returning ToolExecutionState")
+    if "enum GoogleSheetsToolRunner" not in google_sheets_runner:
+        failures.append("GoogleSheetsToolRunner.swift must define enum GoogleSheetsToolRunner")
+    if "static func runRead(input: MyTeamToolInput) async -> ToolExecutionState" not in google_sheets_runner:
+        failures.append("GoogleSheetsToolRunner must expose static runRead(input:) returning ToolExecutionState")
+    for phrase in [
+        "Google Sheets를 읽으려면 스프레드시트 URL 또는 ID와 범위가 필요합니다",
+        "Google Sheets 읽기 연결",
+    ]:
+        if phrase not in google_sheets_runner and phrase not in google_support:
+            failures.append(f"Google Sheets runner missing read-only guidance phrase: {phrase}")
+    for token in ["시트를 수정했습니다", "값을 입력했습니다", "서식을 변경했습니다", "자동 정리 완료", "엑셀 후처리 완료"]:
+        if token in google_sheets_runner or token in google_support:
+            failures.append(f"Google Sheets runner must not include write/success-overclaim phrase: {token}")
 
     if "userRoutes: USER_ROUTES" not in worker or "diagnosticRoutes: DIAGNOSTIC_ROUTES" not in worker:
         failures.append("Worker /health must expose userRoutes and diagnosticRoutes")
@@ -257,10 +289,6 @@ def main() -> None:
 
     if "ToolExecutionDispatcher" not in tool_router and "case \"news.search\"" in tool_router:
         warnings.append("ToolExecutionRouter still mixes runner dispatch and provider-specific execution")
-    for token in ["runGoogleSheetsRead(", "runGoogleCalendarToday("]:
-        if token in tool_router:
-            warnings.append(f"ToolExecutionRouter still owns unsplit runner body: {token}")
-
     team_status_markers = [
         "sendTeamMessage",
         "workroomSidebar",
