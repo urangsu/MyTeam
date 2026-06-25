@@ -42,7 +42,7 @@ final class AppTerminationCoordinator: ObservableObject {
 
     func requestTermination(
         source: AppTerminationSource,
-        application: NSApplication = .shared
+        application: NSApplication
     ) -> NSApplication.TerminateReply {
         if phase == .terminating || phase == .forcedExit || didReplyToShouldTerminate {
             return .terminateNow
