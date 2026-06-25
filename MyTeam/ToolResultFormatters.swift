@@ -92,6 +92,47 @@ enum SpreadsheetPlanResultFormatter {
 }
 
 enum GoogleSheetsResultFormatter {
+    nonisolated static func resultState(_ result: GoogleSheetsReadResult) -> ToolExecutionState {
+        if result.values.isEmpty {
+            return .succeeded(MyTeamToolResult(
+                title: "시트 값이 없습니다",
+                summary: "\(result.range) 범위에서 값을 찾지 못했습니다.",
+                sourceLabel: "Google Sheets 읽기",
+                body: nil,
+                items: [],
+                nextActions: [
+                    MyTeamNextAction(id: "changeKeyword", title: "범위 바꾸기", role: .normal)
+                ]
+            ))
+        }
+
+        return .succeeded(MyTeamToolResult(
+            title: "Google Sheets 값을 읽었습니다",
+            summary: "\(result.range) 범위에서 \(result.rowCount)행, \(result.columnCount)열을 가져왔습니다.",
+            sourceLabel: "Google Sheets 읽기",
+            body: tableBody(result),
+            items: [
+                MyTeamToolResultItem(
+                    id: "rows",
+                    title: "행",
+                    subtitle: "\(result.rowCount)개",
+                    metadata: "최대 20행 미리보기",
+                    sourceURL: nil
+                ),
+                MyTeamToolResultItem(
+                    id: "columns",
+                    title: "열",
+                    subtitle: "\(result.columnCount)개",
+                    metadata: result.range,
+                    sourceURL: nil
+                )
+            ],
+            nextActions: [
+                MyTeamNextAction(id: "changeKeyword", title: "다른 시트 읽기", role: .normal)
+            ]
+        ))
+    }
+
     nonisolated static func tableBody(_ result: GoogleSheetsReadResult) -> String {
         let previewRows = result.values.prefix(20)
         let lines = previewRows.map { row in
@@ -123,6 +164,45 @@ enum CalendarResultFormatter {
             return detail.isEmpty ? "- \(item.title)" : "- \(item.title) · \(detail)"
         })
         return lines.joined(separator: "\n")
+    }
+}
+
+enum GoogleCalendarResultFormatter {
+    nonisolated static func resultState(
+        items: [DailyCalendarBriefingItem],
+        statusMessage: String
+    ) -> ToolExecutionState {
+        if items.isEmpty {
+            return .succeeded(MyTeamToolResult(
+                title: "오늘 일정이 없습니다",
+                summary: statusMessage,
+                sourceLabel: "Google Calendar",
+                body: nil,
+                items: [],
+                nextActions: [
+                    MyTeamNextAction(id: "searchAgain", title: "새로고침", role: .normal)
+                ]
+            ))
+        }
+
+        return .succeeded(MyTeamToolResult(
+            title: "오늘 일정을 가져왔습니다",
+            summary: statusMessage,
+            sourceLabel: "Google Calendar",
+            body: CalendarResultFormatter.body(from: items),
+            items: items.prefix(5).map { item in
+                MyTeamToolResultItem(
+                    id: item.id.uuidString,
+                    title: item.title,
+                    subtitle: [item.timeText, item.location].compactMap { $0 }.joined(separator: " · "),
+                    metadata: "Google Calendar",
+                    sourceURL: nil
+                )
+            },
+            nextActions: [
+                MyTeamNextAction(id: "searchAgain", title: "새로고침", role: .normal)
+            ]
+        ))
     }
 }
 

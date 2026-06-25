@@ -7901,6 +7901,9 @@
 				<string>TLF026FINANCERUNNERFILE</string>
 				<string>TLF027DARTRUNNERFILE</string>
 				<string>TLF028RUNNERSUPPORTFILE</string>
+				<string>TLF029GOOGLESUPPORTFILE</string>
+				<string>TLF030GOOGLESHEETSFILE</string>
+				<string>TLF031GOOGLECALENDARFILE</string>
 				<string>TLF006ACTIONCARDFILE</string>
 					<string>TLF007RESULTCARDFILE</string>
 						<string>TLF008HOMEDASHFILE</string>
@@ -9475,6 +9478,9 @@
 				<string>TLB026FINANCERUNNERBLD</string>
 				<string>TLB027DARTRUNNERBLD</string>
 				<string>TLB028RUNNERSUPPORTBLD</string>
+				<string>TLB029GOOGLESUPPORTBLD</string>
+				<string>TLB030GOOGLESHEETSBLD</string>
+				<string>TLB031GOOGLECALENDARBLD</string>
 				<string>TLB006ACTIONCARDBLD</string>
 				<string>TLB007RESULTCARDBLD</string>
 				<string>TLB008HOMEDASHBLD</string>
@@ -17643,6 +17649,51 @@
 			<key>sourceTree</key>
 			<string>SOURCE_ROOT</string>
 		</dict>
+		<key>TLF029GOOGLESUPPORTFILE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>GoogleRunnerSupport.swift</string>
+			<key>path</key>
+			<string>ToolRunners/GoogleRunnerSupport.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>TLF030GOOGLESHEETSFILE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>GoogleSheetsToolRunner.swift</string>
+			<key>path</key>
+			<string>ToolRunners/GoogleSheetsToolRunner.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
+		<key>TLF031GOOGLECALENDARFILE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>GoogleCalendarToolRunner.swift</string>
+			<key>path</key>
+			<string>ToolRunners/GoogleCalendarToolRunner.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
 		<key>TLF006ACTIONCARDFILE</key>
 		<dict>
 			<key>fileEncoding</key>
@@ -17904,6 +17955,27 @@
 		<dict>
 			<key>fileRef</key>
 			<string>TLF028RUNNERSUPPORTFILE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>TLB029GOOGLESUPPORTBLD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>TLF029GOOGLESUPPORTFILE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>TLB030GOOGLESHEETSBLD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>TLF030GOOGLESHEETSFILE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>TLB031GOOGLECALENDARBLD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>TLF031GOOGLECALENDARFILE</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
