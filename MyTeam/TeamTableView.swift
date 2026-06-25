@@ -235,9 +235,7 @@ struct TeamTableView: View {
                             manager.addChatLog(roomID: rid, agentID: agent.id, agentName: agent.displayName, text: text, isUser: false, isSystem: true)
                         }
                         if !manager.isSilentMode { SpeechManager.shared.speak(text: text) }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                            NSApplication.shared.terminate(nil)
-                        }
+                        AppTerminationCoordinator.shared.requestMenuQuit()
                     }) {
                         Label("어플리케이션 종료", systemImage: "power")
                     }

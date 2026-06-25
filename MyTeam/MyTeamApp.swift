@@ -1,6 +1,5 @@
 import SwiftUI
 import AppKit
-import Darwin
 
 enum AppLog {
     enum Category: String {
@@ -90,10 +89,6 @@ struct MyTeamApp: App {
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     var statusItem: NSStatusItem?
-    private var isTerminationReplyPending = false
-    private var didReplyToTermination = false
-    private var terminationWatchdogTask: Task<Void, Never>?
-    private var hardQuitWatchdogTask: Task<Void, Never>?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if ProcessInfo.processInfo.environment["MYTEAM_TTS_PROBE"] == "1" {
@@ -120,66 +115,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        AgentWindowManager.shared.savePosition()
-        startHardQuitWatchdog()
-        guard !isTerminationReplyPending else { return .terminateNow }
-        if AppTerminationSpeechService.shared.playPreparedFarewell(completion: { [weak self, weak sender] in
-            self?.replyToTermination(sender)
-        }) {
-            isTerminationReplyPending = true
-            didReplyToTermination = false
-            terminationWatchdogTask?.cancel()
-            terminationWatchdogTask = Task(priority: .userInitiated) { [weak self, weak sender] in
-                try? await Task.sleep(nanoseconds: 1_800_000_000)
-                await MainActor.run {
-                    guard let self, self.isTerminationReplyPending else { return }
-                    AppLog.warning("[AppTermination] farewell completion timed out; continuing termination")
-                    self.replyToTermination(sender)
-                }
-            }
-            return .terminateLater
-        }
-        return .terminateNow
+        AppTerminationCoordinator.shared.requestTermination(source: .system, application: sender)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        terminationWatchdogTask?.cancel()
-        hardQuitWatchdogTask?.cancel()
-        // [종료 크래시 수정 #1] EXC_BAD_ACCESS in __hash__() — MLX Metal unordered_map 접근 경합
-        // [종료 크래시 수정 #2] EXC_BAD_ACCESS in objc_msgSend (*pProc)(pObj, selector, args...)
-        //   원인: AVAudioEngine 렌더 콜백이 in-flight인 상태에서 Swift 객체 해제
-        //         → AVAudioNode(ObjC) 메시지 접근 크래시
-        //   해결:
-        //     1. CoreAudio 렌더 스레드 즉시 정지 (engine.stop())
-        //     2. TTS actor 취소 후 DispatchSemaphore로 완료 확인
-        //     3. Metal command queue drain 대기
-
-        // Step 1: CoreAudio 렌더 스레드 즉시 정지
-        Task { await AudioPlaybackService.shared.stopEngineForTermination() }
-        // Task 디스패치 반영 대기 (AVAudio actor 큐 flush)
-        Thread.sleep(forTimeInterval: 0.05)
-
-        // Step 2: Metal command queue drain
-        Thread.sleep(forTimeInterval: 0.1)
-    }
-
-    private func replyToTermination(_ sender: NSApplication?) {
-        guard !didReplyToTermination else { return }
-        didReplyToTermination = true
-        isTerminationReplyPending = false
-        terminationWatchdogTask?.cancel()
-        (sender ?? NSApp).reply(toApplicationShouldTerminate: true)
-    }
-
-    private func startHardQuitWatchdog() {
-        hardQuitWatchdogTask?.cancel()
-        hardQuitWatchdogTask = Task(priority: .userInitiated) {
-            try? await Task.sleep(nanoseconds: 3_500_000_000)
-            await MainActor.run {
-                AppLog.warning("[AppTermination] hard quit watchdog fired")
-                Darwin.exit(0)
-            }
-        }
+        AppTerminationCoordinator.shared.handleApplicationWillTerminate()
     }
 
     // MARK: - 메뉴바
@@ -201,7 +141,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func showTeam() { AgentWindowManager.shared.showTeam() }
     @objc func hideTeam() { AgentWindowManager.shared.hideTeam() }
     @objc func quitApp()  {
-        startHardQuitWatchdog()
-        NSApp.terminate(nil)
+        AppTerminationCoordinator.shared.requestMenuQuit()
     }
 }

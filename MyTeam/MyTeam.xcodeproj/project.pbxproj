@@ -7242,6 +7242,13 @@
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
+		<key>APPTERMBLD000000000001</key>
+		<dict>
+			<key>fileRef</key>
+			<string>APPTERMFILE00000000001</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
 		<key>85D74579E89C73F4E55BF1E0</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -8162,6 +8169,7 @@
 				<string>F0A100000000000000000003</string>
 				<string>3E71A115B6C19F218850AE09</string>
 				<string>F05784DE6CFD4E514B23FE4D</string>
+				<string>APPTERMFILE00000000001</string>
 				<string>C167752D8CAAA71551532214</string>
 				<string>FE40DDDEB4EC29F57CBEBF2B</string>
 				<string>F4A4934564B89278F311E912</string>
@@ -9150,6 +9158,7 @@
 				<string>A11B22C33D44E55F66010017</string>
 				<string>019B94883B915DFAEBF44F77</string>
 				<string>8585EF8B55A9F7588091399C</string>
+				<string>APPTERMBLD000000000001</string>
 				<string>2AAF8EDC65A30C46DBA4E4FE</string>
 				<string>4924284FDAA78FAF8E22621F</string>
 				<string>AEA6CC25476D0A502F719158</string>
@@ -19337,6 +19346,19 @@
 			<string>sourcecode.swift</string>
 			<key>path</key>
 			<string>MyTeamApp.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>APPTERMFILE00000000001</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>path</key>
+			<string>AppTerminationCoordinator.swift</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
