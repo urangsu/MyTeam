@@ -1,0 +1,181 @@
+#!/usr/bin/env python3
+import argparse
+import re
+import sys
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+QA_DOCS: dict[str, list[str]] = {
+    "docs/qa/MainProductStabilizationMergeGate.md": [
+        "MG-STATIC-001",
+        "MG-BUILD-001",
+        "MG-BUILD-002",
+    ],
+    "docs/qa/AppTerminationManualQA.md": [
+        "APPTERM-001",
+        "APPTERM-002",
+        "APPTERM-003",
+        "APPTERM-004",
+        "APPTERM-005",
+        "APPTERM-006",
+    ],
+    "docs/qa/NaturalWorkE2EManualQA.md": [
+        "NW-001",
+        "NW-002",
+        "NW-003",
+        "NW-004",
+        "NW-005",
+        "NW-006",
+        "NW-007",
+        "NW-008",
+        "NW-009",
+        "NW-010",
+        "NW-011",
+        "NW-012",
+        "NW-013",
+    ],
+    "docs/qa/ArtifactReopenManualQA.md": [
+        "ART-001",
+        "ART-002",
+        "ART-003",
+        "ART-004",
+    ],
+    "docs/qa/HomeSurfaceManualQA.md": [
+        "HOME-001",
+        "HOME-002",
+        "HOME-003",
+        "HOME-004",
+        "HOME-005",
+        "HOME-006",
+    ],
+    "docs/qa/LiveProviderQAMatrix.md": [
+        "GOOGLE-001",
+        "GOOGLE-002",
+        "GOOGLE-003",
+        "GOOGLE-004",
+        "GOOGLE-005",
+        "GOOGLE-006",
+        "FIN-001",
+        "FIN-002",
+        "FIN-003",
+        "FIN-004",
+        "FIN-005",
+        "DART-001",
+        "DART-002",
+        "DART-003",
+        "DART-004",
+        "KMA-001",
+        "KMA-002",
+        "KMA-003",
+        "NEWS-001",
+        "NEWS-002",
+        "NEWS-003",
+        "LAW-001",
+        "LAW-002",
+        "LAW-003",
+        "WORKER-001",
+        "WORKER-002",
+    ],
+}
+
+
+STRICT_REQUIRED_PASS_PREFIXES = (
+    "MG-",
+    "APPTERM-",
+    "NW-",
+    "ART-",
+    "HOME-",
+)
+
+
+STATUS_VALUES = {"PASS", "FAIL", "BLOCKED"}
+
+
+def split_table_row(line: str) -> list[str]:
+    return [cell.strip() for cell in line.strip().strip("|").split("|")]
+
+
+def find_case_row(text: str, case_id: str) -> tuple[str, list[str]] | None:
+    for line in text.splitlines():
+        if f"| {case_id} " in line or f"|{case_id}|" in line or re.search(rf"\b{re.escape(case_id)}\b", line):
+            cells = split_table_row(line)
+            if cells and cells[0] == case_id:
+                return line, cells
+    return None
+
+
+def status_for(cells: list[str]) -> str | None:
+    for cell in cells:
+        normalized = cell.strip().upper()
+        if normalized in STATUS_VALUES:
+            return normalized
+    return None
+
+
+def has_reason_or_next_action(cells: list[str]) -> bool:
+    joined = " ".join(cells).strip()
+    return bool(re.search(r"\b(Reason|Next|Fix|Retest|재현|사유|다음|조치)\b", joined, re.I))
+
+
+def validate_doc(path: Path, case_ids: list[str], strict: bool) -> list[str]:
+    failures: list[str] = []
+    if not path.exists():
+        return [f"missing QA document: {path.relative_to(ROOT)}"]
+
+    text = path.read_text()
+    forbidden_release_tag_patterns = [
+        r"release tag\s*:\s*PASS",
+        r"release tag\s*가능",
+        r"Release tag decision:\s*PASS",
+        r"Release tag decision:\s*가능",
+    ]
+    for pattern in forbidden_release_tag_patterns:
+        if re.search(pattern, text, re.I):
+            failures.append(f"{path.relative_to(ROOT)} claims release tag is possible")
+
+    incomplete = any(status in text for status in ("BLOCKED", "FAIL"))
+    if incomplete and re.search(r"main merge\s*:\s*PASS|main merge 가능|Main merge decision:\s*PASS", text, re.I):
+        failures.append(f"{path.relative_to(ROOT)} claims main merge is possible while QA is incomplete")
+
+    for case_id in case_ids:
+        row = find_case_row(text, case_id)
+        if row is None:
+            failures.append(f"{path.relative_to(ROOT)} missing case {case_id}")
+            continue
+        _, cells = row
+        status = status_for(cells)
+        if status is None:
+            failures.append(f"{path.relative_to(ROOT)} case {case_id} has no PASS/FAIL/BLOCKED status")
+            continue
+        if status in {"FAIL", "BLOCKED"} and not has_reason_or_next_action(cells):
+            failures.append(f"{path.relative_to(ROOT)} case {case_id} is {status} without reason or next action")
+        if strict and case_id.startswith(STRICT_REQUIRED_PASS_PREFIXES) and status != "PASS":
+            failures.append(f"{path.relative_to(ROOT)} case {case_id} must be PASS in --strict mode, found {status}")
+
+    return failures
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Validate release QA evidence documents.")
+    parser.add_argument("--strict", action="store_true", help="Require main-merge manual QA cases to be PASS.")
+    args = parser.parse_args()
+
+    failures: list[str] = []
+    for relative, case_ids in QA_DOCS.items():
+        failures.extend(validate_doc(ROOT / relative, case_ids, args.strict))
+
+    if failures:
+        print("FAIL: release QA evidence validation", file=sys.stderr)
+        for failure in failures:
+            print(f"- {failure}", file=sys.stderr)
+        raise SystemExit(1)
+
+    mode = "strict" if args.strict else "non-strict"
+    print(f"PASS: release QA evidence validation ({mode})")
+
+
+if __name__ == "__main__":
+    main()
