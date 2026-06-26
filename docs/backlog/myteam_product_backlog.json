@@ -1446,6 +1446,86 @@
         "Release tag remains blocked until live provider cases are PASS or release surface is DISABLED.",
         "Supertonic3 and BubbleSpeech were intentionally not changed."
       ]
+    },
+    {
+      "id": "P0-015-latest-finance-period-inference",
+      "priority": "P0",
+      "status": "partial",
+      "category": "product-truth",
+      "title": "Infer latest available finance period without hidden fixed-year defaults",
+      "why": "Company finance requests without a business year should not force users to know the year, but the app must not silently seed a hardcoded 2024/2025 query or hide the selected reporting period.",
+      "scope": {
+        "include": [
+          "Natural work finance steps use a latestAvailable period hint when no explicit year is present",
+          "Finance runner resolves candidate business years internally",
+          "Formatter discloses 기준 기간 and automatic selection wording",
+          "Fixtures and validators guard against hidden fixed-year defaults"
+        ],
+        "exclude": [
+          "Manual live finance provider QA completion",
+          "Quarter endpoint implementation",
+          "Investment advice",
+          "Real-time finance claims"
+        ]
+      },
+      "acceptance_criteria": [
+        "삼성전자 재무상황 알려줘 creates finance.company.statement with latestAvailable",
+        "삼성전자 알려줘 includes company finance as part of company overview",
+        "삼성전자 2024 재무상황 keeps explicit 2024 and forbids latestAvailable",
+        "Successful auto-selected finance results display 기준 기간 and 자동 선택",
+        "NaturalWorkRouting does not embed currentYear or hardcoded year fallbacks"
+      ],
+      "failure_conditions": [
+        "NaturalWorkRouting inserts Calendar.current/currentYear into finance query strings",
+        "Home or ToolActionCard seeds 삼성전자 2024",
+        "Formatter omits 기준 기간 for auto-selected finance results",
+        "Formatter claims current/latest/real-time finance without source-backed period disclosure"
+      ],
+      "verification": {
+        "commands": [
+          "python3 scripts/validate_natural_work_routing.py",
+          "python3 scripts/audit_product_completeness.py",
+          "python3 scripts/validate_architecture_boundaries.py",
+          "python3 scripts/smoke_natural_work_e2e.py",
+          "python3 scripts/validate_myteam_release.py",
+          "python3 scripts/validate_tool_recovery_actions.py",
+          "python3 scripts/validate_release_qa_evidence.py",
+          "git diff --check",
+          "node --check workers/basic-lookup-api/worker.js",
+          "python3 scripts/validate_release_checklist.py",
+          "python3 scripts/validate_skill_packages.py",
+          "python3 scripts/precommit_safety_check.py",
+          "python3 scripts/report_character_dialogues.py --check-only",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' build",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Release -destination 'platform=OS X,arch=arm64' build"
+        ],
+        "manual_checks": [
+          "Live finance latest-period QA remains required before release tag",
+          "Quarter endpoint availability remains a separate provider capability check"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": "2e1db83, 09f72a4",
+        "files_changed": [
+          "MyTeam/ToolRunners/FinancePeriodResolver.swift",
+          "MyTeam/ToolRunners/FinanceToolRunner.swift",
+          "MyTeam/NaturalWorkRouting.swift",
+          "MyTeam/MyTeamToolFastPathRouter.swift",
+          "MyTeam/ToolResultFormatters.swift",
+          "tests/fixtures/natural_work_routing_cases.json",
+          "scripts/validate_natural_work_routing.py",
+          "scripts/audit_product_completeness.py",
+          "scripts/validate_architecture_boundaries.py"
+        ],
+        "validation_summary": "2026-06-26: Static validators and Debug/Release builds passed. Manual live provider latest-period QA remains open, so this task stays partial.",
+        "screenshots": []
+      },
+      "notes": [
+        "The runner tries candidate business years internally; the router only passes latestAvailable.",
+        "Quarter candidates are computed but not represented as successful output until provider coverage is implemented.",
+        "Finance wording remains 기준일/사업연도 based and not real-time."
+      ]
     }
   ]
 }
