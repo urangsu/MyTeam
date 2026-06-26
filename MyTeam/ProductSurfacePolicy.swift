@@ -19,6 +19,10 @@ enum ProductSurfacePolicy: Sendable {
     static let allowsMailSendSurface = false
     static let truthfulPrivacyCopyRequired = true
 
+    static func isEnabledInCurrentReleaseSurface(_ descriptor: MyTeamToolDescriptor) -> Bool {
+        ReleaseLiveProviderGate.isEnabledInCurrentReleaseSurface(toolID: descriptor.id)
+    }
+
     static func isStarterActionVisibleInRelease(_ actionID: String) -> Bool {
         return StarterActionPolicy.isAllowedStarterActionID(actionID) && !StarterActionPolicy.isBlockedStarterActionID(actionID)
     }
@@ -41,6 +45,10 @@ enum ProductSurfacePolicy: Sendable {
     }
 
     static func tier(for descriptor: MyTeamToolDescriptor) -> ProductSurfaceTier {
+        guard isEnabledInCurrentReleaseSurface(descriptor) else {
+            return .hidden
+        }
+
         switch descriptor.id {
         case "briefing.today",
              "document.meetingMinutes",
@@ -87,6 +95,7 @@ enum ProductSurfacePolicy: Sendable {
         state: ToolExecutionState
     ) -> Bool {
         guard descriptor.isUserFacing else { return false }
+        guard isEnabledInCurrentReleaseSurface(descriptor) else { return false }
         switch tier(for: descriptor) {
         case .primary, .secondary, .naturalOnly, .connectionOnly:
             break
@@ -99,6 +108,55 @@ enum ProductSurfacePolicy: Sendable {
             return true
         default:
             return false
+        }
+    }
+}
+
+enum ReleaseLiveProviderGate: Sendable {
+    // Release/App Store defaults are fail-closed until live QA evidence is recorded.
+    // Debug/Developer builds keep these paths enabled so QA can still exercise them.
+    static let workerProductionHealthPassed = false
+    static let googleLiveQAPassed = false
+    static let financeLiveQAPassed = false
+    static let dartLiveQAPassed = false
+    static let kmaLiveQAPassed = false
+    static let newsLiveQAPassed = false
+    static let lawLiveQAPassed = false
+
+    static func isEnabledInCurrentReleaseSurface(toolID: String) -> Bool {
+        guard FeatureGate.current != .developer else { return true }
+        return isApprovedForRelease(toolID: toolID)
+    }
+
+    static func isApprovedForRelease(toolID: String) -> Bool {
+        switch toolID {
+        case "news.search":
+            return workerProductionHealthPassed && newsLiveQAPassed
+        case "law.search":
+            return workerProductionHealthPassed && lawLiveQAPassed
+        case "finance.krx.stockPrice", "finance.krx.index", "finance.company.statement":
+            return workerProductionHealthPassed && financeLiveQAPassed
+        case "weather.current":
+            return workerProductionHealthPassed && kmaLiveQAPassed
+        case "dart.disclosures.search":
+            return dartLiveQAPassed
+        case "calendar.events.today", "spreadsheet.googleSheets.read":
+            return googleLiveQAPassed
+        default:
+            return true
+        }
+    }
+
+    static func disabledMessage(for descriptor: MyTeamToolDescriptor) -> String {
+        switch descriptor.id {
+        case "news.search", "law.search", "finance.krx.stockPrice", "finance.krx.index", "finance.company.statement", "weather.current":
+            return "이 외부 조회는 출시 전 live QA가 완료될 때까지 Release 표면에서 비활성화됩니다."
+        case "dart.disclosures.search":
+            return "DART 조회는 개인 키 live QA가 완료될 때까지 Release 표면에서 비활성화됩니다."
+        case "calendar.events.today", "spreadsheet.googleSheets.read":
+            return "Google 읽기 연결은 live OAuth QA가 완료될 때까지 Release 표면에서 비활성화됩니다."
+        default:
+            return "\(descriptor.displayName)은 현재 Release 표면에서 사용할 수 없습니다."
         }
     }
 }

@@ -93,6 +93,10 @@ actor ToolExecutionRouter {
             return .unavailable("이 기능은 준비 중입니다.")
         }
 
+        guard ProductSurfacePolicy.isEnabledInCurrentReleaseSurface(descriptor) else {
+            return .unavailable(ReleaseLiveProviderGate.disabledMessage(for: descriptor))
+        }
+
         if let requirement = descriptor.requiredCredential {
             switch requirement.provider {
             case .external(let provider):
