@@ -214,7 +214,7 @@ struct ToolActionCardView: View {
         case "spreadsheet.postprocess":
             return "붙여넣은 표나 메모를 입력하세요."
         case "spreadsheet.googleSheets.read":
-            return "Sheets URL 또는 ID Sheet1!A1:Z100"
+            return "Sheets URL 또는 ID Sheet1!A1:D20"
         case "calendar.events.today":
             return "오늘 일정"
         default:

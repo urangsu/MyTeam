@@ -36,16 +36,15 @@ enum GoogleRunnerSupport {
     static func googleSheetsReadRequest(from query: String?) -> GoogleSheetsReadRequest? {
         let raw = (query ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !raw.isEmpty else { return nil }
-        let defaultRange = "Sheet1!A1:Z100"
 
         if let url = URL(string: raw), let host = url.host, host.contains("docs.google.com") {
             let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
-            let range = components?.queryItems?.first(where: { $0.name == "range" })?.value ?? defaultRange
+            guard let range = explicitRange(from: url, components: components) else { return nil }
             let parts = url.pathComponents
             if let index = parts.firstIndex(of: "d"), parts.indices.contains(index + 1) {
                 return GoogleSheetsReadRequest(
                     spreadsheetID: parts[index + 1],
-                    range: sanitizedSheetRange(range, fallback: defaultRange)
+                    range: range
                 )
             }
         }
@@ -55,11 +54,12 @@ enum GoogleRunnerSupport {
             .map(String.init)
         guard let idToken = tokens.first else { return nil }
         let id = spreadsheetID(from: idToken) ?? idToken
-        let range = tokens.dropFirst().first.map { String($0) } ?? defaultRange
+        let rawRange = tokens.dropFirst().first.map { String($0) }
         guard isLikelySpreadsheetID(id) else { return nil }
+        guard let range = rawRange.flatMap(sanitizedSheetRange) else { return nil }
         return GoogleSheetsReadRequest(
             spreadsheetID: id,
-            range: sanitizedSheetRange(range, fallback: defaultRange)
+            range: range
         )
     }
 
@@ -87,11 +87,11 @@ enum GoogleRunnerSupport {
             actions = [MyTeamNextAction(id: "openAssistantConnection", title: "비서 연결", role: .normal)]
         case GoogleSheetsClientError.notFound:
             title = "스프레드시트를 찾지 못했습니다"
-            message = "spreadsheetId 또는 URL이 올바른지 확인하세요. 예: spreadsheetId Sheet1!A1:Z100"
+            message = "spreadsheetId 또는 URL이 올바른지 확인하세요. 예: spreadsheetId Sheet1!A1:D20"
             actions = [MyTeamNextAction(id: "changeKeyword", title: "다시 입력", role: .normal)]
         case GoogleSheetsClientError.invalidRequest:
             title = "시트 범위를 확인하세요"
-            message = "예: spreadsheetId Sheet1!A1:Z100 형식으로 입력해 주세요."
+            message = "예: spreadsheetId Sheet1!A1:D20 형식으로 입력해 주세요."
             actions = [MyTeamNextAction(id: "changeKeyword", title: "범위 바꾸기", role: .normal)]
         case GoogleSheetsClientError.decodeFailed:
             title = "시트 응답을 해석하지 못했습니다"
@@ -140,7 +140,7 @@ enum GoogleRunnerSupport {
         ))
     }
 
-    private static func spreadsheetID(from value: String) -> String? {
+    private nonisolated static func spreadsheetID(from value: String) -> String? {
         guard let url = URL(string: value), let host = url.host, host.contains("docs.google.com") else {
             return nil
         }
@@ -151,15 +151,31 @@ enum GoogleRunnerSupport {
         return parts[index + 1]
     }
 
-    private static func isLikelySpreadsheetID(_ value: String) -> Bool {
+    private nonisolated static func isLikelySpreadsheetID(_ value: String) -> Bool {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= 20 else { return false }
         return trimmed.range(of: #"^[A-Za-z0-9_-]+$"#, options: .regularExpression) != nil
     }
 
-    private static func sanitizedSheetRange(_ value: String, fallback: String) -> String {
+    private nonisolated static func explicitRange(from url: URL, components: URLComponents?) -> String? {
+        if let queryRange = components?.queryItems?.first(where: { $0.name == "range" })?.value,
+           let range = sanitizedSheetRange(queryRange) {
+            return range
+        }
+        if let fragment = url.fragment {
+            for pair in fragment.split(separator: "&").map(String.init) {
+                guard pair.hasPrefix("range=") else { continue }
+                let encoded = String(pair.dropFirst("range=".count))
+                let decoded = encoded.removingPercentEncoding ?? encoded
+                return sanitizedSheetRange(decoded)
+            }
+        }
+        return nil
+    }
+
+    private nonisolated static func sanitizedSheetRange(_ value: String) -> String? {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty { return fallback }
+        if trimmed.isEmpty { return nil }
         return trimmed
     }
 }
