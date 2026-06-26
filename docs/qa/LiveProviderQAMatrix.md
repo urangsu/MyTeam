@@ -33,4 +33,4 @@ This matrix records provider behavior by connection state. Live provider QA may 
 
 ## Release Tag Rule
 
-Release tag is forbidden until live provider QA is PASS or the relevant provider feature is disabled from release surface.
+Release tag is forbidden until each live provider and Worker release-surface case is `PASS` or the relevant provider feature is explicitly `DISABLED` from release surface. This is enforced by `python3 scripts/validate_release_qa_evidence.py --release-strict`.

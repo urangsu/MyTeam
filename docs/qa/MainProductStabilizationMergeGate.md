@@ -67,6 +67,12 @@
 
 Details are in `docs/qa/LiveProviderQAMatrix.md`.
 
+## 7.1 Gate Commands
+
+- Main merge gate: `python3 scripts/validate_release_qa_evidence.py --strict`
+- Release tag gate: `python3 scripts/validate_release_qa_evidence.py --release-strict`
+- Release tag also requires Worker production `/health` live confirmation.
+
 ## 8. Worker Deploy Status
 
 - Source validation can pass independently.
@@ -103,4 +109,4 @@ Main merge is not recommended until:
 
 Release tag decision: BLOCKED.
 
-Release tag is not allowed from this branch. Release tag requires post-merge validation plus Worker production live gate and provider live QA closure or release-surface disabling.
+Release tag is not allowed from this branch. Release tag requires post-merge validation plus Worker production live gate and provider live QA closure or release-surface disabling. `--release-strict` accepts only `PASS` or `DISABLED` for live provider and Worker release-surface cases.
