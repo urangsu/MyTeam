@@ -626,10 +626,11 @@ enum NaturalWorkRouter {
         intents: [NaturalIntent],
         title: String,
         summary: String,
-        style: NaturalWorkCompositionStyle
+        style: NaturalWorkCompositionStyle,
+        additionalMissingSections: [NaturalMissingSection] = []
     ) -> NaturalWorkPlan {
-        let currentYear = Calendar.current.component(.year, from: Date()) - 1
         var steps: [NaturalToolStep] = []
+        var preflightMissingSections = additionalMissingSections
         let companyQuery = identity.stockCode ?? identity.displayName
 
         if intents.contains(.companyOverview) || intents.contains(.stockPrice) {
@@ -657,19 +658,22 @@ enum NaturalWorkRouter {
             ))
         }
         if intents.contains(.companyOverview) || intents.contains(.companyFinance) {
-            let primary = MyTeamToolInput(query: "\(companyQuery) \(currentYear)", displayCount: 10)
-            let fallbacks = [
-                MyTeamToolInput(query: "\(companyQuery) \(currentYear - 1)", displayCount: 10),
-                MyTeamToolInput(query: "\(companyQuery) \(currentYear - 2)", displayCount: 10)
-            ]
-            steps.append(NaturalToolStep(
-                id: "company-finance",
-                toolID: "finance.company.statement",
-                input: primary,
-                fallbackInputs: fallbacks,
-                required: false,
-                sectionTitle: "재무 요약"
-            ))
+            if let businessYear = explicitBusinessYear(from: originalText) {
+                steps.append(NaturalToolStep(
+                    id: "company-finance",
+                    toolID: "finance.company.statement",
+                    input: MyTeamToolInput(query: "\(companyQuery) \(businessYear)", displayCount: 10),
+                    fallbackInputs: [],
+                    required: false,
+                    sectionTitle: "재무 요약"
+                ))
+            } else {
+                preflightMissingSections.append(NaturalMissingSection(
+                    title: "재무 요약",
+                    reason: "재무요약에는 사업연도가 필요합니다.",
+                    nextAction: "예: \(identity.displayName) 2024 재무상황처럼 회사명과 사업연도를 함께 입력하세요."
+                ))
+            }
         }
         if intents.contains(.companyOverview) || intents.contains(.news) {
             steps.append(step(
@@ -695,8 +699,16 @@ enum NaturalWorkRouter {
             steps: steps,
             compositionStyle: style,
             userNotice: "금융 정보는 기준일 공공데이터이며 실시간 시세나 투자 조언이 아닙니다.",
-            preflightMissingSections: []
+            preflightMissingSections: preflightMissingSections
         )
+    }
+
+    private static func explicitBusinessYear(from text: String) -> String? {
+        let pattern = #"\b(19|20)\d{2}\b"#
+        guard let range = text.range(of: pattern, options: .regularExpression) else {
+            return nil
+        }
+        return String(text[range])
     }
 
     private static func newsPlan(for text: String) -> NaturalWorkPlan {
@@ -853,10 +865,15 @@ enum NaturalWorkRouter {
             title: title,
             summary: summary,
             intent: intent,
-            toolID: "spreadsheet.postprocess",
-            query: source,
+            toolID: "document.rewrite",
+            query: """
+            아래 자료를 실제 Excel 수정 없이 점검 체크리스트와 확인 질문으로 정리하세요.
+            숫자 검산을 완료했다고 단정하지 말고, 확인해야 할 항목을 나열하세요.
+
+            \(source)
+            """,
             sectionTitle: sectionTitle,
-            notice: "파일을 직접 덮어쓰지 않고 정리 계획과 검산 기준을 만듭니다.",
+            notice: "표/엑셀 파일을 직접 수정하거나 실제 검산 완료를 보장하지 않습니다. 붙여넣은 텍스트 기준 점검 초안입니다.",
             style: .draft,
             explicitWorkType: workType
         )

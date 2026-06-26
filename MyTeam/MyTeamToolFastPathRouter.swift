@@ -268,7 +268,7 @@ enum MyTeamToolFastPathRouter {
             query += " \(message[yearRange])"
         }
         let hasYear = query.range(of: #"(19|20)\d{2}"#, options: .regularExpression) != nil
-        return hasYear ? query : "\(query) \(Calendar.current.component(.year, from: Date()) - 1)"
+        return hasYear ? query : nil
     }
 
     private static func companyQuery(from message: String) -> String? {
