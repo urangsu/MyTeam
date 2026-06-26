@@ -1526,6 +1526,84 @@
         "Quarter candidates are computed but not represented as successful output until provider coverage is implemented.",
         "Finance wording remains 기준일/사업연도 based and not real-time."
       ]
+    },
+    {
+      "id": "P0-016-launch-readiness-fail-closed-gate",
+      "priority": "P0",
+      "status": "partial",
+      "category": "release-readiness",
+      "title": "Launch readiness fail-closed gate",
+      "why": "General users must not see unverified live provider features as available. Release readiness needs one runbook, a production Worker health check, and release-surface gates that stay disabled until live QA passes.",
+      "scope": {
+        "include": [
+          "Release live provider fail-closed gate",
+          "Worker production health validator",
+          "Launch readiness gate runner",
+          "QA evidence docs for disabled live provider surfaces",
+          "Product completeness inventory alignment"
+        ],
+        "exclude": [
+          "Manual APPTERM/NW/ART/HOME QA completion",
+          "Live provider PASS claims",
+          "Supertonic3 or BubbleSpeech changes",
+          "Google OAuth scope changes",
+          "DART direct BYOK behavior changes"
+        ]
+      },
+      "acceptance_criteria": [
+        "Unverified live provider tools are hidden or unavailable in Release/App Store surface",
+        "Developer/Debug profile can still exercise live provider paths for QA",
+        "Worker production /health has a dedicated validator",
+        "Release-strict QA evidence accepts PASS or DISABLED but not BLOCKED",
+        "Launch readiness runbook states static, main-merge, and release-tag gates"
+      ],
+      "failure_conditions": [
+        "Finance/news/law/weather/DART/Google surfaces appear executable in Release before live QA",
+        "Production Worker source validation is treated as deploy proof",
+        "Manual QA BLOCKED rows are marked PASS without execution",
+        "Release tag is claimed while main manual QA remains BLOCKED"
+      ],
+      "verification": {
+        "commands": [
+          "python3 scripts/validate_launch_readiness.py",
+          "python3 scripts/validate_release_qa_evidence.py --release-strict",
+          "python3 scripts/validate_worker_production_health.py",
+          "python3 scripts/validate_myteam_release.py",
+          "python3 scripts/audit_product_completeness.py",
+          "git diff --check",
+          "node --check workers/basic-lookup-api/worker.js",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' build",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Release -destination 'platform=OS X,arch=arm64' build"
+        ],
+        "manual_checks": [
+          "APPTERM/NW/ART/HOME manual QA remains required before main merge",
+          "Worker production health must pass before public lookup gates are enabled",
+          "Provider live QA must pass before flipping ReleaseLiveProviderGate booleans"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": "28fed79, 18ff1ef, 2fe8bef",
+        "files_changed": [
+          "MyTeam/ProductSurfacePolicy.swift",
+          "MyTeam/ToolExecutionRouter.swift",
+          "scripts/validate_worker_production_health.py",
+          "scripts/validate_launch_readiness.py",
+          "scripts/validate_myteam_release.py",
+          "scripts/audit_product_completeness.py",
+          "docs/qa/LaunchReadinessRunbook.md",
+          "docs/qa/LiveProviderQAMatrix.md",
+          "docs/qa/MainProductStabilizationMergeGate.md",
+          "docs/qa/ProductCompletenessInventory.md"
+        ],
+        "validation_summary": "2026-06-27: Launch readiness fail-closed gate implemented. validate_launch_readiness.py, release-strict QA evidence, validate_myteam_release.py, audit_product_completeness.py, git diff --check, worker syntax check, Debug build, and Release build passed. validate_release_qa_evidence.py --strict still fails as intended because APPTERM/NW/ART/HOME manual QA rows remain BLOCKED. validate_worker_production_health.py fails as intended because deployed Worker /health still exposes routes instead of userRoutes/diagnosticRoutes; public lookup surfaces remain disabled in Release until redeploy/live proof.",
+        "screenshots": []
+      },
+      "notes": [
+        "This task is partial until a commit SHA and current validation summary are recorded.",
+        "ReleaseLiveProviderGate values default to false; enabling any external provider requires live evidence first.",
+        "Worker production /health was observed returning version/build but not userRoutes/diagnosticRoutes, so public lookup remains disabled in Release."
+      ]
     }
   ]
 }
