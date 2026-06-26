@@ -64,6 +64,7 @@ struct NaturalWorkContextProvider {
             .filter { !$0.isSystem } ?? []
         let recentArtifactEntries = manager.recentArtifactIndexEntries(for: roomID)
         let activeArtifactID = recentArtifactEntries.first?.artifactID
+        let recentArtifacts = Array(manager.recentArtifacts(for: roomID).prefix(5))
         let userLocation = UserDefaults.standard.string(forKey: "userLocation")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .flatMap { $0.isEmpty ? nil : $0 }
@@ -72,7 +73,7 @@ struct NaturalWorkContextProvider {
             context: NaturalWorkContext(
                 roomID: roomID,
                 activeArtifactID: activeArtifactID,
-                recentArtifacts: [],
+                recentArtifacts: recentArtifacts,
                 pendingAttachments: pendingAttachments,
                 recentMessageTexts: recentMessages.map(\.text),
                 lastCompanyIdentity: WorkContextMemory.shared.lastCompanyIdentity(roomID: roomID),

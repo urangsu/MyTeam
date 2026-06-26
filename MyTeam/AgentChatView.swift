@@ -1177,7 +1177,9 @@ struct AgentChatView: View {
             switch await NaturalWorkEntryPoint.resolve(
                 text: naturalRouteText,
                 context: naturalSnapshot.context,
-                chatHistory: naturalSnapshot.chatHistory
+                chatHistory: naturalSnapshot.chatHistory,
+                agentID: targetID,
+                agentConfig: currentAgent
             ) {
             case .clarification(let request):
                 await MainActor.run {

@@ -363,7 +363,7 @@ enum AgenticToolOrchestrator {
             let response = try await AIService.shared.getResponse(
                 text: prompt,
                 agentID: agentID,
-                chatHistory: [],
+                chatHistory: Array(chatHistory.suffix(5)),
                 agentConfig: agentConfig,
                 requiresToolUse: true,
                 requestID: requestID,

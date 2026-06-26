@@ -13,6 +13,9 @@ struct WorkflowInputCoordinator {
         let naturalSnapshot = await MainActor.run {
             NaturalWorkContextProvider.snapshot(roomID: roomID, manager: manager)
         }
+        let planningAgent = await MainActor.run {
+            manager.fallbackTeamLeader(for: roomID)
+        }
         let pendingResolution = await MainActor.run {
             PendingNaturalWorkCoordinator.resolve(
                 userMessage: userMessage,
@@ -27,7 +30,9 @@ struct WorkflowInputCoordinator {
         switch await NaturalWorkEntryPoint.resolve(
             text: naturalRouteText,
             context: naturalSnapshot.context,
-            chatHistory: naturalSnapshot.chatHistory
+            chatHistory: naturalSnapshot.chatHistory,
+            agentID: planningAgent?.id ?? "team_all",
+            agentConfig: planningAgent
         ) {
         case .clarification(let request):
             await MainActor.run {

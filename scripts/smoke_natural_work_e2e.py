@@ -21,6 +21,7 @@ def main() -> None:
     agent_chat = read("MyTeam/AgentChatView.swift")
     workflow = read("MyTeam/WorkflowOrchestrator.swift")
     workflow_input = read("MyTeam/WorkflowInputCoordinator.swift")
+    context_provider = read("MyTeam/NaturalWorkContextProvider.swift")
     plan_runner = read("MyTeam/NaturalWorkPlanRunner.swift")
     tool_router = read("MyTeam/ToolExecutionRouter.swift")
     artifact_recorder = read("MyTeam/CompositeArtifactRecorder.swift")
@@ -39,6 +40,14 @@ def main() -> None:
         failures.append("WorkflowInputCoordinator must call NaturalWorkEntryPoint.resolve")
     if "MyTeamToolFastPathRouter.matchMany" not in workflow_input:
         failures.append("WorkflowInputCoordinator must own the legacy fast-path fallback")
+    if "recentArtifactIndexEntries(for: roomID)" not in context_provider:
+        failures.append("NaturalWorkContextProvider must read recent artifact index entries")
+    if "activeArtifactID: activeArtifactID" not in context_provider:
+        failures.append("NaturalWorkContextProvider must pass activeArtifactID into NaturalWorkContext")
+    if "manager.recentArtifacts(for: roomID)" not in context_provider:
+        failures.append("NaturalWorkContextProvider must fill recentArtifacts from the room-scoped cache")
+    if "recentArtifacts: []" in context_provider:
+        failures.append("NaturalWorkContextProvider must not hard-code recentArtifacts as empty")
 
     for token in [
         "CompositeArtifactRecorder.write",

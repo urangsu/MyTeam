@@ -4,7 +4,9 @@ enum NaturalWorkEntryPoint {
     static func resolve(
         text: String,
         context: NaturalWorkContext,
-        chatHistory: [AgentWindowManager.ChatLog]
+        chatHistory: [AgentWindowManager.ChatLog],
+        agentID: String,
+        agentConfig: AgentWindowManager.AgentConfig?
     ) async -> NaturalWorkRouteDecision {
         let deterministic = NaturalWorkRouter.route(for: text, context: context)
         switch deterministic {
@@ -18,8 +20,8 @@ enum NaturalWorkEntryPoint {
             for: text,
             context: context,
             chatHistory: chatHistory,
-            agentID: "team_all",
-            agentConfig: nil
+            agentID: agentID,
+            agentConfig: agentConfig
         ) {
             return .plan(plan)
         }
