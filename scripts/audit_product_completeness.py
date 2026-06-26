@@ -120,6 +120,15 @@ def main() -> None:
 
     for required in [
         "enum ProductSurfaceTier",
+        "enum ReleaseLiveProviderGate",
+        "workerProductionHealthPassed = false",
+        "financeLiveQAPassed = false",
+        "dartLiveQAPassed = false",
+        "kmaLiveQAPassed = false",
+        "newsLiveQAPassed = false",
+        "lawLiveQAPassed = false",
+        "googleLiveQAPassed = false",
+        "static func isEnabledInCurrentReleaseSurface",
         "case primary",
         "case secondary",
         "case naturalOnly",
@@ -133,6 +142,9 @@ def main() -> None:
     ]:
         if required not in surface_policy:
             failures.append(f"ProductSurfacePolicy missing required product surface contract: {required}")
+
+    if "guard isEnabledInCurrentReleaseSurface(descriptor) else" not in surface_policy:
+        failures.append("ProductSurfacePolicy must fail closed before assigning release-visible tiers")
 
     required_surface_mappings = {
         '"spreadsheet.postprocess"': ".hidden",

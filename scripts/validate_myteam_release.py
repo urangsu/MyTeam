@@ -19,6 +19,7 @@ CHECKS = [
     ["python3", "scripts/smoke_natural_work_e2e.py"],
     ["python3", "scripts/validate_tool_recovery_actions.py"],
     ["python3", "scripts/validate_release_qa_evidence.py"],
+    ["python3", "scripts/validate_launch_readiness.py"],
 ]
 
 
