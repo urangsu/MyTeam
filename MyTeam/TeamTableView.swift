@@ -234,7 +234,6 @@ struct TeamTableView: View {
                         if let rid = manager.selectedTeamWorkroomID ?? manager.currentRoomID {
                             manager.addChatLog(roomID: rid, agentID: agent.id, agentName: agent.displayName, text: text, isUser: false, isSystem: true)
                         }
-                        if !manager.isSilentMode { SpeechManager.shared.speak(text: text) }
                         AppTerminationCoordinator.shared.requestMenuQuit()
                     }) {
                         Label("어플리케이션 종료", systemImage: "power")

@@ -70,7 +70,7 @@ final class AppTerminationCoordinator: ObservableObject {
         watchdogTask?.cancel()
         terminationTask?.cancel()
         phase = .terminating
-        Task(priority: .userInitiated) {
+        Task.detached(priority: .utility) {
             await AudioPlaybackService.shared.stopAll()
             await AudioPlaybackService.shared.stopEngineForTermination()
         }
@@ -100,30 +100,25 @@ final class AppTerminationCoordinator: ObservableObject {
         AgentWindowManager.shared.cancelAllActiveWorkflowTasks()
 
         phase = .stoppingAudio
-        _ = AppTerminationSpeechService.shared.playPreparedFarewell(completion: {})
-        await stopAudioNonBlocking()
+        stopAudioNonBlocking()
 
         phase = .stoppingEngine
-        await stopEngineWithTimeout()
+        stopEngineBestEffort()
+        try? await Task.sleep(nanoseconds: engineStopTimeoutNanoseconds)
 
         phase = .replying
         replyOnce()
     }
 
-    private func stopAudioNonBlocking() async {
-        await AudioPlaybackService.shared.stopAll()
+    private func stopAudioNonBlocking() {
+        Task.detached(priority: .utility) {
+            await AudioPlaybackService.shared.stopAll()
+        }
     }
 
-    private func stopEngineWithTimeout() async {
-        await withTaskGroup(of: Void.self) { group in
-            group.addTask {
-                await AudioPlaybackService.shared.stopEngineForTermination()
-            }
-            group.addTask { [engineStopTimeoutNanoseconds] in
-                try? await Task.sleep(nanoseconds: engineStopTimeoutNanoseconds)
-            }
-            await group.next()
-            group.cancelAll()
+    private func stopEngineBestEffort() {
+        Task.detached(priority: .utility) {
+            await AudioPlaybackService.shared.stopEngineForTermination()
         }
     }
 

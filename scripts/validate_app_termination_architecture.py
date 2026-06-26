@@ -86,10 +86,21 @@ def main() -> None:
         "engineStopTimeoutNanoseconds: UInt64 = 2_000_000_000",
         "replyOnce",
         "forceExitIfNeeded",
-        "stopEngineWithTimeout",
+        "stopAudioNonBlocking",
+        "stopEngineBestEffort",
+        "Task.detached",
     ]:
         if token not in coordinator:
             failures.append(f"AppTerminationCoordinator missing required guard/constant: {token}")
+    if "withTaskGroup" in coordinator:
+        failures.append("AppTerminationCoordinator must not use withTaskGroup for termination cleanup timeout")
+    if "playPreparedFarewell" in coordinator:
+        failures.append("termination sequence must not start farewell playback")
+    quit_index = team_table.find('Label("어플리케이션 종료"')
+    if quit_index != -1:
+        quit_window = team_table[max(0, quit_index - 600):quit_index + 300]
+        if "SpeechManager.shared.speak" in quit_window:
+            failures.append("TeamTableView quit action must not start SpeechManager playback")
 
     if "APPTERMFILE00000000001" not in project and "AppTerminationCoordinator.swift" not in project:
         failures.append("AppTerminationCoordinator.swift is not included in Xcode project")
