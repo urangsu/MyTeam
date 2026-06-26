@@ -7899,6 +7899,7 @@
 				<string>TLF024LAWRUNNERFILE</string>
 				<string>TLF025WEATHERRUNNERFILE</string>
 				<string>TLF026FINANCERUNNERFILE</string>
+				<string>TLF032FINANCEPERIODFILE</string>
 				<string>TLF027DARTRUNNERFILE</string>
 				<string>TLF028RUNNERSUPPORTFILE</string>
 				<string>TLF029GOOGLESUPPORTFILE</string>
@@ -9476,6 +9477,7 @@
 				<string>TLB024LAWRUNNERBLD</string>
 				<string>TLB025WEATHERRUNNERBLD</string>
 				<string>TLB026FINANCERUNNERBLD</string>
+				<string>TLB032FINANCEPERIODBLD</string>
 				<string>TLB027DARTRUNNERBLD</string>
 				<string>TLB028RUNNERSUPPORTBLD</string>
 				<string>TLB029GOOGLESUPPORTBLD</string>
@@ -17619,6 +17621,21 @@
 			<key>sourceTree</key>
 			<string>SOURCE_ROOT</string>
 		</dict>
+		<key>TLF032FINANCEPERIODFILE</key>
+		<dict>
+			<key>fileEncoding</key>
+			<integer>4</integer>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>lastKnownFileType</key>
+			<string>sourcecode.swift</string>
+			<key>name</key>
+			<string>FinancePeriodResolver.swift</string>
+			<key>path</key>
+			<string>ToolRunners/FinancePeriodResolver.swift</string>
+			<key>sourceTree</key>
+			<string>SOURCE_ROOT</string>
+		</dict>
 		<key>TLF027DARTRUNNERFILE</key>
 		<dict>
 			<key>fileEncoding</key>
@@ -17941,6 +17958,13 @@
 		<dict>
 			<key>fileRef</key>
 			<string>TLF026FINANCERUNNERFILE</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
+		</dict>
+		<key>TLB032FINANCEPERIODBLD</key>
+		<dict>
+			<key>fileRef</key>
+			<string>TLF032FINANCEPERIODFILE</string>
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>

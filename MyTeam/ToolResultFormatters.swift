@@ -574,6 +574,16 @@ enum FinanceResultFormatter {
             return lines.joined(separator: "\n")
         }
 
+        if case .companySummary = kind, let year = items.first?["bizYear"] {
+            lines.append("- 기준 기간: \(year)년 사업연도")
+            if notice.contains("자동 선택") {
+                lines.append("- 선택 방식: 자동 선택한 기준 기간입니다.")
+                lines.append("- 설명: 조회 가능한 최신 기준 기간입니다.")
+            } else if notice.contains("명시 기간") {
+                lines.append("- 선택 방식: 사용자가 입력한 명시 기간입니다.")
+            }
+        }
+
         lines.append("")
         lines.append("## 핵심 결과")
 

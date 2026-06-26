@@ -630,7 +630,7 @@ enum NaturalWorkRouter {
         additionalMissingSections: [NaturalMissingSection] = []
     ) -> NaturalWorkPlan {
         var steps: [NaturalToolStep] = []
-        var preflightMissingSections = additionalMissingSections
+        let preflightMissingSections = additionalMissingSections
         let companyQuery = identity.stockCode ?? identity.displayName
 
         if intents.contains(.companyOverview) || intents.contains(.stockPrice) {
@@ -658,22 +658,17 @@ enum NaturalWorkRouter {
             ))
         }
         if intents.contains(.companyOverview) || intents.contains(.companyFinance) {
-            if let businessYear = explicitBusinessYear(from: originalText) {
-                steps.append(NaturalToolStep(
-                    id: "company-finance",
-                    toolID: "finance.company.statement",
-                    input: MyTeamToolInput(query: "\(companyQuery) \(businessYear)", displayCount: 10),
-                    fallbackInputs: [],
-                    required: false,
-                    sectionTitle: "재무 요약"
-                ))
-            } else {
-                preflightMissingSections.append(NaturalMissingSection(
-                    title: "재무 요약",
-                    reason: "재무요약에는 사업연도가 필요합니다.",
-                    nextAction: "예: \(identity.displayName) 2024 재무상황처럼 회사명과 사업연도를 함께 입력하세요."
-                ))
-            }
+            steps.append(NaturalToolStep(
+                id: "company-finance",
+                toolID: "finance.company.statement",
+                input: MyTeamToolInput(
+                    query: FinancePeriodResolver.query(company: companyQuery, originalText: originalText),
+                    displayCount: 10
+                ),
+                fallbackInputs: [],
+                required: false,
+                sectionTitle: "재무 요약"
+            ))
         }
         if intents.contains(.companyOverview) || intents.contains(.news) {
             steps.append(step(
@@ -701,14 +696,6 @@ enum NaturalWorkRouter {
             userNotice: "금융 정보는 기준일 공공데이터이며 실시간 시세나 투자 조언이 아닙니다.",
             preflightMissingSections: preflightMissingSections
         )
-    }
-
-    private static func explicitBusinessYear(from text: String) -> String? {
-        let pattern = #"\b(19|20)\d{2}\b"#
-        guard let range = text.range(of: pattern, options: .regularExpression) else {
-            return nil
-        }
-        return String(text[range])
     }
 
     private static func newsPlan(for text: String) -> NaturalWorkPlan {
