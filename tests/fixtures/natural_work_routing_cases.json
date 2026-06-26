@@ -1,16 +1,54 @@
 [
   {
+    "id": "company-overview-missing-year",
     "input": "삼성전자 알려줘",
     "expectedWorkType": "companyBriefing",
     "expectedTools": [
       "finance.krx.stockPrice",
       "finance.krx.index",
       "dart.disclosures.search",
-      "finance.company.statement",
       "news.search"
+    ],
+    "expectedToolsAbsent": [
+      "finance.company.statement"
+    ],
+    "expectedMissingSections": [
+      "재무 요약"
+    ],
+    "forbiddenQueryFragments": [
+      "삼성전자 2024",
+      "삼성전자 2025",
+      "삼성전자 2023"
     ]
   },
   {
+    "id": "finance-company-missing-year",
+    "input": "삼성전자 재무상황 알려줘",
+    "expectedToolsAbsent": [
+      "finance.company.statement"
+    ],
+    "expectedMissingSections": [
+      "재무 요약"
+    ],
+    "forbiddenQueryFragments": [
+      "삼성전자 2024",
+      "삼성전자 2025",
+      "삼성전자 2023"
+    ]
+  },
+  {
+    "id": "finance-company-explicit-year",
+    "input": "삼성전자 2024 재무상황 알려줘",
+    "expectedTools": [
+      "finance.company.statement"
+    ],
+    "expectedQueryFragments": [
+      "삼성전자",
+      "2024"
+    ]
+  },
+  {
+    "id": "news-style-no-search",
     "input": "뉴스 기사처럼 써줘",
     "expectedWorkType": "documentDraft",
     "forbiddenTools": [
@@ -18,6 +56,7 @@
     ]
   },
   {
+    "id": "meeting-minutes-missing-source",
     "input": "회의록 만들어줘",
     "expectedDecision": "clarification",
     "missingSlots": [
@@ -25,6 +64,7 @@
     ]
   },
   {
+    "id": "budget-review-missing-source",
     "input": "예산안 이상한 항목 찾아줘",
     "expectedDecision": "clarification",
     "missingSlots": [
@@ -32,6 +72,32 @@
     ]
   },
   {
+    "id": "budget-review-hidden-spreadsheet-safe-route",
+    "input": "이 예산표 이상한 항목 봐줘\n항목,예산,실적\nA,100,140",
+    "expectedTools": [
+      "document.rewrite"
+    ],
+    "expectedToolsAbsent": [
+      "spreadsheet.postprocess",
+      "spreadsheet.googleSheets.read"
+    ],
+    "expectedNoticeFragments": [
+      "직접 수정",
+      "보장하지 않습니다"
+    ]
+  },
+  {
+    "id": "closing-variance-hidden-spreadsheet-safe-route",
+    "input": "5월 결산 계획 대비 차이 분석해줘\n항목,계획,실적\n매출,100,90",
+    "expectedTools": [
+      "document.rewrite"
+    ],
+    "expectedToolsAbsent": [
+      "spreadsheet.postprocess"
+    ]
+  },
+  {
+    "id": "weather-region-missing",
     "input": "출장 날씨 알려줘",
     "expectedDecision": "clarification",
     "missingSlots": [
@@ -39,6 +105,7 @@
     ]
   },
   {
+    "id": "company-target-missing",
     "input": "그 회사 재무상황 알려줘",
     "expectedDecision": "clarification",
     "missingSlots": [
