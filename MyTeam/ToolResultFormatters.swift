@@ -245,7 +245,6 @@ enum DARTResultFormatter {
                 )
             },
             nextActions: [
-                MyTeamNextAction(id: "draftReport", title: "보고서 문단", role: .normal),
                 MyTeamNextAction(id: "searchAgain", title: "다시 검색", role: .normal)
             ]
         ))
@@ -327,7 +326,6 @@ enum NewsResultFormatter {
                 )
             },
             nextActions: [
-                MyTeamNextAction(id: "draftEvidence", title: "근거 정리", role: .normal),
                 MyTeamNextAction(id: "searchAgain", title: "다시 검색", role: .normal),
                 MyTeamNextAction(id: "openConnection", title: "개인 키 설정", role: .normal)
             ]
@@ -472,7 +470,6 @@ enum FinanceResultFormatter {
                 )
             },
             nextActions: [
-                MyTeamNextAction(id: "draftEvidence", title: "보고 문장", role: .normal),
                 MyTeamNextAction(id: "searchAgain", title: "다시 조회", role: .normal),
                 MyTeamNextAction(id: "openConnection", title: "개인 키 설정", role: .normal)
             ]
@@ -857,8 +854,7 @@ enum LawResultFormatter {
                 )
             },
             nextActions: [
-                MyTeamNextAction(id: "searchAgain", title: "다시 검색", role: .normal),
-                MyTeamNextAction(id: "openSource", title: "원문 확인", role: .normal)
+                MyTeamNextAction(id: "searchAgain", title: "다시 검색", role: .normal)
             ]
         ))
     }

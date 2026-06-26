@@ -219,7 +219,7 @@ struct HomeDashboardView: View {
             onOpenConnection(descriptor.requiredCredential?.provider.externalProvider)
         case "openAssistantConnection":
             onOpenAssistantConnection(descriptor.requiredCredential?.provider.assistantProvider)
-        case "searchAgain", "extendRange", "changeKeyword":
+        case "searchAgain", "retryLater", "extendRange", "changeKeyword":
             run(descriptor, query: toolQueries[descriptor.id] ?? "")
         default:
             break

@@ -13,7 +13,7 @@ enum ProductSurfacePolicy: Sendable {
     static let showsPlannedConnectorsInRelease = false
     static let showsDisabledProButtonInRelease = true
     static let showsPlaceholderCharactersInRelease = false
-    static let showsCharacterDLCInRelease = true
+    static let showsCharacterDLCInRelease = false
     static let allowsExternalWriteStarterActions = false
     static let allowsCalendarWriteSurface = false
     static let allowsMailSendSurface = false

@@ -128,7 +128,7 @@ struct ToolResultCardView: View {
     private func isActionEnabled(_ action: MyTeamNextAction) -> Bool {
         guard onAction != nil else { return false }
         switch action.id {
-        case "openConnection", "checkConnection", "openAssistantConnection", "searchAgain", "extendRange", "changeKeyword":
+        case "openConnection", "checkConnection", "openAssistantConnection", "searchAgain", "retryLater", "extendRange", "changeKeyword":
             return true
         default:
             return false
