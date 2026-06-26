@@ -56,14 +56,14 @@
 
 ## 7. Live Provider QA Results
 
-- Google Calendar: BLOCKED.
-- Google Sheets: BLOCKED.
-- Finance: BLOCKED.
-- DART: BLOCKED.
-- KMA: BLOCKED.
-- News: BLOCKED.
-- Law: BLOCKED.
-- Worker production health: BLOCKED.
+- Google Calendar: DISABLED in Release until OAuth live QA passes.
+- Google Sheets: DISABLED in Release until OAuth live QA passes.
+- Finance: DISABLED in Release until Worker health and finance live QA pass.
+- DART: DISABLED in Release until direct BYOK live QA passes.
+- KMA: DISABLED in Release until Worker health and KMA live QA pass.
+- News: DISABLED in Release until Worker health and news live QA pass.
+- Law: DISABLED in Release until Worker health and law live QA pass.
+- Worker production health: DISABLED for Release because public lookup surfaces are disabled. Live check currently fails until production Worker is redeployed from repository source.
 
 Details are in `docs/qa/LiveProviderQAMatrix.md`.
 
@@ -76,8 +76,9 @@ Details are in `docs/qa/LiveProviderQAMatrix.md`.
 ## 8. Worker Deploy Status
 
 - Source validation can pass independently.
-- Production deploy is not asserted by this document.
-- Worker live gate remains BLOCKED until `/health` is checked against the deployed endpoint.
+- Production deploy is not asserted by source validation.
+- Live check on `https://late-waterfall-c95c.urange.workers.dev/health` returned version `0.3.0` and build `public-lookup-0.3.0`, but did not expose `userRoutes` / `diagnosticRoutes`.
+- Public lookup release surfaces remain disabled until the repository Worker source is redeployed and `python3 scripts/validate_worker_production_health.py` passes.
 
 ## 9. App Termination Status
 
@@ -89,7 +90,7 @@ Details are in `docs/qa/LiveProviderQAMatrix.md`.
 - Manual app termination behavior has not been proven in this QA pass.
 - Natural-work runtime behavior in personal chat/team workroom has not been proven in this QA pass.
 - Artifact reopen has not been manually proven in this QA pass.
-- Live provider states and OAuth failure modes have not been proven in this QA pass.
+- Live provider states and OAuth failure modes have not been proven in this QA pass, so Release surfaces are fail-closed.
 
 ## 11. Main Merge Decision
 
@@ -103,10 +104,10 @@ Main merge is not recommended until:
 - NW-001 through NW-013 PASS.
 - ART-001 through ART-004 PASS.
 - HOME-001 through HOME-006 PASS.
-- Live provider QA is either PASS or explicitly documented as non-release-blocking known risk.
+- Live provider QA is either PASS or the relevant Release surface is DISABLED.
 
 ## 12. Release Tag Decision
 
 Release tag decision: BLOCKED.
 
-Release tag is not allowed from this branch. Release tag requires post-merge validation plus Worker production live gate and provider live QA closure or release-surface disabling. `--release-strict` accepts only `PASS` or `DISABLED` for live provider and Worker release-surface cases.
+Release tag is not allowed from this branch while main-merge manual QA remains BLOCKED. Live provider release-strict cases are allowed only when `PASS` or `DISABLED`; enabling any live provider requires Worker production live gate and provider live QA closure first.
