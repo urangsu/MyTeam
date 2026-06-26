@@ -44,6 +44,8 @@ def main() -> None:
     context_provider = read("MyTeam/NaturalWorkContextProvider.swift")
     pending_coordinator = read("MyTeam/PendingNaturalWorkCoordinator.swift")
     entry_point = read("MyTeam/NaturalWorkEntryPoint.swift")
+    agentic = read("MyTeam/AgenticToolOrchestration.swift")
+    natural = read("MyTeam/NaturalWorkRouting.swift")
     plan_runner = read("MyTeam/NaturalWorkPlanRunner.swift")
     chat_sink = read("MyTeam/ChatResponseSink.swift")
     artifact_recorder = read("MyTeam/CompositeArtifactRecorder.swift")
@@ -96,6 +98,12 @@ def main() -> None:
         failures.append("PendingNaturalWorkCoordinator must own PendingNaturalWorkRequestStore access")
     if "NaturalWorkRouter.route" not in entry_point or "AgenticToolOrchestrator.plan" not in entry_point:
         failures.append("NaturalWorkEntryPoint must own deterministic and agentic planning order")
+    if "agentID: String" not in entry_point or "agentConfig: AgentWindowManager.AgentConfig?" not in entry_point:
+        failures.append("NaturalWorkEntryPoint.resolve must accept caller agent context")
+    if 'agentID: "team_all"' in entry_point or "agentConfig: nil" in entry_point:
+        failures.append("NaturalWorkEntryPoint must not hard-code team_all/nil agent context for planning")
+    if "chatHistory: []" in agentic:
+        failures.append("AgenticToolOrchestrator must pass recent chatHistory to AIService")
     if "NaturalWorkPlanValidator.planAfterValidation" not in plan_runner:
         failures.append("NaturalWorkPlanRunner must validate plans before execution")
     if "options: .composite" not in plan_runner:
@@ -244,6 +252,12 @@ def main() -> None:
             failures.append(f"FinanceToolRunner must reject missing inputs with explicit guidance: {phrase}")
     if "Calendar.current.component" in finance_runner:
         failures.append("FinanceToolRunner must not silently default company finance business year")
+    finance_statement_index = natural.find('toolID: "finance.company.statement"')
+    if finance_statement_index != -1:
+        finance_window = natural[max(0, finance_statement_index - 900):finance_statement_index + 900]
+        for token in ["Calendar.current.component", "currentYear", "currentYear - 1", "currentYear - 2", "fallbackInputs: fallbacks"]:
+            if token in finance_window:
+                failures.append(f"NaturalWorkRouting must not silently default company finance business year: {token}")
     for token in [
         'fallback: "삼성전자"',
         'fallback: "삼성전자 2024"',
@@ -258,6 +272,9 @@ def main() -> None:
             failures.append(f"DARTToolRunner missing BYOK guidance phrase: {phrase}")
     if "enum GoogleRunnerSupport" not in google_support:
         failures.append("GoogleRunnerSupport.swift must define enum GoogleRunnerSupport")
+    for token in ['Sheet1!A1:Z100', "defaultRange"]:
+        if token in google_support or token in google_sheets_runner:
+            failures.append(f"Google Sheets runner must not use implicit default range: {token}")
     if "enum GoogleCalendarToolRunner" not in google_calendar_runner:
         failures.append("GoogleCalendarToolRunner.swift must define enum GoogleCalendarToolRunner")
     if "static func runToday(input: MyTeamToolInput) async -> ToolExecutionState" not in google_calendar_runner:

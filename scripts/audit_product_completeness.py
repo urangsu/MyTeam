@@ -32,6 +32,8 @@ def main() -> None:
     tool_card = read("MyTeam/ToolActionCardView.swift")
     file_policy = read("MyTeam/FileIntakePolicy.swift")
     team_status = read("MyTeam/TeamStatusView.swift")
+    google_support = read("MyTeam/ToolRunners/GoogleRunnerSupport.swift")
+    google_sheets_runner = read("MyTeam/ToolRunners/GoogleSheetsToolRunner.swift")
     inventory = read("docs/qa/ProductCompletenessInventory.md")
 
     if "MyTeamToolFastPathRouter.matchMany" in agent_chat:
@@ -98,6 +100,12 @@ def main() -> None:
     if "DemoRoomSeeder" in settings or "SampleArtifactSeeder" in settings:
         failures.append("SettingsView must not expose demo seed controls until DemoMode seeding is productized")
 
+    if "showsCharacterDLCInRelease = true" in surface_policy:
+        failures.append("ProductSurfacePolicy must hide unfinished Character DLC in release")
+    for phrase in ["DLC 해금", "Pro 결제", "스토어"]:
+        if phrase in settings:
+            failures.append(f"SettingsView must not expose unfinished commerce phrase: {phrase}")
+
     if "CharacterStoreSkeletonView.swift" in inventory and "plannedHidden" not in inventory:
         failures.append("Character store skeleton must be tracked as plannedHidden")
 
@@ -154,6 +162,17 @@ def main() -> None:
             failures.append(f"MyTeamToolRegistry missing auditable descriptor for {tool_id}")
         elif descriptor_match.group(1) != "false":
             failures.append(f"{tool_id} must remain hidden from user-facing tool surfaces until productized")
+    if 'toolID: "spreadsheet.postprocess"' in natural:
+        failures.append("NaturalWorkRouting must not route hidden spreadsheet.postprocess")
+    for token in ["Sheet1!A1:Z100", "defaultRange"]:
+        if token in google_support or token in google_sheets_runner:
+            failures.append(f"Google Sheets read must not use implicit default range: {token}")
+    finance_statement_index = natural.find('toolID: "finance.company.statement"')
+    if finance_statement_index != -1:
+        finance_window = natural[max(0, finance_statement_index - 900):finance_statement_index + 900]
+        for token in ["Calendar.current.component", "currentYear", "fallbackInputs: fallbacks"]:
+            if token in finance_window:
+                failures.append(f"NaturalWorkRouting must not seed finance.company.statement from current year: {token}")
 
     if "삼성전자 2024" in home or "삼성전자 2024" in tool_card:
         failures.append("Home/ToolActionCard must not seed finance.company.statement with 삼성전자 2024")

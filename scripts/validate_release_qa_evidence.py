@@ -90,8 +90,17 @@ STRICT_REQUIRED_PASS_PREFIXES = (
     "HOME-",
 )
 
+RELEASE_REQUIRED_PROVIDER_PREFIXES = (
+    "GOOGLE-",
+    "FIN-",
+    "DART-",
+    "KMA-",
+    "NEWS-",
+    "LAW-",
+    "WORKER-",
+)
 
-STATUS_VALUES = {"PASS", "FAIL", "BLOCKED"}
+STATUS_VALUES = {"PASS", "FAIL", "BLOCKED", "DISABLED"}
 
 
 def split_table_row(line: str) -> list[str]:
@@ -120,7 +129,7 @@ def has_reason_or_next_action(cells: list[str]) -> bool:
     return bool(re.search(r"\b(Reason|Next|Fix|Retest|재현|사유|다음|조치)\b", joined, re.I))
 
 
-def validate_doc(path: Path, case_ids: list[str], strict: bool) -> list[str]:
+def validate_doc(path: Path, case_ids: list[str], strict: bool, release_strict: bool) -> list[str]:
     failures: list[str] = []
     if not path.exists():
         return [f"missing QA document: {path.relative_to(ROOT)}"]
@@ -154,6 +163,10 @@ def validate_doc(path: Path, case_ids: list[str], strict: bool) -> list[str]:
             failures.append(f"{path.relative_to(ROOT)} case {case_id} is {status} without reason or next action")
         if strict and case_id.startswith(STRICT_REQUIRED_PASS_PREFIXES) and status != "PASS":
             failures.append(f"{path.relative_to(ROOT)} case {case_id} must be PASS in --strict mode, found {status}")
+        if release_strict and case_id.startswith(RELEASE_REQUIRED_PROVIDER_PREFIXES) and status not in {"PASS", "DISABLED"}:
+            failures.append(
+                f"{path.relative_to(ROOT)} case {case_id} must be PASS or DISABLED in --release-strict mode, found {status}"
+            )
 
     return failures
 
@@ -161,11 +174,16 @@ def validate_doc(path: Path, case_ids: list[str], strict: bool) -> list[str]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Validate release QA evidence documents.")
     parser.add_argument("--strict", action="store_true", help="Require main-merge manual QA cases to be PASS.")
+    parser.add_argument(
+        "--release-strict",
+        action="store_true",
+        help="Require live provider/release-surface cases to be PASS or DISABLED.",
+    )
     args = parser.parse_args()
 
     failures: list[str] = []
     for relative, case_ids in QA_DOCS.items():
-        failures.extend(validate_doc(ROOT / relative, case_ids, args.strict))
+        failures.extend(validate_doc(ROOT / relative, case_ids, args.strict, args.release_strict))
 
     if failures:
         print("FAIL: release QA evidence validation", file=sys.stderr)
@@ -173,7 +191,12 @@ def main() -> None:
             print(f"- {failure}", file=sys.stderr)
         raise SystemExit(1)
 
-    mode = "strict" if args.strict else "non-strict"
+    if args.release_strict:
+        mode = "release-strict"
+    elif args.strict:
+        mode = "strict"
+    else:
+        mode = "non-strict"
     print(f"PASS: release QA evidence validation ({mode})")
 
 

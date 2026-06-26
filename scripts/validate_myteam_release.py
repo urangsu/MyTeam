@@ -17,6 +17,7 @@ CHECKS = [
     ["python3", "scripts/audit_product_completeness.py"],
     ["python3", "scripts/validate_app_termination_architecture.py"],
     ["python3", "scripts/smoke_natural_work_e2e.py"],
+    ["python3", "scripts/validate_tool_recovery_actions.py"],
     ["python3", "scripts/validate_release_qa_evidence.py"],
 ]
 
