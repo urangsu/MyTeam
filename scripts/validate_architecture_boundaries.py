@@ -151,6 +151,7 @@ def main() -> None:
         "LawToolRunner.swift",
         "WeatherToolRunner.swift",
         "FinanceToolRunner.swift",
+        "FinancePeriodResolver.swift",
         "DARTToolRunner.swift",
         "PublicLookupRunnerSupport.swift",
         "GoogleRunnerSupport.swift",
@@ -246,10 +247,14 @@ def main() -> None:
     for phrase in [
         "주식 기준일 시세 입력이 필요합니다",
         "시장 지수 입력이 필요합니다",
-        "사업연도가 필요합니다",
+        "최신 사용 가능 재무기간을 자동 확인하지 못했습니다",
     ]:
         if phrase not in finance_runner:
             failures.append(f"FinanceToolRunner must reject missing inputs with explicit guidance: {phrase}")
+    if "FinancePeriodResolver" not in finance_runner:
+        failures.append("FinanceToolRunner must use FinancePeriodResolver for explicit/latest finance periods")
+    if "runLatestAvailableCompanyStatement" not in finance_runner:
+        failures.append("FinanceToolRunner must try latest available company finance periods internally")
     if "Calendar.current.component" in finance_runner:
         failures.append("FinanceToolRunner must not silently default company finance business year")
     finance_statement_index = natural.find('toolID: "finance.company.statement"')

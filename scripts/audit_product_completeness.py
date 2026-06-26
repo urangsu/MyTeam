@@ -34,6 +34,8 @@ def main() -> None:
     team_status = read("MyTeam/TeamStatusView.swift")
     google_support = read("MyTeam/ToolRunners/GoogleRunnerSupport.swift")
     google_sheets_runner = read("MyTeam/ToolRunners/GoogleSheetsToolRunner.swift")
+    finance_runner = read("MyTeam/ToolRunners/FinanceToolRunner.swift")
+    finance_formatter = read("MyTeam/ToolResultFormatters.swift")
     inventory = read("docs/qa/ProductCompletenessInventory.md")
 
     if "MyTeamToolFastPathRouter.matchMany" in agent_chat:
@@ -164,6 +166,13 @@ def main() -> None:
             failures.append(f"{tool_id} must remain hidden from user-facing tool surfaces until productized")
     if 'toolID: "spreadsheet.postprocess"' in natural:
         failures.append("NaturalWorkRouting must not route hidden spreadsheet.postprocess")
+    if "FinancePeriodResolver.query" not in natural:
+        failures.append("NaturalWorkRouting must use FinancePeriodResolver for company finance period hints")
+    if "runLatestAvailableCompanyStatement" not in finance_runner:
+        failures.append("FinanceToolRunner must resolve latest available finance periods internally")
+    for phrase in ["기준 기간", "자동 선택", "조회 가능한 최신 기준 기간"]:
+        if phrase not in finance_formatter:
+            failures.append(f"Finance formatter must disclose inferred finance period: {phrase}")
     for token in ["Sheet1!A1:Z100", "defaultRange"]:
         if token in google_support or token in google_sheets_runner:
             failures.append(f"Google Sheets read must not use implicit default range: {token}")

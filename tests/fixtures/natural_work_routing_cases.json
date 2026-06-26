@@ -1,39 +1,32 @@
 [
   {
-    "id": "company-overview-missing-year",
+    "id": "company-overview-latest-finance",
     "input": "삼성전자 알려줘",
     "expectedWorkType": "companyBriefing",
     "expectedTools": [
       "finance.krx.stockPrice",
       "finance.krx.index",
       "dart.disclosures.search",
+      "finance.company.statement",
       "news.search"
     ],
-    "expectedToolsAbsent": [
-      "finance.company.statement"
-    ],
-    "expectedMissingSections": [
-      "재무 요약"
-    ],
-    "forbiddenQueryFragments": [
-      "삼성전자 2024",
-      "삼성전자 2025",
-      "삼성전자 2023"
+    "expectedQueryFragments": [
+      "latestAvailable"
     ]
   },
   {
-    "id": "finance-company-missing-year",
+    "id": "finance-company-latest-period",
     "input": "삼성전자 재무상황 알려줘",
-    "expectedToolsAbsent": [
+    "expectedTools": [
       "finance.company.statement"
     ],
-    "expectedMissingSections": [
-      "재무 요약"
+    "expectedQueryFragments": [
+      "삼성전자",
+      "latestAvailable"
     ],
-    "forbiddenQueryFragments": [
-      "삼성전자 2024",
-      "삼성전자 2025",
-      "삼성전자 2023"
+    "expectedNoticeFragments": [
+      "자동 선택",
+      "기준 기간"
     ]
   },
   {
@@ -45,6 +38,9 @@
     "expectedQueryFragments": [
       "삼성전자",
       "2024"
+    ],
+    "forbiddenQueryFragments": [
+      "latestAvailable"
     ]
   },
   {

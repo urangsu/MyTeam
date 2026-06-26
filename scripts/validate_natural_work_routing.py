@@ -112,8 +112,15 @@ def main() -> None:
         if phrase not in natural and phrase not in read("MyTeam/AgenticToolOrchestration.swift"):
             fail(f"false-positive phrase missing from routing code: {phrase}")
 
-    require_contains("NaturalWorkRouting explicit business year", natural, "explicitBusinessYear")
-    require_contains("NaturalWorkRouting missing business year", natural, "재무요약에는 사업연도가 필요합니다.")
+    finance_runner = read("MyTeam/ToolRunners/FinanceToolRunner.swift")
+    finance_formatter = read("MyTeam/ToolResultFormatters.swift")
+    finance_period = read("MyTeam/ToolRunners/FinancePeriodResolver.swift")
+    require_contains("NaturalWorkRouting latest finance period", natural, "FinancePeriodResolver.query")
+    require_contains("FinancePeriodResolver latest token", finance_period, "latestAvailable")
+    require_contains("FinanceToolRunner latest period", finance_runner, "runLatestAvailableCompanyStatement")
+    require_contains("Finance formatter period label", finance_formatter, "기준 기간")
+    require_contains("Finance formatter automatic selection", finance_formatter, "자동 선택")
+    require_contains("Finance formatter available period wording", finance_formatter, "조회 가능한 최신 기준 기간")
     finance_window = window_around(natural, 'toolID: "finance.company.statement"', radius=900)
     for forbidden in [
         "Calendar.current.component",
@@ -125,6 +132,8 @@ def main() -> None:
             fail(f"finance.company.statement must not use silent business-year default: {forbidden}")
     if "fallbackInputs: fallbacks" in finance_window:
         fail("finance.company.statement must not use current-year fallback inputs")
+    if "FinancePeriodResolver.query" not in finance_window:
+        fail("finance.company.statement must use FinancePeriodResolver.query for explicit/latest period hints")
     if 'toolID: "spreadsheet.postprocess"' in natural:
         fail("NaturalWorkRouting must not route hidden spreadsheet.postprocess as a natural work step")
     spreadsheet_window = window_around(natural, "private static func spreadsheetReviewPlan", radius=1800)
@@ -142,20 +151,27 @@ def main() -> None:
         if not any(case.get("input") == required_input for case in cases):
             fail(f"fixture missing case: {required_input}")
     required_fixture_ids = [
-        "company-overview-missing-year",
-        "finance-company-missing-year",
+        "company-overview-latest-finance",
+        "finance-company-latest-period",
         "finance-company-explicit-year",
         "budget-review-hidden-spreadsheet-safe-route",
         "closing-variance-hidden-spreadsheet-safe-route",
     ]
     for case_id in required_fixture_ids:
         require_fixture(cases, case_id)
-    missing_year = require_fixture(cases, "finance-company-missing-year")
-    if "finance.company.statement" not in missing_year.get("expectedToolsAbsent", []):
-        fail("finance-company-missing-year fixture must forbid finance.company.statement")
+    latest_period = require_fixture(cases, "finance-company-latest-period")
+    if "finance.company.statement" not in latest_period.get("expectedTools", []):
+        fail("finance-company-latest-period fixture must require finance.company.statement")
+    if "latestAvailable" not in latest_period.get("expectedQueryFragments", []):
+        fail("finance-company-latest-period fixture must require latestAvailable")
+    overview = require_fixture(cases, "company-overview-latest-finance")
+    if "finance.company.statement" not in overview.get("expectedTools", []):
+        fail("company-overview-latest-finance fixture must include finance.company.statement")
     explicit_year = require_fixture(cases, "finance-company-explicit-year")
     if "finance.company.statement" not in explicit_year.get("expectedTools", []):
         fail("finance-company-explicit-year fixture must require finance.company.statement")
+    if "latestAvailable" not in explicit_year.get("forbiddenQueryFragments", []):
+        fail("finance-company-explicit-year fixture must forbid latestAvailable")
     safe_route = require_fixture(cases, "budget-review-hidden-spreadsheet-safe-route")
     if "spreadsheet.postprocess" not in safe_route.get("expectedToolsAbsent", []):
         fail("budget-review-hidden-spreadsheet-safe-route must forbid spreadsheet.postprocess")
