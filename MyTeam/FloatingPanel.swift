@@ -319,7 +319,7 @@ class FloatingPanel: NSPanel {
         switch agentID {
         case "team", "swap_window", "agent_settings_window":
             return PersistencePolicy(persistSize: false)
-        case "status_window", "settings_window":
+        case "status_window":
             return PersistencePolicy(persistSize: true)
         default:
             if agentID.hasPrefix("chat_") {
@@ -331,8 +331,6 @@ class FloatingPanel: NSPanel {
 
     private var allowsBackgroundDragging: Bool {
         switch agentID {
-        case "settings_window":
-            return false
         default:
             return true
         }

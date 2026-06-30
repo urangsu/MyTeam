@@ -37,6 +37,7 @@ def main() -> None:
     finance_runner = read("MyTeam/ToolRunners/FinanceToolRunner.swift")
     finance_formatter = read("MyTeam/ToolResultFormatters.swift")
     agent_window_manager = read("MyTeam/AgentWindowManager.swift")
+    floating_panel = read("MyTeam/FloatingPanel.swift")
     inventory = read("docs/qa/ProductCompletenessInventory.md")
 
     if "MyTeamToolFastPathRouter.matchMany" in agent_chat:
@@ -108,6 +109,8 @@ def main() -> None:
         failures.append("AgentWindowManager must not store Settings as a FloatingPanel")
     if "private var settingsWindow: NSWindow?" not in agent_window_manager:
         failures.append("AgentWindowManager must keep Settings in a normal NSWindow")
+    if '"settings_window"' in floating_panel:
+        failures.append("FloatingPanel must not contain settings_window special cases")
 
     if "DemoRoomSeeder" in settings or "SampleArtifactSeeder" in settings:
         failures.append("SettingsView must not expose demo seed controls until DemoMode seeding is productized")

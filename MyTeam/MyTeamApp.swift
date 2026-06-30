@@ -80,6 +80,7 @@ struct MyTeamApp: App {
     var body: some Scene {
         Settings {
             SettingsView()
+                .environmentObject(AgentWindowManager.shared)
         }
     }
 }
