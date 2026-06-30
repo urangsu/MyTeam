@@ -10,16 +10,16 @@ enum ProductSurfaceTier: String, Sendable, Codable {
 }
 
 enum ProductSurfacePolicy: Sendable {
-    static let showsPlannedConnectorsInRelease = false
-    static let showsDisabledProButtonInRelease = true
-    static let showsPlaceholderCharactersInRelease = false
-    static let showsCharacterDLCInRelease = false
-    static let allowsExternalWriteStarterActions = false
-    static let allowsCalendarWriteSurface = false
-    static let allowsMailSendSurface = false
-    static let truthfulPrivacyCopyRequired = true
+    nonisolated static let showsPlannedConnectorsInRelease = false
+    nonisolated static let showsDisabledProButtonInRelease = true
+    nonisolated static let showsPlaceholderCharactersInRelease = false
+    nonisolated static let showsCharacterDLCInRelease = false
+    nonisolated static let allowsExternalWriteStarterActions = false
+    nonisolated static let allowsCalendarWriteSurface = false
+    nonisolated static let allowsMailSendSurface = false
+    nonisolated static let truthfulPrivacyCopyRequired = true
 
-    static func isEnabledInCurrentReleaseSurface(_ descriptor: MyTeamToolDescriptor) -> Bool {
+    nonisolated static func isEnabledInCurrentReleaseSurface(_ descriptor: MyTeamToolDescriptor) -> Bool {
         ReleaseLiveProviderGate.isEnabledInCurrentReleaseSurface(toolID: descriptor.id)
     }
 
@@ -36,15 +36,15 @@ enum ProductSurfacePolicy: Sendable {
         return !manifest.isPlaceholder
     }
 
-    static func dlcVisibilityInRelease() -> Bool {
+    nonisolated static func dlcVisibilityInRelease() -> Bool {
         return showsCharacterDLCInRelease
     }
 
-    static func proButtonStateInRelease() -> String {
+    nonisolated static func proButtonStateInRelease() -> String {
         return showsDisabledProButtonInRelease ? "disabled" : "hidden"
     }
 
-    static func tier(for descriptor: MyTeamToolDescriptor) -> ProductSurfaceTier {
+    nonisolated static func tier(for descriptor: MyTeamToolDescriptor) -> ProductSurfaceTier {
         guard isEnabledInCurrentReleaseSurface(descriptor) else {
             return .hidden
         }
@@ -82,15 +82,15 @@ enum ProductSurfacePolicy: Sendable {
         }
     }
 
-    static func shouldShowInHomePrimary(_ descriptor: MyTeamToolDescriptor) -> Bool {
+    nonisolated static func shouldShowInHomePrimary(_ descriptor: MyTeamToolDescriptor) -> Bool {
         descriptor.isUserFacing && tier(for: descriptor) == .primary
     }
 
-    static func shouldShowInHomeSecondary(_ descriptor: MyTeamToolDescriptor) -> Bool {
+    nonisolated static func shouldShowInHomeSecondary(_ descriptor: MyTeamToolDescriptor) -> Bool {
         descriptor.isUserFacing && tier(for: descriptor) == .secondary
     }
 
-    static func shouldShowInConnectionSection(
+    nonisolated static func shouldShowInConnectionSection(
         _ descriptor: MyTeamToolDescriptor,
         state: ToolExecutionState
     ) -> Bool {
@@ -115,20 +115,20 @@ enum ProductSurfacePolicy: Sendable {
 enum ReleaseLiveProviderGate: Sendable {
     // Release/App Store defaults are fail-closed until live QA evidence is recorded.
     // Debug/Developer builds keep these paths enabled so QA can still exercise them.
-    static let workerProductionHealthPassed = false
-    static let googleLiveQAPassed = false
-    static let financeLiveQAPassed = false
-    static let dartLiveQAPassed = false
-    static let kmaLiveQAPassed = false
-    static let newsLiveQAPassed = false
-    static let lawLiveQAPassed = false
+    nonisolated static let workerProductionHealthPassed = false
+    nonisolated static let googleLiveQAPassed = false
+    nonisolated static let financeLiveQAPassed = false
+    nonisolated static let dartLiveQAPassed = false
+    nonisolated static let kmaLiveQAPassed = false
+    nonisolated static let newsLiveQAPassed = false
+    nonisolated static let lawLiveQAPassed = false
 
-    static func isEnabledInCurrentReleaseSurface(toolID: String) -> Bool {
+    nonisolated static func isEnabledInCurrentReleaseSurface(toolID: String) -> Bool {
         guard FeatureGate.current != .developer else { return true }
         return isApprovedForRelease(toolID: toolID)
     }
 
-    static func isApprovedForRelease(toolID: String) -> Bool {
+    nonisolated static func isApprovedForRelease(toolID: String) -> Bool {
         switch toolID {
         case "news.search":
             return workerProductionHealthPassed && newsLiveQAPassed
@@ -147,7 +147,7 @@ enum ReleaseLiveProviderGate: Sendable {
         }
     }
 
-    static func disabledMessage(for descriptor: MyTeamToolDescriptor) -> String {
+    nonisolated static func disabledMessage(for descriptor: MyTeamToolDescriptor) -> String {
         switch descriptor.id {
         case "news.search", "law.search", "finance.krx.stockPrice", "finance.krx.index", "finance.company.statement", "weather.current":
             return "이 외부 조회는 출시 전 live QA가 완료될 때까지 Release 표면에서 비활성화됩니다."

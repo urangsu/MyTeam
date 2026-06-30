@@ -6,7 +6,7 @@ import Combine
 // MARK: - AgentWindowManager
 // 팀 테이블 창 1개를 생성하고, 4명의 에이전트를 그 안에 표시합니다.
 // AgentConfig → AgentConfig.swift / ChatRoom, ChatLog → ChatModels.swift 로 분리됨
-class AgentWindowManager: ObservableObject {
+class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
 
     static let shared = AgentWindowManager()
 
@@ -740,8 +740,8 @@ class AgentWindowManager: ObservableObject {
     // 팀 협업 현황 창
     private var statusPanel: FloatingPanel?
     
-    // 설정 창
-    private var settingsPanel: FloatingPanel?
+    // 설정 창은 일반 NSWindow로 띄운다. FloatingPanel은 캐릭터/워크룸 전용이다.
+    private var settingsWindow: NSWindow?
     
     // 개별 커스텀 설정 창
     private var agentSettingsPanel: FloatingPanel?
@@ -750,8 +750,9 @@ class AgentWindowManager: ObservableObject {
     private var idleTimer: Timer?
     private var automationTimer: Timer?
 
-    private init() {
+    private override init() {
         activeAgents = Array(allAvailableAgents.prefix(4))
+        super.init()
         for index in activeAgents.indices {
             activeAgents[index].applyDeskRouting(index: index)
         }
@@ -1358,43 +1359,56 @@ class AgentWindowManager: ObservableObject {
     
     // MARK: - 환경 설정 창 띄우기 (API 키 등)
     func showSettingsWindow() {
-        if settingsPanel != nil {
+        if let settingsWindow {
             NSApp.activate(ignoringOtherApps: true)
-            settingsPanel?.orderFrontRegardless()
-            settingsPanel?.makeKeyAndOrderFront(nil)
+            settingsWindow.orderFrontRegardless()
+            settingsWindow.makeKeyAndOrderFront(nil)
             return
         }
         
         let screenRect = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 800, height: 600)
         let width: CGFloat = 620
         let height: CGFloat = 680
-        
-        let panel = FloatingPanel(
-            agentID: "settings_window",
-            position: NSPoint(
+
+        let window = NSWindow(
+            contentRect: NSRect(
                 x: screenRect.midX - (width / 2),
-                y: screenRect.midY - (height / 2)
+                y: screenRect.midY - (height / 2),
+                width: width,
+                height: height
             ),
-            size: NSSize(width: width, height: height)
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
         )
-        // 설정 창은 일반 창처럼 상호작용해야 하므로 키 윈도우 지원
-        panel.level = .normal
-        panel.isMovableByWindowBackground = false
-        panel.minSize = NSSize(width: 540, height: 500)
+        window.title = "MyTeam 설정"
+        window.level = .normal
+        window.minSize = NSSize(width: 540, height: 500)
+        window.isReleasedWhenClosed = false
+        window.delegate = self
+        window.identifier = NSUserInterfaceItemIdentifier("MyTeam.settings_window")
         
         let view = SettingsView()
             .environmentObject(self)
         
-        panel.contentViewController = NSHostingController(rootView: view)
+        window.contentViewController = NSHostingController(rootView: view)
         NSApp.activate(ignoringOtherApps: true)
-        panel.orderFrontRegardless()
-        panel.makeKeyAndOrderFront(nil)
-        settingsPanel = panel
+        window.orderFrontRegardless()
+        window.makeKeyAndOrderFront(nil)
+        settingsWindow = window
     }
     
     func hideSettingsWindow() {
-        settingsPanel?.close()
-        settingsPanel = nil
+        settingsWindow?.close()
+        settingsWindow = nil
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow,
+              window.identifier?.rawValue == "MyTeam.settings_window" else {
+            return
+        }
+        settingsWindow = nil
     }
 
     // MARK: - 창 크기 동적 조절 (SwiftUI에서 호출)

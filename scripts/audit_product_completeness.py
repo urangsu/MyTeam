@@ -36,6 +36,7 @@ def main() -> None:
     google_sheets_runner = read("MyTeam/ToolRunners/GoogleSheetsToolRunner.swift")
     finance_runner = read("MyTeam/ToolRunners/FinanceToolRunner.swift")
     finance_formatter = read("MyTeam/ToolResultFormatters.swift")
+    agent_window_manager = read("MyTeam/AgentWindowManager.swift")
     inventory = read("docs/qa/ProductCompletenessInventory.md")
 
     if "MyTeamToolFastPathRouter.matchMany" in agent_chat:
@@ -98,6 +99,15 @@ def main() -> None:
         failures.append("SettingsView must not expose observation/developer inbox surfaces")
     if "ConnectorStatusView(" in settings or "PlaywrightMCPStatusView(" in settings:
         failures.append("SettingsView must not expose developer diagnostics")
+    settings_window_index = agent_window_manager.find('agentID: "settings_window"')
+    if settings_window_index != -1:
+        window = agent_window_manager[max(0, settings_window_index - 200):settings_window_index + 260]
+        if "FloatingPanel(" in window:
+            failures.append("Settings window must use a normal NSWindow, not FloatingPanel")
+    if "private var settingsPanel: FloatingPanel?" in agent_window_manager:
+        failures.append("AgentWindowManager must not store Settings as a FloatingPanel")
+    if "private var settingsWindow: NSWindow?" not in agent_window_manager:
+        failures.append("AgentWindowManager must keep Settings in a normal NSWindow")
 
     if "DemoRoomSeeder" in settings or "SampleArtifactSeeder" in settings:
         failures.append("SettingsView must not expose demo seed controls until DemoMode seeding is productized")
