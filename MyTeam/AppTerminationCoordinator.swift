@@ -44,21 +44,22 @@ final class AppTerminationCoordinator: ObservableObject {
         source: AppTerminationSource,
         application: NSApplication
     ) -> NSApplication.TerminateReply {
-        if phase == .terminating || phase == .forcedExit || didReplyToShouldTerminate {
+        if phase == .terminating || phase == .forcedExit {
             return .terminateNow
-        }
-
-        if phase != .idle {
-            return .terminateLater
         }
 
         phase = .requested
         pendingSource = source
         pendingApplication = application
-        didReplyToShouldTerminate = false
+        didReplyToShouldTerminate = true
 
-        startTerminationSequence(source: source)
-        return .terminateLater
+        AgentWindowManager.shared.savePosition()
+        AgentWindowManager.shared.cancelAllActiveWorkflowTasks()
+        stopAudioNonBlocking()
+        stopEngineBestEffort()
+
+        phase = .terminating
+        return .terminateNow
     }
 
     func requestMenuQuit() {
