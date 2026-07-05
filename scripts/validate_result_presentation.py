@@ -23,6 +23,8 @@ def fail(message: str) -> None:
 
 def validate_composer_contract() -> None:
     source = read("MyTeam/NaturalWorkRouting.swift")
+    state_source = read("MyTeam/ToolExecutionState.swift")
+    formatter_source = read("MyTeam/ToolResultFormatters.swift")
     required = [
         "## 한 줄 요약",
         "## 확인한 내용",
@@ -42,6 +44,18 @@ def validate_composer_contract() -> None:
         fail("NaturalResultComposer must render source section only when sources exist")
     if "if !nextActions.isEmpty" not in source:
         fail("NaturalResultComposer must render next-action section only when actions exist")
+    if "case checkedEmpty" not in state_source:
+        fail("ToolExecutionState must include checkedEmpty for successful requests with no results")
+    if "case .checkedEmpty" not in source:
+        fail("NaturalResultComposer must route checkedEmpty into missing/empty-result handling")
+    no_results_index = formatter_source.find("nonisolated static func noResultsState")
+    if no_results_index == -1:
+        fail("ToolResultFormatters must define noResultsState")
+    no_results_window = formatter_source[no_results_index:no_results_index + 800]
+    if ".succeeded(" in no_results_window:
+        fail("noResultsState must not return .succeeded")
+    if ".checkedEmpty(" not in no_results_window:
+        fail("noResultsState must return .checkedEmpty")
 
 
 def validate_finance_language() -> None:

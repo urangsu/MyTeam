@@ -36,6 +36,8 @@ def main() -> None:
     google_sheets_runner = read("MyTeam/ToolRunners/GoogleSheetsToolRunner.swift")
     finance_runner = read("MyTeam/ToolRunners/FinanceToolRunner.swift")
     finance_formatter = read("MyTeam/ToolResultFormatters.swift")
+    tool_state = read("MyTeam/ToolExecutionState.swift")
+    myteam_app = read("MyTeam/MyTeamApp.swift")
     agent_window_manager = read("MyTeam/AgentWindowManager.swift")
     floating_panel = read("MyTeam/FloatingPanel.swift")
     inventory = read("docs/qa/ProductCompletenessInventory.md")
@@ -100,6 +102,11 @@ def main() -> None:
         failures.append("SettingsView must not expose observation/developer inbox surfaces")
     if "ConnectorStatusView(" in settings or "PlaywrightMCPStatusView(" in settings:
         failures.append("SettingsView must not expose developer diagnostics")
+    settings_scene_match = re.search(r"Settings\s*\{(?P<body>.*?)\n\s*\}", myteam_app, re.S)
+    if settings_scene_match and "SettingsView(" in settings_scene_match.group("body"):
+        failures.append("SwiftUI Settings scene must not create a second SettingsView instance")
+    if "CommandGroup(replacing: .appSettings)" not in myteam_app or "AgentWindowManager.shared.showSettingsWindow()" not in myteam_app:
+        failures.append("macOS Settings command must route through AgentWindowManager.showSettingsWindow")
     settings_window_index = agent_window_manager.find('agentID: "settings_window"')
     if settings_window_index != -1:
         window = agent_window_manager[max(0, settings_window_index - 200):settings_window_index + 260]
@@ -119,6 +126,13 @@ def main() -> None:
         failures.append("Settings presentation must demote and restore app-owned FloatingPanel levels")
     if "settingsSuppressedPanelLevels" not in agent_window_manager:
         failures.append("Settings presentation must remember suppressed FloatingPanel levels for restore")
+    for token in [
+        "applySettingsPresentationPolicy(to:",
+        "keepSettingsFrontIfNeeded()",
+        "bringSettingsWindowToFront",
+    ]:
+        if token not in agent_window_manager:
+            failures.append(f"Settings window layering must include runtime panel policy: {token}")
     suppression_match = re.search(
         r"private func floatingPanelsForSettingsSuppression\(\) -> \[FloatingPanel\] \{(?P<body>.*?)\n    \}",
         agent_window_manager,
@@ -128,6 +142,17 @@ def main() -> None:
         failures.append("Settings presentation must not demote the team member panel")
     if '"settings_window"' in floating_panel:
         failures.append("FloatingPanel must not contain settings_window special cases")
+
+    for token in ["case checkedEmpty", "case partial"]:
+        if token not in tool_state:
+            failures.append(f"ToolExecutionState must distinguish non-success result state: {token}")
+    no_results_index = finance_formatter.find("nonisolated static func noResultsState")
+    if no_results_index != -1:
+        no_results_window = finance_formatter[no_results_index:no_results_index + 800]
+        if ".succeeded(" in no_results_window:
+            failures.append("ToolResultFormatters.noResultsState must not return .succeeded")
+        if ".checkedEmpty(" not in no_results_window:
+            failures.append("ToolResultFormatters.noResultsState must return .checkedEmpty")
 
     if "DemoRoomSeeder" in settings or "SampleArtifactSeeder" in settings:
         failures.append("SettingsView must not expose demo seed controls until DemoMode seeding is productized")

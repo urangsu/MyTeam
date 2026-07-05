@@ -102,6 +102,21 @@ RELEASE_REQUIRED_PROVIDER_PREFIXES = (
 
 STATUS_VALUES = {"PASS", "FAIL", "BLOCKED", "DISABLED"}
 
+MANUAL_QA_DOCS = {
+    "docs/qa/AppTerminationManualQA.md",
+    "docs/qa/NaturalWorkE2EManualQA.md",
+    "docs/qa/ArtifactReopenManualQA.md",
+    "docs/qa/HomeSurfaceManualQA.md",
+}
+
+REQUIRED_EVIDENCE_FIELDS = (
+    "tested_commit",
+    "tested_build",
+    "tested_at",
+    "tester",
+    "profile",
+)
+
 
 def split_table_row(line: str) -> list[str]:
     return [cell.strip() for cell in line.strip().strip("|").split("|")]
@@ -135,6 +150,12 @@ def validate_doc(path: Path, case_ids: list[str], strict: bool, release_strict: 
         return [f"missing QA document: {path.relative_to(ROOT)}"]
 
     text = path.read_text()
+    relative_path = str(path.relative_to(ROOT))
+    if relative_path in MANUAL_QA_DOCS:
+        for field in REQUIRED_EVIDENCE_FIELDS:
+            if not re.search(rf"^\s*-\s*{re.escape(field)}\s*:", text, re.M):
+                failures.append(f"{relative_path} missing evidence metadata field {field}")
+
     forbidden_release_tag_patterns = [
         r"release tag\s*:\s*PASS",
         r"release tag\s*가능",
@@ -146,8 +167,8 @@ def validate_doc(path: Path, case_ids: list[str], strict: bool, release_strict: 
             failures.append(f"{path.relative_to(ROOT)} claims release tag is possible")
 
     incomplete = any(status in text for status in ("BLOCKED", "FAIL"))
-    if incomplete and re.search(r"main merge\s*:\s*PASS|main merge 가능|Main merge decision:\s*PASS", text, re.I):
-        failures.append(f"{path.relative_to(ROOT)} claims main merge is possible while QA is incomplete")
+    if incomplete and re.search(r"release candidate\s*:\s*PASS|RC\s*:\s*PASS|Release candidate decision:\s*PASS", text, re.I):
+        failures.append(f"{path.relative_to(ROOT)} claims release candidate is possible while QA is incomplete")
 
     for case_id in case_ids:
         row = find_case_row(text, case_id)
@@ -173,7 +194,7 @@ def validate_doc(path: Path, case_ids: list[str], strict: bool, release_strict: 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Validate release QA evidence documents.")
-    parser.add_argument("--strict", action="store_true", help="Require main-merge manual QA cases to be PASS.")
+    parser.add_argument("--strict", action="store_true", help="Require release-candidate manual QA cases to be PASS.")
     parser.add_argument(
         "--release-strict",
         action="store_true",

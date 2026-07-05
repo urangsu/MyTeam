@@ -18,7 +18,16 @@ def run(command: list[str]) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate MyTeam launch readiness gates.")
-    parser.add_argument("--main-merge", action="store_true", help="Require manual main-merge QA evidence to be PASS.")
+    parser.add_argument(
+        "--main-merge",
+        action="store_true",
+        help="Backward-compatible alias for --release-candidate.",
+    )
+    parser.add_argument(
+        "--release-candidate",
+        action="store_true",
+        help="Require release-candidate manual QA evidence to be PASS.",
+    )
     parser.add_argument("--release-tag", action="store_true", help="Require release live/provider gate to be PASS or DISABLED.")
     parser.add_argument("--worker-live", action="store_true", help="Check deployed Cloudflare Worker production /health.")
     args = parser.parse_args()
@@ -26,7 +35,7 @@ def main() -> int:
     commands: list[list[str]] = [
         ["python3", "scripts/validate_release_qa_evidence.py"],
     ]
-    if args.main_merge:
+    if args.main_merge or args.release_candidate:
         commands.append(["python3", "scripts/validate_release_qa_evidence.py", "--strict"])
     if args.release_tag:
         commands.append(["python3", "scripts/validate_release_qa_evidence.py", "--release-strict"])
@@ -42,7 +51,7 @@ def main() -> int:
         print(f"FAIL: launch readiness validation failed ({failures} failing command(s))")
         return 1
 
-    mode = "release-tag" if args.release_tag else "main-merge" if args.main_merge else "static"
+    mode = "release-tag" if args.release_tag else "release-candidate" if args.main_merge or args.release_candidate else "static"
     print(f"PASS: launch readiness validation ({mode})")
     return 0
 
