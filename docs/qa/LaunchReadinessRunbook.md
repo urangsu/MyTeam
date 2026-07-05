@@ -40,12 +40,12 @@ xcodebuild -project MyTeam/MyTeam.xcodeproj \
   build
 ```
 
-## 2. Main Merge Gate
+## 2. Release Candidate Gate
 
 Run:
 
 ```bash
-python3 scripts/validate_launch_readiness.py --main-merge
+python3 scripts/validate_launch_readiness.py --release-candidate
 ```
 
 Required evidence:
@@ -56,6 +56,20 @@ Required evidence:
 - `docs/qa/HomeSurfaceManualQA.md`: HOME-001 through HOME-006 are PASS.
 
 Any BLOCKED row must keep its reason and next action. Any FAIL row requires a fix commit and retest.
+
+`python3 scripts/validate_launch_readiness.py --main-merge` remains as a backward-compatible alias, but new release work should use `--release-candidate`.
+
+## 2.1 Performance and Window QA Targets
+
+Release Candidate manual QA must record whether these targets were met:
+
+- Settings open to front: within 300ms after menu/Cmd+, no duplicate SwiftUI Settings window.
+- Settings with team panel open: team member panel remains visible; chat/status/swap/agent-settings panels do not cover Settings.
+- Settings already open, then new chat/status/swap panel: Settings remains front unless the team panel is explicitly opened.
+- Team/personal chat input: progress bubble appears within 300ms.
+- Natural work routing: first visible feedback appears within 300ms.
+- Artifact detail open: normal artifact within 500ms; long artifact must not freeze UI.
+- External lookup: progress state appears immediately; timeout/partial failure is explicit.
 
 ## 3. Release Tag Gate
 

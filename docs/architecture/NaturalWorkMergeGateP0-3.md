@@ -2,7 +2,7 @@
 
 ## Scope
 
-This gate verifies the current `codex/main-product-stabilization-p0` natural work path before main merge. It is a code and validator gate, not a new feature pass.
+This gate verifies the natural work path before Release Candidate review. It is a code and validator gate, not a new feature pass.
 
 ## Personal Chat Call Chain
 
@@ -74,4 +74,3 @@ Manual UI QA remains separate and should verify:
 - Team workroom: `삼성전자 주가랑 공시랑 재무상황 알려줘`
 - Team workroom clarification: `회의록 만들어줘`
 - Team workroom clarification: `이 회사 재무상황 알려줘`
-

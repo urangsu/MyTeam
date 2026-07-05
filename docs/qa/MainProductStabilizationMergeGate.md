@@ -1,10 +1,12 @@
-# Main Product Stabilization Merge Gate
+# Main Product Stabilization Launch Readiness Gate
 
 ## 1. Branch Summary
 
-- Branch: `codex/main-product-stabilization-p0`
-- Purpose: prove stabilization work before any main merge decision.
-- Current gate status: BLOCKED for main merge until manual QA documents move required runtime cases from BLOCKED to PASS.
+- Branch policy: `main` is the integration branch. `release/*` is the strict Release Candidate gate.
+- Current HEAD reviewed: `837276699a11268112a09c78bc1bb60bb954c781`.
+- Current evidence timestamp: `2026-07-06 00:08:59 KST`.
+- Purpose: prove stabilization work before any Release Candidate or release tag decision.
+- Current gate status: BLOCKED for Release Candidate until manual QA documents move required runtime cases from BLOCKED to PASS.
 
 ## 2. Included P0 Items
 
@@ -39,13 +41,13 @@
 | Case ID | Scenario | Input / Action | Expected result | Forbidden result | Actual result | PASS / FAIL / BLOCKED | Evidence | Notes |
 |---|---|---|---|---|---|---|---|---|
 | MG-STATIC-001 | Static validator suite | Run release/static validators listed in this gate | Validators pass before merge review | Ignoring failing validator | Static validators passed in this pass | PASS | `git diff --check`; `node --check`; `validate_release_qa_evidence.py`; app termination, natural work, product completeness, architecture, release, checklist, skill package, precommit, character dialogue validators | Manual QA remains separate. |
-| MG-BUILD-001 | Debug build | `xcodebuild ... Debug ... build` | Build succeeds | Debug-only failures ignored | Debug build passed in this pass | PASS | `/tmp/myteam_qa_gate_debug.log`; output ended with `** BUILD SUCCEEDED **` | Release build also required. |
-| MG-BUILD-002 | Release build | `xcodebuild ... Release ... build` | Build succeeds | Release build failure ignored | Release build passed in this pass | PASS | `/tmp/myteam_qa_gate_release.log`; output ended with `** BUILD SUCCEEDED **` | Manual QA remains separate. |
+| MG-BUILD-001 | Debug build | `xcodebuild ... Debug ... build` | Build succeeds | Debug-only failures ignored | Debug build passed for current working tree | PASS | 2026-07-06 local run ended with `** BUILD SUCCEEDED **` | Release build also required. |
+| MG-BUILD-002 | Release build | `xcodebuild ... Release ... build` | Build succeeds | Release build failure ignored | Release build passed for current working tree | PASS | 2026-07-06 local run ended with `** BUILD SUCCEEDED **` | Manual QA remains separate. |
 
 ## 5. Build Results
 
-- Debug: PASS. Evidence: `/tmp/myteam_qa_gate_debug.log`.
-- Release: PASS. Evidence: `/tmp/myteam_qa_gate_release.log`.
+- Debug: PASS. Evidence: 2026-07-06 local `xcodebuild ... Debug ... build` ended with `** BUILD SUCCEEDED **`.
+- Release: PASS. Evidence: 2026-07-06 local `xcodebuild ... Release ... build` ended with `** BUILD SUCCEEDED **`.
 
 ## 6. Manual QA Results
 
@@ -69,7 +71,9 @@ Details are in `docs/qa/LiveProviderQAMatrix.md`.
 
 ## 7.1 Gate Commands
 
-- Main merge gate: `python3 scripts/validate_release_qa_evidence.py --strict`
+- Integration branch gate: static validators and Debug/Release builds.
+- Release Candidate gate: `python3 scripts/validate_release_qa_evidence.py --strict`
+- Release Candidate alias: `python3 scripts/validate_launch_readiness.py --release-candidate`
 - Release tag gate: `python3 scripts/validate_release_qa_evidence.py --release-strict`
 - Release tag also requires Worker production `/health` live confirmation.
 
@@ -92,11 +96,11 @@ Details are in `docs/qa/LiveProviderQAMatrix.md`.
 - Artifact reopen has not been manually proven in this QA pass.
 - Live provider states and OAuth failure modes have not been proven in this QA pass, so Release surfaces are fail-closed.
 
-## 11. Main Merge Decision
+## 11. Release Candidate Decision
 
 Current decision: BLOCKED.
 
-Main merge is not recommended until:
+Release Candidate is not allowed until:
 
 - Static validators PASS.
 - Debug and Release builds PASS.
@@ -110,4 +114,4 @@ Main merge is not recommended until:
 
 Release tag decision: BLOCKED.
 
-Release tag is not allowed from this branch while main-merge manual QA remains BLOCKED. Live provider release-strict cases are allowed only when `PASS` or `DISABLED`; enabling any live provider requires Worker production live gate and provider live QA closure first.
+Release tag is not allowed while Release Candidate manual QA remains BLOCKED. Live provider release-strict cases are allowed only when `PASS` or `DISABLED`; enabling any live provider requires Worker production live gate and provider live QA closure first.

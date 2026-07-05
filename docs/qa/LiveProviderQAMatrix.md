@@ -1,6 +1,6 @@
 # Live Provider QA Matrix
 
-This matrix records provider behavior by connection state. Live provider QA may remain BLOCKED for main merge review if it is explicitly documented, but release tag remains blocked until live provider QA is closed or the relevant feature is disabled from release surface.
+This matrix records provider behavior by connection state. Live provider QA may remain BLOCKED on the integration branch if it is explicitly documented, but release tag remains blocked until live provider QA is closed or the relevant feature is disabled from release surface.
 
 | Case ID | Scenario | Input / Action | Expected result | Forbidden result | Actual result | PASS / FAIL / BLOCKED | Evidence | Notes |
 |---|---|---|---|---|---|---|---|---|
