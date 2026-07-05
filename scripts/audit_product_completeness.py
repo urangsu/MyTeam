@@ -109,6 +109,16 @@ def main() -> None:
         failures.append("AgentWindowManager must not store Settings as a FloatingPanel")
     if "private var settingsWindow: NSWindow?" not in agent_window_manager:
         failures.append("AgentWindowManager must keep Settings in a normal NSWindow")
+    if "private func presentSettingsWindow(_ window: NSWindow)" not in agent_window_manager:
+        failures.append("AgentWindowManager must present Settings through a shared helper")
+    if "presentSettingsWindow(settingsWindow)" not in agent_window_manager:
+        failures.append("Existing Settings window must be brought forward through presentSettingsWindow")
+    if "presentSettingsWindow(window)" not in agent_window_manager:
+        failures.append("New Settings window must be brought forward through presentSettingsWindow")
+    if "lowerFloatingPanelsForSettings()" not in agent_window_manager or "restoreFloatingPanelsAfterSettings()" not in agent_window_manager:
+        failures.append("Settings presentation must demote and restore app-owned FloatingPanel levels")
+    if "settingsSuppressedPanelLevels" not in agent_window_manager:
+        failures.append("Settings presentation must remember suppressed FloatingPanel levels for restore")
     if '"settings_window"' in floating_panel:
         failures.append("FloatingPanel must not contain settings_window special cases")
 

@@ -742,6 +742,7 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
     
     // 설정 창은 일반 NSWindow로 띄운다. FloatingPanel은 캐릭터/워크룸 전용이다.
     private var settingsWindow: NSWindow?
+    private var settingsSuppressedPanelLevels: [ObjectIdentifier: NSWindow.Level] = [:]
     
     // 개별 커스텀 설정 창
     private var agentSettingsPanel: FloatingPanel?
@@ -1360,9 +1361,7 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
     // MARK: - 환경 설정 창 띄우기 (API 키 등)
     func showSettingsWindow() {
         if let settingsWindow {
-            NSApp.activate(ignoringOtherApps: true)
-            settingsWindow.orderFrontRegardless()
-            settingsWindow.makeKeyAndOrderFront(nil)
+            presentSettingsWindow(settingsWindow)
             return
         }
         
@@ -1392,13 +1391,57 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
             .environmentObject(self)
         
         window.contentViewController = NSHostingController(rootView: view)
+        settingsWindow = window
+        presentSettingsWindow(window)
+    }
+
+    private func presentSettingsWindow(_ window: NSWindow) {
+        lowerFloatingPanelsForSettings()
+        window.collectionBehavior = [.moveToActiveSpace]
+        window.deminiaturize(nil)
         NSApp.activate(ignoringOtherApps: true)
         window.orderFrontRegardless()
         window.makeKeyAndOrderFront(nil)
-        settingsWindow = window
+        DispatchQueue.main.async { [weak window] in
+            guard let window else { return }
+            NSApp.activate(ignoringOtherApps: true)
+            window.orderFrontRegardless()
+            window.makeKeyAndOrderFront(nil)
+        }
+    }
+
+    private func floatingPanelsForSettingsSuppression() -> [FloatingPanel] {
+        var panels: [FloatingPanel] = []
+        if let teamPanel { panels.append(teamPanel) }
+        panels.append(contentsOf: chatPanels.values)
+        if let swapPanel { panels.append(swapPanel) }
+        if let statusPanel { panels.append(statusPanel) }
+        if let agentSettingsPanel { panels.append(agentSettingsPanel) }
+        return panels
+    }
+
+    private func lowerFloatingPanelsForSettings() {
+        for panel in floatingPanelsForSettingsSuppression() {
+            let key = ObjectIdentifier(panel)
+            if settingsSuppressedPanelLevels[key] == nil {
+                settingsSuppressedPanelLevels[key] = panel.level
+            }
+            panel.level = .normal
+        }
+    }
+
+    private func restoreFloatingPanelsAfterSettings() {
+        for panel in floatingPanelsForSettingsSuppression() {
+            let key = ObjectIdentifier(panel)
+            if let level = settingsSuppressedPanelLevels[key] {
+                panel.level = level
+            }
+        }
+        settingsSuppressedPanelLevels.removeAll()
     }
     
     func hideSettingsWindow() {
+        restoreFloatingPanelsAfterSettings()
         settingsWindow?.close()
         settingsWindow = nil
     }
@@ -1408,6 +1451,7 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
               window.identifier?.rawValue == "MyTeam.settings_window" else {
             return
         }
+        restoreFloatingPanelsAfterSettings()
         settingsWindow = nil
     }
 
