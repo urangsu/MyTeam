@@ -154,6 +154,7 @@ struct ToolExecutionLogView: View {
 
 struct ToolExecutionLogDetailView: View {
     let entry: ToolExecutionLogEntry
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -166,6 +167,17 @@ struct ToolExecutionLogDetailView: View {
                         .foregroundStyle(statusTint)
                 }
                 Spacer()
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("닫기")
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(.cancelAction)
+                .help("닫기")
             }
 
             VStack(alignment: .leading, spacing: 8) {

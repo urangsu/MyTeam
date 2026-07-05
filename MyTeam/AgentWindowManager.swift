@@ -1412,7 +1412,6 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
 
     private func floatingPanelsForSettingsSuppression() -> [FloatingPanel] {
         var panels: [FloatingPanel] = []
-        if let teamPanel { panels.append(teamPanel) }
         panels.append(contentsOf: chatPanels.values)
         if let swapPanel { panels.append(swapPanel) }
         if let statusPanel { panels.append(statusPanel) }

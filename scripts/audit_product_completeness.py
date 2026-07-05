@@ -119,6 +119,13 @@ def main() -> None:
         failures.append("Settings presentation must demote and restore app-owned FloatingPanel levels")
     if "settingsSuppressedPanelLevels" not in agent_window_manager:
         failures.append("Settings presentation must remember suppressed FloatingPanel levels for restore")
+    suppression_match = re.search(
+        r"private func floatingPanelsForSettingsSuppression\(\) -> \[FloatingPanel\] \{(?P<body>.*?)\n    \}",
+        agent_window_manager,
+        re.S,
+    )
+    if suppression_match and "teamPanel" in suppression_match.group("body"):
+        failures.append("Settings presentation must not demote the team member panel")
     if '"settings_window"' in floating_panel:
         failures.append("FloatingPanel must not contain settings_window special cases")
 
