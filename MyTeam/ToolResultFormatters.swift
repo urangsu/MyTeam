@@ -548,7 +548,7 @@ enum FinanceResultFormatter {
         query: String,
         sourceLabel: String
     ) -> ToolExecutionState {
-        .succeeded(MyTeamToolResult(
+        .checkedEmpty(MyTeamToolResult(
             title: "\(label) 결과가 없습니다",
             summary: "'\(query)' 기준 공공데이터 조회 결과를 찾지 못했습니다.",
             sourceLabel: sourceLabel,
@@ -568,7 +568,7 @@ enum FinanceResultFormatter {
         sourceLabel: String,
         notice: String
     ) -> ToolExecutionState {
-        .succeeded(MyTeamToolResult(
+        .checkedEmpty(MyTeamToolResult(
             title: "기업 재무 요약 결과가 없습니다",
             summary: "\(company) 법인등록번호 \(crno), 사업연도 \(businessYear) 기준 요약재무제표 결과를 찾지 못했습니다.",
             sourceLabel: sourceLabel,

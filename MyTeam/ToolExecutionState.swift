@@ -59,6 +59,8 @@ enum ToolExecutionState: Sendable, Equatable {
     case needsApproval(String)
     case running
     case succeeded(MyTeamToolResult)
+    case checkedEmpty(MyTeamToolResult)
+    case partial(MyTeamToolResult)
     case failed(MyTeamToolFailure)
     case unavailable(String)
 }
@@ -108,6 +110,8 @@ extension ToolExecutionState {
         case .needsApproval: return "승인 필요"
         case .running: return "실행 중"
         case .succeeded: return "완료"
+        case .checkedEmpty: return "결과 없음"
+        case .partial: return "일부 완료"
         case .failed: return "실패"
         case .unavailable: return "준비 중"
         }

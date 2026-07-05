@@ -1305,6 +1305,9 @@ enum NaturalWorkPlanExecutor {
         if case .succeeded = state {
             return NaturalStepExecution(step: step, descriptor: descriptor, state: state)
         }
+        if case .partial = state {
+            return NaturalStepExecution(step: step, descriptor: descriptor, state: state)
+        }
 
         for fallback in step.fallbackInputs {
             let fallbackState = await ToolExecutionRouter.shared.run(
@@ -1316,6 +1319,9 @@ enum NaturalWorkPlanExecutor {
             )
             state = fallbackState
             if case .succeeded = fallbackState {
+                break
+            }
+            if case .partial = fallbackState {
                 break
             }
         }
@@ -1330,7 +1336,7 @@ enum NaturalResultComposer {
 
         for execution in executions {
             switch execution.state {
-            case .succeeded(let result):
+            case .succeeded(let result), .partial(let result):
                 sections.append(NaturalResultSection(
                     title: execution.step.sectionTitle,
                     summary: result.summary,
@@ -1463,6 +1469,12 @@ enum NaturalResultComposer {
 
     private static func missingSection(for execution: NaturalStepExecution) -> NaturalMissingSection {
         switch execution.state {
+        case .checkedEmpty(let result):
+            return NaturalMissingSection(
+                title: execution.step.sectionTitle,
+                reason: result.summary,
+                nextAction: result.nextActions.first?.title
+            )
         case .needsConnection(let provider):
             return NaturalMissingSection(
                 title: execution.step.sectionTitle,

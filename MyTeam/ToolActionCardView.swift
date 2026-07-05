@@ -226,14 +226,16 @@ struct ToolActionCardView: View {
         switch state {
         case .idle, .succeeded:
             return .green
+        case .checkedEmpty, .unavailable:
+            return .secondary
+        case .partial:
+            return .blue
         case .needsConnection, .needsAssistantConnection, .needsValidation, .needsApproval:
             return .orange
         case .failed:
             return .red
         case .running, .checkingReadiness:
             return .blue
-        case .unavailable:
-            return .secondary
         }
     }
 

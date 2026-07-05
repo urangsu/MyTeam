@@ -69,7 +69,7 @@ enum MyTeamToolFastPathRouter {
 
     static func markdown(for state: ToolExecutionState, descriptor: MyTeamToolDescriptor) -> String {
         switch state {
-        case .succeeded(let result):
+        case .succeeded(let result), .partial(let result):
             var lines = [
                 "### \(result.title)",
                 "",
@@ -89,6 +89,28 @@ enum MyTeamToolFastPathRouter {
                 for item in result.items.prefix(5) {
                     let subtitle = item.subtitle.map { " — \($0)" } ?? ""
                     lines.append("- \(item.title)\(subtitle)")
+                }
+            }
+            return lines.joined(separator: "\n")
+        case .checkedEmpty(let result):
+            var lines = [
+                "### \(result.title)",
+                "",
+                result.summary
+            ]
+            if let source = result.sourceLabel {
+                lines.append("")
+                lines.append("출처: \(source)")
+            }
+            if let body = result.body, !body.isEmpty {
+                lines.append("")
+                lines.append(body)
+            }
+            if !result.nextActions.isEmpty {
+                lines.append("")
+                lines.append("#### 다음 행동")
+                for action in result.nextActions.prefix(3) {
+                    lines.append("- \(action.title)")
                 }
             }
             return lines.joined(separator: "\n")

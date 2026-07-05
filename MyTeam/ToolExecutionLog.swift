@@ -4,6 +4,7 @@ import Combine
 enum ToolExecutionLogState: String, Codable, Sendable, Equatable {
     case running
     case succeeded
+    case checkedEmpty
     case failed
     case blocked
 }
@@ -187,8 +188,10 @@ final class ToolExecutionLogStore: ObservableObject {
 
     private func logState(for state: ToolExecutionState) -> ToolExecutionLogState {
         switch state {
-        case .succeeded:
+        case .succeeded, .partial:
             return .succeeded
+        case .checkedEmpty:
+            return .checkedEmpty
         case .failed:
             return .failed
         case .needsConnection, .needsAssistantConnection, .needsValidation, .needsApproval, .unavailable:
@@ -218,7 +221,13 @@ final class ToolExecutionLogStore: ObservableObject {
     }
 
     private func resultSummary(for state: ToolExecutionState) -> String? {
-        guard case .succeeded(let result) = state else { return nil }
+        let result: MyTeamToolResult
+        switch state {
+        case .succeeded(let value), .checkedEmpty(let value), .partial(let value):
+            result = value
+        default:
+            return nil
+        }
         return sanitizedPersistedText(result.summary)
     }
 

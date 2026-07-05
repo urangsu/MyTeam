@@ -203,7 +203,13 @@ actor ToolExecutionRouter {
         result state: ToolExecutionState,
         input: MyTeamToolInput
     ) async -> IndexedArtifact? {
-        guard case .succeeded(let result) = state else { return nil }
+        let result: MyTeamToolResult
+        switch state {
+        case .succeeded(let value), .partial(let value):
+            result = value
+        default:
+            return nil
+        }
         guard descriptor.category != .voice, descriptor.category != .system else { return nil }
         return await ToolResultArtifactWriter.write(
             descriptor: descriptor,

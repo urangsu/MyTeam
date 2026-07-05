@@ -13,16 +13,17 @@ struct ToolResultCardView: View {
                 Label(result.title, systemImage: "checkmark.seal.fill")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.green)
-                Text(result.summary)
-                    .font(.system(size: 11))
-                if let sourceLabel = result.sourceLabel {
-                    Text(sourceLabel)
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
-                }
-                resultBody(result.body)
-                resultItems(result.items)
-                actionButtons(result.nextActions)
+                resultContent(result)
+            case .checkedEmpty(let result):
+                Label(result.title, systemImage: "magnifyingglass.circle.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                resultContent(result)
+            case .partial(let result):
+                Label(result.title, systemImage: "checkmark.circle.trianglebadge.exclamationmark.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.blue)
+                resultContent(result)
             case .failed(let failure):
                 Label(failure.title, systemImage: "exclamationmark.triangle.fill")
                     .font(.system(size: 13, weight: .semibold))
@@ -48,6 +49,20 @@ struct ToolResultCardView: View {
         }
         .padding(12)
         .background(Color(NSColor.controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    @ViewBuilder
+    private func resultContent(_ result: MyTeamToolResult) -> some View {
+                Text(result.summary)
+                    .font(.system(size: 11))
+                if let sourceLabel = result.sourceLabel {
+                    Text(sourceLabel)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                }
+                resultBody(result.body)
+                resultItems(result.items)
+                actionButtons(result.nextActions)
     }
 
     private func resultItems(_ items: [MyTeamToolResultItem]) -> some View {
