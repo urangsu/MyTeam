@@ -144,12 +144,19 @@ enum GoogleSheetsResultFormatter {
         return ([
             "# Google Sheets 읽기",
             "",
+            "## 확인한 범위",
             "- 범위: \(result.range)",
             "- 행: \(result.rowCount)",
             "- 열: \(result.columnCount)",
+            "- 방식: 읽기 전용 미리보기",
             "",
             "## 미리보기"
-        ] + lines.map { "- \($0)" }).joined(separator: "\n")
+        ] + lines.map { "- \($0)" } + [
+            "",
+            "## 다음 행동",
+            "- 전체 값은 원본 Google Sheets에서 확인하세요.",
+            "- 다른 범위가 필요하면 시트명과 셀 범위를 다시 입력하세요."
+        ]).joined(separator: "\n")
     }
 }
 
@@ -163,6 +170,10 @@ enum CalendarResultFormatter {
             let detail = [item.timeText, item.location].compactMap { $0 }.joined(separator: " · ")
             return detail.isEmpty ? "- \(item.title)" : "- \(item.title) · \(detail)"
         })
+        lines.append("")
+        lines.append("## 준비할 항목")
+        lines.append("- 시간이 정해진 회의는 시작 전 자료와 참석자를 확인하세요.")
+        lines.append("- 위치가 있는 일정은 이동 시간을 따로 확인하세요.")
         return lines.joined(separator: "\n")
     }
 }
@@ -251,11 +262,18 @@ enum DARTResultFormatter {
     }
 
     private nonisolated static func bodyNotice(modeNotice: String, resolution: DARTCompanyResolution) -> String {
-        var lines = [modeNotice]
+        var lines = [
+            "## 확인한 범위",
+            "- \(modeNotice)"
+        ]
         if let corpCode = resolution.corpCode {
-            lines.append("조회 대상: \(resolution.displayName) · corpCode \(corpCode)")
+            lines.append("- 조회 대상: \(resolution.displayName) · OpenDART 고유번호 \(corpCode)")
         }
-        lines.append("해석 방식: \(resolutionLabel(resolution.resolutionSource))")
+        lines.append("- 식별 방식: \(resolutionLabel(resolution.resolutionSource))")
+        lines.append("")
+        lines.append("## 봐야 할 점")
+        lines.append("- 보고서명과 접수일자를 먼저 확인하세요.")
+        lines.append("- 세부 내용은 DART 공식 원문 링크에서 확인하세요.")
         return lines.joined(separator: "\n")
     }
 
@@ -340,6 +358,10 @@ enum NewsResultFormatter {
             "- 결과 수: \(items.count)건",
             "- 주의: \(notice)",
             "",
+            "## 공통 이슈 후보",
+            "- 아래 후보는 검색 결과 제목과 설명에서 반복적으로 보이는 주제입니다.",
+            "- 정확한 사실관계는 각 원문 링크에서 확인하세요.",
+            "",
             "## 주요 기사"
         ]
 
@@ -385,7 +407,13 @@ enum WeatherResultFormatter {
                 ? "\(regionName) 격자 \(nx),\(ny) 기준 기상청 결과를 찾지 못했습니다."
                 : (summaryParts.isEmpty ? "기상청 초단기실황 \(observations.count)개 항목을 가져왔습니다." : summaryParts.joined(separator: " · ")),
             sourceLabel: sourceLabel,
-            body: modeNotice,
+            body: body(
+                regionName: regionName,
+                nx: nx,
+                ny: ny,
+                observations: observations,
+                notice: modeNotice
+            ),
             items: observations.prefix(5).map { observation in
                 MyTeamToolResultItem(
                     id: "\(observation.category)-\(observation.baseDate)-\(observation.baseTime)",
@@ -400,6 +428,45 @@ enum WeatherResultFormatter {
                 MyTeamNextAction(id: "changeKeyword", title: "지역 바꾸기", role: .normal)
             ]
         ))
+    }
+
+    private nonisolated static func body(
+        regionName: String,
+        nx: Int,
+        ny: Int,
+        observations: [KMAWeatherDirectObservation],
+        notice: String
+    ) -> String {
+        var lines = [
+            "## 확인한 범위",
+            "- 지역: \(regionName)",
+            "- 기상청 격자: \(nx),\(ny)",
+            "- 기준: 위치 좌표 기준 공식 기상 데이터",
+            "- 출처: \(notice)"
+        ]
+
+        if let first = observations.first {
+            lines.append("- 발표 기준: \(first.baseDate) \(first.baseTime)")
+        }
+
+        lines.append("")
+        lines.append("## 핵심 날씨")
+        let parts = summaryParts(from: observations)
+        if parts.isEmpty {
+            lines.append("- 표시할 초단기실황 항목이 없습니다.")
+        } else {
+            lines.append(contentsOf: parts.map { "- \($0)" })
+        }
+
+        lines.append("")
+        lines.append("## 업무 영향 메모")
+        if observations.isEmpty {
+            lines.append("- 날씨 항목이 없어 현장/이동 영향은 판단하지 않았습니다.")
+        } else {
+            lines.append("- 강수량, 풍속, 기온 항목을 기준으로 외근·출장 준비물을 확인하세요.")
+            lines.append("- 위험 판단이 필요한 작업은 현장 기준과 최신 기상 정보를 다시 확인하세요.")
+        }
+        return lines.joined(separator: "\n")
     }
 
     private nonisolated static func summaryParts(from observations: [KMAWeatherDirectObservation]) -> [String] {
@@ -850,7 +917,7 @@ enum LawResultFormatter {
             title: "공식 법령 검색 결과입니다",
             summary: "법률 자문이 아닌 공식 출처 기반 검색 결과 \(results.count)건입니다. 조문 검증은 별도 확인이 필요합니다.",
             sourceLabel: sourceLabel,
-            body: modeNotice,
+            body: body(query: query, results: results, notice: modeNotice),
             items: results.prefix(5).map { result in
                 MyTeamToolResultItem(
                     id: "\(result.lawName)-\(result.effectiveDate ?? "unknown")",
@@ -867,5 +934,31 @@ enum LawResultFormatter {
                 MyTeamNextAction(id: "searchAgain", title: "다시 검색", role: .normal)
             ]
         ))
+    }
+
+    private nonisolated static func body(query: String, results: [KoreanLawResult], notice: String) -> String {
+        var lines = [
+            "## 확인한 쟁점",
+            "- 검색어: \(query)",
+            "- 출처: \(notice)",
+            "",
+            "## 관련 법령 후보"
+        ]
+        for (index, result) in results.prefix(5).enumerated() {
+            lines.append("\(index + 1). \(result.lawName)")
+            if let effectiveDate = result.effectiveDate {
+                lines.append("   - 시행일: \(effectiveDate)")
+            }
+            lines.append("   - 요약: \(result.summary)")
+            lines.append("   - 검증 상태: \(result.verificationStatus)")
+            if let url = result.officialSourceURL {
+                lines.append("   - 공식 출처: \(url.absoluteString)")
+            }
+        }
+        lines.append("")
+        lines.append("## 확인할 점")
+        lines.append("- 실제 적용 여부는 조문 원문, 시행일, 하위 규정을 함께 확인하세요.")
+        lines.append("- 최종 판단은 공식 법령 원문과 전문가 검토가 필요합니다.")
+        return lines.joined(separator: "\n")
     }
 }
