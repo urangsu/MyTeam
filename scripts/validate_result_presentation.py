@@ -38,6 +38,10 @@ def validate_composer_contract() -> None:
         fail("NaturalResultComposer must aggregate sources separately")
     if "nextActions" not in source:
         fail("NaturalResultComposer must promote missing-section actions into next actions")
+    if "if !sourceLines.isEmpty" not in source:
+        fail("NaturalResultComposer must render source section only when sources exist")
+    if "if !nextActions.isEmpty" not in source:
+        fail("NaturalResultComposer must render next-action section only when actions exist")
 
 
 def validate_finance_language() -> None:
@@ -105,14 +109,40 @@ def validate_google_sheets_language() -> None:
         if required not in source:
             fail(f"Google Sheets formatter missing required wording: {required}")
 
+    runtime_source = "\n".join([
+        read("MyTeam/GoogleSheetsClient.swift"),
+        read("MyTeam/ToolRunners/GoogleSheetsToolRunner.swift"),
+        read("MyTeam/ToolRunners/GoogleRunnerSupport.swift"),
+        read("MyTeam/ToolExecutionRouter.swift"),
+    ])
+    forbidden_runtime_patterns = [
+        r"batchUpdate",
+        r"values\.update",
+        r"values\.append",
+        r"values\.clear",
+        r"values:append",
+        r"values:update",
+        r"values:clear",
+        r"httpMethod\s*=\s*\"POST\"",
+        r"httpMethod\s*=\s*\"PUT\"",
+        r"httpMethod\s*=\s*\"PATCH\"",
+        r"httpMethod\s*=\s*\"DELETE\"",
+    ]
+    for pattern in forbidden_runtime_patterns:
+        if re.search(pattern, runtime_source):
+            fail(f"Google Sheets runtime contains non-read-only capability: {pattern}")
+
 
 def validate_weather_language() -> None:
     source = read("MyTeam/ToolResultFormatters.swift")
     weather = source[source.find("enum WeatherResultFormatter"):]
     weather = weather[: weather.find("enum FinanceResultFormatter")]
-    for required in ["기상청 격자", "발표 기준", "업무 영향 메모", "위치 좌표 기준"]:
+    for required in ["기상청 격자", "발표 기준", "확인된 기상 정보", "업무 영향 추정", "위치 좌표 기준"]:
         if required not in weather:
             fail(f"Weather formatter missing required wording: {required}")
+    for forbidden in ["영향 있음", "일정 조정 필요"]:
+        if forbidden in weather:
+            fail(f"Weather formatter contains over-certain impact wording: {forbidden}")
 
 
 def validate_action_ids() -> None:

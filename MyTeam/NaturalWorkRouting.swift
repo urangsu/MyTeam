@@ -1404,12 +1404,10 @@ enum NaturalResultComposer {
             }
         }
 
-        lines.append("")
-        lines.append("## 근거와 출처")
         let sourceLines = sourceSummaryLines(from: sections)
-        if sourceLines.isEmpty {
-            lines.append("- 표시할 공식 출처 링크가 없습니다.")
-        } else {
+        if !sourceLines.isEmpty {
+            lines.append("")
+            lines.append("## 근거와 출처")
             lines.append(contentsOf: sourceLines)
         }
 
@@ -1421,11 +1419,9 @@ enum NaturalResultComposer {
             }
         }
 
-        lines.append("")
-        lines.append("## 다음 행동")
-        if nextActions.isEmpty {
-            lines.append("- 필요한 경우 원문 링크에서 세부 내용을 확인하세요.")
-        } else {
+        if !nextActions.isEmpty {
+            lines.append("")
+            lines.append("## 다음 행동")
             for action in nextActions {
                 lines.append("- \(action)")
             }

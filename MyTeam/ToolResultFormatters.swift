@@ -450,7 +450,7 @@ enum WeatherResultFormatter {
         }
 
         lines.append("")
-        lines.append("## 핵심 날씨")
+        lines.append("## 확인된 기상 정보")
         let parts = summaryParts(from: observations)
         if parts.isEmpty {
             lines.append("- 표시할 초단기실황 항목이 없습니다.")
@@ -459,12 +459,12 @@ enum WeatherResultFormatter {
         }
 
         lines.append("")
-        lines.append("## 업무 영향 메모")
+        lines.append("## 업무 영향 추정")
         if observations.isEmpty {
             lines.append("- 날씨 항목이 없어 현장/이동 영향은 판단하지 않았습니다.")
         } else {
-            lines.append("- 강수량, 풍속, 기온 항목을 기준으로 외근·출장 준비물을 확인하세요.")
-            lines.append("- 위험 판단이 필요한 작업은 현장 기준과 최신 기상 정보를 다시 확인하세요.")
+            lines.append("- 강수량, 풍속, 기온 항목에 따라 외근·출장 준비물 확인이 필요할 수 있습니다.")
+            lines.append("- 야외 작업 여부는 현장 기준과 최신 기상 정보를 함께 검토하세요.")
         }
         return lines.joined(separator: "\n")
     }
