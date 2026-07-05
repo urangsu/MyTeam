@@ -2,6 +2,14 @@
 
 This document records manual evidence for AppTerminationCoordinator. Static architecture checks are not a substitute for process-level quit QA.
 
+## Evidence Metadata
+
+- tested_commit: `837276699a11268112a09c78bc1bb60bb954c781`
+- tested_build: `not run for manual QA in this pass`
+- tested_at: `2026-07-06 00:08:59 KST`
+- tester: `pending manual QA`
+- profile: `Debug and Release both required`
+
 | Case ID | Scenario | Input / Action | Expected result | Forbidden result | Actual result | PASS / FAIL / BLOCKED | Evidence | Notes |
 |---|---|---|---|---|---|---|---|---|
 | APPTERM-001 | Idle Cmd+Q | Launch MyTeam, do no work, press Cmd+Q, wait 6 seconds, run `pgrep -fl MyTeam` | App exits within 5 seconds, no process remains, no crash, no duplicate termination reply | Process remains, crash, repeated termination reply | Not run in this pass | BLOCKED | Pending manual UI run | Reason: requires interactive app launch. Next: run from Debug and Release app builds. |
@@ -17,4 +25,4 @@ This document records manual evidence for AppTerminationCoordinator. Static arch
 
 ## Completion Rule
 
-APPTERM-001 through APPTERM-006 must be PASS before this area can support main merge recommendation. Any BLOCKED row requires a reason and next action.
+APPTERM-001 through APPTERM-006 must be PASS before this area can support a Release Candidate recommendation. Any BLOCKED row requires a reason and next action.

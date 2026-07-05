@@ -2,6 +2,14 @@
 
 This document verifies that natural work results persist as app-internal artifacts and can be reopened without relying only on external Markdown files.
 
+## Evidence Metadata
+
+- tested_commit: `837276699a11268112a09c78bc1bb60bb954c781`
+- tested_build: `not run for manual QA in this pass`
+- tested_at: `2026-07-06 00:08:59 KST`
+- tester: `pending manual QA`
+- profile: `Debug and Release both required`
+
 | Case ID | Scenario | Input / Action | Expected result | Forbidden result | Actual result | PASS / FAIL / BLOCKED | Evidence | Notes |
 |---|---|---|---|---|---|---|---|---|
 | ART-001 | Composite artifact creation | Run NW-001 or NW-004 | Exactly one composite artifact is created for the natural work result; individual tool artifacts do not proliferate | Multiple unrelated tool artifacts for one user request | Not run in this pass | BLOCKED | Pending natural-work runtime QA | Reason: depends on NW-001 or NW-004 runtime. Next: run a company briefing and inspect artifact count. |
@@ -11,4 +19,4 @@ This document verifies that natural work results persist as app-internal artifac
 
 ## Completion Rule
 
-ART-001 through ART-004 must be PASS before artifact reopen can support main merge recommendation.
+ART-001 through ART-004 must be PASS before artifact reopen can support a Release Candidate recommendation.

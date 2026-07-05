@@ -2,6 +2,14 @@
 
 This document verifies that personal chat and team workroom route natural language requests through the common natural-work path without duplicate tool execution or scattered result bubbles.
 
+## Evidence Metadata
+
+- tested_commit: `837276699a11268112a09c78bc1bb60bb954c781`
+- tested_build: `not run for manual QA in this pass`
+- tested_at: `2026-07-06 00:08:59 KST`
+- tester: `pending manual QA`
+- profile: `Debug and Release both required`
+
 | Case ID | Scenario | Input / Action | Expected result | Forbidden result | Actual result | PASS / FAIL / BLOCKED | Evidence | Notes |
 |---|---|---|---|---|---|---|---|---|
 | NW-001 | Personal chat company briefing | `삼성전자 알려줘` | One progress bubble, one final composite answer, no tool-bubble spray, DART missing key appears only as connection-needed section, finance wording says baseline public data and not investment advice, one composite artifact | Silent `삼성전자 2024` default, DART Cloudflare product path, real-time/current-price wording, buy/sell advice | Not run in this pass | BLOCKED | Pending manual chat QA | Reason: requires interactive chat run. Next: run in personal chat with current credentials. |
@@ -25,4 +33,4 @@ This document verifies that personal chat and team workroom route natural langua
 
 ## Completion Rule
 
-NW-001 through NW-013 must be PASS or have explicit BLOCKED reason and next action before main merge can even be reviewed. Any FAIL requires a fix commit and retest.
+NW-001 through NW-013 must be PASS or have explicit BLOCKED reason and next action before a Release Candidate can be reviewed. Any FAIL requires a fix commit and retest.
