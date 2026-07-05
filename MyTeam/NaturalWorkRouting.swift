@@ -1370,34 +1370,47 @@ enum NaturalResultComposer {
         missing: [NaturalMissingSection],
         notices: [String]
     ) -> String {
+        let nextActions = missing.compactMap { item -> String? in
+            guard let next = item.nextAction?.trimmingCharacters(in: .whitespacesAndNewlines), !next.isEmpty else {
+                return nil
+            }
+            return "\(item.title): \(next)"
+        }
+
         var lines: [String] = [
             "# \(title)",
             "",
             "## 한 줄 요약",
             sections.isEmpty
                 ? "요청한 항목을 확인하지 못했습니다. 아래 확인 필요 항목을 먼저 처리하세요."
-                : "\(plan.request.originalText)을 \(sections.count)개 항목으로 확인했습니다."
+                : "\(plan.request.originalText)을 \(sections.count)개 항목으로 확인했습니다.",
+            "",
+            "## 확인한 내용"
         ]
 
-        for section in sections {
+        if sections.isEmpty {
+            lines.append("- 현재 확인된 항목이 없습니다.")
+        } else {
+            for section in sections {
+                lines.append("- \(section.title): \(section.summary)")
+            }
+        }
+
+        for section in sections where section.body?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
             lines.append("")
             lines.append("## \(section.title)")
-            lines.append(section.summary)
-            if let source = section.sourceLabel, !source.isEmpty {
-                lines.append("")
-                lines.append("근거: \(source)")
-            }
             if let body = section.body?.trimmingCharacters(in: .whitespacesAndNewlines), !body.isEmpty {
-                lines.append("")
                 lines.append(body)
             }
-            if !section.sourceLinks.isEmpty {
-                lines.append("")
-                lines.append("원문 링크")
-                for url in Array(Set(section.sourceLinks)).prefix(5) {
-                    lines.append("- \(url.absoluteString)")
-                }
-            }
+        }
+
+        lines.append("")
+        lines.append("## 근거와 출처")
+        let sourceLines = sourceSummaryLines(from: sections)
+        if sourceLines.isEmpty {
+            lines.append("- 표시할 공식 출처 링크가 없습니다.")
+        } else {
+            lines.append(contentsOf: sourceLines)
         }
 
         if !missing.isEmpty {
@@ -1405,9 +1418,16 @@ enum NaturalResultComposer {
             lines.append("## 확인하지 못한 항목")
             for item in missing {
                 lines.append("- \(item.title): \(item.reason)")
-                if let next = item.nextAction {
-                    lines.append("  - 다음 행동: \(next)")
-                }
+            }
+        }
+
+        lines.append("")
+        lines.append("## 다음 행동")
+        if nextActions.isEmpty {
+            lines.append("- 필요한 경우 원문 링크에서 세부 내용을 확인하세요.")
+        } else {
+            for action in nextActions {
+                lines.append("- \(action)")
             }
         }
 
@@ -1420,6 +1440,29 @@ enum NaturalResultComposer {
         }
 
         return lines.joined(separator: "\n")
+    }
+
+    private static func sourceSummaryLines(from sections: [NaturalResultSection]) -> [String] {
+        var lines: [String] = []
+        var seen = Set<String>()
+
+        for section in sections {
+            if let source = section.sourceLabel?.trimmingCharacters(in: .whitespacesAndNewlines), !source.isEmpty {
+                let line = "\(section.title): \(source)"
+                if seen.insert(line).inserted {
+                    lines.append("- \(line)")
+                }
+            }
+            if !section.sourceLinks.isEmpty {
+                for url in Array(Set(section.sourceLinks)).prefix(5) {
+                    let line = "\(section.title) 원문: \(url.absoluteString)"
+                    if seen.insert(line).inserted {
+                        lines.append("- \(line)")
+                    }
+                }
+            }
+        }
+        return lines
     }
 
     private static func missingSection(for execution: NaturalStepExecution) -> NaturalMissingSection {
