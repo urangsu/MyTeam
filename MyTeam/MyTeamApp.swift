@@ -79,9 +79,23 @@ struct MyTeamApp: App {
 
     var body: some Scene {
         Settings {
-            SettingsView()
-                .environmentObject(AgentWindowManager.shared)
+            EmptySettingsSceneView()
         }
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button("MyTeam 설정...") {
+                    AgentWindowManager.shared.showSettingsWindow()
+                }
+                .keyboardShortcut(",", modifiers: .command)
+            }
+        }
+    }
+}
+
+private struct EmptySettingsSceneView: View {
+    var body: some View {
+        EmptyView()
+            .frame(width: 0, height: 0)
     }
 }
 
@@ -135,12 +149,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(NSMenuItem(title: "팀 테이블 표시",  action: #selector(showTeam),  keyEquivalent: "t"))
         menu.addItem(NSMenuItem(title: "팀 테이블 숨기기", action: #selector(hideTeam),  keyEquivalent: "h"))
         menu.addItem(NSMenuItem.separator())
+        menu.addItem(NSMenuItem(title: "설정",            action: #selector(showSettings), keyEquivalent: ","))
+        menu.addItem(NSMenuItem.separator())
         menu.addItem(NSMenuItem(title: "종료",            action: #selector(quitApp),   keyEquivalent: "q"))
         statusItem?.menu = menu
     }
 
     @objc func showTeam() { AgentWindowManager.shared.showTeam() }
     @objc func hideTeam() { AgentWindowManager.shared.hideTeam() }
+    @objc func showSettings() { AgentWindowManager.shared.showSettingsWindow() }
     @objc func quitApp()  {
         AppTerminationCoordinator.shared.requestMenuQuit()
     }

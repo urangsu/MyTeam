@@ -120,6 +120,7 @@ struct ToolExecutionLogView: View {
         switch state {
         case .running: return "clock"
         case .succeeded: return "checkmark.circle.fill"
+        case .checkedEmpty: return "magnifyingglass.circle.fill"
         case .failed: return "exclamationmark.triangle.fill"
         case .blocked: return "lock.fill"
         }
@@ -129,6 +130,7 @@ struct ToolExecutionLogView: View {
         switch state {
         case .running: return "실행 중"
         case .succeeded: return "완료"
+        case .checkedEmpty: return "결과 없음"
         case .failed: return "실패"
         case .blocked: return "차단"
         }
@@ -138,6 +140,7 @@ struct ToolExecutionLogView: View {
         switch state {
         case .running: return .blue
         case .succeeded: return .green
+        case .checkedEmpty: return .secondary
         case .failed: return .orange
         case .blocked: return .secondary
         }
@@ -210,14 +213,24 @@ struct ToolExecutionLogDetailView: View {
             }
 
             Spacer()
+
+            HStack {
+                Spacer()
+                Button("닫기") {
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
         }
         .padding(18)
+        .frame(minWidth: 520, minHeight: 420)
     }
 
     private var statusText: String {
         switch entry.state {
         case .running: return "실행 중"
         case .succeeded: return "완료"
+        case .checkedEmpty: return "결과 없음"
         case .failed: return "실패"
         case .blocked: return "차단"
         }
@@ -227,6 +240,7 @@ struct ToolExecutionLogDetailView: View {
         switch entry.state {
         case .running: return .blue
         case .succeeded: return .green
+        case .checkedEmpty: return .secondary
         case .failed: return .orange
         case .blocked: return .secondary
         }

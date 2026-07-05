@@ -1041,6 +1041,7 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         let view = TeamTableView().environmentObject(self)
         panel.contentViewController = NSHostingController(rootView: view)
 
+        applySettingsPresentationPolicy(to: panel, keepAboveSettings: true)
         panel.orderFront(nil)
         panel.makeKey()
         teamPanel = panel
@@ -1087,8 +1088,10 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
     // MARK: - 개별 채팅창 띄우기 (Singular instance)
     func showChat(for config: AgentConfig, isPersonalChat: Bool = true) {
         if let existing = chatPanels.values.first {
+            applySettingsPresentationPolicy(to: existing)
             existing.orderFront(nil)
             existing.makeKey()
+            keepSettingsFrontIfNeeded()
             NotificationCenter.default.post(name: NSNotification.Name("didSelectAgentForChat"), object: nil, userInfo: ["agentID": config.id])
             return
         }
@@ -1115,8 +1118,10 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         ).environmentObject(self)
 
         panel.contentViewController = NSHostingController(rootView: view)
+        applySettingsPresentationPolicy(to: panel)
         panel.orderFront(nil)
         panel.makeKey()
+        keepSettingsFrontIfNeeded()
         chatPanels["chat_single"] = panel
     }
     
@@ -1129,8 +1134,10 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
     // MARK: - 에이전트 교체 창 띄우기
     func showSwapWindow(replaceIndex: Int = 0) {
         if swapPanel != nil {
+            if let swapPanel { applySettingsPresentationPolicy(to: swapPanel) }
             swapPanel?.orderFront(nil)
             swapPanel?.makeKey()
+            keepSettingsFrontIfNeeded()
             return
         }
         
@@ -1154,8 +1161,10 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         }).environmentObject(self)
         
         panel.contentViewController = NSHostingController(rootView: view)
+        applySettingsPresentationPolicy(to: panel)
         panel.orderFront(nil)
         panel.makeKey()
+        keepSettingsFrontIfNeeded()
         swapPanel = panel
     }
     
@@ -1290,7 +1299,9 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
     // MARK: - 에이전트 스택/상태 창 띄우기
     func showStatusWindow() {
         if statusPanel != nil {
+            if let statusPanel { applySettingsPresentationPolicy(to: statusPanel) }
             statusPanel?.orderFront(nil)
+            keepSettingsFrontIfNeeded()
             return
         }
         
@@ -1311,7 +1322,9 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         let view = TeamStatusView().environmentObject(self)
         panel.contentViewController = NSHostingController(rootView: view)
 
+        applySettingsPresentationPolicy(to: panel)
         panel.orderFront(nil)
+        keepSettingsFrontIfNeeded()
         statusPanel = panel
     }
     
@@ -1323,8 +1336,10 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
     // MARK: - 개별 에이전트 커스텀 성격 설정 창
     func showAgentSettingsWindow(for config: AgentConfig) {
         if agentSettingsPanel != nil {
+            if let agentSettingsPanel { applySettingsPresentationPolicy(to: agentSettingsPanel) }
             agentSettingsPanel?.orderFront(nil)
             agentSettingsPanel?.makeKey()
+            keepSettingsFrontIfNeeded()
             return
         }
         
@@ -1348,8 +1363,10 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         }).environmentObject(self)
         
         panel.contentViewController = NSHostingController(rootView: view)
+        applySettingsPresentationPolicy(to: panel)
         panel.orderFront(nil)
         panel.makeKey()
+        keepSettingsFrontIfNeeded()
         agentSettingsPanel = panel
     }
     
@@ -1400,14 +1417,17 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         window.collectionBehavior = [.moveToActiveSpace]
         window.deminiaturize(nil)
         NSApp.activate(ignoringOtherApps: true)
-        window.orderFrontRegardless()
-        window.makeKeyAndOrderFront(nil)
+        bringSettingsWindowToFront(window)
         DispatchQueue.main.async { [weak window] in
             guard let window else { return }
             NSApp.activate(ignoringOtherApps: true)
-            window.orderFrontRegardless()
-            window.makeKeyAndOrderFront(nil)
+            self.bringSettingsWindowToFront(window)
         }
+    }
+
+    private func bringSettingsWindowToFront(_ window: NSWindow) {
+        window.orderFrontRegardless()
+        window.makeKeyAndOrderFront(nil)
     }
 
     private func floatingPanelsForSettingsSuppression() -> [FloatingPanel] {
@@ -1421,12 +1441,27 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
 
     private func lowerFloatingPanelsForSettings() {
         for panel in floatingPanelsForSettingsSuppression() {
-            let key = ObjectIdentifier(panel)
-            if settingsSuppressedPanelLevels[key] == nil {
-                settingsSuppressedPanelLevels[key] = panel.level
-            }
-            panel.level = .normal
+            suppressFloatingPanelForSettings(panel)
         }
+    }
+
+    private func suppressFloatingPanelForSettings(_ panel: FloatingPanel) {
+        let key = ObjectIdentifier(panel)
+        if settingsSuppressedPanelLevels[key] == nil {
+            settingsSuppressedPanelLevels[key] = panel.level
+        }
+        panel.level = .normal
+    }
+
+    private func applySettingsPresentationPolicy(to panel: FloatingPanel, keepAboveSettings: Bool = false) {
+        guard settingsWindow?.isVisible == true, !keepAboveSettings else { return }
+        suppressFloatingPanelForSettings(panel)
+    }
+
+    private func keepSettingsFrontIfNeeded() {
+        guard let settingsWindow, settingsWindow.isVisible else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        bringSettingsWindowToFront(settingsWindow)
     }
 
     private func restoreFloatingPanelsAfterSettings() {
