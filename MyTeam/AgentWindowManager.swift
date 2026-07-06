@@ -1497,8 +1497,15 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         let heightDiff = height - frame.size.height
         frame.origin.y -= heightDiff
         frame.size = NSSize(width: width, height: height)
+        if let visibleFrame = visibleFrame(for: frame) {
+            frame = PanelTuckGeometry.clampedExpandedFrame(frame, visibleFrame: visibleFrame)
+        }
         panel.setFrame(frame, display: true, animate: true)
         panel.savePosition()
+    }
+
+    private func visibleFrame(for frame: NSRect) -> NSRect? {
+        (NSScreen.screens.first { $0.visibleFrame.intersects(frame) } ?? NSScreen.main)?.visibleFrame
     }
     
     func updateChatWindowWidth(id: String, width: CGFloat) {

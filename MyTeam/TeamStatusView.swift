@@ -31,6 +31,8 @@ struct TeamStatusView: View {
     @State private var latestEventTimestamp: Date? = nil
     @State private var latestToolName: String? = nil
     @State private var currentWorkflowStatus: WorkflowStatus? = nil
+
+    private let panelChromePadding: CGFloat = 20
     
     private var bgColor: Color {
         manager.isDarkMode ? Color.black.opacity(isCollapsed ? 0.4 : 0.8) : Color.white.opacity(isCollapsed ? 0.3 : 0.75)
@@ -49,6 +51,14 @@ struct TeamStatusView: View {
         if isCollapsed { return 40 }
         if manager.firstLaunchState.shouldShowOnboarding { return 620 }
         return 500
+    }
+
+    private var windowWidth: CGFloat {
+        panelWidth + panelChromePadding
+    }
+
+    private var windowHeight: CGFloat {
+        panelHeight + panelChromePadding
     }
 
     private var collaborationStatus: TeamCollaborationStatus {
@@ -145,17 +155,17 @@ struct TeamStatusView: View {
             }
         }
         .frame(width: panelWidth, height: panelHeight, alignment: .top)
-        .onChange(of: selectedTab) { _, newValue in
+        .onChange(of: selectedTab) { _, _ in
             if !isCollapsed {
-                manager.updateStatusWindowSize(width: newValue == 0 ? 300 : 600, height: panelHeight)
+                manager.updateStatusWindowSize(width: windowWidth, height: windowHeight)
             }
         }
         .onChange(of: isCollapsed) { _, _ in
-            manager.updateStatusWindowSize(width: panelWidth, height: panelHeight)
+            manager.updateStatusWindowSize(width: windowWidth, height: windowHeight)
         }
         .onChange(of: manager.firstLaunchState.shouldShowOnboarding) { _, _ in
             if !isCollapsed {
-                manager.updateStatusWindowSize(width: panelWidth, height: panelHeight)
+                manager.updateStatusWindowSize(width: windowWidth, height: windowHeight)
             }
         }
         .background(
@@ -184,7 +194,7 @@ struct TeamStatusView: View {
         .shadow(color: Color.black.opacity(manager.isDarkMode ? 0.3 : 0.08), radius: 15, x: 0, y: 8)
         .padding(10)
         .onAppear {
-            manager.updateStatusWindowSize(width: panelWidth, height: panelHeight)
+            manager.updateStatusWindowSize(width: windowWidth, height: windowHeight)
             startCollaborationStatusRefreshLoop()
         }
         .onChange(of: manager.isWorkflowRunning) { _, _ in
