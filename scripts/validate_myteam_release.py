@@ -215,14 +215,18 @@ def validate_basic_lookup_worker_source() -> None:
     user_routes_match = re.search(r"const\s+USER_ROUTES\s*=\s*\[(.*?)\];", source, re.S)
     diagnostic_routes_match = re.search(r"const\s+DIAGNOSTIC_ROUTES\s*=\s*\[(.*?)\];", source, re.S)
     if user_routes_match is None or diagnostic_routes_match is None:
-        raise SystemExit("FAIL: basic lookup Worker /health must split userRoutes and diagnosticRoutes")
+        raise SystemExit("FAIL: basic lookup Worker source must define user and diagnostic route manifests")
     if "/dart/" in user_routes_match.group(1):
         raise SystemExit("FAIL: DART routes must not appear in basic lookup userRoutes")
     for route in ["/dart/company?corpCode=00126380", "/dart/recent?corpCode=00126380", "/dart/diagnose?corpCode=00126380"]:
         if route not in diagnostic_routes_match.group(1):
             raise SystemExit(f"FAIL: DART diagnostic route missing from diagnosticRoutes: {route}")
-    if "userRoutes: USER_ROUTES" not in source or "diagnosticRoutes: DIAGNOSTIC_ROUTES" not in source:
-        raise SystemExit("FAIL: basic lookup Worker /health must expose userRoutes and diagnosticRoutes")
+    health_response_match = re.search(r"if\s*\(url\.pathname === \"/\" \|\| url\.pathname === \"/health\"\)\s*\{(.*?)\n\s*\}", source, re.S)
+    health_response = health_response_match.group(1) if health_response_match else ""
+    if "userRoutes: USER_ROUTES" not in health_response or "diagnosticContract:" not in health_response:
+        raise SystemExit("FAIL: basic lookup Worker /health must expose userRoutes and diagnosticContract")
+    if "diagnosticRoutes:" in health_response:
+        raise SystemExit("FAIL: basic lookup Worker /health must not expose diagnostic route path names")
     if "function requireDiagnosticAccess" not in source or "DIAGNOSTIC_ROUTE_TOKEN" not in source:
         raise SystemExit("FAIL: basic lookup Worker diagnostic routes must require a diagnostic token")
     if 'url.pathname.startsWith("/dart/")' not in source or "requireDiagnosticAccess(request, env)" not in source:
@@ -233,6 +237,10 @@ def validate_basic_lookup_worker_source() -> None:
         raise SystemExit("FAIL: basic lookup Worker must mark DART reachability failures as conditional-pass")
     if 'retryable: true' not in source:
         raise SystemExit("FAIL: basic lookup Worker must mark DART reachability failures as retryable")
+    app_source = "\n".join(path.read_text(errors="ignore") for path in (ROOT / "MyTeam").rglob("*") if path.is_file() and path.suffix in {".swift", ".plist", ".json"})
+    for token in ["DIAGNOSTIC_ROUTE_TOKEN", "x-myteam-diagnostic-token"]:
+        if token in app_source:
+            raise SystemExit(f"FAIL: diagnostic token contract must not be embedded in app bundle/runtime: {token}")
 
 
 def main() -> None:

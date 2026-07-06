@@ -102,9 +102,10 @@ PASS requires:
 - `version: 0.3.0`
 - `build: public-lookup-0.3.0`
 - `userRoutes` present
-- `diagnosticRoutes` present
+- `diagnosticContract` present
 - no `/dart/*` route in `userRoutes`
-- all `/dart/*` routes in `diagnosticRoutes`
+- `/dart/*` absent from `userRoutes`; diagnostic route names are not exposed in public `/health`
+- no-token and wrong-token `/dart/*` requests return exactly `404`
 
 Source validation is not deploy proof. If production `/health` does not match this contract, public lookup Release surfaces stay disabled. A release tag can proceed only if those surfaces remain `DISABLED`; enabling them requires this Worker gate to pass first.
 

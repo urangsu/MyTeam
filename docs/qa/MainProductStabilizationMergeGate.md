@@ -24,7 +24,7 @@
 - ProductCompletenessInventory
 - Product value pruning
 - AppTerminationCoordinator
-- Worker health userRoutes/diagnosticRoutes
+- Worker health userRoutes/diagnosticContract
 
 ## 3. Excluded Items
 
@@ -81,7 +81,7 @@ Details are in `docs/qa/LiveProviderQAMatrix.md`.
 
 - Source validation can pass independently.
 - Production deploy is not asserted by source validation.
-- Live check on `https://late-waterfall-c95c.urange.workers.dev/health` returned version `0.3.0` and build `public-lookup-0.3.0`, but did not expose `userRoutes` / `diagnosticRoutes`.
+- Live check on `https://late-waterfall-c95c.urange.workers.dev/health` returned version `0.3.0` and build `public-lookup-0.3.0`, but did not expose the current `userRoutes` / `diagnosticContract` contract.
 - Public lookup release surfaces remain disabled until the repository Worker source is redeployed and `python3 scripts/validate_worker_production_health.py` passes.
 
 ## 9. App Termination Status

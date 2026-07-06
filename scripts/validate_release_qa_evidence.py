@@ -118,6 +118,13 @@ REQUIRED_EVIDENCE_FIELDS = (
     "profile",
 )
 
+STRICT_BUILD_METADATA_FIELDS = (
+    "configuration",
+    "architecture",
+    "xcode_version",
+    "artifact_sha256",
+)
+
 MANUAL_PASS_EVIDENCE_PATTERN = re.compile(
     r"(docs/qa/evidence/|\.png\b|\.mov\b|\.mp4\b|\.log\b|python3\s+scripts/|xcodebuild|pgrep|osascript|screenshot|video|runtime log|provider response)",
     re.I,
@@ -161,6 +168,11 @@ def current_head() -> str:
     return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
 
 
+def worktree_is_clean() -> bool:
+    status = subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True)
+    return status.strip() == ""
+
+
 def validate_doc(path: Path, case_ids: list[str], strict: bool, release_strict: bool) -> list[str]:
     failures: list[str] = []
     if not path.exists():
@@ -173,12 +185,18 @@ def validate_doc(path: Path, case_ids: list[str], strict: bool, release_strict: 
             if not re.search(rf"^\s*-\s*{re.escape(field)}\s*:", text, re.M):
                 failures.append(f"{relative_path} missing evidence metadata field {field}")
         if strict:
+            if not worktree_is_clean():
+                failures.append(f"{relative_path} cannot be accepted in --strict mode while the worktree is dirty")
             tested_commit = metadata_value(text, "tested_commit")
             tested_build = metadata_value(text, "tested_build") or ""
             if tested_commit != current_head():
                 failures.append(f"{relative_path} tested_commit must match current HEAD in --strict mode")
             if re.search(r"\b(not run|pending|unknown|n/a)\b", tested_build, re.I):
                 failures.append(f"{relative_path} tested_build must reference an actual tested build in --strict mode")
+            for field in STRICT_BUILD_METADATA_FIELDS:
+                value = metadata_value(text, field)
+                if not value or re.search(r"\b(not run|pending|unknown|n/a)\b", value, re.I):
+                    failures.append(f"{relative_path} strict build metadata field {field} must be an actual tested value")
 
     forbidden_release_tag_patterns = [
         r"release tag\s*:\s*PASS",

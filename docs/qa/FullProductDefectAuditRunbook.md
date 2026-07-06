@@ -43,7 +43,7 @@ Expected: FAIL until APPTERM/NW/ART/HOME manual rows are PASS.
 python3 scripts/validate_worker_production_health.py
 ```
 
-Expected: FAIL until Cloudflare production Worker exposes `userRoutes` and `diagnosticRoutes`.
+Expected: FAIL until Cloudflare production Worker exposes `userRoutes` and `diagnosticContract`.
 
 ## 4. Manual QA Order
 
@@ -68,9 +68,31 @@ python3 scripts/validate_worker_production_health.py
 
 Expected:
 
-- `/health` exposes `userRoutes` and `diagnosticRoutes`.
+- `/health` exposes `userRoutes` and `diagnosticContract`.
 - DART routes are absent from `userRoutes`.
-- Unauthenticated `/dart/*` requests return `401`, `403`, or `404`.
+- `/health` exposes `diagnosticContract`, not diagnostic route path names.
+- Unauthenticated `/dart/*` requests return exactly `404`.
+- Wrong-token `/dart/*` requests return exactly `404`.
+
+If you need to verify the diagnostic handler itself:
+
+```bash
+MYTEAM_DIAGNOSTIC_TOKEN='<local secret>' python3 scripts/validate_worker_production_health.py --validate-diagnostic-auth
+```
+
+Expected:
+
+- Correct-token `/dart/*` requests do not return `404`.
+- The token value is not printed, written to QA Markdown, or committed.
+
+Diagnostic token storage rule:
+
+- Allowed: Cloudflare secret, CI secret, local environment variable.
+- Forbidden for token values: MyTeam Swift code, Info.plist, app bundle JSON, ReleaseCapabilityManifest, QA Markdown, logs, URL query string.
+
+Public user route abuse rule:
+
+- Before broad Release traffic, public routes need quota protection: rate limiting, cache where safe, provider timeout, maximum response size, request concurrency limits, and abuse logging.
 
 ### Release Runtime Gate
 

@@ -298,8 +298,12 @@ def main() -> None:
         if token in google_sheets_runner or token in google_support:
             failures.append(f"Google Sheets runner must not include write/success-overclaim phrase: {token}")
 
-    if "userRoutes: USER_ROUTES" not in worker or "diagnosticRoutes: DIAGNOSTIC_ROUTES" not in worker:
-        failures.append("Worker /health must expose userRoutes and diagnosticRoutes")
+    health_match = re.search(r"if\s*\(url\.pathname === \"/\" \|\| url\.pathname === \"/health\"\)\s*\{(.*?)\n\s*\}", worker, re.S)
+    health_response = health_match.group(1) if health_match else ""
+    if "userRoutes: USER_ROUTES" not in health_response or "diagnosticContract:" not in health_response:
+        failures.append("Worker /health must expose userRoutes and diagnosticContract")
+    if "diagnosticRoutes:" in health_response:
+        failures.append("Worker /health must not expose diagnostic route path names")
     user_routes_match = re.search(r"const\s+USER_ROUTES\s*=\s*\[(.*?)\];", worker, re.S)
     if not user_routes_match:
         failures.append("Worker must define USER_ROUTES")

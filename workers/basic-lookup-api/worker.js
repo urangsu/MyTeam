@@ -56,8 +56,12 @@ export default {
           version: VERSION,
           build: BUILD,
           userRoutes: USER_ROUTES,
-          diagnosticRoutes: DIAGNOSTIC_ROUTES,
-          routes: [...USER_ROUTES, ...DIAGNOSTIC_ROUTES]
+          diagnosticContract: {
+            enabled: true,
+            routeCount: DIAGNOSTIC_ROUTES.length,
+            auth: "header-token"
+          },
+          routes: USER_ROUTES
         });
       }
 

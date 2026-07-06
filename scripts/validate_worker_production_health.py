@@ -7,6 +7,7 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
+import os
 
 
 DEFAULT_BASE_URL = "https://late-waterfall-c95c.urange.workers.dev"
@@ -30,11 +31,13 @@ REQUIRED_USER_ROUTES = {
     "/finance/company/income-statement?crno=1101110000000&bizYear=2023",
     "/law/search?query=근로기준법&display=2",
 }
-REQUIRED_DIAGNOSTIC_ROUTES = {
+DIAGNOSTIC_ROUTES = {
     "/dart/company?corpCode=00126380",
     "/dart/recent?corpCode=00126380",
     "/dart/diagnose?corpCode=00126380",
 }
+DIAGNOSTIC_TOKEN_ENV = "MYTEAM_DIAGNOSTIC_TOKEN"
+DIAGNOSTIC_TOKEN_HEADER = "x-myteam-diagnostic-token"
 
 
 def fetch_health(base_url: str) -> dict[str, object]:
@@ -65,11 +68,14 @@ def fetch_health(base_url: str) -> dict[str, object]:
     return data
 
 
-def fetch_status(base_url: str, route: str) -> int:
+def fetch_status(base_url: str, route: str, headers: dict[str, str] | None = None) -> int:
     url = base_url.rstrip("/") + route
-    request = urllib.request.Request(url, headers={"Accept": "application/json"})
+    request_headers = {"Accept": "application/json"}
+    if headers:
+        request_headers.update(headers)
+    request = urllib.request.Request(url, headers=request_headers)
     try:
-        with urllib.request.urlopen(request, timeout=20) as response:
+        with urllib.request.urlopen(request, timeout=5) as response:
             response.read()
             return response.status
     except urllib.error.HTTPError as exc:
@@ -100,6 +106,11 @@ def string_list(data: dict[str, object], key: str) -> list[str] | None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate deployed Cloudflare Worker /health contract.")
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
+    parser.add_argument(
+        "--validate-diagnostic-auth",
+        action="store_true",
+        help=f"Also validate an authenticated diagnostic request using {DIAGNOSTIC_TOKEN_ENV}.",
+    )
     args = parser.parse_args()
 
     data = fetch_health(args.base_url)
@@ -115,28 +126,47 @@ def main() -> int:
         failures.append(f"build must be {EXPECTED_BUILD}")
 
     user_routes = string_list(data, "userRoutes")
-    diagnostic_routes = string_list(data, "diagnosticRoutes")
     if user_routes is None:
         failures.append("userRoutes must be present as a string array")
         user_routes = []
-    if diagnostic_routes is None:
-        failures.append("diagnosticRoutes must be present as a string array")
-        diagnostic_routes = []
+    if "diagnosticRoutes" in data:
+        failures.append("diagnosticRoutes must not expose diagnostic path names in public /health")
+    diagnostic_contract = data.get("diagnosticContract")
+    if not isinstance(diagnostic_contract, dict):
+        failures.append("diagnosticContract must be present as an object")
+        diagnostic_contract = {}
+    else:
+        if diagnostic_contract.get("enabled") is not True:
+            failures.append("diagnosticContract.enabled must be true")
+        if diagnostic_contract.get("routeCount") != len(DIAGNOSTIC_ROUTES):
+            failures.append(f"diagnosticContract.routeCount must be {len(DIAGNOSTIC_ROUTES)}")
+        if diagnostic_contract.get("auth") != "header-token":
+            failures.append("diagnosticContract.auth must be header-token")
 
     user_set = set(user_routes)
-    diagnostic_set = set(diagnostic_routes)
     missing_user = sorted(REQUIRED_USER_ROUTES - user_set)
-    missing_diagnostic = sorted(REQUIRED_DIAGNOSTIC_ROUTES - diagnostic_set)
     if missing_user:
         failures.append("missing userRoutes: " + ", ".join(missing_user))
-    if missing_diagnostic:
-        failures.append("missing diagnosticRoutes: " + ", ".join(missing_diagnostic))
     if any(route.startswith("/dart/") for route in user_routes):
         failures.append("DART routes must not appear in userRoutes")
-    for route in sorted(REQUIRED_DIAGNOSTIC_ROUTES):
-        status = fetch_status(args.base_url, route)
-        if status not in {401, 403, 404}:
-            failures.append(f"diagnostic route must reject unauthenticated access: {route} returned HTTP {status}")
+    should_probe_diagnostics = not failures
+    if should_probe_diagnostics:
+        for route in sorted(DIAGNOSTIC_ROUTES):
+            status = fetch_status(args.base_url, route)
+            if status != 404:
+                failures.append(f"diagnostic route without token must return HTTP 404: {route} returned HTTP {status}")
+            wrong_status = fetch_status(args.base_url, route, {DIAGNOSTIC_TOKEN_HEADER: "invalid-diagnostic-token"})
+            if wrong_status != 404:
+                failures.append(f"diagnostic route with wrong token must return HTTP 404: {route} returned HTTP {wrong_status}")
+    if args.validate_diagnostic_auth:
+        token = os.environ.get(DIAGNOSTIC_TOKEN_ENV, "").strip()
+        if not token:
+            failures.append(f"{DIAGNOSTIC_TOKEN_ENV} must be set for --validate-diagnostic-auth")
+        elif should_probe_diagnostics:
+            for route in sorted(DIAGNOSTIC_ROUTES):
+                status = fetch_status(args.base_url, route, {DIAGNOSTIC_TOKEN_HEADER: token})
+                if status == 404:
+                    failures.append(f"diagnostic route with valid token must enter handler, got HTTP 404: {route}")
 
     if failures:
         print("FAIL: Worker production /health validation")

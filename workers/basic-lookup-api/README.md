@@ -54,14 +54,11 @@ This Worker is currently deployed from the Cloudflare Dashboard, not from a repo
 4. Save and deploy to Production.
 5. Verify `/health` before merging the app branch to `main`.
 
-The production `/health` response must show `version: "0.3.0"`, a non-empty `build` marker, and include these route names:
+The production `/health` response must show `version: "0.3.0"`, a non-empty `build` marker, `userRoutes`, and `diagnosticContract`.
 
 ```text
 /health
 /news/search?query=삼성전자
-/dart/company?corpCode=00126380
-/dart/recent?corpCode=00126380
-/dart/diagnose?corpCode=00126380
 /weather/kma/nowcast?nx=63&ny=89
 /weather/kma/forecast?nx=63&ny=89
 /weather/kma/ultra-forecast?nx=63&ny=89
@@ -78,15 +75,26 @@ The production `/health` response must show `version: "0.3.0"`, a non-empty `bui
 /law/search?query=근로기준법&display=2
 ```
 
+`/health` must not expose full diagnostic route names. It may expose only this diagnostic contract:
+
+```json
+{
+  "diagnosticContract": {
+    "enabled": true,
+    "routeCount": 3,
+    "auth": "header-token"
+  }
+}
+```
+
 Live route checks:
 
 ```bash
 curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/health'
 curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/news/search?query=%EC%82%BC%EC%84%B1%EC%A0%84%EC%9E%90&display=2'
-curl -i 'https://late-waterfall-c95c.urange.workers.dev/dart/company?corpCode=00126380'
-curl -i 'https://late-waterfall-c95c.urange.workers.dev/dart/recent?corpCode=00126380&days=30&display=2'
-curl -i 'https://late-waterfall-c95c.urange.workers.dev/dart/diagnose?corpCode=00126380'
-curl -fsS -H 'x-myteam-diagnostic-token: <token>' 'https://late-waterfall-c95c.urange.workers.dev/dart/company?corpCode=00126380'
+curl -i 'https://late-waterfall-c95c.urange.workers.dev/dart/company?corpCode=00126380' # must return 404
+curl -i -H 'x-myteam-diagnostic-token: wrong' 'https://late-waterfall-c95c.urange.workers.dev/dart/company?corpCode=00126380' # must return 404
+MYTEAM_DIAGNOSTIC_TOKEN='<local secret>' python3 scripts/validate_worker_production_health.py --validate-diagnostic-auth
 curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/weather/kma/nowcast?nx=63&ny=89'
 curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/weather/kma/forecast?nx=63&ny=89'
 curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/weather/kma/ultra-forecast?nx=63&ny=89'
@@ -99,7 +107,8 @@ curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/law/search?query=%EA%B
 ```
 
 If any required user route returns `404`, do not merge this branch to `main`.
-Unauthenticated `/dart/*` diagnostic requests must return `401`, `403`, or `404`.
+Unauthenticated and wrong-token `/dart/*` diagnostic requests must return exactly `404`.
+Correct-token `/dart/*` diagnostic requests must enter the diagnostic handler. Do not print the token value in logs, QA Markdown, or chat.
 
 ## Naver Developer Setup
 
@@ -125,6 +134,8 @@ https://late-waterfall-c95c.urange.workers.dev
 - Treat DART output as disclosure lists and official links, not disclosure full-text analysis.
 - Treat DART `corpName` lookup as Worker-side best-effort filtering. It is not an official OpenDART `list.json` request parameter; prefer `corpCode` for reliable lookup.
 - Keep all `/dart/*` Worker routes as token-protected operational diagnostics. User-facing app DART lookup uses personal OpenDART API Key direct calls because production Worker outbound calls to OpenDART return provider reachability `522`.
+- Never put the diagnostic token value into app code, Info.plist, bundled JSON, release capability manifests, logs, QA Markdown, or URL query strings. Use Cloudflare secrets, CI secrets, or local environment variables only.
+- Public user routes consume provider quotas. Keep query length limits, result limits, provider timeouts, and no-store responses. Add rate limiting/cache before enabling broad Release traffic.
 - Do not use Worker `corpName` handling as product behavior. The app resolves company name or stock code to OpenDART `corp_code` locally before direct BYOK lookup.
 - Treat Korean Law output as official search results, not legal advice.
 - Pass KMA grid coordinates only; do not accept raw address strings in Worker routes.

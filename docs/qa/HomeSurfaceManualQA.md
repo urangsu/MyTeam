@@ -9,6 +9,10 @@ This document verifies that Home and Settings expose only defensible product sur
 - tested_at: `2026-07-06 00:08:59 KST`
 - tester: `pending manual QA`
 - profile: `Developer, Release Candidate, and App Store profile expectations must be checked separately`
+- configuration: `pending manual QA`
+- architecture: `pending manual QA`
+- xcode_version: `pending manual QA`
+- artifact_sha256: `pending manual QA`
 
 | Case ID | Scenario | Input / Action | Expected result | Forbidden result | Actual result | PASS / FAIL / BLOCKED | Evidence | Notes |
 |---|---|---|---|---|---|---|---|---|

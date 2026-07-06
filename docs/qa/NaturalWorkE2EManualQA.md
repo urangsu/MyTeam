@@ -9,6 +9,10 @@ This document verifies that personal chat and team workroom route natural langua
 - tested_at: `2026-07-06 00:08:59 KST`
 - tester: `pending manual QA`
 - profile: `Debug and Release both required`
+- configuration: `pending manual QA`
+- architecture: `pending manual QA`
+- xcode_version: `pending manual QA`
+- artifact_sha256: `pending manual QA`
 
 | Case ID | Scenario | Input / Action | Expected result | Forbidden result | Actual result | PASS / FAIL / BLOCKED | Evidence | Notes |
 |---|---|---|---|---|---|---|---|---|
