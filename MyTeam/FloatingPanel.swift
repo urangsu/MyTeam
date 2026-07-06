@@ -33,7 +33,6 @@ enum PanelTuckGeometry {
     nonisolated static let revealThickness: CGFloat = 22
     nonisolated static let allowedPanelIDs: Set<String> = [
         "chat_single",
-        "status_window",
         "swap_window"
     ]
 
@@ -331,6 +330,8 @@ class FloatingPanel: NSPanel {
 
     private var allowsBackgroundDragging: Bool {
         switch agentID {
+        case "status_window":
+            return false
         default:
             return true
         }

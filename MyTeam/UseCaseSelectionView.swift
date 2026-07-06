@@ -8,8 +8,7 @@ struct UseCaseSelectionView: View {
     var onContinue: () -> Void
 
     var body: some View {
-        VStack(spacing: 20) {
-            // 타이틀
+        VStack(spacing: 0) {
             VStack(spacing: 8) {
                 Text("어떤 용도로 써볼까요?")
                     .font(.system(size: 18, weight: .bold))
@@ -18,38 +17,66 @@ struct UseCaseSelectionView: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
+            .padding(.horizontal, 18)
+            .padding(.top, 12)
+            .padding(.bottom, 12)
 
-            // 선택 그리드
-            LazyVGrid(
-                columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
-                spacing: 10
-            ) {
-                ForEach(OnboardingUseCase.allCases, id: \.self) { useCase in
-                    UseCaseChip(
-                        useCase: useCase,
-                        isSelected: selectedUseCases.contains(useCase)
-                    ) {
-                        if selectedUseCases.contains(useCase) {
-                            selectedUseCases.remove(useCase)
-                        } else {
-                            selectedUseCases.insert(useCase)
+            GeometryReader { proxy in
+                ScrollView {
+                    LazyVGrid(columns: gridColumns(for: proxy.size.width), spacing: 8) {
+                        ForEach(OnboardingUseCase.allCases, id: \.self) { useCase in
+                            UseCaseChip(
+                                useCase: useCase,
+                                isSelected: selectedUseCases.contains(useCase)
+                            ) {
+                                if selectedUseCases.contains(useCase) {
+                                    selectedUseCases.remove(useCase)
+                                } else {
+                                    selectedUseCases.insert(useCase)
+                                }
+                            }
                         }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 4)
                 }
+                .background(WindowDragBlocker())
             }
+            .frame(minHeight: 150)
 
-            // 계속 버튼
-            Button(action: onContinue) {
-                Text(selectedUseCases.isEmpty ? "일단 시작" : "다음")
-                    .font(.system(size: 14, weight: .semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 9)
+            Divider().opacity(0.12)
+
+            VStack(spacing: 8) {
+                HStack {
+                    Text(selectedUseCases.isEmpty ? "선택 없이 시작할 수 있습니다" : "\(selectedUseCases.count)개 선택됨")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+
+                Button(action: onContinue) {
+                    Text(selectedUseCases.isEmpty ? "선택 없이 계속" : "선택하고 다음")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 9)
+                }
+                .buttonStyle(.borderedProminent)
+                .cornerRadius(10)
             }
-            .buttonStyle(.borderedProminent)
-            .cornerRadius(10)
+            .padding(.horizontal, 18)
+            .padding(.top, 10)
+            .padding(.bottom, 14)
         }
-        .padding(.horizontal, 18)
-        .padding(.bottom, 18)
+    }
+
+    private func gridColumns(for width: CGFloat) -> [GridItem] {
+        if width < 330 {
+            return [GridItem(.flexible(), spacing: 8)]
+        }
+        return [
+            GridItem(.flexible(), spacing: 8),
+            GridItem(.flexible(), spacing: 8)
+        ]
     }
 }
 
@@ -214,7 +241,7 @@ private struct UseCaseChip: View {
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, minHeight: 102, alignment: .topLeading)
-            .padding(12)
+            .padding(10)
             .background(
                 RoundedRectangle(cornerRadius: 12)
                     .fill(isSelected

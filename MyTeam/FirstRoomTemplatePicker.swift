@@ -9,8 +9,7 @@ struct FirstRoomTemplatePicker: View {
     var onConnectAPI: () -> Void
 
     var body: some View {
-        VStack(spacing: 20) {
-            // 타이틀
+        VStack(spacing: 0) {
             VStack(spacing: 8) {
                 Text("시작할 방을 고르세요")
                     .font(.system(size: 18, weight: .bold))
@@ -18,26 +17,35 @@ struct FirstRoomTemplatePicker: View {
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }
+            .padding(.horizontal, 18)
+            .padding(.top, 12)
+            .padding(.bottom, 12)
 
-            // 방 목록
-            VStack(spacing: 10) {
-                ForEach(RoomTemplate.allCases, id: \.self) { template in
-                    RoomTemplateCard(
-                        template: template,
-                        isSelected: selectedTemplate == template
-                    ) {
-                        selectedTemplate = template
+            ScrollView {
+                VStack(spacing: 8) {
+                    ForEach(RoomTemplate.allCases, id: \.self) { template in
+                        RoomTemplateCard(
+                            template: template,
+                            isSelected: selectedTemplate == template
+                        ) {
+                            selectedTemplate = template
+                        }
                     }
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 4)
             }
+            .background(WindowDragBlocker())
+            .frame(minHeight: 150)
 
-            // 액션 버튼
+            Divider().opacity(0.12)
+
             VStack(spacing: 10) {
                 Button(action: onStart) {
-                        Text("바로 시작")
-                            .font(.system(size: 14, weight: .semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 9)
+                    Text("이 방으로 시작")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 9)
                 }
                 .buttonStyle(.borderedProminent)
                 .cornerRadius(10)
@@ -53,9 +61,10 @@ struct FirstRoomTemplatePicker: View {
                 }
                 .buttonStyle(.plain)
             }
+            .padding(.horizontal, 18)
+            .padding(.top, 10)
+            .padding(.bottom, 14)
         }
-        .padding(.horizontal, 18)
-        .padding(.bottom, 18)
     }
 }
 

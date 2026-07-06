@@ -142,6 +142,20 @@ def main() -> None:
         failures.append("Settings presentation must not demote the team member panel")
     if '"settings_window"' in floating_panel:
         failures.append("FloatingPanel must not contain settings_window special cases")
+    tuck_ids_match = re.search(
+        r"allowedPanelIDs:\s*Set<String>\s*=\s*\[(?P<body>.*?)\]",
+        floating_panel,
+        re.S,
+    )
+    if tuck_ids_match and '"status_window"' in tuck_ids_match.group("body"):
+        failures.append("status_window must not be edge-tuckable; it causes team collaboration panel snap/drag behavior")
+    background_drag_match = re.search(
+        r"private var allowsBackgroundDragging:\s*Bool\s*\{(?P<body>.*?)\n    \}",
+        floating_panel,
+        re.S,
+    )
+    if not background_drag_match or 'case "status_window":' not in background_drag_match.group("body") or "return false" not in background_drag_match.group("body"):
+        failures.append("status_window must explicitly disable background dragging")
 
     for token in ["case checkedEmpty", "case partial"]:
         if token not in tool_state:

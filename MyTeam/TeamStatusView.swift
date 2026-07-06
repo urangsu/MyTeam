@@ -40,11 +40,15 @@ struct TeamStatusView: View {
     }
 
     private var panelWidth: CGFloat {
-        isCollapsed ? 300 : (selectedTab == 0 ? 300 : 600)
+        if isCollapsed { return 300 }
+        if manager.firstLaunchState.shouldShowOnboarding { return 360 }
+        return selectedTab == 0 ? 300 : 600
     }
 
     private var panelHeight: CGFloat {
-        isCollapsed ? 40 : 500
+        if isCollapsed { return 40 }
+        if manager.firstLaunchState.shouldShowOnboarding { return 620 }
+        return 500
     }
 
     private var collaborationStatus: TeamCollaborationStatus {
@@ -149,6 +153,11 @@ struct TeamStatusView: View {
         .onChange(of: isCollapsed) { _, _ in
             manager.updateStatusWindowSize(width: panelWidth, height: panelHeight)
         }
+        .onChange(of: manager.firstLaunchState.shouldShowOnboarding) { _, _ in
+            if !isCollapsed {
+                manager.updateStatusWindowSize(width: panelWidth, height: panelHeight)
+            }
+        }
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: isCollapsed ? 20 : 24)
@@ -175,6 +184,7 @@ struct TeamStatusView: View {
         .shadow(color: Color.black.opacity(manager.isDarkMode ? 0.3 : 0.08), radius: 15, x: 0, y: 8)
         .padding(10)
         .onAppear {
+            manager.updateStatusWindowSize(width: panelWidth, height: panelHeight)
             startCollaborationStatusRefreshLoop()
         }
         .onChange(of: manager.isWorkflowRunning) { _, _ in
