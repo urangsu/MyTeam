@@ -24,7 +24,7 @@ STALE_COMMIT_DOCS = [
     ROOT / "docs/qa/HomeSurfaceManualQA.md",
 ]
 
-BLOCKING_STATUSES = {"FAIL", "BLOCKED", "DISABLED", "STALE", "PARTIAL"}
+BLOCKING_STATUSES = {"FAIL", "BLOCKED", "DISABLED", "STALE", "PARTIAL", "OPEN", "liveButNeedsManualQA"}
 
 
 def current_head() -> str:

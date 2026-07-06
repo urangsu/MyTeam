@@ -7,10 +7,6 @@ Current route scope:
 - `GET /`
 - `GET /health`
 - `GET /news/search?query={query}&display={1...20}`
-- `GET /dart/company?corpCode={corpCode}`
-- `GET /dart/recent?corpCode={corpCode}&days={1...30}&display={1...20}`
-- `GET /dart/recent?corpName={corpName}&days={1...30}&display={1...20}`
-- `GET /dart/diagnose?corpCode={corpCode}`
 - `GET /weather/kma/nowcast?nx={nx}&ny={ny}`
 - `GET /weather/kma/forecast?nx={nx}&ny={ny}`
 - `GET /weather/kma/ultra-forecast?nx={nx}&ny={ny}`
@@ -26,6 +22,15 @@ Current route scope:
 - `GET /finance/company/income-statement?crno={crno}&bizYear={year}`
 - `GET /law/search?query={query}&display={1...20}`
 
+Diagnostic-only route scope:
+
+- `GET /dart/company?corpCode={corpCode}`
+- `GET /dart/recent?corpCode={corpCode}&days={1...30}&display={1...20}`
+- `GET /dart/recent?corpName={corpName}&days={1...30}&display={1...20}`
+- `GET /dart/diagnose?corpCode={corpCode}`
+
+Diagnostic routes require `x-myteam-diagnostic-token`. They are not user-facing product routes.
+
 The Worker source is stored here for operational review and recovery. Cloudflare secrets are not stored in this repository.
 
 ## Required Secrets
@@ -37,6 +42,7 @@ Configure these in Cloudflare Dashboard -> Workers & Pages -> Worker -> Settings
 - `DART_API_KEY`
 - `KMA_SERVICE_KEY`
 - `LAW_OC`
+- `DIAGNOSTIC_ROUTE_TOKEN`
 
 ## Cloudflare Dashboard Manual Deploy
 
@@ -77,9 +83,10 @@ Live route checks:
 ```bash
 curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/health'
 curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/news/search?query=%EC%82%BC%EC%84%B1%EC%A0%84%EC%9E%90&display=2'
-curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/dart/company?corpCode=00126380'
-curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/dart/recent?corpCode=00126380&days=30&display=2'
-curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/dart/diagnose?corpCode=00126380'
+curl -i 'https://late-waterfall-c95c.urange.workers.dev/dart/company?corpCode=00126380'
+curl -i 'https://late-waterfall-c95c.urange.workers.dev/dart/recent?corpCode=00126380&days=30&display=2'
+curl -i 'https://late-waterfall-c95c.urange.workers.dev/dart/diagnose?corpCode=00126380'
+curl -fsS -H 'x-myteam-diagnostic-token: <token>' 'https://late-waterfall-c95c.urange.workers.dev/dart/company?corpCode=00126380'
 curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/weather/kma/nowcast?nx=63&ny=89'
 curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/weather/kma/forecast?nx=63&ny=89'
 curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/weather/kma/ultra-forecast?nx=63&ny=89'
@@ -91,7 +98,8 @@ curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/finance/index/stock?qu
 curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/law/search?query=%EA%B7%BC%EB%A1%9C%EA%B8%B0%EC%A4%80%EB%B2%95&display=2'
 ```
 
-If any required live route returns `404`, do not merge this branch to `main`.
+If any required user route returns `404`, do not merge this branch to `main`.
+Unauthenticated `/dart/*` diagnostic requests must return `401`, `403`, or `404`.
 
 ## Naver Developer Setup
 
@@ -116,7 +124,7 @@ https://late-waterfall-c95c.urange.workers.dev
 - Keep `/news/search` as a read-only GET route.
 - Treat DART output as disclosure lists and official links, not disclosure full-text analysis.
 - Treat DART `corpName` lookup as Worker-side best-effort filtering. It is not an official OpenDART `list.json` request parameter; prefer `corpCode` for reliable lookup.
-- Keep all `/dart/*` Worker routes as operational diagnostics. User-facing app DART lookup uses personal OpenDART API Key direct calls because production Worker outbound calls to OpenDART return provider reachability `522`.
+- Keep all `/dart/*` Worker routes as token-protected operational diagnostics. User-facing app DART lookup uses personal OpenDART API Key direct calls because production Worker outbound calls to OpenDART return provider reachability `522`.
 - Do not use Worker `corpName` handling as product behavior. The app resolves company name or stock code to OpenDART `corp_code` locally before direct BYOK lookup.
 - Treat Korean Law output as official search results, not legal advice.
 - Pass KMA grid coordinates only; do not accept raw address strings in Worker routes.

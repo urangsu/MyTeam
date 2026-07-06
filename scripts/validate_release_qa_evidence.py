@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -117,6 +118,11 @@ REQUIRED_EVIDENCE_FIELDS = (
     "profile",
 )
 
+MANUAL_PASS_EVIDENCE_PATTERN = re.compile(
+    r"(docs/qa/evidence/|\.png\b|\.mov\b|\.mp4\b|\.log\b|python3\s+scripts/|xcodebuild|pgrep|osascript|screenshot|video|runtime log|provider response)",
+    re.I,
+)
+
 
 def split_table_row(line: str) -> list[str]:
     return [cell.strip() for cell in line.strip().strip("|").split("|")]
@@ -144,6 +150,17 @@ def has_reason_or_next_action(cells: list[str]) -> bool:
     return bool(re.search(r"\b(Reason|Next|Fix|Retest|재현|사유|다음|조치)\b", joined, re.I))
 
 
+def metadata_value(text: str, field: str) -> str | None:
+    match = re.search(rf"^\s*-\s*{re.escape(field)}\s*:\s*`?([^`\n]+)`?", text, re.M)
+    if not match:
+        return None
+    return match.group(1).strip()
+
+
+def current_head() -> str:
+    return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+
+
 def validate_doc(path: Path, case_ids: list[str], strict: bool, release_strict: bool) -> list[str]:
     failures: list[str] = []
     if not path.exists():
@@ -155,6 +172,13 @@ def validate_doc(path: Path, case_ids: list[str], strict: bool, release_strict: 
         for field in REQUIRED_EVIDENCE_FIELDS:
             if not re.search(rf"^\s*-\s*{re.escape(field)}\s*:", text, re.M):
                 failures.append(f"{relative_path} missing evidence metadata field {field}")
+        if strict:
+            tested_commit = metadata_value(text, "tested_commit")
+            tested_build = metadata_value(text, "tested_build") or ""
+            if tested_commit != current_head():
+                failures.append(f"{relative_path} tested_commit must match current HEAD in --strict mode")
+            if re.search(r"\b(not run|pending|unknown|n/a)\b", tested_build, re.I):
+                failures.append(f"{relative_path} tested_build must reference an actual tested build in --strict mode")
 
     forbidden_release_tag_patterns = [
         r"release tag\s*:\s*PASS",
@@ -184,6 +208,12 @@ def validate_doc(path: Path, case_ids: list[str], strict: bool, release_strict: 
             failures.append(f"{path.relative_to(ROOT)} case {case_id} is {status} without reason or next action")
         if strict and case_id.startswith(STRICT_REQUIRED_PASS_PREFIXES) and status != "PASS":
             failures.append(f"{path.relative_to(ROOT)} case {case_id} must be PASS in --strict mode, found {status}")
+        if strict and status == "PASS" and relative_path in MANUAL_QA_DOCS:
+            joined = " ".join(cells)
+            if "Pending" in joined or "pending" in joined:
+                failures.append(f"{path.relative_to(ROOT)} case {case_id} is PASS but still contains pending evidence text")
+            if not MANUAL_PASS_EVIDENCE_PATTERN.search(joined):
+                failures.append(f"{path.relative_to(ROOT)} case {case_id} is PASS without durable evidence path or command")
         if release_strict and case_id.startswith(RELEASE_REQUIRED_PROVIDER_PREFIXES) and status not in {"PASS", "DISABLED"}:
             failures.append(
                 f"{path.relative_to(ROOT)} case {case_id} must be PASS or DISABLED in --release-strict mode, found {status}"

@@ -41,7 +41,7 @@ def fetch_health(base_url: str) -> dict[str, object]:
     url = base_url.rstrip("/") + "/health"
     request = urllib.request.Request(url, headers={"Accept": "application/json"})
     try:
-        with urllib.request.urlopen(request, timeout=20) as response:
+        with urllib.request.urlopen(request, timeout=5) as response:
             payload = response.read().decode("utf-8")
     except urllib.error.URLError as exc:
         curl = subprocess.run(
@@ -63,6 +63,31 @@ def fetch_health(base_url: str) -> dict[str, object]:
     if not isinstance(data, dict):
         raise SystemExit("FAIL: Worker production /health must return a JSON object")
     return data
+
+
+def fetch_status(base_url: str, route: str) -> int:
+    url = base_url.rstrip("/") + route
+    request = urllib.request.Request(url, headers={"Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            response.read()
+            return response.status
+    except urllib.error.HTTPError as exc:
+        return exc.code
+    except urllib.error.URLError as exc:
+        curl = subprocess.run(
+            ["/usr/bin/curl", "-sS", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "5", url],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if curl.returncode != 0:
+            detail = curl.stderr.strip() or str(exc)
+            raise SystemExit(f"FAIL: Worker diagnostic route request failed: {detail}") from exc
+        try:
+            return int(curl.stdout.strip())
+        except ValueError as value_error:
+            raise SystemExit(f"FAIL: Worker diagnostic route returned invalid status: {curl.stdout!r}") from value_error
 
 
 def string_list(data: dict[str, object], key: str) -> list[str] | None:
@@ -108,6 +133,10 @@ def main() -> int:
         failures.append("missing diagnosticRoutes: " + ", ".join(missing_diagnostic))
     if any(route.startswith("/dart/") for route in user_routes):
         failures.append("DART routes must not appear in userRoutes")
+    for route in sorted(REQUIRED_DIAGNOSTIC_ROUTES):
+        status = fetch_status(args.base_url, route)
+        if status not in {401, 403, 404}:
+            failures.append(f"diagnostic route must reject unauthenticated access: {route} returned HTTP {status}")
 
     if failures:
         print("FAIL: Worker production /health validation")

@@ -12,6 +12,7 @@ const PROVIDERS = {
 
 const MAX_DISPLAY = 20;
 const DEFAULT_DISPLAY = 10;
+const DIAGNOSTIC_TOKEN_HEADER = "x-myteam-diagnostic-token";
 
 const USER_ROUTES = [
   "/health",
@@ -62,6 +63,12 @@ export default {
 
       if (url.pathname === "/news/search") {
         return await handleNewsSearch(url, env, startedAt);
+      }
+      if (url.pathname.startsWith("/dart/")) {
+        const diagnosticAccessError = requireDiagnosticAccess(request, env);
+        if (diagnosticAccessError) {
+          return diagnosticAccessError;
+        }
       }
       if (url.pathname === "/dart/company") {
         return await withProviderErrorBoundary(PROVIDERS.dart, () => handleDARTCompany(url, env, startedAt));
@@ -727,6 +734,15 @@ function validateQuery(query, provider) {
 
 function missingSecret(provider, message) {
   return jsonError("missing_worker_secrets", message, 503, { provider });
+}
+
+function requireDiagnosticAccess(request, env) {
+  const expectedToken = normalizeText(env?.DIAGNOSTIC_ROUTE_TOKEN || "");
+  const providedToken = normalizeText(request.headers.get(DIAGNOSTIC_TOKEN_HEADER) || "");
+  if (!expectedToken || providedToken !== expectedToken) {
+    return jsonError("not_found", "Route not found.", 404);
+  }
+  return null;
 }
 
 async function withProviderErrorBoundary(provider, handler) {

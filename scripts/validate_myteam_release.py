@@ -223,6 +223,10 @@ def validate_basic_lookup_worker_source() -> None:
             raise SystemExit(f"FAIL: DART diagnostic route missing from diagnosticRoutes: {route}")
     if "userRoutes: USER_ROUTES" not in source or "diagnosticRoutes: DIAGNOSTIC_ROUTES" not in source:
         raise SystemExit("FAIL: basic lookup Worker /health must expose userRoutes and diagnosticRoutes")
+    if "function requireDiagnosticAccess" not in source or "DIAGNOSTIC_ROUTE_TOKEN" not in source:
+        raise SystemExit("FAIL: basic lookup Worker diagnostic routes must require a diagnostic token")
+    if 'url.pathname.startsWith("/dart/")' not in source or "requireDiagnosticAccess(request, env)" not in source:
+        raise SystemExit("FAIL: basic lookup Worker must gate /dart/* diagnostic routes before handling them")
     if 'classification: "provider_reachability_failure"' not in source:
         raise SystemExit("FAIL: basic lookup Worker must classify DART reachability failures")
     if 'mergeGate: "conditional-pass"' not in source:

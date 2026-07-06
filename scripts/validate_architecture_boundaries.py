@@ -305,6 +305,10 @@ def main() -> None:
         failures.append("Worker must define USER_ROUTES")
     elif "/dart/" in user_routes_match.group(1):
         failures.append("DART routes must stay out of USER_ROUTES")
+    if "function requireDiagnosticAccess" not in worker or "DIAGNOSTIC_ROUTE_TOKEN" not in worker:
+        failures.append("Worker diagnostic routes must require DIAGNOSTIC_ROUTE_TOKEN")
+    if 'url.pathname.startsWith("/dart/")' not in worker or "requireDiagnosticAccess(request, env)" not in worker:
+        failures.append("Worker must gate /dart/* diagnostic routes before dispatch")
 
     if "NSWorkspace.shared.open" in tool_log_view and "WorkArtifactDetailView" not in tool_log_view:
         warnings.append("ToolExecutionLogView still relies on external file open for artifact detail")
