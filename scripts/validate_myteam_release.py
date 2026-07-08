@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -154,6 +155,75 @@ def validate_settings_surface() -> None:
             raise SystemExit(f"FAIL: forbidden SettingsView surface found: {label}")
 
 
+def is_git_tracked(path: Path) -> bool:
+    relative = path.relative_to(ROOT).as_posix()
+    result = subprocess.run(
+        ["git", "ls-files", "--error-unmatch", relative],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+    )
+    return result.returncode == 0
+
+
+def validate_release_capability_manifest() -> None:
+    template_path = ROOT / "MyTeam" / "Resources" / "ReleaseCapabilityManifest.template.json"
+    generated_path = ROOT / "MyTeam" / "Resources" / "ReleaseCapabilityManifest.generated.json"
+    loader_path = ROOT / "MyTeam" / "ReleaseCapabilityManifest.swift"
+    surface_path = ROOT / "MyTeam" / "ProductSurfacePolicy.swift"
+
+    if not loader_path.exists():
+        raise SystemExit("FAIL: ReleaseCapabilityManifest.swift missing")
+    if not template_path.exists():
+        raise SystemExit("FAIL: ReleaseCapabilityManifest.template.json missing")
+    if is_git_tracked(generated_path):
+        raise SystemExit("FAIL: generated release capability manifest must not be tracked")
+
+    data = json.loads(template_path.read_text(encoding="utf-8"))
+    if data.get("schema_version") != 1:
+        raise SystemExit("FAIL: ReleaseCapabilityManifest template schema_version must be 1")
+    if data.get("tested_commit") != "UNTESTED":
+        raise SystemExit("FAIL: ReleaseCapabilityManifest template must not assert tested_commit")
+    providers = data.get("providers")
+    if not isinstance(providers, dict):
+        raise SystemExit("FAIL: ReleaseCapabilityManifest template providers must be an object")
+    for key in ["google", "finance", "dart", "kma", "news", "law"]:
+        if providers.get(key) != "DISABLED":
+            raise SystemExit(f"FAIL: ReleaseCapabilityManifest template must be fail-closed: {key}")
+    worker = data.get("worker")
+    if not isinstance(worker, dict) or worker.get("production_health") != "DISABLED":
+        raise SystemExit("FAIL: ReleaseCapabilityManifest template worker must be fail-closed")
+
+    loader_source = loader_path.read_text(encoding="utf-8")
+    if '"ReleaseCapabilityManifest.generated"' not in loader_source and "ReleaseCapabilityManifest.generated" not in loader_source:
+        raise SystemExit("FAIL: release capability loader must read generated manifest at runtime")
+    if "ReleaseCapabilityManifest.template" not in loader_source:
+        raise SystemExit("FAIL: release capability loader must name the template separately from generated evidence")
+
+    surface_source = surface_path.read_text(encoding="utf-8")
+    for token in [
+        "workerProductionHealthPassed",
+        "googleLiveQAPassed",
+        "financeLiveQAPassed",
+        "dartLiveQAPassed",
+        "kmaLiveQAPassed",
+        "newsLiveQAPassed",
+        "lawLiveQAPassed",
+    ]:
+        if token in surface_source:
+            raise SystemExit(f"FAIL: ReleaseLiveProviderGate must not use hardcoded provider boolean: {token}")
+    if re.search(r"default:\s*return\s+true", surface_source):
+        raise SystemExit("FAIL: ReleaseLiveProviderGate must not default unknown capabilities to enabled")
+    for token in [
+        "workerIsRuntimeCompatible",
+        "isKnownLocalSafeCapability",
+        "ReleaseCapabilityManifestStore.status",
+        "ReleaseCapabilityManifestStore.hasGeneratedManifest",
+    ]:
+        if token not in surface_source:
+            raise SystemExit(f"FAIL: ReleaseLiveProviderGate missing manifest-backed guard: {token}")
+
+
 def strip_swift_comments_and_strings(source: str) -> str:
     source = re.sub(r"/\*.*?\*/", "", source, flags=re.S)
     source = re.sub(r"//.*", "", source)
@@ -256,6 +326,7 @@ def main() -> None:
         run_forbidden_grep(label, pattern)
     validate_tool_descriptors()
     validate_settings_surface()
+    validate_release_capability_manifest()
     validate_active_swift_runtime()
     validate_basic_lookup_worker_source()
     print("PASS: MyTeam release validators")

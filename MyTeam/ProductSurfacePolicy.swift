@@ -20,7 +20,7 @@ enum ProductSurfacePolicy: Sendable {
     nonisolated static let truthfulPrivacyCopyRequired = true
 
     nonisolated static func isEnabledInCurrentReleaseSurface(_ descriptor: MyTeamToolDescriptor) -> Bool {
-        ReleaseLiveProviderGate.isEnabledInCurrentReleaseSurface(toolID: descriptor.id)
+        ReleaseLiveProviderGate.isEnabledInCurrentReleaseSurface(descriptor)
     }
 
     static func isStarterActionVisibleInRelease(_ actionID: String) -> Bool {
@@ -113,44 +113,70 @@ enum ProductSurfacePolicy: Sendable {
 }
 
 enum ReleaseLiveProviderGate: Sendable {
-    // Release/App Store defaults are fail-closed until live QA evidence is recorded.
-    // Debug/Developer builds keep these paths enabled so QA can still exercise them.
-    nonisolated static let workerProductionHealthPassed = false
-    nonisolated static let googleLiveQAPassed = false
-    nonisolated static let financeLiveQAPassed = false
-    nonisolated static let dartLiveQAPassed = false
-    nonisolated static let kmaLiveQAPassed = false
-    nonisolated static let newsLiveQAPassed = false
-    nonisolated static let lawLiveQAPassed = false
-
-    nonisolated static func isEnabledInCurrentReleaseSurface(toolID: String) -> Bool {
+    nonisolated static func isEnabledInCurrentReleaseSurface(_ descriptor: MyTeamToolDescriptor) -> Bool {
         guard FeatureGate.current != .developer else { return true }
-        return isApprovedForRelease(toolID: toolID)
+        return isApprovedForRelease(descriptor)
     }
 
-    nonisolated static func isApprovedForRelease(toolID: String) -> Bool {
-        switch toolID {
+    nonisolated static func isApprovedForRelease(_ descriptor: MyTeamToolDescriptor) -> Bool {
+        switch descriptor.id {
         case "news.search":
-            return workerProductionHealthPassed && newsLiveQAPassed
+            return workerIsRuntimeCompatible && providerIsPass("news")
         case "law.search":
-            return workerProductionHealthPassed && lawLiveQAPassed
+            return workerIsRuntimeCompatible && providerIsPass("law")
         case "finance.krx.stockPrice", "finance.krx.index", "finance.company.statement":
-            return workerProductionHealthPassed && financeLiveQAPassed
+            return workerIsRuntimeCompatible && providerIsPass("finance")
         case "weather.current":
-            return workerProductionHealthPassed && kmaLiveQAPassed
+            return workerIsRuntimeCompatible && providerIsPass("kma")
         case "dart.disclosures.search":
-            return dartLiveQAPassed
+            return providerIsApproved("dart")
         case "calendar.events.today", "spreadsheet.googleSheets.read":
-            return googleLiveQAPassed
+            return providerIsPass("google")
         default:
+            return isKnownLocalSafeCapability(descriptor)
+        }
+    }
+
+    private nonisolated static var workerIsRuntimeCompatible: Bool {
+        let worker = ReleaseCapabilityManifestStore.bundled.worker
+        return worker.contractVersion == 2 && worker.productionHealth == .pass
+    }
+
+    private nonisolated static func providerIsPass(_ provider: String) -> Bool {
+        ReleaseCapabilityManifestStore.status(for: provider) == .pass
+    }
+
+    private nonisolated static func providerIsApproved(_ provider: String) -> Bool {
+        ReleaseCapabilityManifestStore.status(for: provider).isApproved
+    }
+
+    private nonisolated static func isKnownLocalSafeCapability(_ descriptor: MyTeamToolDescriptor) -> Bool {
+        guard descriptor.isImplemented, descriptor.isUserFacing else { return false }
+        if let _ = descriptor.requiredCredential { return false }
+        guard descriptor.relatedProvider == nil else { return false }
+
+        switch descriptor.permissionLevel {
+        case .readOnly, .draftOnly:
+            break
+        case .writeRequiresApproval, .destructiveRequiresApproval, .externalSendRequiresApproval:
+            return false
+        }
+
+        switch descriptor.category {
+        case .briefing, .document:
             return true
+        case .spreadsheet, .externalInfo, .calendar, .mail, .voice, .system:
+            return false
         }
     }
 
     nonisolated static func disabledMessage(for descriptor: MyTeamToolDescriptor) -> String {
         switch descriptor.id {
         case "news.search", "law.search", "finance.krx.stockPrice", "finance.krx.index", "finance.company.statement", "weather.current":
-            return "이 외부 조회는 출시 전 live QA가 완료될 때까지 Release 표면에서 비활성화됩니다."
+            if !ReleaseCapabilityManifestStore.hasGeneratedManifest {
+                return "이 외부 조회는 출시 후보 검증 manifest가 포함될 때까지 Release 표면에서 비활성화됩니다."
+            }
+            return "이 외부 조회는 출시 전 live QA와 Worker 호환 검증이 완료될 때까지 Release 표면에서 비활성화됩니다."
         case "dart.disclosures.search":
             return "DART 조회는 개인 키 live QA가 완료될 때까지 Release 표면에서 비활성화됩니다."
         case "calendar.events.today", "spreadsheet.googleSheets.read":

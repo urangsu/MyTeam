@@ -196,16 +196,38 @@ def main() -> None:
     if "ProductSurfacePolicy.shouldShowInConnectionSection" not in home:
         failures.append("HomeDashboardView connection surface must be driven by ProductSurfacePolicy")
 
+    for forbidden in [
+        "workerProductionHealthPassed",
+        "googleLiveQAPassed",
+        "financeLiveQAPassed",
+        "dartLiveQAPassed",
+        "kmaLiveQAPassed",
+        "newsLiveQAPassed",
+        "lawLiveQAPassed",
+    ]:
+        if forbidden in surface_policy:
+            failures.append(f"ProductSurfacePolicy must use ReleaseCapabilityManifest, not hardcoded boolean: {forbidden}")
+    if re.search(r"default:\s*return\s+true", surface_policy):
+        failures.append("ReleaseLiveProviderGate must not default unknown capabilities to enabled")
+
+    release_manifest = read("MyTeam/ReleaseCapabilityManifest.swift")
+    manifest_template = read("MyTeam/Resources/ReleaseCapabilityManifest.template.json")
+    if "ReleaseCapabilityManifest.generated" not in release_manifest:
+        failures.append("ReleaseCapabilityManifestStore must load generated RC evidence, not template evidence")
+    if "ReleaseCapabilityManifest.template" not in release_manifest:
+        failures.append("ReleaseCapabilityManifestStore must keep template and generated evidence separate")
+    if '"production_health": "DISABLED"' not in manifest_template:
+        failures.append("ReleaseCapabilityManifest template must keep Worker fail-closed")
+    for provider in ["google", "finance", "dart", "kma", "news", "law"]:
+        if f'"{provider}": "DISABLED"' not in manifest_template:
+            failures.append(f"ReleaseCapabilityManifest template must keep provider fail-closed: {provider}")
+
     for required in [
         "enum ProductSurfaceTier",
         "enum ReleaseLiveProviderGate",
-        "workerProductionHealthPassed = false",
-        "financeLiveQAPassed = false",
-        "dartLiveQAPassed = false",
-        "kmaLiveQAPassed = false",
-        "newsLiveQAPassed = false",
-        "lawLiveQAPassed = false",
-        "googleLiveQAPassed = false",
+        "ReleaseCapabilityManifestStore.status",
+        "workerIsRuntimeCompatible",
+        "isKnownLocalSafeCapability",
         "static func isEnabledInCurrentReleaseSurface",
         "case primary",
         "case secondary",

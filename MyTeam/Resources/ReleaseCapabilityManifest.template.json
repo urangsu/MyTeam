@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "tested_commit": "UNTESTED",
+  "profile": "releaseCandidate",
+  "worker": {
+    "contract_version": 2,
+    "production_health": "DISABLED",
+    "git_sha": null,
+    "deployed_at": null
+  },
+  "providers": {
+    "google": "DISABLED",
+    "finance": "DISABLED",
+    "dart": "DISABLED",
+    "kma": "DISABLED",
+    "news": "DISABLED",
+    "law": "DISABLED"
+  }
+}

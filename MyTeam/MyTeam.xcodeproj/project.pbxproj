@@ -9393,6 +9393,7 @@
 				<string>1679789F1F6C4C1CB732A2E8</string>
 				<string>88BFE44B4D134F2C8C430DF1</string>
 				<string>AB3502AEE8DFC07269BDAB58</string>
+				<string>RCM001MANIFESTBLD00001</string>
 				<string>E1372AEC9B223BF38117D22E</string>
 				<string>2D989958B3743A3DB745BE9A</string>
 				<string>CCA9C92C6683650B8A3419BB</string>
@@ -12079,6 +12080,13 @@
 			<string>Resources/Sprites/치코/치코_landing_009.png</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
+		</dict>
+		<key>RCM001MANIFESTBLD00001</key>
+		<dict>
+			<key>fileRef</key>
+			<string>RCM001MANIFESTFILE0001</string>
+			<key>isa</key>
+			<string>PBXBuildFile</string>
 		</dict>
 		<key>ABC218C93783E06643A8CE90</key>
 		<dict>
@@ -20641,6 +20649,19 @@
 			<string>ProductSurfacePolicy.swift</string>
 			<key>path</key>
 			<string>ProductSurfacePolicy.swift</string>
+			<key>sourceTree</key>
+			<string>&lt;group&gt;</string>
+		</dict>
+		<key>RCM001MANIFESTFILE0001</key>
+		<dict>
+			<key>includeInIndex</key>
+			<string>1</string>
+			<key>isa</key>
+			<string>PBXFileReference</string>
+			<key>name</key>
+			<string>ReleaseCapabilityManifest.swift</string>
+			<key>path</key>
+			<string>ReleaseCapabilityManifest.swift</string>
 			<key>sourceTree</key>
 			<string>&lt;group&gt;</string>
 		</dict>
