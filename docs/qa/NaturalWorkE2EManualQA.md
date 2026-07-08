@@ -29,6 +29,12 @@ This document verifies that personal chat and team workroom route natural langua
 | NW-011 | Weather with region | `광양 출장 날씨 알려줘` | Weather lookup for resolved Gwangyang region; credential failure shown as settings-needed, not success | Wrong region, invalid credentials shown as success | Not run in this pass | BLOCKED | Pending KMA QA | Reason: requires live provider state. Next: run with current KMA config. |
 | NW-012 | Law search | `근로기준법 연차 조문 찾아줘` | Law search result with official-source framing and not legal advice | Legal-advice conclusion | Not run in this pass | BLOCKED | Pending law QA | Reason: requires live route/app run. Next: run law request. |
 | NW-013 | False positive legal wording | `법적으로 자연스럽게 써줘` | Rewrite/risk wording path, no law search | Law lookup | Not run in this pass | BLOCKED | Pending false-positive QA | Reason: requires chat run. Next: inspect output/log. |
+| NW-CONC-001 | Two team rooms run simultaneously | Start natural work in room A, switch to room B, start another natural work before A finishes | Room A and B keep separate progress bubbles, workflow IDs, and artifacts | A completion clears B status or artifacts attach to wrong room | Not run in this pass | BLOCKED | Pending concurrency QA | Reason: requires two active rooms and live runtime observation. |
+| NW-CONC-002 | Personal chat plus team workroom simultaneous run | Start a personal chat natural request and a team workroom natural request concurrently | Personal/team progress and artifacts remain scoped to the initiating surface | Global workflow state overwrites one run or mixes artifacts | Not run in this pass | BLOCKED | Pending concurrency QA | Reason: requires simultaneous personal/team runtime. |
+| NW-CONC-003 | Cancel one room while another is running | Start room A and room B workflows, cancel only room A | Room B continues; room A records cancellation without clearing B state | Cancellation leaks across rooms | Not run in this pass | BLOCKED | Pending cancellation QA | Reason: requires interactive cancellation. |
+| NW-CONC-004 | A completes while B starts | Start B immediately before A result finalizes | A final message/artifact remain in room A; B progress remains intact | Race causes duplicate bubble, missing result, or wrong room artifact | Not run in this pass | BLOCKED | Pending race QA | Reason: requires timing-sensitive runtime check. |
+| NW-CONC-005 | Artifact completes after room switch | Start natural work, switch rooms before completion, then inspect recent artifacts | Artifact keeps original roomID and appears in the correct room/recent list | Artifact appears globally only or under the active room at completion time | Not run in this pass | BLOCKED | Pending artifact concurrency QA | Reason: requires room switch during execution. |
+| NW-CONC-006 | Same request double-submit | Submit the same natural request twice rapidly in one room | Either two clearly separate runs or safe de-duplication; no stuck progress or cross-linked artifact | Duplicate submission corrupts status or reuses the wrong workflow ID | Not run in this pass | BLOCKED | Pending double-submit QA | Reason: requires rapid input runtime check. |
 
 ## Static Evidence
 
@@ -37,4 +43,4 @@ This document verifies that personal chat and team workroom route natural langua
 
 ## Completion Rule
 
-NW-001 through NW-013 must be PASS or have explicit BLOCKED reason and next action before a Release Candidate can be reviewed. Any FAIL requires a fix commit and retest.
+NW-001 through NW-013 and NW-CONC-001 through NW-CONC-006 must be PASS or have explicit BLOCKED reason and next action before a Release Candidate can be reviewed. Any FAIL requires a fix commit and retest.

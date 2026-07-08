@@ -48,13 +48,16 @@ Configure these in Cloudflare Dashboard -> Workers & Pages -> Worker -> Settings
 
 This Worker is currently deployed from the Cloudflare Dashboard, not from a repo-bound CI pipeline. After editing this source file, deploy the same source manually:
 
-1. Open Cloudflare Dashboard -> Workers & Pages -> `late-waterfall-c95c` -> Production.
-2. Confirm the required secrets above exist in Settings -> Variables and Secrets.
-3. Paste or sync `/Users/su/Desktop/MyTeam/workers/basic-lookup-api/worker.js` into the Worker editor.
-4. Save and deploy to Production.
-5. Verify `/health` before merging the app branch to `main`.
+1. Commit and push the exact source revision that will be deployed.
+2. Open Cloudflare Dashboard -> Workers & Pages -> `late-waterfall-c95c` -> Production.
+3. Confirm the required secrets above exist in Settings -> Variables and Secrets.
+4. Set `MYTEAM_WORKER_GIT_SHA` to the exact pushed commit SHA.
+5. Set `MYTEAM_WORKER_DEPLOYED_AT` to the UTC deploy timestamp, e.g. `2026-07-08T12:34:56Z`.
+6. Paste or sync `/Users/su/Desktop/MyTeam/workers/basic-lookup-api/worker.js` into the Worker editor.
+7. Save and deploy to Production.
+8. Verify `/health` before enabling any public lookup Release surface.
 
-The production `/health` response must show `version: "0.3.0"`, a non-empty `build` marker, `userRoutes`, and `diagnosticContract`.
+The production `/health` response must show `version: "0.3.0"`, a non-empty `build` marker, `contractVersion: 2`, `gitSha`, `deployedAt`, `userRoutes`, and `diagnosticContract`.
 
 ```text
 /health
@@ -83,7 +86,10 @@ The production `/health` response must show `version: "0.3.0"`, a non-empty `bui
     "enabled": true,
     "routeCount": 3,
     "auth": "header-token"
-  }
+  },
+  "contractVersion": 2,
+  "gitSha": "40-character commit SHA",
+  "deployedAt": "2026-07-08T12:34:56Z"
 }
 ```
 
@@ -108,7 +114,7 @@ curl -fsS 'https://late-waterfall-c95c.urange.workers.dev/law/search?query=%EA%B
 
 If any required user route returns `404`, do not merge this branch to `main`.
 Unauthenticated and wrong-token `/dart/*` diagnostic requests must return exactly `404`.
-Correct-token `/dart/*` diagnostic requests must enter the diagnostic handler. Do not print the token value in logs, QA Markdown, or chat.
+Correct-token `/dart/*` diagnostic requests must return the expected DART diagnostic JSON contract. HTTP `500`, non-JSON, `not_found`, or missing `provider: "dart"` is a failure. Do not print the token value in logs, QA Markdown, or chat.
 
 ## Naver Developer Setup
 
@@ -135,7 +141,7 @@ https://late-waterfall-c95c.urange.workers.dev
 - Treat DART `corpName` lookup as Worker-side best-effort filtering. It is not an official OpenDART `list.json` request parameter; prefer `corpCode` for reliable lookup.
 - Keep all `/dart/*` Worker routes as token-protected operational diagnostics. User-facing app DART lookup uses personal OpenDART API Key direct calls because production Worker outbound calls to OpenDART return provider reachability `522`.
 - Never put the diagnostic token value into app code, Info.plist, bundled JSON, release capability manifests, logs, QA Markdown, or URL query strings. Use Cloudflare secrets, CI secrets, or local environment variables only.
-- Public user routes consume provider quotas. Keep query length limits, result limits, provider timeouts, and no-store responses. Add rate limiting/cache before enabling broad Release traffic.
+- Public user routes consume provider quotas. Keep query length limits, result limits, isolate-local rate limiting, provider timeouts, maximum upstream response size, and no-store responses. Add durable rate limiting/cache before broad Release traffic if usage grows beyond low-volume demo/RC traffic.
 - Do not use Worker `corpName` handling as product behavior. The app resolves company name or stock code to OpenDART `corp_code` locally before direct BYOK lookup.
 - Treat Korean Law output as official search results, not legal advice.
 - Pass KMA grid coordinates only; do not accept raw address strings in Worker routes.

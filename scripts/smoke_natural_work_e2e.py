@@ -60,6 +60,12 @@ def main() -> None:
         failures.append("NaturalWorkPlanRunner must execute natural work with composite ToolExecutionOptions")
     if "options.persistIndividualArtifact" not in tool_router:
         failures.append("ToolExecutionRouter must suppress individual artifacts during composite execution")
+    if "ProductSurfacePolicy.isEnabledInCurrentReleaseSurface(descriptor)" not in tool_router:
+        failures.append("ToolExecutionRouter must enforce ProductSurfacePolicy at runtime, not only in UI")
+    if "let readiness = await ToolExecutionRouter.shared.readiness(for: descriptor)" not in read("MyTeam/NaturalWorkRouting.swift"):
+        failures.append("NaturalWorkPlanExecutor must preflight each natural-work step through ToolExecutionRouter.readiness")
+    if "ToolExecutionRouter.shared.run(" not in read("MyTeam/NaturalWorkRouting.swift"):
+        failures.append("NaturalWorkPlanExecutor must execute tools through ToolExecutionRouter, not direct runners")
     if "CompositeWorkArtifactWriter.write" not in artifact_recorder:
         failures.append("CompositeArtifactRecorder must persist composite work artifacts")
     for token in ["roomID", "workflowID"]:

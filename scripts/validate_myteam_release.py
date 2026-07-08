@@ -227,6 +227,12 @@ def validate_basic_lookup_worker_source() -> None:
         raise SystemExit("FAIL: basic lookup Worker /health must expose userRoutes and diagnosticContract")
     if "diagnosticRoutes:" in health_response:
         raise SystemExit("FAIL: basic lookup Worker /health must not expose diagnostic route path names")
+    for token in ["CONTRACT_VERSION = 2", "MYTEAM_WORKER_GIT_SHA", "MYTEAM_WORKER_DEPLOYED_AT", "contractVersion:", "gitSha:", "deployedAt:"]:
+        if token not in source:
+            raise SystemExit(f"FAIL: basic lookup Worker missing deploy provenance contract: {token}")
+    for token in ["function rateLimit", "RATE_LIMIT_MAX_REQUESTS", "function providerFetch", "PROVIDER_TIMEOUT_MS", "MAX_UPSTREAM_BYTES"]:
+        if token not in source:
+            raise SystemExit(f"FAIL: basic lookup Worker missing public route abuse guard: {token}")
     if "function requireDiagnosticAccess" not in source or "DIAGNOSTIC_ROUTE_TOKEN" not in source:
         raise SystemExit("FAIL: basic lookup Worker diagnostic routes must require a diagnostic token")
     if 'url.pathname.startsWith("/dart/")' not in source or "requireDiagnosticAccess(request, env)" not in source:

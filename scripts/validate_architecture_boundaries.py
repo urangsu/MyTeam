@@ -137,10 +137,17 @@ def main() -> None:
         failures.append("ToolExecutionRouter.run must accept ToolExecutionOptions")
     if "options.persistIndividualArtifact" not in tool_router:
         failures.append("ToolExecutionRouter must gate artifact persistence through ToolExecutionOptions")
+    if "ProductSurfacePolicy.isEnabledInCurrentReleaseSurface(descriptor)" not in tool_router:
+        failures.append("ToolExecutionRouter must enforce ProductSurfacePolicy before execution")
     if "persistArtifact:" in tool_router:
         failures.append("ToolExecutionRouter.run must not expose legacy persistArtifact parameter")
     if "ToolExecutionDispatcher" not in tool_router or "ToolExecutionDispatcher.run" not in tool_router:
         failures.append("ToolExecutionRouter must delegate tool ID dispatch to ToolExecutionDispatcher")
+    natural = read("MyTeam/NaturalWorkRouting.swift")
+    if "let readiness = await ToolExecutionRouter.shared.readiness(for: descriptor)" not in natural:
+        failures.append("NaturalWorkPlanExecutor must preflight steps through ToolExecutionRouter.readiness")
+    if "ToolExecutionRouter.shared.run(" not in natural:
+        failures.append("NaturalWorkPlanExecutor must execute through ToolExecutionRouter")
     if "ResultFormatter" not in tool_formatters:
         failures.append("ToolResultFormatters.swift must define result formatter types")
     for file_name in ["ToolResultFormatters.swift", "WorkArtifactDetailView.swift"]:
@@ -304,6 +311,12 @@ def main() -> None:
         failures.append("Worker /health must expose userRoutes and diagnosticContract")
     if "diagnosticRoutes:" in health_response:
         failures.append("Worker /health must not expose diagnostic route path names")
+    for token in ["CONTRACT_VERSION = 2", "MYTEAM_WORKER_GIT_SHA", "MYTEAM_WORKER_DEPLOYED_AT", "contractVersion:", "gitSha:", "deployedAt:"]:
+        if token not in worker:
+            failures.append(f"Worker missing deploy provenance contract: {token}")
+    for token in ["function rateLimit", "RATE_LIMIT_MAX_REQUESTS", "function providerFetch", "PROVIDER_TIMEOUT_MS", "MAX_UPSTREAM_BYTES"]:
+        if token not in worker:
+            failures.append(f"Worker missing public route abuse guard: {token}")
     user_routes_match = re.search(r"const\s+USER_ROUTES\s*=\s*\[(.*?)\];", worker, re.S)
     if not user_routes_match:
         failures.append("Worker must define USER_ROUTES")

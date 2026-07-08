@@ -69,6 +69,8 @@ python3 scripts/validate_worker_production_health.py
 Expected:
 
 - `/health` exposes `userRoutes` and `diagnosticContract`.
+- `/health` exposes `contractVersion`, `gitSha`, and `deployedAt`.
+- `gitSha` matches the current commit that is being validated.
 - DART routes are absent from `userRoutes`.
 - `/health` exposes `diagnosticContract`, not diagnostic route path names.
 - Unauthenticated `/dart/*` requests return exactly `404`.
@@ -82,7 +84,8 @@ MYTEAM_DIAGNOSTIC_TOKEN='<local secret>' python3 scripts/validate_worker_product
 
 Expected:
 
-- Correct-token `/dart/*` requests do not return `404`.
+- Correct-token `/dart/*` requests return JSON from the DART diagnostic handler.
+- HTTP `500`, non-JSON, `not_found`, missing `provider: "dart"`, or a missing handler marker is a failure.
 - The token value is not printed, written to QA Markdown, or committed.
 
 Diagnostic token storage rule:
@@ -93,6 +96,7 @@ Diagnostic token storage rule:
 Public user route abuse rule:
 
 - Before broad Release traffic, public routes need quota protection: rate limiting, cache where safe, provider timeout, maximum response size, request concurrency limits, and abuse logging.
+- The current Worker source must keep at least isolate-local rate limiting, provider timeout, and upstream response-size protection enabled.
 
 ### Release Runtime Gate
 

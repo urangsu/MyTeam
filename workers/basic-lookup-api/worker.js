@@ -1,6 +1,9 @@
 const SERVICE = "myteam-basic-lookup-api";
 const VERSION = "0.3.0";
 const BUILD = "public-lookup-0.3.0";
+const CONTRACT_VERSION = 2;
+const SOURCE_GIT_SHA = "set-MYTEAM_WORKER_GIT_SHA";
+const SOURCE_DEPLOYED_AT = "set-MYTEAM_WORKER_DEPLOYED_AT";
 
 const PROVIDERS = {
   news: "naver-news",
@@ -13,6 +16,11 @@ const PROVIDERS = {
 const MAX_DISPLAY = 20;
 const DEFAULT_DISPLAY = 10;
 const DIAGNOSTIC_TOKEN_HEADER = "x-myteam-diagnostic-token";
+const PROVIDER_TIMEOUT_MS = 8000;
+const MAX_UPSTREAM_BYTES = 1_000_000;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 120;
+const rateLimitBuckets = new Map();
 
 const USER_ROUTES = [
   "/health",
@@ -49,12 +57,23 @@ export default {
     }
 
     try {
+      if (url.pathname !== "/" && url.pathname !== "/health") {
+        const rateLimitResponse = rateLimit(request, url);
+        if (rateLimitResponse) {
+          return rateLimitResponse;
+        }
+      }
+
       if (url.pathname === "/" || url.pathname === "/health") {
+        const metadata = workerMetadata(env);
         return jsonResponse({
           ok: true,
           service: SERVICE,
           version: VERSION,
           build: BUILD,
+          contractVersion: CONTRACT_VERSION,
+          gitSha: metadata.gitSha,
+          deployedAt: metadata.deployedAt,
           userRoutes: USER_ROUTES,
           diagnosticContract: {
             enabled: true,
@@ -66,7 +85,7 @@ export default {
       }
 
       if (url.pathname === "/news/search") {
-        return await handleNewsSearch(url, env, startedAt);
+        return await withProviderErrorBoundary(PROVIDERS.news, () => handleNewsSearch(url, env, startedAt));
       }
       if (url.pathname.startsWith("/dart/")) {
         const diagnosticAccessError = requireDiagnosticAccess(request, env);
@@ -133,7 +152,7 @@ async function handleNewsSearch(url, env, startedAt) {
   upstreamURL.searchParams.set("start", "1");
   upstreamURL.searchParams.set("sort", "date");
 
-  const upstreamResponse = await fetch(upstreamURL, {
+  const upstreamResponse = await providerFetch(upstreamURL, {
     headers: {
       "X-Naver-Client-Id": env.NAVER_CLIENT_ID,
       "X-Naver-Client-Secret": env.NAVER_CLIENT_SECRET
@@ -199,7 +218,7 @@ async function handleDARTRecent(url, env, startedAt) {
     }
 
     stage = "dart_fetch";
-    const upstreamResponse = await fetch(upstreamURL);
+    const upstreamResponse = await providerFetch(upstreamURL);
     if (!upstreamResponse.ok) {
       return providerError(PROVIDERS.dart, upstreamResponse.status, { stage });
     }
@@ -287,7 +306,7 @@ async function handleDARTCompany(url, env, startedAt) {
     upstreamURL.searchParams.set("corp_code", corpCode);
 
     stage = "dart_company_fetch";
-    const upstreamResponse = await fetch(upstreamURL);
+    const upstreamResponse = await providerFetch(upstreamURL);
     if (!upstreamResponse.ok) {
       return providerError(PROVIDERS.dart, upstreamResponse.status, {
         type: "company",
@@ -410,7 +429,7 @@ async function handleKMA(url, env, startedAt, type) {
   upstreamURL.searchParams.set("nx", String(nx));
   upstreamURL.searchParams.set("ny", String(ny));
 
-  const upstreamResponse = await fetch(upstreamURL);
+  const upstreamResponse = await providerFetch(upstreamURL);
   if (!upstreamResponse.ok) {
     return kmaHTTPError(upstreamResponse.status, base, nx, ny);
   }
@@ -471,7 +490,7 @@ async function handleKMAVersion(url, env, startedAt) {
   upstreamURL.searchParams.set("nx", String(nx));
   upstreamURL.searchParams.set("ny", String(ny));
 
-  const upstreamResponse = await fetch(upstreamURL);
+  const upstreamResponse = await providerFetch(upstreamURL);
   if (!upstreamResponse.ok) {
     return kmaHTTPError(upstreamResponse.status, base, nx, ny);
   }
@@ -527,7 +546,7 @@ async function handleFinanceLookup(url, env, startedAt) {
     }
   }
 
-  const upstreamResponse = await fetch(upstreamURL);
+  const upstreamResponse = await providerFetch(upstreamURL);
   if (!upstreamResponse.ok) {
     return providerError(PROVIDERS.publicData, upstreamResponse.status, { route: route.id });
   }
@@ -582,7 +601,7 @@ async function handleLawSearch(url, env, startedAt) {
   upstreamURL.searchParams.set("query", query);
   upstreamURL.searchParams.set("display", String(display));
 
-  const upstreamResponse = await fetch(upstreamURL);
+  const upstreamResponse = await providerFetch(upstreamURL);
   if (!upstreamResponse.ok) {
     return providerError(PROVIDERS.law, upstreamResponse.status);
   }
@@ -740,6 +759,51 @@ function missingSecret(provider, message) {
   return jsonError("missing_worker_secrets", message, 503, { provider });
 }
 
+function workerMetadata(env) {
+  return {
+    gitSha: normalizeText(env?.MYTEAM_WORKER_GIT_SHA || SOURCE_GIT_SHA),
+    deployedAt: normalizeText(env?.MYTEAM_WORKER_DEPLOYED_AT || SOURCE_DEPLOYED_AT)
+  };
+}
+
+function rateLimit(request, url) {
+  const clientIP = normalizeText(request.headers.get("CF-Connecting-IP") || "unknown");
+  const routeKey = `${clientIP}|${url.pathname}`;
+  const now = Date.now();
+  const existing = rateLimitBuckets.get(routeKey);
+  if (!existing || now - existing.windowStartMs >= RATE_LIMIT_WINDOW_MS) {
+    rateLimitBuckets.set(routeKey, { windowStartMs: now, count: 1 });
+    pruneRateLimitBuckets(now);
+    return null;
+  }
+  existing.count += 1;
+  if (existing.count > RATE_LIMIT_MAX_REQUESTS) {
+    return jsonError("rate_limited", "Too many lookup requests. Please retry later.", 429);
+  }
+  return null;
+}
+
+function pruneRateLimitBuckets(now) {
+  if (rateLimitBuckets.size < 1000) {
+    return;
+  }
+  for (const [key, bucket] of rateLimitBuckets.entries()) {
+    if (now - bucket.windowStartMs >= RATE_LIMIT_WINDOW_MS) {
+      rateLimitBuckets.delete(key);
+    }
+  }
+}
+
+async function providerFetch(url, init = {}) {
+  const timeoutSignal = typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+    ? AbortSignal.timeout(PROVIDER_TIMEOUT_MS)
+    : undefined;
+  return await fetch(url, {
+    ...init,
+    signal: init.signal || timeoutSignal
+  });
+}
+
 function requireDiagnosticAccess(request, env) {
   const expectedToken = normalizeText(env?.DIAGNOSTIC_ROUTE_TOKEN || "");
   const providedToken = normalizeText(request.headers.get(DIAGNOSTIC_TOKEN_HEADER) || "");
@@ -871,6 +935,10 @@ function publicDataError(resultCode, resultMsg, route) {
 }
 
 async function safeJSON(response, provider) {
+  const contentLength = Number(response.headers.get("content-length") || "0");
+  if (contentLength > MAX_UPSTREAM_BYTES) {
+    return jsonError("upstream_response_too_large", "Provider response was too large.", 502, { provider });
+  }
   try {
     return await response.json();
   } catch {

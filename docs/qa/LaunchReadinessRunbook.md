@@ -101,11 +101,15 @@ PASS requires:
 - `service: myteam-basic-lookup-api`
 - `version: 0.3.0`
 - `build: public-lookup-0.3.0`
+- `contractVersion: 2`
+- `gitSha` matches the commit under validation
+- `deployedAt` is an ISO-8601 UTC timestamp
 - `userRoutes` present
 - `diagnosticContract` present
 - no `/dart/*` route in `userRoutes`
 - `/dart/*` absent from `userRoutes`; diagnostic route names are not exposed in public `/health`
 - no-token and wrong-token `/dart/*` requests return exactly `404`
+- with `MYTEAM_DIAGNOSTIC_TOKEN`, `/dart/*` diagnostic requests return DART diagnostic JSON, not merely a non-404 status
 
 Source validation is not deploy proof. If production `/health` does not match this contract, public lookup Release surfaces stay disabled. A release tag can proceed only if those surfaces remain `DISABLED`; enabling them requires this Worker gate to pass first.
 

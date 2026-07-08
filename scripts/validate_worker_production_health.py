@@ -8,11 +8,15 @@ import sys
 import urllib.error
 import urllib.request
 import os
+import re
+from pathlib import Path
 
 
+ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_BASE_URL = "https://late-waterfall-c95c.urange.workers.dev"
 EXPECTED_VERSION = "0.3.0"
 EXPECTED_BUILD = "public-lookup-0.3.0"
+EXPECTED_CONTRACT_VERSION = 2
 REQUIRED_USER_ROUTES = {
     "/health",
     "/news/search?query=삼성전자",
@@ -96,6 +100,34 @@ def fetch_status(base_url: str, route: str, headers: dict[str, str] | None = Non
             raise SystemExit(f"FAIL: Worker diagnostic route returned invalid status: {curl.stdout!r}") from value_error
 
 
+def fetch_json_status(
+    base_url: str,
+    route: str,
+    headers: dict[str, str] | None = None,
+) -> tuple[int, dict[str, object] | None]:
+    url = base_url.rstrip("/") + route
+    request_headers = {"Accept": "application/json"}
+    if headers:
+        request_headers.update(headers)
+    request = urllib.request.Request(url, headers=request_headers)
+    payload = ""
+    try:
+        with urllib.request.urlopen(request, timeout=5) as response:
+            payload = response.read().decode("utf-8")
+            status = response.status
+    except urllib.error.HTTPError as exc:
+        status = exc.code
+        payload = exc.read().decode("utf-8", errors="replace")
+    except urllib.error.URLError as exc:
+        raise SystemExit(f"FAIL: Worker diagnostic route request failed: {exc}") from exc
+
+    try:
+        data = json.loads(payload) if payload else None
+    except json.JSONDecodeError:
+        return status, None
+    return status, data if isinstance(data, dict) else None
+
+
 def string_list(data: dict[str, object], key: str) -> list[str] | None:
     value = data.get(key)
     if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
@@ -124,6 +156,18 @@ def main() -> int:
         failures.append(f"version must be {EXPECTED_VERSION}")
     if data.get("build") != EXPECTED_BUILD:
         failures.append(f"build must be {EXPECTED_BUILD}")
+    if data.get("contractVersion") != EXPECTED_CONTRACT_VERSION:
+        failures.append(f"contractVersion must be {EXPECTED_CONTRACT_VERSION}")
+    git_sha = data.get("gitSha")
+    if not isinstance(git_sha, str) or not re.fullmatch(r"[0-9a-f]{40}", git_sha):
+        failures.append("gitSha must be a 40-character lowercase commit SHA")
+    else:
+        current_head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+        if git_sha != current_head:
+            failures.append("gitSha must match current HEAD")
+    deployed_at = data.get("deployedAt")
+    if not isinstance(deployed_at, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", deployed_at):
+        failures.append("deployedAt must be an ISO-8601 UTC timestamp like 2026-07-08T12:34:56Z")
 
     user_routes = string_list(data, "userRoutes")
     if user_routes is None:
@@ -164,9 +208,10 @@ def main() -> int:
             failures.append(f"{DIAGNOSTIC_TOKEN_ENV} must be set for --validate-diagnostic-auth")
         elif should_probe_diagnostics:
             for route in sorted(DIAGNOSTIC_ROUTES):
-                status = fetch_status(args.base_url, route, {DIAGNOSTIC_TOKEN_HEADER: token})
-                if status == 404:
-                    failures.append(f"diagnostic route with valid token must enter handler, got HTTP 404: {route}")
+                status, payload = fetch_json_status(args.base_url, route, {DIAGNOSTIC_TOKEN_HEADER: token})
+                schema_failure = diagnostic_payload_failure(route, status, payload)
+                if schema_failure:
+                    failures.append(schema_failure)
 
     if failures:
         print("FAIL: Worker production /health validation")
@@ -178,6 +223,36 @@ def main() -> int:
 
     print("PASS: Worker production /health validation")
     return 0
+
+
+def diagnostic_payload_failure(route: str, status: int, payload: dict[str, object] | None) -> str | None:
+    if status == 404:
+        return f"diagnostic route with valid token must not return HTTP 404: {route}"
+    if status == 500:
+        return f"diagnostic route with valid token must not return HTTP 500: {route}"
+    if payload is None:
+        return f"diagnostic route with valid token must return JSON: {route}"
+    if payload.get("provider") != "dart":
+        return f"diagnostic route with valid token must return provider=dart: {route}"
+    if payload.get("error") == "not_found":
+        return f"diagnostic route with valid token must not return not_found JSON: {route}"
+
+    route_type = "company" if route.startswith("/dart/company") else "diagnose" if route.startswith("/dart/diagnose") else "recent"
+    if status < 300:
+        if route_type == "company" and payload.get("type") != "company":
+            return f"diagnostic company route must return type=company on HTTP {status}: {route}"
+        if route_type == "diagnose" and payload.get("type") != "diagnose":
+            return f"diagnostic diagnose route must return type=diagnose on HTTP {status}: {route}"
+        if route_type == "recent" and not ("items" in payload or payload.get("error") == "no_results"):
+            return f"diagnostic recent route must return items or no_results on HTTP {status}: {route}"
+        return None
+
+    if status >= 500:
+        if isinstance(payload.get("stage"), str) or isinstance(payload.get("classification"), str):
+            return None
+        return f"diagnostic route provider failure must include stage or classification: {route} HTTP {status}"
+
+    return f"diagnostic route with valid token returned unexpected HTTP {status}: {route}"
 
 
 if __name__ == "__main__":
