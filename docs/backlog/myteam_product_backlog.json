@@ -2145,6 +2145,76 @@
         "Official nationwide administrative-grid ingestion is still required before claiming nationwide support.",
         "Production still reports an older Worker and weather remains disabled in the Release surface."
       ]
+    },
+    {
+      "id": "P0-024-ci-launch-quality-gate",
+      "priority": "P0",
+      "status": "partial",
+      "category": "release-engineering",
+      "title": "Run static contracts, XCTest, and Debug/Release builds in GitHub Actions",
+      "why": "Local validators and builds could pass without persistent CI evidence, while live-provider and manual QA blockers still needed to remain separate from ordinary pull-request checks.",
+      "scope": {
+        "include": [
+          "Pull-request and main/release branch quality workflow",
+          "Base-to-HEAD patch validation on pull requests",
+          "Release, architecture, and natural-work static contracts",
+          "Pinned macOS 26 and Xcode 26.2 build environment",
+          "Debug build-for-testing, XCTest, and Release build",
+          "Failed XCTest result bundle upload",
+          "Regression audit for the required CI contract"
+        ],
+        "exclude": [
+          "Provider API keys in pull-request jobs",
+          "Automatic live-provider QA",
+          "Automatic Worker deployment",
+          "Automatic APPTERM, NW, ART, or HOME evidence promotion",
+          "Changing branch protection settings",
+          "Claiming a successful GitHub Actions run before push"
+        ]
+      },
+      "acceptance_criteria": [
+        "Pull requests validate the actual base-to-HEAD patch instead of a clean checkout no-op",
+        "Static product contracts run without live provider secrets",
+        "Debug tests and Release builds use one reviewed Xcode image",
+        "A failed XCTest run retains an xcresult artifact",
+        "Manual and live QA evidence remains outside the ordinary pull-request gate"
+      ],
+      "failure_conditions": [
+        "The workflow loads provider secrets on pull requests",
+        "Patch validation only checks an empty working tree",
+        "XCTest is omitted or silently ignored",
+        "A workflow definition is presented as a successful remote run",
+        "Manual QA evidence is changed to PASS by CI"
+      ],
+      "verification": {
+        "commands": [
+          "ruby -e 'require \"yaml\"; YAML.load_file(\".github/workflows/quality-gate.yml\")'",
+          "git diff --check",
+          "python3 scripts/audit_product_completeness.py",
+          "python3 scripts/validate_myteam_release.py"
+        ],
+        "manual_checks": [
+          "Push the branch and confirm static-contracts passes on GitHub Actions",
+          "Confirm the app-hosted XCTest step completes within its 12-minute timeout",
+          "Configure branch protection only after the first successful workflow run",
+          "Run live provider smoke separately with protected secrets"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": "0b02f40",
+        "files_changed": [
+          ".github/workflows/quality-gate.yml",
+          "scripts/audit_product_completeness.py"
+        ],
+        "validation_summary": "2026-07-10: Workflow YAML parsing, product completeness audit, release validator, and git diff check passed locally. The workflow has not been pushed or executed on GitHub Actions, no live provider secrets are used, and the app-hosted XCTest step remains unproven in CI, so status remains partial.",
+        "screenshots": []
+      },
+      "notes": [
+        "The pull-request workflow intentionally contains no live-provider secret access.",
+        "The XCTest step has an explicit timeout and uploads its result bundle on failure instead of hiding a stalled test host.",
+        "Strict manual QA and release-live gates remain separate blockers."
+      ]
     }
   ]
 }
