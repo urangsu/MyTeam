@@ -1678,6 +1678,82 @@
         "GPT-5.6 is a limited partner preview and is not enabled as a general Release default.",
         "Next P0 is exact selected-model generation smoke and explicit capability state separation."
       ]
+    },
+    {
+      "id": "P0-018-selected-model-readiness",
+      "priority": "P0",
+      "status": "partial",
+      "category": "ai-readiness",
+      "title": "Require exact selected-model generation smoke before AI readiness",
+      "why": "The previous credential test treated a successful model-list request as usable AI readiness even when the selected model or production endpoint could still reject generation.",
+      "scope": {
+        "include": [
+          "Exact selected-model minimal generation smoke",
+          "Provider-specific production endpoint validation without fallback",
+          "Structured readiness failure reasons",
+          "Provider, key fingerprint, model, endpoint, and validation timestamp cache",
+          "Settings disclosure of the model actually validated",
+          "Regression tests and product audit checks"
+        ],
+        "exclude": [
+          "General provider fallback policy migration",
+          "Full OpenAI Responses streaming adapter",
+          "GPT-5.6 Release default enablement",
+          "Live-key provider QA",
+          "DART, Worker, and KMA changes",
+          "Supertonic3, BubbleSpeech, and character changes"
+        ]
+      },
+      "acceptance_criteria": [
+        "A stored key remains untested until an exact selected-model generation succeeds",
+        "The readiness smoke never calls provider fallback candidates",
+        "OpenAI GPT-5.6 model IDs use the Responses endpoint for smoke validation",
+        "Empty or malformed generation never becomes connected readiness",
+        "Readiness cache keys include provider, key fingerprint, model ID, and endpoint",
+        "Explicit UI revalidation bypasses the 24-hour cache"
+      ],
+      "failure_conditions": [
+        "A /models response alone marks an AI provider ready",
+        "Smoke validation silently changes model or provider",
+        "The raw credential is persisted outside Keychain",
+        "An empty generation is accepted",
+        "This task is marked done before live-key smoke and test-host execution complete"
+      ],
+      "verification": {
+        "commands": [
+          "git diff --check",
+          "python3 scripts/audit_product_completeness.py",
+          "python3 scripts/validate_architecture_boundaries.py",
+          "python3 scripts/validate_myteam_release.py",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' build",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Release -destination 'platform=OS X,arch=arm64' build",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' test"
+        ],
+        "manual_checks": [
+          "Run explicit smoke with valid and invalid keys for each configured AI provider",
+          "Verify inaccessible selected model and empty generation remain unavailable",
+          "Complete the app-hosted XCTest run without an interrupted test session"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": "0e51072, 14af57c, 8e854ab",
+        "files_changed": [
+          "MyTeam/AIService.swift",
+          "MyTeam/CredentialHealth.swift",
+          "MyTeam/SecureCredentialStore.swift",
+          "MyTeam/ConnectorSetupCardView.swift",
+          "MyTeamTests/LLMRouterTests.swift",
+          "scripts/audit_product_completeness.py"
+        ],
+        "validation_summary": "2026-07-10: Product completeness audit, architecture boundary validation, release validator, git diff check, Debug build, and Release build passed. The XCTest target compiled after repairing its stale ToolNeedClassifier reference, but the app-hosted test session did not materialize and was interrupted after 45 seconds. No live provider key smoke was run, so status remains partial.",
+        "screenshots": []
+      },
+      "notes": [
+        "The readiness path validates one exact provider/model/endpoint and never calls providerCandidates.",
+        "GPT-5.6 is only routed to Responses validation when explicitly selected; it is not auto-promoted or made the Release default.",
+        "General chat and quick-call fallback remain a separate P0 and are not claimed fixed here."
+      ]
     }
   ]
 }
