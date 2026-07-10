@@ -1827,6 +1827,84 @@
         "The policy picker is intentionally not exposed until same-provider alternate model enrollment is implemented truthfully.",
         "Actual provider/model metadata is already preserved by getResponseWithMetadata; end-to-end Artifact disclosure still needs manual QA."
       ]
+    },
+    {
+      "id": "P0-020-dart-official-company-index",
+      "priority": "P0",
+      "status": "partial",
+      "category": "public-lookup",
+      "title": "Resolve DART companies from the official company index",
+      "why": "The product resolver only knew one embedded Samsung seed, so ordinary company names and stock codes could not reach the otherwise implemented DART direct lookup.",
+      "scope": {
+        "include": [
+          "On-demand download and parsing of the official OpenDART corpCode.xml archive",
+          "Seven-day local cache with stale-state disclosure and background refresh",
+          "Hash indexes for corp code, stock code, and normalized company name",
+          "Name-gram index for candidate suggestions without a full linear scan",
+          "Ambiguous company handling without first-result auto-selection",
+          "DART runner and KSkill evidence integration",
+          "checkedEmpty state for successful DART requests with no disclosures",
+          "Resolver fixtures and product audit regression checks"
+        ],
+        "exclude": [
+          "Cloudflare DART product routing",
+          "OpenDART live-key QA",
+          "Production Release capability enablement",
+          "Manual alias curation beyond official company names",
+          "Worker, KMA, and GPT-5.6 streaming work"
+        ]
+      },
+      "acceptance_criteria": [
+        "The product path contains no embedded company seed fallback",
+        "An indexed company resolves by exact six-digit stock code or normalized official name",
+        "An explicit eight-digit corp code is never replaced with another company",
+        "Duplicate or low-confidence names remain unresolved and return candidates",
+        "A stale cache remains usable and is labeled stale while refresh runs in the background",
+        "Company lookup does not scan the complete index on every query",
+        "An empty disclosure list is checkedEmpty rather than succeeded"
+      ],
+      "failure_conditions": [
+        "A failed lookup falls back to Samsung or the first candidate",
+        "A missing cache blocks app launch",
+        "Large XML parsing runs on the main actor",
+        "A stale company index is presented as current",
+        "This task is marked done before official ZIP download and non-Samsung app lookup pass live QA"
+      ],
+      "verification": {
+        "commands": [
+          "git diff --check",
+          "python3 scripts/audit_product_completeness.py",
+          "python3 scripts/validate_myteam_release.py",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' build",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' build-for-testing",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Release -destination 'platform=OS X,arch=arm64' build"
+        ],
+        "manual_checks": [
+          "Download and parse the official corpCode.xml archive with a valid DART key",
+          "Resolve and query at least two non-Samsung listed companies by name and stock code",
+          "Verify ambiguous-name candidate selection in the app UI",
+          "Verify stale-cache wording after forcing an expired cache"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": "1f9fc96",
+        "files_changed": [
+          "MyTeam/DARTCompanyResolver.swift",
+          "MyTeam/ToolRunners/DARTToolRunner.swift",
+          "MyTeam/KSkillAssistRuntime.swift",
+          "MyTeam/ToolResultFormatters.swift",
+          "MyTeamTests/PublicAPIConnectorValidatorTests.swift",
+          "scripts/audit_product_completeness.py"
+        ],
+        "validation_summary": "2026-07-10: Product audit, release validator, all static launch validators, git diff check, Debug build, Debug test-bundle build, and Release universal build passed. The targeted app-hosted XCTest runner again stalled while materializing its worker and was interrupted; no live DART key or production lookup was used. Status remains partial.",
+        "screenshots": []
+      },
+      "notes": [
+        "The official company index is downloaded only when a DART name or stock-code lookup needs it; app launch is unaffected.",
+        "An exact corp code can be used directly, while names and stock codes require the official cached index.",
+        "DART remains Direct BYOK and Release fail-closed until live evidence is recorded."
+      ]
     }
   ]
 }
