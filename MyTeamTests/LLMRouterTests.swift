@@ -55,41 +55,26 @@ final class LLMRouterTests: XCTestCase {
                        "gemini-2.5-pro-preview-05-06는 차단 목록에 없어야 함")
     }
 
-    // MARK: - Test 2: requiresToolUse=true 순서 알고리즘 확인
+    // MARK: - Test 2: fallback is explicit and fail-closed
 
-    func test_toolUse_routesToToolCapableFirst() {
+    func test_providerCandidates_doNotCrossProvidersWhenFallbackDisabled() {
         let service = AIService.shared
-        // 순서 알고리즘 검증:
-        // requiresToolUse=true + preferred=gemini(비tool-capable) → tool-capable(Claude/OpenAI)이 먼저
-        // requiresToolUse=false → preferred(Gemini)가 먼저
-        let withTool = service.providerCandidates(preferred: .gemini, requiresToolUse: true)
-        let withoutTool = service.providerCandidates(preferred: .gemini, requiresToolUse: false)
+        let normal = service.providerCandidates(
+            preferred: .gemini,
+            requiresToolUse: false,
+            fallbackPolicy: .disabled
+        )
+        XCTAssertTrue(normal.isEmpty || normal == [.gemini])
+        XCTAssertFalse(normal.contains(.openAI))
+        XCTAssertFalse(normal.contains(.claude))
+        XCTAssertFalse(normal.contains(.openRouter))
 
-        // 1) 항상 후보 목록이 비어있지 않아야 함 (최소 1개 provider)
-        XCTAssertFalse(withTool.isEmpty, "requiresToolUse=true여도 후보 목록이 비어있으면 안 됨")
-
-        // 2) API 키가 있는 tool-capable provider가 존재하면 requiresToolUse 경로에서 먼저 나와야 함
-        let toolCapable: Set<LLMProvider> = [.claude, .openAI]
-        let availableToolCapable = withTool.filter { toolCapable.contains($0) }
-        let availableNonTool = withTool.filter { !toolCapable.contains($0) }
-
-        if !availableToolCapable.isEmpty {
-            // tool-capable이 있으면 반드시 non-tool-capable보다 앞에 와야 함
-            let firstToolCapableIdx = withTool.firstIndex(where: { toolCapable.contains($0) }) ?? Int.max
-            let firstNonToolIdx = withTool.firstIndex(where: { !toolCapable.contains($0) }) ?? Int.max
-            XCTAssertLessThan(firstToolCapableIdx, firstNonToolIdx,
-                              "tool-capable provider가 먼저 나와야 함")
-        } else {
-            // tool-capable API 키 없음 → 가용한 provider(예: Gemini)로 폴백, 이것도 올바른 동작
-            XCTAssertFalse(availableNonTool.isEmpty,
-                           "tool-capable 키 없을 때 다른 가용 provider로 폴백되어야 함")
-        }
-
-        // 3) requiresToolUse=false이면 preferred(Gemini)가 첫 번째
-        if let first = withoutTool.first {
-            XCTAssertEqual(first, .gemini,
-                           "requiresToolUse=false이면 preferred provider가 첫 번째여야 함")
-        }
+        let unsupportedToolUse = service.providerCandidates(
+            preferred: .gemini,
+            requiresToolUse: true,
+            fallbackPolicy: .disabled
+        )
+        XCTAssertTrue(unsupportedToolUse.isEmpty)
     }
 
     func test_toolNeedClassifier_usesUserTextNotGroundedContext() {

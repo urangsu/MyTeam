@@ -232,6 +232,41 @@ def main() -> None:
                 failures.append(f"AI readiness smoke is missing required contract: {token}")
     if "llmReadiness: evidence" not in credential_store:
         failures.append("SecureCredentialStore must preserve exact model readiness evidence")
+    for token in [
+        "enum LLMFallbackPolicy",
+        "case disabled",
+        "case sameProviderOnly",
+        "case crossProviderAllowed",
+        "return .disabled",
+    ]:
+        if token not in ai_service:
+            failures.append(f"LLM fallback must be explicit and default off: {token}")
+    provider_candidates_match = re.search(
+        r"func providerCandidates\((?P<body>.*?)\n    \}",
+        ai_service,
+        re.S,
+    )
+    if not provider_candidates_match:
+        failures.append("AIService must expose auditable provider fallback candidates")
+    else:
+        candidate_body = provider_candidates_match.group("body")
+        if "fallbackPolicy == .disabled" not in candidate_body:
+            failures.append("AIService provider routing must stop at the preferred provider by default")
+        if "validatedFallbackEvidence" not in candidate_body:
+            failures.append("Cross-provider fallback must require fresh selected-model smoke evidence")
+    fallback_stream_match = re.search(
+        r"private func fallbackProviderStream\((?P<body>.*?)\n    \}",
+        ai_service,
+        re.S,
+    )
+    if not fallback_stream_match or "crossProviderAllowed" not in fallback_stream_match.group("body"):
+        failures.append("Gemini cooldown fallback must require explicit cross-provider permission")
+    elif "validatedFallbackCall" not in fallback_stream_match.group("body"):
+        failures.append("Gemini cooldown fallback must pin the model that passed smoke validation")
+    if 'modelId: "openrouter/auto"' in ai_service:
+        failures.append("OpenRouter auto model must not be used as a hidden fallback")
+    if "404 → 모델 재발견 재시도" in ai_service:
+        failures.append("Model 404 must not silently rediscover and retry another model")
     no_results_index = finance_formatter.find("nonisolated static func noResultsState")
     if no_results_index != -1:
         no_results_window = finance_formatter[no_results_index:no_results_index + 800]
