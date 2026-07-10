@@ -1578,7 +1578,7 @@
         "manual_checks": [
           "APPTERM/NW/ART/HOME manual QA remains required before main merge",
           "Worker production health must pass before public lookup gates are enabled",
-          "Provider live QA must pass before flipping ReleaseLiveProviderGate booleans"
+          "Provider live QA must pass before generating an approving RC capability manifest"
         ]
       },
       "completion_evidence": {
@@ -1601,8 +1601,82 @@
       },
       "notes": [
         "This task is partial until a commit SHA and current validation summary are recorded.",
-        "ReleaseLiveProviderGate values default to false; enabling any external provider requires live evidence first.",
+        "ReleaseCapabilityManifest defaults external providers to disabled; enabling any external provider requires generated RC evidence.",
         "Worker production /health was observed returning version/build but not userRoutes/diagnosticRoutes, so public lookup remains disabled in Release."
+      ]
+    },
+    {
+      "id": "P0-017-runtime-projection-and-model-truth",
+      "priority": "P0",
+      "status": "partial",
+      "category": "runtime-truth",
+      "title": "Stop projected work and discovered models from reporting unverified readiness",
+      "why": "Chain projection marked unexecuted attachment-derived work as succeeded and fabricated step durations, while Release model discovery could promote an endpoint-incompatible model from a provider model list without a generation smoke.",
+      "scope": {
+        "include": [
+          "Chain evidenceAvailable/planned/projected state contract",
+          "Removal of fabricated 0.02 second step durations",
+          "Truthful Chain status presentation",
+          "Release dynamic model discovery disablement",
+          "Product completeness regression checks"
+        ],
+        "exclude": [
+          "LLM valid-key generation smoke calls",
+          "OpenAI Responses API adapter",
+          "GPT-5.6 general Release enablement",
+          "DART full company master index",
+          "Manual UI and live provider QA"
+        ]
+      },
+      "acceptance_criteria": [
+        "Attachment or evidence presence alone never marks downstream analysis/draft steps succeeded",
+        "Projected steps have no fabricated duration",
+        "Chain UI distinguishes verified evidence, planned work, and completed work",
+        "Release uses reviewed registry model IDs rather than automatic highest-version discovery",
+        "Debug retains model discovery for diagnostics"
+      ],
+      "failure_conditions": [
+        "hasTextAttachment or hasMailSource directly produces succeeded for downstream work",
+        "Chain projection creates fixed 0.02 second timestamps",
+        "Release automatically promotes a model returned by /models",
+        "This task is marked done before selected-model generation smoke and manual UI checks exist"
+      ],
+      "verification": {
+        "commands": [
+          "git diff --check",
+          "python3 scripts/audit_product_completeness.py",
+          "python3 scripts/validate_architecture_boundaries.py",
+          "python3 scripts/validate_myteam_release.py",
+          "python3 scripts/precommit_safety_check.py",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' build",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Release -destination 'platform=OS X,arch=arm64' build"
+        ],
+        "manual_checks": [
+          "Open a Chain status card and confirm evidence/planned labels are understandable",
+          "Validate a stored LLM key against the selected model with a minimal generation call",
+          "Confirm actual provider/model disclosure when fallback occurs"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": "01f08b2",
+        "files_changed": [
+          "MyTeam/ChainStep.swift",
+          "MyTeam/ChainOrchestrator.swift",
+          "MyTeam/ChainRun.swift",
+          "MyTeam/ChainRunStatusView.swift",
+          "MyTeam/KSkillAssistRuntime.swift",
+          "MyTeam/AIModelPolicy.swift",
+          "MyTeam/LLMModelRegistry.swift",
+          "scripts/audit_product_completeness.py"
+        ],
+        "validation_summary": "2026-07-10: Product completeness audit, architecture boundary validation, release validator, precommit safety check, git diff check, Debug build, and Release build passed. Manual Chain UI QA and selected-model live generation smoke remain open, so status stays partial.",
+        "screenshots": []
+      },
+      "notes": [
+        "The old ChainOrchestrator name remains only as a deprecated compatibility alias.",
+        "GPT-5.6 is a limited partner preview and is not enabled as a general Release default.",
+        "Next P0 is exact selected-model generation smoke and explicit capability state separation."
       ]
     }
   ]
