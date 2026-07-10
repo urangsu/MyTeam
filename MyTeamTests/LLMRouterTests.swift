@@ -10,6 +10,37 @@ import PDFKit
 
 final class LLMRouterTests: XCTestCase {
 
+    func test_readinessEndpoints_matchRuntimeContract() {
+        XCTAssertEqual(
+            AIService.readinessEndpoint(for: .openAI, modelID: "gpt-4.1"),
+            "https://api.openai.com/v1/chat/completions"
+        )
+        XCTAssertEqual(
+            AIService.readinessEndpoint(for: .openAI, modelID: "gpt-5.6"),
+            "https://api.openai.com/v1/responses"
+        )
+        XCTAssertEqual(
+            AIService.readinessEndpoint(for: .claude, modelID: "claude-sonnet-4-5-20250514"),
+            "https://api.anthropic.com/v1/messages"
+        )
+    }
+
+    func test_readinessFailures_mapToProductCredentialFailures() {
+        XCTAssertEqual(LLMReadinessFailure.invalidCredential.connectorFailureCode, .invalidAPIKey)
+        XCTAssertEqual(LLMReadinessFailure.modelNotAccessible.connectorFailureCode, .permissionDenied)
+        XCTAssertEqual(LLMReadinessFailure.rateLimited.connectorFailureCode, .rateLimited)
+        XCTAssertEqual(LLMReadinessFailure.emptyGeneration.connectorFailureCode, .responseParseFailed)
+    }
+
+    func test_readinessCacheFingerprint_neverContainsRawKey() {
+        let rawKey = "sk-test-secret-value"
+        let fingerprint = LLMReadinessCache.keyFingerprint(for: rawKey)
+        XCTAssertFalse(fingerprint.contains(rawKey))
+        XCTAssertEqual(fingerprint.count, 24)
+        XCTAssertEqual(fingerprint, LLMReadinessCache.keyFingerprint(for: rawKey))
+        XCTAssertNotEqual(fingerprint, LLMReadinessCache.keyFingerprint(for: rawKey + "-changed"))
+    }
+
     // MARK: - Test 1: 최신 모델이 차단되지 않음
 
     func test_latestModels_notBlocked() {
@@ -63,15 +94,15 @@ final class LLMRouterTests: XCTestCase {
 
     func test_toolNeedClassifier_usesUserTextNotGroundedContext() {
         XCTAssertFalse(
-            ToolNeedClassifier.needsTool("오늘 회의록 정리해줘"),
+            RoutingIntentPrecheck.needsTool("오늘 회의록 정리해줘"),
             "일반 문서 요청은 도구 라우팅으로 과잉 분류하면 안 됨"
         )
         XCTAssertTrue(
-            ToolNeedClassifier.needsTool("웹에서 최신 자료 찾아서 정리해줘"),
+            RoutingIntentPrecheck.needsTool("웹에서 최신 자료 찾아서 정리해줘"),
             "명시적 웹/검색 요청은 tool-capable provider 후보를 우선해야 함"
         )
         XCTAssertTrue(
-            ToolNeedClassifier.needsTool("첨부한 내용 요약해줘", hasAttachments: true),
+            RoutingIntentPrecheck.needsTool("첨부한 내용 요약해줘", hasAttachments: true),
             "첨부가 있으면 파일/자료 처리 능력이 있는 경로를 우선해야 함"
         )
     }

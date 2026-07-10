@@ -41,6 +41,9 @@ def main() -> None:
     chain_projection = read("MyTeam/ChainOrchestrator.swift")
     chain_runtime = read("MyTeam/KSkillAssistRuntime.swift")
     ai_model_policy = read("MyTeam/AIModelPolicy.swift")
+    ai_service = read("MyTeam/AIService.swift")
+    credential_health = read("MyTeam/CredentialHealth.swift")
+    credential_store = read("MyTeam/SecureCredentialStore.swift")
     myteam_app = read("MyTeam/MyTeamApp.swift")
     agent_window_manager = read("MyTeam/AgentWindowManager.swift")
     floating_panel = read("MyTeam/FloatingPanel.swift")
@@ -201,6 +204,34 @@ def main() -> None:
         discovery_body = discovery_match.group("body")
         if "#if DEBUG" not in discovery_body or "#else" not in discovery_body or "return false" not in discovery_body:
             failures.append("Release must not auto-promote models discovered from provider model lists")
+
+    for token in [
+        "enum LLMReadinessStage",
+        "case smokeTesting",
+        "case ready",
+        "struct LLMReadinessEvidence",
+        "actor LLMReadinessCache",
+    ]:
+        if token not in credential_health:
+            failures.append(f"LLM readiness must preserve exact model smoke evidence: {token}")
+    validate_key_match = re.search(
+        r"func validateKey\((?P<body>.*?)\n    \}",
+        ai_service,
+        re.S,
+    )
+    if not validate_key_match:
+        failures.append("AIService must expose selected-model credential validation")
+    else:
+        validate_key_body = validate_key_match.group("body")
+        if "/v1/models" in validate_key_body:
+            failures.append("AI key validation must not treat /v1/models as readiness")
+        if "providerCandidates" in validate_key_body:
+            failures.append("AI readiness smoke must never use provider fallback candidates")
+        for token in ["readinessRequest", "readinessOutput", "LLMReadinessCache.shared"]:
+            if token not in validate_key_body:
+                failures.append(f"AI readiness smoke is missing required contract: {token}")
+    if "llmReadiness: evidence" not in credential_store:
+        failures.append("SecureCredentialStore must preserve exact model readiness evidence")
     no_results_index = finance_formatter.find("nonisolated static func noResultsState")
     if no_results_index != -1:
         no_results_window = finance_formatter[no_results_index:no_results_index + 800]
