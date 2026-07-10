@@ -301,7 +301,7 @@ struct ConnectorSetupCardView: View {
 
     private var stateBadgeLabel: String {
         switch health.state {
-        case .connected: return "연결됨"
+        case .connected: return "사용 가능"
         case .notConnected: return "미연결"
         case .untested: return "미검증"
         case .testUnavailable: return "검증 준비 중"
@@ -380,13 +380,17 @@ struct ConnectorSetupCardView: View {
         isTesting = true
         testResultMessage = nil
         Task {
-            await CredentialHealthService.shared.testConnection(for: provider)
+            await CredentialHealthService.shared.testConnection(for: provider, force: true)
             let health = CredentialHealthService.shared.health(for: provider)
             await MainActor.run {
                 isTesting = false
                 switch health.state {
                 case .connected:
-                    testResultMessage = provider.isPublicAPIProvider ? "실제 API 응답을 확인했습니다." : "연결 상태를 확인했습니다."
+                    if let readiness = health.llmReadiness {
+                        testResultMessage = "\(readiness.modelID) 모델의 실제 응답을 확인했습니다."
+                    } else {
+                        testResultMessage = "실제 API 응답을 확인했습니다."
+                    }
                 case .testUnavailable:
                     testResultMessage = "\(provider.displayName) 실제 연결 테스트는 아직 준비 중입니다. 키는 저장됐지만 연결됨으로 표시하지 않습니다."
                 case .testFailed(let code):
