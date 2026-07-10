@@ -1987,6 +1987,85 @@
         "Client responses remain no-store even when a successful provider payload is retained in Cache API.",
         "Release providers remain DISABLED until the production health and live-provider evidence match the tested commit."
       ]
+    },
+    {
+      "id": "P0-022-openai-responses-runtime",
+      "priority": "P0",
+      "status": "partial",
+      "category": "ai-runtime",
+      "title": "Use one Responses API contract for GPT-5.6 validation and execution",
+      "why": "GPT-5.6 readiness used the Responses API while real chat and quick calls still used Chat Completions, so a model could pass validation on a different endpoint than the product actually executed.",
+      "scope": {
+        "include": [
+          "Dedicated OpenAI Responses request and parsing adapter",
+          "GPT-5.6, Sol, Terra, and Luna family routing",
+          "Streaming text, completed, incomplete, failed, and error event handling",
+          "Stateless store-false multi-turn input policy",
+          "Configurable reasoning effort with a conservative default",
+          "Per-install pseudonymous safety identifier",
+          "Exact configured-model resolution and runtime logging",
+          "No provider change after partial output",
+          "Contract tests and product audit regression guards"
+        ],
+        "exclude": [
+          "Changing the Release default from the reviewed gpt-4.1 model",
+          "Automatic model-list promotion",
+          "OpenAI function-call execution loop",
+          "Live GPT-5.6 key testing",
+          "Provider pricing or model-selection UI",
+          "Production Release activation"
+        ]
+      },
+      "acceptance_criteria": [
+        "GPT-5.6 family smoke, streaming chat, and quick calls use /v1/responses",
+        "The request uses store false, max_output_tokens, reasoning effort, and a pseudonymous safety identifier",
+        "Streaming incomplete and failed events cannot be presented as completed output",
+        "A configured model is used in Release only when fresh exact-model readiness evidence exists",
+        "Actual provider and model are recorded before execution",
+        "A provider cannot change after any output text has been emitted"
+      ],
+      "failure_conditions": [
+        "GPT-5.6 silently falls back to /v1/chat/completions",
+        "A model-list result activates GPT-5.6 without generation smoke",
+        "An incomplete or empty Responses payload is treated as success",
+        "A cross-provider retry occurs after partial output",
+        "This task is marked done before live key and app-hosted tests run"
+      ],
+      "verification": {
+        "commands": [
+          "git diff --check",
+          "python3 scripts/audit_product_completeness.py",
+          "python3 scripts/validate_myteam_release.py",
+          "python3 scripts/precommit_safety_check.py",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' build-for-testing",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Release -destination 'platform=OS X,arch=arm64' build"
+        ],
+        "manual_checks": [
+          "Run exact-model validation with an account that can access gpt-5.6",
+          "Verify streamed Korean text reaches response.completed",
+          "Verify 401, 403, 404, 429, timeout, incomplete, and empty output states",
+          "Verify Artifact metadata preserves the exact provider and model end to end"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": "945697c",
+        "files_changed": [
+          "MyTeam/OpenAIResponsesAdapter.swift",
+          "MyTeam/AIService.swift",
+          "MyTeam/LLMModelRegistry.swift",
+          "MyTeam/MyTeam.xcodeproj/project.pbxproj",
+          "MyTeamTests/LLMRouterTests.swift",
+          "scripts/audit_product_completeness.py"
+        ],
+        "validation_summary": "2026-07-10: Product audit, release validator, precommit guard, git diff check, Debug test-bundle build, and Release universal build passed. The app-hosted targeted XCTest runner started the app but did not execute the tests and was interrupted after about one minute. No live GPT-5.6 key was used, so status remains partial.",
+        "screenshots": []
+      },
+      "notes": [
+        "Official model-list discovery remains diagnostic-only and cannot change the Release default.",
+        "Responses state is managed by sending bounded local history with store false; previous_response_id is intentionally not used.",
+        "OpenAI tool-call execution remains outside this commit because the current product orchestration uses validated JSON planning rather than an OpenAI function-call loop."
+      ]
     }
   ]
 }
