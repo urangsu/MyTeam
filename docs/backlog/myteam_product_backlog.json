@@ -2066,6 +2066,85 @@
         "Responses state is managed by sending bounded local history with store false; previous_response_id is intentionally not used.",
         "OpenAI tool-call execution remains outside this commit because the current product orchestration uses validated JSON planning rather than an OpenAI function-call loop."
       ]
+    },
+    {
+      "id": "P0-023-kma-base-slot-truth",
+      "priority": "P0",
+      "status": "partial",
+      "category": "public-lookup",
+      "title": "Use KMA product publication slots without a Seoul fallback",
+      "why": "The Worker rounded every KMA product to generic half-hour slots and a separate evidence path replaced unknown regions with Seoul, which could return stale, empty, or wrong-location weather as if it matched the request.",
+      "scope": {
+        "include": [
+          "Asia/Seoul base-time policy per KMA product",
+          "Hourly ultra-short nowcast slots",
+          "Hourly half-past ultra-short forecast slots",
+          "02, 05, 08, 11, 14, 17, 20, and 23 village forecast slots",
+          "Two-slot no-data retry for direct and Worker KMA lookups",
+          "Removal of empty-input and KSkill Seoul defaults",
+          "Worker 0.4.1 contract bump",
+          "Boundary fixtures for midnight and release-delay windows"
+        ],
+        "exclude": [
+          "Nationwide official eup/myeon/dong grid dataset ingestion",
+          "System geocoder integration",
+          "Live KMA key testing",
+          "Worker production deployment",
+          "Release weather activation"
+        ]
+      },
+      "acceptance_criteria": [
+        "Nowcast never requests a half-hour base slot",
+        "Ultra-short forecast requests only an HH30 base slot after its release delay",
+        "Village forecast requests only one of the eight official daily base hours",
+        "No-data retries at most one previous valid slot",
+        "Missing or unsupported regions never resolve to Seoul",
+        "The used and attempted base slots remain observable in logs or Worker output"
+      ],
+      "failure_conditions": [
+        "Generic 30-minute rounding returns an invalid KMA base time",
+        "An unknown region is queried with Seoul coordinates",
+        "Credential or provider errors trigger unbounded previous-slot retries",
+        "Worker source changes are presented as deployed production",
+        "This task is marked done before nationwide region and live KMA QA are complete"
+      ],
+      "verification": {
+        "commands": [
+          "node --check workers/basic-lookup-api/worker.js",
+          "node --test workers/basic-lookup-api/worker.test.mjs",
+          "python3 scripts/audit_product_completeness.py",
+          "python3 scripts/validate_myteam_release.py",
+          "python3 scripts/precommit_safety_check.py",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' build-for-testing",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Release -destination 'platform=OS X,arch=arm64' build"
+        ],
+        "manual_checks": [
+          "Test KMA valid-key calls immediately before and after each product release delay",
+          "Test midnight, month-end, and year-end date rollover",
+          "Test two same-name regions after the nationwide resolver is added",
+          "Deploy Worker 0.4.1 and verify production health before enabling weather"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": "47ab96e",
+        "files_changed": [
+          "MyTeam/KMABaseTimePolicy.swift",
+          "MyTeam/KMARegionGridMapper.swift",
+          "MyTeam/KSkillAssistRuntime.swift",
+          "MyTeam/PublicAPIConnectorValidator.swift",
+          "workers/basic-lookup-api/worker.js",
+          "workers/basic-lookup-api/worker.test.mjs",
+          "scripts/audit_product_completeness.py"
+        ],
+        "validation_summary": "2026-07-10: Six Worker contract tests, product audit, release validator, precommit guard, git diff check, Debug test-bundle build, and Release universal build passed. The nationwide region index, live KMA key boundaries, and Worker 0.4.1 production deployment remain open, so status stays partial.",
+        "screenshots": []
+      },
+      "notes": [
+        "The current registered-region list remains a limited safe subset and now fails closed outside that subset.",
+        "Official nationwide administrative-grid ingestion is still required before claiming nationwide support.",
+        "Production still reports an older Worker and weather remains disabled in the Release surface."
+      ]
     }
   ]
 }
