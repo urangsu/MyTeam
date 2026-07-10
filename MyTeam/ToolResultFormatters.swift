@@ -227,7 +227,7 @@ enum DARTResultFormatter {
     ) -> ToolExecutionState {
         let displayName = resolution.displayName
         if items.isEmpty {
-            return .succeeded(MyTeamToolResult(
+            return .checkedEmpty(MyTeamToolResult(
                 title: "조회된 공시가 없습니다",
                 summary: "OpenDART가 '\(displayName)' 기준 최근 \(daysBack)일 조회 결과 없음 상태를 반환했습니다.",
                 sourceLabel: sourceLabel,
@@ -270,6 +270,12 @@ enum DARTResultFormatter {
             lines.append("- 조회 대상: \(resolution.displayName) · OpenDART 고유번호 \(corpCode)")
         }
         lines.append("- 식별 방식: \(resolutionLabel(resolution.resolutionSource))")
+        if let indexUpdatedAt = resolution.indexUpdatedAt {
+            lines.append("- 회사 목록 갱신: \(indexUpdatedAt.formatted(date: .numeric, time: .shortened))")
+        }
+        if resolution.isIndexStale {
+            lines.append("- 회사 목록 상태: 이전에 저장한 목록 사용 중 · 최신 여부 확인 필요")
+        }
         lines.append("")
         lines.append("## 봐야 할 점")
         lines.append("- 보고서명과 접수일자를 먼저 확인하세요.")
@@ -281,12 +287,12 @@ enum DARTResultFormatter {
         switch source {
         case .directCorpCode:
             return "OpenDART 고유번호 직접 입력"
-        case .stockCodeCache:
-            return "종목코드 seed"
-        case .companyNameCache:
-            return "회사명 seed"
-        case .manualSeed:
-            return "내장 seed"
+        case .officialStockCodeIndex:
+            return "OpenDART 공식 회사 목록 · 종목코드"
+        case .officialCompanyNameIndex:
+            return "OpenDART 공식 회사 목록 · 회사명"
+        case .ambiguous:
+            return "회사 후보 확인 필요"
         case .notFound:
             return "미해석"
         }

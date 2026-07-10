@@ -12,19 +12,8 @@ enum DARTToolRunner {
                 ]
             ))
         }
-        let resolution = DARTCompanyResolver.resolve(input: query)
         let daysBack = min(max(input.daysBack ?? 30, 1), 365)
         let displayCount = min(max(input.displayCount ?? 10, 1), 20)
-
-        guard let corpCode = resolution.corpCode else {
-            return .failed(MyTeamToolFailure(
-                title: "회사를 찾지 못했습니다",
-                message: "종목코드 또는 OpenDART 고유번호를 입력해 주세요. 예: 삼성전자, 005930, 00126380.",
-                recoveryActions: [
-                    MyTeamNextAction(id: "changeKeyword", title: "다시 입력", role: .normal)
-                ]
-            ))
-        }
 
         guard let apiKey = PublicLookupRunnerSupport.credentialValue(provider: provider, fieldID: "apiKey") else {
             return .failed(MyTeamToolFailure(
@@ -32,6 +21,33 @@ enum DARTToolRunner {
                 message: "DART 공시 조회에는 개인 OpenDART API 키가 필요합니다. 연결 설정에서 DART 키를 등록한 뒤 다시 시도하세요.",
                 recoveryActions: [
                     MyTeamNextAction(id: "openConnection", title: "DART 키 연결", role: .normal)
+                ]
+            ))
+        }
+
+        let resolution: DARTCompanyResolution
+        do {
+            resolution = try await DARTCompanyResolver.resolve(input: query, apiKey: apiKey)
+        } catch {
+            return .failed(MyTeamToolFailure(
+                title: "회사 목록을 준비하지 못했습니다",
+                message: "OpenDART 공식 회사 목록을 가져오지 못했습니다. 네트워크와 DART API 키를 확인한 뒤 다시 시도하세요.",
+                recoveryActions: [
+                    MyTeamNextAction(id: "retryLater", title: "다시 시도", role: .normal),
+                    MyTeamNextAction(id: "openConnection", title: "DART 키 확인", role: .normal)
+                ]
+            ))
+        }
+
+        guard let corpCode = resolution.corpCode else {
+            let candidateText = resolution.candidates.isEmpty
+                ? "회사명, 6자리 종목코드, 또는 OpenDART 고유번호를 다시 확인해 주세요."
+                : "여러 후보가 있습니다: " + resolution.candidates.map(\.displayName).joined(separator: ", ")
+            return .failed(MyTeamToolFailure(
+                title: resolution.candidates.isEmpty ? "회사를 찾지 못했습니다" : "회사를 하나로 확인해 주세요",
+                message: candidateText,
+                recoveryActions: [
+                    MyTeamNextAction(id: "changeKeyword", title: "회사 다시 입력", role: .normal)
                 ]
             ))
         }

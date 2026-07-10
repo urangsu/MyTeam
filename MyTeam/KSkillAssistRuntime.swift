@@ -1401,10 +1401,22 @@ enum KSkillRunEngine {
                 sources: []
             )
         }
-        let resolution = DARTCompanyResolver.resolve(input: lookupQuery)
-        guard let corpCode = resolution.corpCode else {
+        let resolution: DARTCompanyResolution
+        do {
+            resolution = try await DARTCompanyResolver.resolve(input: lookupQuery, apiKey: apiKey)
+        } catch {
             return ToolEvidenceResult(
-                promptContext: "\n\n[DART 직접 조회]\n- 상태: 회사를 찾지 못했습니다. 종목코드 또는 OpenDART 고유번호를 입력해 주세요. 예: 삼성전자, 005930, 00126380.",
+                promptContext: "\n\n[DART 직접 조회]\n- 상태: OpenDART 공식 회사 목록을 준비하지 못했습니다. 네트워크와 DART API 키를 확인한 뒤 다시 시도하세요.",
+                sources: []
+            )
+        }
+        guard let corpCode = resolution.corpCode else {
+            let candidates = resolution.candidates.map(\.displayName).joined(separator: ", ")
+            let detail = candidates.isEmpty
+                ? "회사명, 종목코드 또는 OpenDART 고유번호를 다시 확인해 주세요."
+                : "여러 후보가 있습니다: \(candidates)"
+            return ToolEvidenceResult(
+                promptContext: "\n\n[DART 직접 조회]\n- 상태: \(detail)",
                 sources: []
             )
         }

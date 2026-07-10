@@ -303,6 +303,78 @@ final class PublicAPIConnectorValidatorTests: XCTestCase {
     }
 }
 
+final class DARTCompanyIndexTests: XCTestCase {
+    private let entries = [
+        DARTCompanyIndexEntry(
+            corpCode: "00126380",
+            corpName: "삼성전자(주)",
+            stockCode: "005930",
+            modifyDate: "20260701"
+        ),
+        DARTCompanyIndexEntry(
+            corpCode: "00164779",
+            corpName: "에스케이하이닉스(주)",
+            stockCode: "000660",
+            modifyDate: "20260701"
+        ),
+        DARTCompanyIndexEntry(
+            corpCode: "00900001",
+            corpName: "동일상사",
+            stockCode: nil,
+            modifyDate: "20260701"
+        ),
+        DARTCompanyIndexEntry(
+            corpCode: "00900002",
+            corpName: "동일상사(주)",
+            stockCode: nil,
+            modifyDate: "20260701"
+        )
+    ]
+
+    func testResolvesAnyIndexedCompanyByStockCode() {
+        let result = index.resolve(input: "000660", indexUpdatedAt: nil, isIndexStale: false)
+
+        XCTAssertEqual(result.corpCode, "00164779")
+        XCTAssertEqual(result.stockCode, "000660")
+        XCTAssertEqual(result.resolutionSource, .officialStockCodeIndex)
+    }
+
+    func testResolvesNormalizedOfficialCompanyName() {
+        let result = index.resolve(input: "삼성전자", indexUpdatedAt: nil, isIndexStale: false)
+
+        XCTAssertEqual(result.corpCode, "00126380")
+        XCTAssertEqual(result.resolutionSource, .officialCompanyNameIndex)
+    }
+
+    func testAcceptsExplicitCorpCodeWithoutChoosingAnotherCompany() {
+        let result = index.resolve(input: "12345678", indexUpdatedAt: nil, isIndexStale: false)
+
+        XCTAssertEqual(result.corpCode, "12345678")
+        XCTAssertEqual(result.resolutionSource, .directCorpCode)
+    }
+
+    func testAmbiguousCompanyNameDoesNotAutoResolveFirstCandidate() {
+        let result = index.resolve(input: "동일상사", indexUpdatedAt: nil, isIndexStale: false)
+
+        XCTAssertNil(result.corpCode)
+        XCTAssertEqual(result.resolutionSource, .ambiguous)
+        XCTAssertEqual(result.candidates.count, 2)
+    }
+
+    func testPartialNameOnlySuggestsCandidates() {
+        let result = index.resolve(input: "하이닉스", indexUpdatedAt: nil, isIndexStale: true)
+
+        XCTAssertNil(result.corpCode)
+        XCTAssertEqual(result.resolutionSource, .ambiguous)
+        XCTAssertEqual(result.candidates.first?.stockCode, "000660")
+        XCTAssertTrue(result.isIndexStale)
+    }
+
+    private var index: DARTCompanyIndex {
+        DARTCompanyIndex(entries: entries)
+    }
+}
+
 private struct FixedPublicAPIClock: PublicAPIClock {
     let now: Date
     let timeZone = TimeZone(identifier: "Asia/Seoul")!

@@ -44,6 +44,8 @@ def main() -> None:
     ai_service = read("MyTeam/AIService.swift")
     credential_health = read("MyTeam/CredentialHealth.swift")
     credential_store = read("MyTeam/SecureCredentialStore.swift")
+    dart_resolver = read("MyTeam/DARTCompanyResolver.swift")
+    dart_runner = read("MyTeam/ToolRunners/DARTToolRunner.swift")
     myteam_app = read("MyTeam/MyTeamApp.swift")
     agent_window_manager = read("MyTeam/AgentWindowManager.swift")
     floating_panel = read("MyTeam/FloatingPanel.swift")
@@ -267,6 +269,27 @@ def main() -> None:
         failures.append("OpenRouter auto model must not be used as a hidden fallback")
     if "404 → 모델 재발견 재시도" in ai_service:
         failures.append("Model 404 must not silently rediscover and retry another model")
+    for forbidden in ["private static let seeds", "case manualSeed", "resolution(seed:"]:
+        if forbidden in dart_resolver:
+            failures.append(f"DART resolver must not use a product seed fallback: {forbidden}")
+    for required in [
+        "corpCode.xml",
+        "DARTCompanyIndexStore",
+        "officialStockCodeIndex",
+        "officialCompanyNameIndex",
+        "isIndexStale",
+        "corpCodesByNameGram",
+        "Task.detached(priority: .utility)",
+    ]:
+        if required not in dart_resolver:
+            failures.append(f"DART resolver is missing official cached-index behavior: {required}")
+    if "try await DARTCompanyResolver.resolve" not in dart_runner:
+        failures.append("DARTToolRunner must await the official company index resolver")
+    dart_formatter_index = finance_formatter.find("enum DARTResultFormatter")
+    if dart_formatter_index != -1:
+        dart_formatter_window = finance_formatter[dart_formatter_index:dart_formatter_index + 1800]
+        if "if items.isEmpty" in dart_formatter_window and ".checkedEmpty(" not in dart_formatter_window:
+            failures.append("DART empty result must be checkedEmpty, not succeeded")
     no_results_index = finance_formatter.find("nonisolated static func noResultsState")
     if no_results_index != -1:
         no_results_window = finance_formatter[no_results_index:no_results_index + 800]
