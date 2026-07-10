@@ -168,6 +168,10 @@ struct ChainRunStatusView: View {
             return .secondary
         case .running:
             return .blue
+        case .evidenceAvailable:
+            return .teal
+        case .planned:
+            return .secondary
         case .succeeded:
             return .green
         case .failed:
@@ -208,6 +212,8 @@ struct ChainRunStatusView: View {
             return .secondary
         case .running:
             return .blue
+        case .projected:
+            return .teal
         case .succeeded:
             return .green
         case .failed:

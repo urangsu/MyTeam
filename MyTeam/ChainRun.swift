@@ -72,6 +72,10 @@ struct ChainRun: Identifiable, Codable, Sendable {
                 prefix = "·"
             case .running:
                 prefix = "▶"
+            case .evidenceAvailable:
+                prefix = "●"
+            case .planned:
+                prefix = "○"
             case .succeeded:
                 prefix = "✓"
             case .failed:
@@ -105,6 +109,8 @@ struct ChainRun: Identifiable, Codable, Sendable {
             return "대기"
         case .running:
             return "실행 중"
+        case .projected:
+            return "근거·계획 정리"
         case .succeeded:
             return "성공"
         case .failed:
@@ -192,7 +198,7 @@ struct ChainRuntimeSmokeCaseResult: Codable, Sendable, Hashable {
     let verificationStatus: String?
     let sourceTypes: [String]
     let stepStatuses: [String]
-    let renderStockMoveCardSucceeded: Bool
+    let renderStockMoveCardProjected: Bool
     let issues: [String]
 }
 
@@ -297,7 +303,7 @@ enum ChainRuntimeSmokeSuite {
                 verificationStatus: playwrightIssues.isEmpty ? "verified" : "unverified",
                 sourceTypes: ["browserDOM"],
                 stepStatuses: ["check_health", "check_navigate_fail", "check_concurrent"],
-                renderStockMoveCardSucceeded: false,
+                renderStockMoveCardProjected: false,
                 issues: playwrightIssues
             )
         )
@@ -318,7 +324,7 @@ enum ChainRuntimeSmokeSuite {
                         verificationStatus: nil,
                         sourceTypes: [],
                         stepStatuses: [],
-                        renderStockMoveCardSucceeded: false,
+                        renderStockMoveCardProjected: false,
                         issues: ["Skill route not matched"]
                     )
                 )
@@ -328,11 +334,11 @@ enum ChainRuntimeSmokeSuite {
             let chainRun = await MainActor.run { ChainRunStore.shared.latestRun(for: roomID) }
             let sourceTypes = route.result.sourceRefs.map { $0.sourceType.rawValue }
             let stepStatuses = chainRun?.stepStatusLines ?? []
-            let renderSucceeded: Bool
+            let renderProjected: Bool
             if let renderStep = chainRun?.steps.first(where: { $0.key == "renderStockMoveCard" }) {
-                renderSucceeded = renderStep.status == .succeeded
+                renderProjected = renderStep.status == .planned
             } else {
-                renderSucceeded = false
+                renderProjected = false
             }
 
             var issues: [String] = []
@@ -345,8 +351,8 @@ enum ChainRuntimeSmokeSuite {
                      sourceTypes.filter({ $0 == "marketIndex" }).isEmpty) {
                     issues.append("verified without narrative or market source")
                 }
-                if renderSucceeded == false && (sourceTypes.contains("quote") || sourceTypes.contains("news") || sourceTypes.contains("disclosure")) {
-                    issues.append("stock card did not render")
+                if renderProjected == false && (sourceTypes.contains("quote") || sourceTypes.contains("news") || sourceTypes.contains("disclosure")) {
+                    issues.append("stock card projection was not created")
                 }
             }
             if testCase.name == "mail-command-only" || testCase.name == "mail-ambiguous" {
@@ -381,8 +387,8 @@ enum ChainRuntimeSmokeSuite {
                 }
             }
             if testCase.name == "document-pdf-with-text" {
-                if chainRun?.steps.first(where: { $0.key == "extractText" })?.status != .succeeded {
-                    issues.append("text PDF did not reach extractText success")
+                if chainRun?.steps.first(where: { $0.key == "extractText" })?.status != .evidenceAvailable {
+                    issues.append("text PDF was not recorded as available evidence")
                 }
             }
             if testCase.name.hasPrefix("action-") {
@@ -398,7 +404,7 @@ enum ChainRuntimeSmokeSuite {
                     verificationStatus: route.result.verification.status,
                     sourceTypes: Array(Set(sourceTypes)).sorted(),
                     stepStatuses: stepStatuses,
-                    renderStockMoveCardSucceeded: renderSucceeded,
+                    renderStockMoveCardProjected: renderProjected,
                     issues: issues
                 )
             )

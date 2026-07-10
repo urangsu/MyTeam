@@ -994,7 +994,7 @@ enum KSkillRunEngine {
         let policy = evidencePolicy(for: intent, userMessage: lookupQuery)
 
         let shell = await MainActor.run {
-            ChainOrchestrator.createShell(
+            ChainEvidenceProjector.createShell(
                 roomID: roomID,
                 chainID: chainID,
                 userMessage: userMessage,
@@ -1032,7 +1032,7 @@ enum KSkillRunEngine {
             userMessage: userMessage
         )
         let chainRun = await MainActor.run {
-            ChainOrchestrator.updateRun(
+            ChainEvidenceProjector.updateRun(
                 runID: chainRunID,
                 roomID: roomID,
                 chainID: chainID,

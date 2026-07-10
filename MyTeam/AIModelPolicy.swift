@@ -15,11 +15,15 @@ enum AIModelPolicy {
         #endif
     }
 
-    /// Dynamic discovery는 Debug/Release 모두 허용.
-    /// provider API에서 최신 모델을 찾아서 smoke test 후 사용한다.
-    /// Release에서 discovery를 끄면 stale local registry에 묶이게 되므로 항상 true.
+    /// Dynamic discovery is diagnostic-only until discovered models pass a real generation smoke.
+    /// Release uses explicitly reviewed registry IDs so a higher-version preview or incompatible
+    /// endpoint model cannot become the production default merely by appearing in /models.
     static var dynamicModelDiscoveryAllowed: Bool {
+        #if DEBUG
         return true
+        #else
+        return false
+        #endif
     }
 
     /// DEBUG: UserDefaults 오버라이드 허용. Release: registry primary 사용.

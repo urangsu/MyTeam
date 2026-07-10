@@ -3,6 +3,8 @@ import Foundation
 enum ChainStepStatus: Codable, Sendable, Equatable {
     case pending
     case running
+    case evidenceAvailable
+    case planned
     case succeeded
     case failed(failureCode: String)
     case skipped(reason: String)
@@ -10,15 +12,19 @@ enum ChainStepStatus: Codable, Sendable, Equatable {
     var label: String {
         switch self {
         case .pending:
-            return "pending"
+            return "대기"
         case .running:
-            return "running"
+            return "실행 중"
+        case .evidenceAvailable:
+            return "근거 확인"
+        case .planned:
+            return "계획"
         case .succeeded:
-            return "succeeded"
+            return "완료"
         case .failed:
-            return "failed"
+            return "실패"
         case .skipped:
-            return "skipped"
+            return "건너뜀"
         }
     }
 }
@@ -26,6 +32,7 @@ enum ChainStepStatus: Codable, Sendable, Equatable {
 enum ChainStatus: String, Codable, Sendable, Equatable {
     case pending
     case running
+    case projected
     case succeeded
     case failed
     case blocked

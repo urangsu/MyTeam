@@ -27,7 +27,8 @@ struct KnownBrokenModel: Sendable {
 //
 // 목적: provider별 floor fallback 모델 ID 관리.
 //       이 값은 discovery가 완전히 실패했을 때 마지막 안전망으로만 사용한다.
-//       실제 사용 모델은 dynamic discovery + smoke cache가 결정한다.
+//       Release uses reviewed registry IDs. Debug discovery is diagnostic until a real generation
+//       contract test proves endpoint, streaming, and permission compatibility.
 //
 // 업데이트 방법:
 //   1. provider 공식 모델 목록 페이지에서 신규 stable ID 확인

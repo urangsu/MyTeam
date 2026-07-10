@@ -37,6 +37,10 @@ def main() -> None:
     finance_runner = read("MyTeam/ToolRunners/FinanceToolRunner.swift")
     finance_formatter = read("MyTeam/ToolResultFormatters.swift")
     tool_state = read("MyTeam/ToolExecutionState.swift")
+    chain_step = read("MyTeam/ChainStep.swift")
+    chain_projection = read("MyTeam/ChainOrchestrator.swift")
+    chain_runtime = read("MyTeam/KSkillAssistRuntime.swift")
+    ai_model_policy = read("MyTeam/AIModelPolicy.swift")
     myteam_app = read("MyTeam/MyTeamApp.swift")
     agent_window_manager = read("MyTeam/AgentWindowManager.swift")
     floating_panel = read("MyTeam/FloatingPanel.swift")
@@ -169,6 +173,34 @@ def main() -> None:
     for token in ["case checkedEmpty", "case partial"]:
         if token not in tool_state:
             failures.append(f"ToolExecutionState must distinguish non-success result state: {token}")
+
+    for token in ["case evidenceAvailable", "case planned", "case projected"]:
+        if token not in chain_step:
+            failures.append(f"Chain projection must preserve non-execution state: {token}")
+    if "enum ChainEvidenceProjector" not in chain_projection:
+        failures.append("Chain evidence projection must not present itself as an execution orchestrator")
+    if "addingTimeInterval(0.02)" in chain_projection:
+        failures.append("Chain evidence projection must not fabricate 0.02 second execution durations")
+    for pattern in [
+        r"hasTextAttachment\s*\?\s*\.succeeded",
+        r"hasMailSource\s*\?\s*\.succeeded",
+    ]:
+        if re.search(pattern, chain_projection):
+            failures.append("Chain evidence projection must not mark attachment presence as executed success")
+    if "ChainEvidenceProjector.createShell" not in chain_runtime or "ChainEvidenceProjector.updateRun" not in chain_runtime:
+        failures.append("KSkillAssistRuntime must use the truthful ChainEvidenceProjector entrypoint")
+
+    discovery_match = re.search(
+        r"static var dynamicModelDiscoveryAllowed: Bool \{(?P<body>.*?)\n    \}",
+        ai_model_policy,
+        re.S,
+    )
+    if not discovery_match:
+        failures.append("AIModelPolicy must define an auditable dynamic model discovery gate")
+    else:
+        discovery_body = discovery_match.group("body")
+        if "#if DEBUG" not in discovery_body or "#else" not in discovery_body or "return false" not in discovery_body:
+            failures.append("Release must not auto-promote models discovered from provider model lists")
     no_results_index = finance_formatter.find("nonisolated static func noResultsState")
     if no_results_index != -1:
         no_results_window = finance_formatter[no_results_index:no_results_index + 800]

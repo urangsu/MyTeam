@@ -1,6 +1,7 @@
 import Foundation
 
-enum ChainOrchestrator {
+// Projects available evidence and possible next steps. It does not execute the projected steps.
+enum ChainEvidenceProjector {
     @MainActor
     static func createShell(
         roomID: UUID,
@@ -146,7 +147,7 @@ enum ChainOrchestrator {
                     connectorID: "finance_quote",
                     detail: health.stockQuote.label,
                     status: health.stockQuote.isOperational
-                        ? (quoteSources.isEmpty ? .failed(failureCode: "quote_unverified") : .succeeded)
+                        ? (quoteSources.isEmpty ? .failed(failureCode: "quote_unverified") : .evidenceAvailable)
                         : .failed(failureCode: "quote_connector_unavailable"),
                     outputSummary: quoteSources.isEmpty ? "시세 미확인" : "\(quoteSources.count)개 quote source",
                     sourceIDs: quoteSourceIDs,
@@ -158,7 +159,7 @@ enum ChainOrchestrator {
                     connectorID: "web_search",
                     detail: health.webFetch.label,
                     status: health.webFetch.isOperational
-                        ? (!marketSources.isEmpty ? .succeeded : .failed(failureCode: "market_context_unverified"))
+                        ? (!marketSources.isEmpty ? .evidenceAvailable : .failed(failureCode: "market_context_unverified"))
                         : .failed(failureCode: "web_fetch_unavailable"),
                     outputSummary: marketSources.isEmpty ? "시장 맥락 미확인" : "\(marketSources.count)개 market source",
                     sourceIDs: marketSourceIDs,
@@ -170,7 +171,7 @@ enum ChainOrchestrator {
                     connectorID: "web_search",
                     detail: health.newsSearch.label,
                     status: health.newsSearch.isOperational
-                        ? (!newsSources.isEmpty ? .succeeded : .failed(failureCode: "news_unverified"))
+                        ? (!newsSources.isEmpty ? .evidenceAvailable : .failed(failureCode: "news_unverified"))
                         : .failed(failureCode: "news_connector_unavailable"),
                     outputSummary: newsSources.isEmpty ? "뉴스 미확인" : "\(newsSources.count)개 news source",
                     sourceIDs: newsSourceIDs,
@@ -182,7 +183,7 @@ enum ChainOrchestrator {
                     connectorID: "disclosure_search",
                     detail: health.disclosureSearch.label,
                     status: health.disclosureSearch.isOperational
-                        ? (!disclosureSources.isEmpty ? .succeeded : .failed(failureCode: "disclosure_unverified"))
+                        ? (!disclosureSources.isEmpty ? .evidenceAvailable : .failed(failureCode: "disclosure_unverified"))
                         : .failed(failureCode: "disclosure_connector_unavailable"),
                     outputSummary: disclosureSources.isEmpty ? "공시 미확인" : "\(disclosureSources.count)개 disclosure source",
                     sourceIDs: disclosureSourceIDs,
@@ -192,7 +193,7 @@ enum ChainOrchestrator {
                     key: "analyzeCause",
                     title: "원인 후보 분석",
                     status: !quoteSources.isEmpty && (!newsSources.isEmpty || !disclosureSources.isEmpty)
-                        ? .succeeded
+                        ? .planned
                         : .failed(failureCode: "insufficient_causal_sources"),
                     outputSummary: !quoteSources.isEmpty && !narrativeSources.isEmpty ? "원인 후보 생성 준비됨" : "원인 단정 금지",
                     sourceIDs: allSourceIDs
@@ -201,7 +202,7 @@ enum ChainOrchestrator {
                     key: "verifySources",
                     title: "근거 검증",
                     status: !quoteSources.isEmpty && (!newsSources.isEmpty || !disclosureSources.isEmpty) && !marketSources.isEmpty && concreteSources.count >= 3
-                        ? .succeeded
+                        ? .evidenceAvailable
                         : .failed(failureCode: "insufficient_concrete_sources"),
                     outputSummary: "\(concreteSources.count)개 concrete source",
                     sourceIDs: allSourceIDs,
@@ -216,7 +217,7 @@ enum ChainOrchestrator {
                     key: "renderStockMoveCard",
                     title: "원인 카드 생성",
                     status: !quoteSources.isEmpty && (!newsSources.isEmpty || !disclosureSources.isEmpty)
-                        ? .succeeded
+                        ? .planned
                         : .failed(failureCode: "insufficient_concrete_sources"),
                     outputSummary: !quoteSources.isEmpty && !narrativeSources.isEmpty ? "부분 근거 카드 생성" : "검증 대기",
                     sourceIDs: allSourceIDs
@@ -234,7 +235,7 @@ enum ChainOrchestrator {
                     connectorID: "mail_read",
                     detail: hasAttachment ? attachments.map(\.fileName).joined(separator: ", ") : nil,
                     status: hasMailSource
-                        ? .succeeded
+                        ? .evidenceAvailable
                         : (mailState == .ambiguous ? .failed(failureCode: "mail_body_ambiguous") : .failed(failureCode: "mail_body_missing")),
                     outputSummary: hasMailSource ? "메일 원문 인식됨" : (mailState == .ambiguous ? "메일 원문 후보가 짧아요" : "메일 원문 없음"),
                     sourceIDs: mailSourceIDs,
@@ -243,42 +244,42 @@ enum ChainOrchestrator {
                 step(
                     key: "summarizeMail",
                     title: "메일 요약",
-                    status: hasMailSource ? .succeeded : .failed(failureCode: "mail_source_missing"),
+                    status: hasMailSource ? .planned : .failed(failureCode: "mail_source_missing"),
                     outputSummary: hasMailSource ? "요약 준비됨" : "요약 불가",
                     sourceIDs: mailSourceIDs
                 ),
                 step(
                     key: "extractActionItems",
                     title: "해야 할 일 추출",
-                    status: hasMailSource ? .succeeded : .failed(failureCode: "mail_source_missing"),
+                    status: hasMailSource ? .planned : .failed(failureCode: "mail_source_missing"),
                     outputSummary: hasMailSource ? "할 일 후보 추출됨" : "할 일 없음",
                     sourceIDs: mailSourceIDs
                 ),
                 step(
                     key: "extractDateTime",
                     title: "날짜/시간 추출",
-                    status: hasMailSource ? (hasScheduleHint ? .succeeded : .skipped(reason: "일정 정보가 없어요")) : .failed(failureCode: "mail_source_missing"),
+                    status: hasMailSource ? (hasScheduleHint ? .planned : .skipped(reason: "일정 정보가 없어요")) : .failed(failureCode: "mail_source_missing"),
                     outputSummary: hasScheduleHint ? "일정 후보 있음" : "일정 정보 없음",
                     sourceIDs: mailSourceIDs
                 ),
                 step(
                     key: "createReplyDraft",
                     title: "답장 초안",
-                    status: hasMailSource ? .succeeded : .failed(failureCode: "mail_source_missing"),
+                    status: hasMailSource ? .planned : .failed(failureCode: "mail_source_missing"),
                     outputSummary: hasMailSource ? "답장 초안 생성 준비됨" : "답장 초안 불가",
                     sourceIDs: mailSourceIDs
                 ),
                 step(
                     key: "createCalendarDraftSuggestion",
                     title: "캘린더 초안 제안",
-                    status: hasMailSource ? (hasScheduleHint ? .succeeded : .skipped(reason: "캘린더 초안 근거가 부족해요")) : .failed(failureCode: "mail_source_missing"),
+                    status: hasMailSource ? (hasScheduleHint ? .planned : .skipped(reason: "캘린더 초안 근거가 부족해요")) : .failed(failureCode: "mail_source_missing"),
                     outputSummary: hasScheduleHint ? "캘린더 초안 가능" : "캘린더 초안 불가",
                     sourceIDs: mailSourceIDs
                 ),
                 step(
                     key: "createTodoSuggestion",
                     title: "할 일 제안",
-                    status: hasMailSource ? .succeeded : .failed(failureCode: "mail_source_missing"),
+                    status: hasMailSource ? .planned : .failed(failureCode: "mail_source_missing"),
                     outputSummary: hasMailSource ? "할 일 후보 있음" : "할 일 없음",
                     sourceIDs: mailSourceIDs
                 )
@@ -293,7 +294,7 @@ enum ChainOrchestrator {
                     connectorID: "pdf_text",
                     detail: hasAttachment ? attachments.map(\.fileName).joined(separator: ", ") : nil,
                     status: hasTextAttachment
-                        ? .succeeded
+                        ? .evidenceAvailable
                         : .failed(failureCode: hasAttachment ? "ocr_needed" : "no_attachment"),
                     outputSummary: hasTextAttachment ? "\(textAttachmentIDs.count)개 text attachment" : (hasAttachment ? "OCR 필요" : "첨부 없음"),
                     sourceIDs: documentSourceIDs,
@@ -302,42 +303,42 @@ enum ChainOrchestrator {
                 step(
                     key: "classifyDocument",
                     title: "문서 유형 분류",
-                    status: hasTextAttachment ? .succeeded : .failed(failureCode: hasAttachment ? "document_type_unavailable" : "no_attachment"),
+                    status: hasTextAttachment ? .planned : .failed(failureCode: hasAttachment ? "document_type_unavailable" : "no_attachment"),
                     outputSummary: hasTextAttachment ? "문서 유형 후보 확인" : "분류 대기",
                     sourceIDs: documentSourceIDs
                 ),
                 step(
                     key: "extractDates",
                     title: "날짜 추출",
-                    status: hasTextAttachment ? .succeeded : .failed(failureCode: hasAttachment ? "ocr_needed" : "no_attachment"),
+                    status: hasTextAttachment ? .planned : .failed(failureCode: hasAttachment ? "ocr_needed" : "no_attachment"),
                     outputSummary: hasTextAttachment ? "날짜 후보 있음" : "날짜 없음",
                     sourceIDs: documentSourceIDs
                 ),
                 step(
                     key: "extractAmounts",
                     title: "금액 추출",
-                    status: hasTextAttachment ? .succeeded : .failed(failureCode: hasAttachment ? "ocr_needed" : "no_attachment"),
+                    status: hasTextAttachment ? .planned : .failed(failureCode: hasAttachment ? "ocr_needed" : "no_attachment"),
                     outputSummary: hasTextAttachment ? "금액 후보 있음" : "금액 없음",
                     sourceIDs: documentSourceIDs
                 ),
                 step(
                     key: "extractRisks",
                     title: "리스크 추출",
-                    status: hasTextAttachment ? .succeeded : .failed(failureCode: hasAttachment ? "ocr_needed" : "no_attachment"),
+                    status: hasTextAttachment ? .planned : .failed(failureCode: hasAttachment ? "ocr_needed" : "no_attachment"),
                     outputSummary: hasTextAttachment ? "리스크 후보 있음" : "리스크 없음",
                     sourceIDs: documentSourceIDs
                 ),
                 step(
                     key: "createChecklist",
                     title: "체크리스트 생성",
-                    status: hasTextAttachment ? .succeeded : .failed(failureCode: hasAttachment ? "ocr_needed" : "no_attachment"),
+                    status: hasTextAttachment ? .planned : .failed(failureCode: hasAttachment ? "ocr_needed" : "no_attachment"),
                     outputSummary: hasTextAttachment ? "체크리스트 준비됨" : "체크리스트 불가",
                     sourceIDs: documentSourceIDs
                 ),
                 step(
                     key: "createSummaryArtifact",
                     title: "요약 artifact 생성",
-                    status: hasTextAttachment ? .succeeded : .failed(failureCode: hasAttachment ? "ocr_needed" : "no_attachment"),
+                    status: hasTextAttachment ? .planned : .failed(failureCode: hasAttachment ? "ocr_needed" : "no_attachment"),
                     outputSummary: hasTextAttachment ? "요약 artifact 준비됨" : "요약 artifact 불가",
                     sourceIDs: documentSourceIDs
                 )
@@ -353,7 +354,7 @@ enum ChainOrchestrator {
             } else if trainSources.isEmpty {
                 trainStatus = .failed(failureCode: "train_schedule_unverified")
             } else {
-                trainStatus = .succeeded
+                trainStatus = .evidenceAvailable
             }
 
             let mapStatus: ChainStepStatus
@@ -362,33 +363,33 @@ enum ChainOrchestrator {
             } else if mapSources.isEmpty {
                 mapStatus = .failed(failureCode: "map_route_unverified")
             } else {
-                mapStatus = .succeeded
+                mapStatus = .evidenceAvailable
             }
 
-            let composeStatus: ChainStepStatus = (!trainSources.isEmpty || !mapSources.isEmpty) ? .succeeded : .failed(failureCode: "trip_sources_unavailable")
+            let composeStatus: ChainStepStatus = (!trainSources.isEmpty || !mapSources.isEmpty) ? .planned : .failed(failureCode: "trip_sources_unavailable")
 
             return [
-                step(key: "normalizeRoute", title: "이동 조건 정리", status: .succeeded, outputSummary: "이동 조건 정리됨"),
-                step(key: "resolveStations", title: "역 후보 정리", connectorID: "train_search", status: health.trainSearch.isOperational ? .succeeded : .failed(failureCode: "train_connector_unavailable"), outputSummary: health.trainSearch.isOperational ? "역 후보 정리됨" : "역 후보 대기", failureDetail: health.trainSearch.reason),
-                step(key: "lookupTrain", title: "열차 조회", connectorID: "train_search", status: trainStatus, outputSummary: trainStatus == .succeeded ? "열차 조회 가능" : "열차 조회 실패", sourceIDs: trainSources.map(\.id.uuidString), failureDetail: trainSources.isEmpty ? "train schedule source missing" : health.trainSearch.reason),
-                step(key: "lookupMapTravelTime", title: "지도 이동 시간 확인", connectorID: "maps_search", status: mapStatus, outputSummary: mapStatus == .succeeded ? "지도 이동 시간 확인 가능" : "지도 이동 시간 미확인", sourceIDs: mapSources.map(\.id.uuidString), failureDetail: mapSources.isEmpty ? "map route source missing" : nil),
-                step(key: "composeItinerary", title: "이동 카드 생성", status: composeStatus, outputSummary: composeStatus == .succeeded ? "이동 카드 준비됨" : "이동 카드 대기", sourceIDs: (trainSources + mapSources).map(\.id.uuidString))
+                step(key: "normalizeRoute", title: "이동 조건 정리", status: .planned, outputSummary: "입력 기준 정리 계획"),
+                step(key: "resolveStations", title: "역 후보 정리", connectorID: "train_search", status: health.trainSearch.isOperational ? .planned : .failed(failureCode: "train_connector_unavailable"), outputSummary: health.trainSearch.isOperational ? "역 후보 확인 가능" : "역 후보 대기", failureDetail: health.trainSearch.reason),
+                step(key: "lookupTrain", title: "열차 조회", connectorID: "train_search", status: trainStatus, outputSummary: trainSources.isEmpty ? "열차 조회 미확인" : "열차 출처 확인", sourceIDs: trainSources.map(\.id.uuidString), failureDetail: trainSources.isEmpty ? "train schedule source missing" : health.trainSearch.reason),
+                step(key: "lookupMapTravelTime", title: "지도 이동 시간 확인", connectorID: "maps_search", status: mapStatus, outputSummary: mapSources.isEmpty ? "지도 이동 시간 미확인" : "지도 출처 확인", sourceIDs: mapSources.map(\.id.uuidString), failureDetail: mapSources.isEmpty ? "map route source missing" : nil),
+                step(key: "composeItinerary", title: "이동 카드 생성", status: composeStatus, outputSummary: composeStatus == .planned ? "이동 카드 생성 계획" : "이동 카드 대기", sourceIDs: (trainSources + mapSources).map(\.id.uuidString))
             ]
 
         case .accountReview:
             return [
-                step(key: "readLedger", title: "거래 자료 읽기", connectorID: "file_reader", status: hasTextAttachment ? .succeeded : .skipped(reason: "CSV/XLSX/영수증이 필요합니다"), outputSummary: hasTextAttachment ? "거래 자료 읽음" : "거래 자료 없음", sourceIDs: textAttachmentIDs),
-                step(key: "normalizeRows", title: "행 정규화", status: hasTextAttachment ? .succeeded : .skipped(reason: "정규화할 자료가 없습니다"), outputSummary: hasTextAttachment ? "행 정규화됨" : "정규화 대기", sourceIDs: textAttachmentIDs),
-                step(key: "findAnomalies", title: "이상 후보 찾기", status: hasTextAttachment ? .succeeded : .skipped(reason: "이상 후보를 찾을 자료가 없습니다"), outputSummary: hasTextAttachment ? "이상 후보 있음" : "이상 후보 없음", sourceIDs: textAttachmentIDs),
-                step(key: "createSettlementCard", title: "정산 카드 생성", status: hasTextAttachment ? .succeeded : .skipped(reason: "정산 카드를 만들 자료가 없습니다"), outputSummary: hasTextAttachment ? "정산 카드 준비됨" : "정산 카드 불가", sourceIDs: textAttachmentIDs)
+                step(key: "readLedger", title: "거래 자료 읽기", connectorID: "file_reader", status: hasTextAttachment ? .evidenceAvailable : .skipped(reason: "CSV/XLSX/영수증이 필요합니다"), outputSummary: hasTextAttachment ? "거래 자료 텍스트 확인" : "거래 자료 없음", sourceIDs: textAttachmentIDs),
+                step(key: "normalizeRows", title: "행 정규화", status: hasTextAttachment ? .planned : .skipped(reason: "정규화할 자료가 없습니다"), outputSummary: hasTextAttachment ? "행 정규화 계획" : "정규화 대기", sourceIDs: textAttachmentIDs),
+                step(key: "findAnomalies", title: "이상 후보 찾기", status: hasTextAttachment ? .planned : .skipped(reason: "이상 후보를 찾을 자료가 없습니다"), outputSummary: hasTextAttachment ? "이상 후보 점검 계획" : "이상 후보 미확인", sourceIDs: textAttachmentIDs),
+                step(key: "createSettlementCard", title: "정산 카드 생성", status: hasTextAttachment ? .planned : .skipped(reason: "정산 카드를 만들 자료가 없습니다"), outputSummary: hasTextAttachment ? "정산 카드 생성 계획" : "정산 카드 불가", sourceIDs: textAttachmentIDs)
             ]
 
         case .research:
             return [
                 step(key: "normalizeQuestion", title: "질문 정규화", status: .succeeded, outputSummary: "질문 정규화됨"),
-                step(key: "gatherSources", title: "공개 출처 수집", connectorID: "web_search", status: concreteSources.isEmpty ? .failed(failureCode: "no_public_sources") : .succeeded, outputSummary: concreteSources.isEmpty ? "공개 출처 없음" : "\(concreteSources.count)개 출처", sourceIDs: allSourceIDs, failureDetail: concreteSources.isEmpty ? "no concrete public source" : nil),
-                step(key: "splitClaims", title: "주장 분리", status: !concreteSources.isEmpty ? .succeeded : .skipped(reason: "출처가 필요합니다"), outputSummary: !concreteSources.isEmpty ? "주장 분리됨" : "주장 분리 대기", sourceIDs: allSourceIDs),
-                step(key: "renderResearchCard", title: "리서치 카드 생성", status: !concreteSources.isEmpty ? .succeeded : .skipped(reason: "카드를 만들 출처가 없습니다"), outputSummary: !concreteSources.isEmpty ? "리서치 카드 준비됨" : "리서치 카드 불가", sourceIDs: allSourceIDs)
+                step(key: "gatherSources", title: "공개 출처 수집", connectorID: "web_search", status: concreteSources.isEmpty ? .failed(failureCode: "no_public_sources") : .evidenceAvailable, outputSummary: concreteSources.isEmpty ? "공개 출처 없음" : "\(concreteSources.count)개 출처 확인", sourceIDs: allSourceIDs, failureDetail: concreteSources.isEmpty ? "no concrete public source" : nil),
+                step(key: "splitClaims", title: "주장 분리", status: !concreteSources.isEmpty ? .planned : .skipped(reason: "출처가 필요합니다"), outputSummary: !concreteSources.isEmpty ? "주장 분리 계획" : "주장 분리 대기", sourceIDs: allSourceIDs),
+                step(key: "renderResearchCard", title: "리서치 카드 생성", status: !concreteSources.isEmpty ? .planned : .skipped(reason: "카드를 만들 출처가 없습니다"), outputSummary: !concreteSources.isEmpty ? "리서치 카드 생성 계획" : "리서치 카드 불가", sourceIDs: allSourceIDs)
             ]
         }
     }
@@ -515,8 +516,6 @@ enum ChainOrchestrator {
         sourceIDs: [String] = [],
         failureDetail: String? = nil
     ) -> ChainStep {
-        let startedAt = Date()
-        let finishedAt = startedAt.addingTimeInterval(0.02)
         return ChainStep(
             key: key,
             title: title,
@@ -525,22 +524,38 @@ enum ChainOrchestrator {
             status: status,
             outputSummary: outputSummary,
             sourceIDs: sourceIDs,
-            startedAt: startedAt,
-            finishedAt: finishedAt,
+            startedAt: nil,
+            finishedAt: nil,
             failureDetail: failureDetail
         )
     }
 
     private static func overallStatus(for steps: [ChainStep]) -> ChainStatus {
-        if steps.contains(where: { if case .failed = $0.status { return true } else { return false } }) {
+        if steps.contains(where: { if case .running = $0.status { return true } else { return false } }) {
+            return .running
+        }
+        let hasUsableProjection = steps.contains { step in
+            switch step.status {
+            case .succeeded, .evidenceAvailable, .planned:
+                return true
+            case .pending, .running, .failed, .skipped:
+                return false
+            }
+        }
+        if !hasUsableProjection,
+           steps.contains(where: { if case .failed = $0.status { return true } else { return false } }) {
             return .failed
         }
-        if steps.contains(where: { if case .skipped = $0.status { return true } else { return false } }) {
+        if !hasUsableProjection,
+           steps.contains(where: { if case .skipped = $0.status { return true } else { return false } }) {
             return .blocked
         }
         if steps.allSatisfy({ if case .succeeded = $0.status { return true } else { return false } }) {
             return .succeeded
         }
-        return .running
+        return hasUsableProjection ? .projected : .pending
     }
 }
+
+@available(*, deprecated, renamed: "ChainEvidenceProjector")
+typealias ChainOrchestrator = ChainEvidenceProjector
