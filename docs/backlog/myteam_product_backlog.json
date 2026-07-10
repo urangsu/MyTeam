@@ -1754,6 +1754,79 @@
         "GPT-5.6 is only routed to Responses validation when explicitly selected; it is not auto-promoted or made the Release default.",
         "General chat and quick-call fallback remain a separate P0 and are not claimed fixed here."
       ]
+    },
+    {
+      "id": "P0-019-explicit-llm-fallback",
+      "priority": "P0",
+      "status": "partial",
+      "category": "ai-routing",
+      "title": "Disable hidden provider and model fallback",
+      "why": "General chat, quick calls, and Gemini cooldown handling could silently move a request to another provider or rediscover another model, changing data handling and cost without user consent.",
+      "scope": {
+        "include": [
+          "Fallback policy enum with disabled default",
+          "Preferred-provider-only default routing",
+          "Fail-closed tool-use routing when the selected provider is not supported",
+          "Fresh exact-model readiness evidence for cross-provider candidates",
+          "Removal of Gemini 404 model rediscovery retry",
+          "Removal of OpenRouter auto-model hidden fallback",
+          "Fallback regression tests and product audit"
+        ],
+        "exclude": [
+          "User-facing fallback policy picker",
+          "Same-provider alternate model enrollment UI",
+          "Live provider fallback QA",
+          "OpenAI Responses streaming adapter",
+          "DART, Worker, and KMA changes"
+        ]
+      },
+      "acceptance_criteria": [
+        "Fallback policy defaults to disabled",
+        "Normal calls only attempt the selected provider when fallback is disabled",
+        "Tool-use requests fail closed instead of changing provider when the selected provider is unsupported",
+        "Cross-provider fallback candidates require fresh exact-model smoke evidence",
+        "A fallback call uses the exact model that passed smoke",
+        "Gemini 404 does not silently discover and retry another model"
+      ],
+      "failure_conditions": [
+        "A request is sent to another provider under the default policy",
+        "Gemini cooldown or 429 invokes an unverified provider",
+        "OpenRouter auto is used as a hidden fallback model",
+        "A provider changes after any output token",
+        "This task is marked done before explicit policy UI and live fallback QA exist"
+      ],
+      "verification": {
+        "commands": [
+          "git diff --check",
+          "python3 scripts/audit_product_completeness.py",
+          "python3 scripts/validate_myteam_release.py",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' build",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' build-for-testing",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Release -destination 'platform=OS X,arch=arm64' build"
+        ],
+        "manual_checks": [
+          "Confirm a preferred-provider failure does not call another provider under the default policy",
+          "Confirm explicit cross-provider fallback discloses the actual provider and model",
+          "Confirm no provider changes after the first visible token"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": "3d2aafc, 33ab0ca",
+        "files_changed": [
+          "MyTeam/AIService.swift",
+          "MyTeam/CredentialHealth.swift",
+          "MyTeamTests/LLMRouterTests.swift",
+          "scripts/audit_product_completeness.py"
+        ],
+        "validation_summary": "2026-07-10: Product audit, release validator, git diff check, Debug build, Debug test build, and Release build passed. App-hosted test execution, explicit fallback UI, and live provider fallback QA remain open, so status stays partial.",
+        "screenshots": []
+      },
+      "notes": [
+        "Cross-provider fallback code remains gated behind explicit policy and fresh selected-model smoke evidence.",
+        "The policy picker is intentionally not exposed until same-provider alternate model enrollment is implemented truthfully.",
+        "Actual provider/model metadata is already preserved by getResponseWithMetadata; end-to-end Artifact disclosure still needs manual QA."
+      ]
     }
   ]
 }
