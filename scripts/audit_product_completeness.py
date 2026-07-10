@@ -42,6 +42,8 @@ def main() -> None:
     chain_runtime = read("MyTeam/KSkillAssistRuntime.swift")
     ai_model_policy = read("MyTeam/AIModelPolicy.swift")
     ai_service = read("MyTeam/AIService.swift")
+    openai_responses = read("MyTeam/OpenAIResponsesAdapter.swift")
+    xcode_project = read("MyTeam/MyTeam.xcodeproj/project.pbxproj")
     credential_health = read("MyTeam/CredentialHealth.swift")
     credential_store = read("MyTeam/SecureCredentialStore.swift")
     dart_resolver = read("MyTeam/DARTCompanyResolver.swift")
@@ -269,6 +271,35 @@ def main() -> None:
         failures.append("OpenRouter auto model must not be used as a hidden fallback")
     if "404 → 모델 재발견 재시도" in ai_service:
         failures.append("Model 404 must not silently rediscover and retry another model")
+    for required in [
+        "OpenAIResponsesAdapter.swift",
+        "OpenAIResponsesAdapter.supports",
+        "OpenAIResponsesAdapter.makeRequest",
+        "OpenAIResponsesAdapter.parseEvent",
+        "OpenAIResponsesAdapter.outputText",
+    ]:
+        source = xcode_project if required == "OpenAIResponsesAdapter.swift" else ai_service
+        if required not in source:
+            failures.append(f"GPT-5.6 runtime must use the Responses adapter contract: {required}")
+    for required in [
+        '"https://api.openai.com/v1/responses"',
+        '"store": false',
+        '"max_output_tokens"',
+        '"reasoning"',
+        '"safety_identifier"',
+        'case "response.output_text.delta"',
+        'case "response.completed"',
+        'case "response.incomplete"',
+        'case "response.failed"',
+    ]:
+        if required not in openai_responses:
+            failures.append(f"OpenAI Responses adapter missing required contract: {required}")
+    if '"previous_response_id"' in openai_responses:
+        failures.append("OpenAI Responses runtime must remain stateless until conversation storage is explicitly approved")
+    if "configuredModelID(for: provider" not in ai_service or "model: resolvedCall.modelID" not in ai_service:
+        failures.append("LLM runtime must resolve and log the exact configured model before execution")
+    if ai_service.count("if !fullText.isEmpty { throw error }") < 2:
+        failures.append("Non-streaming LLM paths must not change provider after partial output")
     for forbidden in ["private static let seeds", "case manualSeed", "resolution(seed:"]:
         if forbidden in dart_resolver:
             failures.append(f"DART resolver must not use a product seed fallback: {forbidden}")

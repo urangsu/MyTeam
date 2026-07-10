@@ -46,6 +46,11 @@ enum LLMModelRegistry {
         static let fallback: String = "gpt-4o"
         static let extended: String = "gpt-4.1-mini"
 
+        /// Responses API 전용 지원 모델. 실제 선택은 exact-model smoke 통과 후에만 허용합니다.
+        static let responsesPrimary: String = "gpt-5.6"
+        static let responsesBalanced: String = "gpt-5.6-terra"
+        static let responsesEfficient: String = "gpt-5.6-luna"
+
         /// 사용자 설정값 우선, 없으면 primary
         static func resolve(configured: String?) -> String {
             let t = configured?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""

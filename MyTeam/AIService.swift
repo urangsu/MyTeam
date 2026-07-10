@@ -218,11 +218,20 @@ final class AIService {
                 for provider in candidates {
                     var didYieldToken = false
                     do {
-                        AppLog.info("[AIService] provider candidate=\(provider.displayName) agent=\(agentID)")
+                        let resolvedCall: ResolvedLLMCall
+                        if provider != preferredProvider, let validated = validatedFallbackCall(for: provider) {
+                            resolvedCall = validated
+                        } else {
+                            resolvedCall = await resolveLLMCall(
+                                for: provider,
+                                configuredModelID: configuredModelID(for: provider, agentConfig: agentConfig)
+                            )
+                        }
+                        AppLog.info("[AIService] provider candidate=\(provider.displayName) model=\(resolvedCall.modelID) agent=\(agentID)")
                         await LLMTokenBudgetAudit.shared.record(
                             requestID: requestID,
                             provider: provider.displayName,
-                            model: nil,
+                            model: resolvedCall.modelID,
                             text: text,
                             systemPrompt: buildSystemPrompt(agentID: agentID),
                             chatHistory: chatHistory,
@@ -237,9 +246,7 @@ final class AIService {
                             agentID: agentID,
                             chatHistory: chatHistory,
                             agentConfig: agentConfig,
-                            resolvedCall: provider == preferredProvider
-                                ? nil
-                                : validatedFallbackCall(for: provider)
+                            resolvedCall: resolvedCall
                         )
                         for try await token in stream {
                             didYieldToken = true
@@ -270,6 +277,20 @@ final class AIService {
             return defaultProvider
         }
         return .gemini
+    }
+
+    private func configuredModelID(
+        for provider: LLMProvider,
+        agentConfig: AgentWindowManager.AgentConfig?
+    ) -> String? {
+        switch provider {
+        case .openAI:
+            return UserDefaults.standard.string(forKey: "openAIModelId")
+        case .openRouter:
+            return agentConfig?.openRouterModelId ?? UserDefaults.standard.string(forKey: "openRouterModelId")
+        case .gemini, .claude:
+            return nil
+        }
     }
 
     func providerCandidates(
@@ -425,10 +446,20 @@ final class AIService {
         configuredModelID: String? = nil
     ) async -> ResolvedLLMCall {
         let trimmedConfigured = configuredModelID?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if AIModelPolicy.modelOverrideAllowed,
-           !trimmedConfigured.isEmpty,
-           !LLMModelRegistry.isKnownBroken(trimmedConfigured) {
-            return ResolvedLLMCall(provider: provider, modelID: trimmedConfigured, source: .floor(trimmedConfigured))
+        if !trimmedConfigured.isEmpty, !LLMModelRegistry.isKnownBroken(trimmedConfigured) {
+            if AIModelPolicy.modelOverrideAllowed {
+                return ResolvedLLMCall(provider: provider, modelID: trimmedConfigured, source: .floor(trimmedConfigured))
+            }
+            let key = apiKey ?? secureAPIKey(for: provider)
+            if !key.isEmpty,
+               let evidence = LLMReadinessCache.latestFreshEvidence(
+                   provider: externalProvider(for: provider),
+                   key: key
+               ),
+               evidence.modelID == trimmedConfigured,
+               evidence.endpoint == Self.readinessEndpoint(for: provider, modelID: trimmedConfigured) {
+                return ResolvedLLMCall(provider: provider, modelID: trimmedConfigured, source: .cached(trimmedConfigured))
+            }
         }
 
         switch provider {
@@ -1047,32 +1078,47 @@ final class AIService {
                 }
                 let resolvedModel = resolved.modelID
 
-                guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else {
-                    continuation.finish(throwing: AIServiceError.invalidResponse)
-                    return
-                }
-
-                var request = URLRequest(url: url)
-                request.timeoutInterval = streamStartupTimeoutSeconds
-                request.httpMethod = "POST"
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-
                 var messages = buildOpenAIMessages(text: text, chatHistory: chatHistory)
                 let systemPrompt = buildSystemPrompt(agentID: agentID)
-                if !systemPrompt.isEmpty {
-                    messages.insert(["role": "system", "content": systemPrompt], at: 0)
+                let usesResponses = OpenAIResponsesAdapter.supports(modelID: resolvedModel)
+                let request: URLRequest
+                do {
+                    if usesResponses {
+                        var responsesRequest = try OpenAIResponsesAdapter.makeRequest(
+                            apiKey: apiKey,
+                            modelID: resolvedModel,
+                            messages: messages,
+                            instructions: systemPrompt,
+                            maxOutputTokens: 4096,
+                            stream: true,
+                            reasoningEffort: openAIReasoningEffort()
+                        )
+                        responsesRequest.timeoutInterval = streamStartupTimeoutSeconds
+                        request = responsesRequest
+                    } else {
+                        guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else {
+                            throw AIServiceError.invalidResponse
+                        }
+                        if !systemPrompt.isEmpty {
+                            messages.insert(["role": "system", "content": systemPrompt], at: 0)
+                        }
+                        var chatRequest = URLRequest(url: url)
+                        chatRequest.timeoutInterval = streamStartupTimeoutSeconds
+                        chatRequest.httpMethod = "POST"
+                        chatRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                        chatRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+                        chatRequest.httpBody = try JSONSerialization.data(withJSONObject: [
+                            "model": resolvedModel,
+                            "messages": messages,
+                            "stream": true,
+                            "max_tokens": 4096
+                        ])
+                        request = chatRequest
+                    }
+                } catch {
+                    continuation.finish(throwing: error)
+                    return
                 }
-                let body: [String: Any] = [
-                    "model": resolvedModel,
-                    "messages": messages,
-                    "stream": true,
-                    "max_tokens": 4096    // Round 273: 1024→4096 (문서 생성 잘림 방지)
-                ]
-                guard let bodyData = try? JSONSerialization.data(withJSONObject: body) else {
-                    continuation.finish(throwing: AIServiceError.invalidResponse); return
-                }
-                request.httpBody = bodyData
 
                 do {
                     let (result, response) = try await withTaskCancellationHandler {
@@ -1085,11 +1131,18 @@ final class AIService {
                         return
                     }
                     guard httpResp.statusCode == 200 else {
-                        continuation.finish(throwing: AIServiceError.httpError(httpResp.statusCode, "OpenAI 응답 오류"))
+                        var errorData = Data()
+                        for try await byte in result {
+                            errorData.append(byte)
+                            if errorData.count >= 8_192 { break }
+                        }
+                        let detail = OpenAIResponsesAdapter.providerErrorMessage(from: errorData) ?? "OpenAI 응답 오류"
+                        continuation.finish(throwing: AIServiceError.httpError(httpResp.statusCode, detail))
                         return
                     }
 
-                    AppLog.info("[AIService] ⚡ OpenAI SSE 채널 오픈 (model: \(resolvedModel), agent: \(agentID))")
+                    AppLog.info("[AIService] ⚡ OpenAI SSE 채널 오픈 (model: \(resolvedModel), endpoint: \(usesResponses ? "responses" : "chat"), agent: \(agentID))")
+                    var receivedTerminalEvent = !usesResponses
                     for try await line in result.lines {
                         if Task.isCancelled {
                             AppLog.info("[AIService] OpenAI stream loop cancelled")
@@ -1098,16 +1151,35 @@ final class AIService {
                         if line.hasPrefix("data: ") {
                             let dataStr = String(line.dropFirst(6))
                             if dataStr == "[DONE]" { break }
-                            if let token = parseOpenAIToken(dataStr) {
+                            if usesResponses {
+                                switch try OpenAIResponsesAdapter.parseEvent(dataStr) {
+                                case .text(let token):
+                                    continuation.yield(token)
+                                case .completed:
+                                    receivedTerminalEvent = true
+                                case .incomplete(let reason):
+                                    continuation.finish(throwing: OpenAIResponsesAdapter.AdapterError.incomplete(reason))
+                                    return
+                                case .failed(let message):
+                                    continuation.finish(throwing: OpenAIResponsesAdapter.AdapterError.providerFailure(message))
+                                    return
+                                case .ignored:
+                                    break
+                                }
+                            } else if let token = parseOpenAIToken(dataStr) {
                                 continuation.yield(token)
                             }
                         }
+                    }
+                    guard receivedTerminalEvent else {
+                        continuation.finish(throwing: AIServiceError.invalidResponse)
+                        return
                     }
                     continuation.finish()
                 } catch {
                     if Task.isCancelled || (error as? URLError)?.code == .cancelled {
                         AppLog.info("[AIService] OpenAI request cancelled")
-                        continuation.finish()
+                        continuation.finish(throwing: CancellationError())
                     } else {
                         continuation.finish(throwing: error)
                     }
@@ -1224,12 +1296,21 @@ final class AIService {
 
         var lastError: Error?
         for provider in candidates {
+            var fullText = ""
             do {
-                var fullText = ""
+                let resolvedCall: ResolvedLLMCall
+                if provider != preferred, let validated = validatedFallbackCall(for: provider) {
+                    resolvedCall = validated
+                } else {
+                    resolvedCall = await resolveLLMCall(
+                        for: provider,
+                        configuredModelID: configuredModelID(for: provider, agentConfig: agentConfig)
+                    )
+                }
                 await LLMTokenBudgetAudit.shared.record(
                     requestID: requestID,
                     provider: provider.displayName,
-                    model: nil,
+                    model: resolvedCall.modelID,
                     text: text,
                     systemPrompt: buildSystemPrompt(agentID: agentID),
                     chatHistory: chatHistory,
@@ -1241,7 +1322,7 @@ final class AIService {
                 let stream = streamForProvider(
                     provider, text: text, agentID: agentID,
                     chatHistory: chatHistory, agentConfig: agentConfig,
-                    resolvedCall: provider == preferred ? nil : validatedFallbackCall(for: provider)
+                    resolvedCall: resolvedCall
                 )
                 for try await token in stream { fullText += token }
                 // 실제 성공한 provider 반환
@@ -1249,6 +1330,7 @@ final class AIService {
             } catch {
                 lastError = error
                 AppLog.warning("[AIService] getResponse provider \(provider.displayName) failed: \(error.localizedDescription)")
+                if !fullText.isEmpty { throw error }
                 if !shouldFallbackProvider(after: error) { throw error }
             }
         }
@@ -1274,17 +1356,15 @@ final class AIService {
 
         var lastError: Error?
         for (idx, provider) in candidates.enumerated() {
+            var fullText = ""
             do {
-                var fullText = ""
                 let resolvedCall: ResolvedLLMCall
                 if provider != preferred, let validated = validatedFallbackCall(for: provider) {
                     resolvedCall = validated
                 } else {
                     resolvedCall = await resolveLLMCall(
                         for: provider,
-                        configuredModelID: provider == .openRouter
-                            ? (agentConfig?.openRouterModelId ?? UserDefaults.standard.string(forKey: "openRouterModelId"))
-                            : nil
+                        configuredModelID: configuredModelID(for: provider, agentConfig: agentConfig)
                     )
                 }
                 await LLMTokenBudgetAudit.shared.record(
@@ -1314,6 +1394,7 @@ final class AIService {
                 return (text: fullText, metadata: metadata)
             } catch {
                 lastError = error
+                if !fullText.isEmpty { throw error }
                 if !shouldFallbackProvider(after: error) { throw error }
             }
         }
@@ -1424,7 +1505,11 @@ final class AIService {
             let apiKey = secureAPIKey(for: provider)
             guard !apiKey.isEmpty else { continue }
             do {
-                let resolved = await resolveLLMCall(for: provider, apiKey: apiKey)
+                let resolved = await resolveLLMCall(
+                    for: provider,
+                    apiKey: apiKey,
+                    configuredModelID: configuredModelID(for: provider, agentConfig: nil)
+                )
                 switch provider {
                 case .gemini:   return try await geminiQuickCall(prompt: prompt, apiKey: apiKey, modelId: resolved.modelID)
                 case .claude:   return try await claudeQuickCall(prompt: prompt, apiKey: apiKey, modelId: resolved.modelID)
@@ -1472,20 +1557,51 @@ final class AIService {
     }
 
     private func openAIQuickCall(prompt: String, apiKey: String, modelId: String) async throws -> String {
-        guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else { throw AIServiceError.invalidResponse }
-        let body: [String: Any] = ["model": modelId, "max_tokens": 512,
-                                    "messages": [["role": "user", "content": prompt]]]
-        var req = URLRequest(url: url)
-        req.httpMethod = "POST"
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        req.httpBody = try JSONSerialization.data(withJSONObject: body)
-        let (data, _) = try await session.data(for: req)
+        let req: URLRequest
+        if OpenAIResponsesAdapter.supports(modelID: modelId) {
+            req = try OpenAIResponsesAdapter.makeRequest(
+                apiKey: apiKey,
+                modelID: modelId,
+                messages: [["role": "user", "content": prompt]],
+                instructions: nil,
+                maxOutputTokens: 512,
+                stream: false,
+                reasoningEffort: openAIReasoningEffort()
+            )
+        } else {
+            guard let url = URL(string: "https://api.openai.com/v1/chat/completions") else { throw AIServiceError.invalidResponse }
+            var chatRequest = URLRequest(url: url)
+            chatRequest.httpMethod = "POST"
+            chatRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            chatRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+            chatRequest.httpBody = try JSONSerialization.data(withJSONObject: [
+                "model": modelId,
+                "max_tokens": 512,
+                "messages": [["role": "user", "content": prompt]]
+            ])
+            req = chatRequest
+        }
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+            let detail = OpenAIResponsesAdapter.providerErrorMessage(from: data) ?? "OpenAI 응답 오류"
+            throw AIServiceError.httpError(status, detail)
+        }
+        if OpenAIResponsesAdapter.supports(modelID: modelId) {
+            return try OpenAIResponsesAdapter.outputText(from: data)
+        }
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let choices = json["choices"] as? [[String: Any]],
               let message = choices.first?["message"] as? [String: Any],
               let text = message["content"] as? String else { throw AIServiceError.invalidResponse }
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func openAIReasoningEffort() -> String {
+        let configured = UserDefaults.standard.string(forKey: "MyTeam.OpenAIReasoningEffort") ?? "low"
+        return ["none", "low", "medium", "high", "xhigh", "max"].contains(configured)
+            ? configured
+            : "low"
     }
 
     // MARK: - Generate Privacy Terms (Skill: korean.privacy-terms)
@@ -1505,7 +1621,11 @@ final class AIService {
             let apiKey = secureAPIKey(for: provider)
             guard !apiKey.isEmpty else { continue }
             do {
-                let resolved = await resolveLLMCall(for: provider, apiKey: apiKey)
+                let resolved = await resolveLLMCall(
+                    for: provider,
+                    apiKey: apiKey,
+                    configuredModelID: configuredModelID(for: provider, agentConfig: nil)
+                )
                 let result: String
                 switch provider {
                 case .gemini:   result = try await geminiQuickCall(prompt: prompt, apiKey: apiKey, modelId: resolved.modelID)
@@ -1611,7 +1731,7 @@ final class AIService {
         case .gemini:
             return "https://generativelanguage.googleapis.com/v1beta/models/\(modelID):generateContent"
         case .openAI:
-            return modelID.lowercased().hasPrefix("gpt-5.6")
+            return OpenAIResponsesAdapter.supports(modelID: modelID)
                 ? "https://api.openai.com/v1/responses"
                 : "https://api.openai.com/v1/chat/completions"
         case .claude:
@@ -1646,11 +1766,17 @@ final class AIService {
         case .gemini, .claude:
             configuredModelID = nil
         }
-        let resolved = await resolveLLMCall(
-            for: llmProvider,
-            apiKey: trimmed,
-            configuredModelID: configuredModelID
-        )
+        let selectedModelID = configuredModelID?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let modelID = if let selectedModelID, !selectedModelID.isEmpty {
+            selectedModelID
+        } else {
+            AIModelPolicy.pinnedModelID(for: llmProvider)
+        }
+        guard !LLMModelRegistry.isKnownBroken(modelID) else {
+            throw LLMReadinessError(reason: .modelNotAccessible, message: "선택한 모델은 현재 사용할 수 없습니다.")
+        }
+        let resolved = ResolvedLLMCall(provider: llmProvider, modelID: modelID, source: .floor(modelID))
         let endpoint = Self.readinessEndpoint(for: llmProvider, modelID: resolved.modelID)
         let external = externalProvider(for: llmProvider)
 
@@ -1759,14 +1885,15 @@ final class AIService {
                 "messages": [["role": "user", "content": prompt]]
             ]
         case .openAI where endpoint.hasSuffix("/responses"):
-            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-            body = [
-                "model": modelID,
-                "input": prompt,
-                "max_output_tokens": 32,
-                "store": false,
-                "reasoning": ["effort": "low"]
-            ]
+            return try OpenAIResponsesAdapter.makeRequest(
+                apiKey: apiKey,
+                modelID: modelID,
+                messages: [["role": "user", "content": prompt]],
+                instructions: nil,
+                maxOutputTokens: 32,
+                stream: false,
+                reasoningEffort: "low"
+            )
         case .openAI:
             request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
             body = [
@@ -1808,15 +1935,7 @@ final class AIService {
                 return block["text"] as? String
             }.joined() ?? ""
         case .openAI where endpoint.hasSuffix("/responses"):
-            if let direct = json["output_text"] as? String { return direct }
-            let output = json["output"] as? [[String: Any]]
-            return output?.flatMap { item -> [String] in
-                let content = item["content"] as? [[String: Any]] ?? []
-                return content.compactMap { block in
-                    guard block["type"] as? String == "output_text" else { return nil }
-                    return block["text"] as? String
-                }
-            }.joined() ?? ""
+            return try OpenAIResponsesAdapter.outputText(from: data)
         case .openAI, .openRouter:
             let choices = json["choices"] as? [[String: Any]]
             let message = choices?.first?["message"] as? [String: Any]

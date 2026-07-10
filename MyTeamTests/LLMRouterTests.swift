@@ -10,6 +10,73 @@ import PDFKit
 
 final class LLMRouterTests: XCTestCase {
 
+    func test_openAIResponsesPolicy_onlyRoutesGPT56Family() {
+        XCTAssertTrue(OpenAIResponsesAdapter.supports(modelID: "gpt-5.6"))
+        XCTAssertTrue(OpenAIResponsesAdapter.supports(modelID: "gpt-5.6-sol"))
+        XCTAssertTrue(OpenAIResponsesAdapter.supports(modelID: "gpt-5.6-terra"))
+        XCTAssertTrue(OpenAIResponsesAdapter.supports(modelID: "gpt-5.6-luna"))
+        XCTAssertFalse(OpenAIResponsesAdapter.supports(modelID: "gpt-4.1"))
+        XCTAssertFalse(OpenAIResponsesAdapter.supports(modelID: "gpt-5.6-preview-copy"))
+    }
+
+    func test_openAIResponsesRequest_isStatelessAndUsesResponsesContract() throws {
+        let request = try OpenAIResponsesAdapter.makeRequest(
+            apiKey: "sk-test",
+            modelID: "gpt-5.6-terra",
+            messages: [["role": "user", "content": "hello"]],
+            instructions: "Be concise.",
+            maxOutputTokens: 256,
+            stream: true,
+            reasoningEffort: "low",
+            safetyIdentifier: "myteam_test"
+        )
+
+        XCTAssertEqual(request.url?.absoluteString, "https://api.openai.com/v1/responses")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer sk-test")
+        let body = try XCTUnwrap(
+            try JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any]
+        )
+        XCTAssertEqual(body["model"] as? String, "gpt-5.6-terra")
+        XCTAssertEqual(body["stream"] as? Bool, true)
+        XCTAssertEqual(body["store"] as? Bool, false)
+        XCTAssertEqual(body["max_output_tokens"] as? Int, 256)
+        XCTAssertEqual(body["safety_identifier"] as? String, "myteam_test")
+        XCTAssertNil(body["previous_response_id"])
+        XCTAssertNil(body["max_tokens"])
+        XCTAssertNil(body["messages"])
+    }
+
+    func test_openAIResponsesEvents_preserveTerminalState() throws {
+        XCTAssertEqual(
+            try OpenAIResponsesAdapter.parseEvent(#"{"type":"response.output_text.delta","delta":"안녕"}"#),
+            .text("안녕")
+        )
+        XCTAssertEqual(
+            try OpenAIResponsesAdapter.parseEvent(#"{"type":"response.completed","response":{"status":"completed"}}"#),
+            .completed
+        )
+        XCTAssertEqual(
+            try OpenAIResponsesAdapter.parseEvent(#"{"type":"response.incomplete","response":{"incomplete_details":{"reason":"max_output_tokens"}}}"#),
+            .incomplete("max_output_tokens")
+        )
+        XCTAssertEqual(
+            try OpenAIResponsesAdapter.parseEvent(#"{"type":"response.failed","response":{"error":{"message":"provider failed"}}}"#),
+            .failed("provider failed")
+        )
+        XCTAssertEqual(
+            try OpenAIResponsesAdapter.parseEvent(#"{"type":"error","message":"bad request"}"#),
+            .failed("bad request")
+        )
+    }
+
+    func test_openAIResponsesOutput_rejectsEmptyResponse() throws {
+        let data = Data(#"{"output":[{"type":"message","content":[{"type":"output_text","text":"OK"}]}]}"#.utf8)
+        XCTAssertEqual(try OpenAIResponsesAdapter.outputText(from: data), "OK")
+
+        let empty = Data(#"{"output":[]}"#.utf8)
+        XCTAssertThrowsError(try OpenAIResponsesAdapter.outputText(from: empty))
+    }
+
     func test_readinessEndpoints_matchRuntimeContract() {
         XCTAssertEqual(
             AIService.readinessEndpoint(for: .openAI, modelID: "gpt-4.1"),
@@ -17,6 +84,10 @@ final class LLMRouterTests: XCTestCase {
         )
         XCTAssertEqual(
             AIService.readinessEndpoint(for: .openAI, modelID: "gpt-5.6"),
+            "https://api.openai.com/v1/responses"
+        )
+        XCTAssertEqual(
+            AIService.readinessEndpoint(for: .openAI, modelID: "gpt-5.6-terra"),
             "https://api.openai.com/v1/responses"
         )
         XCTAssertEqual(
