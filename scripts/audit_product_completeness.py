@@ -44,6 +44,7 @@ def main() -> None:
     kma_base_policy = read("MyTeam/KMABaseTimePolicy.swift")
     public_api_connector = read("MyTeam/PublicAPIConnectorValidator.swift")
     worker = read("workers/basic-lookup-api/worker.js")
+    quality_workflow = read(".github/workflows/quality-gate.yml")
     ai_model_policy = read("MyTeam/AIModelPolicy.swift")
     ai_service = read("MyTeam/AIService.swift")
     openai_responses = read("MyTeam/OpenAIResponsesAdapter.swift")
@@ -325,6 +326,21 @@ def main() -> None:
     for required in ["export function kmaBaseCandidates", "attemptedBaseSlots", 'resultCode === "03"']:
         if required not in worker:
             failures.append(f"Worker KMA lookup missing schedule/retry evidence: {required}")
+    for required in [
+        "ubuntu-24.04",
+        "macos-26",
+        "/Applications/Xcode_26.2.app/Contents/Developer",
+        "python3 scripts/validate_myteam_release.py",
+        "python3 scripts/validate_architecture_boundaries.py",
+        "python3 scripts/validate_natural_work_routing.py",
+        "build-for-testing",
+        "test-without-building",
+        "-configuration Release",
+    ]:
+        if required not in quality_workflow:
+            failures.append(f"GitHub quality gate missing required contract: {required}")
+    if "secrets." in quality_workflow:
+        failures.append("Pull-request quality gate must not load live provider secrets")
     for forbidden in ["private static let seeds", "case manualSeed", "resolution(seed:"]:
         if forbidden in dart_resolver:
             failures.append(f"DART resolver must not use a product seed fallback: {forbidden}")
