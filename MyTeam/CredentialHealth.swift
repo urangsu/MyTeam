@@ -80,6 +80,26 @@ actor LLMReadinessCache {
         return digest.prefix(12).map { String(format: "%02x", $0) }.joined()
     }
 
+    nonisolated static func latestFreshEvidence(
+        provider: ExternalProvider,
+        key: String
+    ) -> LLMReadinessEvidence? {
+        guard let data = UserDefaults.standard.data(forKey: storageKey),
+              let decoded = try? JSONDecoder().decode([LLMReadinessEvidence].self, from: data) else {
+            return nil
+        }
+        let fingerprint = keyFingerprint(for: key)
+        let now = Date()
+        return decoded
+            .filter {
+                $0.provider == provider &&
+                $0.keyFingerprint == fingerprint &&
+                $0.stage == .ready &&
+                now.timeIntervalSince($0.validatedAt) <= maxAge
+            }
+            .max(by: { $0.validatedAt < $1.validatedAt })
+    }
+
     func evidence(
         provider: ExternalProvider,
         key: String,

@@ -1,6 +1,27 @@
 import Foundation
 import Combine
 
+enum LLMFallbackPolicy: String, Codable, CaseIterable, Sendable {
+    case disabled
+    case sameProviderOnly
+    case crossProviderAllowed
+
+    private static let defaultsKey = "MyTeam.LLMFallbackPolicy"
+
+    static var current: LLMFallbackPolicy {
+        get {
+            guard let raw = UserDefaults.standard.string(forKey: defaultsKey),
+                  let policy = LLMFallbackPolicy(rawValue: raw) else {
+                return .disabled
+            }
+            return policy
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: defaultsKey)
+        }
+    }
+}
+
 struct LLMTokenBudgetSnapshot: Sendable {
     let requestID: UUID
     let provider: String
@@ -215,7 +236,10 @@ final class AIService {
                             text: text,
                             agentID: agentID,
                             chatHistory: chatHistory,
-                            agentConfig: agentConfig
+                            agentConfig: agentConfig,
+                            resolvedCall: provider == preferredProvider
+                                ? nil
+                                : validatedFallbackCall(for: provider)
                         )
                         for try await token in stream {
                             didYieldToken = true
@@ -248,18 +272,26 @@ final class AIService {
         return .gemini
     }
 
-    func providerCandidates(preferred: LLMProvider, requiresToolUse: Bool = false) -> [LLMProvider] {
-        // Round 268-P3: tool use 필요 시 tool-capable provider (Claude, OpenAI) 우선 배치
+    func providerCandidates(
+        preferred: LLMProvider,
+        requiresToolUse: Bool = false,
+        fallbackPolicy: LLMFallbackPolicy = .current
+    ) -> [LLMProvider] {
         let toolCapable: [LLMProvider] = [.claude, .openAI]
+
+        guard hasAPIKey(for: preferred) else { return [] }
+        if requiresToolUse && !toolCapable.contains(preferred) && fallbackPolicy != .crossProviderAllowed {
+            return []
+        }
+        if fallbackPolicy == .disabled || fallbackPolicy == .sameProviderOnly {
+            return [preferred]
+        }
+
         let baseOrder: [LLMProvider]
         if requiresToolUse && !toolCapable.contains(preferred) {
-            // Round 270B: preferred가 tool-capable 아닐 때 tool-capable을 먼저, preferred는 그 다음
-            // 수정 전(버그): [preferred] + toolCapable → preferred(Gemini)가 tool 지원 없이 첫 번째
-            // 수정 후: toolCapable + [preferred] + 나머지
             let nonCapableRest = [LLMProvider.gemini, .openRouter].filter { !toolCapable.contains($0) && $0 != preferred }
             baseOrder = toolCapable + [preferred] + nonCapableRest
         } else if requiresToolUse {
-            // Preferred가 이미 tool-capable → preferred 유지, non-capable은 후순위
             let others = [LLMProvider.openAI, .claude, .gemini, .openRouter].filter { $0 != preferred }
             baseOrder = [preferred] + others
         } else {
@@ -268,11 +300,33 @@ final class AIService {
         var seen = Set<LLMProvider>()
         return baseOrder.filter { provider in
             guard seen.insert(provider).inserted else { return false }
-            if provider == .gemini && isGeminiProviderCoolingDown() {
-                return hasAPIKey(for: .claude) || hasAPIKey(for: .openRouter) ? false : hasAPIKey(for: provider)
+            guard hasAPIKey(for: provider) else { return false }
+            if provider != preferred && validatedFallbackEvidence(for: provider) == nil {
+                return false
             }
-            return hasAPIKey(for: provider)
+            if provider == .gemini && isGeminiProviderCoolingDown() {
+                return false
+            }
+            return true
         }
+    }
+
+    private func validatedFallbackEvidence(for provider: LLMProvider) -> LLMReadinessEvidence? {
+        let key = secureAPIKey(for: provider)
+        guard !key.isEmpty,
+              let evidence = LLMReadinessCache.latestFreshEvidence(
+                  provider: externalProvider(for: provider),
+                  key: key
+              ),
+              evidence.endpoint == Self.readinessEndpoint(for: provider, modelID: evidence.modelID) else {
+            return nil
+        }
+        return evidence
+    }
+
+    private func validatedFallbackCall(for provider: LLMProvider) -> ResolvedLLMCall? {
+        guard let evidence = validatedFallbackEvidence(for: provider) else { return nil }
+        return ResolvedLLMCall(provider: provider, modelID: evidence.modelID, source: .cached(evidence.modelID))
     }
 
     private func hasAPIKey(for provider: LLMProvider) -> Bool {
@@ -323,10 +377,10 @@ final class AIService {
         case .claude:
             return claudeStream(text: text, agentID: agentID, chatHistory: chatHistory, resolvedCall: resolvedCall)
         case .openRouter:
-            let modelId = AIModelPolicy.resolvedModelID(
-                provider: .openRouter,
-                configuredModelID: agentConfig?.openRouterModelId ?? UserDefaults.standard.string(forKey: "openRouterModelId")
-            )
+            let modelId = resolvedCall?.modelID ?? AIModelPolicy.resolvedModelID(
+                    provider: .openRouter,
+                    configuredModelID: agentConfig?.openRouterModelId ?? UserDefaults.standard.string(forKey: "openRouterModelId")
+                )
             return openRouterStream(text: text, agentID: agentID, chatHistory: chatHistory, modelId: modelId)
         }
     }
@@ -505,20 +559,28 @@ final class AIService {
         return remaining > 0 ? remaining : nil
     }
 
-    /// Gemini가 쿨다운 중일 때 사용 가능한 대체 provider 스트림
-    /// Claude → OpenRouter → 실패 순
+    /// Gemini가 쿨다운 중일 때 사용자가 cross-provider fallback을 허용했고,
+    /// 정확한 모델 smoke가 남아 있는 provider만 사용합니다.
     private func fallbackProviderStream(
         text: String,
         agentID: String,
         chatHistory: [AgentWindowManager.ChatLog]
     ) -> AsyncThrowingStream<String, Error>? {
-        if !secureAPIKey(for: .claude).isEmpty {
-            AppLog.info("[AIService] Gemini 쿨다운 → Claude fallback")
-            return claudeStream(text: text, agentID: agentID, chatHistory: chatHistory)
-        }
-        if !secureAPIKey(for: .openRouter).isEmpty {
-            AppLog.info("[AIService] Gemini 쿨다운 → OpenRouter fallback")
-            return openRouterStream(text: text, agentID: agentID, chatHistory: chatHistory, modelId: "openrouter/auto")
+        guard LLMFallbackPolicy.current == .crossProviderAllowed else { return nil }
+        for provider in [LLMProvider.claude, .openAI, .openRouter] {
+            guard let resolved = validatedFallbackCall(for: provider) else { continue }
+            AppLog.info(
+                "[AIService] provider fallback source=Gemini target=\(provider.displayName) model=\(resolved.modelID) policy=crossProviderAllowed",
+                .ai
+            )
+            return streamForProvider(
+                provider,
+                text: text,
+                agentID: agentID,
+                chatHistory: chatHistory,
+                agentConfig: nil,
+                resolvedCall: resolved
+            )
         }
         return nil
     }
@@ -720,8 +782,7 @@ final class AIService {
         text: String,
         agentID: String,
         chatHistory: [AgentWindowManager.ChatLog],
-        resolvedCall: ResolvedLLMCall? = nil,
-        retryCount: Int = 0
+        resolvedCall: ResolvedLLMCall? = nil
     ) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             Task {
@@ -811,17 +872,6 @@ final class AIService {
                             }
                             return
                         }
-                        if httpResp.statusCode == 404 && retryCount < 1 {
-                            AppLog.info("[AIService] 🔄 404 → 모델 재발견 재시도")
-                            cachedGeminiModelId = nil
-                            let newStream = geminiStream(text: text, agentID: agentID, chatHistory: chatHistory, retryCount: retryCount + 1)
-                            for try await token in newStream {
-                                continuation.yield(token)
-                            }
-                            continuation.finish()
-                            return
-                        }
-
                         continuation.finish(throwing: AIServiceError.httpError(httpResp.statusCode, "Gemini 응답 오류"))
                         return
                     }
@@ -1190,7 +1240,8 @@ final class AIService {
                 )
                 let stream = streamForProvider(
                     provider, text: text, agentID: agentID,
-                    chatHistory: chatHistory, agentConfig: agentConfig
+                    chatHistory: chatHistory, agentConfig: agentConfig,
+                    resolvedCall: provider == preferred ? nil : validatedFallbackCall(for: provider)
                 )
                 for try await token in stream { fullText += token }
                 // 실제 성공한 provider 반환
@@ -1225,12 +1276,17 @@ final class AIService {
         for (idx, provider) in candidates.enumerated() {
             do {
                 var fullText = ""
-                let resolvedCall = await resolveLLMCall(
-                    for: provider,
-                    configuredModelID: provider == .openRouter
-                        ? (agentConfig?.openRouterModelId ?? UserDefaults.standard.string(forKey: "openRouterModelId"))
-                        : nil
-                )
+                let resolvedCall: ResolvedLLMCall
+                if provider != preferred, let validated = validatedFallbackCall(for: provider) {
+                    resolvedCall = validated
+                } else {
+                    resolvedCall = await resolveLLMCall(
+                        for: provider,
+                        configuredModelID: provider == .openRouter
+                            ? (agentConfig?.openRouterModelId ?? UserDefaults.standard.string(forKey: "openRouterModelId"))
+                            : nil
+                    )
+                }
                 await LLMTokenBudgetAudit.shared.record(
                     requestID: requestID,
                     provider: provider.displayName,
