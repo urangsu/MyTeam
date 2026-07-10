@@ -46,6 +46,7 @@ final class LLMRouterTests: XCTestCase {
         XCTAssertNil(body["messages"])
     }
 
+    @MainActor
     func test_openAIResponsesEvents_preserveTerminalState() throws {
         XCTAssertEqual(
             try OpenAIResponsesAdapter.parseEvent(#"{"type":"response.output_text.delta","delta":"안녕"}"#),
