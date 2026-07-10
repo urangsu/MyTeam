@@ -106,9 +106,9 @@ final class SecureCredentialStore {
     // MARK: - Test
 
     /// 연결 테스트. 키 존재만으로 성공 처리하지 않습니다.
-    /// AI provider는 실제 모델 목록 엔드포인트를 확인하고, 아직 검증기가 없는 provider는
+    /// AI provider는 정확한 선택 모델로 최소 생성을 확인하고, 아직 검증기가 없는 provider는
     /// success=false/providerUnavailable로 남겨 UI가 connected를 표시하지 않게 합니다.
-    func testConnection(provider: ExternalProvider) async -> CredentialTestResult {
+    func testConnection(provider: ExternalProvider, force: Bool = false) async -> CredentialTestResult {
         if [.naverNews, .dartDisclosure, .kmaWeather, .koreanLaw].contains(provider) {
             let fields = Dictionary(uniqueKeysWithValues: provider.credentialSchema.fields.map { field in
                 (field.id, read(provider: provider, field: field) ?? "")
@@ -137,19 +137,26 @@ final class SecureCredentialStore {
         }
 
         do {
-            let message = try await AIService.shared.validateKey(provider: llmProvider, apiKey: key)
+            let evidence = try await AIService.shared.validateKey(
+                provider: llmProvider,
+                apiKey: key,
+                force: force
+            )
             return CredentialTestResult(
                 provider: provider,
                 success: true,
                 failureCode: nil,
-                message: message
+                message: "\(evidence.modelID) 모델의 실제 응답을 확인했습니다.",
+                llmReadiness: evidence
             )
         } catch {
+            let readinessError = error as? LLMReadinessError
             return CredentialTestResult(
                 provider: provider,
                 success: false,
-                failureCode: Self.failureCode(from: error),
-                message: error.localizedDescription
+                failureCode: readinessError?.reason.connectorFailureCode ?? Self.failureCode(from: error),
+                message: error.localizedDescription,
+                llmFailure: readinessError?.reason
             )
         }
     }
@@ -201,4 +208,22 @@ struct CredentialTestResult: Sendable {
     let success: Bool
     let failureCode: ConnectorFailureCode?
     let message: String
+    let llmReadiness: LLMReadinessEvidence?
+    let llmFailure: LLMReadinessFailure?
+
+    init(
+        provider: ExternalProvider,
+        success: Bool,
+        failureCode: ConnectorFailureCode?,
+        message: String,
+        llmReadiness: LLMReadinessEvidence? = nil,
+        llmFailure: LLMReadinessFailure? = nil
+    ) {
+        self.provider = provider
+        self.success = success
+        self.failureCode = failureCode
+        self.message = message
+        self.llmReadiness = llmReadiness
+        self.llmFailure = llmFailure
+    }
 }

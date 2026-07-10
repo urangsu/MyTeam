@@ -1548,81 +1548,258 @@ final class AIService {
         throw AIServiceError.invalidResponse
     }
 
-    // MARK: - Key Validation
-    func validateKey(provider: String, apiKey: String) async throws -> String {
-        let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.count >= 10 else { throw validationError("키가 너무 짧습니다.") }
+    // MARK: - Key And Selected-Model Validation
 
-        let request: URLRequest
-        switch provider.lowercased() {
-        case LLMProvider.gemini.rawValue:
-            guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models?key=\(trimmed)") else {
-                throw AIServiceError.invalidResponse
-            }
-            request = URLRequest(url: url)
-
-        case LLMProvider.openAI.rawValue:
-            guard let url = URL(string: "https://api.openai.com/v1/models") else {
-                throw AIServiceError.invalidResponse
-            }
-            var req = URLRequest(url: url)
-            req.setValue("Bearer \(trimmed)", forHTTPHeaderField: "Authorization")
-            request = req
-
-        case LLMProvider.claude.rawValue:
-            guard let url = URL(string: "https://api.anthropic.com/v1/models") else {
-                throw AIServiceError.invalidResponse
-            }
-            var req = URLRequest(url: url)
-            req.setValue(trimmed, forHTTPHeaderField: "x-api-key")
-            req.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-            request = req
-
-        case LLMProvider.openRouter.rawValue:
-            guard let url = URL(string: "https://openrouter.ai/api/v1/models") else {
-                throw AIServiceError.invalidResponse
-            }
-            var req = URLRequest(url: url)
-            req.setValue("Bearer \(trimmed)", forHTTPHeaderField: "Authorization")
-            request = req
-
-        default:
-            throw validationError("알 수 없는 제공자입니다.")
+    static func readinessEndpoint(for provider: LLMProvider, modelID: String) -> String {
+        switch provider {
+        case .gemini:
+            return "https://generativelanguage.googleapis.com/v1beta/models/\(modelID):generateContent"
+        case .openAI:
+            return modelID.lowercased().hasPrefix("gpt-5.6")
+                ? "https://api.openai.com/v1/responses"
+                : "https://api.openai.com/v1/chat/completions"
+        case .claude:
+            return "https://api.anthropic.com/v1/messages"
+        case .openRouter:
+            return "https://openrouter.ai/api/v1/chat/completions"
         }
-
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw AIServiceError.invalidResponse }
-        guard (200..<300).contains(http.statusCode) else {
-            throw validationError(validationFailureMessage(provider: provider, statusCode: http.statusCode, data: data))
-        }
-        return "인증 성공 · 모델 목록 확인됨"
     }
 
-    private func validationFailureMessage(provider: String, statusCode: Int, data: Data) -> String {
-        let providerName: String
-        switch provider.lowercased() {
-        case LLMProvider.gemini.rawValue: providerName = "Gemini"
-        case LLMProvider.openAI.rawValue: providerName = "OpenAI"
-        case LLMProvider.claude.rawValue: providerName = "Claude"
-        case LLMProvider.openRouter.rawValue: providerName = "OpenRouter"
-        default: providerName = provider
+    /// 키 존재나 `/models` 성공이 아니라, 실제 선택 모델과 실제 제품 endpoint의 최소 생성을 검증합니다.
+    /// 이 경로는 provider/model fallback을 수행하지 않습니다.
+    func validateKey(
+        provider: String,
+        apiKey: String,
+        force: Bool = false
+    ) async throws -> LLMReadinessEvidence {
+        let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 10 else {
+            throw LLMReadinessError(reason: .invalidCredential, message: "키가 너무 짧습니다.")
         }
 
-        let reason: String
+        guard let llmProvider = LLMProvider(rawValue: provider.lowercased()) else {
+            throw LLMReadinessError(reason: .endpointUnsupported, message: "알 수 없는 제공자입니다.")
+        }
+
+        let configuredModelID: String?
+        switch llmProvider {
+        case .openAI:
+            configuredModelID = UserDefaults.standard.string(forKey: "openAIModelId")
+        case .openRouter:
+            configuredModelID = UserDefaults.standard.string(forKey: "openRouterModelId")
+        case .gemini, .claude:
+            configuredModelID = nil
+        }
+        let resolved = await resolveLLMCall(
+            for: llmProvider,
+            apiKey: trimmed,
+            configuredModelID: configuredModelID
+        )
+        let endpoint = Self.readinessEndpoint(for: llmProvider, modelID: resolved.modelID)
+        let external = externalProvider(for: llmProvider)
+
+        if !force,
+           let cached = await LLMReadinessCache.shared.evidence(
+               provider: external,
+               key: trimmed,
+               modelID: resolved.modelID,
+               endpoint: endpoint
+           ) {
+            return cached
+        }
+
+        let request = try readinessRequest(
+            provider: llmProvider,
+            modelID: resolved.modelID,
+            endpoint: endpoint,
+            apiKey: trimmed
+        )
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch is CancellationError {
+            throw LLMReadinessError(reason: .cancelled, message: "모델 확인이 취소되었습니다.")
+        } catch let error as URLError {
+            if error.code == .cancelled {
+                throw LLMReadinessError(reason: .cancelled, message: "모델 확인이 취소되었습니다.")
+            }
+            if error.code == .timedOut {
+                throw LLMReadinessError(reason: .timeout, message: "모델 응답 시간이 초과되었습니다.")
+            }
+            throw LLMReadinessError(reason: .networkUnavailable, message: "네트워크 연결을 확인해 주세요.")
+        }
+
+        guard let http = response as? HTTPURLResponse else {
+            throw LLMReadinessError(reason: .malformedResponse, message: "모델 응답 상태를 확인하지 못했습니다.")
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            throw readinessHTTPError(
+                provider: llmProvider,
+                modelID: resolved.modelID,
+                statusCode: http.statusCode,
+                data: data
+            )
+        }
+
+        let output = try readinessOutput(
+            provider: llmProvider,
+            endpoint: endpoint,
+            data: data
+        )
+        guard !output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            throw LLMReadinessError(
+                reason: .emptyGeneration,
+                message: "\(resolved.modelID) 모델이 비어 있는 응답을 반환했습니다."
+            )
+        }
+
+        let evidence = LLMReadinessEvidence(
+            provider: external,
+            stage: .ready,
+            modelID: resolved.modelID,
+            endpoint: endpoint,
+            keyFingerprint: LLMReadinessCache.keyFingerprint(for: trimmed),
+            validatedAt: Date(),
+            cached: false
+        )
+        await LLMReadinessCache.shared.store(evidence)
+        AppLog.info(
+            "[LLMReadiness] provider=\(llmProvider.displayName) model=\(resolved.modelID) endpoint=\(endpoint) result=ready",
+            .ai
+        )
+        return evidence
+    }
+
+    private func readinessRequest(
+        provider: LLMProvider,
+        modelID: String,
+        endpoint: String,
+        apiKey: String
+    ) throws -> URLRequest {
+        guard let url = URL(string: endpoint) else {
+            throw LLMReadinessError(reason: .endpointUnsupported, message: "모델 검증 주소가 올바르지 않습니다.")
+        }
+        var request = URLRequest(url: url, timeoutInterval: 15)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let prompt = "Reply with exactly OK."
+        let body: [String: Any]
+        switch provider {
+        case .gemini:
+            request.setValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
+            body = [
+                "contents": [["role": "user", "parts": [["text": prompt]]]],
+                "generationConfig": ["maxOutputTokens": 16, "temperature": 0]
+            ]
+        case .claude:
+            request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+            request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+            body = [
+                "model": modelID,
+                "max_tokens": 32,
+                "messages": [["role": "user", "content": prompt]]
+            ]
+        case .openAI where endpoint.hasSuffix("/responses"):
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+            body = [
+                "model": modelID,
+                "input": prompt,
+                "max_output_tokens": 32,
+                "store": false,
+                "reasoning": ["effort": "low"]
+            ]
+        case .openAI:
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+            body = [
+                "model": modelID,
+                "max_tokens": 32,
+                "messages": [["role": "user", "content": prompt]]
+            ]
+        case .openRouter:
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+            body = [
+                "model": modelID,
+                "max_tokens": 32,
+                "messages": [["role": "user", "content": prompt]]
+            ]
+        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        return request
+    }
+
+    private func readinessOutput(
+        provider: LLMProvider,
+        endpoint: String,
+        data: Data
+    ) throws -> String {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw LLMReadinessError(reason: .malformedResponse, message: "모델 응답 형식을 읽지 못했습니다.")
+        }
+
+        switch provider {
+        case .gemini:
+            let candidates = json["candidates"] as? [[String: Any]]
+            let content = candidates?.first?["content"] as? [String: Any]
+            let parts = content?["parts"] as? [[String: Any]]
+            return parts?.compactMap { $0["text"] as? String }.joined() ?? ""
+        case .claude:
+            let content = json["content"] as? [[String: Any]]
+            return content?.compactMap { block in
+                guard block["type"] as? String == "text" else { return nil }
+                return block["text"] as? String
+            }.joined() ?? ""
+        case .openAI where endpoint.hasSuffix("/responses"):
+            if let direct = json["output_text"] as? String { return direct }
+            let output = json["output"] as? [[String: Any]]
+            return output?.flatMap { item -> [String] in
+                let content = item["content"] as? [[String: Any]] ?? []
+                return content.compactMap { block in
+                    guard block["type"] as? String == "output_text" else { return nil }
+                    return block["text"] as? String
+                }
+            }.joined() ?? ""
+        case .openAI, .openRouter:
+            let choices = json["choices"] as? [[String: Any]]
+            let message = choices?.first?["message"] as? [String: Any]
+            return message?["content"] as? String ?? ""
+        }
+    }
+
+    private func readinessHTTPError(
+        provider: LLMProvider,
+        modelID: String,
+        statusCode: Int,
+        data: Data
+    ) -> LLMReadinessError {
+        let detail = extractProviderErrorMessage(from: data) ?? ""
+        let lower = detail.lowercased()
+        let reason: LLMReadinessFailure
         switch statusCode {
-        case 400: reason = "요청 형식이 맞지 않습니다."
-        case 401: reason = "API 키가 올바르지 않거나 만료되었습니다."
-        case 403: reason = "이 키에 모델 목록 조회 권한이 없습니다."
-        case 404: reason = "검증 엔드포인트를 찾지 못했습니다."
-        case 429: reason = "요청 한도에 걸렸습니다. 잠시 후 다시 시도하세요."
-        case 500...599: reason = "제공자 서버 오류입니다. 잠시 후 다시 시도하세요."
-        default: reason = extractProviderErrorMessage(from: data) ?? "검증에 실패했습니다."
+        case 401:
+            reason = .invalidCredential
+        case 403, 404:
+            reason = .modelNotAccessible
+        case 408:
+            reason = .timeout
+        case 429:
+            reason = lower.contains("quota") || lower.contains("credit")
+                ? .quotaExceeded
+                : .rateLimited
+        case 400:
+            reason = .endpointUnsupported
+        case 500...599:
+            reason = .providerError
+        default:
+            reason = .providerError
         }
-
-        if let detail = extractProviderErrorMessage(from: data), !detail.isEmpty {
-            return "\(providerName) HTTP \(statusCode): \(reason) (\(detail))"
-        }
-        return "\(providerName) HTTP \(statusCode): \(reason)"
+        let suffix = detail.isEmpty ? "" : " · \(detail)"
+        return LLMReadinessError(
+            reason: reason,
+            message: "\(provider.displayName) \(modelID) 확인 실패 (HTTP \(statusCode))\(suffix)"
+        )
     }
 
     private func extractProviderErrorMessage(from data: Data) -> String? {
@@ -1646,9 +1823,6 @@ final class AIService {
         return nil
     }
 
-    private func validationError(_ message: String) -> NSError {
-        NSError(domain: "AIService", code: 401, userInfo: [NSLocalizedDescriptionKey: message])
-    }
 }
 
 // MARK: - AgentModelService
