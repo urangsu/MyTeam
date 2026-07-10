@@ -159,7 +159,46 @@ final class PublicAPIConnectorValidatorTests: XCTestCase {
         XCTAssertEqual(built.url?.host, "apis.data.go.kr")
         XCTAssertEqual(built.url?.queryValue("serviceKey"), "kma-key")
         XCTAssertEqual(built.url?.queryValue("base_date"), "20260603")
-        XCTAssertEqual(built.url?.queryValue("base_time"), "0800")
+        XCTAssertEqual(built.url?.queryValue("base_time"), "0900")
+    }
+
+    func testKMABaseSlots_followProductSchedulesInKoreaTime() {
+        let nowcastBeforeRelease = KMABaseTimePolicy.candidates(
+            for: .ultraShortNowcast,
+            now: fixedDate("2026-06-02T15:05:00Z")
+        )
+        XCTAssertEqual(nowcastBeforeRelease.first, KMABaseSlot(date: "20260602", time: "2300"))
+
+        let ultraBeforeRelease = KMABaseTimePolicy.candidates(
+            for: .ultraShortForecast,
+            now: fixedDate("2026-06-03T00:40:00Z")
+        )
+        XCTAssertEqual(ultraBeforeRelease.first, KMABaseSlot(date: "20260603", time: "0830"))
+
+        let ultraAfterRelease = KMABaseTimePolicy.candidates(
+            for: .ultraShortForecast,
+            now: fixedDate("2026-06-03T00:50:00Z")
+        )
+        XCTAssertEqual(ultraAfterRelease.first, KMABaseSlot(date: "20260603", time: "0930"))
+
+        let villageBeforeRelease = KMABaseTimePolicy.candidates(
+            for: .villageForecast,
+            now: fixedDate("2026-06-02T17:05:00Z")
+        )
+        XCTAssertEqual(villageBeforeRelease.first, KMABaseSlot(date: "20260602", time: "2300"))
+
+        let villageAfterRelease = KMABaseTimePolicy.candidates(
+            for: .villageForecast,
+            now: fixedDate("2026-06-02T17:15:00Z")
+        )
+        XCTAssertEqual(villageAfterRelease.first, KMABaseSlot(date: "20260603", time: "0200"))
+    }
+
+    func testKMARegionMapper_neverFallsBackToSeoul() {
+        XCTAssertNil(KMARegionGridMapper.resolve(nil))
+        XCTAssertNil(KMARegionGridMapper.resolve(""))
+        XCTAssertNil(KMARegionGridMapper.resolve("등록되지 않은 지역"))
+        XCTAssertEqual(KMARegionGridMapper.resolve("광양 출장")?.name, "광양")
     }
 
     func testKoreanLawValidationUsesLawOCAndURLComponents() throws {

@@ -1462,7 +1462,13 @@ enum KSkillRunEngine {
 
     private static func kmaDirectEvidence(query: String) async -> ToolEvidenceResult {
         let provider = ExternalProvider.kmaWeather
-        let grid = weatherGrid(for: query)
+        guard let region = KMARegionGridMapper.resolve(query) else {
+            return ToolEvidenceResult(
+                promptContext: "\n\n[기상청 조회]\n- 지역을 식별하지 못했습니다. 지역명을 다시 입력해야 합니다.",
+                sources: []
+            )
+        }
+        let grid = (name: region.name, nx: region.nx, ny: region.ny)
         do {
             let response = try await MyTeamBasicLookupProxyClient.shared.fetchKMANowcast(
                 nx: grid.nx,
@@ -1619,24 +1625,6 @@ enum KSkillRunEngine {
             .replacingOccurrences(of: "찾아줘", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return cleaned.isEmpty ? query : cleaned
-    }
-
-    private static func weatherGrid(for query: String) -> (name: String, nx: Int, ny: Int) {
-        let lower = query.lowercased()
-        let known: [(String, Int, Int)] = [
-            ("서울", 60, 127),
-            ("인천", 55, 124),
-            ("부산", 98, 76),
-            ("대구", 89, 90),
-            ("대전", 67, 100),
-            ("광주", 58, 74),
-            ("울산", 102, 84),
-            ("제주", 52, 38)
-        ]
-        if let match = known.first(where: { lower.contains($0.0.lowercased()) }) {
-            return (match.0, match.1, match.2)
-        }
-        return ("서울 기본 격자", 60, 127)
     }
 
     private static func formatEvidenceDate(_ date: Date) -> String {

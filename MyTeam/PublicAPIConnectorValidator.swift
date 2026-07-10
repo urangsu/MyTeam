@@ -318,16 +318,8 @@ enum PublicAPIConnectorValidator {
     }
 
     private static func kmaBaseDateTime(clock: any PublicAPIClock) -> (date: String, time: String) {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = clock.timeZone
-        var components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: clock.now)
-        if (components.minute ?? 0) < 45 {
-            let previousHour = calendar.date(byAdding: .hour, value: -1, to: clock.now) ?? clock.now
-            components = calendar.dateComponents([.year, .month, .day, .hour], from: previousHour)
-        }
-        let date = calendar.date(from: components) ?? clock.now
-        let hour = components.hour ?? 0
-        return (dateFormatter(timeZone: clock.timeZone).string(from: date), String(format: "%02d00", hour))
+        let slot = KMABaseTimePolicy.candidates(for: .ultraShortNowcast, now: clock.now, limit: 1)[0]
+        return (slot.date, slot.time)
     }
 
     private static func dateFormatter(timeZone: TimeZone) -> DateFormatter {
@@ -1071,48 +1063,64 @@ enum KMAWeatherDirectConnector {
         session: URLSession = .shared,
         clock: any PublicAPIClock = SystemPublicAPIClock()
     ) async throws -> [KMAWeatherDirectObservation] {
-        let base = directKMABaseDateTime(clock: clock)
-        var components = URLComponents()
-        components.scheme = "https"
-        components.host = "apis.data.go.kr"
-        components.path = "/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst"
-        components.queryItems = [
-            URLQueryItem(name: "serviceKey", value: serviceKey.trimmingCharacters(in: .whitespacesAndNewlines)),
-            URLQueryItem(name: "pageNo", value: "1"),
-            URLQueryItem(name: "numOfRows", value: "20"),
-            URLQueryItem(name: "dataType", value: "JSON"),
-            URLQueryItem(name: "base_date", value: base.date),
-            URLQueryItem(name: "base_time", value: base.time),
-            URLQueryItem(name: "nx", value: String(nx)),
-            URLQueryItem(name: "ny", value: String(ny))
-        ]
-        guard let url = components.url else { throw ConnectorFailureCode.responseParseFailed }
+        let slots = KMABaseTimePolicy.candidates(for: .ultraShortNowcast, now: clock.now, limit: 2)
+        for (attempt, base) in slots.enumerated() {
+            var components = URLComponents()
+            components.scheme = "https"
+            components.host = "apis.data.go.kr"
+            components.path = "/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst"
+            components.queryItems = [
+                URLQueryItem(name: "serviceKey", value: serviceKey.trimmingCharacters(in: .whitespacesAndNewlines)),
+                URLQueryItem(name: "pageNo", value: "1"),
+                URLQueryItem(name: "numOfRows", value: "20"),
+                URLQueryItem(name: "dataType", value: "JSON"),
+                URLQueryItem(name: "base_date", value: base.date),
+                URLQueryItem(name: "base_time", value: base.time),
+                URLQueryItem(name: "nx", value: String(nx)),
+                URLQueryItem(name: "ny", value: String(ny))
+            ]
+            guard let url = components.url else { throw ConnectorFailureCode.responseParseFailed }
 
-        let (data, response) = try await session.data(for: URLRequest(url: url))
-        try validateDirectHTTP(response)
-        guard
-            let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let responseObject = object["response"] as? [String: Any],
-            let header = responseObject["header"] as? [String: Any],
-            header["resultCode"] as? String == "00",
-            let body = responseObject["body"] as? [String: Any],
-            let itemsContainer = body["items"] as? [String: Any],
-            let items = itemsContainer["item"] as? [[String: Any]]
-        else {
-            throw ConnectorFailureCode.responseParseFailed
-        }
-
-        let observations = items.compactMap { item -> KMAWeatherDirectObservation? in
+            let (data, response) = try await session.data(for: URLRequest(url: url))
+            try validateDirectHTTP(response)
             guard
-                let category = item["category"] as? String,
-                let value = item["obsrValue"] as? String,
-                let baseDate = item["baseDate"] as? String,
-                let baseTime = item["baseTime"] as? String
-            else { return nil }
-            return KMAWeatherDirectObservation(category: category, value: value, baseDate: baseDate, baseTime: baseTime)
+                let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                let responseObject = object["response"] as? [String: Any],
+                let header = responseObject["header"] as? [String: Any]
+            else {
+                throw ConnectorFailureCode.responseParseFailed
+            }
+            let resultCode = header["resultCode"] as? String ?? ""
+            if resultCode == "03" {
+                AppLog.info("[KMA] no data base=\(base.date) \(base.time) attempt=\(attempt + 1)")
+                continue
+            }
+            guard resultCode == "00" else {
+                throw kmaDirectFailureCode(resultCode)
+            }
+            guard
+                let body = responseObject["body"] as? [String: Any],
+                let itemsContainer = body["items"] as? [String: Any],
+                let items = itemsContainer["item"] as? [[String: Any]]
+            else {
+                continue
+            }
+
+            let observations = items.compactMap { item -> KMAWeatherDirectObservation? in
+                guard
+                    let category = item["category"] as? String,
+                    let value = item["obsrValue"] as? String,
+                    let baseDate = item["baseDate"] as? String,
+                    let baseTime = item["baseTime"] as? String
+                else { return nil }
+                return KMAWeatherDirectObservation(category: category, value: value, baseDate: baseDate, baseTime: baseTime)
+            }
+            if !observations.isEmpty {
+                AppLog.info("[KMA] nowcast base=\(base.date) \(base.time) attempt=\(attempt + 1)")
+                return observations
+            }
         }
-        guard !observations.isEmpty else { throw ConnectorFailureCode.responseParseFailed }
-        return observations
+        throw ConnectorFailureCode.responseParseFailed
     }
 }
 
@@ -1324,21 +1332,19 @@ private func directDateString(daysBefore: Int, clock: any PublicAPIClock) -> Str
     return formatter.string(from: date)
 }
 
-private func directKMABaseDateTime(clock: any PublicAPIClock) -> (date: String, time: String) {
-    var calendar = Calendar(identifier: .gregorian)
-    calendar.timeZone = clock.timeZone
-    var components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: clock.now)
-    if (components.minute ?? 0) < 45 {
-        let previousHour = calendar.date(byAdding: .hour, value: -1, to: clock.now) ?? clock.now
-        components = calendar.dateComponents([.year, .month, .day, .hour], from: previousHour)
+private func kmaDirectFailureCode(_ resultCode: String) -> ConnectorFailureCode {
+    switch resultCode {
+    case "20":
+        return .permissionDenied
+    case "22":
+        return .quotaExceeded
+    case "30", "31":
+        return .invalidAPIKey
+    case "01", "02":
+        return .providerUnavailable
+    default:
+        return .responseParseFailed
     }
-    let date = calendar.date(from: components) ?? clock.now
-    let formatter = DateFormatter()
-    formatter.calendar = calendar
-    formatter.timeZone = clock.timeZone
-    formatter.locale = Locale(identifier: "en_US_POSIX")
-    formatter.dateFormat = "yyyyMMdd"
-    return (formatter.string(from: date), String(format: "%02d00", components.hour ?? 0))
 }
 
 private func significantTokens(from query: String) -> [String] {

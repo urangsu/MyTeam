@@ -99,8 +99,8 @@ PASS requires:
 
 - `ok: true`
 - `service: myteam-basic-lookup-api`
-- `version: 0.4.0`
-- `build: public-lookup-0.4.0`
+- `version: 0.4.1`
+- `build: public-lookup-0.4.1`
 - `contractVersion: 3`
 - `abuseControls.rateLimitBinding: true`
 - `abuseControls.cacheAPI: true`

@@ -63,7 +63,7 @@ The public routes fail closed unless the `PUBLIC_LOOKUP_RATE_LIMITER` binding fr
 
 Do not run the deploy command merely to test source changes. Deployment requires an explicit release decision and valid Cloudflare credentials.
 
-The production `/health` response must show `version: "0.4.0"`, a non-empty `build` marker, `contractVersion: 3`, `gitSha`, `deployedAt`, `userRoutes`, `diagnosticContract`, and `abuseControls.rateLimitBinding: true`.
+The production `/health` response must show `version: "0.4.1"`, a non-empty `build` marker, `contractVersion: 3`, `gitSha`, `deployedAt`, `userRoutes`, `diagnosticContract`, and `abuseControls.rateLimitBinding: true`.
 
 ```text
 /health

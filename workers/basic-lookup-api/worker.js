@@ -1,6 +1,6 @@
 const SERVICE = "myteam-basic-lookup-api";
-const VERSION = "0.4.0";
-const BUILD = "public-lookup-0.4.0";
+const VERSION = "0.4.1";
+const BUILD = "public-lookup-0.4.1";
 const CONTRACT_VERSION = 3;
 const SOURCE_GIT_SHA = "set-MYTEAM_WORKER_GIT_SHA";
 const SOURCE_DEPLOYED_AT = "set-MYTEAM_WORKER_DEPLOYED_AT";
@@ -431,54 +431,65 @@ async function handleKMA(url, env, startedAt, type) {
     });
   }
 
-  const base = kmaBaseDateTime(type, url.searchParams.get("base_date"), url.searchParams.get("base_time"));
+  const bases = kmaBaseCandidates(type, url.searchParams.get("base_date"), url.searchParams.get("base_time"));
   const operation = type === "village" ? "getVilageFcst" : type === "forecast" ? "getUltraSrtFcst" : "getUltraSrtNcst";
-  const upstreamURL = new URL(`https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/${operation}`);
-  upstreamURL.searchParams.set("serviceKey", normalizePublicDataServiceKey(env.KMA_SERVICE_KEY));
-  upstreamURL.searchParams.set("pageNo", "1");
-  upstreamURL.searchParams.set("numOfRows", "1000");
-  upstreamURL.searchParams.set("dataType", "JSON");
-  upstreamURL.searchParams.set("base_date", base.date);
-  upstreamURL.searchParams.set("base_time", base.time);
-  upstreamURL.searchParams.set("nx", String(nx));
-  upstreamURL.searchParams.set("ny", String(ny));
+  const attemptedBaseSlots = [];
+  for (const base of bases) {
+    attemptedBaseSlots.push(`${base.date}${base.time}`);
+    const upstreamURL = new URL(`https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/${operation}`);
+    upstreamURL.searchParams.set("serviceKey", normalizePublicDataServiceKey(env.KMA_SERVICE_KEY));
+    upstreamURL.searchParams.set("pageNo", "1");
+    upstreamURL.searchParams.set("numOfRows", "1000");
+    upstreamURL.searchParams.set("dataType", "JSON");
+    upstreamURL.searchParams.set("base_date", base.date);
+    upstreamURL.searchParams.set("base_time", base.time);
+    upstreamURL.searchParams.set("nx", String(nx));
+    upstreamURL.searchParams.set("ny", String(ny));
 
-  const upstreamResponse = await providerFetch(upstreamURL);
-  if (!upstreamResponse.ok) {
-    return kmaHTTPError(upstreamResponse.status, base, nx, ny);
-  }
-  const upstreamJSON = await safeJSON(upstreamResponse, PROVIDERS.kma);
-  if (upstreamJSON instanceof Response) {
-    return upstreamJSON;
-  }
+    const upstreamResponse = await providerFetch(upstreamURL);
+    if (!upstreamResponse.ok) {
+      return kmaHTTPError(upstreamResponse.status, base, nx, ny);
+    }
+    const upstreamJSON = await safeJSON(upstreamResponse, PROVIDERS.kma);
+    if (upstreamJSON instanceof Response) {
+      return upstreamJSON;
+    }
 
-  const header = upstreamJSON?.response?.header;
-  const resultCode = normalizeText(header?.resultCode || "");
-  const resultMsg = normalizeText(header?.resultMsg || "");
-  if (resultCode !== "00") {
-    return kmaError(resultCode, resultMsg, base, nx, ny);
-  }
-  const rawItems = upstreamJSON?.response?.body?.items?.item;
-  const itemArray = Array.isArray(rawItems) ? rawItems : [];
-  const items = itemArray.map((item) => normalizeKMAItem(item, type)).filter(Boolean);
-  if (items.length === 0) {
-    return noResults(PROVIDERS.kma, {
+    const header = upstreamJSON?.response?.header;
+    const resultCode = normalizeText(header?.resultCode || "");
+    const resultMsg = normalizeText(header?.resultMsg || "");
+    if (resultCode === "03") {
+      continue;
+    }
+    if (resultCode !== "00") {
+      return kmaError(resultCode, resultMsg, base, nx, ny);
+    }
+    const rawItems = upstreamJSON?.response?.body?.items?.item;
+    const itemArray = Array.isArray(rawItems) ? rawItems : [];
+    const items = itemArray.map((item) => normalizeKMAItem(item, type)).filter(Boolean);
+    if (items.length === 0) {
+      continue;
+    }
+    return jsonResponse({
+      ok: true,
+      provider: PROVIDERS.kma,
       type,
       grid: { nx, ny },
       baseDate: base.date,
       baseTime: base.time,
-      elapsedMs: Date.now() - startedAt
+      attemptedBaseSlots,
+      elapsedMs: Date.now() - startedAt,
+      items
     });
   }
-  return jsonResponse({
-    ok: true,
-    provider: PROVIDERS.kma,
+  const lastBase = bases[bases.length - 1];
+  return noResults(PROVIDERS.kma, {
     type,
     grid: { nx, ny },
-    baseDate: base.date,
-    baseTime: base.time,
-    elapsedMs: Date.now() - startedAt,
-    items
+    baseDate: lastBase?.date || null,
+    baseTime: lastBase?.time || null,
+    attemptedBaseSlots,
+    elapsedMs: Date.now() - startedAt
   });
 }
 
@@ -1209,24 +1220,47 @@ function parseGrid(value) {
   return parsed;
 }
 
-function kmaBaseDateTime(type, dateOverride, timeOverride) {
+export function kmaBaseCandidates(type, dateOverride, timeOverride, currentDate = new Date()) {
   if (/^\d{8}$/.test(dateOverride || "") && /^\d{4}$/.test(timeOverride || "")) {
-    return { date: dateOverride, time: timeOverride };
+    return [{ date: dateOverride, time: timeOverride }];
   }
-  const now = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const now = new Date(currentDate.getTime() + 9 * 60 * 60 * 1000);
   if (type === "forecast") {
-    now.setMinutes(now.getMinutes() - 45);
+    now.setUTCMinutes(30, 0, 0);
+    const availableAt = new Date(now.getTime() + 15 * 60 * 1000);
+    if (new Date(currentDate.getTime() + 9 * 60 * 60 * 1000) < availableAt) {
+      now.setUTCHours(now.getUTCHours() - 1);
+    }
+  } else if (type === "village") {
+    const currentMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+    const villageHours = [2, 5, 8, 11, 14, 17, 20, 23];
+    const selectedHour = [...villageHours].reverse().find((hour) => currentMinutes >= hour * 60 + 10);
+    if (selectedHour === undefined) {
+      now.setUTCDate(now.getUTCDate() - 1);
+      now.setUTCHours(23, 0, 0, 0);
+    } else {
+      now.setUTCHours(selectedHour, 0, 0, 0);
+    }
   } else {
-    now.setMinutes(now.getMinutes() - 40);
+    const currentMinute = now.getUTCMinutes();
+    now.setUTCMinutes(0, 0, 0);
+    if (currentMinute < 10) {
+      now.setUTCHours(now.getUTCHours() - 1);
+    }
   }
-  const minutes = now.getUTCMinutes();
-  now.setUTCMinutes(minutes - (minutes % 30), 0, 0);
-  const hour = String(now.getUTCHours()).padStart(2, "0");
-  const minute = String(now.getUTCMinutes()).padStart(2, "0");
-  return {
-    date: `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, "0")}${String(now.getUTCDate()).padStart(2, "0")}`,
-    time: `${hour}${minute}`
-  };
+  const stepHours = type === "village" ? 3 : 1;
+  return [0, 1].map((offset) => {
+    const candidate = new Date(now);
+    candidate.setUTCHours(candidate.getUTCHours() - offset * stepHours);
+    return {
+      date: `${candidate.getUTCFullYear()}${String(candidate.getUTCMonth() + 1).padStart(2, "0")}${String(candidate.getUTCDate()).padStart(2, "0")}`,
+      time: `${String(candidate.getUTCHours()).padStart(2, "0")}${String(candidate.getUTCMinutes()).padStart(2, "0")}`
+    };
+  });
+}
+
+function kmaBaseDateTime(type, dateOverride, timeOverride) {
+  return kmaBaseCandidates(type, dateOverride, timeOverride)[0];
 }
 
 function financeRoute(pathname) {

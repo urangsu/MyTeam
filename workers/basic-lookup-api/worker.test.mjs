@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import worker from "./worker.js";
+import worker, { kmaBaseCandidates } from "./worker.js";
 
 class MemoryCache {
   constructor() {
@@ -65,6 +65,29 @@ function validNewsResponse() {
     headers: { "content-type": "application/json" }
   });
 }
+
+test("uses KMA product publication slots instead of generic half-hours", () => {
+  assert.deepEqual(
+    kmaBaseCandidates("nowcast", null, null, new Date("2026-06-02T15:05:00Z"))[0],
+    { date: "20260602", time: "2300" }
+  );
+  assert.deepEqual(
+    kmaBaseCandidates("forecast", null, null, new Date("2026-06-03T00:40:00Z"))[0],
+    { date: "20260603", time: "0830" }
+  );
+  assert.deepEqual(
+    kmaBaseCandidates("forecast", null, null, new Date("2026-06-03T00:50:00Z"))[0],
+    { date: "20260603", time: "0930" }
+  );
+  assert.deepEqual(
+    kmaBaseCandidates("village", null, null, new Date("2026-06-02T17:05:00Z"))[0],
+    { date: "20260602", time: "2300" }
+  );
+  assert.deepEqual(
+    kmaBaseCandidates("village", null, null, new Date("2026-06-02T17:15:00Z"))[0],
+    { date: "20260603", time: "0200" }
+  );
+});
 
 test("fails closed when the rate limiting binding is missing", async () => {
   globalThis.caches = { default: new MemoryCache() };

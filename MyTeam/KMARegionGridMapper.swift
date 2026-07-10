@@ -8,8 +8,6 @@ struct KMAGridRegion: Sendable, Equatable {
 }
 
 enum KMARegionGridMapper {
-    nonisolated static let defaultRegion = KMAGridRegion(name: "서울", nx: 60, ny: 127, aliases: ["서울"])
-
     nonisolated static let knownRegions: [KMAGridRegion] = [
         KMAGridRegion(name: "서울", nx: 60, ny: 127, aliases: ["서울특별시", "강남", "서초", "송파", "마포", "종로"]),
         KMAGridRegion(name: "부산", nx: 98, ny: 76, aliases: ["부산광역시", "해운대", "서면"]),
@@ -42,7 +40,7 @@ enum KMARegionGridMapper {
 
     nonisolated static func resolve(_ query: String?) -> KMAGridRegion? {
         let raw = (query ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !raw.isEmpty else { return defaultRegion }
+        guard !raw.isEmpty else { return nil }
         let normalized = normalize(raw)
         return knownRegions.first { region in
             raw.contains(region.name)

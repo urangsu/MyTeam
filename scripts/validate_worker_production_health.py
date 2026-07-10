@@ -14,8 +14,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_BASE_URL = "https://late-waterfall-c95c.urange.workers.dev"
-EXPECTED_VERSION = "0.4.0"
-EXPECTED_BUILD = "public-lookup-0.4.0"
+EXPECTED_VERSION = "0.4.1"
+EXPECTED_BUILD = "public-lookup-0.4.1"
 EXPECTED_CONTRACT_VERSION = 3
 REQUIRED_USER_ROUTES = {
     "/health",

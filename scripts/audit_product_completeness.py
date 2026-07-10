@@ -40,6 +40,10 @@ def main() -> None:
     chain_step = read("MyTeam/ChainStep.swift")
     chain_projection = read("MyTeam/ChainOrchestrator.swift")
     chain_runtime = read("MyTeam/KSkillAssistRuntime.swift")
+    kma_region_mapper = read("MyTeam/KMARegionGridMapper.swift")
+    kma_base_policy = read("MyTeam/KMABaseTimePolicy.swift")
+    public_api_connector = read("MyTeam/PublicAPIConnectorValidator.swift")
+    worker = read("workers/basic-lookup-api/worker.js")
     ai_model_policy = read("MyTeam/AIModelPolicy.swift")
     ai_service = read("MyTeam/AIService.swift")
     openai_responses = read("MyTeam/OpenAIResponsesAdapter.swift")
@@ -300,6 +304,27 @@ def main() -> None:
         failures.append("LLM runtime must resolve and log the exact configured model before execution")
     if ai_service.count("if !fullText.isEmpty { throw error }") < 2:
         failures.append("Non-streaming LLM paths must not change provider after partial output")
+    if "defaultRegion" in kma_region_mapper:
+        failures.append("KMA region resolution must not default missing input to Seoul")
+    if "서울 기본 격자" in chain_runtime or "private static func weatherGrid" in chain_runtime:
+        failures.append("KSkill weather evidence must use the shared region resolver without a Seoul fallback")
+    for required in [
+        "case ultraShortNowcast",
+        "case ultraShortForecast",
+        "case villageForecast",
+        'TimeZone(identifier: "Asia/Seoul")',
+        "villageHours = [2, 5, 8, 11, 14, 17, 20, 23]",
+    ]:
+        if required not in kma_base_policy:
+            failures.append(f"KMA base-time policy missing official product schedule contract: {required}")
+    if "KMABaseTimePolicy.candidates" not in public_api_connector or "limit: 2" not in public_api_connector:
+        failures.append("KMA direct lookup must use official base slots with a limited previous-slot retry")
+    for forbidden in ["minutes % 30", "now.getMinutes() - 45", "now.getMinutes() - 40"]:
+        if forbidden in worker:
+            failures.append(f"Worker KMA schedule must not use generic half-hour rounding: {forbidden}")
+    for required in ["export function kmaBaseCandidates", "attemptedBaseSlots", 'resultCode === "03"']:
+        if required not in worker:
+            failures.append(f"Worker KMA lookup missing schedule/retry evidence: {required}")
     for forbidden in ["private static let seeds", "case manualSeed", "resolution(seed:"]:
         if forbidden in dart_resolver:
             failures.append(f"DART resolver must not use a product seed fallback: {forbidden}")
