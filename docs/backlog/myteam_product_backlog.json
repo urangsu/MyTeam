@@ -1905,6 +1905,88 @@
         "An exact corp code can be used directly, while names and stock codes require the official cached index.",
         "DART remains Direct BYOK and Release fail-closed until live evidence is recorded."
       ]
+    },
+    {
+      "id": "P0-021-worker-quota-cache-contract",
+      "priority": "P0",
+      "status": "partial",
+      "category": "infrastructure",
+      "title": "Protect public lookup quotas with platform rate limiting and cache",
+      "why": "The public Worker used process-local counters and no-store responses, so isolate changes and repeated identical requests could consume provider quotas without durable protection.",
+      "scope": {
+        "include": [
+          "Cloudflare Rate Limiting binding with fail-closed user routes",
+          "Provider, route, and network-address rate-limit keys",
+          "Route-specific Cache API TTLs",
+          "Canonical query cache keys without credentials",
+          "Isolate-local in-flight request coalescing",
+          "Success-only cache writes",
+          "Structured request ID, provider status, latency, and rate-limit logs",
+          "Worker 0.4.0 contract and local Node contract tests",
+          "Release manifest compatibility update while keeping providers disabled"
+        ],
+        "exclude": [
+          "Production deployment",
+          "Global billing-grade quota accounting",
+          "Provider live-key tests",
+          "Release provider activation",
+          "DART product routing through Cloudflare"
+        ]
+      },
+      "acceptance_criteria": [
+        "User routes return 503 when the platform rate-limit binding is absent",
+        "Rate-limit rejection returns 429 before an upstream provider call",
+        "Successful identical requests reuse a canonical Cache API entry",
+        "No-results, malformed, 429, and 5xx responses are not cached",
+        "Diagnostic routes remain hidden before quota handling",
+        "Production health must prove version, contract, commit, binding, and cache contract before Release activation"
+      ],
+      "failure_conditions": [
+        "An isolate-local Map is claimed as platform quota protection",
+        "A client-controlled identifier alone can bypass rate limits",
+        "Secrets or authentication headers enter cache keys or logs",
+        "A deployment command alone is treated as production proof",
+        "This task is marked done before Worker 0.4.0 is deployed and live routes pass"
+      ],
+      "verification": {
+        "commands": [
+          "node --check workers/basic-lookup-api/worker.js",
+          "node --test workers/basic-lookup-api/worker.test.mjs",
+          "python3 scripts/validate_myteam_release.py",
+          "python3 scripts/validate_architecture_boundaries.py",
+          "python3 scripts/validate_worker_production_health.py",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' build",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Release -destination 'platform=OS X,arch=arm64' build"
+        ],
+        "manual_checks": [
+          "Deploy the exact pushed Worker 0.4.0 commit with the Wrangler rate-limit binding",
+          "Verify production health reports rateLimitBinding true and Cache API contract 1",
+          "Verify a live cache hit and provider quota behavior without exposing keys",
+          "Run authenticated diagnostic-route schema validation from a secret context"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": "f17fb07",
+        "files_changed": [
+          "workers/basic-lookup-api/worker.js",
+          "workers/basic-lookup-api/worker.test.mjs",
+          "workers/basic-lookup-api/wrangler.jsonc",
+          "workers/basic-lookup-api/README.md",
+          "scripts/validate_worker_production_health.py",
+          "scripts/validate_myteam_release.py",
+          "scripts/validate_architecture_boundaries.py",
+          "MyTeam/ReleaseCapabilityManifest.swift",
+          "MyTeam/ProductSurfacePolicy.swift"
+        ],
+        "validation_summary": "2026-07-10: Five Node Worker contract tests, Worker syntax, release and architecture validators, precommit guard, git diff check, Debug build, and Release universal build passed. Production health correctly failed because the deployed Worker still reports 0.3.0 and lacks the current contract. No deploy was performed, so status remains partial.",
+        "screenshots": []
+      },
+      "notes": [
+        "The Rate Limiting binding and Cache API are scoped to a Cloudflare location, not a single global accounting ledger.",
+        "Client responses remain no-store even when a successful provider payload is retained in Cache API.",
+        "Release providers remain DISABLED until the production health and live-provider evidence match the tested commit."
+      ]
     }
   ]
 }
