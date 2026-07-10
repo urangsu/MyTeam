@@ -139,7 +139,7 @@ enum ReleaseLiveProviderGate: Sendable {
 
     private nonisolated static var workerIsRuntimeCompatible: Bool {
         let worker = ReleaseCapabilityManifestStore.bundled.worker
-        return worker.contractVersion == 2 && worker.productionHealth == .pass
+        return worker.contractVersion == 3 && worker.productionHealth == .pass
     }
 
     private nonisolated static func providerIsPass(_ provider: String) -> Bool {

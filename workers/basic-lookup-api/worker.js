@@ -1,7 +1,7 @@
 const SERVICE = "myteam-basic-lookup-api";
-const VERSION = "0.3.0";
-const BUILD = "public-lookup-0.3.0";
-const CONTRACT_VERSION = 2;
+const VERSION = "0.4.0";
+const BUILD = "public-lookup-0.4.0";
+const CONTRACT_VERSION = 3;
 const SOURCE_GIT_SHA = "set-MYTEAM_WORKER_GIT_SHA";
 const SOURCE_DEPLOYED_AT = "set-MYTEAM_WORKER_DEPLOYED_AT";
 
@@ -18,9 +18,19 @@ const DEFAULT_DISPLAY = 10;
 const DIAGNOSTIC_TOKEN_HEADER = "x-myteam-diagnostic-token";
 const PROVIDER_TIMEOUT_MS = 8000;
 const MAX_UPSTREAM_BYTES = 1_000_000;
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX_REQUESTS = 120;
-const rateLimitBuckets = new Map();
+const RATE_LIMIT_BINDING = "PUBLIC_LOOKUP_RATE_LIMITER";
+const CACHE_CONTRACT_VERSION = 1;
+const inflightLookups = new Map();
+const CACHE_TTL_SECONDS = {
+  news: 120,
+  weatherNowcast: 300,
+  weatherForecast: 600,
+  weatherVillage: 1800,
+  weatherVersion: 3600,
+  financeMarket: 21600,
+  financeCompany: 86400,
+  law: 86400
+};
 
 const USER_ROUTES = [
   "/health",
@@ -48,22 +58,16 @@ const DIAGNOSTIC_ROUTES = [
 ];
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const startedAt = Date.now();
     const url = new URL(request.url);
+    const requestID = normalizeText(request.headers.get("CF-Ray") || "") || crypto.randomUUID();
 
     if (request.method !== "GET") {
       return jsonError("method_not_allowed", "GET requests only.", 405);
     }
 
     try {
-      if (url.pathname !== "/" && url.pathname !== "/health") {
-        const rateLimitResponse = rateLimit(request, url);
-        if (rateLimitResponse) {
-          return rateLimitResponse;
-        }
-      }
-
       if (url.pathname === "/" || url.pathname === "/health") {
         const metadata = workerMetadata(env);
         return jsonResponse({
@@ -80,48 +84,58 @@ export default {
             routeCount: DIAGNOSTIC_ROUTES.length,
             auth: "header-token"
           },
+          abuseControls: {
+            rateLimitBinding: hasRateLimitBinding(env),
+            rateLimitScope: "cloudflare-location",
+            cacheAPI: true,
+            cacheContractVersion: CACHE_CONTRACT_VERSION
+          },
           routes: USER_ROUTES
         });
       }
 
       if (url.pathname === "/news/search") {
-        return await withProviderErrorBoundary(PROVIDERS.news, () => handleNewsSearch(url, env, startedAt));
+        return await runUserLookup(request, url, env, ctx, requestID, PROVIDERS.news, () => handleNewsSearch(url, env, startedAt));
       }
       if (url.pathname.startsWith("/dart/")) {
         const diagnosticAccessError = requireDiagnosticAccess(request, env);
         if (diagnosticAccessError) {
           return diagnosticAccessError;
         }
+        const diagnosticRateLimit = await rateLimit(request, url, env, requestID, PROVIDERS.dart);
+        if (diagnosticRateLimit) {
+          return responseWithRequestID(diagnosticRateLimit, requestID);
+        }
       }
       if (url.pathname === "/dart/company") {
-        return await withProviderErrorBoundary(PROVIDERS.dart, () => handleDARTCompany(url, env, startedAt));
+        return await withProviderErrorBoundary(requestID, PROVIDERS.dart, () => handleDARTCompany(url, env, startedAt));
       }
       if (url.pathname === "/dart/recent") {
-        return await withProviderErrorBoundary(PROVIDERS.dart, () => handleDARTRecent(url, env, startedAt));
+        return await withProviderErrorBoundary(requestID, PROVIDERS.dart, () => handleDARTRecent(url, env, startedAt));
       }
       if (url.pathname === "/dart/diagnose") {
-        return await withProviderErrorBoundary(PROVIDERS.dart, () => handleDARTDiagnose(url, env, startedAt));
+        return await withProviderErrorBoundary(requestID, PROVIDERS.dart, () => handleDARTDiagnose(url, env, startedAt));
       }
       if (url.pathname === "/weather/kma/nowcast") {
-        return await withProviderErrorBoundary(PROVIDERS.kma, () => handleKMA(url, env, startedAt, "nowcast"));
+        return await runUserLookup(request, url, env, ctx, requestID, PROVIDERS.kma, () => handleKMA(url, env, startedAt, "nowcast"));
       }
       if (url.pathname === "/weather/kma/forecast") {
-        return await withProviderErrorBoundary(PROVIDERS.kma, () => handleKMA(url, env, startedAt, "forecast"));
+        return await runUserLookup(request, url, env, ctx, requestID, PROVIDERS.kma, () => handleKMA(url, env, startedAt, "forecast"));
       }
       if (url.pathname === "/weather/kma/ultra-forecast") {
-        return await withProviderErrorBoundary(PROVIDERS.kma, () => handleKMA(url, env, startedAt, "forecast"));
+        return await runUserLookup(request, url, env, ctx, requestID, PROVIDERS.kma, () => handleKMA(url, env, startedAt, "forecast"));
       }
       if (url.pathname === "/weather/kma/village-forecast") {
-        return await withProviderErrorBoundary(PROVIDERS.kma, () => handleKMA(url, env, startedAt, "village"));
+        return await runUserLookup(request, url, env, ctx, requestID, PROVIDERS.kma, () => handleKMA(url, env, startedAt, "village"));
       }
       if (url.pathname === "/weather/kma/version") {
-        return await withProviderErrorBoundary(PROVIDERS.kma, () => handleKMAVersion(url, env, startedAt));
+        return await runUserLookup(request, url, env, ctx, requestID, PROVIDERS.kma, () => handleKMAVersion(url, env, startedAt));
       }
       if (url.pathname.startsWith("/finance/")) {
-        return await withProviderErrorBoundary(PROVIDERS.publicData, () => handleFinanceLookup(url, env, startedAt));
+        return await runUserLookup(request, url, env, ctx, requestID, PROVIDERS.publicData, () => handleFinanceLookup(url, env, startedAt));
       }
       if (url.pathname === "/law/search") {
-        return await withProviderErrorBoundary(PROVIDERS.law, () => handleLawSearch(url, env, startedAt));
+        return await runUserLookup(request, url, env, ctx, requestID, PROVIDERS.law, () => handleLawSearch(url, env, startedAt));
       }
 
       return jsonError("not_found", "Route not found.", 404);
@@ -766,32 +780,144 @@ function workerMetadata(env) {
   };
 }
 
-function rateLimit(request, url) {
-  const clientIP = normalizeText(request.headers.get("CF-Connecting-IP") || "unknown");
-  const routeKey = `${clientIP}|${url.pathname}`;
-  const now = Date.now();
-  const existing = rateLimitBuckets.get(routeKey);
-  if (!existing || now - existing.windowStartMs >= RATE_LIMIT_WINDOW_MS) {
-    rateLimitBuckets.set(routeKey, { windowStartMs: now, count: 1 });
-    pruneRateLimitBuckets(now);
-    return null;
+function hasRateLimitBinding(env) {
+  return typeof env?.[RATE_LIMIT_BINDING]?.limit === "function";
+}
+
+async function rateLimit(request, url, env, requestID, provider) {
+  if (!hasRateLimitBinding(env)) {
+    return jsonError(
+      "rate_limit_unavailable",
+      "Public lookup protection is not configured.",
+      503,
+      { provider }
+    );
   }
-  existing.count += 1;
-  if (existing.count > RATE_LIMIT_MAX_REQUESTS) {
-    return jsonError("rate_limited", "Too many lookup requests. Please retry later.", 429);
+
+  const clientKey = normalizeText(request.headers.get("CF-Connecting-IP") || "anonymous");
+  const result = await env[RATE_LIMIT_BINDING].limit({
+    key: `${provider}|${url.pathname}|${clientKey}`
+  });
+  if (!result?.success) {
+    console.warn(JSON.stringify({ event: "rate_limited", requestId: requestID, provider, route: url.pathname }));
+    return jsonError("rate_limited", "Too many lookup requests. Please retry later.", 429, { provider });
   }
   return null;
 }
 
-function pruneRateLimitBuckets(now) {
-  if (rateLimitBuckets.size < 1000) {
-    return;
+async function runUserLookup(request, url, env, ctx, requestID, provider, handler) {
+  const rateLimitResponse = await rateLimit(request, url, env, requestID, provider);
+  if (rateLimitResponse) {
+    return responseWithRequestID(rateLimitResponse, requestID);
   }
-  for (const [key, bucket] of rateLimitBuckets.entries()) {
-    if (now - bucket.windowStartMs >= RATE_LIMIT_WINDOW_MS) {
-      rateLimitBuckets.delete(key);
+  const ttl = cacheTTLForRoute(url.pathname);
+  if (!ttl) {
+    return await withProviderErrorBoundary(requestID, provider, handler);
+  }
+  return await withLookupCache(request, url, ctx, requestID, ttl, () => withProviderErrorBoundary(requestID, provider, handler));
+}
+
+function cacheTTLForRoute(pathname) {
+  if (pathname === "/news/search") return CACHE_TTL_SECONDS.news;
+  if (pathname === "/weather/kma/nowcast") return CACHE_TTL_SECONDS.weatherNowcast;
+  if (pathname === "/weather/kma/forecast" || pathname === "/weather/kma/ultra-forecast") {
+    return CACHE_TTL_SECONDS.weatherForecast;
+  }
+  if (pathname === "/weather/kma/village-forecast") return CACHE_TTL_SECONDS.weatherVillage;
+  if (pathname === "/weather/kma/version") return CACHE_TTL_SECONDS.weatherVersion;
+  if (pathname.startsWith("/finance/company/")) return CACHE_TTL_SECONDS.financeCompany;
+  if (pathname.startsWith("/finance/")) return CACHE_TTL_SECONDS.financeMarket;
+  if (pathname === "/law/search") return CACHE_TTL_SECONDS.law;
+  return null;
+}
+
+async function withLookupCache(request, url, ctx, requestID, ttl, handler) {
+  const cache = globalThis.caches?.default;
+  if (!cache) {
+    return jsonError("cache_unavailable", "Public lookup cache is not available.", 503);
+  }
+
+  const cacheKey = canonicalCacheRequest(request, url);
+  const cached = await cache.match(cacheKey);
+  if (cached) {
+    return responseWithCacheStatus(cached, "HIT", requestID);
+  }
+
+  const inflightKey = cacheKey.url;
+  let pending = inflightLookups.get(inflightKey);
+  if (!pending) {
+    pending = fetchAndCacheLookup(cache, cacheKey, ctx, ttl, handler);
+    inflightLookups.set(inflightKey, pending);
+  }
+
+  try {
+    const response = await pending;
+    return responseWithCacheStatus(response, "MISS", requestID);
+  } finally {
+    if (inflightLookups.get(inflightKey) === pending) {
+      inflightLookups.delete(inflightKey);
     }
   }
+}
+
+function canonicalCacheRequest(request, url) {
+  const canonicalURL = new URL(url.origin + url.pathname);
+  const sortedEntries = [...url.searchParams.entries()].sort(([leftKey, leftValue], [rightKey, rightValue]) => {
+    const keyOrder = leftKey.localeCompare(rightKey);
+    return keyOrder === 0 ? leftValue.localeCompare(rightValue) : keyOrder;
+  });
+  for (const [key, value] of sortedEntries) {
+    canonicalURL.searchParams.append(key, value);
+  }
+  return new Request(canonicalURL.toString(), { method: "GET", headers: { accept: "application/json" } });
+}
+
+async function fetchAndCacheLookup(cache, cacheKey, ctx, ttl, handler) {
+  const response = await handler();
+  if (!(await isCacheableSuccess(response))) {
+    return response;
+  }
+
+  const cacheHeaders = new Headers(response.headers);
+  cacheHeaders.set("cache-control", `s-maxage=${ttl}`);
+  cacheHeaders.delete("set-cookie");
+  cacheHeaders.delete("x-myteam-request-id");
+  const cacheResponse = new Response(response.clone().body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: cacheHeaders
+  });
+  const write = cache.put(cacheKey, cacheResponse);
+  if (ctx?.waitUntil) {
+    ctx.waitUntil(write);
+  } else {
+    await write;
+  }
+  return response;
+}
+
+async function isCacheableSuccess(response) {
+  if (response.status !== 200 || !response.headers.get("content-type")?.includes("application/json")) {
+    return false;
+  }
+  try {
+    const payload = await response.clone().json();
+    return payload?.ok === true;
+  } catch {
+    return false;
+  }
+}
+
+function responseWithCacheStatus(response, status, requestID) {
+  const headers = new Headers(response.headers);
+  headers.set("cache-control", "no-store");
+  headers.set("x-myteam-cache", status);
+  headers.set("x-myteam-request-id", requestID);
+  return new Response(response.clone().body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
 }
 
 async function providerFetch(url, init = {}) {
@@ -813,17 +939,37 @@ function requireDiagnosticAccess(request, env) {
   return null;
 }
 
-async function withProviderErrorBoundary(provider, handler) {
+async function withProviderErrorBoundary(requestID, provider, handler) {
+  const startedAt = Date.now();
+  let response;
   try {
-    return await handler();
+    response = await handler();
   } catch {
-    return jsonError(
+    response = jsonError(
       "provider_system_error",
       "The lookup proxy could not complete the provider request.",
       502,
       { provider }
     );
   }
+  console.log(JSON.stringify({
+    event: "provider_request",
+    requestId: requestID,
+    provider,
+    status: response.status,
+    latencyMs: Date.now() - startedAt
+  }));
+  return responseWithRequestID(response, requestID);
+}
+
+function responseWithRequestID(response, requestID) {
+  const headers = new Headers(response.headers);
+  headers.set("x-myteam-request-id", requestID);
+  return new Response(response.clone().body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
 }
 
 function noResults(provider, extra = {}) {

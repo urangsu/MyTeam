@@ -99,9 +99,11 @@ PASS requires:
 
 - `ok: true`
 - `service: myteam-basic-lookup-api`
-- `version: 0.3.0`
-- `build: public-lookup-0.3.0`
-- `contractVersion: 2`
+- `version: 0.4.0`
+- `build: public-lookup-0.4.0`
+- `contractVersion: 3`
+- `abuseControls.rateLimitBinding: true`
+- `abuseControls.cacheAPI: true`
 - `gitSha` matches the commit under validation
 - `deployedAt` is an ISO-8601 UTC timestamp
 - `userRoutes` present

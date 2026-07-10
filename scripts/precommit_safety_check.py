@@ -37,7 +37,7 @@ FORBIDDEN_SETTINGS_PATTERNS = (
     ("playwright diagnostics view", r"\bPlaywrightMCPStatusView\s*\("),
 )
 
-BASIC_LOOKUP_WORKER_VERSION = "0.3.0"
+BASIC_LOOKUP_WORKER_VERSION = "0.4.0"
 BASIC_LOOKUP_WORKER_ROUTES = (
     "/health",
     "/news/search?query=삼성전자",

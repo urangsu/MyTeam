@@ -10,6 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 CHECKS = [
+    ["node", "--check", "workers/basic-lookup-api/worker.js"],
+    ["node", "--test", "workers/basic-lookup-api/worker.test.mjs"],
     ["python3", "scripts/validate_release_checklist.py"],
     ["python3", "scripts/validate_skill_packages.py"],
     ["python3", "scripts/validate_app_store_profile.py"],
@@ -50,7 +52,7 @@ FORBIDDEN_ACTIVE_SWIFT_PATTERNS = [
 ]
 
 
-BASIC_LOOKUP_WORKER_VERSION = "0.3.0"
+BASIC_LOOKUP_WORKER_VERSION = "0.4.0"
 BASIC_LOOKUP_WORKER_ROUTES = [
     "/health",
     "/news/search?query=삼성전자",
@@ -297,12 +299,22 @@ def validate_basic_lookup_worker_source() -> None:
         raise SystemExit("FAIL: basic lookup Worker /health must expose userRoutes and diagnosticContract")
     if "diagnosticRoutes:" in health_response:
         raise SystemExit("FAIL: basic lookup Worker /health must not expose diagnostic route path names")
-    for token in ["CONTRACT_VERSION = 2", "MYTEAM_WORKER_GIT_SHA", "MYTEAM_WORKER_DEPLOYED_AT", "contractVersion:", "gitSha:", "deployedAt:"]:
+    for token in ["CONTRACT_VERSION = 3", "MYTEAM_WORKER_GIT_SHA", "MYTEAM_WORKER_DEPLOYED_AT", "contractVersion:", "gitSha:", "deployedAt:"]:
         if token not in source:
             raise SystemExit(f"FAIL: basic lookup Worker missing deploy provenance contract: {token}")
-    for token in ["function rateLimit", "RATE_LIMIT_MAX_REQUESTS", "function providerFetch", "PROVIDER_TIMEOUT_MS", "MAX_UPSTREAM_BYTES"]:
+    for token in ["PUBLIC_LOOKUP_RATE_LIMITER", "function rateLimit", "function withLookupCache", "globalThis.caches?.default", "function providerFetch", "PROVIDER_TIMEOUT_MS", "MAX_UPSTREAM_BYTES"]:
         if token not in source:
             raise SystemExit(f"FAIL: basic lookup Worker missing public route abuse guard: {token}")
+    for token in ["abuseControls:", "rateLimitBinding:", "cacheContractVersion:"]:
+        if token not in source:
+            raise SystemExit(f"FAIL: basic lookup Worker /health missing abuse-control contract: {token}")
+    for token in ['event: "provider_request"', 'event: "rate_limited"', "requestId:", "latencyMs:"]:
+        if token not in source:
+            raise SystemExit(f"FAIL: basic lookup Worker missing structured observability contract: {token}")
+    wrangler_source = (worker_path.parent / "wrangler.jsonc").read_text()
+    for token in ['"name": "PUBLIC_LOOKUP_RATE_LIMITER"', '"limit": 120', '"period": 60']:
+        if token not in wrangler_source:
+            raise SystemExit(f"FAIL: basic lookup Worker rate-limit binding config missing: {token}")
     if "function requireDiagnosticAccess" not in source or "DIAGNOSTIC_ROUTE_TOKEN" not in source:
         raise SystemExit("FAIL: basic lookup Worker diagnostic routes must require a diagnostic token")
     if 'url.pathname.startsWith("/dart/")' not in source or "requireDiagnosticAccess(request, env)" not in source:

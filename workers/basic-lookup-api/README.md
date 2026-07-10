@@ -44,20 +44,26 @@ Configure these in Cloudflare Dashboard -> Workers & Pages -> Worker -> Settings
 - `LAW_OC`
 - `DIAGNOSTIC_ROUTE_TOKEN`
 
-## Cloudflare Dashboard Manual Deploy
+## Required Binding
 
-This Worker is currently deployed from the Cloudflare Dashboard, not from a repo-bound CI pipeline. After editing this source file, deploy the same source manually:
+- `PUBLIC_LOOKUP_RATE_LIMITER`: configured by `wrangler.jsonc` at 120 calls per 60 seconds. The key combines provider, route, and Cloudflare's connecting network address. Shared networks can therefore share a limit; this is quota protection, not identity or billing enforcement.
+
+## Cloudflare Deploy Contract
+
+The public routes fail closed unless the `PUBLIC_LOOKUP_RATE_LIMITER` binding from `wrangler.jsonc` is present. Pasting only `worker.js` into the Dashboard is no longer a complete deployment because it omits the platform rate limiter.
 
 1. Commit and push the exact source revision that will be deployed.
-2. Open Cloudflare Dashboard -> Workers & Pages -> `late-waterfall-c95c` -> Production.
-3. Confirm the required secrets above exist in Settings -> Variables and Secrets.
+2. Confirm `wrangler.jsonc` uses a rate-limit namespace ID that is not shared unintentionally with another Worker in the same Cloudflare account.
+3. Confirm the required secrets above exist in Cloudflare Settings -> Variables and Secrets.
 4. Set `MYTEAM_WORKER_GIT_SHA` to the exact pushed commit SHA.
-5. Set `MYTEAM_WORKER_DEPLOYED_AT` to the UTC deploy timestamp, e.g. `2026-07-08T12:34:56Z`.
-6. Paste or sync `/Users/su/Desktop/MyTeam/workers/basic-lookup-api/worker.js` into the Worker editor.
-7. Save and deploy to Production.
-8. Verify `/health` before enabling any public lookup Release surface.
+5. Set `MYTEAM_WORKER_DEPLOYED_AT` to the UTC deploy timestamp, e.g. `2026-07-10T12:34:56Z`.
+6. From this directory, run the Worker contract tests: `npm test`.
+7. Deploy the repository source and bindings with Wrangler: `npx wrangler deploy`.
+8. Verify `/health`, the abuse-control contract, and live routes before enabling any public lookup Release surface.
 
-The production `/health` response must show `version: "0.3.0"`, a non-empty `build` marker, `contractVersion: 2`, `gitSha`, `deployedAt`, `userRoutes`, and `diagnosticContract`.
+Do not run the deploy command merely to test source changes. Deployment requires an explicit release decision and valid Cloudflare credentials.
+
+The production `/health` response must show `version: "0.4.0"`, a non-empty `build` marker, `contractVersion: 3`, `gitSha`, `deployedAt`, `userRoutes`, `diagnosticContract`, and `abuseControls.rateLimitBinding: true`.
 
 ```text
 /health
@@ -87,9 +93,15 @@ The production `/health` response must show `version: "0.3.0"`, a non-empty `bui
     "routeCount": 3,
     "auth": "header-token"
   },
-  "contractVersion": 2,
+  "contractVersion": 3,
   "gitSha": "40-character commit SHA",
-  "deployedAt": "2026-07-08T12:34:56Z"
+  "deployedAt": "2026-07-10T12:34:56Z",
+  "abuseControls": {
+    "rateLimitBinding": true,
+    "rateLimitScope": "cloudflare-location",
+    "cacheAPI": true,
+    "cacheContractVersion": 1
+  }
 }
 ```
 
@@ -141,7 +153,9 @@ https://late-waterfall-c95c.urange.workers.dev
 - Treat DART `corpName` lookup as Worker-side best-effort filtering. It is not an official OpenDART `list.json` request parameter; prefer `corpCode` for reliable lookup.
 - Keep all `/dart/*` Worker routes as token-protected operational diagnostics. User-facing app DART lookup uses personal OpenDART API Key direct calls because production Worker outbound calls to OpenDART return provider reachability `522`.
 - Never put the diagnostic token value into app code, Info.plist, bundled JSON, release capability manifests, logs, QA Markdown, or URL query strings. Use Cloudflare secrets, CI secrets, or local environment variables only.
-- Public user routes consume provider quotas. Keep query length limits, result limits, isolate-local rate limiting, provider timeouts, maximum upstream response size, and no-store responses. Add durable rate limiting/cache before broad Release traffic if usage grows beyond low-volume demo/RC traffic.
+- Public user routes consume provider quotas. Keep query length limits, result limits, the platform rate-limiting binding, provider timeouts, maximum upstream response size, Cache API TTLs, and no-store client responses.
+- The Cloudflare Rate Limiting binding is shared across Worker isolates within a Cloudflare location, but it is not a single global counter. Cache API entries are also local to a data center. Treat these as quota protection, not billing-grade accounting.
+- Cache only successful lookup payloads. Never cache `no_results`, malformed responses, HTTP 429, or provider 5xx responses.
 - Do not use Worker `corpName` handling as product behavior. The app resolves company name or stock code to OpenDART `corp_code` locally before direct BYOK lookup.
 - Treat Korean Law output as official search results, not legal advice.
 - Pass KMA grid coordinates only; do not accept raw address strings in Worker routes.

@@ -311,12 +311,18 @@ def main() -> None:
         failures.append("Worker /health must expose userRoutes and diagnosticContract")
     if "diagnosticRoutes:" in health_response:
         failures.append("Worker /health must not expose diagnostic route path names")
-    for token in ["CONTRACT_VERSION = 2", "MYTEAM_WORKER_GIT_SHA", "MYTEAM_WORKER_DEPLOYED_AT", "contractVersion:", "gitSha:", "deployedAt:"]:
+    for token in ["CONTRACT_VERSION = 3", "MYTEAM_WORKER_GIT_SHA", "MYTEAM_WORKER_DEPLOYED_AT", "contractVersion:", "gitSha:", "deployedAt:"]:
         if token not in worker:
             failures.append(f"Worker missing deploy provenance contract: {token}")
-    for token in ["function rateLimit", "RATE_LIMIT_MAX_REQUESTS", "function providerFetch", "PROVIDER_TIMEOUT_MS", "MAX_UPSTREAM_BYTES"]:
+    for token in ["PUBLIC_LOOKUP_RATE_LIMITER", "function rateLimit", "function withLookupCache", "globalThis.caches?.default", "function providerFetch", "PROVIDER_TIMEOUT_MS", "MAX_UPSTREAM_BYTES"]:
         if token not in worker:
             failures.append(f"Worker missing public route abuse guard: {token}")
+    for token in ["abuseControls:", "rateLimitBinding:", "cacheContractVersion:"]:
+        if token not in worker:
+            failures.append(f"Worker /health missing abuse-control contract: {token}")
+    for token in ['event: "provider_request"', 'event: "rate_limited"', "requestId:", "latencyMs:"]:
+        if token not in worker:
+            failures.append(f"Worker missing structured observability contract: {token}")
     user_routes_match = re.search(r"const\s+USER_ROUTES\s*=\s*\[(.*?)\];", worker, re.S)
     if not user_routes_match:
         failures.append("Worker must define USER_ROUTES")

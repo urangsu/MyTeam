@@ -3,7 +3,7 @@
   "tested_commit": "UNTESTED",
   "profile": "releaseCandidate",
   "worker": {
-    "contract_version": 2,
+    "contract_version": 3,
     "production_health": "DISABLED",
     "git_sha": null,
     "deployed_at": null

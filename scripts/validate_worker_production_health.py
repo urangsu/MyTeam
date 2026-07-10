@@ -14,9 +14,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_BASE_URL = "https://late-waterfall-c95c.urange.workers.dev"
-EXPECTED_VERSION = "0.3.0"
-EXPECTED_BUILD = "public-lookup-0.3.0"
-EXPECTED_CONTRACT_VERSION = 2
+EXPECTED_VERSION = "0.4.0"
+EXPECTED_BUILD = "public-lookup-0.4.0"
+EXPECTED_CONTRACT_VERSION = 3
 REQUIRED_USER_ROUTES = {
     "/health",
     "/news/search?query=삼성전자",
@@ -186,6 +186,18 @@ def main() -> int:
             failures.append(f"diagnosticContract.routeCount must be {len(DIAGNOSTIC_ROUTES)}")
         if diagnostic_contract.get("auth") != "header-token":
             failures.append("diagnosticContract.auth must be header-token")
+    abuse_controls = data.get("abuseControls")
+    if not isinstance(abuse_controls, dict):
+        failures.append("abuseControls must be present as an object")
+    else:
+        if abuse_controls.get("rateLimitBinding") is not True:
+            failures.append("abuseControls.rateLimitBinding must be true")
+        if abuse_controls.get("rateLimitScope") != "cloudflare-location":
+            failures.append("abuseControls.rateLimitScope must be cloudflare-location")
+        if abuse_controls.get("cacheAPI") is not True:
+            failures.append("abuseControls.cacheAPI must be true")
+        if abuse_controls.get("cacheContractVersion") != 1:
+            failures.append("abuseControls.cacheContractVersion must be 1")
 
     user_set = set(user_routes)
     missing_user = sorted(REQUIRED_USER_ROUTES - user_set)

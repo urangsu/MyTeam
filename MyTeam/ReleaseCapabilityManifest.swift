@@ -75,7 +75,7 @@ enum ReleaseCapabilityManifestStore: Sendable {
         testedCommit: "UNTESTED",
         profile: "releaseCandidate",
         worker: .init(
-            contractVersion: 2,
+            contractVersion: 3,
             productionHealth: .disabled,
             gitSHA: nil,
             deployedAt: nil
