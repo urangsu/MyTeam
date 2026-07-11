@@ -28,6 +28,7 @@ def main() -> None:
     speech = (ROOT / "MyTeam" / "SpeechManager.swift").read_text()
     playback = (ROOT / "MyTeam" / "AudioPlaybackService.swift").read_text()
     wav_writer = (ROOT / "MyTeam" / "S3WavWriter.swift").read_text()
+    window_manager = (ROOT / "MyTeam" / "AgentWindowManager.swift").read_text()
     tests = (ROOT / "MyTeamTests" / "PublicAPIConnectorValidatorTests.swift").read_text()
 
     require(
@@ -40,7 +41,7 @@ def main() -> None:
     validated_chunk = function_body(
         speech,
         "static func validatedTTSChunk",
-        "func speak(text:",
+        "\n    func speak(",
     )
     for token in ["replacingOccurrences", "trimmingCharacters"]:
         forbid(validated_chunk, token, "streaming TTS validation must not rewrite text")
@@ -59,6 +60,32 @@ def main() -> None:
     require(playback, ".dataPlayedBack", "float playback must observe dataPlayedBack completion")
     require(playback, "await completion.wait", "float playback must await completion or timeout")
     require(playback, "did not reach dataPlayedBack", "playback timeout must be observable")
+    require(playback, "@MainActor @Sendable", "playback-start callbacks must be main-actor isolated")
+
+    for token in [
+        "enum SpeechRequestPolicy",
+        "actor SpeechRequestQueue",
+        "policy: SpeechRequestPolicy = .queue",
+        "await speechQueue.next()",
+        "await speechQueue.markFinished()",
+    ]:
+        require(speech, token, f"missing serialized speech queue contract: {token}")
+
+    speaking_state = function_body(
+        window_manager,
+        "func setAgentSpeaking",
+        "func clearAgentSpeaking",
+    )
+    forbid(speaking_state, "asyncAfter", "speaking state must not use a fixed 30-second timer")
+
+    for path in sorted((ROOT / "MyTeam").glob("*.swift")):
+        if path.name in {"SpeechManager.swift", "AgentWindowManager.swift"}:
+            continue
+        forbid(
+            path.read_text(),
+            "setAgentSpeaking(",
+            f"{path.name} must let SpeechManager own playback lifecycle state",
+        )
 
     forbid(wav_writer, 'appendingPathComponent("Desktop")', "diagnostic WAV files must not use Desktop")
     require(wav_writer, 'appendingPathComponent("TTSLab"', "diagnostic WAV files must stay in the app cache")
@@ -68,6 +95,8 @@ def main() -> None:
         "testProductSpeechPreservesLongVisibleBubbleWithoutTruncation",
         "testProductSpeechPreservesWhitespaceAndPunctuation",
         "testStreamingSpeechChunkValidationDoesNotRewriteText",
+        "testQueuedSpeechRequestsRemainFIFO",
+        "testDropIfBusyDoesNotReplaceActiveSpeech",
     ]:
         require(tests, test_name, f"missing TTS regression test: {test_name}")
 
