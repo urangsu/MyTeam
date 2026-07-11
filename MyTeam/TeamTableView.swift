@@ -274,7 +274,6 @@ struct TeamTableView: View {
                     manager.addChatLog(roomID: rid, agentID: agent.id, agentName: agent.displayName, text: line, isUser: false, isSystem: true)
                 }
                 if !manager.isSilentMode {
-                    manager.setAgentSpeaking(agentID: agent.id, text: line)
                     SpeechManager.shared.speak(text: line, agentID: agent.id, characterName: agent.displayName)
                 }
             }
@@ -304,7 +303,6 @@ struct TeamTableView: View {
                     manager.addChatLog(roomID: rid, agentID: agent.id, agentName: agent.displayName, text: line, isUser: false, isSystem: true)
                 }
                 if !manager.isSilentMode {
-                    manager.setAgentSpeaking(agentID: agent.id, text: line)
                     SpeechManager.shared.speak(text: line, agentID: agent.id, characterName: agent.displayName)
                 }
             }

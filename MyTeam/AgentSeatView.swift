@@ -140,7 +140,6 @@ struct AgentSeatView: View {
                 AgentWindowManager.shared.addChatLog(roomID: rid, agentID: config.id, agentName: config.displayName, text: text, isUser: false, isSystem: true)
             }
             if !AgentWindowManager.shared.isSilentMode {
-                AgentWindowManager.shared.setAgentSpeaking(agentID: config.id, text: text)
                 SpeechManager.shared.speak(text: text, agentID: config.id, characterName: config.displayName)
             }
         }
