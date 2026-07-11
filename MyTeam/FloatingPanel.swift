@@ -96,6 +96,7 @@ class FloatingPanel: NSPanel {
 
     // 드래그 추적용 — 마우스 눌린 시점의 위치 기억
     private var dragStartMouseLocation: NSPoint?
+    private var didBeginWindowDrag = false
 
     // MARK: - 초기화
     init(agentID: String, position: NSPoint = NSPoint(x: 100, y: 200), size: NSSize = NSSize(width: 880, height: 260)) {
@@ -146,10 +147,9 @@ class FloatingPanel: NSPanel {
     override var canBecomeKey: Bool  { true }
     override var canBecomeMain: Bool { true }
 
-    // 화살표 키 등 키보드 이벤트가 다른 UI 컨트롤로 전파되는 것을 차단
+    // TextEditor, TextField, 버튼 단축키가 정상 동작하도록 AppKit responder chain에 전달한다.
     override func keyDown(with event: NSEvent) {
-        // 화살표 키는 무시 (테마 토글 방지)
-        // 다른 키 이벤트는 정상 전파
+        super.keyDown(with: event)
     }
 
     // MARK: - 마우스 이벤트: 드래그로 창 이동
@@ -176,14 +176,9 @@ class FloatingPanel: NSPanel {
         }
         if !insideScroll {
             dragStartMouseLocation = NSEvent.mouseLocation
+            didBeginWindowDrag = false
         }
         AgentWindowManager.shared.updateInteractionTime()
-
-        if agentID == "team" {
-            for config in AgentWindowManager.shared.activeAgents {
-                SoundPlayer.playDragStart(soundName: config.dragSoundName)
-            }
-        }
 
         super.mouseDown(with: event)
     }
@@ -196,6 +191,15 @@ class FloatingPanel: NSPanel {
             return
         }
         guard let startLocation = dragStartMouseLocation else { return }
+
+        if !didBeginWindowDrag {
+            didBeginWindowDrag = true
+            if agentID == "team" {
+                for config in AgentWindowManager.shared.activeAgents {
+                    SoundPlayer.playDragStart(soundName: config.dragSoundName)
+                }
+            }
+        }
 
         let currentLocation = NSEvent.mouseLocation
         let deltaX = currentLocation.x - startLocation.x
@@ -212,13 +216,14 @@ class FloatingPanel: NSPanel {
             lastDraggingEventTime = Date()
         }
 
-        super.mouseDragged(with: event)
     }
 
     override func mouseUp(with event: NSEvent) {
         dragStartMouseLocation = nil
+        let completedWindowDrag = didBeginWindowDrag
+        didBeginWindowDrag = false
 
-        if agentID == "team" {
+        if agentID == "team", completedWindowDrag {
             NotificationCenter.default.post(name: .agentDragEnded, object: nil)
 
             for config in AgentWindowManager.shared.activeAgents {
