@@ -167,7 +167,14 @@ enum FileIntakeService {
             roomID: roomID.uuidString
         )
 
-        await ArtifactStore.shared.registerArtifact(artifact)
+        switch await ArtifactStore.shared.registerArtifact(artifact) {
+        case .success:
+            break
+        case .failure(let error):
+            try? FileManager.default.removeItem(at: fileURL)
+            AppLog.error("[FileIntakeService] artifact index registration failed: \(error)")
+            return nil
+        }
         manager.addRecentArtifactIndexEntry(
             RecentArtifactIndexEntry(
                 artifactID: artifact.id,

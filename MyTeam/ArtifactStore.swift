@@ -348,6 +348,13 @@ struct ArtifactCleanupCandidate: Codable, Equatable, Sendable {
     let createdAt: Date
 }
 
+nonisolated enum ArtifactStorePersistenceError: Error, Equatable, Sendable {
+    case indexReadFailed
+    case indexDecodeFailed
+    case indexEncodeFailed
+    case indexWriteFailed
+}
+
 enum ActionLogCompactionPolicy {
     static let maxBytes = 1_000_000
     static let keepRecentLines = 2_000
@@ -361,6 +368,8 @@ actor ArtifactStore {
 
     private(set) var lastActionLogCompactedAt: Date?
     private(set) var actionLogCompactionCount: Int = 0
+    private(set) var lastArtifactIndexError: ArtifactStorePersistenceError?
+    private var cachedArtifacts: [IndexedArtifact]?
 
     nonisolated var workspaceURL: URL {
         let appSupport = FileManager.default.urls(
@@ -416,22 +425,47 @@ actor ArtifactStore {
 
     // MARK: - Artifact Index (artifacts.json)
 
-    func registerArtifact(_ artifact: IndexedArtifact) async {
-        var list = loadArtifacts()
+    @discardableResult
+    func registerArtifact(_ artifact: IndexedArtifact) async -> Result<IndexedArtifact, ArtifactStorePersistenceError> {
+        var list: [IndexedArtifact]
+        switch loadArtifactIndex() {
+        case .success(let artifacts):
+            list = artifacts
+        case .failure(let error):
+            recordArtifactIndexError(error, operation: "register")
+            return .failure(error)
+        }
         let normalized = await normalizeArtifact(artifact)
         list.removeAll { $0.id == normalized.id }
         list.append(normalized)
-        guard let data = try? JSONEncoder().encode(list) else { return }
-        try? data.write(to: artifactIndexURL, options: .atomic)
+        let data: Data
+        do {
+            data = try JSONEncoder().encode(list)
+        } catch {
+            recordArtifactIndexError(.indexEncodeFailed, operation: "encode")
+            return .failure(.indexEncodeFailed)
+        }
+        do {
+            try data.write(to: artifactIndexURL, options: .atomic)
+        } catch {
+            recordArtifactIndexError(.indexWriteFailed, operation: "write")
+            return .failure(.indexWriteFailed)
+        }
+        cachedArtifacts = list
+        lastArtifactIndexError = nil
         AppLog.info("[ArtifactStore] 등록: \(normalized.filename) (\(normalized.type.rawValue))")
+        return .success(normalized)
     }
 
     func loadArtifacts() -> [IndexedArtifact] {
-        guard let data = try? Data(contentsOf: artifactIndexURL),
-              let list = try? JSONDecoder().decode([IndexedArtifact].self, from: data) else {
+        switch loadArtifactIndex() {
+        case .success(let artifacts):
+            lastArtifactIndexError = nil
+            return artifacts
+        case .failure(let error):
+            recordArtifactIndexError(error, operation: "load")
             return []
         }
-        return list
     }
 
     func artifacts(forWorkflowID id: String) -> [IndexedArtifact] {
@@ -563,6 +597,36 @@ actor ArtifactStore {
         try? trimmed.write(to: logURL, atomically: true, encoding: .utf8)
         lastActionLogCompactedAt = Date()
         actionLogCompactionCount += 1
+    }
+
+    private func loadArtifactIndex() -> Result<[IndexedArtifact], ArtifactStorePersistenceError> {
+        if let cachedArtifacts { return .success(cachedArtifacts) }
+        guard FileManager.default.fileExists(atPath: artifactIndexURL.path) else {
+            cachedArtifacts = []
+            return .success([])
+        }
+
+        let data: Data
+        do {
+            data = try Data(contentsOf: artifactIndexURL)
+        } catch {
+            return .failure(.indexReadFailed)
+        }
+        do {
+            let artifacts = try JSONDecoder().decode([IndexedArtifact].self, from: data)
+            cachedArtifacts = artifacts
+            return .success(artifacts)
+        } catch {
+            return .failure(.indexDecodeFailed)
+        }
+    }
+
+    private func recordArtifactIndexError(
+        _ error: ArtifactStorePersistenceError,
+        operation: String
+    ) {
+        lastArtifactIndexError = error
+        AppLog.error("[ArtifactStore] index \(operation) failed: \(error)")
     }
 
     private static func fileURL(for relativePath: String, workspaceURL: URL) -> URL? {

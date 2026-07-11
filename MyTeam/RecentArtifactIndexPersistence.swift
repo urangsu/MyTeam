@@ -56,7 +56,7 @@ enum RecentArtifactIndexPersistence {
                 at: dir as URL,
                 withIntermediateDirectories: true
             )
-            try data.write(to: persistenceURL)
+            try data.write(to: persistenceURL, options: .atomic)
             return .success(())
         } catch {
             return .failure(.fileSystemError)

@@ -60,6 +60,8 @@ def main() -> None:
     myteam_app = read("MyTeam/MyTeamApp.swift")
     agent_window_manager = read("MyTeam/AgentWindowManager.swift")
     floating_panel = read("MyTeam/FloatingPanel.swift")
+    artifact_store = read("MyTeam/ArtifactStore.swift")
+    recent_artifact_persistence = read("MyTeam/RecentArtifactIndexPersistence.swift")
     character_gallery = read("MyTeam/CharacterGalleryView.swift")
     character_entitlement = read("MyTeam/CharacterEntitlementManager.swift")
     inventory = read("docs/qa/ProductCompletenessInventory.md")
@@ -205,6 +207,27 @@ def main() -> None:
         failures.append("FloatingPanel must not play drag feedback for a click without movement")
     if "panelChromePadding" not in team_status or "windowHeight" not in team_status:
         failures.append("TeamStatusView must size the status window with chrome padding included")
+    for token in [
+        "ArtifactStorePersistenceError",
+        "private var cachedArtifacts: [IndexedArtifact]?",
+        "private(set) var lastArtifactIndexError",
+        "func registerArtifact(_ artifact: IndexedArtifact) async -> Result<IndexedArtifact, ArtifactStorePersistenceError>",
+        "try data.write(to: artifactIndexURL, options: .atomic)",
+    ]:
+        if token not in artifact_store:
+            failures.append(f"ArtifactStore missing fail-closed index contract: {token}")
+    if "try? data.write(to: artifactIndexURL" in artifact_store:
+        failures.append("ArtifactStore must not silently discard artifact index write failures")
+    for path in (
+        "MyTeam/NaturalWorkRouting.swift",
+        "MyTeam/ToolExecutionLog.swift",
+        "MyTeam/FileIntakeService.swift",
+    ):
+        source = read(path)
+        if "case .failure(let error):" not in source or "artifact index registration failed" not in source:
+            failures.append(f"{path} must fail closed when artifact index registration fails")
+    if "try data.write(to: persistenceURL, options: .atomic)" not in recent_artifact_persistence:
+        failures.append("RecentArtifactIndexPersistence must write snapshots atomically")
     status_size_match = re.search(
         r"func updateStatusWindowSize\(width:\s*CGFloat,\s*height:\s*CGFloat\)\s*\{(?P<body>.*?)\n    \}",
         agent_window_manager,

@@ -1579,7 +1579,14 @@ enum CompositeWorkArtifactWriter {
             fileSizeBytes: Int64(result.artifactMarkdown.utf8.count),
             roomID: roomID?.uuidString
         )
-        await store.registerArtifact(artifact)
+        switch await store.registerArtifact(artifact) {
+        case .success:
+            break
+        case .failure(let error):
+            try? FileManager.default.removeItem(at: fileURL)
+            AppLog.error("[CompositeWorkArtifactWriter] artifact index registration failed: \(error)")
+            return nil
+        }
 
         if let roomID {
             await MainActor.run {

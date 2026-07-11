@@ -301,7 +301,14 @@ enum ToolResultArtifactWriter {
             fileSizeBytes: Int64(markdown.utf8.count),
             roomID: roomID?.uuidString
         )
-        await store.registerArtifact(artifact)
+        switch await store.registerArtifact(artifact) {
+        case .success:
+            break
+        case .failure(let error):
+            try? FileManager.default.removeItem(at: fileURL)
+            AppLog.error("[ToolResultArtifactWriter] artifact index registration failed: \(error)")
+            return nil
+        }
 
         if let roomID {
             await MainActor.run {
