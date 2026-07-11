@@ -13,6 +13,32 @@ final class SupertonicProsodyTextProcessorTests: XCTestCase {
 
         XCTAssertEqual(spoken, visible)
     }
+
+    func testProductSpeechPreservesLongVisibleBubbleWithoutTruncation() {
+        let visible = String(repeating: "긴 업무 문장입니다. ", count: 30)
+
+        let spoken = SupertonicProsodyTextProcessor.preprocess(
+            visible,
+            agentID: "agent_3",
+            style: .careful
+        )
+
+        XCTAssertGreaterThan(visible.count, 200)
+        XCTAssertEqual(spoken, visible)
+    }
+
+    func testProductSpeechPreservesWhitespaceAndPunctuation() {
+        let visible = "첫 줄입니다.\n둘째 줄입니다!!  그대로 읽어주세요..."
+
+        let spoken = SupertonicProsodyTextProcessor.preprocess(
+            visible,
+            agentID: "agent_2",
+            style: .excited
+        )
+
+        XCTAssertEqual(spoken, visible)
+    }
+
 }
 
 final class BubbleSpeechSynthesizerTests: XCTestCase {

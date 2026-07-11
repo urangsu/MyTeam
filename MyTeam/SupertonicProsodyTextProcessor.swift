@@ -22,10 +22,9 @@ enum SupertonicEmotionStyle: String, Sendable, CaseIterable {
 //   - 말풍선 원문과 TTS 발화 문구는 일치해야 함.
 //   - 의미/어미/문장부호를 rewrite하지 않음. 말투는 pitch/rate/speed/BubbleSpeech 레이어에서 처리.
 //   - 법률/회계/금액/숫자가 많은 문장 → neutral 처리 (변환 스킵).
-//   - 200자 초과 텍스트 → 첫 200자 + "..." 처리 (긴 보고서 읽기 방지).
 //
 // 제품 발화 변환 규칙:
-//   - 개행/연속 공백 정리, 길이 제한만 허용.
+//   - 기본 제품 발화는 원문을 그대로 전달.
 //   - "하겠습니다" → "해볼게요" 같은 텍스트 rewrite 금지.
 //   - 쉼표 삽입 같은 문장부호 rewrite 금지.
 
@@ -52,7 +51,9 @@ enum SupertonicProsodyTextProcessor {
 
         // Product speech must preserve the visible bubble wording.
         // Character style belongs in audio parameters/effects, not text rewrites.
-        var result = normalizeWhitespace(text, truncate: true)
+        guard useExpressionTags else { return text }
+
+        var result = text
         if useExpressionTags && !looksLikeFormalOrNumericText(result) {
             result = SupertonicExpressionTagPolicy.apply(emotion: effectiveStyle, to: result)
         }
@@ -82,22 +83,6 @@ enum SupertonicProsodyTextProcessor {
         }
 
         return false
-    }
-
-    // MARK: - Private: Whitespace Normalization
-
-    private static func normalizeWhitespace(_ text: String, truncate: Bool) -> String {
-        var result = text
-            .replacingOccurrences(of: "\n", with: " ")
-            .replacingOccurrences(of: "\r", with: " ")
-            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
-            .trimmingCharacters(in: .whitespaces)
-
-        if truncate && result.count > 200 {
-            result = String(result.prefix(200)) + "..."
-        }
-
-        return result
     }
 
 }
