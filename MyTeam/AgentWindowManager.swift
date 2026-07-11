@@ -1612,8 +1612,25 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
             attachments: rooms[roomIndex].messages[messageIndex].attachments,
             sources: sources,
             skillID: rooms[roomIndex].messages[messageIndex].skillID,
-            artifactIDs: rooms[roomIndex].messages[messageIndex].artifactIDs
+            artifactIDs: rooms[roomIndex].messages[messageIndex].artifactIDs,
+            llmProvider: rooms[roomIndex].messages[messageIndex].llmProvider,
+            llmModelID: rooms[roomIndex].messages[messageIndex].llmModelID,
+            llmFallbackUsed: rooms[roomIndex].messages[messageIndex].llmFallbackUsed
         )
+    }
+
+    func updateChatLogLLMMetadata(
+        roomID: UUID,
+        messageID: UUID,
+        metadata: LLMResponseMetadata
+    ) {
+        guard let roomIndex = rooms.firstIndex(where: { $0.id == roomID }),
+              let messageIndex = rooms[roomIndex].messages.firstIndex(where: { $0.id == messageID }) else {
+            return
+        }
+        rooms[roomIndex].messages[messageIndex].llmProvider = metadata.provider.displayName
+        rooms[roomIndex].messages[messageIndex].llmModelID = metadata.modelID
+        rooms[roomIndex].messages[messageIndex].llmFallbackUsed = metadata.usedFallback
     }
 
     /// ⚠️ currentRoomID를 내부에서 읽어 비동기 컨텍스트에서 race condition 위험이 있습니다.

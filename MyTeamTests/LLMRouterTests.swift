@@ -10,6 +10,50 @@ import PDFKit
 
 final class LLMRouterTests: XCTestCase {
 
+    @MainActor
+    func test_executionTracePreservesActualProviderModelAndFallback() async throws {
+        let requestID = UUID()
+        let metadata = LLMResponseMetadata(
+            provider: .openAI,
+            modelID: "gpt-4.1",
+            fallbackChain: [.gemini, .openAI],
+            usedFallback: true
+        )
+
+        await LLMExecutionTraceStore.shared.record(requestID: requestID, metadata: metadata)
+        let recorded = await LLMExecutionTraceStore.shared.metadata(for: requestID)
+        let stored = try XCTUnwrap(recorded)
+
+        XCTAssertEqual(stored.provider, .openAI)
+        XCTAssertEqual(stored.modelID, "gpt-4.1")
+        XCTAssertEqual(stored.fallbackChain, [.gemini, .openAI])
+        XCTAssertTrue(stored.usedFallback)
+    }
+
+    @MainActor
+    func test_chatLogDecodesWithoutNewLLMMetadata() throws {
+        let data = Data("""
+        {
+          "id":"00000000-0000-0000-0000-000000000001",
+          "agentID":"agent_1",
+          "agentName":"레오",
+          "text":"기존 메시지",
+          "isUser":false,
+          "timestamp":0,
+          "isSystem":false,
+          "attachments":[],
+          "sources":[],
+          "artifactIDs":[]
+        }
+        """.utf8)
+
+        let decoded = try JSONDecoder().decode(AgentWindowManager.ChatLog.self, from: data)
+
+        XCTAssertNil(decoded.llmProvider)
+        XCTAssertNil(decoded.llmModelID)
+        XCTAssertNil(decoded.llmFallbackUsed)
+    }
+
     func test_openAIResponsesPolicy_onlyRoutesGPT56Family() {
         XCTAssertTrue(OpenAIResponsesAdapter.supports(modelID: "gpt-5.6"))
         XCTAssertTrue(OpenAIResponsesAdapter.supports(modelID: "gpt-5.6-sol"))

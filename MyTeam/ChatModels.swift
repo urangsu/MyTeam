@@ -41,6 +41,9 @@ extension AgentWindowManager {
         var sources: [SourceReference] = []  // 웹 검색/자료 출처
         var skillID: String? = nil
         var artifactIDs: [String] = []  // Round 146A: 이 메시지가 생성한 artifact ID 목록
+        var llmProvider: String? = nil
+        var llmModelID: String? = nil
+        var llmFallbackUsed: Bool? = nil
     }
 
     // ── 워크룸/개인 대화 구분 (Round 146A) ──

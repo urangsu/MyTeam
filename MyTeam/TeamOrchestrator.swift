@@ -452,7 +452,7 @@ class TeamOrchestrator {
                         fallbackUsed: false
                     )
                 }
-                let (responseText, _) = try await AIService.shared.getResponse(
+                let (responseText, responseMetadata) = try await AIService.shared.getResponseWithMetadata(
                     text: "\(taskPrompt)\n\n[사용자 지시]: \(userMessage)",
                     agentID: agent.id,
                     chatHistory: [],
@@ -460,7 +460,21 @@ class TeamOrchestrator {
                 )
 
                 await MainActor.run {
-                    manager.addChatLog(roomID: roomID, agentID: agent.id, agentName: agent.displayName, text: responseText, isUser: false, sources: sources)
+                    let messageID = manager.addChatLog(
+                        roomID: roomID,
+                        agentID: agent.id,
+                        agentName: agent.displayName,
+                        text: responseText,
+                        isUser: false,
+                        sources: sources
+                    )
+                    if let messageID {
+                        manager.updateChatLogLLMMetadata(
+                            roomID: roomID,
+                            messageID: messageID,
+                            metadata: responseMetadata
+                        )
+                    }
                     if !manager.isSilentMode && !didSpeakInThisDiscussion {
                         SpeechManager.shared.speak(text: responseText, agentID: agent.id, characterName: agent.displayName)
                         didSpeakInThisDiscussion = true

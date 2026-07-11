@@ -1420,8 +1420,16 @@ struct AgentChatView: View {
                                 }
                             }
                         }
+                        let executionMetadata = await LLMExecutionTraceStore.shared.metadata(for: llmRequestID)
                         await MainActor.run {
                             manager.typingAgentIDs.remove(targetIDAtSend)
+                            if let assistantMessageID, let executionMetadata {
+                                manager.updateChatLogLLMMetadata(
+                                    roomID: roomIDAtSend,
+                                    messageID: assistantMessageID,
+                                    metadata: executionMetadata
+                                )
+                            }
                             if assistantMessageID == nil {
                                 manager.addChatLog(
                                     roomID: roomIDAtSend,
@@ -1476,8 +1484,16 @@ struct AgentChatView: View {
                                         }
                                     }
                                     continuation.finish()
+                                    let executionMetadata = await LLMExecutionTraceStore.shared.metadata(for: llmRequestID)
                                     await MainActor.run {
                                         manager.typingAgentIDs.remove(targetIDAtSend)
+                                        if let assistantMessageID, let executionMetadata {
+                                            manager.updateChatLogLLMMetadata(
+                                                roomID: roomIDAtSend,
+                                                messageID: assistantMessageID,
+                                                metadata: executionMetadata
+                                            )
+                                        }
                                         if assistantMessageID == nil {
                                             manager.addChatLog(
                                                 roomID: roomIDAtSend,

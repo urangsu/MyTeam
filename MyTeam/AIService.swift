@@ -22,6 +22,27 @@ enum LLMFallbackPolicy: String, Codable, CaseIterable, Sendable {
     }
 }
 
+extension LLMFallbackPolicy {
+    var displayName: String {
+        switch self {
+        case .disabled: return "사용 안 함"
+        case .sameProviderOnly: return "같은 제공자만"
+        case .crossProviderAllowed: return "다른 제공자 허용"
+        }
+    }
+
+    var userFacingDescription: String {
+        switch self {
+        case .disabled:
+            return "선택한 AI가 실패하면 그대로 알려드립니다."
+        case .sameProviderOnly:
+            return "다른 회사로 요청을 보내지 않습니다. 검증된 대체 모델이 없으면 실패로 종료합니다."
+        case .crossProviderAllowed:
+            return "선택한 AI가 응답하기 전에 실패하면, 실제 응답 검증을 통과한 다른 AI를 사용할 수 있습니다."
+        }
+    }
+}
+
 struct LLMTokenBudgetSnapshot: Sendable {
     let requestID: UUID
     let provider: String
@@ -157,6 +178,29 @@ struct LLMResponseMetadata: Sendable {
     var providerDisplayName: String { provider.displayName }
 }
 
+actor LLMExecutionTraceStore {
+    static let shared = LLMExecutionTraceStore()
+
+    private var metadataByRequestID: [UUID: LLMResponseMetadata] = [:]
+    private var requestOrder: [UUID] = []
+    private let maxEntries = 200
+
+    func record(requestID: UUID, metadata: LLMResponseMetadata) {
+        if metadataByRequestID[requestID] == nil {
+            requestOrder.append(requestID)
+        }
+        metadataByRequestID[requestID] = metadata
+        while requestOrder.count > maxEntries {
+            let oldest = requestOrder.removeFirst()
+            metadataByRequestID.removeValue(forKey: oldest)
+        }
+    }
+
+    func metadata(for requestID: UUID) -> LLMResponseMetadata? {
+        metadataByRequestID[requestID]
+    }
+}
+
 // MARK: - ResolvedLLMCall
 // Round 270B: LLM 호출 결과 추적 — 실제로 사용된 provider/model 기록.
 // metadata.modelID가 항상 pinnedModelID였던 버그를 수정하기 위해 도입.
@@ -215,8 +259,9 @@ final class AIService {
         return AsyncThrowingStream { continuation in
             Task {
                 var lastError: Error?
-                for provider in candidates {
+                for (candidateIndex, provider) in candidates.enumerated() {
                     var didYieldToken = false
+                    var didRecordMetadata = false
                     do {
                         let resolvedCall: ResolvedLLMCall
                         if provider != preferredProvider, let validated = validatedFallbackCall(for: provider) {
@@ -249,8 +294,23 @@ final class AIService {
                             resolvedCall: resolvedCall
                         )
                         for try await token in stream {
+                            if !didRecordMetadata {
+                                await LLMExecutionTraceStore.shared.record(
+                                    requestID: requestID,
+                                    metadata: LLMResponseMetadata(
+                                        provider: provider,
+                                        modelID: resolvedCall.modelID,
+                                        fallbackChain: candidates,
+                                        usedFallback: candidateIndex > 0
+                                    )
+                                )
+                                didRecordMetadata = true
+                            }
                             didYieldToken = true
                             continuation.yield(token)
+                        }
+                        guard didYieldToken else {
+                            throw AIServiceError.invalidResponse
                         }
                         continuation.finish()
                         return
@@ -1325,6 +1385,18 @@ final class AIService {
                     resolvedCall: resolvedCall
                 )
                 for try await token in stream { fullText += token }
+                guard !fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    throw AIServiceError.invalidResponse
+                }
+                await LLMExecutionTraceStore.shared.record(
+                    requestID: requestID,
+                    metadata: LLMResponseMetadata(
+                        provider: provider,
+                        modelID: resolvedCall.modelID,
+                        fallbackChain: candidates,
+                        usedFallback: provider != preferred
+                    )
+                )
                 // 실제 성공한 provider 반환
                 return (text: fullText, provider: provider.displayName)
             } catch {
@@ -1385,12 +1457,16 @@ final class AIService {
                     resolvedCall: resolvedCall
                 )
                 for try await token in stream { fullText += token }
+                guard !fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    throw AIServiceError.invalidResponse
+                }
                 let metadata = LLMResponseMetadata(
                     provider: provider,
                     modelID: resolvedCall.modelID,
                     fallbackChain: candidates,
                     usedFallback: idx > 0
                 )
+                await LLMExecutionTraceStore.shared.record(requestID: requestID, metadata: metadata)
                 return (text: fullText, metadata: metadata)
             } catch {
                 lastError = error
