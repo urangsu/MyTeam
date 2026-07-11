@@ -1,6 +1,6 @@
 import Foundation
 
-struct AudioFeatureSnapshot: Sendable {
+nonisolated struct AudioFeatureSnapshot: Sendable, Equatable {
     let durationSec: Double
     let sampleCount: Int
     let sampleRate: Int
@@ -14,7 +14,37 @@ struct AudioFeatureSnapshot: Sendable {
     }
 }
 
-enum AudioFeatureAnalyzer {
+nonisolated enum AudioPlaybackRejection: String, Sendable, Equatable {
+    case empty
+    case invalidSampleRate
+    case nonFinite
+    case silent
+    case peakOutOfRange
+}
+
+nonisolated enum AudioPlaybackQualityResult: Sendable, Equatable {
+    case accepted(AudioFeatureSnapshot)
+    case rejected(AudioPlaybackRejection)
+}
+
+nonisolated enum AudioPlaybackQualityPolicy {
+    static func validate(samples: [Float], sampleRate: Int) -> AudioPlaybackQualityResult {
+        guard !samples.isEmpty else { return .rejected(.empty) }
+        guard (8_000...192_000).contains(sampleRate) else { return .rejected(.invalidSampleRate) }
+        guard samples.allSatisfy(\.isFinite) else { return .rejected(.nonFinite) }
+
+        let snapshot = AudioFeatureAnalyzer.analyze(samples: samples, sampleRate: sampleRate)
+        guard snapshot.peak >= 0.0005, snapshot.rms >= 0.0001 else {
+            return .rejected(.silent)
+        }
+        guard snapshot.peak <= 1.05 else {
+            return .rejected(.peakOutOfRange)
+        }
+        return .accepted(snapshot)
+    }
+}
+
+nonisolated enum AudioFeatureAnalyzer {
     static func analyze(samples: [Float], sampleRate: Int) -> AudioFeatureSnapshot {
         guard !samples.isEmpty, sampleRate > 0 else {
             return AudioFeatureSnapshot(

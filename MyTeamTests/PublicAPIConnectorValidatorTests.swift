@@ -80,6 +80,50 @@ final class SpeechRequestQueueTests: XCTestCase {
     }
 }
 
+final class AudioPlaybackQualityPolicyTests: XCTestCase {
+    func testRejectsSilentSamples() {
+        let result = AudioPlaybackQualityPolicy.validate(
+            samples: [Float](repeating: 0, count: 4_410),
+            sampleRate: 44_100
+        )
+
+        XCTAssertEqual(result, .rejected(.silent))
+    }
+
+    func testRejectsNonFiniteSamples() {
+        let result = AudioPlaybackQualityPolicy.validate(
+            samples: [0.1, .nan, 0.2],
+            sampleRate: 44_100
+        )
+
+        XCTAssertEqual(result, .rejected(.nonFinite))
+    }
+
+    func testRejectsOutOfRangePeak() {
+        let result = AudioPlaybackQualityPolicy.validate(
+            samples: [0.1, 1.2, -0.2],
+            sampleRate: 44_100
+        )
+
+        XCTAssertEqual(result, .rejected(.peakOutOfRange))
+    }
+
+    func testAcceptsFiniteAudibleVoiceSamples() {
+        let sampleRate = 44_100
+        let samples = (0..<sampleRate / 10).map { index in
+            Float(sin(2 * Double.pi * 220 * Double(index) / Double(sampleRate)) * 0.2)
+        }
+
+        let result = AudioPlaybackQualityPolicy.validate(samples: samples, sampleRate: sampleRate)
+
+        guard case .accepted(let snapshot) = result else {
+            return XCTFail("Expected audible samples to pass: \(result)")
+        }
+        XCTAssertGreaterThan(snapshot.rms, 0.01)
+        XCTAssertLessThanOrEqual(snapshot.peak, 1.0)
+    }
+}
+
 final class BubbleSpeechSynthesizerTests: XCTestCase {
     func testBubbleSpeechGeneratesProceduralSyllableAudio() {
         let config = BubbleSpeechConfig.from(profile: .cute, speed: 1.0)
