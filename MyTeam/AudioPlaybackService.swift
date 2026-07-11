@@ -350,9 +350,21 @@ actor AudioPlaybackService: AudioPlayable {
         rate: Float = 1.0,
         onPlaybackStarted: (@MainActor @Sendable () -> Void)? = nil
     ) async -> Bool {
-        guard !samples.isEmpty else {
-            AppLog.info("[AudioPlayback] playFloatSamples: empty samples → skip")
+        let qualityResult = AudioPlaybackQualityPolicy.validate(samples: samples, sampleRate: sampleRate)
+        guard case .accepted(let quality) = qualityResult else {
+            let reason: String
+            if case .rejected(let rejection) = qualityResult {
+                reason = rejection.rawValue
+            } else {
+                reason = "unknown"
+            }
+            AppLog.warning("[AudioPlayback] rejected invalid PCM reason=\(reason) "
+                + "samples=\(samples.count) sampleRate=\(sampleRate)")
             return false
+        }
+        if quality.hasClickWarning {
+            AppLog.warning("[AudioPlayback] PCM click warning clicks=\(quality.estimatedClickCount) "
+                + "duration=\(quality.durationSec)s")
         }
         guard ensureEngineReady() else { return false }
         guard let ef = engineFormat else {
