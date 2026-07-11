@@ -62,13 +62,17 @@ enum DocumentPackageValidator {
         }
 
         // 3) [Content_Types].xml에 slide content type이 있는지
-        let ctXML = contents["[Content_Types].xml"]!
+        guard let ctXML = contents["[Content_Types].xml"] else {
+            throw DocumentValidationError.unreadableContent("[Content_Types].xml")
+        }
         guard ctXML.contains("application/vnd.openxmlformats-officedocument.presentationml.slide") else {
             throw DocumentValidationError.contentTypeMissing("presentationml.slide")
         }
 
         // 4) presentation.xml.rels에 slide 관계가 있는지
-        let relsXML = contents["ppt/_rels/presentation.xml.rels"]!
+        guard let relsXML = contents["ppt/_rels/presentation.xml.rels"] else {
+            throw DocumentValidationError.unreadableContent("ppt/_rels/presentation.xml.rels")
+        }
         guard relsXML.contains("slide") else {
             throw DocumentValidationError.missingRelationship("slide", in: "presentation.xml.rels")
         }
@@ -116,7 +120,9 @@ enum DocumentPackageValidator {
         }
 
         // 3) workbook.xml.rels가 sheet를 참조하는지
-        let relsXML = contents["xl/_rels/workbook.xml.rels"]!
+        guard let relsXML = contents["xl/_rels/workbook.xml.rels"] else {
+            throw DocumentValidationError.unreadableContent("xl/_rels/workbook.xml.rels")
+        }
         guard relsXML.contains("worksheets/sheet") else {
             throw DocumentValidationError.missingRelationship("worksheet", in: "workbook.xml.rels")
         }
@@ -130,7 +136,9 @@ enum DocumentPackageValidator {
         }
 
         // 5) sharedStrings.xml declared count vs 실제 si 개수 불일치 경고
-        let ssXML = contents["xl/sharedStrings.xml"]!
+        guard let ssXML = contents["xl/sharedStrings.xml"] else {
+            throw DocumentValidationError.unreadableContent("xl/sharedStrings.xml")
+        }
         let actualSI = ssXML.components(separatedBy: "<si>").count - 1
         if let declared = parseXMLAttribute(ssXML, name: "uniqueCount") ?? parseXMLAttribute(ssXML, name: "count"),
            declared > 0, actualSI < declared / 2 {

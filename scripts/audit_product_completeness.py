@@ -20,6 +20,10 @@ def main() -> None:
     failures: list[str] = []
     warnings: list[str] = []
 
+    for swift_file in (ROOT / "MyTeam").rglob("*.swift"):
+        if "fatalError(" in swift_file.read_text(encoding="utf-8"):
+            failures.append(f"Product runtime must not contain fatalError: {swift_file.relative_to(ROOT)}")
+
     agent_chat = read("MyTeam/AgentChatView.swift")
     workflow_input = read("MyTeam/WorkflowInputCoordinator.swift")
     fast_path = read("MyTeam/MyTeamToolFastPathRouter.swift")

@@ -119,10 +119,10 @@ final class WorkflowRunStore {
     }
 
     func updateStep(workflowID: UUID, stepID: String, update: (inout StepExecutionRecord) -> Void) {
-        guard let idx = records[workflowID]?.steps.firstIndex(where: { $0.stepID == stepID }) else { return }
-        // Round 273: force unwrap → 명시적 guard로 교체 (guard let이 위에 있어 안전하지만 명확성 향상)
-        guard records[workflowID] != nil else { return }
-        update(&records[workflowID]!.steps[idx])
+        guard var record = records[workflowID],
+              let index = record.steps.firstIndex(where: { $0.stepID == stepID }) else { return }
+        update(&record.steps[index])
+        records[workflowID] = record
     }
 
     func recordError(

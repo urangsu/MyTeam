@@ -12,7 +12,7 @@ final class PPTXWriter {
         let zip = MiniZipWriter()
         let slides: [SlidePlan]
         if plan.slides.isEmpty {
-            slides = [(try? SlidePlan(from: EmptySlideDecoder(title: plan.title)))].compactMap { $0 }
+            slides = [SlidePlan(title: plan.title, layout: .title)]
         } else {
             slides = plan.slides
         }
@@ -313,35 +313,4 @@ final class PPTXWriter {
          .replacingOccurrences(of: ">", with: "&gt;")
          .replacingOccurrences(of: "\"", with: "&quot;")
     }
-}
-
-// MARK: - EmptySlideDecoder helper
-
-private struct EmptySlideDecoder: Decoder {
-    let title: String
-    var codingPath: [CodingKey] = []
-    var userInfo: [CodingUserInfoKey: Any] = [:]
-
-    func container<K: CodingKey>(keyedBy type: K.Type) throws -> KeyedDecodingContainer<K> {
-        KeyedDecodingContainer(EmptySlideContainer(title: title))
-    }
-    func unkeyedContainer() throws -> UnkeyedDecodingContainer { fatalError() }
-    func singleValueContainer() throws -> SingleValueDecodingContainer { fatalError() }
-}
-
-private struct EmptySlideContainer<K: CodingKey>: KeyedDecodingContainerProtocol {
-    typealias Key = K
-    let title: String
-    var codingPath: [CodingKey] = []
-    var allKeys: [K] = []
-    func contains(_ key: K) -> Bool { key.stringValue == "title" }
-    func decodeNil(forKey key: K) throws -> Bool { true }
-    func decode(_ type: String.Type, forKey key: K) throws -> String {
-        key.stringValue == "title" ? title : ""
-    }
-    func decode<T>(_ type: T.Type, forKey key: K) throws -> T where T: Decodable { fatalError() }
-    func nestedContainer<NK>(keyedBy type: NK.Type, forKey key: K) throws -> KeyedDecodingContainer<NK> { fatalError() }
-    func nestedUnkeyedContainer(forKey key: K) throws -> UnkeyedDecodingContainer { fatalError() }
-    func superDecoder() throws -> Decoder { fatalError() }
-    func superDecoder(forKey key: K) throws -> Decoder { fatalError() }
 }

@@ -26,6 +26,22 @@ struct SlidePlan: Codable {
     let notes:    String?
     let layout:   SlideLayout?
 
+    init(
+        title: String,
+        subtitle: String? = nil,
+        content: String? = nil,
+        bullets: [String]? = nil,
+        notes: String? = nil,
+        layout: SlideLayout? = nil
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.content = content
+        self.bullets = bullets
+        self.notes = notes
+        self.layout = layout
+    }
+
     init(from decoder: Decoder) throws {
         let c    = try decoder.container(keyedBy: CodingKeys.self)
         title    = (try? c.decode(String.self,       forKey: .title))    ?? ""
