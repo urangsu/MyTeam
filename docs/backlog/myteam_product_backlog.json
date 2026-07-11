@@ -1795,9 +1795,9 @@
           "Fallback regression tests and product audit"
         ],
         "exclude": [
-          "User-facing fallback policy picker",
           "Same-provider alternate model enrollment UI",
           "Live provider fallback QA",
+          "Structured LLM metadata fields on WorkArtifact",
           "OpenAI Responses streaming adapter",
           "DART, Worker, and KMA changes"
         ]
@@ -1837,17 +1837,22 @@
         "commit_sha": "3d2aafc, 33ab0ca",
         "files_changed": [
           "MyTeam/AIService.swift",
+          "MyTeam/AgentChatView.swift",
+          "MyTeam/AgentWindowManager.swift",
+          "MyTeam/ChatModels.swift",
+          "MyTeam/ConnectionCenterView.swift",
           "MyTeam/CredentialHealth.swift",
+          "MyTeam/TeamOrchestrator.swift",
           "MyTeamTests/LLMRouterTests.swift",
           "scripts/audit_product_completeness.py"
         ],
-        "validation_summary": "2026-07-10: Product audit, release validator, git diff check, Debug build, Debug test build, and Release build passed. App-hosted test execution, explicit fallback UI, and live provider fallback QA remain open, so status stays partial.",
+        "validation_summary": "2026-07-11: The fallback policy is user-selectable, the actual provider/model/fallback flag is persisted on personal and team chat messages, the complete 70-test suite passed, and the product audit guards the trace path. Live provider fallback QA and structured Artifact metadata remain open, so status stays partial.",
         "screenshots": []
       },
       "notes": [
         "Cross-provider fallback code remains gated behind explicit policy and fresh selected-model smoke evidence.",
-        "The policy picker is intentionally not exposed until same-provider alternate model enrollment is implemented truthfully.",
-        "Actual provider/model metadata is already preserved by getResponseWithMetadata; end-to-end Artifact disclosure still needs manual QA."
+        "The policy picker defaults to disabled and explains when another provider may receive a request.",
+        "Personal and team chat logs preserve the actual provider/model metadata; WorkArtifact does not yet have structured LLM metadata fields."
       ]
     },
     {

@@ -52,6 +52,7 @@ def main() -> None:
     quality_workflow = read(".github/workflows/quality-gate.yml")
     ai_model_policy = read("MyTeam/AIModelPolicy.swift")
     ai_service = read("MyTeam/AIService.swift")
+    chat_models = read("MyTeam/ChatModels.swift")
     openai_responses = read("MyTeam/OpenAIResponsesAdapter.swift")
     xcode_project = read("MyTeam/MyTeam.xcodeproj/project.pbxproj")
     credential_health = read("MyTeam/CredentialHealth.swift")
@@ -134,6 +135,20 @@ def main() -> None:
         failures.append("macOS Settings command must route through AgentWindowManager.showSettingsWindow")
     if "AppRuntimeEnvironment.isRunningTests" not in myteam_app:
         failures.append("App-hosted XCTest must not launch product windows or TTS prewarm")
+    for token in [
+        "actor LLMExecutionTraceStore",
+        "usedFallback: candidateIndex > 0",
+        "LLMExecutionTraceStore.shared.record",
+    ]:
+        if token not in ai_service:
+            failures.append(f"LLM execution truth must retain actual provider/model metadata: {token}")
+    if "guard didYieldToken else" not in ai_service:
+        failures.append("Streaming LLM responses must reject empty generations")
+    if "guard !fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else" not in ai_service:
+        failures.append("Buffered LLM responses must reject empty generations")
+    for token in ["llmProvider", "llmModelID", "llmFallbackUsed"]:
+        if token not in chat_models:
+            failures.append(f"ChatLog must preserve LLM execution metadata: {token}")
     settings_window_index = agent_window_manager.find('agentID: "settings_window"')
     if settings_window_index != -1:
         window = agent_window_manager[max(0, settings_window_index - 200):settings_window_index + 260]
