@@ -376,7 +376,6 @@ class TeamOrchestrator {
             await MainActor.run {
                 manager.addChatLog(roomID: roomID, agentID: firstAgent.id, agentName: firstAgent.displayName, text: proposal, isUser: false)
                 if !manager.isSilentMode && !didSpeakInThisDiscussion {
-                    manager.setAgentSpeaking(agentID: firstAgent.id, text: proposal)
                     SpeechManager.shared.speak(text: proposal, agentID: firstAgent.id, characterName: firstAgent.displayName)
                     didSpeakInThisDiscussion = true
                 }
@@ -463,7 +462,6 @@ class TeamOrchestrator {
                 await MainActor.run {
                     manager.addChatLog(roomID: roomID, agentID: agent.id, agentName: agent.displayName, text: responseText, isUser: false, sources: sources)
                     if !manager.isSilentMode && !didSpeakInThisDiscussion {
-                        manager.setAgentSpeaking(agentID: agent.id, text: responseText)
                         SpeechManager.shared.speak(text: responseText, agentID: agent.id, characterName: agent.displayName)
                         didSpeakInThisDiscussion = true
                     }
@@ -542,7 +540,6 @@ class TeamOrchestrator {
                 await MainActor.run {
                     manager.addChatLog(roomID: roomID, agentID: supporter.id, agentName: supporter.displayName, text: interText, isUser: false)
                     if !manager.isSilentMode && !didSpeakInThisDiscussion {
-                        manager.setAgentSpeaking(agentID: supporter.id, text: interText)
                         SpeechManager.shared.speak(text: interText, agentID: supporter.id, characterName: supporter.displayName)
                         didSpeakInThisDiscussion = true
                     }
@@ -690,7 +687,6 @@ class TeamOrchestrator {
                     await MainActor.run {
                         manager.addChatLog(roomID: roomID, agentID: agent.id, agentName: agent.displayName, text: bubbleText, isUser: false, sources: index == 0 ? sources : [])
                         if index == 0, !manager.isSilentMode && !didSpeakInThisDiscussion {
-                            manager.setAgentSpeaking(agentID: agent.id, text: bubbleText)
                             SpeechManager.shared.speak(text: bubbleText, agentID: agent.id, characterName: agent.displayName)
                             didSpeakInThisDiscussion = true
                         }
@@ -992,7 +988,6 @@ class TeamOrchestrator {
         await MainActor.run {
             manager.addChatLog(roomID: roomID, agentID: speaker.id, agentName: speaker.displayName, text: text, isUser: false)
             if !manager.isSilentMode {
-                manager.setAgentSpeaking(agentID: speaker.id, text: text)
                 SpeechManager.shared.speak(text: text, agentID: speaker.id, characterName: speaker.displayName)
             }
         }
