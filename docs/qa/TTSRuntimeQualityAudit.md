@@ -20,12 +20,12 @@ Branch: `codex/tts-runtime-hardening-p0`
 | TTS-P0-003 | `playFloatSamples` returned after scheduling instead of actual playback completion. | Code fixed, manual QA required | Await `dataPlayedBack` with bounded timeout |
 | TTS-P0-004 | Normal TTS wrote every synthesis result to Desktop. | Code fixed | Normal paths no longer call `S3WavWriter`; explicit lab artifacts use app cache |
 | TTS-P0-005 | A new speech session reset the currently playing session. | Code fixed, manual QA required | Normal lines use FIFO queue; swap/barge-in/stop use ordered interruption; busy-drop is explicit |
-| TTS-P0-006 | Supertonic bundle validation checks presence but not hash, session creation, or inference output. | Open | Add model manifest and a release-equivalent inference smoke |
+| TTS-P0-006 | Supertonic bundle validation checked presence but not support files or hashes. | Code fixed, inference QA required | Bundled support files and SHA-256 manifest are enforced; release-equivalent inference smoke remains open |
 | TTS-P0-007 | Speaking sprite state used a 30-second fallback instead of playback lifecycle. | Code fixed, manual QA required | SpeechManager exclusively starts and clears speaking state at playback boundaries |
 
 ## P1 Findings
 
-- Cache ONNX environment, sessions, Unicode index, and voice style instead of rebuilding them for every utterance.
+- ONNX environment, sessions, Unicode index, and voice styles are now actor-isolated and reused across utterances.
 - ONNX text encoder output now uses a typed missing-output failure instead of force unwrap.
 - Normal PCM now rejects empty, invalid-rate, non-finite, silent, and unsafe-peak output before engine setup.
 - Tune Chiko only after removing duplicated synthesis-speed and playback-rate/pitch transforms.
@@ -39,7 +39,7 @@ Branch: `codex/tts-runtime-hardening-p0`
 - Remove duplicate skill-result and team-discussion execution.
 - Fix FloatingPanel key swallowing and double drag handling.
 - Make team panel layout responsive to available screen size and accessibility text size.
-- Make artifact writes atomic and stop silently discarding index-write errors.
+- Artifact Markdown and indexes now use atomic writes, and primary artifact writers fail closed on index registration errors. Corruption recovery and concurrent-save QA remain open.
 - Confirm whether macOS 26.2 is an intentional minimum deployment target.
 
 ## Additional Code-Only Hardening

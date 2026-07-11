@@ -2255,6 +2255,8 @@
           "Playback lifecycle-owned character speaking state",
           "PCM validity gate before AVAudioEngine setup",
           "Typed ONNX missing-output failure",
+          "Bundled model support-file and SHA-256 integrity validation",
+          "Actor-isolated ONNX environment, session, index, and voice-style reuse",
           "Static regression contract and XCTest fixtures",
           "TTS runtime quality audit"
         ],
@@ -2262,7 +2264,6 @@
           "Supertonic3 model or BubbleSpeech removal",
           "Character persona or dialogue changes",
           "Chiko listening-based retuning",
-          "ONNX session caching",
           "App Store redistribution approval"
         ]
       },
@@ -2275,6 +2276,8 @@
         "Explicit TTS Lab artifacts use a collision-safe app cache path"
         ,"Normal character lines are serialized instead of resetting active playback"
         ,"Speaking animation is not driven by a fixed 30-second timer"
+        ,"App Store validation rejects missing or hash-mismatched model resources"
+        ,"ONNX sessions and support data are reused without crossing actor isolation"
       ],
       "failure_conditions": [
         "Visible and spoken wording differ",
@@ -2302,13 +2305,18 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "b37bc65",
+        "commit_sha": "7d18dc0",
         "files_changed": [
           "MyTeam/SupertonicProsodyTextProcessor.swift",
           "MyTeam/SpeechManager.swift",
           "MyTeam/AudioPlaybackService.swift",
           "MyTeam/AudioFeatureSnapshot.swift",
           "MyTeam/Supertonic3ONNXRunner.swift",
+          "MyTeam/Supertonic3ModelManifest.swift",
+          "MyTeam/Supertonic3TTSConfig.swift",
+          "MyTeam/Resources/Supertonic3/model-integrity.json",
+          "MyTeam/Resources/Supertonic3/onnx/tts.json",
+          "MyTeam/Resources/Supertonic3/onnx/unicode_indexer.json",
           "MyTeam/S3WavWriter.swift",
           "MyTeam/AgentWindowManager.swift",
           "MyTeam/AgentChatView.swift",
@@ -2317,10 +2325,11 @@
           "MyTeam/TeamTableView.swift",
           "MyTeamTests/PublicAPIConnectorValidatorTests.swift",
           "scripts/validate_tts_runtime_truth.py",
+          "scripts/validate_supertonic3_bundle.py",
           "scripts/validate_myteam_release.py",
           "docs/qa/TTSRuntimeQualityAudit.md"
         ],
-        "validation_summary": "2026-07-11: Exact-text preservation, bounded dataPlayedBack completion, FIFO speech queue, ordered interruption, playback-owned speaking state, diagnostic WAV isolation, PCM validity rejection, typed ONNX output failure, TTS runtime truth contract, and Debug test-bundle build are implemented. Partial because the app-hosted XCTest runner does not reach test execution, and actual multi-character listening, Chiko audio quality, full model inference compatibility, and Release listening QA remain unverified.",
+        "validation_summary": "2026-07-11: Exact-text preservation, bounded dataPlayedBack completion, FIFO speech queue, ordered interruption, playback-owned speaking state, diagnostic WAV isolation, PCM validity rejection, typed ONNX output failure, bundled support files, SHA-256 model integrity, reusable actor-owned ONNX resources, TTS runtime truth validation, and Debug test-bundle build are implemented. Partial because the app-hosted XCTest runner does not reach test execution, and actual multi-character listening, Chiko audio quality, full model inference compatibility, App Store redistribution approval, and Release listening QA remain unverified.",
         "screenshots": []
       },
       "notes": [
