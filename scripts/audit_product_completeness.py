@@ -41,6 +41,7 @@ def main() -> None:
     finance_runner = read("MyTeam/ToolRunners/FinanceToolRunner.swift")
     finance_formatter = read("MyTeam/ToolResultFormatters.swift")
     tool_state = read("MyTeam/ToolExecutionState.swift")
+    tool_log = read("MyTeam/ToolExecutionLog.swift")
     chain_step = read("MyTeam/ChainStep.swift")
     chain_projection = read("MyTeam/ChainOrchestrator.swift")
     chain_runtime = read("MyTeam/KSkillAssistRuntime.swift")
@@ -131,6 +132,8 @@ def main() -> None:
         failures.append("SwiftUI Settings scene must not create a second SettingsView instance")
     if "CommandGroup(replacing: .appSettings)" not in myteam_app or "AgentWindowManager.shared.showSettingsWindow()" not in myteam_app:
         failures.append("macOS Settings command must route through AgentWindowManager.showSettingsWindow")
+    if "AppRuntimeEnvironment.isRunningTests" not in myteam_app:
+        failures.append("App-hosted XCTest must not launch product windows or TTS prewarm")
     settings_window_index = agent_window_manager.find('agentID: "settings_window"')
     if settings_window_index != -1:
         window = agent_window_manager[max(0, settings_window_index - 200):settings_window_index + 260]
@@ -150,6 +153,8 @@ def main() -> None:
         failures.append("Settings presentation must demote and restore app-owned FloatingPanel levels")
     if "settingsSuppressedPanelLevels" not in agent_window_manager:
         failures.append("Settings presentation must remember suppressed FloatingPanel levels for restore")
+    if "positionSettingsWindowBesideTeamStatus(window)" not in agent_window_manager:
+        failures.append("Settings presentation must preserve the visible team status panel when screen space allows")
     for token in [
         "applySettingsPresentationPolicy(to:",
         "keepSettingsFrontIfNeeded()",
@@ -164,6 +169,8 @@ def main() -> None:
     )
     if suppression_match and "teamPanel" in suppression_match.group("body"):
         failures.append("Settings presentation must not demote the team member panel")
+    if suppression_match and "statusPanel" in suppression_match.group("body"):
+        failures.append("Settings presentation must not hide the four-member team status panel")
     if '"settings_window"' in floating_panel:
         failures.append("FloatingPanel must not contain settings_window special cases")
     tuck_ids_match = re.search(
@@ -239,6 +246,9 @@ def main() -> None:
     for token in ["case checkedEmpty", "case partial"]:
         if token not in tool_state:
             failures.append(f"ToolExecutionState must distinguish non-success result state: {token}")
+    for token in ["case checkedEmpty", "case partial", "?? .blocked"]:
+        if token not in tool_log:
+            failures.append(f"ToolExecutionLog must preserve persisted result truth: {token}")
 
     for token in ["case evidenceAvailable", "case planned", "case projected"]:
         if token not in chain_step:
