@@ -78,7 +78,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                         let chunk = sentenceBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
                         sentenceBuffer = "" // 버퍼 즉시 플러시
 
-                        if let ttsChunk = Self.normalizedTTSChunk(chunk), !Task.isCancelled {
+                        if let ttsChunk = Self.validatedTTSChunk(chunk), !Task.isCancelled {
                             // ✅ 핵심: UI 콜백을 여기서 직접 호출하지 않음
                             // 대신 오디오 재생 시작 시점에 실행될 클로저를 파이프라인에 주입
                             // Round 266: agentID 전달 — 캐릭터별 preset/emotion/pitch/rate/speed 적용
@@ -99,7 +99,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
 
                 // 자투리 미완성 문장 처리
                 let remainder = sentenceBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
-                if let ttsRemainder = Self.normalizedTTSChunk(remainder), !Task.isCancelled {
+                if let ttsRemainder = Self.validatedTTSChunk(remainder), !Task.isCancelled {
                     // Round 266: agentID 전달 (자투리 문장도 동일하게)
                     await self.dispatchToInferencePipeline(
                         text: ttsRemainder,
@@ -155,14 +155,6 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                     speed: speed,
                     paths: paths
                 )
-                // WAV 저장 — debug/lab 확인용 (재생과 무관)
-                if let wavPath = S3WavWriter.write(
-                    samples: result.wavSamples,
-                    sampleRate: result.sampleRate,
-                    tag: "official_\(preset)"
-                ) {
-                    AppLog.info("[SpeechManager] WAV written: \(wavPath)")
-                }
                 // 실제 재생: playerNode.play() 이후 onPlaybackStarted 호출됨
                 let didPlay = await playback.playFloatSamples(
                     samples: result.wavSamples,
@@ -231,28 +223,20 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
             currentChunk.append(char)
             if char == "." || char == "?" || char == "!" || char == "\n" {
                 let trimmed = currentChunk.trimmingCharacters(in: .whitespacesAndNewlines)
-                if let normalized = Self.normalizedTTSChunk(trimmed) { chunks.append(normalized) }
+                if let validated = Self.validatedTTSChunk(trimmed) { chunks.append(validated) }
                 currentChunk = ""
             }
         }
         let finalTrimmed = currentChunk.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let normalized = Self.normalizedTTSChunk(finalTrimmed) { chunks.append(normalized) }
+        if let validated = Self.validatedTTSChunk(finalTrimmed) { chunks.append(validated) }
         return chunks
     }
 
-    private nonisolated static func normalizedTTSChunk(_ text: String) -> String? {
-        let normalized = text
-            .replacingOccurrences(of: "\n", with: " ")
-            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
-            .replacingOccurrences(of: "[!?]{2,}", with: "!", options: .regularExpression)
-            .replacingOccurrences(of: "\\.{2,}", with: ".", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard normalized.contains(where: { $0.isTTSMeaningfulCharacter }) else {
+    nonisolated static func validatedTTSChunk(_ text: String) -> String? {
+        guard text.contains(where: { $0.isTTSMeaningfulCharacter }) else {
             return nil
         }
-
-        return normalized.isEmpty ? nil : normalized
+        return text
     }
 
     func speak(text: String, agentID: String? = nil, characterName: String? = nil) {
@@ -320,15 +304,9 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 AppLog.warning("[SpeechManager.speakOnce] playback failed after synthesis preset=\(preset)")
                 return nil
             }
-            // WAV 저장 (debug/lab 확인용, 실패해도 재생에 영향 없음)
-            let wavPath = S3WavWriter.write(
-                samples: result.wavSamples,
-                sampleRate: result.sampleRate,
-                tag: "speakonce_\(preset)"
-            )
             AppLog.info("[SpeechManager.speakOnce] ▶️ played preset=\(preset) frames=\(result.wavSamples.count)")
             return TTSOutput(
-                audioFileURL: wavPath.map { URL(fileURLWithPath: $0) },
+                audioFileURL: nil,
                 duration: result.durationSec,
                 sampleRate: result.sampleRate,
                 providerKind: .supertonic3

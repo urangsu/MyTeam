@@ -39,6 +39,12 @@ final class SupertonicProsodyTextProcessorTests: XCTestCase {
         XCTAssertEqual(spoken, visible)
     }
 
+    func testStreamingSpeechChunkValidationDoesNotRewriteText() {
+        let visible = "잠시만요!!  확인 중입니다...\n"
+
+        XCTAssertEqual(SpeechManager.validatedTTSChunk(visible), visible)
+        XCTAssertNil(SpeechManager.validatedTTSChunk("  !!!  "))
+    }
 }
 
 final class BubbleSpeechSynthesizerTests: XCTestCase {
