@@ -121,6 +121,7 @@ struct ToolExecutionLogView: View {
         case .running: return "clock"
         case .succeeded: return "checkmark.circle.fill"
         case .checkedEmpty: return "magnifyingglass.circle.fill"
+        case .partial: return "checkmark.circle.badge.questionmark.fill"
         case .failed: return "exclamationmark.triangle.fill"
         case .blocked: return "lock.fill"
         }
@@ -131,6 +132,7 @@ struct ToolExecutionLogView: View {
         case .running: return "실행 중"
         case .succeeded: return "완료"
         case .checkedEmpty: return "결과 없음"
+        case .partial: return "일부 완료"
         case .failed: return "실패"
         case .blocked: return "차단"
         }
@@ -141,6 +143,7 @@ struct ToolExecutionLogView: View {
         case .running: return .blue
         case .succeeded: return .green
         case .checkedEmpty: return .secondary
+        case .partial: return .blue
         case .failed: return .orange
         case .blocked: return .secondary
         }
@@ -231,6 +234,7 @@ struct ToolExecutionLogDetailView: View {
         case .running: return "실행 중"
         case .succeeded: return "완료"
         case .checkedEmpty: return "결과 없음"
+        case .partial: return "일부 완료"
         case .failed: return "실패"
         case .blocked: return "차단"
         }
@@ -241,6 +245,7 @@ struct ToolExecutionLogDetailView: View {
         case .running: return .blue
         case .succeeded: return .green
         case .checkedEmpty: return .secondary
+        case .partial: return .blue
         case .failed: return .orange
         case .blocked: return .secondary
         }

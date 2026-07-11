@@ -1,12 +1,26 @@
 import Foundation
 import Combine
 
-enum ToolExecutionLogState: String, Codable, Sendable, Equatable {
+enum ToolExecutionLogState: String, Sendable, Equatable {
     case running
     case succeeded
     case checkedEmpty
+    case partial
     case failed
     case blocked
+}
+
+extension ToolExecutionLogState: Codable {
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = try container.decode(String.self)
+        self = ToolExecutionLogState(rawValue: rawValue) ?? .blocked
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
 }
 
 enum ToolExecutionPath: String, Codable, Sendable, Equatable {
@@ -188,8 +202,10 @@ final class ToolExecutionLogStore: ObservableObject {
 
     private func logState(for state: ToolExecutionState) -> ToolExecutionLogState {
         switch state {
-        case .succeeded, .partial:
+        case .succeeded:
             return .succeeded
+        case .partial:
+            return .partial
         case .checkedEmpty:
             return .checkedEmpty
         case .failed:
