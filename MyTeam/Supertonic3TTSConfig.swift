@@ -51,9 +51,11 @@ enum Supertonic3TTSConfig {
         "text_encoder.onnx",       // ~36.4 MB
         "duration_predictor.onnx", // ~3.7 MB
         "vector_estimator.onnx",   // ~257 MB
-        "vocoder.onnx"             // ~101 MB
+        "vocoder.onnx",            // ~101 MB
+        "unicode_indexer.json",
+        "tts.json"
     ]
-    // 총 ~398 MB. 번들에 포함하지 않음.
+    // App Store/Direct 모델은 Resources/Supertonic3에 manifest와 함께 번들됨.
 
     // MARK: - Voice Presets
 

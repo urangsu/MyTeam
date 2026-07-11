@@ -61,7 +61,7 @@ struct Supertonic3ModelManifest {
         "framework": "ONNX",
         "languages": 31,
         "license": "OpenRAIL-M + MIT",
-        "sampleRate": 24000,
+        "sampleRate": 44100,
         "architectureSize": "99M",
         "note": "Cloud: skeleton only. Mac local: ONNX Runtime inference in 249TTS."
     ]
