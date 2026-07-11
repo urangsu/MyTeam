@@ -8,6 +8,7 @@ struct ConnectionCenterView: View {
     let focusedProvider: ExternalProvider?
 
     @StateObject private var healthService = CredentialHealthService.shared
+    @AppStorage("MyTeam.LLMFallbackPolicy") private var fallbackPolicyRaw = LLMFallbackPolicy.disabled.rawValue
 
     private let aiProviders: [ExternalProvider] = [.gemini, .openAI, .anthropic, .openRouter]
     private let dataProviders: [ExternalProvider] = [.kmaWeather, .naverNews, .dartDisclosure, .koreanLaw, .publicDataPortal]
@@ -57,6 +58,8 @@ struct ConnectionCenterView: View {
             )
 
             routingSection
+
+            fallbackPolicySection
 
             providerSection(
                 icon: "building.columns.fill",
@@ -113,6 +116,34 @@ struct ConnectionCenterView: View {
                 }
             }
         }
+    }
+
+    private var fallbackPolicySection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            sectionHeader(
+                icon: "arrow.triangle.swap",
+                title: "응답 실패 시 처리",
+                subtitle: "다른 AI로 요청을 보낼지 사용자가 직접 결정합니다. 기본값은 사용 안 함입니다."
+            )
+
+            Picker("응답 실패 시 처리", selection: $fallbackPolicyRaw) {
+                ForEach(LLMFallbackPolicy.allCases, id: \.rawValue) { policy in
+                    Text(policy.displayName).tag(policy.rawValue)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            Text(selectedFallbackPolicy.userFacingDescription)
+                .font(.system(size: 10))
+                .foregroundStyle(selectedFallbackPolicy == .crossProviderAllowed ? .orange : .secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .background(Color(NSColor.controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private var selectedFallbackPolicy: LLMFallbackPolicy {
+        LLMFallbackPolicy(rawValue: fallbackPolicyRaw) ?? .disabled
     }
 
     private func summaryTile(title: String, value: String, icon: String) -> some View {
