@@ -28,6 +28,8 @@ def main() -> None:
     speech = (ROOT / "MyTeam" / "SpeechManager.swift").read_text()
     playback = (ROOT / "MyTeam" / "AudioPlaybackService.swift").read_text()
     wav_writer = (ROOT / "MyTeam" / "S3WavWriter.swift").read_text()
+    audio_features = (ROOT / "MyTeam" / "AudioFeatureSnapshot.swift").read_text()
+    onnx_runner = (ROOT / "MyTeam" / "Supertonic3ONNXRunner.swift").read_text()
     window_manager = (ROOT / "MyTeam" / "AgentWindowManager.swift").read_text()
     tests = (ROOT / "MyTeamTests" / "PublicAPIConnectorValidatorTests.swift").read_text()
 
@@ -61,6 +63,12 @@ def main() -> None:
     require(playback, "await completion.wait", "float playback must await completion or timeout")
     require(playback, "did not reach dataPlayedBack", "playback timeout must be observable")
     require(playback, "@MainActor @Sendable", "playback-start callbacks must be main-actor isolated")
+    require(playback, "AudioPlaybackQualityPolicy.validate", "float playback must validate PCM before engine use")
+    require(audio_features, "case nonFinite", "PCM quality policy must reject non-finite samples")
+    require(audio_features, "case silent", "PCM quality policy must reject silent output")
+    require(audio_features, "case peakOutOfRange", "PCM quality policy must reject unsafe peaks")
+    forbid(onnx_runner, 'outs["text_emb"]!', "ONNX output lookup must not force unwrap")
+    require(onnx_runner, 'missingOutput("text_emb")', "missing text encoder output must be a typed failure")
 
     for token in [
         "enum SpeechRequestPolicy",
@@ -97,6 +105,10 @@ def main() -> None:
         "testStreamingSpeechChunkValidationDoesNotRewriteText",
         "testQueuedSpeechRequestsRemainFIFO",
         "testDropIfBusyDoesNotReplaceActiveSpeech",
+        "testRejectsSilentSamples",
+        "testRejectsNonFiniteSamples",
+        "testRejectsOutOfRangePeak",
+        "testAcceptsFiniteAudibleVoiceSamples",
     ]:
         require(tests, test_name, f"missing TTS regression test: {test_name}")
 

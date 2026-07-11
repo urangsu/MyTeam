@@ -178,6 +178,31 @@ def main() -> None:
     )
     if not background_drag_match or 'case "status_window":' not in background_drag_match.group("body") or "return false" not in background_drag_match.group("body"):
         failures.append("status_window must explicitly disable background dragging")
+    key_down_match = re.search(
+        r"override func keyDown\(with event: NSEvent\) \{(?P<body>.*?)\n    \}",
+        floating_panel,
+        re.S,
+    )
+    if not key_down_match or "super.keyDown(with: event)" not in key_down_match.group("body"):
+        failures.append("FloatingPanel must forward keyboard events through the AppKit responder chain")
+    mouse_drag_match = re.search(
+        r"override func mouseDragged\(with event: NSEvent\) \{(?P<body>.*?)\n    \}",
+        floating_panel,
+        re.S,
+    )
+    if not mouse_drag_match or "setFrameOrigin(newOrigin)" not in mouse_drag_match.group("body"):
+        failures.append("FloatingPanel must keep one explicit background-drag path")
+    else:
+        manual_drag_tail = mouse_drag_match.group("body").split("setFrameOrigin(newOrigin)", 1)[1]
+        if "super.mouseDragged(with: event)" in manual_drag_tail:
+            failures.append("FloatingPanel must not apply AppKit movement after manual frame movement")
+    mouse_down_match = re.search(
+        r"override func mouseDown\(with event: NSEvent\) \{(?P<body>.*?)\n    \}",
+        floating_panel,
+        re.S,
+    )
+    if mouse_down_match and "playDragStart" in mouse_down_match.group("body"):
+        failures.append("FloatingPanel must not play drag feedback for a click without movement")
     if "panelChromePadding" not in team_status or "windowHeight" not in team_status:
         failures.append("TeamStatusView must size the status window with chrome padding included")
     status_size_match = re.search(
