@@ -19,9 +19,9 @@ Branch: `codex/tts-runtime-hardening-p0`
 | TTS-P0-002 | Streaming chunk validation rewrote repeated punctuation and whitespace. | Code fixed, test execution blocked | Exact streaming-chunk fixture |
 | TTS-P0-003 | `playFloatSamples` returned after scheduling instead of actual playback completion. | Code fixed, manual QA required | Await `dataPlayedBack` with bounded timeout |
 | TTS-P0-004 | Normal TTS wrote every synthesis result to Desktop. | Code fixed | Normal paths no longer call `S3WavWriter`; explicit lab artifacts use app cache |
-| TTS-P0-005 | A new speech session resets the currently playing session. | Open | Define queue, interrupt, and drop-if-busy policies by event type |
+| TTS-P0-005 | A new speech session reset the currently playing session. | Code fixed, manual QA required | Normal lines use FIFO queue; swap/barge-in/stop use ordered interruption; busy-drop is explicit |
 | TTS-P0-006 | Supertonic bundle validation checks presence but not hash, session creation, or inference output. | Open | Add model manifest and a release-equivalent inference smoke |
-| TTS-P0-007 | Speaking sprite state uses a 30-second fallback instead of playback lifecycle. | Open | Bind speaking state to playback start/completion events |
+| TTS-P0-007 | Speaking sprite state used a 30-second fallback instead of playback lifecycle. | Code fixed, manual QA required | SpeechManager exclusively starts and clears speaking state at playback boundaries |
 
 ## P1 Findings
 
@@ -52,3 +52,11 @@ The app-hosted XCTest runner currently launches MyTeam but does not reach the se
 4. Chiko normal, careful, and excited samples pass listening comparison.
 5. Cancellation, app termination, and missing output device do not hang.
 6. No normal conversation creates a WAV file on Desktop.
+
+## Speech Request Policy
+
+- `queue`: default for character dialogue and system lines. Requests are played in FIFO order.
+- `interruptCurrent`: reserved for explicit context switches such as character swap.
+- `dropIfBusy`: available for nonessential reactions that must not delay active work.
+- Barge-in, user stop, and app termination clear pending speech and stop current playback.
+- Call sites must not set speaking animation before audible playback starts.

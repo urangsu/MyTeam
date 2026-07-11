@@ -2251,6 +2251,8 @@
           "Bounded dataPlayedBack completion for float-sample playback",
           "Removal of automatic production WAV writes",
           "TTS Lab diagnostic WAV isolation in the app cache",
+          "FIFO speech queue with explicit interruption policy",
+          "Playback lifecycle-owned character speaking state",
           "Static regression contract and XCTest fixtures",
           "TTS runtime quality audit"
         ],
@@ -2259,7 +2261,6 @@
           "Character persona or dialogue changes",
           "Chiko listening-based retuning",
           "ONNX session caching",
-          "Multi-character speech queue policy",
           "App Store redistribution approval"
         ]
       },
@@ -2270,6 +2271,8 @@
         "A bounded timeout prevents missing audio completion from hanging callers",
         "Normal speech and speakOnce do not write WAV files",
         "Explicit TTS Lab artifacts use a collision-safe app cache path"
+        ,"Normal character lines are serialized instead of resetting active playback"
+        ,"Speaking animation is not driven by a fixed 30-second timer"
       ],
       "failure_conditions": [
         "Visible and spoken wording differ",
@@ -2297,23 +2300,28 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "d753c43",
+        "commit_sha": "c95d08a",
         "files_changed": [
           "MyTeam/SupertonicProsodyTextProcessor.swift",
           "MyTeam/SpeechManager.swift",
           "MyTeam/AudioPlaybackService.swift",
           "MyTeam/S3WavWriter.swift",
+          "MyTeam/AgentWindowManager.swift",
+          "MyTeam/AgentChatView.swift",
+          "MyTeam/AgentSeatView.swift",
+          "MyTeam/TeamOrchestrator.swift",
+          "MyTeam/TeamTableView.swift",
           "MyTeamTests/PublicAPIConnectorValidatorTests.swift",
           "scripts/validate_tts_runtime_truth.py",
           "scripts/validate_myteam_release.py",
           "docs/qa/TTSRuntimeQualityAudit.md"
         ],
-        "validation_summary": "2026-07-11: TTS runtime truth contract, full release validator, git diff check, Debug build, and Release build passed. Partial because the app-hosted selected XCTest run launched MyTeam but did not reach the tests, and multi-character interruption, actual speaking animation timing, Chiko audio quality, model inference compatibility, and listening QA remain unverified.",
+        "validation_summary": "2026-07-11: Exact-text preservation, bounded dataPlayedBack completion, FIFO speech queue, ordered interruption, playback-owned speaking state, diagnostic WAV isolation, TTS runtime truth contract, and Debug test-bundle build are implemented. Partial because the app-hosted XCTest runner does not reach test execution, and actual multi-character listening, Chiko audio quality, model inference compatibility, and Release listening QA remain unverified.",
         "screenshots": []
       },
       "notes": [
         "The app-hosted XCTest architecture remains a separate blocker; its launch must not be treated as a test pass.",
-        "The next P0 should define queue, interruptCurrent, and dropIfBusy policies before changing character voice tuning.",
+        "Queue, interruptCurrent, and dropIfBusy policies are now explicit; actual overlapping-character listening QA remains required.",
         "Status remains partial until manual audio QA and a release-equivalent Supertonic3 inference smoke are recorded."
       ]
     }
