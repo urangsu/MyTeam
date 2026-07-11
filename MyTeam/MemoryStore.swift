@@ -112,10 +112,18 @@ final class MemoryStore: ObservableObject {
                 items[idx].lastUsedAt = Date()
             }
         }
-        for key in memoriesByRoom.keys { markIn(&memoriesByRoom[key]!) }
+        for key in Array(memoriesByRoom.keys) {
+            guard var items = memoriesByRoom[key] else { continue }
+            markIn(&items)
+            memoriesByRoom[key] = items
+        }
         markIn(&userProfileMemories)
         markIn(&proceduralMemories)
-        for key in domainMemories.keys { markIn(&domainMemories[key]!) }
+        for key in Array(domainMemories.keys) {
+            guard var items = domainMemories[key] else { continue }
+            markIn(&items)
+            domainMemories[key] = items
+        }
     }
 
     // MARK: - Approve pending

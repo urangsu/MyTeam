@@ -657,8 +657,8 @@ enum ToolEvidenceService {
             for match in matches {
                 if let numRange = Range(match.range(at: 1), in: text),
                    let code = Int(text[numRange]),
-                   let scalar = Unicode.Scalar(code) {
-                    let fullRange = Range(match.range, in: text)!
+                   let scalar = Unicode.Scalar(code),
+                   let fullRange = Range(match.range, in: text) {
                     text.replaceSubrange(fullRange, with: String(scalar))
                 }
             }

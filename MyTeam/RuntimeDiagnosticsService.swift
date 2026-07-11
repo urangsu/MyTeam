@@ -878,16 +878,19 @@ final class RuntimeDiagnosticsService {
         let nextScheduledTask: AgentWindowManager.AutomationTask?
         if let roomID = currentRoomID {
             let today = Calendar.current.startOfDay(for: Date())
-            let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
-            nextScheduledTask = manager.automationTasks
-                .filter { task in
-                    if let taskRoomID = task.roomID, taskRoomID != roomID {
-                        return false
+            if let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today) {
+                nextScheduledTask = manager.automationTasks
+                    .filter { task in
+                        if let taskRoomID = task.roomID, taskRoomID != roomID {
+                            return false
+                        }
+                        return task.isEnabled && task.nextRunAt >= today && task.nextRunAt < tomorrow
                     }
-                    return task.isEnabled && task.nextRunAt >= today && task.nextRunAt < tomorrow
-                }
-                .sorted { $0.nextRunAt < $1.nextRunAt }
-                .first
+                    .sorted { $0.nextRunAt < $1.nextRunAt }
+                    .first
+            } else {
+                nextScheduledTask = nil
+            }
         } else {
             nextScheduledTask = nil
         }

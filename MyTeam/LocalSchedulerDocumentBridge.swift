@@ -110,7 +110,9 @@ enum LocalSchedulerDocumentBridge {
 
     private static func todayTasks(roomID: UUID, manager: AgentWindowManager) -> [AgentWindowManager.AutomationTask] {
         let today = Calendar.current.startOfDay(for: Date())
-        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
+        guard let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today) else {
+            return []
+        }
         return manager.automationTasks
             .filter { task in
                 guard task.isEnabled else { return false }

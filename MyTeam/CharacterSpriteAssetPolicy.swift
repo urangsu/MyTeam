@@ -60,13 +60,11 @@ enum CharacterSpriteAssetPolicy {
 
         for file in pngFiles {
             let range = NSRange(file.startIndex..., in: file)
-            if let conv = convention, conv.firstMatch(in: file, range: range) != nil {
-                // 상태 추출
-                if let match = conv.firstMatch(in: file, range: range) {
-                    let stateRange = Range(match.range(at: 1), in: file)!
-                    let state = String(file[stateRange])
-                    stateFrames[state, default: 0] += 1
-                }
+            if let conv = convention,
+               let match = conv.firstMatch(in: file, range: range),
+               let stateRange = Range(match.range(at: 1), in: file) {
+                let state = String(file[stateRange])
+                stateFrames[state, default: 0] += 1
             } else {
                 malformed.append(file)
             }
