@@ -2253,6 +2253,8 @@
           "TTS Lab diagnostic WAV isolation in the app cache",
           "FIFO speech queue with explicit interruption policy",
           "Playback lifecycle-owned character speaking state",
+          "PCM validity gate before AVAudioEngine setup",
+          "Typed ONNX missing-output failure",
           "Static regression contract and XCTest fixtures",
           "TTS runtime quality audit"
         ],
@@ -2300,11 +2302,13 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "c95d08a",
+        "commit_sha": "b37bc65",
         "files_changed": [
           "MyTeam/SupertonicProsodyTextProcessor.swift",
           "MyTeam/SpeechManager.swift",
           "MyTeam/AudioPlaybackService.swift",
+          "MyTeam/AudioFeatureSnapshot.swift",
+          "MyTeam/Supertonic3ONNXRunner.swift",
           "MyTeam/S3WavWriter.swift",
           "MyTeam/AgentWindowManager.swift",
           "MyTeam/AgentChatView.swift",
@@ -2316,13 +2320,78 @@
           "scripts/validate_myteam_release.py",
           "docs/qa/TTSRuntimeQualityAudit.md"
         ],
-        "validation_summary": "2026-07-11: Exact-text preservation, bounded dataPlayedBack completion, FIFO speech queue, ordered interruption, playback-owned speaking state, diagnostic WAV isolation, TTS runtime truth contract, and Debug test-bundle build are implemented. Partial because the app-hosted XCTest runner does not reach test execution, and actual multi-character listening, Chiko audio quality, model inference compatibility, and Release listening QA remain unverified.",
+        "validation_summary": "2026-07-11: Exact-text preservation, bounded dataPlayedBack completion, FIFO speech queue, ordered interruption, playback-owned speaking state, diagnostic WAV isolation, PCM validity rejection, typed ONNX output failure, TTS runtime truth contract, and Debug test-bundle build are implemented. Partial because the app-hosted XCTest runner does not reach test execution, and actual multi-character listening, Chiko audio quality, full model inference compatibility, and Release listening QA remain unverified.",
         "screenshots": []
       },
       "notes": [
         "The app-hosted XCTest architecture remains a separate blocker; its launch must not be treated as a test pass.",
         "Queue, interruptCurrent, and dropIfBusy policies are now explicit; actual overlapping-character listening QA remains required.",
         "Status remains partial until manual audio QA and a release-equivalent Supertonic3 inference smoke are recorded."
+      ]
+    },
+    {
+      "id": "P0-026-floating-panel-input-and-drag",
+      "priority": "P0",
+      "status": "partial",
+      "category": "window-interaction",
+      "title": "Keep panel input responsive and use one drag path",
+      "why": "FloatingPanel swallowed all key events, applied both manual and AppKit window movement during a drag, and played team drag sounds on mouse-down even when the user only clicked. This could break text input and produce the shaky drag behavior reported in team surfaces.",
+      "scope": {
+        "include": [
+          "AppKit responder-chain keyboard forwarding",
+          "Single manual background-drag path",
+          "Drag feedback only after actual movement",
+          "Static architecture regression checks"
+        ],
+        "exclude": [
+          "Settings NSWindow architecture",
+          "TeamStatusView responsive layout redesign",
+          "Panel visual redesign",
+          "Manual multi-display QA"
+        ]
+      },
+      "acceptance_criteria": [
+        "Text fields and keyboard shortcuts receive key events",
+        "Manual frame movement is not followed by a second AppKit movement",
+        "A click without movement does not play drag/drop feedback",
+        "status_window continues to disable background dragging"
+      ],
+      "failure_conditions": [
+        "FloatingPanel keyDown drops events",
+        "mouseDragged moves the frame manually and then calls super",
+        "Mouse-down alone plays drag feedback",
+        "Settings is changed back into a FloatingPanel",
+        "Manual QA is claimed without interaction testing"
+      ],
+      "verification": {
+        "commands": [
+          "python3 scripts/audit_product_completeness.py",
+          "python3 scripts/validate_myteam_release.py",
+          "git diff --check",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' build-for-testing",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Release -destination 'platform=OS X,arch=arm64' build"
+        ],
+        "manual_checks": [
+          "Type Korean text and use arrow keys in each panel input",
+          "Click team panel without moving and confirm no drag/drop sound",
+          "Drag the team panel slowly and quickly and confirm no double movement",
+          "Use status workroom controls and confirm the window does not background-drag"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": "b37bc65",
+        "files_changed": [
+          "MyTeam/FloatingPanel.swift",
+          "scripts/audit_product_completeness.py",
+          "docs/qa/TTSRuntimeQualityAudit.md"
+        ],
+        "validation_summary": "2026-07-11: Keyboard forwarding, single-path manual dragging, movement-gated feedback, product audit, and Debug test-bundle build are implemented. Partial because direct keyboard, click, drag, status-window, and multi-display interaction QA remain unverified.",
+        "screenshots": []
+      },
+      "notes": [
+        "Static and build evidence cannot prove pointer feel or keyboard focus behavior.",
+        "Status remains partial until the listed panel interaction checks are recorded on the current build."
       ]
     }
   ]

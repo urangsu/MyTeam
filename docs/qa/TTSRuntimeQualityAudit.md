@@ -26,8 +26,8 @@ Branch: `codex/tts-runtime-hardening-p0`
 ## P1 Findings
 
 - Cache ONNX environment, sessions, Unicode index, and voice style instead of rebuilding them for every utterance.
-- Replace force-unwrapped model outputs with typed failures.
-- Validate PCM for finite values, silence, clipping, peak, RMS, and duration before playback.
+- ONNX text encoder output now uses a typed missing-output failure instead of force unwrap.
+- Normal PCM now rejects empty, invalid-rate, non-finite, silent, and unsafe-peak output before engine setup.
 - Tune Chiko only after removing duplicated synthesis-speed and playback-rate/pitch transforms.
 - Remove or merge the unused second character voice configuration source.
 - Isolate mutable SpeechManager and audio capture state instead of relying on unchecked sendability.
@@ -41,6 +41,13 @@ Branch: `codex/tts-runtime-hardening-p0`
 - Make team panel layout responsive to available screen size and accessibility text size.
 - Make artifact writes atomic and stop silently discarding index-write errors.
 - Confirm whether macOS 26.2 is an intentional minimum deployment target.
+
+## Additional Code-Only Hardening
+
+- Floating panels now forward keyboard events through the AppKit responder chain.
+- Manual background movement no longer invokes AppKit movement a second time.
+- Team drag/drop sounds only run after actual pointer movement, not a click.
+- Manual panel interaction QA remains required on small displays and with text fields focused.
 
 ## Verification Boundary
 
