@@ -884,18 +884,12 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
     // MARK: - 감정-스프라이트 상태 관리
 
     /// AI 응답 수신 시 호출 — 에이전트를 '말하는 중'으로 표시하고 감정 감지
-    /// TTS가 끝날 때까지 말풍선 유지. 안전장치: 최대 30초 후 자동 clear
+    /// 실제 오디오 재생 시작 시 SpeechManager가 호출한다.
     func setAgentSpeaking(agentID: String, text: String) {
         let emotion = detectEmotion(from: text)
         DispatchQueue.main.async {
             self.speakingAgentID = agentID
             self.agentEmotions[agentID] = emotion
-        }
-        // 안전장치: TTS가 끝나지 않아도 최대 30초 후 자동 clear
-        DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak self] in
-            if self?.speakingAgentID == agentID {
-                self?.clearAgentSpeaking(agentID: agentID)
-            }
         }
     }
 
@@ -1013,7 +1007,6 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         let state = kind.animationState
         let line = CharacterDialogues.randomLine(for: agent.displayName, state: state) ?? text
         // 채팅 로그 추가 없음 — TTS만
-        setAgentSpeaking(agentID: agent.id, text: line)
         SpeechManager.shared.speak(text: line, agentID: agent.id, characterName: agent.displayName)
     }
 
@@ -1194,9 +1187,13 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
 
         // 교체 TTS — 동기적 flush 후 즉시 실행 (딜레이 없음)
         if !isSilentMode {
-            SpeechManager.shared.stopSpeaking()
             let greeting = swapGreeting(for: routedAgent.displayName)
-            SpeechManager.shared.speak(text: greeting, agentID: routedAgent.id, characterName: routedAgent.displayName)
+            SpeechManager.shared.speak(
+                text: greeting,
+                agentID: routedAgent.id,
+                characterName: routedAgent.displayName,
+                policy: .interruptCurrent
+            )
         }
     }
 

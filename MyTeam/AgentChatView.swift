@@ -1512,11 +1512,7 @@ struct AgentChatView: View {
                             agentID: targetIDAtSend,
                             characterName: agentName,
                             tokenStream: ttsStream,
-                            onAudioPlaybackStarted: { chunk in
-                                DispatchQueue.main.async {
-                                    manager.setAgentSpeaking(agentID: targetIDAtSend, text: chunk)
-                                }
-                            }
+                            onAudioPlaybackStarted: { _ in }
                         )
                     }
                 } catch {
