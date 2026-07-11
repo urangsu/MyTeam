@@ -238,7 +238,7 @@ final class PublicAPIConnectorValidatorTests: XCTestCase {
         XCTAssertEqual(built.url?.queryValue("display"), "1")
     }
 
-    func testDARTValidationUsesDynamicDateAndCrtfcKeyQuery() throws {
+    func testDARTValidationChecksCredentialAgainstKnownCompany() throws {
         let clock = FixedPublicAPIClock(now: fixedDate("2026-06-03T00:30:00Z"))
         let request = PublicAPIValidationRequest(
             provider: .dartDisclosure,
@@ -249,10 +249,9 @@ final class PublicAPIConnectorValidatorTests: XCTestCase {
         let built = try PublicAPIConnectorValidator.makeRequest(for: request)
 
         XCTAssertEqual(built.url?.host, "opendart.fss.or.kr")
-        XCTAssertEqual(built.url?.path, "/api/list.json")
+        XCTAssertEqual(built.url?.path, "/api/company.json")
         XCTAssertEqual(built.url?.queryValue("crtfc_key"), "dart-key")
-        XCTAssertEqual(built.url?.queryValue("bgn_de"), "20260602")
-        XCTAssertEqual(built.url?.queryValue("page_count"), "1")
+        XCTAssertEqual(built.url?.queryValue("corp_code"), "00126380")
     }
 
     func testKMAValidationUsesDynamicBaseDateAndTime() throws {
@@ -520,6 +519,35 @@ final class DARTCompanyIndexTests: XCTestCase {
 
     private var index: DARTCompanyIndex {
         DARTCompanyIndex(entries: entries)
+    }
+}
+
+final class RuntimeTruthPersistenceTests: XCTestCase {
+    func testUnknownPersistedToolLogStateFailsClosed() throws {
+        let data = Data(#""futureState""#.utf8)
+
+        let state = try JSONDecoder().decode(ToolExecutionLogState.self, from: data)
+
+        XCTAssertEqual(state, .blocked)
+    }
+
+    func testPartialToolLogStateRoundTripsWithoutBecomingSuccess() throws {
+        let encoded = try JSONEncoder().encode(ToolExecutionLogState.partial)
+        let decoded = try JSONDecoder().decode(ToolExecutionLogState.self, from: encoded)
+
+        XCTAssertEqual(decoded, .partial)
+    }
+
+    func testReleaseGateFailsClosedForUnapprovedExternalLookup() throws {
+        let descriptor = try XCTUnwrap(MyTeamToolRegistry.descriptor(id: "news.search"))
+
+        XCTAssertFalse(ReleaseLiveProviderGate.isApprovedForRelease(descriptor))
+    }
+
+    func testReleaseGateAllowsKnownLocalDraftCapability() throws {
+        let descriptor = try XCTUnwrap(MyTeamToolRegistry.descriptor(id: "document.meetingMinutes"))
+
+        XCTAssertTrue(ReleaseLiveProviderGate.isApprovedForRelease(descriptor))
     }
 }
 

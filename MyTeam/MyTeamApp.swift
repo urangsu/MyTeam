@@ -72,6 +72,12 @@ enum AppPaths {
 
 }
 
+enum AppRuntimeEnvironment {
+    nonisolated static var isRunningTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+}
+
 // MARK: - App Entry Point
 @main
 struct MyTeamApp: App {
@@ -106,6 +112,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if AppRuntimeEnvironment.isRunningTests {
+            NSApp.setActivationPolicy(.prohibited)
+            return
+        }
+
         if ProcessInfo.processInfo.environment["MYTEAM_TTS_PROBE"] == "1" {
             // TTS probe: Supertonic3 only candidate.
             print("[TTSProbe] Supertonic3-only probe — no-op in this build")

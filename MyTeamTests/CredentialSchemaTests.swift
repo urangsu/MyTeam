@@ -26,9 +26,9 @@ final class CredentialSchemaTests: XCTestCase {
         XCTAssertTrue(schema.fields[0].isSecret)
     }
 
-    func testPublicDataProvidersExposeDirectAndPlannedProxyModes() {
+    func testPublicDataProvidersExposeOnlyImplementedExecutionModes() {
         XCTAssertEqual(ExternalProvider.naverNews.executionModes, [.byokDirect, .proxyPlanned])
-        XCTAssertEqual(ExternalProvider.dartDisclosure.executionModes, [.byokDirect, .proxyPlanned])
+        XCTAssertEqual(ExternalProvider.dartDisclosure.executionModes, [.byokDirect])
         XCTAssertEqual(ExternalProvider.kmaWeather.executionModes, [.byokDirect, .proxyPlanned])
         XCTAssertEqual(ExternalProvider.koreanLaw.executionModes, [.byokDirect, .proxyPlanned])
     }
