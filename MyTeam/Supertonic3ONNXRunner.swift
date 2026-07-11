@@ -134,7 +134,9 @@ actor Supertonic3ONNXRunner {
                 "text_mask": try makeTensorF32(textMask1T, shape: [1, 1, seqLen])
             ]
             let outs = try ortRun(sess, inputs: inputs, outputNames: ["text_emb"])
-            let embVal = outs["text_emb"]!
+            guard let embVal = outs["text_emb"] else {
+                throw Supertonic3ONNXRunnerError.missingOutput("text_emb")
+            }
             textEmb = try floatArray(from: embVal)
             // tensorTypeAndShapeInfo() is a throwing method bridged from ObjC
             let shapeInfo = try embVal.tensorTypeAndShapeInfo()
