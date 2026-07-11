@@ -69,6 +69,14 @@ def main() -> None:
     require(audio_features, "case peakOutOfRange", "PCM quality policy must reject unsafe peaks")
     forbid(onnx_runner, 'outs["text_emb"]!', "ONNX output lookup must not force unwrap")
     require(onnx_runner, 'missingOutput("text_emb")', "missing text encoder output must be a typed failure")
+    for token in [
+        "private var cachedEnvironment: ORTEnv?",
+        "private var cachedSessions: [String: ORTSession]",
+        "private var cachedIndexers: [String: Supertonic3UnicodeIndexer]",
+        "private var cachedVoiceStyles: [String: Supertonic3VoiceStyle]",
+        "let env = try runtimeEnvironment()",
+    ]:
+        require(onnx_runner, token, f"missing actor-isolated Supertonic runtime cache: {token}")
 
     for token in [
         "enum SpeechRequestPolicy",

@@ -17,10 +17,9 @@ import OnnxRuntimeBindings
 // Import: `import OnnxRuntimeBindings` — module name from the SPM target.
 //
 // Policy:
-//   - Spike scope only — not exposed on production surfaces
-//   - No auto-init on launch — user triggers synthesis explicitly from TTSLabView
-//   - All sessions created per-synthesis call (no persistent state across calls)
-//   - No Apple TTS anywhere in this file
+//   - No auto-init on launch; resources are loaded on first synthesis.
+//   - ORT environment, sessions, index, and voice styles are actor-isolated and reused.
+//   - No Apple TTS anywhere in this file.
 
 // MARK: - Config Constants
 
@@ -55,11 +54,14 @@ struct Supertonic3SynthesisResult: Sendable {
 // MARK: - Runner
 
 /// Runs a full Supertonic3 synthesis pass using on-disk ONNX models.
-/// Stateless — creates new ORTSessions per call.
-/// Spike-only: this actor is intentionally NOT registered in SpeechManager or any production surface.
+/// The actor serializes inference and owns reusable ONNX resources.
 actor Supertonic3ONNXRunner {
 
     static let shared = Supertonic3ONNXRunner()
+    private var cachedEnvironment: ORTEnv?
+    private var cachedSessions: [String: ORTSession] = [:]
+    private var cachedIndexers: [String: Supertonic3UnicodeIndexer] = [:]
+    private var cachedVoiceStyles: [String: Supertonic3VoiceStyle] = [:]
     private init() {}
 
     // MARK: - Main Synthesis
@@ -83,16 +85,15 @@ actor Supertonic3ONNXRunner {
         guard missing.isEmpty else { throw Supertonic3ONNXRunnerError.missingModelFiles(missing) }
 
         // 2. Tokenize
-        let indexer = try Supertonic3UnicodeIndexer.load(from: paths.unicodeIndexerURL)
+        let indexer = try unicodeIndexer(at: paths.unicodeIndexerURL)
         let (textIds, _, seqLen) = try indexer.encode(text: text, lang: lang)
         guard seqLen > 0 else { throw Supertonic3ONNXRunnerError.emptyTokenSequence }
 
         // 3. Voice style
-        let style = try Supertonic3VoiceStyle.load(
-            from: paths.voiceStyleURL(preset: preset), preset: preset)
+        let style = try voiceStyle(at: paths.voiceStyleURL(preset: preset), preset: preset)
 
-        // 4. ORTEnv — shared across all sessions in this synthesis call
-        let env = try ORTEnv(loggingLevel: .warning)
+        // 4. ORTEnv and sessions are expensive; reuse them inside this actor.
+        let env = try runtimeEnvironment()
 
         let textMask1T = [Float](repeating: 1.0, count: seqLen)
 
@@ -201,9 +202,36 @@ actor Supertonic3ONNXRunner {
 
     // MARK: - ORT Helpers
 
+    private func runtimeEnvironment() throws -> ORTEnv {
+        if let cachedEnvironment { return cachedEnvironment }
+        let environment = try ORTEnv(loggingLevel: .warning)
+        cachedEnvironment = environment
+        return environment
+    }
+
+    private func unicodeIndexer(at url: URL) throws -> Supertonic3UnicodeIndexer {
+        let key = url.standardizedFileURL.path
+        if let cached = cachedIndexers[key] { return cached }
+        let indexer = try Supertonic3UnicodeIndexer.load(from: url)
+        cachedIndexers[key] = indexer
+        return indexer
+    }
+
+    private func voiceStyle(at url: URL, preset: String) throws -> Supertonic3VoiceStyle {
+        let key = url.standardizedFileURL.path
+        if let cached = cachedVoiceStyles[key] { return cached }
+        let style = try Supertonic3VoiceStyle.load(from: url, preset: preset)
+        cachedVoiceStyles[key] = style
+        return style
+    }
+
     private func ortSession(env: ORTEnv, modelPath: String) throws -> ORTSession {
+        let key = URL(fileURLWithPath: modelPath).standardizedFileURL.path
+        if let cached = cachedSessions[key] { return cached }
         do {
-            return try ORTSession(env: env, modelPath: modelPath, sessionOptions: nil)
+            let session = try ORTSession(env: env, modelPath: modelPath, sessionOptions: nil)
+            cachedSessions[key] = session
+            return session
         } catch {
             throw Supertonic3ONNXRunnerError.inferenceFailure("ORTSession init failed [\(URL(fileURLWithPath: modelPath).lastPathComponent)]: \(error.localizedDescription)")
         }
