@@ -461,7 +461,7 @@
     {
       "id": "P1-002-demo-mode-sample-data",
       "priority": "P1",
-      "status": "todo",
+      "status": "wont_do",
       "category": "onboarding",
       "title": "Demo mode sample data",
       "why": "API key 없이도 앱 가치를 보여줄 수 있어야 한다. 첫 실행 시 빈 화면이면 사용자가 앱의 가치를 판단할 수 없어 이탈한다.",
@@ -499,13 +499,18 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": null,
-        "files_changed": [],
-        "validation_summary": null,
+        "commit_sha": "0e78b93",
+        "files_changed": [
+          "MyTeam/DemoMode.swift",
+          "MyTeam/MyTeam.xcodeproj/project.pbxproj",
+          "scripts/audit_product_completeness.py"
+        ],
+        "validation_summary": "2026-07-11: Removed the unused DemoMode, empty room seeder, and fabricated sample artifacts from the product target. Project-file lint, product audit, release validator, git diff check, and Debug build passed. No user-facing demo had existed, so removal avoids presenting a dead stub as onboarding value.",
         "screenshots": []
       },
       "notes": [
-        "DemoMode.swift 구조 파일은 생성됨. 실제 sample data seed 구현 필요."
+        "DemoMode.swift 구조 파일은 생성됨. 실제 sample data seed 구현 필요.",
+        "제품 진실성 우선으로 dead sample-data stub을 제거했다. 향후 onboarding 예시는 실제 업무 템플릿과 명시적 예시 표면이 설계될 때 별도 task로 재검토한다."
       ]
     },
     {
