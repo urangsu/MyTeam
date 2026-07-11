@@ -1768,7 +1768,7 @@
           "MyTeamTests/LLMRouterTests.swift",
           "scripts/audit_product_completeness.py"
         ],
-        "validation_summary": "2026-07-10: Product completeness audit, architecture boundary validation, release validator, git diff check, Debug build, and Release build passed. The XCTest target compiled after repairing its stale ToolNeedClassifier reference, but the app-hosted test session did not materialize and was interrupted after 45 seconds. No live provider key smoke was run, so status remains partial.",
+        "validation_summary": "2026-07-11: App-hosted XCTest startup is isolated from product windows and TTS prewarm, and the complete 68-test suite passed, including selected-model readiness contracts. No live provider key smoke was run, so status remains partial.",
         "screenshots": []
       },
       "notes": [
@@ -1919,7 +1919,7 @@
           "MyTeamTests/PublicAPIConnectorValidatorTests.swift",
           "scripts/audit_product_completeness.py"
         ],
-        "validation_summary": "2026-07-10: Product audit, release validator, all static launch validators, git diff check, Debug build, Debug test-bundle build, and Release universal build passed. The targeted app-hosted XCTest runner again stalled while materializing its worker and was interrupted; no live DART key or production lookup was used. Status remains partial.",
+        "validation_summary": "2026-07-11: The complete 68-test suite passed, including official-index DART resolution, ambiguity handling, credential validation, and response truth cases. No live DART key or production lookup was used, so status remains partial.",
         "screenshots": []
       },
       "notes": [
@@ -2080,7 +2080,7 @@
           "MyTeamTests/LLMRouterTests.swift",
           "scripts/audit_product_completeness.py"
         ],
-        "validation_summary": "2026-07-10: Product audit, release validator, precommit guard, git diff check, Debug test-bundle build, and Release universal build passed. The app-hosted targeted XCTest runner started the app but did not execute the tests and was interrupted after about one minute. No live GPT-5.6 key was used, so status remains partial.",
+        "validation_summary": "2026-07-11: The complete 68-test suite passed, including Responses request, streaming event, readiness endpoint, fallback, and privacy contracts. No live GPT-5.6 key was used, so status remains partial.",
         "screenshots": []
       },
       "notes": [
@@ -2229,12 +2229,12 @@
           ".github/workflows/quality-gate.yml",
           "scripts/audit_product_completeness.py"
         ],
-        "validation_summary": "2026-07-10: Workflow YAML parsing, product completeness audit, release validator, and git diff check passed locally. The workflow has not been pushed or executed on GitHub Actions, no live provider secrets are used, and the app-hosted XCTest step remains unproven in CI, so status remains partial.",
+        "validation_summary": "2026-07-11: App-hosted test startup now skips product windows and TTS prewarm; the complete local suite executed 68 tests with zero failures. The workflow has not yet proven the same run on GitHub Actions and uses no live-provider secrets, so status remains partial.",
         "screenshots": []
       },
       "notes": [
         "The pull-request workflow intentionally contains no live-provider secret access.",
-        "The XCTest step has an explicit timeout and uploads its result bundle on failure instead of hiding a stalled test host.",
+        "The XCTest step has an explicit timeout, uploads its result bundle on failure, and the local app-hosted suite now executes instead of stalling during product startup.",
         "Strict manual QA and release-live gates remain separate blockers."
       ]
     },
@@ -2329,11 +2329,11 @@
           "scripts/validate_myteam_release.py",
           "docs/qa/TTSRuntimeQualityAudit.md"
         ],
-        "validation_summary": "2026-07-11: Exact-text preservation, bounded dataPlayedBack completion, FIFO speech queue, ordered interruption, playback-owned speaking state, diagnostic WAV isolation, PCM validity rejection, typed ONNX output failure, bundled support files, SHA-256 model integrity, reusable actor-owned ONNX resources, TTS runtime truth validation, and Debug test-bundle build are implemented. Partial because the app-hosted XCTest runner does not reach test execution, and actual multi-character listening, Chiko audio quality, full model inference compatibility, App Store redistribution approval, and Release listening QA remain unverified.",
+        "validation_summary": "2026-07-11: Exact-text preservation, bounded dataPlayedBack completion, FIFO speech queue, ordered interruption, playback-owned speaking state, diagnostic WAV isolation, PCM validity rejection, typed ONNX output failure, bundled support files, SHA-256 model integrity, reusable actor-owned ONNX resources, and the complete 68-test suite passed. Partial because actual multi-character listening, Chiko audio quality, full model inference compatibility, App Store redistribution approval, and Release listening QA remain unverified.",
         "screenshots": []
       },
       "notes": [
-        "The app-hosted XCTest architecture remains a separate blocker; its launch must not be treated as a test pass.",
+        "The app-hosted XCTest runner now suppresses product startup and executes the suite; listening QA remains separate and cannot be inferred from XCTest.",
         "Queue, interruptCurrent, and dropIfBusy policies are now explicit; actual overlapping-character listening QA remains required.",
         "Status remains partial until manual audio QA and a release-equivalent Supertonic3 inference smoke are recorded."
       ]

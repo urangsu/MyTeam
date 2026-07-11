@@ -15,8 +15,8 @@ Branch: `codex/tts-runtime-hardening-p0`
 
 | ID | Finding | Status | Evidence or next action |
 | --- | --- | --- | --- |
-| TTS-P0-001 | Product preprocessing collapsed whitespace and truncated visible text after 200 characters. | Code fixed, test execution blocked | Exact-text XCTest fixtures and `validate_tts_runtime_truth.py` |
-| TTS-P0-002 | Streaming chunk validation rewrote repeated punctuation and whitespace. | Code fixed, test execution blocked | Exact streaming-chunk fixture |
+| TTS-P0-001 | Product preprocessing collapsed whitespace and truncated visible text after 200 characters. | Code fixed, XCTest passed | Exact-text XCTest fixtures and `validate_tts_runtime_truth.py` |
+| TTS-P0-002 | Streaming chunk validation rewrote repeated punctuation and whitespace. | Code fixed, XCTest passed | Exact streaming-chunk fixture |
 | TTS-P0-003 | `playFloatSamples` returned after scheduling instead of actual playback completion. | Code fixed, manual QA required | Await `dataPlayedBack` with bounded timeout |
 | TTS-P0-004 | Normal TTS wrote every synthesis result to Desktop. | Code fixed | Normal paths no longer call `S3WavWriter`; explicit lab artifacts use app cache |
 | TTS-P0-005 | A new speech session reset the currently playing session. | Code fixed, manual QA required | Normal lines use FIFO queue; swap/barge-in/stop use ordered interruption; busy-drop is explicit |
@@ -51,7 +51,7 @@ Branch: `codex/tts-runtime-hardening-p0`
 
 ## Verification Boundary
 
-The app-hosted XCTest runner currently launches MyTeam but does not reach the selected tests in this environment. This is a separate test architecture defect. Do not mark TTS manual QA complete until these cases are exercised in the app:
+The app-hosted XCTest runner now suppresses product windows and TTS prewarm during tests. The full local suite executed 68 tests successfully on 2026-07-11. This does not replace listening QA; do not mark TTS manual QA complete until these cases are exercised in the app:
 
 1. Long Korean speech over 200 characters matches the bubble.
 2. Two team-member lines do not unexpectedly cut each other off.
