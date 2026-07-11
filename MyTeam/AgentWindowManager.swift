@@ -1411,6 +1411,7 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
 
     private func presentSettingsWindow(_ window: NSWindow) {
         lowerFloatingPanelsForSettings()
+        positionSettingsWindowBesideTeamStatus(window)
         window.collectionBehavior = [.moveToActiveSpace]
         window.deminiaturize(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -1431,9 +1432,37 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         var panels: [FloatingPanel] = []
         panels.append(contentsOf: chatPanels.values)
         if let swapPanel { panels.append(swapPanel) }
-        if let statusPanel { panels.append(statusPanel) }
         if let agentSettingsPanel { panels.append(agentSettingsPanel) }
         return panels
+    }
+
+    private func positionSettingsWindowBesideTeamStatus(_ window: NSWindow) {
+        guard let statusPanel, statusPanel.isVisible,
+              let screen = statusPanel.screen ?? window.screen ?? NSScreen.main else {
+            return
+        }
+
+        let visibleFrame = screen.visibleFrame
+        let statusFrame = statusPanel.frame
+        let spacing: CGFloat = 16
+        var frame = window.frame
+
+        let leftOriginX = statusFrame.minX - spacing - frame.width
+        let rightOriginX = statusFrame.maxX + spacing
+        if leftOriginX >= visibleFrame.minX {
+            frame.origin.x = leftOriginX
+        } else if rightOriginX + frame.width <= visibleFrame.maxX {
+            frame.origin.x = rightOriginX
+        } else {
+            return
+        }
+
+        let centeredY = statusFrame.midY - frame.height / 2
+        frame.origin.y = min(
+            max(centeredY, visibleFrame.minY),
+            visibleFrame.maxY - frame.height
+        )
+        window.setFrame(frame, display: false)
     }
 
     private func lowerFloatingPanelsForSettings() {
