@@ -167,7 +167,7 @@ actor AudioPlaybackService: AudioPlayable {
         guard ensureEngineReady(), let format = engineFormat else { return }
 
         // onPlaybackStarted 클로저를 actor 격리 컨텍스트 밖으로 먼저 캡처
-        let lipSyncCallback: (@Sendable () -> Void)? = command.onPlaybackStarted
+        let lipSyncCallback: (@MainActor @Sendable () -> Void)? = command.onPlaybackStarted
 
         autoreleasepool {
             guard command.streamId == currentActiveStreamId else {
@@ -282,7 +282,7 @@ actor AudioPlaybackService: AudioPlayable {
         pitch: Float,
         rate: Float,
         textPayload: String? = nil,
-        onPlaybackStarted: (@Sendable () -> Void)? = nil
+        onPlaybackStarted: (@MainActor @Sendable () -> Void)? = nil
     ) async {
         let format = AVAudioFormat(standardFormatWithSampleRate: 24000, channels: 1)! // HiFiGAN 출력 기준 포맷
 
@@ -348,7 +348,7 @@ actor AudioPlaybackService: AudioPlayable {
         characterName: String,
         pitch: Float = 0.0,
         rate: Float = 1.0,
-        onPlaybackStarted: (@Sendable () -> Void)? = nil
+        onPlaybackStarted: (@MainActor @Sendable () -> Void)? = nil
     ) async -> Bool {
         guard !samples.isEmpty else {
             AppLog.info("[AudioPlayback] playFloatSamples: empty samples → skip")
@@ -411,7 +411,7 @@ actor AudioPlaybackService: AudioPlayable {
 
         // 7. playerNode.play() 이후 콜백 — 립싱크 원칙 준수
         if let cb = onPlaybackStarted {
-            Task(priority: .userInitiated) { @MainActor in cb() }
+            await MainActor.run { cb() }
         }
         let durationSeconds = Double(outBuffer.frameLength) / max(1, outBuffer.format.sampleRate)
         let timeoutSeconds = min(120, max(3, durationSeconds + 2))

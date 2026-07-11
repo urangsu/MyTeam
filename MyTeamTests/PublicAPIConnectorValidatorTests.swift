@@ -47,6 +47,39 @@ final class SupertonicProsodyTextProcessorTests: XCTestCase {
     }
 }
 
+final class SpeechRequestQueueTests: XCTestCase {
+    func testQueuedSpeechRequestsRemainFIFO() async {
+        let queue = SpeechRequestQueue()
+        let first = SpeechRequest(id: UUID(), text: "첫 번째", agentID: "agent_1", characterName: "레오")
+        let second = SpeechRequest(id: UUID(), text: "두 번째", agentID: "agent_2", characterName: "루나")
+
+        let firstAccepted = await queue.enqueue(first, policy: .queue)
+        let secondAccepted = await queue.enqueue(second, policy: .queue)
+        let firstDequeued = await queue.next()
+        XCTAssertTrue(firstAccepted)
+        XCTAssertTrue(secondAccepted)
+        XCTAssertEqual(firstDequeued, first)
+        await queue.markFinished()
+        let secondDequeued = await queue.next()
+        XCTAssertEqual(secondDequeued, second)
+    }
+
+    func testDropIfBusyDoesNotReplaceActiveSpeech() async {
+        let queue = SpeechRequestQueue()
+        let active = SpeechRequest(id: UUID(), text: "재생 중", agentID: "agent_1", characterName: "레오")
+        let dropped = SpeechRequest(id: UUID(), text: "겹친 대사", agentID: "agent_2", characterName: "루나")
+
+        let activeAccepted = await queue.enqueue(active, policy: .queue)
+        let activeDequeued = await queue.next()
+        let droppedAccepted = await queue.enqueue(dropped, policy: .dropIfBusy)
+        let snapshot = await queue.snapshot()
+        XCTAssertTrue(activeAccepted)
+        XCTAssertEqual(activeDequeued, active)
+        XCTAssertFalse(droppedAccepted)
+        XCTAssertEqual(snapshot.pendingCount, 0)
+    }
+}
+
 final class BubbleSpeechSynthesizerTests: XCTestCase {
     func testBubbleSpeechGeneratesProceduralSyllableAudio() {
         let config = BubbleSpeechConfig.from(profile: .cute, speed: 1.0)

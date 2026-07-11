@@ -17,7 +17,7 @@ struct PlaybackCommand: @unchecked Sendable {
     // 🎯 Perfect Lip-Sync 페이로드
     // 이 버퍼의 PCM 데이터가 실제로 스피커에서 재생을 시작하는 순간에 트리거되는 콜백
     let textPayload: String?
-    let onPlaybackStarted: (@Sendable () -> Void)?
+    let onPlaybackStarted: (@MainActor @Sendable () -> Void)?
 }
 
 // MARK: - AudioPlayable Protocol

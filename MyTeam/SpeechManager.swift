@@ -2,6 +2,65 @@ import Foundation
 import Combine
 import AppKit
 
+nonisolated enum SpeechRequestPolicy: Sendable, Equatable {
+    case queue
+    case interruptCurrent
+    case dropIfBusy
+}
+
+nonisolated struct SpeechRequest: Sendable, Equatable {
+    let id: UUID
+    let text: String
+    let agentID: String?
+    let characterName: String
+}
+
+actor SpeechRequestQueue {
+    private var pending: [SpeechRequest] = []
+    private var waiter: CheckedContinuation<SpeechRequest, Never>?
+    private(set) var isActive = false
+
+    @discardableResult
+    func enqueue(_ request: SpeechRequest, policy: SpeechRequestPolicy) -> Bool {
+        if policy == .dropIfBusy, isActive || !pending.isEmpty {
+            return false
+        }
+
+        if policy == .interruptCurrent {
+            pending.removeAll()
+        }
+
+        if let waiter {
+            self.waiter = nil
+            isActive = true
+            waiter.resume(returning: request)
+        } else {
+            pending.append(request)
+        }
+        return true
+    }
+
+    func next() async -> SpeechRequest {
+        if !pending.isEmpty {
+            isActive = true
+            return pending.removeFirst()
+        }
+        return await withCheckedContinuation { waiter = $0 }
+    }
+
+    func markFinished() {
+        isActive = false
+    }
+
+    func removePending() {
+        pending.removeAll()
+    }
+
+    func snapshot() -> (active: Bool, pendingCount: Int) {
+        (isActive, pending.count)
+    }
+}
+
 // MARK: - SpeechManager (Perfect Lip-Sync + Barge-in 지원 백그라운드 오케스트레이터)
 // 핵심 원칙:
 //   ✅텍스트는 오디오가 스피커에서 재생 시작될 때만 화면에 표시됨
@@ -24,6 +83,9 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
 
     private var currentStreamTask: Task<Void, Never>? = nil
     private var currentSpeakingAgentID: String? = nil
+    private var currentSpeechRequestID: UUID? = nil
+    private let speechQueue = SpeechRequestQueue()
+    private var speechWorkerTask: Task<Void, Never>? = nil
 
     private init() {
         capture.$isRecording.assign(to: &$isRecording)
@@ -40,6 +102,14 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 self.abortPipelinedStream()
             }
         }
+
+        speechWorkerTask = Task { [weak self] in
+            await self?.runSpeechWorker()
+        }
+    }
+
+    deinit {
+        speechWorkerTask?.cancel()
     }
 
     // MARK: - 🎯 Perfect Lip-Sync SSE 스트리밍 파이프라인
@@ -57,13 +127,14 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         tokenStream: AsyncThrowingStream<String, Error>,
         onAudioPlaybackStarted: @escaping @Sendable (String) -> Void
     ) {
-        abortPipelinedStream()
-
+        let interruptedTask = currentStreamTask
+        currentStreamTask = nil
+        currentSpeechRequestID = nil
         currentSpeakingAgentID = agentID
-        DispatchQueue.main.async { self.isSpeaking = true }
-
         currentStreamTask = Task.detached(priority: .userInitiated) { [weak self] in
             guard let self else { return }
+            await self.finishInterruption(of: interruptedTask, clearPending: true)
+            guard !Task.isCancelled else { return }
             var sentenceBuffer = ""
             let playbackStreamID = UUID().uuidString
 
@@ -82,17 +153,23 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                             // ✅ 핵심: UI 콜백을 여기서 직접 호출하지 않음
                             // 대신 오디오 재생 시작 시점에 실행될 클로저를 파이프라인에 주입
                             // Round 266: agentID 전달 — 캐릭터별 preset/emotion/pitch/rate/speed 적용
-                            await self.dispatchToInferencePipeline(
+                            let didPlay = await self.dispatchToInferencePipeline(
                                 text: ttsChunk,
                                 characterName: characterName,
                                 agentID: agentID,
                                 streamId: playbackStreamID,
                                 onPlaybackStarted: {
-                                    // 이 클로저는 playerNode.play() 직후 AudioPlaybackService가 호출
-                                    // ← 이 시점이 텍스트가 화면에 나타나야 하는 정확한 순간
+                                    self.isSpeaking = true
+                                    AgentWindowManager.shared.setAgentSpeaking(agentID: agentID, text: ttsChunk)
                                     onAudioPlaybackStarted(ttsChunk)
                                 }
                             )
+                            if didPlay {
+                                await MainActor.run {
+                                    self.isSpeaking = false
+                                    AgentWindowManager.shared.clearAgentSpeaking(agentID: agentID)
+                                }
+                            }
                         }
                     }
                 }
@@ -101,13 +178,23 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 let remainder = sentenceBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
                 if let ttsRemainder = Self.validatedTTSChunk(remainder), !Task.isCancelled {
                     // Round 266: agentID 전달 (자투리 문장도 동일하게)
-                    await self.dispatchToInferencePipeline(
+                    let didPlay = await self.dispatchToInferencePipeline(
                         text: ttsRemainder,
                         characterName: characterName,
                         agentID: agentID,
                         streamId: playbackStreamID,
-                        onPlaybackStarted: { onAudioPlaybackStarted(ttsRemainder) }
+                        onPlaybackStarted: {
+                            self.isSpeaking = true
+                            AgentWindowManager.shared.setAgentSpeaking(agentID: agentID, text: ttsRemainder)
+                            onAudioPlaybackStarted(ttsRemainder)
+                        }
                     )
+                    if didPlay {
+                        await MainActor.run {
+                            self.isSpeaking = false
+                            AgentWindowManager.shared.clearAgentSpeaking(agentID: agentID)
+                        }
+                    }
                 }
 
             } catch {
@@ -124,8 +211,8 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         characterName: String,
         agentID: String? = nil,
         streamId: String? = nil,
-        onPlaybackStarted: @escaping @Sendable () -> Void
-    ) async {
+        onPlaybackStarted: @escaping @MainActor @Sendable () -> Void
+    ) async -> Bool {
         // ── TTSRoutingPolicy 기반 provider 선택 (Round 256TTS-OFFICIAL-ENGINE) ──
         // Apple TTS (AVSpeechSynthesizer)는 이 switch에 없음 — 프로젝트 정책: 절대 금지.
         switch TTSRoutingPolicy.selectedProvider() {
@@ -168,15 +255,16 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 if !didPlay {
                     AppLog.warning("[SpeechManager] Supertonic3 playback failed after synthesis")
                 }
+                return didPlay
             } catch {
                 AppLog.info("[SpeechManager] Supertonic3 synthesis failed: \(error) → silent")
-                onPlaybackStarted()
+                return false
             }
 
         case .none:
             // 무음 — provider 없음 또는 조건 미충족. Apple TTS 폴백 없음.
             AppLog.info("[AICall] callType=tts skipped (noProvider → silent)")
-            onPlaybackStarted()
+            return false
         }
     }
 
@@ -239,27 +327,77 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         return text
     }
 
-    func speak(text: String, agentID: String? = nil, characterName: String? = nil) {
+    func speak(
+        text: String,
+        agentID: String? = nil,
+        characterName: String? = nil,
+        policy: SpeechRequestPolicy = .queue
+    ) {
         guard !AgentWindowManager.shared.isSilentMode else { return }
-        abortPipelinedStream()
         let character = characterName
             ?? agentID.flatMap { id in
                 AgentWindowManager.shared.allAvailableAgents.first(where: { $0.id == id })?.name
             }
             ?? "루나"
-        currentSpeakingAgentID = agentID
-        DispatchQueue.main.async { self.isSpeaking = true }
+        let request = SpeechRequest(id: UUID(), text: text, agentID: agentID, characterName: character)
 
-        currentStreamTask = Task(priority: .userInitiated) {
-            // Round 256TTS-OFFICIAL-ENGINE: Supertonic3 공식 경로 사용.
-            // Apple TTS 폴백 없음. provider 없으면 무음.
-            await dispatchToInferencePipeline(
-                text: text,
-                characterName: character,
-                agentID: agentID,
-                onPlaybackStarted: {}
-            )
-            await MainActor.run { self.isSpeaking = false }
+        Task(priority: .userInitiated) { [weak self] in
+            guard let self else { return }
+            if policy == .interruptCurrent {
+                let interruptedTask = self.currentStreamTask
+                self.currentStreamTask = nil
+                self.currentSpeechRequestID = nil
+                await self.finishInterruption(of: interruptedTask, clearPending: false)
+            }
+            let accepted = await self.speechQueue.enqueue(request, policy: policy)
+            if !accepted {
+                AppLog.info("[SpeechManager] speech request dropped while busy agentID=\(agentID ?? "nil")")
+            }
+        }
+    }
+
+    private func runSpeechWorker() async {
+        while !Task.isCancelled {
+            let request = await speechQueue.next()
+            guard !Task.isCancelled else { break }
+
+            let task = Task(priority: .userInitiated) { [weak self] in
+                guard let self else { return }
+                await self.performQueuedSpeech(request)
+            }
+            currentStreamTask = task
+            currentSpeechRequestID = request.id
+            await task.value
+
+            if currentSpeechRequestID == request.id {
+                currentStreamTask = nil
+                currentSpeechRequestID = nil
+            }
+            await speechQueue.markFinished()
+        }
+    }
+
+    private func performQueuedSpeech(_ request: SpeechRequest) async {
+        currentSpeakingAgentID = request.agentID
+        let didPlay = await dispatchToInferencePipeline(
+            text: request.text,
+            characterName: request.characterName,
+            agentID: request.agentID,
+            onPlaybackStarted: { [weak self] in
+                guard let self else { return }
+                self.isSpeaking = true
+                if let agentID = request.agentID {
+                    AgentWindowManager.shared.setAgentSpeaking(agentID: agentID, text: request.text)
+                }
+            }
+        )
+
+        isSpeaking = false
+        if let agentID = request.agentID {
+            AgentWindowManager.shared.clearAgentSpeaking(agentID: agentID)
+        }
+        if !didPlay {
+            AppLog.info("[SpeechManager] queued speech ended without playback agentID=\(request.agentID ?? "nil")")
         }
     }
 
@@ -657,20 +795,32 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
     }
 
     // MARK: - Barge-in 격추 시스템
-    func abortPipelinedStream() {
-        currentStreamTask?.cancel()
+    func abortPipelinedStream(clearPending: Bool = true) {
+        let interruptedTask = currentStreamTask
         currentStreamTask = nil
-
-        // 오디오 엔진 즉각 정지
-        Task(priority: .userInitiated) { await playback.stopAll() }
-
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            self.isSpeaking = false
-            if AgentWindowManager.shared.speakingAgentID == self.currentSpeakingAgentID {
-                AgentWindowManager.shared.speakingAgentID = nil
-            }
+        currentSpeechRequestID = nil
+        Task(priority: .userInitiated) { [weak self] in
+            await self?.finishInterruption(of: interruptedTask, clearPending: clearPending)
         }
+    }
+
+    private func finishInterruption(
+        of task: Task<Void, Never>?,
+        clearPending: Bool
+    ) async {
+        if let task {
+            task.cancel()
+            await task.value
+        }
+        if clearPending {
+            await speechQueue.removePending()
+        }
+        await playback.stopAll()
+        isSpeaking = false
+        if let currentSpeakingAgentID {
+            AgentWindowManager.shared.clearAgentSpeaking(agentID: currentSpeakingAgentID)
+        }
+        currentSpeakingAgentID = nil
     }
 
     func stopSpeaking() { abortPipelinedStream() }
