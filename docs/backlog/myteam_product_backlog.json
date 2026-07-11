@@ -2237,6 +2237,85 @@
         "The XCTest step has an explicit timeout and uploads its result bundle on failure instead of hiding a stalled test host.",
         "Strict manual QA and release-live gates remain separate blockers."
       ]
+    },
+    {
+      "id": "P0-025-tts-runtime-truth-and-quality",
+      "priority": "P0",
+      "status": "partial",
+      "category": "tts-runtime",
+      "title": "Preserve spoken text and tie speech completion to audible playback",
+      "why": "Normal Supertonic3 speech could truncate or rewrite visible text, report completion after buffer scheduling, and write every synthesis result to the user's Desktop. These behaviors break speech truth, animation timing, privacy, and product trust.",
+      "scope": {
+        "include": [
+          "Exact visible-text preservation for normal and streaming speech",
+          "Bounded dataPlayedBack completion for float-sample playback",
+          "Removal of automatic production WAV writes",
+          "TTS Lab diagnostic WAV isolation in the app cache",
+          "Static regression contract and XCTest fixtures",
+          "TTS runtime quality audit"
+        ],
+        "exclude": [
+          "Supertonic3 model or BubbleSpeech removal",
+          "Character persona or dialogue changes",
+          "Chiko listening-based retuning",
+          "ONNX session caching",
+          "Multi-character speech queue policy",
+          "App Store redistribution approval"
+        ]
+      },
+      "acceptance_criteria": [
+        "Normal product speech does not truncate or rewrite the visible text",
+        "Streaming chunk validation does not collapse punctuation or whitespace",
+        "playFloatSamples returns success only after dataPlayedBack",
+        "A bounded timeout prevents missing audio completion from hanging callers",
+        "Normal speech and speakOnce do not write WAV files",
+        "Explicit TTS Lab artifacts use a collision-safe app cache path"
+      ],
+      "failure_conditions": [
+        "Visible and spoken wording differ",
+        "Buffer scheduling is reported as playback completion",
+        "Normal conversation creates Desktop WAV files",
+        "Playback completion can wait forever",
+        "BubbleSpeech or Supertonic3 is replaced or bypassed",
+        "Manual listening QA is claimed without an actual run"
+      ],
+      "verification": {
+        "commands": [
+          "python3 scripts/validate_tts_runtime_truth.py",
+          "python3 scripts/validate_myteam_release.py",
+          "git diff --check",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' build",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Release -destination 'platform=OS X,arch=arm64' build"
+        ],
+        "manual_checks": [
+          "Compare a visible Korean line longer than 200 characters with audible speech",
+          "Play two team-member lines and record whether the first is interrupted",
+          "Confirm speaking animation begins and ends with audible playback",
+          "Compare Chiko neutral, careful, and excited voice samples",
+          "Confirm normal conversation does not create Desktop WAV files"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": "d753c43",
+        "files_changed": [
+          "MyTeam/SupertonicProsodyTextProcessor.swift",
+          "MyTeam/SpeechManager.swift",
+          "MyTeam/AudioPlaybackService.swift",
+          "MyTeam/S3WavWriter.swift",
+          "MyTeamTests/PublicAPIConnectorValidatorTests.swift",
+          "scripts/validate_tts_runtime_truth.py",
+          "scripts/validate_myteam_release.py",
+          "docs/qa/TTSRuntimeQualityAudit.md"
+        ],
+        "validation_summary": "2026-07-11: TTS runtime truth contract, full release validator, git diff check, Debug build, and Release build passed. Partial because the app-hosted selected XCTest run launched MyTeam but did not reach the tests, and multi-character interruption, actual speaking animation timing, Chiko audio quality, model inference compatibility, and listening QA remain unverified.",
+        "screenshots": []
+      },
+      "notes": [
+        "The app-hosted XCTest architecture remains a separate blocker; its launch must not be treated as a test pass.",
+        "The next P0 should define queue, interruptCurrent, and dropIfBusy policies before changing character voice tuning.",
+        "Status remains partial until manual audio QA and a release-equivalent Supertonic3 inference smoke are recorded."
+      ]
     }
   ]
 }
