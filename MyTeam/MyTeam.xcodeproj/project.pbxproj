@@ -1929,13 +1929,6 @@
 			<key>isa</key>
 			<string>PBXBuildFile</string>
 		</dict>
-		<key>E3BCED940DAD6E0579E695DF</key>
-		<dict>
-			<key>fileRef</key>
-			<string>E3BCED940DAD6E0579E695D3</string>
-			<key>isa</key>
-			<string>PBXBuildFile</string>
-		</dict>
 		<key>270C0002A0B04E5EA7B69C3B</key>
 		<dict>
 			<key>includeInIndex</key>
@@ -7928,7 +7921,6 @@
 						<string>ST3RESFOLDERREF00001</string>
 						<string>E3BCED940DAD6E0579E695D1</string>
 					<string>E3BCED940DAD6E0579E695D2</string>
-					<string>E3BCED940DAD6E0579E695D3</string>
 				<string>E30000000000000000000014</string>
 				<string>E30000000000000000000015</string>
 				<string>E30000000000000000000016</string>
@@ -9517,7 +9509,6 @@
 						<string>TLB020ST3GATEBLD</string>
 						<string>E3BCED940DAD6E0579E695DD</string>
 					<string>E3BCED940DAD6E0579E695DE</string>
-					<string>E3BCED940DAD6E0579E695DF</string>
 				<string>CB448CDB5AE36D7DBEA54213</string>
 				<string>FADDA881F78D1970F1E847C6</string>
 				<string>373733FF48FC563C4C651D6C</string>
@@ -18476,21 +18467,6 @@
 			<string>CharacterStoreSkeletonView.swift</string>
 			<key>path</key>
 			<string>CharacterStoreSkeletonView.swift</string>
-			<key>sourceTree</key>
-			<string>SOURCE_ROOT</string>
-		</dict>
-		<key>E3BCED940DAD6E0579E695D3</key>
-		<dict>
-			<key>fileEncoding</key>
-			<integer>4</integer>
-			<key>isa</key>
-			<string>PBXFileReference</string>
-			<key>lastKnownFileType</key>
-			<string>sourcecode.swift</string>
-			<key>name</key>
-			<string>DemoMode.swift</string>
-			<key>path</key>
-			<string>DemoMode.swift</string>
 			<key>sourceTree</key>
 			<string>SOURCE_ROOT</string>
 		</dict>

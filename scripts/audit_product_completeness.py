@@ -374,6 +374,8 @@ def main() -> None:
 
     if "DemoRoomSeeder" in settings or "SampleArtifactSeeder" in settings:
         failures.append("SettingsView must not expose demo seed controls until DemoMode seeding is productized")
+    if (ROOT / "MyTeam/DemoMode.swift").exists():
+        failures.append("Unused DemoMode sample-data stubs must not remain in the product target")
 
     if "showsCharacterDLCInRelease = true" in surface_policy:
         failures.append("ProductSurfacePolicy must hide unfinished Character DLC in release")
