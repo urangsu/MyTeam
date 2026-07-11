@@ -12,6 +12,51 @@ actor AudioPlaybackService: AudioPlayable {
 
     private var currentActiveStreamId: String? = nil
 
+    private final class PlaybackCompletion: @unchecked Sendable {
+        private let lock = NSLock()
+        private var continuation: CheckedContinuation<Bool, Never>?
+        private var pendingResult: Bool?
+        private var timeoutTask: Task<Void, Never>?
+
+        func wait(timeoutNanoseconds: UInt64) async -> Bool {
+            await withTaskCancellationHandler {
+                await withCheckedContinuation { continuation in
+                    lock.lock()
+                    if let pendingResult {
+                        lock.unlock()
+                        continuation.resume(returning: pendingResult)
+                        return
+                    }
+                    self.continuation = continuation
+                    timeoutTask = Task { [weak self] in
+                        try? await Task.sleep(nanoseconds: timeoutNanoseconds)
+                        self?.resolve(false)
+                    }
+                    lock.unlock()
+                }
+            } onCancel: {
+                self.resolve(false)
+            }
+        }
+
+        func resolve(_ result: Bool) {
+            lock.lock()
+            guard pendingResult == nil else {
+                lock.unlock()
+                return
+            }
+            pendingResult = result
+            let continuation = continuation
+            self.continuation = nil
+            let timeoutTask = timeoutTask
+            self.timeoutTask = nil
+            lock.unlock()
+
+            timeoutTask?.cancel()
+            continuation?.resume(returning: result)
+        }
+    }
+
     var isCurrentlyPlaying: Bool { return playerNode.isPlaying }
 
     private init() {}
@@ -347,8 +392,9 @@ actor AudioPlaybackService: AudioPlayable {
 
         // 5. 버퍼 스케줄링
         playerNode.volume = 1.0
-        // completionCallbackType 오버로드 사용 — async 대안 경고 없이 콜백 패턴 유지
-        playerNode.scheduleBuffer(outBuffer, at: nil, options: [], completionCallbackType: .dataPlayedBack) { [weak self] _ in
+        let completion = PlaybackCompletion()
+        playerNode.scheduleBuffer(outBuffer, at: nil, options: [], completionCallbackType: .dataPlayedBack) { [weak self] callbackType in
+            completion.resolve(callbackType == .dataPlayedBack)
             Task(priority: .userInitiated) { [weak self] in
                 guard let self else { return }
                 await self.decrementBufferCount()
@@ -367,7 +413,14 @@ actor AudioPlaybackService: AudioPlayable {
         if let cb = onPlaybackStarted {
             Task(priority: .userInitiated) { @MainActor in cb() }
         }
-        return true
+        let durationSeconds = Double(outBuffer.frameLength) / max(1, outBuffer.format.sampleRate)
+        let timeoutSeconds = min(120, max(3, durationSeconds + 2))
+        let didFinish = await completion.wait(timeoutNanoseconds: UInt64(timeoutSeconds * 1_000_000_000))
+        if !didFinish {
+            AppLog.warning("[AudioPlayback] playFloatSamples did not reach dataPlayedBack "
+                + "(streamId=\(streamId.prefix(12)), timeout=\(timeoutSeconds)s)")
+        }
+        return didFinish
     }
 
     // MARK: - Round 258TTS: pitch/rate clamp helpers
