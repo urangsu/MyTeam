@@ -56,6 +56,8 @@ def main() -> None:
     myteam_app = read("MyTeam/MyTeamApp.swift")
     agent_window_manager = read("MyTeam/AgentWindowManager.swift")
     floating_panel = read("MyTeam/FloatingPanel.swift")
+    character_gallery = read("MyTeam/CharacterGalleryView.swift")
+    character_entitlement = read("MyTeam/CharacterEntitlementManager.swift")
     inventory = read("docs/qa/ProductCompletenessInventory.md")
 
     if "MyTeamToolFastPathRouter.matchMany" in agent_chat:
@@ -375,6 +377,11 @@ def main() -> None:
 
     if "showsCharacterDLCInRelease = true" in surface_policy:
         failures.append("ProductSurfacePolicy must hide unfinished Character DLC in release")
+    if "ProductSurfacePolicy.dlcVisibilityInRelease()" not in character_gallery:
+        failures.append("Character gallery must honor the Release DLC visibility policy")
+    for forbidden in ["CharacterUnlockStateStore", "markUnlocked(characterID:"]:
+        if forbidden in character_entitlement:
+            failures.append(f"Character entitlement must not trust a local fake-unlock path: {forbidden}")
     for phrase in ["DLC 해금", "Pro 결제", "스토어"]:
         if phrase in settings:
             failures.append(f"SettingsView must not expose unfinished commerce phrase: {phrase}")

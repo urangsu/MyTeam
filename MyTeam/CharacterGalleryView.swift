@@ -25,7 +25,9 @@ struct CharacterGalleryView: View {
                 }
 
                 section(title: "캐릭터", characters: CharacterCatalog.builtIn)
-                section(title: "추가 캐릭터", characters: CharacterCatalog.premium)
+                if shouldShowAdditionalCharacters {
+                    section(title: "추가 캐릭터", characters: CharacterCatalog.premium)
+                }
             }
             .padding(16)
         }
@@ -38,6 +40,10 @@ struct CharacterGalleryView: View {
             }
         }
 #endif
+    }
+
+    private var shouldShowAdditionalCharacters: Bool {
+        FeatureGate.current == .developer || ProductSurfacePolicy.dlcVisibilityInRelease()
     }
 
     private func section(title: String, characters: [CharacterDLC]) -> some View {
