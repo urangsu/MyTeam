@@ -2,10 +2,10 @@ import Foundation
 
 // MARK: - S3WavWriter
 // Round 249TTS-RUNTIME: Writes Supertonic3 synthesis output to a WAV file.
-// Output location: ~/Desktop/supertonic3_spike_{tag}_{timestamp}.wav
+// Output location: ~/Library/Caches/MyTeam/TTSLab/
 // PCM encoding: 16-bit signed, mono, little-endian (standard WAV).
 // Float32 samples → Int16 with clamp.
-// Spike scope only — not connected to production audio pipeline.
+// Explicit TTS Lab/diagnostic export only — not connected to normal speech.
 
 enum S3WavWriter {
 
@@ -13,11 +13,19 @@ enum S3WavWriter {
     /// - Returns: The absolute path of the written file, or nil on failure.
     @discardableResult
     static func write(samples: [Float], sampleRate: Int, tag: String) -> String? {
-        let timestamp = Int(Date().timeIntervalSince1970)
-        let filename  = "supertonic3_spike_\(tag)_\(timestamp).wav"
-        let url = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Desktop")
-            .appendingPathComponent(filename)
+        let safeTag = tag.replacingOccurrences(
+            of: "[^A-Za-z0-9_-]",
+            with: "_",
+            options: .regularExpression
+        )
+        let filename = "supertonic3_\(safeTag)_\(UUID().uuidString).wav"
+        guard let cacheRoot = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else {
+            return nil
+        }
+        let directory = cacheRoot
+            .appendingPathComponent("MyTeam", isDirectory: true)
+            .appendingPathComponent("TTSLab", isDirectory: true)
+        let url = directory.appendingPathComponent(filename)
 
         let int16Samples = samples.map { sample -> Int16 in
             let clamped = max(-1.0, min(1.0, sample))
@@ -29,6 +37,7 @@ enum S3WavWriter {
         }
 
         do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             try data.write(to: url)
             return url.path
         } catch {
