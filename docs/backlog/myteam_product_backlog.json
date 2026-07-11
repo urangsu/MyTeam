@@ -352,7 +352,7 @@
     {
       "id": "P0-006-character-entitlement-no-fake-unlock",
       "priority": "P0",
-      "status": "todo",
+      "status": "partial",
       "category": "monetization",
       "title": "Character entitlement skeleton 검증",
       "why": "기존 캐릭터 설정은 건드리지 않으면서, 향후 IAP 확장 가능한 entitlement 구조만 유지해야 한다. fake unlock이나 UserDefaults bool 하나로 영구 unlock하면 수익화 기반이 무너진다.",
@@ -391,13 +391,18 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": null,
-        "files_changed": [],
-        "validation_summary": null,
+        "commit_sha": "7750268",
+        "files_changed": [
+          "MyTeam/CharacterEntitlementManager.swift",
+          "MyTeam/CharacterGalleryView.swift",
+          "scripts/audit_product_completeness.py"
+        ],
+        "validation_summary": "2026-07-11: Removed the UserDefaults fake-unlock store and public markUnlocked path. Character ownership now accepts only built-in characters or StoreKit-verified current entitlements, Release hides the additional-character section, the product audit passed, and the Debug build passed. StoreKit sandbox purchase and Release UI manual QA remain open, so status is partial.",
         "screenshots": []
       },
       "notes": [
-        "Productization v1에서 CharacterEntitlementManager 퍼시스턴스 강화, CharacterStoreSkeletonView 생성 완료. StoreKit 실제 연동은 별도 task."
+        "Productization v1에서 CharacterEntitlementManager 퍼시스턴스 강화, CharacterStoreSkeletonView 생성 완료. StoreKit 실제 연동은 별도 task.",
+        "검증되지 않은 unlock 상태를 안전한 저장소로 옮기는 대신 제품 경로에서 제거했다. 실제 소유권은 StoreKit 검증 결과만 인정한다."
       ]
     },
     {
