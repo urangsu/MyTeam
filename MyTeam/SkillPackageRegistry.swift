@@ -39,6 +39,19 @@ struct SkillPackageCredentialRequirement: Codable, Equatable, Sendable {
     let fields: [String]
     let id: String?
     let description: String?
+
+    enum CodingKeys: String, CodingKey {
+        case type, provider, fields, id, description
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        type = try values.decode(RequirementType.self, forKey: .type)
+        provider = try values.decodeIfPresent(ExternalProvider.self, forKey: .provider)
+        fields = try values.decodeIfPresent([String].self, forKey: .fields) ?? []
+        id = try values.decodeIfPresent(String.self, forKey: .id)
+        description = try values.decodeIfPresent(String.self, forKey: .description)
+    }
 }
 
 struct SkillPackageFailureMode: Codable, Equatable, Sendable {
