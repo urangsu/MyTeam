@@ -3,6 +3,14 @@
   "name": "late-waterfall-c95c",
   "main": "worker.js",
   "compatibility_date": "2026-07-10",
+  "preview_urls": false,
+  "keep_vars": true,
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true
+    }
+  },
   "ratelimits": [
     {
       "name": "PUBLIC_LOOKUP_RATE_LIMITER",
