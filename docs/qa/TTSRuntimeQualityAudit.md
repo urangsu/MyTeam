@@ -22,6 +22,7 @@ Branch: `codex/tts-runtime-hardening-p0`
 | TTS-P0-005 | A new speech session reset the currently playing session. | Code fixed, manual QA required | Normal lines use FIFO queue; swap/barge-in/stop use ordered interruption; busy-drop is explicit |
 | TTS-P0-006 | Supertonic bundle validation checked presence but not support files or hashes. | Code fixed, inference QA required | Bundled support files and SHA-256 manifest are enforced; release-equivalent inference smoke remains open |
 | TTS-P0-007 | Speaking sprite state used a 30-second fallback instead of playback lifecycle. | Code fixed, manual QA required | SpeechManager exclusively starts and clears speaking state at playback boundaries |
+| TTS-P0-008 | BubbleSpeech used uniform source slicing and was only connected to TTS Lab. | Code fixed, listening QA required | Voice-derived grain bank, character rhythm signatures, adaptive strength, and product playback integration; see `BubbleSpeechCharacterLanguageQA.md` |
 
 ## P1 Findings
 
@@ -59,6 +60,7 @@ The app-hosted XCTest runner now suppresses product windows and TTS prewarm duri
 4. Chiko normal, careful, and excited samples pass listening comparison.
 5. Cancellation, app termination, and missing output device do not hang.
 6. No normal conversation creates a WAV file on Desktop.
+7. BubbleSpeech short, question, numeric, and long-bypass cases pass the 11-character listening matrix.
 
 ## Speech Request Policy
 

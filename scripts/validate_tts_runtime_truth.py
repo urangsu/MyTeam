@@ -30,6 +30,8 @@ def main() -> None:
     wav_writer = (ROOT / "MyTeam" / "S3WavWriter.swift").read_text()
     audio_features = (ROOT / "MyTeam" / "AudioFeatureSnapshot.swift").read_text()
     onnx_runner = (ROOT / "MyTeam" / "Supertonic3ONNXRunner.swift").read_text()
+    bubble = (ROOT / "MyTeam" / "BubbleSpeechSynthesizer.swift").read_text()
+    bubble_policy = (ROOT / "MyTeam" / "BubbleSpeechCharacterTuningPolicy.swift").read_text()
     window_manager = (ROOT / "MyTeam" / "AgentWindowManager.swift").read_text()
     tests = (ROOT / "MyTeamTests" / "PublicAPIConnectorValidatorTests.swift").read_text()
 
@@ -54,6 +56,39 @@ def main() -> None:
         "// MARK: - 권한 요청",
     )
     forbid(production_pipeline, "S3WavWriter.write", "normal speech must not write WAV artifacts")
+    require(
+        production_pipeline,
+        "bubbleSpeechPlaybackSamples(",
+        "normal character playback must route through the adaptive BubbleSpeech layer",
+    )
+
+    for token in [
+        "struct BubbleSpeechGrainBank",
+        "enum BubbleSpeechGrainAnalyzer",
+        "enum BubbleSpeechCharacterRenderer",
+        "static func applyAdaptiveEffect",
+    ]:
+        require(bubble, token, f"missing granular BubbleSpeech runtime contract: {token}")
+    forbid(
+        bubble,
+        "sourceStride = Double(voiceSamples.count) / Double(syllableCount)",
+        "BubbleSpeech must not return to equal source-stride chopping",
+    )
+    require(
+        speech,
+        'UserDefaults.standard.bool(forKey: "useBubbleSpeechEffect")',
+        "BubbleSpeech preference must affect product character playback, not only TTS Lab",
+    )
+    require(
+        speech,
+        "mode=singlePassGranular",
+        "BubbleSpeech runtime must identify the single-pass granular renderer",
+    )
+    require(
+        bubble_policy,
+        "guard count <= 180 else",
+        "long business answers must bypass the character-language effect",
+    )
 
     speak_once = function_body(speech, "func speakOnce", "// MARK: - Round 258B")
     forbid(speak_once, "S3WavWriter.write", "normal speakOnce must not write WAV artifacts")
@@ -117,6 +152,9 @@ def main() -> None:
         "testRejectsNonFiniteSamples",
         "testRejectsOutOfRangePeak",
         "testAcceptsFiniteAudibleVoiceSamples",
+        "testAdaptiveBubbleSpeechExplicitBypassPreservesSource",
+        "testAdaptiveBubbleSpeechFailureDoesNotPassThroughSource",
+        "testAllCharactersHaveDistinctBubbleSpeechRhythms",
     ]:
         require(tests, test_name, f"missing TTS regression test: {test_name}")
 
