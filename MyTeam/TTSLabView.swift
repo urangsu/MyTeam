@@ -42,6 +42,10 @@ struct TTSLabView: View {
         canRunPreview
     }
 
+    private var bubbleSpeechDecision: BubbleSpeechEffectDecision {
+        BubbleSpeechEffectPolicy.decision(for: processedText, requested: useBubbleSpeechEffect)
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
@@ -122,6 +126,11 @@ struct TTSLabView: View {
                 }
             }
             .toggleStyle(.switch)
+
+            Text("자동 강도: \(bubbleSpeechStrengthLabel) · 짧은 대사는 강하게, 긴 업무 답변은 읽기 쉽게 조절합니다.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
             compactStatusGrid
         }
@@ -361,6 +370,15 @@ struct TTSLabView: View {
         case .careful: return "신중"
         case .excited: return "신남"
         case .bubbleSpeech: return "뽀글말하기"
+        }
+    }
+
+    private var bubbleSpeechStrengthLabel: String {
+        switch bubbleSpeechDecision.strength {
+        case .strong: return "강하게"
+        case .medium: return "보통"
+        case .light: return "약하게"
+        case .bypass: return useBubbleSpeechEffect ? "일반 음성" : "꺼짐"
         }
     }
 }

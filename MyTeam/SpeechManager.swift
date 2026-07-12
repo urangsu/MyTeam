@@ -242,9 +242,21 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                     speed: speed,
                     paths: paths
                 )
+                guard let playbackSamples = bubbleSpeechPlaybackSamples(
+                    text: spokenText,
+                    sourceSamples: result.wavSamples,
+                    sampleRate: result.sampleRate,
+                    preset: preset,
+                    agentID: agentID,
+                    speed: speed,
+                    segmentRate: rate
+                ) else {
+                    AppLog.warning("[SpeechManager] BubbleSpeech render failed after Supertonic3 synthesis")
+                    return false
+                }
                 // 실제 재생: playerNode.play() 이후 onPlaybackStarted 호출됨
                 let didPlay = await playback.playFloatSamples(
-                    samples: result.wavSamples,
+                    samples: playbackSamples,
                     sampleRate: result.sampleRate,
                     streamId: streamId ?? UUID().uuidString,
                     characterName: characterName,
@@ -428,9 +440,21 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 speed: speed,
                 paths: paths
             )
+            guard let playbackSamples = bubbleSpeechPlaybackSamples(
+                text: spokenText,
+                sourceSamples: result.wavSamples,
+                sampleRate: result.sampleRate,
+                preset: preset,
+                agentID: agentID,
+                speed: speed,
+                segmentRate: rate
+            ) else {
+                AppLog.warning("[SpeechManager.speakOnce] BubbleSpeech render failed after Supertonic3 synthesis")
+                return nil
+            }
             // 재생 — playerNode.play() 이후 완료
             let didPlay = await playback.playFloatSamples(
-                samples: result.wavSamples,
+                samples: playbackSamples,
                 sampleRate: result.sampleRate,
                 streamId: UUID().uuidString,
                 characterName: charName,
@@ -442,7 +466,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 AppLog.warning("[SpeechManager.speakOnce] playback failed after synthesis preset=\(preset)")
                 return nil
             }
-            AppLog.info("[SpeechManager.speakOnce] ▶️ played preset=\(preset) frames=\(result.wavSamples.count)")
+            AppLog.info("[SpeechManager.speakOnce] ▶️ played preset=\(preset) frames=\(playbackSamples.count)")
             return TTSOutput(
                 audioFileURL: nil,
                 duration: result.durationSec,
@@ -453,6 +477,47 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
             AppLog.info("[SpeechManager.speakOnce] failed: \(error) → silent")
             return nil
         }
+    }
+
+    private func bubbleSpeechPlaybackSamples(
+        text: String,
+        sourceSamples: [Float],
+        sampleRate: Int,
+        preset: String,
+        agentID: String?,
+        speed: Float,
+        segmentRate: Float
+    ) -> [Float]? {
+        let requested = UserDefaults.standard.bool(forKey: "useBubbleSpeechEffect")
+        let decision = BubbleSpeechEffectPolicy.decision(for: text, requested: requested)
+        guard decision.strength != .bypass else {
+            if requested {
+                AppLog.info("[BubbleSpeechEffect] bypass reason=\(decision.reason) inputChars=\(text.count)")
+            }
+            return sourceSamples
+        }
+
+        let profile: BubbleSpeechVoiceProfile = preset.hasPrefix("M") ? .deep : .cute
+        var config = BubbleSpeechConfig.from(profile: profile, speed: Double(speed))
+        config.characterTuning = BubbleSpeechCharacterTuningPolicy.tuning(
+            agentID: agentID,
+            preset: preset,
+            profile: profile
+        )
+        guard let samples = BubbleSpeechSynthesizer.applyAdaptiveEffect(
+            text: text,
+            voiceSamples: sourceSamples,
+            sampleRate: sampleRate,
+            config: config,
+            segmentRate: segmentRate,
+            decision: decision
+        ) else {
+            AppLog.warning("[BubbleSpeechEffect] adaptive render failed strength=\(decision.strength.rawValue) reason=\(decision.reason) agentID=\(agentID ?? "nil")")
+            return nil
+        }
+
+        AppLog.info("[BubbleSpeechEffect] mode=singlePassGranular strength=\(decision.strength.rawValue) wetMix=\(String(format: "%.2f", decision.wetMix)) reason=\(decision.reason) agentID=\(agentID ?? "nil") sourceSamples=\(sourceSamples.count) renderedSamples=\(samples.count)")
+        return samples
     }
 
     // MARK: - Round 258B: Raw Preset Preview (캐릭터 보정 없음)
@@ -710,14 +775,19 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
             return .failed("Supertonic3 캐릭터 목소리 합성이 완료되지 않았습니다.")
         }
 
-        let samples = BubbleSpeechSynthesizer.renderVoiceBasedEffect(
+        let decision = BubbleSpeechEffectPolicy.decision(for: spokenText, requested: true)
+        guard decision.strength != .bypass else {
+            AppLog.info("[BubbleSpeechEffect] preview bypass reason=\(decision.reason) inputChars=\(spokenText.count)")
+            return .failed("이 문장은 길거나 구조화된 내용이라 뽀글뽀글 효과를 적용하지 않습니다. 짧은 캐릭터 대사로 확인해 주세요.")
+        }
+        guard let samples = BubbleSpeechSynthesizer.applyAdaptiveEffect(
             text: spokenText,
             voiceSamples: result.wavSamples,
             sampleRate: result.sampleRate,
             config: config,
-            segmentRate: segmentRate
-        )
-        guard !samples.isEmpty else {
+            segmentRate: segmentRate,
+            decision: decision
+        ) else {
             AppLog.warning("[BubbleSpeechEffect] failed: empty rendered samples voiceBased=true preset=\(preset) agentID=\(agentID ?? "nil") profile=\(profile.rawValue) synthesisSpeed=\(synthesisSpeed) segmentRate=\(segmentRate) playbackPitch=\(playbackPitch) emotion=\(emotion.rawValue) inputChars=\(spokenText.count) syllableCount=\(BubbleSpeechSynthesizer.syllableCount(in: spokenText)) sourceSamples=\(result.wavSamples.count)")
             return .failed("뽀글뽀글 음절 리듬 렌더링이 완료되지 않았습니다.")
         }
@@ -759,7 +829,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         let safeSpeed = String(format: "%.2f", synthesisSpeed).replacingOccurrences(of: ".", with: "p")
         let wavTag = "bubble_speech_\(safeLabel)_\(safeAgent)_\(preset)_\(profile.rawValue)_p\(safePitch)_r\(safeRate)_syn\(safeSpeed)"
         _ = S3WavWriter.write(samples: samples, sampleRate: sampleRate, tag: wavTag)
-        AppLog.info("[BubbleSpeechEffect] voiceBased=true mode=singlePassChopper preset=\(preset) agentID=\(agentID ?? "nil") profile=\(profile.rawValue) kind=\(profile.profileKindLabel) emotion=\(emotion.rawValue) synthesisSpeed=\(synthesisSpeed) segmentRate=\(segmentRate) playbackRate=\(playbackRate) playbackPitch=\(playbackPitch) minSegment=\(String(format: "%.3f", config.characterTuning.minSegmentDuration)) maxSegment=\(String(format: "%.3f", config.characterTuning.maxSegmentDuration)) guideGain=\(String(format: "%.3f", config.characterTuning.guideGain)) shimmerDepth=\(String(format: "%.3f", config.characterTuning.shimmerDepth)) gapScale=\(String(format: "%.2f", config.characterTuning.gapScale)) inputChars=\(spokenText.count) syllableCount=\(syllableCount) sourceSamples=\(result.wavSamples.count) renderedSamples=\(samples.count) duration=\(String(format: "%.3f", durationSec))s durationRatio=\(String(format: "%.3f", durationRatio)) peak=\(String(format: "%.3f", snapshot.peak)) zcr=\(String(format: "%.1f", snapshot.zeroCrossingRate)) clicks=\(snapshot.estimatedClickCount) meanDelta=\(String(format: "%.5f", delta)) wavTag=\(wavTag)")
+        AppLog.info("[BubbleSpeechEffect] voiceBased=true mode=singlePassGranular strength=\(decision.strength.rawValue) wetMix=\(String(format: "%.2f", decision.wetMix)) preset=\(preset) agentID=\(agentID ?? "nil") profile=\(profile.rawValue) kind=\(profile.profileKindLabel) emotion=\(emotion.rawValue) synthesisSpeed=\(synthesisSpeed) segmentRate=\(segmentRate) playbackRate=\(playbackRate) playbackPitch=\(playbackPitch) minSegment=\(String(format: "%.3f", decision.targetSyllableDuration.lowerBound)) maxSegment=\(String(format: "%.3f", decision.targetSyllableDuration.upperBound)) guideGain=\(String(format: "%.3f", config.characterTuning.guideGain)) shimmerDepth=\(String(format: "%.3f", config.characterTuning.shimmerDepth)) gapScale=\(String(format: "%.2f", config.characterTuning.gapScale)) inputChars=\(spokenText.count) syllableCount=\(syllableCount) sourceSamples=\(result.wavSamples.count) renderedSamples=\(samples.count) duration=\(String(format: "%.3f", durationSec))s durationRatio=\(String(format: "%.3f", durationRatio)) peak=\(String(format: "%.3f", snapshot.peak)) zcr=\(String(format: "%.1f", snapshot.zeroCrossingRate)) clicks=\(snapshot.estimatedClickCount) meanDelta=\(String(format: "%.5f", delta)) wavTag=\(wavTag)")
         return .played(duration: durationSec)
     }
 
