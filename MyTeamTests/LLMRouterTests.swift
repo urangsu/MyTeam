@@ -178,7 +178,8 @@ final class LLMRouterTests: XCTestCase {
         let normal = service.providerCandidates(
             preferred: .gemini,
             requiresToolUse: false,
-            fallbackPolicy: .disabled
+            fallbackPolicy: .disabled,
+            availableProvidersOverride: [.gemini]
         )
         XCTAssertTrue(normal.isEmpty || normal == [.gemini])
         XCTAssertFalse(normal.contains(.openAI))
@@ -188,7 +189,8 @@ final class LLMRouterTests: XCTestCase {
         let unsupportedToolUse = service.providerCandidates(
             preferred: .gemini,
             requiresToolUse: true,
-            fallbackPolicy: .disabled
+            fallbackPolicy: .disabled,
+            availableProvidersOverride: [.gemini]
         )
         XCTAssertTrue(unsupportedToolUse.isEmpty)
     }

@@ -356,11 +356,15 @@ final class AIService {
     func providerCandidates(
         preferred: LLMProvider,
         requiresToolUse: Bool = false,
-        fallbackPolicy: LLMFallbackPolicy = .current
+        fallbackPolicy: LLMFallbackPolicy = .current,
+        availableProvidersOverride: Set<LLMProvider>? = nil
     ) -> [LLMProvider] {
         let toolCapable: [LLMProvider] = [.claude, .openAI]
+        let hasKey: (LLMProvider) -> Bool = { provider in
+            availableProvidersOverride?.contains(provider) ?? self.hasAPIKey(for: provider)
+        }
 
-        guard hasAPIKey(for: preferred) else { return [] }
+        guard hasKey(preferred) else { return [] }
         if requiresToolUse && !toolCapable.contains(preferred) && fallbackPolicy != .crossProviderAllowed {
             return []
         }
@@ -381,7 +385,7 @@ final class AIService {
         var seen = Set<LLMProvider>()
         return baseOrder.filter { provider in
             guard seen.insert(provider).inserted else { return false }
-            guard hasAPIKey(for: provider) else { return false }
+            guard hasKey(provider) else { return false }
             if provider != preferred && validatedFallbackEvidence(for: provider) == nil {
                 return false
             }
