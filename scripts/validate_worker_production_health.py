@@ -42,6 +42,25 @@ DIAGNOSTIC_ROUTES = {
 }
 DIAGNOSTIC_TOKEN_ENV = "MYTEAM_DIAGNOSTIC_TOKEN"
 DIAGNOSTIC_TOKEN_HEADER = "x-myteam-diagnostic-token"
+WORKER_SOURCE_PATH = "workers/basic-lookup-api"
+
+
+def expected_worker_git_sha() -> str:
+    dirty = subprocess.run(
+        ["git", "status", "--porcelain", "--", WORKER_SOURCE_PATH],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout.strip()
+    if dirty:
+        raise SystemExit("FAIL: Worker source has uncommitted changes; production deployment cannot be verified")
+
+    return subprocess.check_output(
+        ["git", "log", "-1", "--format=%H", "--", WORKER_SOURCE_PATH],
+        cwd=ROOT,
+        text=True,
+    ).strip()
 
 
 def fetch_health(base_url: str) -> dict[str, object]:
@@ -162,9 +181,9 @@ def main() -> int:
     if not isinstance(git_sha, str) or not re.fullmatch(r"[0-9a-f]{40}", git_sha):
         failures.append("gitSha must be a 40-character lowercase commit SHA")
     else:
-        current_head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-        if git_sha != current_head:
-            failures.append("gitSha must match current HEAD")
+        expected_sha = expected_worker_git_sha()
+        if git_sha != expected_sha:
+            failures.append("gitSha must match the latest commit that changed Worker source")
     deployed_at = data.get("deployedAt")
     if not isinstance(deployed_at, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", deployed_at):
         failures.append("deployedAt must be an ISO-8601 UTC timestamp like 2026-07-08T12:34:56Z")
