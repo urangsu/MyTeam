@@ -203,12 +203,34 @@ struct NaturalToolStep: Sendable, Equatable, Identifiable {
     }
 }
 
+enum NaturalResultSectionStatus: String, Sendable, Equatable {
+    case confirmed
+    case partial
+}
+
 struct NaturalResultSection: Sendable, Equatable {
     let title: String
     let summary: String
     let body: String?
     let sourceLabel: String?
     let sourceLinks: [URL]
+    let status: NaturalResultSectionStatus
+
+    init(
+        title: String,
+        summary: String,
+        body: String?,
+        sourceLabel: String?,
+        sourceLinks: [URL],
+        status: NaturalResultSectionStatus = .confirmed
+    ) {
+        self.title = title
+        self.summary = summary
+        self.body = body
+        self.sourceLabel = sourceLabel
+        self.sourceLinks = sourceLinks
+        self.status = status
+    }
 }
 
 struct NaturalMissingSection: Sendable, Equatable {
@@ -1330,19 +1352,49 @@ enum NaturalWorkPlanExecutor {
 }
 
 enum NaturalResultComposer {
+    static func oneLineSummary(from sections: [NaturalResultSection]) -> String {
+        let confirmed = sections.compactMap { section -> String? in
+            let summary = section.summary.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !summary.isEmpty else { return nil }
+            return "\(displayTitle(for: section)): \(summary)"
+        }
+
+        guard !confirmed.isEmpty else {
+            return "요청한 항목을 확인하지 못했습니다. 아래 확인 필요 항목을 먼저 처리하세요."
+        }
+
+        let leading = confirmed.prefix(2).joined(separator: " · ")
+        let remainingCount = confirmed.count - min(confirmed.count, 2)
+        return remainingCount > 0 ? "\(leading) · 외 \(remainingCount)개 항목" : leading
+    }
+
     static func compose(plan: NaturalWorkPlan, executions: [NaturalStepExecution]) -> NaturalWorkResult {
         var sections: [NaturalResultSection] = []
         var missing = plan.preflightMissingSections
 
         for execution in executions {
             switch execution.state {
-            case .succeeded(let result), .partial(let result):
+            case .succeeded(let result):
                 sections.append(NaturalResultSection(
                     title: execution.step.sectionTitle,
                     summary: result.summary,
                     body: result.body,
                     sourceLabel: result.sourceLabel,
                     sourceLinks: result.items.compactMap(\.sourceURL)
+                ))
+            case .partial(let result):
+                sections.append(NaturalResultSection(
+                    title: execution.step.sectionTitle,
+                    summary: result.summary,
+                    body: result.body,
+                    sourceLabel: result.sourceLabel,
+                    sourceLinks: result.items.compactMap(\.sourceURL),
+                    status: .partial
+                ))
+                missing.append(NaturalMissingSection(
+                    title: execution.step.sectionTitle,
+                    reason: "일부 결과만 확인했습니다. 상세 내용과 다음 행동을 확인하세요.",
+                    nextAction: result.nextActions.first?.title
                 ))
             default:
                 missing.append(missingSection(for: execution))
@@ -1387,9 +1439,7 @@ enum NaturalResultComposer {
             "# \(title)",
             "",
             "## 한 줄 요약",
-            sections.isEmpty
-                ? "요청한 항목을 확인하지 못했습니다. 아래 확인 필요 항목을 먼저 처리하세요."
-                : "\(plan.request.originalText)을 \(sections.count)개 항목으로 확인했습니다.",
+            oneLineSummary(from: sections),
             "",
             "## 확인한 내용"
         ]
@@ -1398,13 +1448,13 @@ enum NaturalResultComposer {
             lines.append("- 현재 확인된 항목이 없습니다.")
         } else {
             for section in sections {
-                lines.append("- \(section.title): \(section.summary)")
+                lines.append("- \(displayTitle(for: section)): \(section.summary)")
             }
         }
 
         for section in sections where section.body?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
             lines.append("")
-            lines.append("## \(section.title)")
+            lines.append("## \(displayTitle(for: section))")
             if let body = section.body?.trimmingCharacters(in: .whitespacesAndNewlines), !body.isEmpty {
                 lines.append(body)
             }
@@ -1442,6 +1492,10 @@ enum NaturalResultComposer {
         }
 
         return lines.joined(separator: "\n")
+    }
+
+    private static func displayTitle(for section: NaturalResultSection) -> String {
+        section.status == .partial ? "\(section.title) · 일부 확인" : section.title
     }
 
     private static func sourceSummaryLines(from sections: [NaturalResultSection]) -> [String] {

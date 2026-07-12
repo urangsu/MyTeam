@@ -523,6 +523,156 @@ final class DARTCompanyIndexTests: XCTestCase {
 }
 
 final class RuntimeTruthPersistenceTests: XCTestCase {
+    func testEmptyExternalLookupResultsAreNotSuccessful() {
+        let sheets = GoogleSheetsResultFormatter.resultState(
+            GoogleSheetsReadResult(spreadsheetID: "sheet", range: "Sheet1!A1:D20", values: [])
+        )
+        let calendar = GoogleCalendarResultFormatter.resultState(items: [], statusMessage: "조회 완료")
+        let news = NewsResultFormatter.resultState(
+            query: "리튬",
+            items: [],
+            sourceLabel: "Naver News",
+            modeNotice: "제목과 설명 기준"
+        )
+        let weather = WeatherResultFormatter.resultState(
+            regionName: "광양",
+            nx: 73,
+            ny: 70,
+            observations: [],
+            sourceLabel: "기상청",
+            modeNotice: "공식 기상 데이터"
+        )
+        let law = LawResultFormatter.resultState(
+            query: "근로기준법 연차",
+            results: [],
+            sourceLabel: "국가법령정보센터",
+            modeNotice: "공식 검색 결과"
+        )
+
+        for state in [sheets, calendar, news, weather, law] {
+            guard case .checkedEmpty = state else {
+                return XCTFail("빈 외부 조회 결과는 succeeded가 아니라 checkedEmpty여야 합니다: \(state)")
+            }
+        }
+    }
+
+    func testNewsFormatterDoesNotClaimUnperformedIssueClustering() throws {
+        let item = NaverNewsDirectItem(
+            title: "삼성전자 공급망 소식",
+            description: "검색 결과 설명",
+            link: try XCTUnwrap(URL(string: "https://example.com/news")),
+            originalLink: nil,
+            publishedAt: nil
+        )
+
+        let state = NewsResultFormatter.resultState(
+            query: "삼성전자",
+            items: [item],
+            sourceLabel: "Naver News",
+            modeNotice: "제목과 설명 기준"
+        )
+        guard case .succeeded(let result) = state else {
+            return XCTFail("뉴스 결과가 성공 상태여야 합니다")
+        }
+
+        XCTAssertFalse(result.summary.contains("공통 이슈를 묶었습니다"))
+        XCTAssertFalse(result.body?.contains("공통 이슈 후보") == true)
+        XCTAssertTrue(result.body?.contains("주요 검색 결과") == true)
+    }
+
+    func testWeatherImpactNotesFollowObservedThresholds() {
+        let observations = [
+            KMAWeatherDirectObservation(category: "RN1", value: "4.5", baseDate: "20260712", baseTime: "1200"),
+            KMAWeatherDirectObservation(category: "WSD", value: "9.2", baseDate: "20260712", baseTime: "1200")
+        ]
+        let state = WeatherResultFormatter.resultState(
+            regionName: "광양",
+            nx: 73,
+            ny: 70,
+            observations: observations,
+            sourceLabel: "기상청",
+            modeNotice: "공식 기상 데이터"
+        )
+        guard case .succeeded(let result) = state else {
+            return XCTFail("관측값이 있는 날씨 결과가 성공 상태여야 합니다")
+        }
+
+        XCTAssertTrue(result.body?.contains("강수") == true)
+        XCTAssertTrue(result.body?.contains("강풍") == true)
+        XCTAssertFalse(result.body?.contains("항목에 따라") == true)
+    }
+
+    func testCompositeSummaryUsesVerifiedSectionSummaries() {
+        let sections = [
+            NaturalResultSection(
+                title: "기준일 시세",
+                summary: "2026-07-11 종가 84,000원",
+                body: nil,
+                sourceLabel: "금융위원회",
+                sourceLinks: []
+            ),
+            NaturalResultSection(
+                title: "뉴스",
+                summary: "관련 뉴스 3건의 제목과 설명을 확인했습니다.",
+                body: nil,
+                sourceLabel: "Naver News",
+                sourceLinks: []
+            )
+        ]
+
+        let summary = NaturalResultComposer.oneLineSummary(from: sections)
+
+        XCTAssertEqual(
+            summary,
+            "기준일 시세: 2026-07-11 종가 84,000원 · 뉴스: 관련 뉴스 3건의 제목과 설명을 확인했습니다."
+        )
+        XCTAssertFalse(summary.contains("2개 항목"))
+    }
+
+    func testCompositeResultPreservesPartialState() {
+        let request = NaturalWorkRequest(
+            originalText: "삼성전자 알려줘",
+            entities: [.companyName("삼성전자")],
+            intents: [.companyOverview],
+            confidence: .high,
+            clarificationQuestion: nil
+        )
+        let step = NaturalToolStep(
+            id: "news",
+            toolID: "news.search",
+            input: MyTeamToolInput(query: "삼성전자"),
+            sectionTitle: "뉴스"
+        )
+        let plan = NaturalWorkPlan(
+            request: request,
+            workType: .companyBriefing,
+            title: "삼성전자 브리핑",
+            userFacingSummary: "확인 중",
+            steps: [step],
+            compositionStyle: .compositeBriefing,
+            userNotice: nil,
+            preflightMissingSections: []
+        )
+        let partialResult = MyTeamToolResult(
+            title: "일부 뉴스만 확인했습니다",
+            summary: "뉴스 1건을 확인했고 일부 출처는 응답하지 않았습니다.",
+            sourceLabel: "Naver News",
+            body: "확인된 뉴스 1건",
+            items: [],
+            nextActions: [MyTeamNextAction(id: "searchAgain", title: "다시 검색", role: .normal)]
+        )
+
+        let result = NaturalResultComposer.compose(
+            plan: plan,
+            executions: [NaturalStepExecution(step: step, descriptor: nil, state: .partial(partialResult))]
+        )
+
+        XCTAssertEqual(result.sections.first?.status, .partial)
+        XCTAssertTrue(result.artifactMarkdown.contains("뉴스 · 일부 확인"))
+        XCTAssertTrue(result.artifactMarkdown.contains("## 확인하지 못한 항목"))
+        XCTAssertTrue(result.artifactMarkdown.contains("일부 결과만 확인했습니다"))
+    }
+
     func testUnknownPersistedToolLogStateFailsClosed() throws {
         let data = Data(#""futureState""#.utf8)
 
