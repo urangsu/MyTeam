@@ -125,6 +125,209 @@ final class AudioPlaybackQualityPolicyTests: XCTestCase {
 }
 
 final class BubbleSpeechSynthesizerTests: XCTestCase {
+    func testBubbleSpeechPolicyUsesStrongEffectForShortCharacterLine() {
+        let decision = BubbleSpeechEffectPolicy.decision(
+            for: "수석님, 다녀오셨어요?",
+            requested: true
+        )
+
+        XCTAssertEqual(decision.strength, .strong)
+        XCTAssertEqual(decision.wetMix, 0.78, accuracy: 0.001)
+    }
+
+    func testBubbleSpeechPolicyBypassesLongBusinessAnswer() {
+        let text = String(repeating: "업무 결과와 공식 출처를 확인했습니다. ", count: 12)
+
+        XCTAssertEqual(
+            BubbleSpeechEffectPolicy.decision(for: text, requested: true).strength,
+            .bypass
+        )
+    }
+
+    func testBubbleSpeechPolicyKeepsDataHeavyLineReadable() {
+        let decision = BubbleSpeechEffectPolicy.decision(
+            for: "삼성전자 종가 84,000원, 기준일 2026-07-11",
+            requested: true
+        )
+
+        XCTAssertEqual(decision.strength, .light)
+        XCTAssertLessThanOrEqual(decision.wetMix, 0.28)
+    }
+
+    func testBubbleSpeechPolicyBypassesWhenNotRequested() {
+        XCTAssertEqual(
+            BubbleSpeechEffectPolicy.decision(for: "안녕하세요", requested: false).strength,
+            .bypass
+        )
+    }
+
+    func testBubbleSpeechGrainAnalyzerRejectsSilence() {
+        let samples = [Float](repeating: 0, count: 44_100)
+
+        XCTAssertNil(BubbleSpeechGrainAnalyzer.analyze(samples: samples, sampleRate: 44_100))
+    }
+
+    func testBubbleSpeechGrainAnalyzerExtractsFiniteVoicedGrains() throws {
+        let sampleRate = 44_100
+        let samples = (0..<sampleRate).map { index -> Float in
+            let t = Double(index) / Double(sampleRate)
+            let carrier = sin(2 * Double.pi * 180 * t)
+            let color = sin(2 * Double.pi * 720 * t) * 0.22
+            return Float((carrier + color) * 0.28)
+        }
+
+        let bank = try XCTUnwrap(
+            BubbleSpeechGrainAnalyzer.analyze(samples: samples, sampleRate: sampleRate)
+        )
+        let grains = bank.allGrains
+
+        XCTAssertGreaterThanOrEqual(grains.count, 8)
+        XCTAssertTrue(grains.flatMap(\.samples).allSatisfy(\.isFinite))
+        XCTAssertTrue(grains.allSatisfy { (1_058...2_117).contains($0.samples.count) })
+        XCTAssertTrue(grains.allSatisfy { $0.rms > 0.008 })
+    }
+
+    func testBubbleSpeechGrainAnalyzerIsDeterministic() throws {
+        let sampleRate = 44_100
+        let samples = (0..<sampleRate / 2).map { index in
+            Float(sin(2 * Double.pi * 240 * Double(index) / Double(sampleRate)) * 0.3)
+        }
+
+        let first = try XCTUnwrap(BubbleSpeechGrainAnalyzer.analyze(samples: samples, sampleRate: sampleRate))
+        let second = try XCTUnwrap(BubbleSpeechGrainAnalyzer.analyze(samples: samples, sampleRate: sampleRate))
+
+        XCTAssertEqual(first, second)
+    }
+
+    func testVoiceBasedCharacterLanguageIsDeterministicAndCompressed() {
+        let sampleRate = 44_100
+        let voiceSamples = (0..<sampleRate).map { index -> Float in
+            let t = Double(index) / Double(sampleRate)
+            return Float((sin(2 * .pi * 210 * t) + sin(2 * .pi * 730 * t) * 0.2) * 0.25)
+        }
+        let config = BubbleSpeechConfig.from(profile: .cute, speed: 1.0)
+
+        let first = BubbleSpeechSynthesizer.renderVoiceBasedEffect(
+            text: "좋아요, 바로 해볼게요!",
+            voiceSamples: voiceSamples,
+            sampleRate: sampleRate,
+            config: config
+        )
+        let second = BubbleSpeechSynthesizer.renderVoiceBasedEffect(
+            text: "좋아요, 바로 해볼게요!",
+            voiceSamples: voiceSamples,
+            sampleRate: sampleRate,
+            config: config
+        )
+
+        XCTAssertEqual(first, second)
+        XCTAssertFalse(first.isEmpty)
+        XCTAssertLessThan(first.count, voiceSamples.count)
+        XCTAssertGreaterThan(first.count, sampleRate / 8)
+        XCTAssertTrue(first.allSatisfy(\.isFinite))
+        XCTAssertLessThanOrEqual(first.map { abs($0) }.max() ?? 0, 0.98)
+    }
+
+    func testVoiceBasedCharacterLanguageTracksQuestionContour() {
+        let sampleRate = 44_100
+        let voiceSamples = (0..<sampleRate / 2).map { index in
+            Float(sin(2 * .pi * 260 * Double(index) / Double(sampleRate)) * 0.3)
+        }
+        let config = BubbleSpeechConfig.from(profile: .cute, speed: 1.0)
+
+        let statement = BubbleSpeechSynthesizer.renderVoiceBasedEffect(
+            text: "갈까요.", voiceSamples: voiceSamples, sampleRate: sampleRate, config: config
+        )
+        let question = BubbleSpeechSynthesizer.renderVoiceBasedEffect(
+            text: "갈까요?", voiceSamples: voiceSamples, sampleRate: sampleRate, config: config
+        )
+
+        XCTAssertFalse(statement.isEmpty)
+        XCTAssertFalse(question.isEmpty)
+        XCTAssertNotEqual(statement, question)
+    }
+
+    func testGranularRendererUsesVoiceDerivedBank() throws {
+        let sampleRate = 44_100
+        let voiceSamples = (0..<sampleRate / 2).map { index in
+            Float(sin(2 * .pi * 230 * Double(index) / Double(sampleRate)) * 0.3)
+        }
+        let bank = try XCTUnwrap(BubbleSpeechGrainAnalyzer.analyze(samples: voiceSamples, sampleRate: sampleRate))
+
+        let rendered = BubbleSpeechCharacterRenderer.render(
+            text: "안녕하세요!",
+            bank: bank,
+            sampleRate: sampleRate,
+            config: BubbleSpeechConfig.from(profile: .cute, speed: 1.0),
+            segmentRate: 1.0
+        )
+
+        XCTAssertFalse(rendered.isEmpty)
+        XCTAssertTrue(rendered.allSatisfy(\.isFinite))
+    }
+
+    func testAllCharactersHaveDistinctBubbleSpeechRhythms() {
+        let patterns = (1...11).map { index in
+            BubbleSpeechCharacterTuningPolicy.tuning(
+                agentID: "agent_\(index)",
+                preset: index <= 5 ? "F1" : "M1",
+                profile: .cute
+            ).pitchStepPattern
+        }
+
+        let signatures = patterns.map { pattern in
+            pattern.map { String(format: "%.1f", $0) }.joined(separator: ",")
+        }
+        XCTAssertEqual(Set(signatures).count, 11)
+    }
+
+    func testCharacterRhythmIdentityIsNotPitchOnly() {
+        let leo = BubbleSpeechCharacterTuningPolicy.tuning(agentID: "agent_1", preset: "M1", profile: .cute)
+        let pin = BubbleSpeechCharacterTuningPolicy.tuning(agentID: "agent_4", preset: "F1", profile: .cute)
+        let chiko = BubbleSpeechCharacterTuningPolicy.tuning(agentID: "agent_5", preset: "F1", profile: .cute)
+
+        XCTAssertNotEqual(leo.accentPattern, pin.accentPattern)
+        XCTAssertNotEqual(pin.grainRepeatPattern, chiko.grainRepeatPattern)
+        XCTAssertGreaterThan(leo.maxSegmentDuration, chiko.minSegmentDuration)
+    }
+
+    func testAdaptiveBubbleSpeechExplicitBypassPreservesSource() throws {
+        let samples = (0..<4_410).map { index in Float(sin(Double(index) * 0.04) * 0.2) }
+        let text = String(repeating: "긴 업무 설명입니다. ", count: 30)
+        let decision = BubbleSpeechEffectPolicy.decision(
+            for: text,
+            requested: true
+        )
+
+        let output = try XCTUnwrap(BubbleSpeechSynthesizer.applyAdaptiveEffect(
+            text: text,
+            voiceSamples: samples,
+            sampleRate: 44_100,
+            config: BubbleSpeechConfig.from(profile: .cute),
+            segmentRate: 1,
+            decision: decision
+        ))
+
+        XCTAssertEqual(decision.strength, .bypass)
+        XCTAssertEqual(output, samples)
+    }
+
+    func testAdaptiveBubbleSpeechFailureDoesNotPassThroughSource() {
+        let samples = [Float](repeating: 0, count: 44_100)
+        let decision = BubbleSpeechEffectPolicy.decision(for: "안녕하세요!", requested: true)
+
+        let output = BubbleSpeechSynthesizer.applyAdaptiveEffect(
+            text: "안녕하세요!",
+            voiceSamples: samples,
+            sampleRate: 44_100,
+            config: BubbleSpeechConfig.from(profile: .cute),
+            segmentRate: 1,
+            decision: decision
+        )
+
+        XCTAssertNil(output)
+    }
+
     func testBubbleSpeechGeneratesProceduralSyllableAudio() {
         let config = BubbleSpeechConfig.from(profile: .cute, speed: 1.0)
         let samples = BubbleSpeechSynthesizer.synthesize(text: "뽀글뽀글 말하기!", config: config)

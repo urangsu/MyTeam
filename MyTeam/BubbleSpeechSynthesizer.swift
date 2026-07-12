@@ -12,7 +12,7 @@ import Foundation
 //   - No YouTube audio extraction.
 //   - No external sample files.
 //   - Pure procedural synthesis only.
-//   - Lab-only speech effect, not a fallback TTS.
+//   - Optional character effect over one Supertonic3 render, never a fallback TTS.
 //   - Guide generation failure is a BubbleSpeech failure, not passthrough success.
 
 // MARK: - Wave / Profile
@@ -204,9 +204,368 @@ enum BubbleSpeechToken: Sendable {
     case longPause(ending: BubbleSpeechPhrasePosition)
 }
 
+struct BubbleSpeechGrain: Sendable, Equatable {
+    let samples: [Float]
+    let rms: Float
+    let zeroCrossingRate: Float
+    let spectralCentroid: Float
+    let voicingConfidence: Float
+}
+
+struct BubbleSpeechGrainBank: Sendable, Equatable {
+    let bright: [BubbleSpeechGrain]
+    let neutral: [BubbleSpeechGrain]
+    let round: [BubbleSpeechGrain]
+    let dark: [BubbleSpeechGrain]
+    let narrow: [BubbleSpeechGrain]
+
+    var allGrains: [BubbleSpeechGrain] {
+        bright + neutral + round + dark + narrow
+    }
+
+    func grains(for color: BubbleSpeechVowelColor) -> [BubbleSpeechGrain] {
+        let preferred: [BubbleSpeechGrain]
+        switch color {
+        case .bright: preferred = bright
+        case .neutral: preferred = neutral
+        case .round: preferred = round
+        case .dark: preferred = dark
+        case .narrow: preferred = narrow
+        }
+        return preferred.isEmpty ? allGrains : preferred
+    }
+}
+
+enum BubbleSpeechGrainAnalyzer {
+    static func analyze(samples: [Float], sampleRate: Int) -> BubbleSpeechGrainBank? {
+        guard sampleRate > 0, samples.count >= sampleRate / 20 else { return nil }
+        guard samples.allSatisfy(\.isFinite) else { return nil }
+
+        let windowSize = max(64, Int(Double(sampleRate) * 0.032))
+        let hopSize = max(32, Int(Double(sampleRate) * 0.016))
+        guard samples.count >= windowSize else { return nil }
+
+        let analysisWindow = max(32, Int(Double(sampleRate) * 0.010))
+        var windowRMS: [Float] = []
+        var cursor = 0
+        while cursor + analysisWindow <= samples.count {
+            windowRMS.append(rms(Array(samples[cursor..<(cursor + analysisWindow)])))
+            cursor += analysisWindow
+        }
+        guard let overallRMS = windowRMS.max(), overallRMS > 0.008 else { return nil }
+
+        let sortedRMS = windowRMS.sorted()
+        let lowerQuartile = sortedRMS[max(0, sortedRMS.count / 4 - 1)]
+        let voicedThreshold = max(0.008, min(lowerQuartile * 2.5, overallRMS * 0.65))
+
+        var candidates: [BubbleSpeechGrain] = []
+        cursor = 0
+        while cursor + windowSize <= samples.count, candidates.count < 120 {
+            let raw = Array(samples[cursor..<(cursor + windowSize)])
+            let rawRMS = rms(raw)
+            if rawRMS >= voicedThreshold {
+                let windowed = hannWindow(raw)
+                let zcr = zeroCrossingRate(windowed, sampleRate: sampleRate)
+                let centroid = spectralColorEstimate(windowed, sampleRate: sampleRate)
+                let confidence = min(1, max(0, (rawRMS - voicedThreshold) / max(0.001, overallRMS - voicedThreshold)))
+                candidates.append(BubbleSpeechGrain(
+                    samples: windowed,
+                    rms: rawRMS,
+                    zeroCrossingRate: zcr,
+                    spectralCentroid: centroid,
+                    voicingConfidence: confidence
+                ))
+            }
+            cursor += hopSize
+        }
+        guard candidates.count >= 4 else { return nil }
+
+        let centroids = candidates.map(\.spectralCentroid).sorted()
+        let median = centroids[centroids.count / 2]
+        var bright: [BubbleSpeechGrain] = []
+        var neutral: [BubbleSpeechGrain] = []
+        var round: [BubbleSpeechGrain] = []
+        var dark: [BubbleSpeechGrain] = []
+        var narrow: [BubbleSpeechGrain] = []
+
+        for grain in candidates {
+            let ratio = grain.spectralCentroid / max(1, median)
+            if ratio >= 1.24 {
+                append(grain, to: &bright)
+            } else if ratio >= 1.08 {
+                append(grain, to: &narrow)
+            } else if ratio <= 0.76 {
+                append(grain, to: &dark)
+            } else if ratio <= 0.92 {
+                append(grain, to: &round)
+            } else {
+                append(grain, to: &neutral)
+            }
+        }
+
+        return BubbleSpeechGrainBank(
+            bright: bright,
+            neutral: neutral,
+            round: round,
+            dark: dark,
+            narrow: narrow
+        )
+    }
+
+    private static func append(_ grain: BubbleSpeechGrain, to grains: inout [BubbleSpeechGrain]) {
+        if grains.count < 24 { grains.append(grain) }
+    }
+
+    private static func rms(_ samples: [Float]) -> Float {
+        guard !samples.isEmpty else { return 0 }
+        let sum = samples.reduce(0.0) { $0 + Double($1 * $1) }
+        return Float(sqrt(sum / Double(samples.count)))
+    }
+
+    private static func hannWindow(_ samples: [Float]) -> [Float] {
+        guard samples.count > 1 else { return samples }
+        let denominator = Double(samples.count - 1)
+        return samples.enumerated().map { index, sample in
+            let gain = 0.5 - 0.5 * cos(2 * .pi * Double(index) / denominator)
+            return sample * Float(gain)
+        }
+    }
+
+    private static func zeroCrossingRate(_ samples: [Float], sampleRate: Int) -> Float {
+        guard samples.count > 1 else { return 0 }
+        var crossings = 0
+        for index in 1..<samples.count where (samples[index - 1] < 0) != (samples[index] < 0) {
+            crossings += 1
+        }
+        return Float(crossings) * Float(sampleRate) / Float(samples.count)
+    }
+
+    private static func spectralColorEstimate(_ samples: [Float], sampleRate: Int) -> Float {
+        guard samples.count > 1 else { return 0 }
+        var variation: Double = 0
+        var magnitude: Double = 0
+        for index in 1..<samples.count {
+            variation += Double(abs(samples[index] - samples[index - 1]))
+            magnitude += Double(abs(samples[index]))
+        }
+        let normalized = variation / max(0.000_001, magnitude)
+        return Float(min(Double(sampleRate) / 2, normalized * Double(sampleRate) / (2 * .pi)))
+    }
+}
+
+enum BubbleSpeechCharacterRenderer {
+    static func render(
+        text: String,
+        bank: BubbleSpeechGrainBank,
+        sampleRate: Int,
+        config: BubbleSpeechConfig,
+        segmentRate: Float
+    ) -> [Float] {
+        guard sampleRate > 0, !bank.allGrains.isEmpty else { return [] }
+        let tokens = BubbleSpeechSynthesizer.tokenize(text)
+        let syllableCount = tokens.reduce(0) { count, token in
+            if case .syllable = token { return count + 1 }
+            return count
+        }
+        guard syllableCount > 0 else { return [] }
+
+        let safeRate = max(0.85, min(1.25, Double(segmentRate)))
+        let crossfadeFrames = max(32, Int(Double(sampleRate) * 0.004))
+        var output: [Float] = []
+        var syllableIndex = 0
+        var nextPosition: BubbleSpeechPhrasePosition = .start
+
+        for (tokenIndex, token) in tokens.enumerated() {
+            switch token {
+            case .syllable(let character):
+                let terminal = BubbleSpeechSynthesizer.terminalPhrasePosition(after: tokenIndex, in: tokens)
+                let position = terminal ?? nextPosition
+                nextPosition = .middle
+                let parts = KoreanSyllableDecomposer.decompose(character)
+                let color = BubbleSpeechSynthesizer.vowelColor(for: parts.medialIndex)
+                let candidates = bank.grains(for: color)
+                guard !candidates.isEmpty else { return [] }
+                let repeatPattern = config.characterTuning.grainRepeatPattern
+                let repeatValue = repeatPattern.isEmpty ? 1 : repeatPattern[syllableIndex % repeatPattern.count]
+                let grain = candidates[stableIndex(
+                    for: character,
+                    syllableIndex: syllableIndex * max(1, repeatValue),
+                    count: candidates.count
+                )]
+
+                let frame = BubbleSpeechSyllableFrame(
+                    char: character,
+                    parts: parts,
+                    baseFrequency: config.baseFrequency,
+                    vowelColor: color,
+                    consonantTransient: BubbleSpeechSynthesizer.transientKind(for: parts.initialIndex),
+                    finalTail: BubbleSpeechSynthesizer.tailKind(for: parts.finalIndex),
+                    duration: config.effectiveCharDuration,
+                    gap: config.effectiveGapDuration,
+                    phrasePosition: position
+                )
+                let frequency = BubbleSpeechSynthesizer.speechFrequency(
+                    for: frame,
+                    config: config,
+                    index: syllableIndex,
+                    total: syllableCount
+                )
+                let pitchPattern = config.characterTuning.pitchStepPattern
+                let patternCents = pitchPattern.isEmpty ? 0 : pitchPattern[syllableIndex % pitchPattern.count]
+                let identityRatio = pow(2, patternCents / 1_200)
+                let formantRatio = 1 + Double(config.characterTuning.formantColor) * 0.04
+                let pitchRatio = min(
+                    1.34,
+                    max(0.76, frequency / max(1, config.baseFrequency) * identityRatio * formantRatio)
+                )
+                let duration = targetDuration(for: frame, config: config, segmentRate: safeRate)
+                var segment = loopedGrain(
+                    grain.samples,
+                    targetCount: max(64, Int(duration * Double(sampleRate))),
+                    pitchRatio: pitchRatio
+                )
+                applySyllableEnvelope(&segment)
+                let accents = config.characterTuning.accentPattern
+                let accent = accents.isEmpty ? 1 : accents[syllableIndex % accents.count]
+                if accent != 1 {
+                    for index in segment.indices { segment[index] *= accent }
+                }
+                appendWithCrossfade(segment, to: &output, frames: crossfadeFrames)
+
+                let gapFrames = max(0, Int(frame.gap * config.characterTuning.gapScale / safeRate * Double(sampleRate)))
+                if gapFrames > 0 {
+                    output.append(contentsOf: [Float](repeating: 0, count: gapFrames))
+                }
+                syllableIndex += 1
+
+            case .shortPause:
+                appendSilence(seconds: 0.012 / safeRate, sampleRate: sampleRate, to: &output)
+                nextPosition = .start
+            case .mediumPause:
+                appendSilence(seconds: 0.030 / safeRate, sampleRate: sampleRate, to: &output)
+                nextPosition = .start
+            case .longPause:
+                appendSilence(seconds: 0.055 / safeRate, sampleRate: sampleRate, to: &output)
+                nextPosition = .start
+            }
+        }
+        return output
+    }
+
+    private static func targetDuration(
+        for frame: BubbleSpeechSyllableFrame,
+        config: BubbleSpeechConfig,
+        segmentRate: Double
+    ) -> Double {
+        let profileDuration = frame.duration / segmentRate
+        let tailScale = frame.finalTail == .shortCut ? 0.88 : 1.0
+        return min(
+            config.characterTuning.maxSegmentDuration,
+            max(config.characterTuning.minSegmentDuration, profileDuration * tailScale)
+        )
+    }
+
+    private static func stableIndex(for character: Character, syllableIndex: Int, count: Int) -> Int {
+        guard count > 1 else { return 0 }
+        let scalarValue = character.unicodeScalars.reduce(0) { partial, scalar in
+            partial &* 31 &+ Int(scalar.value)
+        }
+        return abs(scalarValue &+ syllableIndex &* 17) % count
+    }
+
+    private static func loopedGrain(_ grain: [Float], targetCount: Int, pitchRatio: Double) -> [Float] {
+        guard !grain.isEmpty, targetCount > 0 else { return [] }
+        let lastIndex = max(1, grain.count - 1)
+        return (0..<targetCount).map { index in
+            let position = (Double(index) * pitchRatio).truncatingRemainder(dividingBy: Double(lastIndex))
+            let lower = Int(position)
+            let upper = min(lastIndex, lower + 1)
+            let fraction = Float(position - Double(lower))
+            return grain[lower] * (1 - fraction) + grain[upper] * fraction
+        }
+    }
+
+    private static func applySyllableEnvelope(_ samples: inout [Float]) {
+        guard samples.count > 1 else { return }
+        let denominator = Double(samples.count - 1)
+        for index in samples.indices {
+            let progress = Double(index) / denominator
+            let envelope = sin(.pi * progress)
+            samples[index] *= Float(envelope * 1.18)
+        }
+    }
+
+    private static func appendWithCrossfade(_ segment: [Float], to output: inout [Float], frames: Int) {
+        guard !segment.isEmpty else { return }
+        guard !output.isEmpty else {
+            output.append(contentsOf: segment)
+            return
+        }
+        let overlap = min(frames, output.count, segment.count)
+        guard overlap > 0 else {
+            output.append(contentsOf: segment)
+            return
+        }
+        let start = output.count - overlap
+        for index in 0..<overlap {
+            let progress = Float(index + 1) / Float(overlap + 1)
+            output[start + index] = output[start + index] * (1 - progress) + segment[index] * progress
+        }
+        output.append(contentsOf: segment.dropFirst(overlap))
+    }
+
+    private static func appendSilence(seconds: Double, sampleRate: Int, to output: inout [Float]) {
+        output.append(contentsOf: [Float](repeating: 0, count: max(1, Int(seconds * Double(sampleRate)))))
+    }
+}
+
 // MARK: - Synthesizer
 
 enum BubbleSpeechSynthesizer {
+
+    static func applyAdaptiveEffect(
+        text: String,
+        voiceSamples: [Float],
+        sampleRate: Int,
+        config: BubbleSpeechConfig,
+        segmentRate: Float,
+        decision: BubbleSpeechEffectDecision
+    ) -> [Float]? {
+        guard !voiceSamples.isEmpty, sampleRate > 0 else { return nil }
+        if decision.strength == .bypass { return voiceSamples }
+
+        var adaptiveConfig = config
+        let tuning = config.characterTuning
+        adaptiveConfig.characterTuning = BubbleSpeechCharacterTuning(
+            minSegmentDuration: decision.targetSyllableDuration.lowerBound,
+            maxSegmentDuration: decision.targetSyllableDuration.upperBound,
+            guideGain: tuning.guideGain,
+            shimmerDepth: tuning.shimmerDepth,
+            gapScale: tuning.gapScale,
+            pitchStepPattern: tuning.pitchStepPattern,
+            accentPattern: tuning.accentPattern,
+            grainRepeatPattern: tuning.grainRepeatPattern,
+            formantColor: tuning.formantColor
+        )
+        let rendered = renderVoiceBasedEffect(
+            text: text,
+            voiceSamples: voiceSamples,
+            sampleRate: sampleRate,
+            config: adaptiveConfig,
+            segmentRate: segmentRate
+        )
+        guard !rendered.isEmpty else { return nil }
+
+        let wet = min(1, max(0, decision.wetMix))
+        let dry = resample(voiceSamples, targetCount: rendered.count)
+        var mixed = [Float]()
+        mixed.reserveCapacity(rendered.count)
+        for index in rendered.indices {
+            let value = dry[index] * (1 - wet) + rendered[index] * wet
+            mixed.append(max(-0.98, min(0.98, value)))
+        }
+        return mixed
+    }
 
     static func renderVoiceBasedEffect(
         text: String,
@@ -227,10 +586,12 @@ enum BubbleSpeechSynthesizer {
         let guide = synthesize(text: text, config: config)
         guard !guide.isEmpty else { return [] }
 
-        let choppedVoice = chopVoiceSamples(
-            voiceSamples,
-            tokens: tokens,
-            syllableCount: syllableCount,
+        guard let grainBank = BubbleSpeechGrainAnalyzer.analyze(samples: voiceSamples, sampleRate: sampleRate) else {
+            return []
+        }
+        let choppedVoice = BubbleSpeechCharacterRenderer.render(
+            text: text,
+            bank: grainBank,
             sampleRate: sampleRate,
             config: config,
             segmentRate: segmentRate
@@ -278,107 +639,6 @@ enum BubbleSpeechSynthesizer {
         tokenize(text).reduce(0) { total, token in
             if case .syllable = token { return total + 1 }
             return total
-        }
-    }
-
-    private static func chopVoiceSamples(
-        _ voiceSamples: [Float],
-        tokens: [BubbleSpeechToken],
-        syllableCount: Int,
-        sampleRate: Int,
-        config: BubbleSpeechConfig,
-        segmentRate: Float
-    ) -> [Float] {
-        guard syllableCount > 0 else { return [] }
-
-        let safeRate = max(0.85, min(1.25, Double(segmentRate)))
-        let sourceStride = Double(voiceSamples.count) / Double(syllableCount)
-        let crossfadeFrames = max(Int(0.003 * Double(sampleRate)), min(Int(0.008 * Double(sampleRate)), sampleRate / 160))
-        var output: [Float] = []
-        var syllableIndex = 0
-
-        for token in tokens {
-            switch token {
-            case .syllable:
-                let sourceStart = Int(Double(syllableIndex) * sourceStride)
-                let sourceEnd = syllableIndex == syllableCount - 1
-                    ? voiceSamples.count
-                    : Int(Double(syllableIndex + 1) * sourceStride)
-                let source = Array(voiceSamples[max(0, sourceStart)..<min(voiceSamples.count, max(sourceStart + 1, sourceEnd))])
-                let targetCount = targetSegmentFrameCount(
-                    sourceCount: source.count,
-                    sampleRate: sampleRate,
-                    config: config,
-                    segmentRate: safeRate
-                )
-                var segment = resample(source, targetCount: targetCount)
-                applyChopperEnvelope(&segment, sampleRate: sampleRate, config: config)
-                appendWithCrossfade(segment, to: &output, crossfadeFrames: crossfadeFrames)
-
-                let gapFrames = max(0, Int(config.effectiveGapDuration * 0.62 * config.characterTuning.gapScale / safeRate * Double(sampleRate)))
-                if gapFrames > 0 {
-                    output.append(contentsOf: [Float](repeating: 0, count: gapFrames))
-                }
-                syllableIndex += 1
-
-            case .shortPause:
-                output.append(contentsOf: [Float](repeating: 0, count: max(1, Int(0.010 / safeRate * Double(sampleRate)))))
-
-            case .mediumPause:
-                output.append(contentsOf: [Float](repeating: 0, count: max(1, Int(0.024 / safeRate * Double(sampleRate)))))
-
-            case .longPause:
-                output.append(contentsOf: [Float](repeating: 0, count: max(1, Int(0.038 / safeRate * Double(sampleRate)))))
-            }
-        }
-
-        smoothEdges(&output, sampleRate: Double(sampleRate), attack: 0.004, release: 0.018)
-        return output
-    }
-
-    private static func targetSegmentFrameCount(
-        sourceCount: Int,
-        sampleRate: Int,
-        config: BubbleSpeechConfig,
-        segmentRate: Double
-    ) -> Int {
-        let profileDuration = config.effectiveCharDuration / segmentRate
-        let minDuration = config.characterTuning.minSegmentDuration
-        let maxDuration = config.characterTuning.maxSegmentDuration
-        let targetDuration = min(maxDuration, max(minDuration, profileDuration))
-        let targetCount = Int(targetDuration * Double(sampleRate))
-        return max(64, min(max(sourceCount, 64), targetCount))
-    }
-
-    private static func applyChopperEnvelope(_ samples: inout [Float], sampleRate: Int, config: BubbleSpeechConfig) {
-        guard !samples.isEmpty else { return }
-        let attack = config.voiceProfile.isEffectProfile ? 0.0025 : 0.004
-        let release = config.voiceProfile.isEffectProfile ? 0.008 : 0.014
-        smoothEdges(&samples, sampleRate: Double(sampleRate), attack: attack, release: release)
-    }
-
-    private static func appendWithCrossfade(_ segment: [Float], to output: inout [Float], crossfadeFrames: Int) {
-        guard !segment.isEmpty else { return }
-        guard !output.isEmpty, crossfadeFrames > 0 else {
-            output.append(contentsOf: segment)
-            return
-        }
-
-        let overlap = min(crossfadeFrames, output.count, segment.count)
-        if overlap <= 0 {
-            output.append(contentsOf: segment)
-            return
-        }
-
-        let outputStart = output.count - overlap
-        for i in 0..<overlap {
-            let progress = Double(i + 1) / Double(overlap + 1)
-            let fadeOut = Float(1.0 - progress)
-            let fadeIn = Float(progress)
-            output[outputStart + i] = output[outputStart + i] * fadeOut + segment[i] * fadeIn
-        }
-        if segment.count > overlap {
-            output.append(contentsOf: segment[overlap...])
         }
     }
 
@@ -540,7 +800,7 @@ enum BubbleSpeechSynthesizer {
 
     // MARK: - Token / Phrase
 
-    private static func tokenize(_ text: String) -> [BubbleSpeechToken] {
+    static func tokenize(_ text: String) -> [BubbleSpeechToken] {
         var tokens: [BubbleSpeechToken] = []
         for char in text {
             if char == "\n" || char == "\r" {
@@ -562,7 +822,7 @@ enum BubbleSpeechSynthesizer {
         return tokens
     }
 
-    private static func terminalPhrasePosition(after tokenIndex: Int, in tokens: [BubbleSpeechToken]) -> BubbleSpeechPhrasePosition? {
+    static func terminalPhrasePosition(after tokenIndex: Int, in tokens: [BubbleSpeechToken]) -> BubbleSpeechPhrasePosition? {
         var cursor = tokenIndex + 1
         while cursor < tokens.count {
             switch tokens[cursor] {
