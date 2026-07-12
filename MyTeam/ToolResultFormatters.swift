@@ -94,7 +94,7 @@ enum SpreadsheetPlanResultFormatter {
 enum GoogleSheetsResultFormatter {
     nonisolated static func resultState(_ result: GoogleSheetsReadResult) -> ToolExecutionState {
         if result.values.isEmpty {
-            return .succeeded(MyTeamToolResult(
+            return .checkedEmpty(MyTeamToolResult(
                 title: "시트 값이 없습니다",
                 summary: "\(result.range) 범위에서 값을 찾지 못했습니다.",
                 sourceLabel: "Google Sheets 읽기",
@@ -184,7 +184,7 @@ enum GoogleCalendarResultFormatter {
         statusMessage: String
     ) -> ToolExecutionState {
         if items.isEmpty {
-            return .succeeded(MyTeamToolResult(
+            return .checkedEmpty(MyTeamToolResult(
                 title: "오늘 일정이 없습니다",
                 summary: statusMessage,
                 sourceLabel: "Google Calendar",
@@ -319,7 +319,7 @@ enum NewsResultFormatter {
         modeNotice: String
     ) -> ToolExecutionState {
         if items.isEmpty {
-            return .succeeded(MyTeamToolResult(
+            return .checkedEmpty(MyTeamToolResult(
                 title: "뉴스 검색 결과가 없습니다",
                 summary: "'\(query)' 기준 뉴스 검색 결과를 찾지 못했습니다.",
                 sourceLabel: sourceLabel,
@@ -334,7 +334,7 @@ enum NewsResultFormatter {
 
         return .succeeded(MyTeamToolResult(
             title: "뉴스 검색 결과를 정리했습니다",
-            summary: "\(query) 관련 최신 뉴스 \(items.count)건의 제목과 설명을 기준으로 공통 이슈를 묶었습니다.",
+            summary: "\(query) 관련 최신 뉴스 \(items.count)건의 제목과 설명을 정리했습니다.",
             sourceLabel: sourceLabel,
             body: briefingBody(query: query, items: items, notice: modeNotice),
             items: items.prefix(5).map { item in
@@ -364,11 +364,7 @@ enum NewsResultFormatter {
             "- 결과 수: \(items.count)건",
             "- 주의: \(notice)",
             "",
-            "## 공통 이슈 후보",
-            "- 아래 후보는 검색 결과 제목과 설명에서 반복적으로 보이는 주제입니다.",
-            "- 정확한 사실관계는 각 원문 링크에서 확인하세요.",
-            "",
-            "## 주요 기사"
+            "## 주요 검색 결과"
         ]
 
         for (index, item) in items.prefix(10).enumerated() {
@@ -407,11 +403,28 @@ enum WeatherResultFormatter {
         modeNotice: String
     ) -> ToolExecutionState {
         let summaryParts = summaryParts(from: observations)
+        if observations.isEmpty {
+            return .checkedEmpty(MyTeamToolResult(
+                title: "날씨 조회 결과가 없습니다",
+                summary: "\(regionName) 격자 \(nx),\(ny) 기준 기상청 결과를 찾지 못했습니다.",
+                sourceLabel: sourceLabel,
+                body: body(
+                    regionName: regionName,
+                    nx: nx,
+                    ny: ny,
+                    observations: observations,
+                    notice: modeNotice
+                ),
+                items: [],
+                nextActions: [
+                    MyTeamNextAction(id: "searchAgain", title: "다시 조회", role: .normal),
+                    MyTeamNextAction(id: "changeKeyword", title: "지역 바꾸기", role: .normal)
+                ]
+            ))
+        }
         return .succeeded(MyTeamToolResult(
-            title: observations.isEmpty ? "날씨 조회 결과가 없습니다" : "현재 날씨를 확인했습니다",
-            summary: observations.isEmpty
-                ? "\(regionName) 격자 \(nx),\(ny) 기준 기상청 결과를 찾지 못했습니다."
-                : (summaryParts.isEmpty ? "기상청 초단기실황 \(observations.count)개 항목을 가져왔습니다." : summaryParts.joined(separator: " · ")),
+            title: "현재 날씨를 확인했습니다",
+            summary: summaryParts.isEmpty ? "기상청 초단기실황 \(observations.count)개 항목을 가져왔습니다." : summaryParts.joined(separator: " · "),
             sourceLabel: sourceLabel,
             body: body(
                 regionName: regionName,
@@ -466,13 +479,39 @@ enum WeatherResultFormatter {
 
         lines.append("")
         lines.append("## 업무 영향 추정")
-        if observations.isEmpty {
-            lines.append("- 날씨 항목이 없어 현장/이동 영향은 판단하지 않았습니다.")
-        } else {
-            lines.append("- 강수량, 풍속, 기온 항목에 따라 외근·출장 준비물 확인이 필요할 수 있습니다.")
-            lines.append("- 야외 작업 여부는 현장 기준과 최신 기상 정보를 함께 검토하세요.")
-        }
+        lines.append(contentsOf: impactNotes(from: observations).map { "- \($0)" })
         return lines.joined(separator: "\n")
+    }
+
+    private nonisolated static func impactNotes(from observations: [KMAWeatherDirectObservation]) -> [String] {
+        guard !observations.isEmpty else {
+            return ["날씨 항목이 없어 현장·이동 영향은 판단하지 않았습니다."]
+        }
+
+        var notes: [String] = []
+        let values = Dictionary(
+            observations.compactMap { observation in
+                Double(observation.value).map { (observation.category, $0) }
+            },
+            uniquingKeysWith: { _, latest in latest }
+        )
+
+        if let rainfall = values["RN1"], rainfall > 0 {
+            notes.append("강수가 관측되어 이동이나 야외 작업에 영향 가능성이 있습니다. 우산과 방수 장비를 확인하세요.")
+        }
+        if let windSpeed = values["WSD"], windSpeed >= 8 {
+            notes.append("강풍 수준의 바람이 관측되어 야외 작업과 이동 안전을 검토하세요.")
+        }
+        if let temperature = values["T1H"], temperature <= 0 {
+            notes.append("영하 기온이 관측되어 노면과 방한 준비를 확인하세요.")
+        } else if let temperature = values["T1H"], temperature >= 30 {
+            notes.append("높은 기온이 관측되어 야외 작업 시 휴식과 수분 준비를 검토하세요.")
+        }
+
+        if notes.isEmpty {
+            notes.append("현재 확인된 관측값에서는 별도 임계 알림을 만들지 않았습니다. 최신 예보와 현장 기준을 함께 확인하세요.")
+        }
+        return notes
     }
 
     private nonisolated static func summaryParts(from observations: [KMAWeatherDirectObservation]) -> [String] {
@@ -906,7 +945,7 @@ enum LawResultFormatter {
         modeNotice: String
     ) -> ToolExecutionState {
         if results.isEmpty {
-            return .succeeded(MyTeamToolResult(
+            return .checkedEmpty(MyTeamToolResult(
                 title: "법령 검색 결과가 없습니다",
                 summary: "'\(query)' 기준 공식 법령 검색 결과를 찾지 못했습니다.",
                 sourceLabel: sourceLabel,
