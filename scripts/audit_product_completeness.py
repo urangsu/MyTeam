@@ -49,6 +49,7 @@ def main() -> None:
     kma_base_policy = read("MyTeam/KMABaseTimePolicy.swift")
     public_api_connector = read("MyTeam/PublicAPIConnectorValidator.swift")
     worker = read("workers/basic-lookup-api/worker.js")
+    worker_health_validator = read("scripts/validate_worker_production_health.py")
     quality_workflow = read(".github/workflows/quality-gate.yml")
     ai_model_policy = read("MyTeam/AIModelPolicy.swift")
     ai_service = read("MyTeam/AIService.swift")
@@ -455,6 +456,21 @@ def main() -> None:
             failures.append("ToolResultFormatters.noResultsState must not return .succeeded")
         if ".checkedEmpty(" not in no_results_window:
             failures.append("ToolResultFormatters.noResultsState must return .checkedEmpty")
+    for forbidden_claim in ["공통 이슈를 묶었습니다", "## 공통 이슈 후보"]:
+        if forbidden_claim in finance_formatter:
+            failures.append(f"News formatter must not claim unperformed issue clustering: {forbidden_claim}")
+    if "private nonisolated static func impactNotes(from observations:" not in finance_formatter:
+        failures.append("Weather formatter must derive impact notes from observed values")
+    if "oneLineSummary(from: sections)" not in natural:
+        failures.append("NaturalResultComposer must summarize verified section results instead of reporting only a count")
+    for token in ["NaturalResultSectionStatus", "status: .partial", "일부 결과만 확인했습니다"]:
+        if token not in natural:
+            failures.append(f"NaturalResultComposer must preserve partial result truth: {token}")
+    if '["git", "rev-parse", "HEAD"]' in worker_health_validator:
+        failures.append("Worker production health must not require app-only HEAD commits to be redeployed")
+    for token in ["WORKER_SOURCE_PATH", '"git", "log", "-1", "--format=%H"']:
+        if token not in worker_health_validator:
+            failures.append(f"Worker production health must compare the deployed SHA to Worker source history: {token}")
 
     if "DemoRoomSeeder" in settings or "SampleArtifactSeeder" in settings:
         failures.append("SettingsView must not expose demo seed controls until DemoMode seeding is productized")

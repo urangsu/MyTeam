@@ -92,7 +92,7 @@ def validate_news_language() -> None:
     for forbidden in ["기사 전문 요약", "기사 전문을 요약", "원문을 읽고 요약"]:
         if forbidden in news:
             fail(f"News formatter contains forbidden wording: {forbidden}")
-    for required in ["제목과 설명", "원문 링크", "공통 이슈 후보", "확인할 점"]:
+    for required in ["제목과 설명", "원문 링크", "주요 검색 결과", "확인할 점"]:
         if required not in news:
             fail(f"News formatter missing required wording: {required}")
 
