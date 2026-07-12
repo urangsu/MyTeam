@@ -840,12 +840,12 @@
           "MyTeam/ReleaseCapabilityManifest.swift",
           "MyTeam/ProductSurfacePolicy.swift"
         ],
-        "validation_summary": "2026-07-11: Worker source includes platform rate limiting, route-specific successful-response caching, upstream timeout handling, diagnostic authorization, structured health metadata, and fail-closed Release gating. Six Worker contract tests and local release validators pass. Production still reports Worker 0.3.0 instead of source 0.4.1 and no deployment was performed, so status remains partial.",
+        "validation_summary": "2026-07-12: Worker 0.4.1 was deployed from commit 401a551 with the Cloudflare Rate Limiting binding, Cache API contract 1, exact git SHA, and UTC deploy timestamp. Five independent production health probes and validate_worker_production_health.py passed. Provider-specific live QA and authenticated diagnostic validation remain open, so status remains partial.",
         "screenshots": []
       },
       "notes": [
         "Do not build proxy in the BYOK direct PR.",
-        "The architecture has since been implemented as a separate fail-closed Worker path. It is not Release-ready until production health matches the tested source contract."
+        "The architecture is implemented as a separate fail-closed Worker path. Production health now matches the source contract; provider live QA remains a separate release gate."
       ]
     },
     {
@@ -1953,7 +1953,6 @@
           "Release manifest compatibility update while keeping providers disabled"
         ],
         "exclude": [
-          "Production deployment",
           "Global billing-grade quota accounting",
           "Provider live-key tests",
           "Release provider activation",
@@ -2006,7 +2005,7 @@
           "MyTeam/ReleaseCapabilityManifest.swift",
           "MyTeam/ProductSurfacePolicy.swift"
         ],
-        "validation_summary": "2026-07-10: Five Node Worker contract tests, Worker syntax, release and architecture validators, precommit guard, git diff check, Debug build, and Release universal build passed. Production health correctly failed because the deployed Worker still reports 0.3.0 and lacks the current contract. No deploy was performed, so status remains partial.",
+        "validation_summary": "2026-07-12: Six Node Worker contract tests pass. Worker 0.4.1 was deployed from commit 401a551 with the platform limiter and exact build metadata; five production probes and validate_worker_production_health.py passed with rateLimitBinding=true and cache contract 1. Authenticated diagnostics, sustained quota behavior, and provider live QA remain open, so status remains partial.",
         "screenshots": []
       },
       "notes": [
@@ -2232,9 +2231,13 @@
         "commit_sha": "0b02f40",
         "files_changed": [
           ".github/workflows/quality-gate.yml",
+          "MyTeam/AgentWindowManager.swift",
+          "MyTeam/ChatModels.swift",
+          "MyTeam/AIService.swift",
+          "MyTeamTests/LLMRouterTests.swift",
           "scripts/audit_product_completeness.py"
         ],
-        "validation_summary": "2026-07-11: App-hosted test startup now skips product windows and TTS prewarm; the complete local suite executed 68 tests with zero failures. The workflow has not yet proven the same run on GitHub Actions and uses no live-provider secrets, so status remains partial.",
+        "validation_summary": "2026-07-12: AgentWindowManager test startup now avoids user rooms, Keychain, startup reactions, observers, and product timers. Chat persistence is debounced and encoded off the UI actor, and fallback tests inject provider availability instead of reading Keychain. The complete 70-test suite passed; the isolated room-context test fell from 38.5 seconds to 0.002 seconds. The workflow still lacks a confirmed remote GitHub Actions run, so status remains partial.",
         "screenshots": []
       },
       "notes": [

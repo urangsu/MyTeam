@@ -158,6 +158,13 @@ def main() -> None:
         failures.append("AgentWindowManager must not store Settings as a FloatingPanel")
     if "private var settingsWindow: NSWindow?" not in agent_window_manager:
         failures.append("AgentWindowManager must keep Settings in a normal NSWindow")
+    if "didSet { saveRooms() }" in agent_window_manager:
+        failures.append("Chat rooms must not synchronously encode the full history on every mutation")
+    for token in ["ChatRoomPersistenceStore", "roomsSaveDebounceNanoseconds", "scheduleRoomsSave()"]:
+        if token not in agent_window_manager:
+            failures.append(f"Chat room persistence must remain debounced and off the UI actor: {token}")
+    if "let isRunningTests = AppRuntimeEnvironment.isRunningTests" not in agent_window_manager:
+        failures.append("AgentWindowManager tests must not initialize user persistence, Keychain, or product timers")
     if "private func presentSettingsWindow(_ window: NSWindow)" not in agent_window_manager:
         failures.append("AgentWindowManager must present Settings through a shared helper")
     if "presentSettingsWindow(settingsWindow)" not in agent_window_manager:
