@@ -1259,7 +1259,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "e879406, 261d3c5, b643b05, f0392b0, 183ff68, 2302093, 18f3046",
+        "commit_sha": "e879406, 261d3c5, b643b05, f0392b0, 183ff68, 2302093, 18f3046, 7fc7d93, c5c849c, a7de3b4, ee44f59",
         "files_changed": [
           "MyTeam/AppTerminationCoordinator.swift",
           "MyTeam/MyTeamApp.swift",
@@ -1269,6 +1269,8 @@
           "MyTeam/ToolRunners/GoogleSheetsToolRunner.swift",
           "MyTeam/ToolExecutionRouter.swift",
           "MyTeam/ToolResultFormatters.swift",
+          "MyTeam/NaturalWorkRouting.swift",
+          "MyTeamTests/PublicAPIConnectorValidatorTests.swift",
           "MyTeam/ProductSurfacePolicy.swift",
           "MyTeam/HomeDashboardView.swift",
           "docs/qa/NaturalWorkE2ESmokeMatrix.md",
@@ -1277,9 +1279,11 @@
           "scripts/smoke_natural_work_e2e.py",
           "scripts/validate_architecture_boundaries.py",
           "scripts/audit_product_completeness.py",
+          "scripts/validate_result_presentation.py",
+          "scripts/validate_worker_production_health.py",
           "scripts/validate_myteam_release.py"
         ],
-        "validation_summary": "2026-06-25: App termination architecture validator, natural work E2E smoke, architecture boundary validator, product completeness audit, release checklist, skill package validator, precommit safety check, character dialogue check, git diff --check, node worker syntax check, Debug build, and Release build passed. Manual app termination UI/audio QA and Google OAuth live QA remain open, so this task stays partial.",
+        "validation_summary": "2026-07-12: Empty Google Sheets, Calendar, News, Weather, and Law lookups now persist checkedEmpty instead of succeeded. News no longer claims unperformed issue clustering, weather impact notes are derived from observed thresholds, composite summaries use verified section summaries, and partial sections remain explicitly partial with a missing-item notice. Worker production health now compares the deployed SHA with the latest Worker-source commit instead of unrelated app-only HEAD commits. Product/result validators, production Worker health, 75 XCTest cases, git diff --check, Debug build, and Release build passed. Manual app termination UI/audio QA, provider live result QA, and Google OAuth live QA remain open, so this task stays partial.",
         "screenshots": []
       },
       "notes": [
