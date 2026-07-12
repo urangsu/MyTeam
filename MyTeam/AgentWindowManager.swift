@@ -3,6 +3,17 @@ import SwiftUI
 import Foundation
 import Combine
 
+private actor ChatRoomPersistenceStore {
+    static let shared = ChatRoomPersistenceStore()
+
+    private let defaultsKey = "myteam_rooms"
+
+    func save(_ rooms: [AgentWindowManager.ChatRoom]) {
+        guard let encoded = try? JSONEncoder().encode(rooms) else { return }
+        UserDefaults.standard.set(encoded, forKey: defaultsKey)
+    }
+}
+
 // MARK: - AgentWindowManager
 // 팀 테이블 창 1개를 생성하고, 4명의 에이전트를 그 안에 표시합니다.
 // AgentConfig → AgentConfig.swift / ChatRoom, ChatLog → ChatModels.swift 로 분리됨
@@ -44,8 +55,10 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
 
     // ── 방 목록 (UserDefaults 영속화) ──
     @Published var rooms: [ChatRoom] = [] {
-        didSet { saveRooms() }
+        didSet { scheduleRoomsSave() }
     }
+    private var roomsSaveTask: Task<Void, Never>?
+    private let roomsSaveDebounceNanoseconds: UInt64 = 200_000_000
     @Published var currentRoomID: UUID?
 
     /// Round 241A: 팀 워크룸 독립 선택 상태
@@ -752,6 +765,7 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
     private var automationTimer: Timer?
 
     private override init() {
+        let isRunningTests = AppRuntimeEnvironment.isRunningTests
         activeAgents = Array(allAvailableAgents.prefix(4))
         super.init()
         for index in activeAgents.indices {
@@ -759,7 +773,9 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         }
 
         // 채팅 데이터 복원
-        loadRooms()
+        if !isRunningTests {
+            loadRooms()
+        }
         
         if rooms.isEmpty {
             let defaultRoom = ChatRoom(id: UUID(), name: "워크룸 1",
@@ -775,6 +791,11 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
             })?.id ?? rooms.first?.id
         }
         
+        if isRunningTests {
+            firstLaunchState = .empty
+            return
+        }
+
         loadMemoryStores()
         let hasAnyAPIKey = SecureCredentialStore.shared.hasAnyAIProviderKey()
         firstLaunchState = FirstLaunchStateProvider.currentState(hasAPIKey: hasAnyAPIKey)
@@ -2204,9 +2225,17 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
     }
 
     // MARK: - 채팅 데이터 영속화
-    private func saveRooms() {
-        if let encoded = try? JSONEncoder().encode(rooms) {
-            UserDefaults.standard.set(encoded, forKey: "myteam_rooms")
+    private func scheduleRoomsSave() {
+        guard !AppRuntimeEnvironment.isRunningTests else { return }
+        roomsSaveTask?.cancel()
+        let snapshot = rooms
+        roomsSaveTask = Task { [weak self, snapshot] in
+            guard let self else { return }
+            try? await Task.sleep(nanoseconds: self.roomsSaveDebounceNanoseconds)
+            guard !Task.isCancelled else { return }
+            await ChatRoomPersistenceStore.shared.save(snapshot)
+            guard !Task.isCancelled else { return }
+            self.roomsSaveTask = nil
         }
     }
 

@@ -6,7 +6,7 @@ import Foundation
 extension AgentWindowManager {
 
     // ── 채팅방(워크룸/개인 대화) 모델 ──
-    struct ChatRoom: Identifiable, Codable {
+    struct ChatRoom: Identifiable, Codable, Sendable {
         let id: UUID
         var name: String
         var messages: [ChatLog]
@@ -29,7 +29,7 @@ extension AgentWindowManager {
     }
 
     // ── 채팅 메시지 모델 ──
-    struct ChatLog: Identifiable, Codable {
+    struct ChatLog: Identifiable, Codable, Sendable {
         let id: UUID
         let agentID: String
         let agentName: String
@@ -199,7 +199,7 @@ extension AgentWindowManager {
         return .unknown
     }
 
-    struct SourceReference: Identifiable, Codable, Hashable {
+    struct SourceReference: Identifiable, Codable, Hashable, Sendable {
         var id: UUID = UUID()
         let title: String
         let url: String
