@@ -2317,10 +2317,13 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "7d18dc0",
+        "commit_sha": "e442b27",
         "files_changed": [
           "MyTeam/SupertonicProsodyTextProcessor.swift",
+          "MyTeam/BubbleSpeechCharacterTuningPolicy.swift",
+          "MyTeam/BubbleSpeechSynthesizer.swift",
           "MyTeam/SpeechManager.swift",
+          "MyTeam/TTSLabView.swift",
           "MyTeam/AudioPlaybackService.swift",
           "MyTeam/AudioFeatureSnapshot.swift",
           "MyTeam/Supertonic3ONNXRunner.swift",
@@ -2339,9 +2342,10 @@
           "scripts/validate_tts_runtime_truth.py",
           "scripts/validate_supertonic3_bundle.py",
           "scripts/validate_myteam_release.py",
-          "docs/qa/TTSRuntimeQualityAudit.md"
+          "docs/qa/TTSRuntimeQualityAudit.md",
+          "docs/qa/BubbleSpeechCharacterLanguageQA.md"
         ],
-        "validation_summary": "2026-07-11: Exact-text preservation, bounded dataPlayedBack completion, FIFO speech queue, ordered interruption, playback-owned speaking state, diagnostic WAV isolation, PCM validity rejection, typed ONNX output failure, bundled support files, SHA-256 model integrity, reusable actor-owned ONNX resources, and the complete 68-test suite passed. Partial because actual multi-character listening, Chiko audio quality, full model inference compatibility, App Store redistribution approval, and Release listening QA remain unverified.",
+        "validation_summary": "2026-07-12: Commits 2724453, 5176e2b, and e442b27 replaced uniform source slicing with a deterministic voice-derived grain renderer, added 11 character rhythm identities and automatic strong/medium/light/bypass policy, and connected the existing BubbleSpeech toggle to normal Supertonic3 character playback without adding synthesis calls. The complete 89-test suite, TTS runtime validator, product release validators, product completeness audit, Debug build, and Release build passed. Partial remains because the 11-character listening matrix, Chiko listening-based tuning, release-equivalent inference, and App Store redistribution approval are not verified.",
         "screenshots": []
       },
       "notes": [
