@@ -2,6 +2,7 @@
 import argparse
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 
@@ -79,7 +80,8 @@ def parse_lines(source: str) -> list[dict[str, str]]:
     helper_pattern = re.compile(
         r'line\(\s*"(?P<agentID>agent_\d+)",\s*'
         r'\.(?P<event>[A-Za-z0-9_]+),\s*'
-        r'"(?P<text>(?:\\"|[^"])*)"',
+        r'"(?P<text>(?:\\"|[^"])*)"'
+        r'(?:,\s*variant:\s*(?P<variant>\d+))?',
         re.S,
     )
     parsed = [
@@ -93,7 +95,7 @@ def parse_lines(source: str) -> list[dict[str, str]]:
     ]
     parsed.extend(
         {
-            "id": f"{match.group('agentID')}.{match.group('event')}.1",
+            "id": f"{match.group('agentID')}.{match.group('event')}.{match.group('variant') or '1'}",
             "agentID": match.group("agentID"),
             "event": match.group("event"),
             "text": match.group("text").replace('\\"', '"'),
@@ -114,6 +116,11 @@ def main() -> int:
 
     failures: list[str] = []
     warnings: list[str] = []
+
+    id_counts = Counter(line["id"] for line in active_lines)
+    duplicate_ids = sorted(line_id for line_id, count in id_counts.items() if count > 1)
+    for line_id in duplicate_ids:
+        failures.append(f"duplicate dialogue id: {line_id}")
 
     seen = {(line["agentID"], line["event"]) for line in active_lines}
     for agent_id in AGENT_IDS:

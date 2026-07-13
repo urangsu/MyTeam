@@ -195,7 +195,7 @@ actor AudioPlaybackService: AudioPlayable {
             // 4. 버퍼 스케줄링
             let wasAlreadyPlaying = playerNode.isPlaying
             playerNode.scheduleBuffer(outBuffer, at: nil, options: []) { [weak self] in
-                Task(priority: .userInitiated) { [weak self] in
+                Task { [weak self] in
                     guard let self else { return }
                     await self.decrementBufferCount()
                 }
@@ -211,7 +211,7 @@ actor AudioPlaybackService: AudioPlayable {
             // 🎯 Perfect Lip-Sync: 첫 버퍼가 재생 큐에 등록되는 찰나에 UI 말풍선 트리거
             // wasAlreadyPlaying=false → 이 버퍼가 재생 개시 버퍼 → 텍스트 표시 타이밍 정확
             if !wasAlreadyPlaying, let callback = lipSyncCallback {
-                Task(priority: .userInitiated) { @MainActor in callback() }
+                Task { @MainActor in callback() }
             }
         }
     }
@@ -407,7 +407,7 @@ actor AudioPlaybackService: AudioPlayable {
         let completion = PlaybackCompletion()
         playerNode.scheduleBuffer(outBuffer, at: nil, options: [], completionCallbackType: .dataPlayedBack) { [weak self] callbackType in
             completion.resolve(callbackType == .dataPlayedBack)
-            Task(priority: .userInitiated) { [weak self] in
+            Task { [weak self] in
                 guard let self else { return }
                 await self.decrementBufferCount()
             }

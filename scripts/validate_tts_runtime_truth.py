@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import re
 from pathlib import Path
 
 
@@ -34,6 +35,7 @@ def main() -> None:
     bubble_policy = (ROOT / "MyTeam" / "BubbleSpeechCharacterTuningPolicy.swift").read_text()
     window_manager = (ROOT / "MyTeam" / "AgentWindowManager.swift").read_text()
     team_table = (ROOT / "MyTeam" / "TeamTableView.swift").read_text()
+    audio_playback = (ROOT / "MyTeam" / "AudioPlaybackService.swift").read_text()
     tests = (ROOT / "MyTeamTests" / "PublicAPIConnectorValidatorTests.swift").read_text()
 
     require(
@@ -95,6 +97,8 @@ def main() -> None:
         "manager.speakingTextByAgentID[agent.id]",
         "team speech bubbles must not reuse a stale persisted chat line",
     )
+    if re.search(r"Task\(priority:\s*\.userInitiated\).*?decrementBufferCount", audio_playback, re.S):
+        raise SystemExit("FAIL: audio completion must not raise QoS while hopping back to the playback actor")
     require(
         bubble_policy,
         "guard count <= 180 else",

@@ -205,18 +205,42 @@ enum CharacterDialogues {
         line("agent_11", .taskCompleted, "확인한 범위의 검증을 마쳤습니다."),
         line("agent_11", .taskFailedRecoverable, "괜찮습니다. 원인을 좁혀 다시 확인하겠습니다."),
         line("agent_11", .connectionNeeded, "연결 확인 후에 검증을 진행할 수 있습니다."),
-        line("agent_11", .validationSucceeded, "검증이 끝났습니다. 준비된 다음 단계로 가겠습니다.")
+        line("agent_11", .validationSucceeded, "검증이 끝났습니다. 준비된 다음 단계로 가겠습니다."),
+
+        line("agent_1", .taskCompleted, "판단에 필요한 핵심을 한눈에 볼 수 있게 묶었습니다.", variant: 2, leader: true),
+        line("agent_1", .taskFailedRecoverable, "막힌 지점은 확인했습니다. 가능한 선택지부터 다시 세우겠습니다.", variant: 2, leader: true),
+        line("agent_2", .taskCompleted, "좋아요! 메시지가 더 또렷하게 보이도록 마무리했어요.", variant: 2),
+        line("agent_2", .taskFailedRecoverable, "아직 괜찮아요. 다른 표현과 방향으로 다시 반짝여볼게요.", variant: 2),
+        line("agent_3", .taskCompleted, "완료했습니다. 다음에 이어갈 순서도 알아보기 쉽게 남겼어요.", variant: 2, leader: true),
+        line("agent_3", .taskFailedRecoverable, "잠시 막혔지만 흐름은 괜찮아요. 가능한 단계부터 다시 이어갈게요.", variant: 2, leader: true),
+        line("agent_4", .taskCompleted, "화면에서 바로 이해할 수 있도록 흐름을 정돈했어요.", variant: 2),
+        line("agent_4", .taskFailedRecoverable, "불편한 지점을 찾았어요. 더 자연스러운 화면으로 다시 다듬을게요.", variant: 2),
+        line("agent_5", .taskCompleted, "사용하는 입장에서 편한지까지 살펴봤어요. 같이 확인해봐요!", variant: 2),
+        line("agent_5", .taskFailedRecoverable, "괜찮아요! 어려운 부분을 더 작게 나눠서 다시 살펴볼게요.", variant: 2),
+        line("agent_6", .taskCompleted, "확인한 근거와 주의할 지점을 구분해 정리했습니다.", variant: 2, leader: true),
+        line("agent_6", .taskFailedRecoverable, "확정하기 이른 부분은 남겨두었습니다. 안전한 근거부터 다시 확인하죠.", variant: 2, leader: true),
+        line("agent_7", .taskCompleted, "확인 범위와 남은 위험을 분리해 안전하게 정리했습니다.", variant: 2),
+        line("agent_7", .taskFailedRecoverable, "문제가 번지지 않게 멈췄습니다. 안전한 경로부터 다시 확인하겠습니다.", variant: 2),
+        line("agent_8", .taskCompleted, "동작 흐름과 결과를 함께 확인할 수 있게 정리했습니다.", variant: 2),
+        line("agent_8", .taskFailedRecoverable, "원인을 좁힐 단서는 남았습니다. 작은 단위부터 다시 맞춰보겠습니다.", variant: 2),
+        line("agent_9", .taskCompleted, "상대가 바로 이해할 수 있도록 제안의 강점을 선명하게 묶었어요.", variant: 2),
+        line("agent_9", .taskFailedRecoverable, "아직 기회는 있어요. 상대 관점에 맞춘 다른 제안으로 다시 풀어볼게요.", variant: 2),
+        line("agent_10", .taskCompleted, "불편했던 부분이 남지 않도록 처리 순서까지 다정하게 정리했어요.", variant: 2),
+        line("agent_10", .taskFailedRecoverable, "속상하실 필요 없어요. 가능한 해결 방법부터 하나씩 같이 찾아볼게요.", variant: 2),
+        line("agent_11", .taskCompleted, "통과한 항목과 더 확인할 항목을 구분해두었습니다.", variant: 2),
+        line("agent_11", .taskFailedRecoverable, "재현 단서를 확보했습니다. 같은 문제가 반복되지 않게 다시 검증하겠습니다.", variant: 2)
     ]
 
     private static func line(
         _ agentID: String,
         _ event: CharacterDialogueEvent,
         _ text: String,
+        variant: Int = 1,
         priority: Int = 20,
         leader: Bool = false
     ) -> CharacterDialogueLine {
         CharacterDialogueLine(
-            id: "\(agentID).\(event.rawValue).1",
+            id: "\(agentID).\(event.rawValue).\(variant)",
             agentID: agentID,
             event: event,
             text: text,
