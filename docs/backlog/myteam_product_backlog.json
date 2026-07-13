@@ -1838,7 +1838,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "3d2aafc, 33ab0ca",
+        "commit_sha": "3d2aafc, 33ab0ca, 78791e4",
         "files_changed": [
           "MyTeam/AIService.swift",
           "MyTeam/AgentChatView.swift",
@@ -1846,11 +1846,13 @@
           "MyTeam/ChatModels.swift",
           "MyTeam/ConnectionCenterView.swift",
           "MyTeam/CredentialHealth.swift",
+          "MyTeam/AICallBudgetManager.swift",
+          "MyTeam/AgenticToolOrchestration.swift",
           "MyTeam/TeamOrchestrator.swift",
           "MyTeamTests/LLMRouterTests.swift",
           "scripts/audit_product_completeness.py"
         ],
-        "validation_summary": "2026-07-11: The fallback policy is user-selectable, the actual provider/model/fallback flag is persisted on personal and team chat messages, the complete 70-test suite passed, and the product audit guards the trace path. Live provider fallback QA and structured Artifact metadata remain open, so status stays partial.",
+        "validation_summary": "2026-07-13: Commit 78791e4 removed system-prompt rules that rejected legitimate AI questions or encouraged fabricated team-member references, bounded user preference text included in every prompt, and fixed the JSON-only planner gate so Gemini/OpenRouter are not incorrectly excluded for lacking native tool calling. Session-rejected calls no longer consume the global rolling budget. The focused 42-test suite, full release validators, Debug build, and Release build passed. Live provider fallback QA and structured Artifact metadata remain open, so status stays partial.",
         "screenshots": []
       },
       "notes": [
@@ -2326,7 +2328,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "81513fd",
+        "commit_sha": "81513fd, ebdfd8a",
         "files_changed": [
           "MyTeam/SupertonicProsodyTextProcessor.swift",
           "MyTeam/BubbleSpeechCharacterTuningPolicy.swift",
@@ -2362,7 +2364,7 @@
           "docs/qa/TTSRuntimeQualityAudit.md",
           "docs/qa/BubbleSpeechCharacterLanguageQA.md"
         ],
-        "validation_summary": "2026-07-13: Commit 81513fd removed the repeated-grain renderer from the product BubbleSpeech path after listening QA found the c735203 output faster and more machine-like. Product speech now preserves the complete Supertonic3 waveform and applies only subtle source-aligned boundary shaping; the procedural guide is validated but its synthetic tone is never mixed into playback. The adaptive smoke reports duration ratio 1.000 and mean delta 0.00063, while all 21 BubbleSpeech XCTest cases, TTS/runtime/release validators, precommit, git diff check, Debug build, and Release build passed. The team table now displays the exact currently playing text instead of a stale persisted farewell line. Partial remains because real-device listening comparison across speakers, Chiko retuning, release-equivalent inference, and App Store redistribution approval are not verified.",
+        "validation_summary": "2026-07-13: Commits 81513fd and ebdfd8a removed the repeated-grain product renderer, preserve the full Supertonic3 waveform, and remove user-initiated QoS escalation from audio completion callbacks. The team table displays the exact playing text, and 22 supportive completion/recovery variants bring the catalog to 154 lines with unique IDs. The focused 42-test suite, TTS/runtime/release validators, precommit, git diff check, Debug build, and Release build passed. Partial remains because real-device listening comparison across speakers, Chiko retuning, release-equivalent inference, and App Store redistribution approval are not verified.",
         "screenshots": []
       },
       "notes": [
