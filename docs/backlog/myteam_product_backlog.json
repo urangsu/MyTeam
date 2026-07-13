@@ -2292,7 +2292,8 @@
         ,"Speaking animation is not driven by a fixed 30-second timer"
         ,"App Store validation rejects missing or hash-mismatched model resources"
         ,"ONNX sessions and support data are reused without crossing actor isolation"
-        ,"Adaptive BubbleSpeech keeps at least 72 percent of the source duration and retains a majority dry Supertonic3 voice mix"
+        ,"Adaptive BubbleSpeech preserves the complete Supertonic3 source timeline and does not mix a synthetic guide tone into product speech"
+        ,"The visible speech bubble uses the exact text currently being played, not a prior persisted chat line"
       ],
       "failure_conditions": [
         "Visible and spoken wording differ",
@@ -2300,7 +2301,9 @@
         "Normal conversation creates Desktop WAV files",
         "Playback completion can wait forever",
         "BubbleSpeech or Supertonic3 is replaced or bypassed",
-        "BubbleSpeech compresses a character line below its intelligibility duration floor",
+        "BubbleSpeech compresses, grain-repeats, or replaces the Supertonic3 source timeline",
+        "A synthetic guide tone is mixed into product speech",
+        "The visible speech bubble differs from the text currently being played",
         "A runtime character line blames, scolds, pressures, or guilt-trips the user",
         "Manual listening QA is claimed without an actual run"
       ],
@@ -2323,7 +2326,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "c735203",
+        "commit_sha": "81513fd",
         "files_changed": [
           "MyTeam/SupertonicProsodyTextProcessor.swift",
           "MyTeam/BubbleSpeechCharacterTuningPolicy.swift",
@@ -2359,13 +2362,14 @@
           "docs/qa/TTSRuntimeQualityAudit.md",
           "docs/qa/BubbleSpeechCharacterLanguageQA.md"
         ],
-        "validation_summary": "2026-07-13: Commit c735203 corrected the adaptive BubbleSpeech path that could compress a 181248-sample Supertonic3 line to 41742 samples. Strong short-line wet mix was reduced from 0.78 to 0.44, target syllable timing is now derived from source duration, and renders below the 0.72 intelligibility ratio fail instead of playing. The standalone smoke improved its adaptive fixture from a sub-threshold result to a 0.790 duration ratio. All 21 BubbleSpeech XCTest cases, TTS/runtime/release validators, precommit, git diff check, Debug build, and Release build passed. Earlier commit a9f9851 retains the supportive 132-line character catalog. Partial remains because listening-based comparison across speakers, Chiko retuning, release-equivalent inference, and App Store redistribution approval are not verified.",
+        "validation_summary": "2026-07-13: Commit 81513fd removed the repeated-grain renderer from the product BubbleSpeech path after listening QA found the c735203 output faster and more machine-like. Product speech now preserves the complete Supertonic3 waveform and applies only subtle source-aligned boundary shaping; the procedural guide is validated but its synthetic tone is never mixed into playback. The adaptive smoke reports duration ratio 1.000 and mean delta 0.00063, while all 21 BubbleSpeech XCTest cases, TTS/runtime/release validators, precommit, git diff check, Debug build, and Release build passed. The team table now displays the exact currently playing text instead of a stale persisted farewell line. Partial remains because real-device listening comparison across speakers, Chiko retuning, release-equivalent inference, and App Store redistribution approval are not verified.",
         "screenshots": []
       },
       "notes": [
         "The app-hosted XCTest runner now suppresses product startup and executes the suite; listening QA remains separate and cannot be inferred from XCTest.",
         "Queue, interruptCurrent, and dropIfBusy policies are now explicit; actual overlapping-character listening QA remains required.",
         "Status remains partial until manual audio QA and a release-equivalent Supertonic3 inference smoke are recorded."
+        ,"The source-aligned boundary shaper is an immediate machine-tone removal measure, not the final forced-alignment syllable renderer."
       ]
     },
     {
