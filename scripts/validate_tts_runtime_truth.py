@@ -154,6 +154,7 @@ def main() -> None:
         "testAcceptsFiniteAudibleVoiceSamples",
         "testAdaptiveBubbleSpeechExplicitBypassPreservesSource",
         "testAdaptiveBubbleSpeechFailureDoesNotPassThroughSource",
+        "testAdaptiveBubbleSpeechPreservesIntelligibleSourceTiming",
         "testAllCharactersHaveDistinctBubbleSpeechRhythms",
     ]:
         require(tests, test_name, f"missing TTS regression test: {test_name}")

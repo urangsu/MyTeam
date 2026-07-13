@@ -132,7 +132,7 @@ final class BubbleSpeechSynthesizerTests: XCTestCase {
         )
 
         XCTAssertEqual(decision.strength, .strong)
-        XCTAssertEqual(decision.wetMix, 0.78, accuracy: 0.001)
+        XCTAssertLessThanOrEqual(decision.wetMix, 0.46)
     }
 
     func testBubbleSpeechPolicyBypassesLongBusinessAnswer() {
@@ -326,6 +326,29 @@ final class BubbleSpeechSynthesizerTests: XCTestCase {
         )
 
         XCTAssertNil(output)
+    }
+
+    func testAdaptiveBubbleSpeechPreservesIntelligibleSourceTiming() throws {
+        let sampleRate = 44_100
+        let samples = (0..<(sampleRate * 2)).map { index in
+            Float(sin(2 * .pi * 240 * Double(index) / Double(sampleRate)) * 0.24)
+        }
+        let decision = BubbleSpeechEffectPolicy.decision(for: "좋아요, 바로 도와드릴게요.", requested: true)
+
+        let output = try XCTUnwrap(BubbleSpeechSynthesizer.applyAdaptiveEffect(
+            text: "좋아요, 바로 도와드릴게요.",
+            voiceSamples: samples,
+            sampleRate: sampleRate,
+            config: BubbleSpeechConfig.from(profile: .cute),
+            segmentRate: 1,
+            decision: decision
+        ))
+
+        XCTAssertGreaterThanOrEqual(
+            BubbleSpeechSynthesizer.durationRatio(renderedSamples: output, sourceSamples: samples),
+            0.72
+        )
+        XCTAssertLessThanOrEqual(decision.wetMix, 0.46)
     }
 
     func testBubbleSpeechGeneratesProceduralSyllableAudio() {

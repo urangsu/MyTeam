@@ -799,8 +799,8 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         let durationRatio = BubbleSpeechSynthesizer.durationRatio(renderedSamples: samples, sourceSamples: result.wavSamples)
         let syllableCount = BubbleSpeechSynthesizer.syllableCount(in: spokenText)
         let isFinite = !samples.contains { !$0.isFinite }
-        guard durationRatio > 0.18,
-              durationRatio < 0.95,
+        guard durationRatio >= decision.minimumSourceDurationRatio,
+              durationRatio <= 1.20,
               delta > 0.002,
               snapshot.peak > 0.01,
               isFinite else {

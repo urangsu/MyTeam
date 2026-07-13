@@ -536,9 +536,30 @@ enum BubbleSpeechSynthesizer {
 
         var adaptiveConfig = config
         let tuning = config.characterTuning
+        let syllableCount = max(1, BubbleSpeechSynthesizer.syllableCount(in: text))
+        let sourceDuration = Double(voiceSamples.count) / Double(sampleRate)
+        let sourceDurationPerSyllable = sourceDuration / Double(syllableCount)
+        let sourceAwareCenter = min(
+            0.28,
+            max(
+                decision.targetSyllableDuration.lowerBound,
+                sourceDurationPerSyllable * (decision.minimumSourceDurationRatio + 0.10)
+            )
+        )
+        let sourceAwareMinimum = max(
+            decision.targetSyllableDuration.lowerBound,
+            sourceAwareCenter * 0.92
+        )
+        let sourceAwareMaximum = max(
+            sourceAwareMinimum,
+            min(
+                0.30,
+                max(decision.targetSyllableDuration.upperBound, sourceAwareCenter * 1.08)
+            )
+        )
         adaptiveConfig.characterTuning = BubbleSpeechCharacterTuning(
-            minSegmentDuration: decision.targetSyllableDuration.lowerBound,
-            maxSegmentDuration: decision.targetSyllableDuration.upperBound,
+            minSegmentDuration: sourceAwareMinimum,
+            maxSegmentDuration: sourceAwareMaximum,
             guideGain: tuning.guideGain,
             shimmerDepth: tuning.shimmerDepth,
             gapScale: tuning.gapScale,
@@ -555,6 +576,12 @@ enum BubbleSpeechSynthesizer {
             segmentRate: segmentRate
         )
         guard !rendered.isEmpty else { return nil }
+        let durationRatio = BubbleSpeechSynthesizer.durationRatio(
+            renderedSamples: rendered,
+            sourceSamples: voiceSamples
+        )
+        guard durationRatio >= decision.minimumSourceDurationRatio,
+              durationRatio <= 1.20 else { return nil }
 
         let wet = min(1, max(0, decision.wetMix))
         let dry = resample(voiceSamples, targetCount: rendered.count)

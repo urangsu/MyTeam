@@ -11,6 +11,7 @@ struct BubbleSpeechEffectDecision: Sendable, Equatable {
     let strength: BubbleSpeechEffectStrength
     let wetMix: Float
     let targetSyllableDuration: ClosedRange<Double>
+    let minimumSourceDurationRatio: Double
     let reason: String
 }
 
@@ -32,8 +33,9 @@ enum BubbleSpeechEffectPolicy {
         if numberCount >= 4 || numericDensity >= 0.18 || containsBusinessDataMarker(trimmed) {
             return BubbleSpeechEffectDecision(
                 strength: .light,
-                wetMix: 0.25,
-                targetSyllableDuration: 0.060...0.090,
+                wetMix: 0.18,
+                targetSyllableDuration: 0.080...0.140,
+                minimumSourceDurationRatio: 0.90,
                 reason: "dataReadability"
             )
         }
@@ -41,23 +43,26 @@ enum BubbleSpeechEffectPolicy {
         if count <= 24 {
             return BubbleSpeechEffectDecision(
                 strength: .strong,
-                wetMix: 0.78,
-                targetSyllableDuration: 0.042...0.068,
+                wetMix: 0.44,
+                targetSyllableDuration: 0.085...0.150,
+                minimumSourceDurationRatio: 0.72,
                 reason: "shortCharacterLine"
             )
         }
         if count <= 80 {
             return BubbleSpeechEffectDecision(
                 strength: .medium,
-                wetMix: 0.58,
-                targetSyllableDuration: 0.050...0.078,
+                wetMix: 0.34,
+                targetSyllableDuration: 0.082...0.145,
+                minimumSourceDurationRatio: 0.80,
                 reason: "mediumDialogue"
             )
         }
         return BubbleSpeechEffectDecision(
             strength: .light,
-            wetMix: 0.28,
-            targetSyllableDuration: 0.058...0.088,
+            wetMix: 0.20,
+            targetSyllableDuration: 0.080...0.140,
+            minimumSourceDurationRatio: 0.88,
             reason: "longDialogue"
         )
     }
@@ -67,6 +72,7 @@ enum BubbleSpeechEffectPolicy {
             strength: .bypass,
             wetMix: 0,
             targetSyllableDuration: 0...0,
+            minimumSourceDurationRatio: 1,
             reason: reason
         )
     }
