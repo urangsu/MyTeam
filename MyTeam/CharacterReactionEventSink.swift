@@ -157,38 +157,39 @@ final class CharacterReactionEventSink {
     }
 
     private func processEvent(_ event: WorkroomCharacterEvent) async {
-        await CharacterReactionEngine.shared.processEvent(event, delegate: delegate)
+        let agentID = targetAgentID(for: event)
+        await CharacterReactionEngine.shared.processEvent(
+            event,
+            agentID: agentID,
+            delegate: delegate
+        )
 
         // AgentWindowManager.agentEmotions 직접 업데이트
         // delegate가 없어도 emotion state는 반영한다
-        if let reaction = CharacterReactionMapping.reactionFor(event) {
-            applyEmotionToManager(state: reaction.targetAnimationState, event: event)
+        if let agentID, let reaction = CharacterReactionMapping.reactionFor(event) {
+            applyEmotionToManager(state: reaction.targetAnimationState, agentID: agentID)
         }
     }
 
     /// AgentWindowManager.agentEmotions[agentID]를 업데이트한다.
     /// 기존 agentEmotions 딕셔너리 타입([String: AnimationState])을 그대로 사용.
-    private func applyEmotionToManager(state: AnimationState, event: WorkroomCharacterEvent) {
+    private func targetAgentID(for event: WorkroomCharacterEvent) -> String? {
         let manager = AgentWindowManager.shared
-
-        // roomID 기반으로 현재 active room의 첫 번째 agentID를 찾는다
         let targetRoomID = event.roomID ?? manager.currentRoomID
-        let agentID: String
-
         if let roomID = targetRoomID,
            let room = manager.rooms.first(where: { $0.id == roomID }),
            let firstAgent = room.agentIDs.first {
-            agentID = firstAgent
+            return firstAgent
         } else if let current = manager.rooms.first(where: { $0.id == manager.currentRoomID }),
                   let firstAgent = current.agentIDs.first {
-            agentID = firstAgent
-        } else {
-            // agentID를 특정할 수 없으면 no-op
-            AppLog.debug("CharacterReactionEventSink: no agentID found for event \(event.id), skipping")
-            return
+            return firstAgent
         }
+        AppLog.debug("CharacterReactionEventSink: no agentID found for event \(event.id), skipping")
+        return nil
+    }
 
-        // 기존 agentEmotions 타입 변경 없이 업데이트
+    private func applyEmotionToManager(state: AnimationState, agentID: String) {
+        let manager = AgentWindowManager.shared
         manager.agentEmotions[agentID] = state
         AppLog.debug("CharacterReactionEventSink: agentEmotions[\(agentID)] = \(state.rawValue)")
     }

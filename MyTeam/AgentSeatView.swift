@@ -134,8 +134,8 @@ struct AgentSeatView: View {
         .contentShape(Rectangle())
         .onHover { h in isHovered = h }
         .onTapGesture(count: 2) {
-            let fallback = ["안녕하세요!", "네, 불렀나요?", "무엇을 도와드릴까요?", "여기 있습니다!"]
-            let text = CharacterDialogues.randomLine(for: config.displayName, state: .greeting) ?? fallback.randomElement()!
+            let text = CharacterDialogues.randomText(for: config.id, event: .wake)
+                ?? "여기 있어요. 무엇을 도와드릴까요?"
             if let rid = AgentWindowManager.shared.currentRoomID {
                 AgentWindowManager.shared.addChatLog(roomID: rid, agentID: config.id, agentName: config.displayName, text: text, isUser: false, isSystem: true)
             }

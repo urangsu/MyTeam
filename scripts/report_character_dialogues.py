@@ -15,6 +15,9 @@ EVENTS = [
     "wake",
     "idle",
     "sleep",
+    "moved",
+    "settled",
+    "taskStarted",
     "appWillQuit",
     "taskCompleted",
     "taskFailedRecoverable",
@@ -35,24 +38,69 @@ FORBIDDEN_TERMS = [
     "MLX",
 ]
 
+USER_HOSTILE_PATTERNS = [
+    r"가만\s*안",
+    r"왜\s+.*(?:안|못)",
+    r"농땡이",
+    r"안\s*보이세요",
+    r"선을.*넘",
+    r"그냥\s*넘어갈\s*수\s*없",
+    r"변명은",
+    r"참는\s*데도",
+    r"제\s*허락\s*없이",
+    r"누구야",
+    r"저\s*좀\s*위로",
+    r"마음에\s*안\s*드시",
+    r"빨리\s*내려",
+    r"마우스\s*내려놓",
+    r"살려\s*주세요",
+    r"사용자.*(?:탓|잘못)",
+    r"당신.*(?:탓|잘못)",
+]
+
+RUNTIME_CALL_SITES = [
+    ROOT / "MyTeam" / "AgentWindowManager.swift",
+    ROOT / "MyTeam" / "AgentSeatView.swift",
+    ROOT / "MyTeam" / "TeamTableView.swift",
+    ROOT / "MyTeam" / "CharacterReactionEngine.swift",
+    ROOT / "MyTeam" / "CharacterReactionEventSink.swift",
+    ROOT / "MyTeam" / "WorkroomCharacterEvent.swift",
+]
+
 
 def parse_lines(source: str) -> list[dict[str, str]]:
-    pattern = re.compile(
+    initializer_pattern = re.compile(
         r'\.init\(\s*id:\s*"(?P<id>[^"]+)",\s*'
         r'agentID:\s*"(?P<agentID>[^"]+)",\s*'
         r'event:\s*\.(?P<event>[A-Za-z0-9_]+),\s*'
         r'text:\s*"(?P<text>(?:\\"|[^"])*)"',
         re.S,
     )
-    return [
+    helper_pattern = re.compile(
+        r'line\(\s*"(?P<agentID>agent_\d+)",\s*'
+        r'\.(?P<event>[A-Za-z0-9_]+),\s*'
+        r'"(?P<text>(?:\\"|[^"])*)"',
+        re.S,
+    )
+    parsed = [
         {
             "id": match.group("id"),
             "agentID": match.group("agentID"),
             "event": match.group("event"),
             "text": match.group("text").replace('\\"', '"'),
         }
-        for match in pattern.finditer(source)
+        for match in initializer_pattern.finditer(source)
     ]
+    parsed.extend(
+        {
+            "id": f"{match.group('agentID')}.{match.group('event')}.1",
+            "agentID": match.group("agentID"),
+            "event": match.group("event"),
+            "text": match.group("text").replace('\\"', '"'),
+        }
+        for match in helper_pattern.finditer(source)
+    )
+    return parsed
 
 
 def main() -> int:
@@ -78,6 +126,9 @@ def main() -> int:
         for term in FORBIDDEN_TERMS:
             if term.lower() in text.lower():
                 failures.append(f"forbidden term '{term}' in {line['id']}")
+        for pattern in USER_HOSTILE_PATTERNS:
+            if re.search(pattern, text, re.IGNORECASE):
+                failures.append(f"user-hostile pattern '{pattern}' in {line['id']}")
         if line["event"] == "appWillQuit":
             if len(text) > 60:
                 failures.append(f"appWillQuit too long ({len(text)} chars): {line['id']}")
@@ -85,6 +136,31 @@ def main() -> int:
                 warnings.append(f"appWillQuit over recommended 45 chars ({len(text)}): {line['id']}")
         elif len(text) > 80:
             warnings.append(f"long dialogue line ({len(text)}): {line['id']}")
+
+    if "AnimationState" in source or "sanitizedUserFirstLine" in source:
+        failures.append("legacy AnimationState dialogue catalog must not return")
+
+    for call_site in RUNTIME_CALL_SITES:
+        call_source = call_site.read_text()
+        if re.search(r"CharacterDialogues\.randomLine\([^\n]+state:", call_source):
+            failures.append(f"legacy state-based dialogue call in {call_site.relative_to(ROOT)}")
+        for pattern in USER_HOSTILE_PATTERNS:
+            if re.search(pattern, call_source, re.IGNORECASE):
+                failures.append(f"user-hostile pattern '{pattern}' in {call_site.relative_to(ROOT)}")
+
+    required_runtime_events = {
+        "AgentWindowManager.swift": ["kind.dialogueEvent"],
+        "AgentSeatView.swift": ["event: .wake"],
+        "TeamTableView.swift": ["event: .moved", "event: .settled"],
+        "CharacterReactionEngine.swift": ["CharacterDialogues.randomText"],
+        "CharacterReactionEventSink.swift": ["targetAgentID(for: event)"],
+        "WorkroomCharacterEvent.swift": ["dialogueEvent: .taskStarted", "dialogueEvent: .taskCompleted"],
+    }
+    for call_site in RUNTIME_CALL_SITES:
+        call_source = call_site.read_text()
+        for marker in required_runtime_events.get(call_site.name, []):
+            if marker not in call_source:
+                failures.append(f"missing runtime event '{marker}' in {call_site.relative_to(ROOT)}")
 
     report_lines = [
         "# Character Dialogue Report",

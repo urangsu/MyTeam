@@ -14,7 +14,11 @@ final class CharacterReactionEngine {
     // MARK: - Public API
 
     /// Workroom event를 처리하고 character reaction을 trigger한다.
-    func processEvent(_ event: WorkroomCharacterEvent, delegate: CharacterReactionDelegate?) async {
+    func processEvent(
+        _ event: WorkroomCharacterEvent,
+        agentID: String?,
+        delegate: CharacterReactionDelegate?
+    ) async {
         guard !isInCooldown(for: event) else {
             AppLog.debug("CharacterReactionEngine: Event \(event.id) in cooldown, skipping")
             return
@@ -28,17 +32,29 @@ final class CharacterReactionEngine {
         isProcessingReaction = true
         defer { isProcessingReaction = false }
 
-        await executeReaction(reaction, delegate: delegate)
+        await executeReaction(reaction, agentID: agentID, delegate: delegate)
         recordCooldown(for: event, seconds: reaction.cooldownSeconds)
     }
 
     // MARK: - Private
 
-    private func executeReaction(_ reaction: CharacterReaction, delegate: CharacterReactionDelegate?) async {
+    private func executeReaction(
+        _ reaction: CharacterReaction,
+        agentID: String?,
+        delegate: CharacterReactionDelegate?
+    ) async {
         AppLog.debug("CharacterReactionEngine: executing reaction for \(reaction.event.id)")
+        let responseText: String
+        if let agentID,
+           let dialogueEvent = reaction.dialogueEvent,
+           let characterText = CharacterDialogues.randomText(for: agentID, event: dialogueEvent) {
+            responseText = characterText
+        } else {
+            responseText = reaction.responseText
+        }
         await delegate?.applyCharacterReaction(
             animationState: reaction.targetAnimationState,
-            responseText: reaction.responseText,
+            responseText: responseText,
             duration: 2.0
         )
     }

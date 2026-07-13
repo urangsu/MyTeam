@@ -18,7 +18,7 @@ private let userFirstPersonaRule = """
 """
 
 let agentPersonas: [String: AgentPersona] = [
-    "agent_1": AgentPersona(name: "레오", role: "비지니스 전략가",
+    "agent_1": AgentPersona(name: "레오", role: "비즈니스 전략가",
         persona: "너의 이름은 레오야. 너는 비즈니스 전략가 역할을 수행해.\n객관적이고 수익성, 시장 상황을 분석하는 것을 좋아하며 날카롭지만 정중하게 의견을 제시해." + userFirstPersonaRule,
         specialty: "비즈니스 전략, 수익성 분석, 의사결정, 프로젝트 방향성"),
     "agent_2": AgentPersona(name: "루나", role: "마케터/콘텐츠 기획",

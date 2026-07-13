@@ -26,7 +26,7 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
     //   - 완성된 캐릭터: "sloth", "dog" (스프라이트 사용)
     //   - 미완성 캐릭터: nil (이모지 폴백)
     let allAvailableAgents: [AgentConfig] = [
-        AgentConfig(id: "agent_1",  name: "레오",   role: "비지니스 전략가",    emoji: "🦊", color: .orange, isPremium: false, status: "전략 판단 도와드릴 준비",         spriteName: nil, fallbackImageName: "레오_profile", dragEmoji: "😤", dragRotation: -12, dragSoundName: "Pop",   dropSoundName: "Funk"),
+        AgentConfig(id: "agent_1",  name: "레오",   role: "비즈니스 전략가",    emoji: "🦊", color: .orange, isPremium: false, status: "전략 판단 도와드릴 준비",         spriteName: nil, fallbackImageName: "레오_profile", dragEmoji: "😤", dragRotation: -12, dragSoundName: "Pop",   dropSoundName: "Funk"),
         AgentConfig(id: "agent_2",  name: "루나",   role: "마케터/콘텐츠 기획", emoji: "🐰", color: .pink,   isPremium: false, status: "콘텐츠 초안 도와드릴 준비",    spriteName: nil, fallbackImageName: "루나_profile", dragEmoji: "😆", dragRotation:  10, dragSoundName: "Blow",  dropSoundName: "Pop"),
         AgentConfig(id: "agent_3",  name: "모코",   role: "프로젝트 매니저",    emoji: "🐹", color: .purple, isPremium: false, status: "일 정리 도와드릴 준비",  spriteName: nil, fallbackImageName: "모코_profile", dragEmoji: "😵", dragRotation:  -8, dragSoundName: "Morse", dropSoundName: "Funk"),
         AgentConfig(id: "agent_4",  name: "핀",     role: "UI 디자이너",        emoji: "🐧", color: .cyan,   isPremium: false, status: "화면 개선 도와드릴 준비", spriteName: nil, fallbackImageName: "핀_profile", dragEmoji: "😱", dragRotation:  12, dragSoundName: "Ping",  dropSoundName: "Pop"),
@@ -976,12 +976,12 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
             }
         }
 
-        /// AnimationState 변환 (CharacterDialogues 대사 선택용)
-        var animationState: AnimationState {
+        var dialogueEvent: CharacterDialogueEvent {
             switch self {
-            case .startup, .wake: return .greeting
-            case .idle:           return .idle
-            case .sleep:          return .sleeping
+            case .startup: return .startup
+            case .wake: return .wake
+            case .idle: return .idle
+            case .sleep: return .sleep
             }
         }
     }
@@ -989,29 +989,20 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
     private func checkIdle() {
         let idleSeconds = Date().timeIntervalSince(lastInteractionTime)
         if idleSeconds >= 1800 && idleSeconds < 1860 {
-            let fallback = ["...Zzzz...", "자고 있었어요~"]
-            speakLocalEvent(text: fallback.randomElement()!, kind: .sleep)
+            speakLocalEvent(text: "편히 쉬세요. 필요할 때 다시 도와드릴게요.", kind: .sleep)
         } else if idleSeconds >= 900 && idleSeconds < 960 {
-            let fallback = ["안 안뉐하셨죠?", "졸고 있었던 거 아니에요!", "보고 싶었어요.", "계속 대기 중!"]
-            speakLocalEvent(text: fallback.randomElement()!, kind: .idle)
+            speakLocalEvent(text: "필요한 일이 생기면 바로 도와드릴게요.", kind: .idle)
         }
     }
 
     // MARK: - 시스템 이벤트 (인사말) 처리
     @objc private func handleWake() {
-        let userTitle = UserDefaults.standard.string(forKey: "userTitle") ?? "사용자님"
-        let fallback = ["\(userTitle), 드디어 오셨네요!", "기다리고 있었어요!",
-                        "다시 작업 모드로 전환합니다!",
-                        "잠금해제 소리만 기다렸다니까요, \(userTitle). 바로 일하러 가시죠!"]
-        speakLocalEvent(text: fallback.randomElement()!, kind: .wake)
+        speakLocalEvent(text: "다시 오셨군요. 편한 일부터 함께 시작해요.", kind: .wake)
         Task { await LLMConfigCatalog.shared.refreshAllIfNeeded() }
     }
 
     private func handleStartup() {
-        let userTitle = UserDefaults.standard.string(forKey: "userTitle") ?? "사용자님"
-        let fallback = ["반가워요! 오늘 하루도 잘 부탁드려요.", "접속 완료! 어떤 일부터 할까요?",
-                        "준비 끝!", "\(userTitle), 에이전트 가동 시작합니다!"]
-        speakLocalEvent(text: fallback.randomElement()!, kind: .startup)
+        speakLocalEvent(text: "반가워요. 오늘 필요한 일부터 함께 정리해요.", kind: .startup)
     }
 
     /// 로컬 시스템 이벤트 전용 메서드.
@@ -1025,8 +1016,7 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         guard !isSilentMode else { return }
         guard let agent = activeAgents.first else { return }
 
-        let state = kind.animationState
-        let line = CharacterDialogues.randomLine(for: agent.displayName, state: state) ?? text
+        let line = CharacterDialogues.randomText(for: agent.id, event: kind.dialogueEvent) ?? text
         // 채팅 로그 추가 없음 — TTS만
         SpeechManager.shared.speak(text: line, agentID: agent.id, characterName: agent.displayName)
     }

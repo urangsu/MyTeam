@@ -268,8 +268,8 @@ struct TeamTableView: View {
 
             // 드래그 시작 시 랜덤 에이전트 1명만 말함
             if let agent = manager.activeAgents.randomElement() {
-                let fallback = ["어?! 잠깐만요!", "으아아!", "헉!"]
-                let line = CharacterDialogues.randomLine(for: agent.displayName, state: .drag) ?? fallback.randomElement()!
+                let line = CharacterDialogues.randomText(for: agent.id, event: .moved)
+                    ?? "필요한 곳으로 함께 이동할게요."
                 if let rid = manager.currentRoomID {
                     manager.addChatLog(roomID: rid, agentID: agent.id, agentName: agent.displayName, text: line, isUser: false, isSystem: true)
                 }
@@ -297,8 +297,8 @@ struct TeamTableView: View {
             }
 
             if let agent = manager.activeAgents.randomElement() {
-                let fallback = ["휴, 다시 돌아왔네요.", "무사히 착지!"]
-                let line = CharacterDialogues.randomLine(for: agent.displayName, state: .landing) ?? fallback.randomElement()!
+                let line = CharacterDialogues.randomText(for: agent.id, event: .settled)
+                    ?? "자리를 잡았어요. 바로 이어서 도와드릴게요."
                 if let rid = manager.currentRoomID {
                     manager.addChatLog(roomID: rid, agentID: agent.id, agentName: agent.displayName, text: line, isUser: false, isSystem: true)
                 }

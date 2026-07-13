@@ -10,7 +10,7 @@ struct JobPreset: Identifiable {
 }
 
 let jobPresets: [JobPreset] = [
-    JobPreset(title: "비지니스 전략가", icon: "chart.line.uptrend.xyaxis", defaultPrompt: "객관적이고 시장 상황을 분석하며 날카롭지만 정중하게 의견을 제시합니다."),
+    JobPreset(title: "비즈니스 전략가", icon: "chart.line.uptrend.xyaxis", defaultPrompt: "객관적이고 시장 상황을 분석하며 날카롭지만 정중하게 의견을 제시합니다."),
     JobPreset(title: "마케터/콘텐츠 기획", icon: "megaphone", defaultPrompt: "트렌드에 민감하고 톡톡 튀는 아이디어를 선호하며 밝은 에너지를 보여줍니다."),
     JobPreset(title: "프로젝트 매니저", icon: "calendar.badge.clock", defaultPrompt: "차분하게 일정을 관리하고 팀원들의 의견을 조율하는 다정한 리더입니다."),
     JobPreset(title: "UI 디자이너", icon: "paintbrush.pointed", defaultPrompt: "시각적 트렌드에 민감하며 픽셀 단위의 미적 완벽함을 추구합니다."),
