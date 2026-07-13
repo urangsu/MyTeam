@@ -162,6 +162,14 @@ def main() -> int:
             if marker not in call_source:
                 failures.append(f"missing runtime event '{marker}' in {call_site.relative_to(ROOT)}")
 
+    team_table_source = (ROOT / "MyTeam" / "TeamTableView.swift").read_text()
+    drag_dialogue_marker = ".onReceive(NotificationCenter.default.publisher(for: .agentDragBegan))"
+    drag_dialogue_region = team_table_source.split(drag_dialogue_marker, 1)[-1].split(".onChange(of: speechManager.recognizedText)", 1)[0]
+    if "manager.currentRoomID" in drag_dialogue_region:
+        failures.append("team-panel drag dialogue must not be stored in the current personal room")
+    if drag_dialogue_region.count("manager.selectedTeamWorkroomID") < 2:
+        failures.append("team-panel drag start and settled dialogue must use the selected team workroom")
+
     report_lines = [
         "# Character Dialogue Report",
         "",

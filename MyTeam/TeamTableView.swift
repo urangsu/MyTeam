@@ -270,7 +270,7 @@ struct TeamTableView: View {
             if let agent = manager.activeAgents.randomElement() {
                 let line = CharacterDialogues.randomText(for: agent.id, event: .moved)
                     ?? "필요한 곳으로 함께 이동할게요."
-                if let rid = manager.currentRoomID {
+                if let rid = manager.selectedTeamWorkroomID {
                     manager.addChatLog(roomID: rid, agentID: agent.id, agentName: agent.displayName, text: line, isUser: false, isSystem: true)
                 }
                 if !manager.isSilentMode {
@@ -299,7 +299,7 @@ struct TeamTableView: View {
             if let agent = manager.activeAgents.randomElement() {
                 let line = CharacterDialogues.randomText(for: agent.id, event: .settled)
                     ?? "자리를 잡았어요. 바로 이어서 도와드릴게요."
-                if let rid = manager.currentRoomID {
+                if let rid = manager.selectedTeamWorkroomID {
                     manager.addChatLog(roomID: rid, agentID: agent.id, agentName: agent.displayName, text: line, isUser: false, isSystem: true)
                 }
                 if !manager.isSilentMode {
