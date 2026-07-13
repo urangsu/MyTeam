@@ -210,14 +210,8 @@ final class AICallBudgetManager {
         lastBlockWasRolling = false
         lastBlockedReasonByKey[key] = nil
 
-        // 1) Rolling window 체크 먼저 (전역 속도 제한 — 세션 경계와 무관)
-        // checkRollingLimit이 false 반환 시 lastBlockWasRolling = true로 설정됨
-        guard checkRollingLimit(for: type) else {
-            lastBlockedReasonByKey[key] = .rolling
-            return false
-        }
-
-        // 2) 세션 내 호출 횟수 체크 (여기까지 왔으면 rolling은 통과 — lastBlockWasRolling = false)
+        // 세션 한도를 먼저 확인한다. 이미 거절될 호출이 전역 rolling quota를
+        // 소모하면 다음 정상 요청까지 불필요하게 차단된다.
         if sessions[key] == nil {
             sessions[key] = AICallBudgetSession(key: key, tier: .chatLight)
             activeSessionKey = key
@@ -234,6 +228,12 @@ final class AICallBudgetManager {
             lastBlockedReasonByKey[key] = .session
             return false
         }
+
+        guard checkRollingLimit(for: type) else {
+            lastBlockedReasonByKey[key] = .rolling
+            return false
+        }
+
         session.counts[type] = current + 1
         sessions[key] = session
         activeSessionKey = key

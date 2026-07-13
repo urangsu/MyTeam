@@ -104,6 +104,8 @@ def main() -> None:
         failures.append("NaturalWorkEntryPoint must not hard-code team_all/nil agent context for planning")
     if "chatHistory: []" in agentic:
         failures.append("AgenticToolOrchestrator must pass recent chatHistory to AIService")
+    if "requiresToolUse: true" in agentic:
+        failures.append("JSON-only agentic planning must not require provider-native tool calling")
     if "NaturalWorkPlanValidator.planAfterValidation" not in plan_runner:
         failures.append("NaturalWorkPlanRunner must validate plans before execution")
     if "options: .composite" not in plan_runner:

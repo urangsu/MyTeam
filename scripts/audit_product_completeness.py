@@ -53,6 +53,7 @@ def main() -> None:
     quality_workflow = read(".github/workflows/quality-gate.yml")
     ai_model_policy = read("MyTeam/AIModelPolicy.swift")
     ai_service = read("MyTeam/AIService.swift")
+    ai_call_budget = read("MyTeam/AICallBudgetManager.swift")
     chat_models = read("MyTeam/ChatModels.swift")
     openai_responses = read("MyTeam/OpenAIResponsesAdapter.swift")
     xcode_project = read("MyTeam/MyTeam.xcodeproj/project.pbxproj")
@@ -361,6 +362,17 @@ def main() -> None:
         failures.append("Gemini cooldown fallback must pin the model that passed smoke validation")
     if 'modelId: "openrouter/auto"' in ai_service:
         failures.append("OpenRouter auto model must not be used as a hidden fallback")
+    for harmful_prompt_rule in [
+        "완전히 무시하고 자연스럽게 화제를 전환",
+        "하던 일이나 마저 하자",
+        "다른 팀원을 부를 땐 이름을 직접 언급",
+    ]:
+        if harmful_prompt_rule in ai_service:
+            failures.append(f"LLM system prompt contains a quality-degrading rule: {harmful_prompt_rule}")
+    session_limit_index = ai_call_budget.find("if current >= limit")
+    rolling_limit_index = ai_call_budget.find("guard checkRollingLimit(for: type)")
+    if session_limit_index < 0 or rolling_limit_index < 0 or session_limit_index > rolling_limit_index:
+        failures.append("Rejected session calls must not consume the global rolling LLM budget")
     if "404 → 모델 재발견 재시도" in ai_service:
         failures.append("Model 404 must not silently rediscover and retry another model")
     for required in [

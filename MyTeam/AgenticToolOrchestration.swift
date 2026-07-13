@@ -350,7 +350,7 @@ enum AgenticToolOrchestrator {
         let preferred = agentConfig?.llmProvider
             ?? UserDefaults.standard.string(forKey: "defaultLLMProvider").flatMap(LLMProvider.init(rawValue:))
             ?? .gemini
-        guard !AIService.shared.providerCandidates(preferred: preferred, requiresToolUse: true).isEmpty else {
+        guard !AIService.shared.providerCandidates(preferred: preferred, requiresToolUse: false).isEmpty else {
             return fallback
         }
 
@@ -365,7 +365,9 @@ enum AgenticToolOrchestrator {
                 agentID: agentID,
                 chatHistory: Array(chatHistory.suffix(5)),
                 agentConfig: agentConfig,
-                requiresToolUse: true,
+                // Planning returns validated JSON; the app executes tools itself.
+                // Requiring provider-native tool calling incorrectly excludes Gemini/OpenRouter.
+                requiresToolUse: false,
                 requestID: requestID,
                 toolDescriptorCount: manifests.count,
                 fileContextCharacters: context.attachmentText.count,
