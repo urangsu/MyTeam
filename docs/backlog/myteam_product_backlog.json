@@ -2270,6 +2270,7 @@
           "Bundled model support-file and SHA-256 integrity validation",
           "Actor-isolated ONNX environment, session, index, and voice-style reuse",
           "Supportive character dialogue catalog with runtime event wiring",
+          "Source-duration-aware BubbleSpeech timing and intelligibility floor",
           "Static regression contract and XCTest fixtures",
           "TTS runtime quality audit"
         ],
@@ -2291,6 +2292,7 @@
         ,"Speaking animation is not driven by a fixed 30-second timer"
         ,"App Store validation rejects missing or hash-mismatched model resources"
         ,"ONNX sessions and support data are reused without crossing actor isolation"
+        ,"Adaptive BubbleSpeech keeps at least 72 percent of the source duration and retains a majority dry Supertonic3 voice mix"
       ],
       "failure_conditions": [
         "Visible and spoken wording differ",
@@ -2298,12 +2300,14 @@
         "Normal conversation creates Desktop WAV files",
         "Playback completion can wait forever",
         "BubbleSpeech or Supertonic3 is replaced or bypassed",
+        "BubbleSpeech compresses a character line below its intelligibility duration floor",
         "A runtime character line blames, scolds, pressures, or guilt-trips the user",
         "Manual listening QA is claimed without an actual run"
       ],
       "verification": {
         "commands": [
           "python3 scripts/validate_tts_runtime_truth.py",
+          "scripts/run_bubble_speech_smoke.sh",
           "python3 scripts/validate_myteam_release.py",
           "git diff --check",
           "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' build",
@@ -2319,7 +2323,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "a9f9851",
+        "commit_sha": "c735203",
         "files_changed": [
           "MyTeam/SupertonicProsodyTextProcessor.swift",
           "MyTeam/BubbleSpeechCharacterTuningPolicy.swift",
@@ -2347,13 +2351,15 @@
           "MyTeam/AgentPersona.swift",
           "MyTeam/AgentSettingsView.swift",
           "MyTeamTests/PublicAPIConnectorValidatorTests.swift",
+          "scripts/run_bubble_speech_smoke.sh",
+          "scripts/smoke_bubble_speech.swift",
           "scripts/validate_tts_runtime_truth.py",
           "scripts/validate_supertonic3_bundle.py",
           "scripts/validate_myteam_release.py",
           "docs/qa/TTSRuntimeQualityAudit.md",
           "docs/qa/BubbleSpeechCharacterLanguageQA.md"
         ],
-        "validation_summary": "2026-07-13: Commit a9f9851 removed the legacy AnimationState dialogue dictionaries, replaced blaming and guilt-inducing lines with 132 supportive lines covering 11 agents x 12 events, connected startup/wake/idle/sleep/move/settle/workroom workflow reactions to the shared catalog, and strengthened the dialogue validator against hostile wording and legacy call paths. Character dialogue, TTS runtime, product completeness, release, checklist, skill package, precommit validators, git diff check, Debug build, and Release build passed. Partial remains because the 11-character listening matrix, Chiko listening-based tuning, runtime UI observation, release-equivalent inference, and App Store redistribution approval are not verified.",
+        "validation_summary": "2026-07-13: Commit c735203 corrected the adaptive BubbleSpeech path that could compress a 181248-sample Supertonic3 line to 41742 samples. Strong short-line wet mix was reduced from 0.78 to 0.44, target syllable timing is now derived from source duration, and renders below the 0.72 intelligibility ratio fail instead of playing. The standalone smoke improved its adaptive fixture from a sub-threshold result to a 0.790 duration ratio. All 21 BubbleSpeech XCTest cases, TTS/runtime/release validators, precommit, git diff check, Debug build, and Release build passed. Earlier commit a9f9851 retains the supportive 132-line character catalog. Partial remains because listening-based comparison across speakers, Chiko retuning, release-equivalent inference, and App Store redistribution approval are not verified.",
         "screenshots": []
       },
       "notes": [
