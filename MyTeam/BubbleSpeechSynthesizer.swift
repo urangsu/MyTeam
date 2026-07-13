@@ -534,46 +534,11 @@ enum BubbleSpeechSynthesizer {
         guard !voiceSamples.isEmpty, sampleRate > 0 else { return nil }
         if decision.strength == .bypass { return voiceSamples }
 
-        var adaptiveConfig = config
-        let tuning = config.characterTuning
-        let syllableCount = max(1, BubbleSpeechSynthesizer.syllableCount(in: text))
-        let sourceDuration = Double(voiceSamples.count) / Double(sampleRate)
-        let sourceDurationPerSyllable = sourceDuration / Double(syllableCount)
-        let sourceAwareCenter = min(
-            0.28,
-            max(
-                decision.targetSyllableDuration.lowerBound,
-                sourceDurationPerSyllable * (decision.minimumSourceDurationRatio + 0.10)
-            )
-        )
-        let sourceAwareMinimum = max(
-            decision.targetSyllableDuration.lowerBound,
-            sourceAwareCenter * 0.92
-        )
-        let sourceAwareMaximum = max(
-            sourceAwareMinimum,
-            min(
-                0.30,
-                max(decision.targetSyllableDuration.upperBound, sourceAwareCenter * 1.08)
-            )
-        )
-        adaptiveConfig.characterTuning = BubbleSpeechCharacterTuning(
-            minSegmentDuration: sourceAwareMinimum,
-            maxSegmentDuration: sourceAwareMaximum,
-            guideGain: tuning.guideGain,
-            shimmerDepth: tuning.shimmerDepth,
-            gapScale: tuning.gapScale,
-            pitchStepPattern: tuning.pitchStepPattern,
-            accentPattern: tuning.accentPattern,
-            grainRepeatPattern: tuning.grainRepeatPattern,
-            formantColor: tuning.formantColor
-        )
-        let rendered = renderVoiceBasedEffect(
+        let rendered = renderSourceAlignedEffect(
             text: text,
             voiceSamples: voiceSamples,
             sampleRate: sampleRate,
-            config: adaptiveConfig,
-            segmentRate: segmentRate
+            config: config
         )
         guard !rendered.isEmpty else { return nil }
         let durationRatio = BubbleSpeechSynthesizer.durationRatio(
@@ -592,6 +557,54 @@ enum BubbleSpeechSynthesizer {
             mixed.append(max(-0.98, min(0.98, value)))
         }
         return mixed
+    }
+
+    /// Keeps the complete Supertonic3 waveform and adds only gentle syllable
+    /// boundary articulation. The procedural guide validates the text rhythm,
+    /// but its synthetic tone is never mixed into product speech.
+    static func renderSourceAlignedEffect(
+        text: String,
+        voiceSamples: [Float],
+        sampleRate: Int,
+        config: BubbleSpeechConfig
+    ) -> [Float] {
+        guard !voiceSamples.isEmpty, sampleRate > 0 else { return [] }
+        let syllables = syllableCount(in: text)
+        guard syllables > 0 else { return [] }
+        let guide = synthesize(text: text, config: config)
+        guard !guide.isEmpty else { return [] }
+
+        var energy: Double = 0
+        for sample in voiceSamples {
+            guard sample.isFinite else { return [] }
+            energy += Double(sample * sample)
+        }
+        guard sqrt(energy / Double(voiceSamples.count)) > 0.001 else { return [] }
+
+        var output = voiceSamples
+        let accents = config.characterTuning.accentPattern
+        let fadeFrames = max(24, Int(Double(sampleRate) * 0.0045))
+
+        for syllableIndex in 0..<syllables {
+            let start = syllableIndex * voiceSamples.count / syllables
+            let end = (syllableIndex + 1) * voiceSamples.count / syllables
+            guard end > start else { continue }
+
+            let segmentLength = end - start
+            let boundaryFrames = min(fadeFrames, max(1, segmentLength / 5))
+            let accent = accents.isEmpty ? Float(1) : accents[syllableIndex % accents.count]
+            let accentGain = Float(1) + (accent - 1) * 0.18
+
+            for index in start..<end {
+                let localIndex = index - start
+                let distanceToBoundary = min(localIndex, end - index - 1)
+                let boundaryProgress = min(1, Float(distanceToBoundary) / Float(boundaryFrames))
+                let boundaryGain = Float(0.88) + Float(0.12) * boundaryProgress
+                output[index] = max(-0.98, min(0.98, voiceSamples[index] * boundaryGain * accentGain))
+            }
+        }
+
+        return output
     }
 
     static func renderVoiceBasedEffect(

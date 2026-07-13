@@ -61,6 +61,10 @@ let adaptiveRatio = BubbleSpeechSynthesizer.durationRatio(
 )
 require(adaptiveRatio >= 0.72, "adaptive BubbleSpeech must preserve intelligible source timing")
 require(adaptiveDecision.wetMix <= 0.46, "short lines must retain at least half of the Supertonic3 voice")
+require(adaptive?.count == voiceSamples.count, "adaptive BubbleSpeech must preserve the Supertonic3 timeline")
+let adaptiveDelta = BubbleSpeechSynthesizer.meanAbsoluteDelta(adaptive ?? [], voiceSamples)
+require(adaptiveDelta > 0.0001, "adaptive BubbleSpeech should add audible syllable shaping")
+require(adaptiveDelta < 0.05, "adaptive BubbleSpeech must not replace the voice with a machine-like layer")
 
 let guideFailure = BubbleSpeechSynthesizer.renderVoiceBasedEffect(
     text: " !!!",
@@ -84,4 +88,4 @@ let arcadeRendered = BubbleSpeechSynthesizer.renderVoiceBasedEffect(
 )
 require(BubbleSpeechSynthesizer.meanAbsoluteDelta(tinyRendered, arcadeRendered) > 0.001, "profiles should produce different output")
 
-print("PASS bubble_speech_smoke guide=\(guide.count) rendered=\(rendered.count) ratio=\(String(format: "%.3f", renderedRatio)) adaptiveRatio=\(String(format: "%.3f", adaptiveRatio)) delta=\(String(format: "%.5f", renderedDelta)) peak=\(String(format: "%.4f", renderedPeak))")
+print("PASS bubble_speech_smoke guide=\(guide.count) rendered=\(rendered.count) ratio=\(String(format: "%.3f", renderedRatio)) adaptiveRatio=\(String(format: "%.3f", adaptiveRatio)) adaptiveDelta=\(String(format: "%.5f", adaptiveDelta)) delta=\(String(format: "%.5f", renderedDelta)) peak=\(String(format: "%.4f", renderedPeak))")

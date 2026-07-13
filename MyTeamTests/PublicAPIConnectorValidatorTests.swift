@@ -348,6 +348,8 @@ final class BubbleSpeechSynthesizerTests: XCTestCase {
             BubbleSpeechSynthesizer.durationRatio(renderedSamples: output, sourceSamples: samples),
             0.72
         )
+        XCTAssertEqual(output.count, samples.count)
+        XCTAssertLessThan(BubbleSpeechSynthesizer.meanAbsoluteDelta(output, samples), 0.05)
         XCTAssertLessThanOrEqual(decision.wetMix, 0.46)
     }
 

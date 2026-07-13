@@ -105,6 +105,7 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
     // ── 감정-스프라이트 연결 ──────────────────────────────────────
     /// 현재 TTS 재생 중인 에이전트 ID (nil = 아무도 말하지 않음)
     @Published var speakingAgentID: String? = nil
+    @Published private(set) var speakingTextByAgentID: [String: String] = [:]
     /// 에이전트별 현재 감정 상태 (agentID → AnimationState)
     @Published var agentEmotions: [String: AnimationState] = [:]
     /// 현재 타이핑 중인 에이전트 ID Set (카톡 "..." 인디케이터용)
@@ -910,6 +911,7 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         let emotion = detectEmotion(from: text)
         DispatchQueue.main.async {
             self.speakingAgentID = agentID
+            self.speakingTextByAgentID[agentID] = text
             self.agentEmotions[agentID] = emotion
         }
     }
@@ -920,6 +922,7 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
             if self.speakingAgentID == agentID {
                 self.speakingAgentID = nil
             }
+            self.speakingTextByAgentID.removeValue(forKey: agentID)
             self.agentEmotions[agentID] = .typing
         }
     }

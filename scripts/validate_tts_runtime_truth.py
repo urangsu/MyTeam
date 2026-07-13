@@ -33,6 +33,7 @@ def main() -> None:
     bubble = (ROOT / "MyTeam" / "BubbleSpeechSynthesizer.swift").read_text()
     bubble_policy = (ROOT / "MyTeam" / "BubbleSpeechCharacterTuningPolicy.swift").read_text()
     window_manager = (ROOT / "MyTeam" / "AgentWindowManager.swift").read_text()
+    team_table = (ROOT / "MyTeam" / "TeamTableView.swift").read_text()
     tests = (ROOT / "MyTeamTests" / "PublicAPIConnectorValidatorTests.swift").read_text()
 
     require(
@@ -81,8 +82,18 @@ def main() -> None:
     )
     require(
         speech,
-        "mode=singlePassGranular",
-        "BubbleSpeech runtime must identify the single-pass granular renderer",
+        "mode=sourceAlignedSyllabic",
+        "BubbleSpeech runtime must identify the source-aligned syllable renderer",
+    )
+    require(
+        window_manager,
+        "speakingTextByAgentID",
+        "character speech bubbles must retain the exact currently playing text",
+    )
+    require(
+        team_table,
+        "manager.speakingTextByAgentID[agent.id]",
+        "team speech bubbles must not reuse a stale persisted chat line",
     )
     require(
         bubble_policy,
