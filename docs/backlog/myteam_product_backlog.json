@@ -2269,12 +2269,13 @@
           "Typed ONNX missing-output failure",
           "Bundled model support-file and SHA-256 integrity validation",
           "Actor-isolated ONNX environment, session, index, and voice-style reuse",
+          "Supportive character dialogue catalog with runtime event wiring",
           "Static regression contract and XCTest fixtures",
           "TTS runtime quality audit"
         ],
         "exclude": [
           "Supertonic3 model or BubbleSpeech removal",
-          "Character persona or dialogue changes",
+          "Character role or persona redesign",
           "Chiko listening-based retuning",
           "App Store redistribution approval"
         ]
@@ -2297,6 +2298,7 @@
         "Normal conversation creates Desktop WAV files",
         "Playback completion can wait forever",
         "BubbleSpeech or Supertonic3 is replaced or bypassed",
+        "A runtime character line blames, scolds, pressures, or guilt-trips the user",
         "Manual listening QA is claimed without an actual run"
       ],
       "verification": {
@@ -2317,7 +2319,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "e442b27",
+        "commit_sha": "a9f9851",
         "files_changed": [
           "MyTeam/SupertonicProsodyTextProcessor.swift",
           "MyTeam/BubbleSpeechCharacterTuningPolicy.swift",
@@ -2338,6 +2340,12 @@
           "MyTeam/AgentSeatView.swift",
           "MyTeam/TeamOrchestrator.swift",
           "MyTeam/TeamTableView.swift",
+          "MyTeam/CharacterDialogues.swift",
+          "MyTeam/CharacterReactionEngine.swift",
+          "MyTeam/CharacterReactionEventSink.swift",
+          "MyTeam/WorkroomCharacterEvent.swift",
+          "MyTeam/AgentPersona.swift",
+          "MyTeam/AgentSettingsView.swift",
           "MyTeamTests/PublicAPIConnectorValidatorTests.swift",
           "scripts/validate_tts_runtime_truth.py",
           "scripts/validate_supertonic3_bundle.py",
@@ -2345,7 +2353,7 @@
           "docs/qa/TTSRuntimeQualityAudit.md",
           "docs/qa/BubbleSpeechCharacterLanguageQA.md"
         ],
-        "validation_summary": "2026-07-12: Commits 2724453, 5176e2b, and e442b27 replaced uniform source slicing with a deterministic voice-derived grain renderer, added 11 character rhythm identities and automatic strong/medium/light/bypass policy, and connected the existing BubbleSpeech toggle to normal Supertonic3 character playback without adding synthesis calls. The complete 89-test suite, TTS runtime validator, product release validators, product completeness audit, Debug build, and Release build passed. Partial remains because the 11-character listening matrix, Chiko listening-based tuning, release-equivalent inference, and App Store redistribution approval are not verified.",
+        "validation_summary": "2026-07-13: Commit a9f9851 removed the legacy AnimationState dialogue dictionaries, replaced blaming and guilt-inducing lines with 132 supportive lines covering 11 agents x 12 events, connected startup/wake/idle/sleep/move/settle/workroom workflow reactions to the shared catalog, and strengthened the dialogue validator against hostile wording and legacy call paths. Character dialogue, TTS runtime, product completeness, release, checklist, skill package, precommit validators, git diff check, Debug build, and Release build passed. Partial remains because the 11-character listening matrix, Chiko listening-based tuning, runtime UI observation, release-equivalent inference, and App Store redistribution approval are not verified.",
         "screenshots": []
       },
       "notes": [
