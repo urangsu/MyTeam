@@ -2438,6 +2438,88 @@
         "Static and build evidence cannot prove pointer feel or keyboard focus behavior.",
         "Status remains partial until the listed panel interaction checks are recorded on the current build."
       ]
+    },
+    {
+      "id": "P0-027-conversation-presentation-and-copy",
+      "priority": "P0",
+      "status": "partial",
+      "category": "conversation-quality",
+      "title": "Keep casual replies fast, bounded, and fully copyable",
+      "why": "Casual prompts imposed rigid sentence counts, team bubbles arrived too slowly, personal and team presentation paths differed, and some work or skill cards lacked an obvious full-text copy action.",
+      "scope": {
+        "include": [
+          "Shared casual reply policy and safe three-bubble segmentation",
+          "Stable sentence-boundary segmentation during personal streaming",
+          "Faster team casual bubble pacing",
+          "Full-source copy actions across personal and team message surfaces",
+          "Format-only verifier failures downgraded to warnings",
+          "Release-surface planner manifest shortlisting",
+          "Active Supertonic3 ONNX path validation"
+        ],
+        "exclude": [
+          "Supertonic3 voice tuning",
+          "BubbleSpeech audio processing",
+          "Provider live QA",
+          "Manual pointer and keyboard focus QA"
+        ]
+      },
+      "acceptance_criteria": [
+        "Casual replies preserve all text while using at most three one-paragraph bubbles",
+        "Work and explicit-detail replies are not split",
+        "Streaming replies are not typewritten a second time",
+        "Every chat and work-result surface copies the complete stored source text",
+        "Format preferences do not convert a truthful non-empty result into failure",
+        "The agentic planner receives at most five relevant enabled tools"
+      ],
+      "failure_conditions": [
+        "Content after the third casual bubble is dropped",
+        "URLs, dates, decimals, or code blocks are split incorrectly",
+        "Copy uses a typewriter preview or collapsed card preview",
+        "Hidden or unavailable tools are sent to the planner",
+        "Retired Supertonic skeletons remain in the app sources phase",
+        "Manual QA is claimed without running the interaction checks"
+      ],
+      "verification": {
+        "commands": [
+          "python3 scripts/validate_conversation_presentation.py",
+          "python3 scripts/validate_myteam_release.py",
+          "git diff --check",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' test",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Release -destination 'platform=OS X,arch=arm64' build"
+        ],
+        "manual_checks": [
+          "Send short casual messages in personal chat and team workroom",
+          "Copy user, character, system, skill, and collapsed work-result messages",
+          "Confirm hover and keyboard focus do not obstruct links or result actions",
+          "Confirm spoken wording matches the displayed bubble wording"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": "54a8756, e1dab81",
+        "files_changed": [
+          "MyTeam/AgentChatView.swift",
+          "MyTeam/ChatComponents.swift",
+          "MyTeam/ConversationMemory.swift",
+          "MyTeam/TeamOrchestrator.swift",
+          "MyTeam/TeamStatusView.swift",
+          "MyTeam/AgenticToolOrchestration.swift",
+          "MyTeam/ResultVerifier.swift",
+          "MyTeam/RuntimeDiagnosticsService.swift",
+          "MyTeam/ToolContractValidator.swift",
+          "MyTeam/MyTeam.xcodeproj/project.pbxproj",
+          "MyTeamTests/LLMRouterTests.swift",
+          "scripts/validate_conversation_presentation.py",
+          "scripts/validate_myteam_release.py"
+        ],
+        "validation_summary": "2026-07-14: The complete release validator set, 97 XCTest cases, git diff check, Worker syntax check, and sequential Debug/Release builds passed. Status remains partial until manual chat pacing, hover/focus copy behavior, result-action hit testing, and TTS/display wording QA are recorded.",
+        "screenshots": []
+      },
+      "notes": [
+        "The three-bubble cap never truncates content; overflow stays in the third bubble.",
+        "The copy action always uses the complete stored message text, not the rendered preview.",
+        "APPTERM, NW, ART, and HOME release evidence remain unchanged until manual QA is run."
+      ]
     }
   ]
 }

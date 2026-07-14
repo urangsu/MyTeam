@@ -1085,7 +1085,8 @@ final class RuntimeDiagnosticsService {
         // Round 248TTS-A-CONTINUE: ONNX Runtime boundary + manifest
         let supertonic3ModelManifestAvailable = FileManager.default.fileExists(atPath: "MyTeam/Supertonic3ModelManifest.swift")
         let onnxRuntimeAdapterBoundaryAvailable = FileManager.default.fileExists(atPath: "MyTeam/ONNXRuntimeAdapter.swift")
-        let supertonic3PipelineSkeletonAvailable = FileManager.default.fileExists(atPath: "MyTeam/Supertonic3InferencePipeline.swift")
+        // Compatibility field name; product truth is the active ONNX runner, not the retired skeleton.
+        let supertonic3PipelineSkeletonAvailable = FileManager.default.fileExists(atPath: "MyTeam/Supertonic3ONNXRunner.swift")
         let supertonic3ProbeReadinessAvailable = FileManager.default.fileExists(atPath: "MyTeam/Supertonic3TTSProbe.swift")
         let supertonic3ModelPathRedacted = true
         let supertonic3NoDummyAudio = true
@@ -1594,7 +1595,7 @@ final class RuntimeDiagnosticsService {
             observationImplLevelUxAvailable: true,
             // Round 247TTS: Supertonic3 PoC + TTS Policy
             appleSystemTTSBlocked: true,
-            supertonic3ProviderRegistered: true,
+            supertonic3ProviderRegistered: supertonicONNXSpikeAvailable,
             supertonic3DefaultDisabled: true,
             supertonic3RequiresLocalModel: true,
             supertonic3NoAutoDownload: true,

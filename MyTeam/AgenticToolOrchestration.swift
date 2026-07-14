@@ -53,8 +53,45 @@ enum ToolSemanticManifestCatalog {
         MyTeamToolRegistry.all
             .filter { $0.isImplemented && $0.isUserFacing }
             .filter { $0.category != .voice && $0.category != .system && $0.category != .mail }
+            .filter { ProductSurfacePolicy.isEnabledInCurrentReleaseSurface($0) }
+            .filter {
+                let tier = ProductSurfacePolicy.tier(for: $0)
+                return tier != .hidden && tier != .developerOnly
+            }
             .compactMap(manifest(for:))
     }
+
+    nonisolated static func manifests(for userMessage: String, limit: Int = 5) -> [ToolSemanticManifest] {
+        let normalized = userMessage.lowercased()
+        let ranked = manifests().compactMap { manifest -> (ToolSemanticManifest, Int)? in
+            let score = candidateKeywords[manifest.toolID, default: []]
+                .reduce(0) { partial, keyword in
+                    partial + (normalized.contains(keyword) ? keyword.count : 0)
+                }
+            return score > 0 ? (manifest, score) : nil
+        }
+        return ranked
+            .sorted {
+                if $0.1 == $1.1 { return $0.0.toolID < $1.0.toolID }
+                return $0.1 > $1.1
+            }
+            .prefix(max(0, min(limit, 5)))
+            .map(\.0)
+    }
+
+    private nonisolated static let candidateKeywords: [String: [String]] = [
+        "news.search": ["뉴스", "기사", "이슈", "동향"],
+        "dart.disclosures.search": ["공시", "dart", "사업보고서"],
+        "finance.krx.stockPrice": ["주가", "시세", "종가", "거래량"],
+        "finance.krx.index": ["코스피", "코스닥", "krx300", "시장 지수"],
+        "finance.company.statement": ["재무", "매출", "손익", "자산", "부채"],
+        "weather.current": ["날씨", "기온", "비", "강수", "출장", "외근", "현장"],
+        "law.search": ["법령", "법률", "조문", "근로기준법", "연차", "주52시간"],
+        "calendar.events.today": ["일정", "캘린더", "회의 준비"],
+        "document.meetingMinutes": ["회의록", "녹취록", "결정사항", "지시사항"],
+        "document.rewrite": ["다듬어", "바꿔줘", "보고용", "문체", "초안", "작성"],
+        "spreadsheet.googleSheets.read": ["구글시트", "google sheets", "스프레드시트"]
+    ]
 
     private nonisolated static func manifest(for descriptor: MyTeamToolDescriptor) -> ToolSemanticManifest? {
         let base = baseManifest(for: descriptor.id)
@@ -344,7 +381,7 @@ enum AgenticToolOrchestrator {
         }
 
         let fallback = NaturalWorkRouter.plan(for: message, context: context)
-        let manifests = ToolSemanticManifestCatalog.manifests()
+        let manifests = ToolSemanticManifestCatalog.manifests(for: message)
         guard !manifests.isEmpty else { return fallback }
 
         let preferred = agentConfig?.llmProvider

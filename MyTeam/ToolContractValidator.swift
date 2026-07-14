@@ -1658,7 +1658,7 @@ enum ToolContractValidator {
         let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
         guard let snap else { return }
         if !snap.supertonic3ProviderRegistered {
-            issues.append(issue(.warning, "Supertonic3TTSProvider가 등록되지 않았습니다. Round 247TTS PoC skeleton이 없습니다."))
+            issues.append(issue(.error, "Supertonic3ONNXRunner가 없습니다. 제품 TTS 실행 경로를 사용할 수 없습니다."))
         }
         if !snap.supertonic3DefaultDisabled {
             issues.append(issue(.error, "Supertonic3 TTS가 기본 활성화되어 있습니다. 기본값은 반드시 off여야 합니다."))
@@ -1901,7 +1901,7 @@ enum ToolContractValidator {
         let snap = RuntimeDiagnosticsService.shared.cachedSnapshot
         guard let snap else { return }
         if !snap.supertonic3PipelineSkeletonAvailable {
-            issues.append(issue(.error, "Supertonic3InferencePipeline.swift가 없습니다. Cloud에서는 missingRuntime을 throw해야 합니다."))
+            issues.append(issue(.error, "Supertonic3ONNXRunner.swift가 없습니다. 실제 Supertonic3 합성 경로가 필요합니다."))
         }
     }
 
@@ -2089,9 +2089,15 @@ enum ToolContractValidator {
         if !snap.supertonicONNXSpikeAvailable {
             issues.append(issue(.warning, "Supertonic3ONNXRunner.swift가 없습니다. Round 249TTS-SPIKE 파일이 누락되었습니다."))
         }
-        // Spike runner must NOT be connected to SpeechManager or any production surface.
-        // Static check: SpeechManager must not import or reference Supertonic3ONNXRunner.
-        // (Verified manually — SpeechManager uses TTSRoutingPolicy which routes to Supertonic3TTSProvider, not ONNXRunner)
+        let speechManagerPath = URL(fileURLWithPath: "MyTeam/SpeechManager.swift")
+        let speechManagerSource = (try? String(contentsOf: speechManagerPath, encoding: .utf8)) ?? ""
+        if !speechManagerSource.contains("Supertonic3ONNXRunner.shared.synthesize") {
+            issues.append(issue(.error, "SpeechManager가 실제 Supertonic3ONNXRunner 합성 경로를 사용하지 않습니다."))
+        }
+        if speechManagerSource.contains("Supertonic3TTSProvider.shared.synthesize")
+            || speechManagerSource.contains("Supertonic3InferencePipeline.shared") {
+            issues.append(issue(.error, "SpeechManager가 retired Supertonic3 skeleton을 참조합니다."))
+        }
     }
 
     private static func validateSupertonicNoAutoInit(issues: inout [ToolContractValidationIssue]) {

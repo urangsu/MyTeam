@@ -10,6 +10,7 @@ import PDFKit
 
 final class LLMRouterTests: XCTestCase {
 
+    @MainActor
     func test_conversationReplyPolicy_distinguishesCasualWorkAndExplicitDetail() {
         XCTAssertEqual(ConversationReplyPolicy.mode(for: "안녕"), .quick)
         XCTAssertEqual(ConversationReplyPolicy.mode(for: "오늘 너무 힘들었어"), .casual)
@@ -48,6 +49,41 @@ final class LLMRouterTests: XCTestCase {
 
         XCTAssertEqual(CasualBubbleSegmenter.segments(from: text, mode: .work), [text])
         XCTAssertEqual(CasualBubbleSegmenter.segments(from: text, mode: .explicitDetail), [text])
+    }
+
+    func test_resultVerifier_treatsFormatLengthAsWarning() {
+        let summary = ResultVerifier.verifySummary(content: "핵심만 짧게 정리했습니다.")
+        let report = ResultVerifier.verifyReportDraft(content: "결론부터 공유합니다. 일정은 다음 주입니다.")
+        let checklist = ResultVerifier.verifyChecklist(content: "- 첫 항목")
+        let minutes = ResultVerifier.verifyMeetingMinutes(content: "오늘 회의에서는 출시 일정을 논의했습니다.")
+
+        XCTAssertTrue(summary.passed)
+        XCTAssertTrue(report.passed)
+        XCTAssertTrue(checklist.passed)
+        XCTAssertTrue(minutes.passed)
+        XCTAssertGreaterThan(summary.warningCount, 0)
+        XCTAssertGreaterThan(report.warningCount, 0)
+        XCTAssertGreaterThan(checklist.warningCount, 0)
+        XCTAssertGreaterThan(minutes.warningCount, 0)
+    }
+
+    func test_toolManifestCandidates_areRelevantAndBounded() {
+        let candidates = ToolSemanticManifestCatalog.manifests(
+            for: "삼성전자 뉴스와 공시를 확인해줘"
+        )
+        let toolIDs = Set(candidates.map(\.toolID))
+
+        XCTAssertLessThanOrEqual(candidates.count, 5)
+        XCTAssertTrue(toolIDs.contains("news.search"))
+        XCTAssertTrue(toolIDs.contains("dart.disclosures.search"))
+        XCTAssertFalse(toolIDs.contains("weather.current"))
+        XCTAssertFalse(toolIDs.contains("calendar.events.today"))
+    }
+
+    func test_toolManifestCandidates_skipCasualConversation() {
+        XCTAssertTrue(
+            ToolSemanticManifestCatalog.manifests(for: "오늘 점심 뭐 먹을까?").isEmpty
+        )
     }
 
     @MainActor

@@ -40,9 +40,9 @@ enum ResultVerifier {
             return ResultVerificationSummary(passed: false, issues: issues)
         }
 
-        // 최소 200자 요구
+        // 길이는 품질 힌트일 뿐 성공 여부를 결정하지 않는다.
         if trimmed.count < 200 {
-            issues.append(issue(.error, "문서 요약은 최소 200자 이상이어야 합니다. 현재: \(trimmed.count)자"))
+            issues.append(issue(.warning, "검토 메모: 요약이 짧습니다. 요청한 핵심이 빠지지 않았는지 확인하세요. 현재: \(trimmed.count)자"))
         }
 
         if containsSensitiveKeywords(trimmed) {
@@ -72,7 +72,7 @@ enum ResultVerifier {
         let requiredSections = ["목적", "배경", "현황", "검토 의견"]
         let foundSections = requiredSections.filter { content.contains($0) }.count
         if foundSections < 2 {
-            issues.append(issue(.error, "보고서 초안에 필수 섹션이 부족합니다. 필수 섹션(목적, 배경, 현황, 검토 의견) 중 최소 2개 이상 필요합니다. 현재: \(foundSections)개"))
+            issues.append(issue(.warning, "검토 메모: 고정 보고서 섹션이 적습니다. 사용자가 요청한 형식에 맞는지 확인하세요. 현재: \(foundSections)개"))
         }
 
         if containsSensitiveKeywords(trimmed) {
@@ -101,7 +101,7 @@ enum ResultVerifier {
         // 최소 3개 항목 검사 (마크다운 리스트 아이템)
         let checklistItems = trimmed.components(separatedBy: "\n").filter { $0.trimmingCharacters(in: .whitespaces).hasPrefix("- ") || $0.trimmingCharacters(in: .whitespaces).hasPrefix("* ") }
         if checklistItems.count < 3 {
-            issues.append(issue(.error, "체크리스트는 최소 3개 이상의 항목이 필요합니다. 현재: \(checklistItems.count)개"))
+            issues.append(issue(.warning, "검토 메모: 체크리스트 항목이 적습니다. 요청을 충족하는지 확인하세요. 현재: \(checklistItems.count)개"))
         }
 
         if containsSensitiveKeywords(trimmed) {
@@ -161,7 +161,7 @@ enum ResultVerifier {
         let requiredSections = ["회의 목적", "논의사항", "결정사항", "액션아이템"]
         let foundSections = requiredSections.filter { content.contains($0) }.count
         if foundSections < 2 {
-            issues.append(issue(.error, "회의록에 필수 섹션이 부족합니다. 필수 섹션(회의 목적, 논의사항, 결정사항, 액션아이템) 중 최소 2개 이상 필요합니다. 현재: \(foundSections)개"))
+            issues.append(issue(.warning, "검토 메모: 고정 회의록 섹션이 적습니다. 실제 회의 내용과 사용자 요청을 우선해 확인하세요. 현재: \(foundSections)개"))
         }
 
         if containsSensitiveKeywords(trimmed) {
@@ -194,7 +194,7 @@ enum ResultVerifier {
         let hasTask = trimmed.contains("할일") || trimmed.contains("할 일")
 
         if actionItems.count < 2 && !(hasResponsibility && hasDeadline && hasTask) {
-            issues.append(issue(.error, "액션아이템은 최소 2개 이상의 항목 또는 담당/할일/기한 정보를 포함해야 합니다. 현재 항목: \(actionItems.count)개"))
+            issues.append(issue(.warning, "검토 메모: 액션아이템 구조가 단순합니다. 담당자나 기한 정보가 실제로 제공됐는지 확인하세요. 현재 항목: \(actionItems.count)개"))
         }
 
         if containsSensitiveKeywords(trimmed) {
