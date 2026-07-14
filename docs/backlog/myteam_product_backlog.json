@@ -2371,7 +2371,8 @@
         "The app-hosted XCTest runner now suppresses product startup and executes the suite; listening QA remains separate and cannot be inferred from XCTest.",
         "Queue, interruptCurrent, and dropIfBusy policies are now explicit; actual overlapping-character listening QA remains required.",
         "Status remains partial until manual audio QA and a release-equivalent Supertonic3 inference smoke are recorded."
-        ,"The source-aligned boundary shaper is an immediate machine-tone removal measure, not the final forced-alignment syllable renderer."
+        ,"The source-aligned boundary shaper is an immediate machine-tone removal measure, not the final forced-alignment syllable renderer.",
+        "Luna's rise on a vocative such as '시우!' and the falling tone at the end of a longer greeting remain listening-based Supertonic3 prosody tuning work; conversation prompt changes do not claim to fix audible pitch contours."
       ]
     },
     {
@@ -2385,6 +2386,8 @@
         "include": [
           "AppKit responder-chain keyboard forwarding",
           "Single manual background-drag path",
+          "Dedicated header-only drag handle for the team collaboration window",
+          "Deferred, non-animated status-window sizing outside SwiftUI layout",
           "Drag feedback only after actual movement",
           "Static architecture regression checks"
         ],
@@ -2399,7 +2402,9 @@
         "Text fields and keyboard shortcuts receive key events",
         "Manual frame movement is not followed by a second AppKit movement",
         "A click without movement does not play drag/drop feedback",
-        "status_window continues to disable background dragging"
+        "status_window continues to disable background dragging",
+        "The team collaboration header moves the window while body controls remain interactive",
+        "Status-window resizing does not re-enter AppKit layout"
       ],
       "failure_conditions": [
         "FloatingPanel keyDown drops events",
@@ -2425,13 +2430,16 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "b37bc65",
+        "commit_sha": "b37bc65, 1d3ba52",
         "files_changed": [
           "MyTeam/FloatingPanel.swift",
+          "MyTeam/TeamStatusView.swift",
+          "MyTeam/AgentWindowManager.swift",
+          "scripts/validate_conversation_presentation.py",
           "scripts/audit_product_completeness.py",
           "docs/qa/TTSRuntimeQualityAudit.md"
         ],
-        "validation_summary": "2026-07-11: Keyboard forwarding, single-path manual dragging, movement-gated feedback, product audit, and Debug test-bundle build are implemented. Partial because direct keyboard, click, drag, status-window, and multi-display interaction QA remain unverified.",
+        "validation_summary": "2026-07-15: Commit 1d3ba52 keeps complex-panel background dragging disabled, adds a header-only AppKit drag handle that updates only the window origin, and defers status-window sizing to the next main runloop without animation. Product/release validators, 101 XCTest cases, git diff check, Debug build, and universal Release build passed. Partial remains because the current handle still requires a real-mouse retest and the prior layout-recursion log must be checked on a normally signed Xcode launch.",
         "screenshots": []
       },
       "notes": [
@@ -2496,9 +2504,15 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "54a8756, e1dab81",
+        "commit_sha": "54a8756, e1dab81, 1d3ba52",
         "files_changed": [
           "MyTeam/AgentChatView.swift",
+          "MyTeam/AIModelPolicy.swift",
+          "MyTeam/AIService.swift",
+          "MyTeam/AgentWindowManager.swift",
+          "MyTeam/AgentPersona.swift",
+          "MyTeam/AgentQuickSwitchBar.swift",
+          "MyTeam/AgentToolKit.swift",
           "MyTeam/ChatComponents.swift",
           "MyTeam/ConversationMemory.swift",
           "MyTeam/TeamOrchestrator.swift",
@@ -2512,12 +2526,13 @@
           "scripts/validate_conversation_presentation.py",
           "scripts/validate_myteam_release.py"
         ],
-        "validation_summary": "2026-07-14: The complete release validator set, 97 XCTest cases, git diff check, Worker syntax check, and sequential Debug/Release builds passed. Status remains partial until manual chat pacing, hover/focus copy behavior, result-action hit testing, and TTS/display wording QA are recorded.",
+        "validation_summary": "2026-07-15: Commit 1d3ba52 fixes personal-chat width/header collapse, normalizes legacy Korean room labels, prevents unverified runtime model promotion, removes Gemini keys from request URLs, bounds prompt memory, and suppresses professional-role prompting for quick/casual replies. A regression test proves Luna's casual policy does not inject marketing role text while work mode still does. The complete release validator set, 101 XCTest cases, git diff check, Debug build, and universal Release build passed. Status remains partial until a normally signed runtime confirms Luna response pacing, audible TTS, copy interactions, and real pointer behavior.",
         "screenshots": []
       },
       "notes": [
         "The three-bubble cap never truncates content; overflow stays in the third bubble.",
         "The copy action always uses the complete stored message text, not the rendered preview.",
+        "The earlier awkward Luna greeting was traced to always-on role and specialty hints plus unverified Debug model discovery, not to the provider API capability itself.",
         "APPTERM, NW, ART, and HOME release evidence remain unchanged until manual QA is run."
       ]
     }
