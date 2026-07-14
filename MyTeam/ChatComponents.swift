@@ -1,7 +1,30 @@
 import SwiftUI
 import AppKit
 
-enum ConversationReplyMode: Sendable, Equatable {
+enum KoreanText {
+    static func conversationTitle(with name: String) -> String {
+        "\(name)\(hasFinalConsonant(name) ? "과" : "와")의 대화"
+    }
+
+    static func personalRoomDisplayName(roomName: String, agentName: String) -> String {
+        let compact = roomName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let legacyDefaults = [
+            "\(agentName)과의 대화",
+            "\(agentName)와의 대화",
+            "\(agentName) 대화 1"
+        ]
+        return legacyDefaults.contains(compact) ? "기본 대화" : compact
+    }
+
+    private static func hasFinalConsonant(_ text: String) -> Bool {
+        guard let scalar = text.unicodeScalars.last else { return false }
+        let value = Int(scalar.value)
+        guard (0xAC00...0xD7A3).contains(value) else { return false }
+        return (value - 0xAC00) % 28 != 0
+    }
+}
+
+nonisolated enum ConversationReplyMode: Sendable, Equatable {
     case quick
     case casual
     case work

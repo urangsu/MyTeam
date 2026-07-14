@@ -198,7 +198,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 }
 
             } catch {
-                print("[SpeechManager] 🚨 SSE 스트림 에러: \(error.localizedDescription)")
+                AppLog.warning("[SpeechManager] SSE stream failed: \(AIErrorPresentation.userMessage(for: error))")
             }
 
             await MainActor.run { self.isSpeaking = false }

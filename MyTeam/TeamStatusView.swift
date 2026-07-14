@@ -88,8 +88,9 @@ struct TeamStatusView: View {
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(textColor.opacity(0.8))
                 }
-                
-                Spacer()
+                .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+                .contentShape(Rectangle())
+                .overlay(WindowDragHandle())
                 
                 HStack(spacing: 14) {
                     if !isCollapsed {
@@ -126,12 +127,6 @@ struct TeamStatusView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
-            .contentShape(Rectangle())
-            .onTapGesture(count: 2) {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    isCollapsed.toggle()
-                }
-            }
             
             if !isCollapsed {
                 // ── 첫 실행 온보딩 (WP1: 통합 카드, 팀 패널에서는 간결하게만) ──

@@ -18,6 +18,76 @@ final class LLMRouterTests: XCTestCase {
         XCTAssertEqual(ConversationReplyPolicy.mode(for: "이 원리를 하나씩 자세히 설명해줘"), .explicitDetail)
     }
 
+    func test_personalConversationLabels_useCorrectKoreanParticlesAndCompactDefaults() {
+        XCTAssertEqual(KoreanText.conversationTitle(with: "루나"), "루나와의 대화")
+        XCTAssertEqual(KoreanText.conversationTitle(with: "핀"), "핀과의 대화")
+        XCTAssertEqual(
+            KoreanText.personalRoomDisplayName(roomName: "루나과의 대화", agentName: "루나"),
+            "기본 대화"
+        )
+        XCTAssertEqual(
+            KoreanText.personalRoomDisplayName(roomName: "루나 대화 1", agentName: "루나"),
+            "기본 대화"
+        )
+        XCTAssertEqual(
+            KoreanText.personalRoomDisplayName(roomName: "캠페인 아이디어", agentName: "루나"),
+            "캠페인 아이디어"
+        )
+    }
+
+    func test_runtimeNeverPromotesDiscoveredModelsWithoutSmokeEvidence() {
+        XCTAssertFalse(AIModelPolicy.dynamicModelDiscoveryAllowed)
+        XCTAssertFalse(AIModelPolicy.modelOverrideAllowed)
+    }
+
+    func test_casualPersonalPolicy_doesNotInjectProfessionalRole() {
+        let luna = AgentWindowManager.AgentConfig(
+            id: "agent_2",
+            name: "루나",
+            role: "마케터/콘텐츠 기획",
+            emoji: "🐰",
+            color: .pink,
+            isPremium: false,
+            status: "준비",
+            spriteName: nil,
+            fallbackImageName: "루나_profile",
+            dragEmoji: "😆",
+            dragRotation: 10,
+            dragSoundName: "Blow",
+            dropSoundName: "Pop"
+        )
+        let toolPolicy = ToolPolicy.evaluate("안녕")
+
+        let casualPolicy = ConversationMemory.buildPersonalResponsePolicy(
+            for: luna,
+            toolPolicy: toolPolicy,
+            replyMode: .quick
+        )
+        XCTAssertFalse(casualPolicy.contains("마케터"))
+        XCTAssertFalse(casualPolicy.contains("마케팅 전략"))
+        XCTAssertTrue(casualPolicy.contains("후속 질문을 붙이지 마세요"))
+
+        let workPolicy = ConversationMemory.buildPersonalResponsePolicy(
+            for: luna,
+            toolPolicy: toolPolicy,
+            replyMode: .work
+        )
+        XCTAssertTrue(workPolicy.contains("마케터"))
+        XCTAssertTrue(workPolicy.contains("마케팅 전략"))
+    }
+
+    func test_aiErrorPresentation_returnsActionableMessageWithoutRawRequestDetails() {
+        let timeout = AIErrorPresentation.userMessage(for: URLError(.timedOut))
+        XCTAssertTrue(timeout.contains("시간이 초과"))
+        XCTAssertFalse(timeout.contains("https://"))
+
+        let unavailableModel = AIErrorPresentation.userMessage(
+            for: AIServiceError.httpError(404, "https://example.test?key=secret")
+        )
+        XCTAssertTrue(unavailableModel.contains("모델"))
+        XCTAssertFalse(unavailableModel.contains("secret"))
+    }
+
     func test_casualBubbleSegmenter_preservesContentWithinThreeParagraphs() {
         let original = "그랬구나. 오늘은 정말 힘들었겠다. 우선 숨부터 천천히 쉬어봐. 물도 한 잔 마시고. 내가 옆에서 같이 정리해볼게."
         let segments = CasualBubbleSegmenter.segments(from: original, mode: .casual)
@@ -475,7 +545,8 @@ final class LLMRouterTests: XCTestCase {
             "가장자리 밖으로 밀어 넣은 창도 tuck 의도로 처리해야 함"
         )
         XCTAssertFalse(PanelTuckGeometry.isTuckAllowed(agentID: "team"))
-        XCTAssertTrue(PanelTuckGeometry.isTuckAllowed(agentID: "chat_single"))
+        XCTAssertFalse(PanelTuckGeometry.isTuckAllowed(agentID: "chat_single"))
+        XCTAssertTrue(PanelTuckGeometry.isTuckAllowed(agentID: "swap_window"))
 
         let tucked = PanelTuckGeometry.tuckedFrame(for: frame, edge: .left, visibleFrame: visible)
         XCTAssertEqual(tucked.maxX, visible.minX + PanelTuckGeometry.revealThickness, accuracy: 0.001)

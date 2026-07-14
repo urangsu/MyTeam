@@ -128,7 +128,7 @@ struct AgentChatView: View {
             if let firstRoom = agentRooms.first {
                 agentRoomID = firstRoom.id
             } else {
-                manager.createAgentRoom(name: "\(config.name) 대화 1", agentID: targetID)
+                manager.createAgentRoom(name: "기본 대화", agentID: targetID)
                 // last?.id 대신 agentID로 정확히 찾아 오염 방지
                 agentRoomID = manager.rooms.last(where: {
                     $0.agentIDs.count == 1 && $0.agentIDs[0] == targetID
@@ -138,7 +138,7 @@ struct AgentChatView: View {
             DispatchQueue.main.async {
                 if manager.savedChatWindowSize() == nil {
                     manager.updateChatWindowSize(id: config.id, width: viewWidth, height: 520,
-                                                  minSize: NSSize(width: 300, height: 480))
+                                                  minSize: NSSize(width: 520, height: 480))
                 }
             }
         }
@@ -146,7 +146,7 @@ struct AgentChatView: View {
             if !isMinimized {
                 let w = newValue == 0 ? 300 : viewWidth
                 DispatchQueue.main.async {
-                    manager.updateChatWindowWidth(id: config.id, width: w)
+                    manager.updateChatWindowWidth(id: config.id, width: max(520, w))
                 }
             }
         }
@@ -154,7 +154,7 @@ struct AgentChatView: View {
             if selectedTab == 1 && !isMinimized {
                 let w = viewWidth
                 DispatchQueue.main.async {
-                    manager.updateChatWindowWidth(id: config.id, width: w)
+                    manager.updateChatWindowWidth(id: config.id, width: max(520, w))
                 }
             }
         }
@@ -167,7 +167,7 @@ struct AgentChatView: View {
                                                   minSize: NSSize(width: 240, height: minimizedHeight))
                 } else {
                     manager.updateChatWindowSize(id: config.id, width: viewWidth, height: 520,
-                                                  minSize: NSSize(width: 300, height: 480))
+                                                  minSize: NSSize(width: 520, height: 480))
                 }
             }
         }
@@ -180,8 +180,7 @@ struct AgentChatView: View {
                         agentRoomID = firstRoom.id
                     } else {
                         // 방이 없으면 즉시 생성 (팀 채팅방으로 fallback 방지)
-                        let agentName = manager.activeAgents.first(where: { $0.id == id })?.name ?? "대화"
-                        manager.createAgentRoom(name: "\(agentName) 대화 1", agentID: id)
+                        manager.createAgentRoom(name: "기본 대화", agentID: id)
                         // rooms.last 대신 agentIDs 기반 정확 탐색 — 오염 방지
                         if let created = manager.rooms.last(where: {
                             $0.agentIDs.count == 1 && $0.agentIDs[0] == id
@@ -267,32 +266,17 @@ struct AgentChatView: View {
                     .clipShape(Circle())
             }
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(currentAgent.name)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(textColor)
-                if selectedTab == 1 {
-                    // agentRoomID 기준만 — currentRoomID fallback 금지
-                    if let rid = agentRoomID,
-                       let room = manager.rooms.first(where: { $0.id == rid }) {
-                        Text(room.name)
-                            .font(.system(size: 11))
-                            .foregroundColor(config.color.opacity(0.8))
-                    }
-                } else {
-                    Text(currentAgent.role)
-                        .font(.system(size: 11))
-                        .foregroundColor(subTextColor)
-                }
-            }
+            Text(currentAgent.name)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(textColor)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
 
             Spacer()
 
-            HStack(spacing: 16) {
+            HStack(spacing: 11) {
                 Button(action: {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        selectedTab = (selectedTab == 0 ? 1 : 0)
-                    }
+                    selectedTab = (selectedTab == 0 ? 1 : 0)
                 }) {
                     Image(systemName: selectedTab == 0 ? "bubble.left.and.bubble.right.fill" : "person.fill")
                         .font(.system(size: 14))
@@ -312,66 +296,28 @@ struct AgentChatView: View {
                 }
 
                 if selectedTab == 1 {
-                    // 메시지 편집 모드 토글
-                    Button(action: {
-                        withAnimation { isEditingMessages.toggle() }
-                        if isEditingMessages { isEditingProjects = false }
-                    }) {
-                        Image(systemName: isEditingMessages ? "checkmark.circle.fill" : "trash")
-                            .font(.system(size: 14))
-                            .foregroundColor(isEditingMessages ? currentAgent.color : subTextColor)
-                    }
-
-                    Button(action: {
-                        if speechManager.isRecording {
-                            speechManager.stopRecording()
-                        } else {
-                            // Round 278 3-A: 거부 시 안내 메시지 표시
-                            speechManager.requestAuthorization { authorized, guidance in
-                                if authorized {
-                                    self.preRecordText = self.inputText
-                                    speechManager.startRecording()
-                                } else if let guidance,
-                                          let roomID = manager.currentRoomID {
-                                    manager.addChatLog(
-                                        roomID: roomID,
-                                        agentID: "system",
-                                        agentName: "시스템",
-                                        text: guidance,
-                                        isUser: false
-                                    )
-                                }
-                            }
+                    Menu {
+                        Button(isEditingMessages ? "메시지 정리 끝내기" : "메시지 정리") {
+                            isEditingMessages.toggle()
+                            if isEditingMessages { isEditingProjects = false }
                         }
-                    }) {
-                        if speechManager.isStarting {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .orange))
-                                .scaleEffect(0.65)
-                                .frame(width: 18, height: 18)
-                        } else {
-                            Image(systemName: speechManager.isRecording ? "stop.circle.fill" : "mic")
-                                .foregroundColor(speechManager.isRecording ? .red : subTextColor)
+                        Button(speechManager.isRecording ? "음성 입력 중지" : "음성으로 입력") {
+                            toggleVoiceInput()
                         }
+                        .disabled(speechManager.isStarting)
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(subTextColor)
                     }
-                    .disabled(speechManager.isStarting)
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .help("대화 도구")
                 }
-
-                Button(action: {
-                    manager.tuckChatWindow(edge: .bottom)
-                }) {
-                    Image(systemName: "dock.rectangle")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(subTextColor.opacity(0.8))
-                }
-                .help("Dock 위에 살짝 숨기기")
-                .accessibilityLabel("채팅창 숨기기")
 
                 // 최소화 (팀 협업창 스타일)
                 Button(action: {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                        isMinimized = true
-                    }
+                    isMinimized = true
                 }) {
                     Image(systemName: "arrow.down.right.and.arrow.up.left")
                         .font(.system(size: 13, weight: .medium))
@@ -394,6 +340,27 @@ struct AgentChatView: View {
         .padding(.horizontal, 18)
         .padding(.vertical, 14)
         .background(bgColor)
+    }
+
+    private func toggleVoiceInput() {
+        if speechManager.isRecording {
+            speechManager.stopRecording()
+            return
+        }
+        speechManager.requestAuthorization { authorized, guidance in
+            if authorized {
+                preRecordText = inputText
+                speechManager.startRecording()
+            } else if let guidance, let roomID = agentRoomID {
+                manager.addChatLog(
+                    roomID: roomID,
+                    agentID: "system",
+                    agentName: "시스템",
+                    text: guidance,
+                    isUser: false
+                )
+            }
+        }
     }
 
     // MARK: - 프로젝트 사이드바
@@ -473,7 +440,7 @@ struct AgentChatView: View {
         isEditingMessages = false
         renamingRoomID = nil
         let targetID = activeAgentID ?? config.id
-        let newName = "\(currentAgent.name) 대화 \(agentRooms.count + 1)"
+        let newName = agentRooms.isEmpty ? "기본 대화" : "대화 \(agentRooms.count + 1)"
         manager.createAgentRoom(name: newName, agentID: targetID)
         // agentRooms는 computed이므로, rooms.filter 결과에서 마지막 방을 직접 찾음
         DispatchQueue.main.async {
@@ -518,7 +485,7 @@ struct AgentChatView: View {
                                     .onSubmit { commitRename() }
                                     .onExitCommand { renamingRoomID = nil }
                             } else {
-                                Text(room.name)
+                                Text(KoreanText.personalRoomDisplayName(roomName: room.name, agentName: currentAgent.name))
                                     .font(.system(size: 11, weight: isSelected ? .bold : .medium))
                                     .foregroundColor(isSelected ? currentAgent.color : textColor.opacity(0.7))
                                     .lineLimit(1)
@@ -1089,10 +1056,7 @@ struct AgentChatView: View {
     func _ensureRoomID() -> UUID? {
         let targetID = activeAgentID ?? config.id
         if let rid = agentRoomID { return rid }
-        let agentName = manager.activeAgents.first(where: { $0.id == targetID })?.name
-            ?? manager.allAvailableAgents.first(where: { $0.id == targetID })?.name
-            ?? config.name
-        manager.createAgentRoom(name: "\(agentName) 대화 1", agentID: targetID)
+        manager.createAgentRoom(name: "기본 대화", agentID: targetID)
         let newRoomID = manager.rooms.last(where: {
             $0.agentIDs.count == 1 && $0.agentIDs[0] == targetID
         })?.id
@@ -1122,10 +1086,7 @@ struct AgentChatView: View {
         if let rid = agentRoomID {
             roomID = rid
         } else {
-            let agentName = manager.activeAgents.first(where: { $0.id == targetID })?.name
-                ?? manager.allAvailableAgents.first(where: { $0.id == targetID })?.name
-                ?? config.name
-            manager.createAgentRoom(name: "\(agentName) 대화 1", agentID: targetID)
+            manager.createAgentRoom(name: "기본 대화", agentID: targetID)
             guard let newRoomID = manager.rooms.last(where: {
                 $0.agentIDs.count == 1 && $0.agentIDs[0] == targetID
             })?.id else { return }
@@ -1367,15 +1328,25 @@ struct AgentChatView: View {
                             agentConfig = cfg.withProvider(best)
                         }
                     }
+                    let replyMode = ConversationReplyPolicy.mode(
+                        for: fullText,
+                        forceWork: requiresToolUse || needsEvidence || !attachments.isEmpty
+                    )
                     let personalPolicy = ConversationMemory.buildPersonalResponsePolicy(
                         for: agentConfig,
-                        toolPolicy: toolPolicy
+                        toolPolicy: toolPolicy,
+                        replyMode: replyMode
                     )
-                    let groundedText = fullText
-                        + manager.roomProfileContext(roomID: roomID)
-                        + manager.scopedMemoryContext(agentName: agentName, roomID: roomID)
-                        + personalPolicy
-                        + toolEvidence.promptContext
+                    let groundedText = """
+                    [사용자 발화]
+                    \(fullText)
+
+                    [응답 참고 정보 - 사용자 발화가 아님]
+                    \(manager.roomProfileContext(roomID: roomID))
+                    \(manager.scopedMemoryContext(agentName: agentName, roomID: roomID))
+                    \(personalPolicy)
+                    \(toolEvidence.promptContext)
+                    """
 
                     let ttsProvider = TTSRoutingPolicy.selectedProvider()
                     AppLog.info("[DirectChat] response targetAgentID=\(targetID) provider=\(agentConfig?.llmProvider.displayName ?? "nil") silentMode=\(manager.isSilentMode) ttsProvider=\(ttsProvider?.rawValue ?? "nil")")
@@ -1384,10 +1355,6 @@ struct AgentChatView: View {
                     let llmRequestID = UUID()
                     let sourceSnippetCharacters = toolEvidence.promptContext.count
                     let fileContextCharacters = attachmentContext.count
-                    let replyMode = ConversationReplyPolicy.mode(
-                        for: fullText,
-                        forceWork: requiresToolUse || needsEvidence || !attachments.isEmpty
-                    )
                     // ── 순차 스트리밍: SpeechManager 백그라운드 위임 ──
                     if manager.isSilentMode || ttsProvider == nil {
                         let tokenStream = AIService.shared.getResponseStream(
@@ -1536,7 +1503,7 @@ struct AgentChatView: View {
                                             roomID: roomIDAtSend,
                                             agentID: "system",
                                             agentName: "시스템",
-                                            text: error.localizedDescription,
+                                            text: AIErrorPresentation.userMessage(for: error),
                                             isUser: false
                                         )
                                     }
@@ -1558,7 +1525,13 @@ struct AgentChatView: View {
                 } catch {
                     _ = await MainActor.run {
                         manager.typingAgentIDs.remove(targetID)
-                        manager.addChatLog(roomID: roomID, agentID: "system", agentName: "시스템", text: error.localizedDescription, isUser: false)
+                        manager.addChatLog(
+                            roomID: roomID,
+                            agentID: "system",
+                            agentName: "시스템",
+                            text: AIErrorPresentation.userMessage(for: error),
+                            isUser: false
+                        )
                     }
                 }
             }

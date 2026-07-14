@@ -209,7 +209,11 @@ def main() -> None:
         floating_panel,
         re.S,
     )
-    if not background_drag_match or 'case "status_window":' not in background_drag_match.group("body") or "return false" not in background_drag_match.group("body"):
+    background_drag_body = background_drag_match.group("body") if background_drag_match else ""
+    status_drag_disabled = bool(
+        re.search(r'case\s+[^:\n]*"status_window"[^:\n]*:\s*\n\s*return false', background_drag_body)
+    )
+    if not status_drag_disabled:
         failures.append("status_window must explicitly disable background dragging")
     key_down_match = re.search(
         r"override func keyDown\(with event: NSEvent\) \{(?P<body>.*?)\n    \}",
@@ -259,12 +263,26 @@ def main() -> None:
             failures.append(f"{path} must fail closed when artifact index registration fails")
     if "try data.write(to: persistenceURL, options: .atomic)" not in recent_artifact_persistence:
         failures.append("RecentArtifactIndexPersistence must write snapshots atomically")
-    status_size_match = re.search(
+    status_size_entry_match = re.search(
         r"func updateStatusWindowSize\(width:\s*CGFloat,\s*height:\s*CGFloat\)\s*\{(?P<body>.*?)\n    \}",
         agent_window_manager,
         re.S,
     )
-    if not status_size_match or "PanelTuckGeometry.clampedExpandedFrame" not in status_size_match.group("body"):
+    status_size_apply_match = re.search(
+        r"private func applyStatusWindowSize\(width:\s*CGFloat,\s*height:\s*CGFloat\)\s*\{(?P<body>.*?)\n    \}",
+        agent_window_manager,
+        re.S,
+    )
+    entry_defers_layout = (
+        status_size_entry_match
+        and "DispatchQueue.main.async" in status_size_entry_match.group("body")
+        and "applyStatusWindowSize" in status_size_entry_match.group("body")
+    )
+    apply_clamps_frame = (
+        status_size_apply_match
+        and "PanelTuckGeometry.clampedExpandedFrame" in status_size_apply_match.group("body")
+    )
+    if not entry_defers_layout or not apply_clamps_frame:
         failures.append("updateStatusWindowSize must clamp the resized status window inside the visible screen")
 
     for token in ["case checkedEmpty", "case partial"]:
@@ -299,7 +317,7 @@ def main() -> None:
         failures.append("AIModelPolicy must define an auditable dynamic model discovery gate")
     else:
         discovery_body = discovery_match.group("body")
-        if "#if DEBUG" not in discovery_body or "#else" not in discovery_body or "return false" not in discovery_body:
+        if "return false" not in discovery_body or "return true" in discovery_body:
             failures.append("Release must not auto-promote models discovered from provider model lists")
 
     for token in [

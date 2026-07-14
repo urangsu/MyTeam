@@ -625,7 +625,8 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         // 중복 제거
         facts = NSOrderedSet(array: facts).array.compactMap { $0 as? String }
         guard !facts.isEmpty else { return "" }
-        return "\n[기억해야 할 핵심 정보]\n" + facts.map { "- \($0)" }.joined(separator: "\n") + "\n"
+        let boundedFacts = facts.suffix(12).map { String($0.prefix(240)) }
+        return "\n[기억해야 할 핵심 정보]\n" + boundedFacts.map { "- \($0)" }.joined(separator: "\n") + "\n"
     }
 
     func roomProfileContext(roomID: UUID?) -> String {
@@ -1116,7 +1117,12 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
             position: NSPoint(x: x, y: y),
             size: NSSize(width: 600, height: 520)
         )
-        panel.minSize = NSSize(width: 300, height: 480)
+        panel.minSize = NSSize(width: 520, height: 480)
+        if panel.frame.width < 520 {
+            var normalizedFrame = panel.frame
+            normalizedFrame.size.width = 600
+            panel.setFrame(normalizedFrame, display: false)
+        }
 
         let view = AgentChatView(
             config: routedConfig,
@@ -1124,7 +1130,10 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
             isPersonalChat: isPersonalChat
         ).environmentObject(self)
 
-        panel.contentViewController = NSHostingController(rootView: view)
+        let hostingController = NSHostingController(rootView: view)
+        // The panel owns its frame. SwiftUI must not resize the NSWindow during layout.
+        hostingController.sizingOptions = []
+        panel.contentViewController = hostingController
         applySettingsPresentationPolicy(to: panel)
         panel.orderFront(nil)
         panel.makeKey()
@@ -1317,8 +1326,8 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         }
         
         let screenRect = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 800, height: 600)
-        let width: CGFloat = 300
-        let height: CGFloat = 550
+        let width: CGFloat = firstLaunchState.shouldShowOnboarding ? 380 : 320
+        let height: CGFloat = firstLaunchState.shouldShowOnboarding ? 640 : 520
         
         // 화면 중앙 오른쪽에 배치
         let panel = FloatingPanel(
@@ -1331,7 +1340,9 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         )
         panel.contentMinSize = NSSize(width: 300, height: 400)
         let view = TeamStatusView().environmentObject(self)
-        panel.contentViewController = NSHostingController(rootView: view)
+        let hostingController = NSHostingController(rootView: view)
+        hostingController.sizingOptions = []
+        panel.contentViewController = hostingController
 
         applySettingsPresentationPolicy(to: panel)
         panel.orderFront(nil)
@@ -1531,16 +1542,24 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
 
     // MARK: - 창 크기 동적 조절 (SwiftUI에서 호출)
     func updateStatusWindowSize(width: CGFloat, height: CGFloat) {
+        DispatchQueue.main.async { [weak self] in
+            self?.applyStatusWindowSize(width: width, height: height)
+        }
+    }
+
+    private func applyStatusWindowSize(width: CGFloat, height: CGFloat) {
         guard let panel = statusPanel else { return }
-        if panel.tuckState.tuckedEdge != nil { panel.restoreFromTuck() }
+        let requestedSize = NSSize(width: width, height: height)
+        guard abs(panel.frame.width - requestedSize.width) > 0.5
+                || abs(panel.frame.height - requestedSize.height) > 0.5 else { return }
         var frame = panel.frame
         let heightDiff = height - frame.size.height
         frame.origin.y -= heightDiff
-        frame.size = NSSize(width: width, height: height)
+        frame.size = requestedSize
         if let visibleFrame = visibleFrame(for: frame) {
             frame = PanelTuckGeometry.clampedExpandedFrame(frame, visibleFrame: visibleFrame)
         }
-        panel.setFrame(frame, display: true, animate: true)
+        panel.setFrame(frame, display: true)
         panel.savePosition()
     }
 
@@ -1550,36 +1569,26 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
     
     func updateChatWindowWidth(id: String, width: CGFloat) {
         guard let panel = chatPanels["chat_single"] else { return }
-        if panel.tuckState.tuckedEdge != nil { panel.restoreFromTuck() }
         var frame = panel.frame
         frame.size.width = width
-        panel.setFrame(frame, display: true, animate: true)
+        panel.setFrame(frame, display: true)
     }
 
     func updateChatWindowSize(id: String, width: CGFloat, height: CGFloat, minSize: NSSize? = nil) {
         guard let panel = chatPanels["chat_single"] else { return }
-        if panel.tuckState.tuckedEdge != nil { panel.restoreFromTuck() }
         if let minSize { panel.minSize = minSize }
         var frame = panel.frame
         // y 좌표를 조정해서 창이 위로 줄어들지 않고 아래쪽이 고정되게
         let heightDiff = height - frame.size.height
         frame.origin.y -= heightDiff
         frame.size = NSSize(width: width, height: height)
-        panel.setFrame(frame, display: true, animate: true)
-    }
-
-    func tuckChatWindow(edge: PanelTuckEdge = .bottom) {
-        chatPanels["chat_single"]?.tuck(to: edge)
-    }
-
-    func restoreChatWindowFromTuck() {
-        chatPanels["chat_single"]?.restoreFromTuck()
+        panel.setFrame(frame, display: true)
     }
 
     func savedChatWindowSize() -> NSSize? {
         let width = UserDefaults.standard.double(forKey: "chat_single_w")
         let height = UserDefaults.standard.double(forKey: "chat_single_h")
-        guard width >= 300, height >= 480 else { return nil }
+        guard width >= 520, height >= 480 else { return nil }
         return NSSize(width: width, height: height)
     }
 
@@ -2030,10 +2039,9 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         }
 
         // 3. 없으면 새 개인 대화방 생성
-        let agentName = activeAgents.first(where: { $0.id == agentID })?.name ?? "팀원"
         var newRoom = ChatRoom(
             id: UUID(),
-            name: "\(agentName)과의 대화",
+            name: "기본 대화",
             messages: [],
             agentIDs: [agentID],
             createdAt: Date()

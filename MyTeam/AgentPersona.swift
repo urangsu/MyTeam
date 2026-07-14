@@ -77,3 +77,48 @@ enum AIServiceError: LocalizedError {
         }
     }
 }
+
+nonisolated enum AIErrorPresentation {
+    static func userMessage(for error: Error) -> String {
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .timedOut:
+                return "응답 시간이 초과되었습니다. 연결 상태와 선택한 AI 모델을 확인한 뒤 다시 시도해 주세요."
+            case .notConnectedToInternet, .networkConnectionLost, .cannotConnectToHost:
+                return "AI 서비스에 연결하지 못했습니다. 네트워크 연결을 확인한 뒤 다시 시도해 주세요."
+            case .cancelled:
+                return "응답 생성을 중단했습니다."
+            default:
+                return "AI 서비스 응답을 받지 못했습니다. 잠시 후 다시 시도해 주세요."
+            }
+        }
+        guard let aiError = error as? AIServiceError else {
+            return "AI 서비스 응답을 받지 못했습니다. 잠시 후 다시 시도해 주세요."
+        }
+        switch aiError {
+        case .noAPIKeys:
+            return "사용할 AI 연결이 없습니다. 설정의 연결 탭에서 AI 서비스를 연결해 주세요."
+        case .invalidProvider:
+            return "선택한 AI 서비스를 사용할 수 없습니다. 연결 설정을 확인해 주세요."
+        case .networkError(let nested):
+            return userMessage(for: nested)
+        case .invalidResponse:
+            return "AI 응답이 비어 있거나 올바르지 않습니다. 선택한 모델을 다시 확인해 주세요."
+        case .httpError(let code, _):
+            switch code {
+            case 401, 403:
+                return "AI 연결 인증을 확인해 주세요."
+            case 404:
+                return "선택한 AI 모델을 사용할 수 없습니다. 설정에서 검증된 모델을 선택해 주세요."
+            case 408:
+                return "응답 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요."
+            case 429:
+                return "AI 서비스 요청 한도에 도달했습니다. 잠시 후 다시 시도해 주세요."
+            case 500...599:
+                return "AI 서비스가 일시적으로 응답하지 않습니다. 잠시 후 다시 시도해 주세요."
+            default:
+                return "AI 응답을 생성하지 못했습니다. 연결과 모델 설정을 확인해 주세요."
+            }
+        }
+    }
+}

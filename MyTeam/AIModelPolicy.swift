@@ -6,34 +6,21 @@ import Foundation
 // 직접 모델 문자열을 여기서 정의하지 않는다.
 
 enum AIModelPolicy {
-    /// DEBUG에서만 수동 모델 오버라이드 허용 (UserDefaults 설정 경로)
+    /// Runtime model overrides require exact-model readiness evidence.
     static var modelOverrideAllowed: Bool {
-        #if DEBUG
-        return true
-        #else
         return false
-        #endif
     }
 
     /// Dynamic discovery is diagnostic-only until discovered models pass a real generation smoke.
     /// Release uses explicitly reviewed registry IDs so a higher-version preview or incompatible
     /// endpoint model cannot become the production default merely by appearing in /models.
     static var dynamicModelDiscoveryAllowed: Bool {
-        #if DEBUG
-        return true
-        #else
         return false
-        #endif
     }
 
-    /// DEBUG: UserDefaults 오버라이드 허용. Release: registry primary 사용.
+    /// The default stays on the reviewed registry model until readiness validation succeeds.
     static var defaultModel: String {
-        #if DEBUG
-        let override = UserDefaults.standard.string(forKey: "MyTeam.DebugModelOverride") ?? ""
-        return override.isEmpty ? LLMModelRegistry.OpenAI.primary : override
-        #else
         return LLMModelRegistry.OpenAI.primary
-        #endif
     }
 
     /// provider별 floor fallback model ID.

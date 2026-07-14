@@ -343,13 +343,14 @@ enum ToolEvidenceService {
         guard !apiKey.isEmpty else { return ("", []) }
 
         let modelId = LLMConfigCatalog.shared.configs[.gemini]?.selectedModelId ?? LLMModelRegistry.Gemini.primary
-        guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(modelId):generateContent?key=\(apiKey)") else {
+        guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(modelId):generateContent") else {
             return ("", [])
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
         request.timeoutInterval = 18
 
         let body: [String: Any] = [

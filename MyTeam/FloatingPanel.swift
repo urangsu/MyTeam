@@ -32,7 +32,6 @@ enum PanelTuckGeometry {
     nonisolated static let snapThreshold: CGFloat = 32
     nonisolated static let revealThickness: CGFloat = 22
     nonisolated static let allowedPanelIDs: Set<String> = [
-        "chat_single",
         "swap_window"
     ]
 
@@ -335,7 +334,7 @@ class FloatingPanel: NSPanel {
 
     private var allowsBackgroundDragging: Bool {
         switch agentID {
-        case "status_window":
+        case "status_window", "chat_single":
             return false
         default:
             return true
@@ -435,6 +434,46 @@ struct WindowDragBlocker: NSViewRepresentable {
         }
         override func mouseDragged(with event: NSEvent) {
             // 흡수 — 창이동 없음
+        }
+    }
+}
+
+// MARK: - WindowDragHandle
+// Background dragging stays disabled for complex panels. A dedicated header
+// handle moves only the window origin so controls, layout, and scroll views
+// never compete with window movement.
+struct WindowDragHandle: NSViewRepresentable {
+    func makeNSView(context: Context) -> DragView { DragView() }
+    func updateNSView(_ nsView: DragView, context: Context) {}
+
+    final class DragView: NSView {
+        private var mouseDownLocation: NSPoint?
+        private var windowOriginAtMouseDown: NSPoint?
+
+        override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+        override func mouseDown(with event: NSEvent) {
+            mouseDownLocation = NSEvent.mouseLocation
+            windowOriginAtMouseDown = window?.frame.origin
+        }
+
+        override func mouseDragged(with event: NSEvent) {
+            guard let window, let mouseDownLocation, let windowOriginAtMouseDown else { return }
+            let current = NSEvent.mouseLocation
+            window.setFrameOrigin(NSPoint(
+                x: windowOriginAtMouseDown.x + current.x - mouseDownLocation.x,
+                y: windowOriginAtMouseDown.y + current.y - mouseDownLocation.y
+            ))
+        }
+
+        override func mouseUp(with event: NSEvent) {
+            mouseDownLocation = nil
+            windowOriginAtMouseDown = nil
+            (window as? FloatingPanel)?.savePosition()
+        }
+
+        override func resetCursorRects() {
+            addCursorRect(bounds, cursor: .openHand)
         }
     }
 }

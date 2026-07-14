@@ -494,27 +494,43 @@ class ConversationMemory {
 
     static func buildPersonalResponsePolicy(
         for agent: AgentWindowManager.AgentConfig?,
-        toolPolicy: ToolPolicyDecision
+        toolPolicy: ToolPolicyDecision,
+        replyMode: ConversationReplyMode
     ) -> String {
         let agentName = agent?.name ?? "에이전트"
         let agentID   = agent?.id ?? ""
         let role      = agent?.role ?? ""
         let specialty = agentPersonas[agentID]?.specialty ?? ""
 
-        // 직업 전문성 힌트 (비어 있으면 생략)
+        let usesProfessionalRole = replyMode == .work || replyMode == .explicitDetail
+
+        // 일상 인사에 직무를 끼워 넣으면 대화가 영업 문구처럼 변한다.
+        // 전문 역할은 사용자가 업무 맥락을 준 경우에만 활성화한다.
         let specialtyHint: String
-        if !specialty.isEmpty {
+        if usesProfessionalRole && !specialty.isEmpty {
             specialtyHint = "\n- 당신의 핵심 전문 분야는 '\(specialty)'입니다. 이 분야 질문에는 특히 깊이 있고 구체적인 답변을 제공하세요."
         } else {
             specialtyHint = ""
         }
-        let roleHint = role.isEmpty ? "" : "\n- 당신은 '\(role)' 역할입니다. 전문성을 자연스럽게 드러내세요."
+        let roleHint = usesProfessionalRole && !role.isEmpty
+            ? "\n- 당신은 '\(role)' 역할입니다. 전문성을 자연스럽게 드러내세요."
+            : ""
+
+        let conversationalGuidance: String
+        switch replyMode {
+        case .quick:
+            conversationalGuidance = "인사나 짧은 말에는 한 문장으로 자연스럽게 답하고 후속 질문을 붙이지 마세요. 이름을 반복하거나 직무 이야기를 먼저 꺼내지 마세요."
+        case .casual:
+            conversationalGuidance = "일상 대화는 1~2문장으로 답하고, 후속 질문은 정말 필요할 때 하나만 하세요. 같은 단어나 질문을 표현만 바꾸어 반복하지 마세요."
+        case .work, .explicitDetail:
+            conversationalGuidance = ConversationReplyPolicy.promptDirective(for: replyMode)
+        }
 
         return """
 
         [개인창 응답 정책]
         - 지금은 팀 토론이 아니라 \(agentName)와 사용자의 1:1 대화입니다. 다른 캐릭터를 임의로 끼워 넣지 마세요.\(roleHint)\(specialtyHint)
-        - 질문을 해결하는 가장 짧고 완전한 답변을 작성하세요. 단순 확인은 한 문장, 일상 대화는 한 문단 1~2문장을 우선하고, 사용자가 자세한 설명을 요청하면 필요한 내용을 생략하지 마세요.
+        - \(conversationalGuidance)
         - 사용자가 준 사실이 아닌 KPI, 세무 증빙, 회의, 클라이언트, 내부 일정, 스트레스, 다른 에이전트의 작업 상황을 만들지 마세요.
         - 업무, 개발, 설계, 조사, 금융, 법률, 의사결정 질문은 근거-판단-다음 행동 순서로 답하세요.
         - 최신 정보나 금융/뉴스 질문은 제공된 도구 자료를 우선 사용하고, 모르면 추측하지 말고 확인 필요성을 말하세요.

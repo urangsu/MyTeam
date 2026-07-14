@@ -230,7 +230,9 @@ final class AIService {
 
     @MainActor @Published var isProcessing: Bool = false
     private let session = URLSession.shared
-    private let streamStartupTimeoutSeconds: TimeInterval = 8
+    // Eight seconds caused healthy first-token responses to fail on transiently busy providers.
+    // The UI already shows immediate typing feedback, so allow a bounded 15-second startup window.
+    private let streamStartupTimeoutSeconds: TimeInterval = 15
 
     // MARK: - ModelRouter: SSE 스트림 (에이전트별 LLM 동적 라우팅)
     /// agentConfig.llmProvider에 따라 Gemini / Claude / OpenRouter로 라우팅
@@ -689,12 +691,13 @@ final class AIService {
         guard !isGeminiProviderCoolingDown() else {
             throw AIServiceError.httpError(429, "Gemini provider cooldown — discovery 스킵")
         }
-        guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models?key=\(apiKey)") else {
+        guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models") else {
             throw AIServiceError.invalidResponse
         }
         
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        request.setValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
         
         let (data, response) = try await session.data(for: request)
         guard let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200 else {
@@ -876,6 +879,8 @@ final class AIService {
         - 정상적인 제품·기술 질문은 회피하지 말고 사용자에게 필요한 수준으로 솔직하게 답하세요.
         - 답변 앞에 이름이나 직업 태그를 붙이지 마세요.
         - 일상 대화는 간결하게, 업무 답변은 필요한 근거와 다음 행동이 드러날 만큼 작성하세요.
+        - 직업과 전문 분야는 사용자 요청에 관련될 때만 드러내고, 단순 인사에 먼저 꺼내지 마세요.
+        - 짧은 인사에는 후속 질문을 덧붙이지 말고, 같은 단어나 질문을 반복하지 마세요.
         - 사용자를 탓하거나 훈계하지 말고, 실패 시 원인과 가능한 다음 방법을 차분히 제시하세요.
 
         [캐릭터 역할과 말투]
@@ -933,7 +938,7 @@ final class AIService {
                 }
                 let modelToUse = resolved.modelID
 
-                guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(modelToUse):streamGenerateContent?key=\(apiKey)&alt=sse") else {
+                guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(modelToUse):streamGenerateContent?alt=sse") else {
                     continuation.finish(throwing: AIServiceError.invalidResponse)
                     return
                 }
@@ -942,6 +947,7 @@ final class AIService {
                 request.timeoutInterval = streamStartupTimeoutSeconds
                 request.httpMethod = "POST"
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.setValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
 
                 let messages = buildGeminiMessages(text: text, chatHistory: chatHistory)
                 let systemPrompt = buildSystemPrompt(agentID: agentID)
@@ -1621,13 +1627,14 @@ final class AIService {
     }
 
     private func geminiQuickCall(prompt: String, apiKey: String, modelId: String) async throws -> String {
-        guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(modelId):generateContent?key=\(apiKey)") else {
+        guard let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(modelId):generateContent") else {
             throw AIServiceError.invalidResponse
         }
         let body: [String: Any] = ["contents": [["role": "user", "parts": [["text": prompt]]]]]
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
         req.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (data, _) = try await session.data(for: req)
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],

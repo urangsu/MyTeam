@@ -50,7 +50,7 @@ struct AgentQuickSwitchBar: View {
                                 )
                             }
                             .buttonStyle(.plain)
-                            .help("\(agent.name)과의 대화")
+                            .help(KoreanText.conversationTitle(with: agent.name))
                         }
                     }
                     .padding(.horizontal, 6)
