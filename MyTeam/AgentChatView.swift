@@ -786,12 +786,14 @@ struct AgentChatView: View {
                             .foregroundColor(.green.opacity(0.9))
                     }
 
-                    SkillResultRendererView(
-                        skillID: log.skillID,
-                        text: log.text,
-                        isDarkMode: manager.isDarkMode,
-                        isUser: log.isUser
-                    )
+                    CopyableMessageContainer(text: log.text, isUser: log.isUser) {
+                        SkillResultRendererView(
+                            skillID: log.skillID,
+                            text: log.text,
+                            isDarkMode: manager.isDarkMode,
+                            isUser: log.isUser
+                        )
+                    }
 
                     if let ts = Optional(log.timestamp) {
                         Text(ts, style: .time)
@@ -805,15 +807,17 @@ struct AgentChatView: View {
         } else if WorkResultCardView.shouldRenderAsWorkResult(log.text, isUser: log.isUser) {
             // WP2-lite: 긴 어시스턴트 응답 → 전체 너비 업무 결과 카드
             let relatedArtifacts = artifactsForLog(log, roomID: agentRoomID ?? UUID())
-            WorkResultCardView(
-                text: log.text,
-                agentName: log.agentName,
-                agentColor: currentAgent.color,
-                isDarkMode: manager.isDarkMode,
-                timestamp: log.timestamp,
-                sources: log.sources,
-                relatedArtifacts: relatedArtifacts
-            )
+            CopyableMessageContainer(text: log.text, isUser: false) {
+                WorkResultCardView(
+                    text: log.text,
+                    agentName: log.agentName,
+                    agentColor: currentAgent.color,
+                    isDarkMode: manager.isDarkMode,
+                    timestamp: log.timestamp,
+                    sources: log.sources,
+                    relatedArtifacts: relatedArtifacts
+                )
+            }
         } else {
             // Regular chat: use standard message bubble
             IMMessageBubble(

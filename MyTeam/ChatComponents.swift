@@ -190,6 +190,75 @@ enum ChatTypingPolicy {
     }
 }
 
+struct CopyableMessageContainer<Content: View>: View {
+    let text: String
+    let isUser: Bool
+    private let content: Content
+
+    @State private var isHovered = false
+    @State private var didCopy = false
+    @State private var resetTask: Task<Void, Never>?
+    @FocusState private var isFocused: Bool
+
+    init(
+        text: String,
+        isUser: Bool,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.text = text
+        self.isUser = isUser
+        self.content = content()
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 5) {
+            if isUser { copyButton }
+            content
+            if !isUser { copyButton }
+        }
+        .contentShape(Rectangle())
+        .textSelection(.enabled)
+        .contextMenu {
+            Button(action: copyFullText) {
+                Label("복사", systemImage: "doc.on.doc")
+            }
+        }
+        .focusable()
+        .focused($isFocused)
+        .onHover { isHovered = $0 }
+        .onDisappear {
+            resetTask?.cancel()
+            resetTask = nil
+        }
+    }
+
+    private var copyButton: some View {
+        Button(action: copyFullText) {
+            Image(systemName: didCopy ? "checkmark" : "doc.on.doc")
+                .font(.system(size: 10, weight: .semibold))
+                .frame(width: 20, height: 20)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(didCopy ? Color.green : Color.secondary)
+        .opacity(isHovered || isFocused || didCopy ? 1 : 0.28)
+        .help(didCopy ? "복사됨" : "메시지 복사")
+        .accessibilityLabel("메시지 복사")
+    }
+
+    private func copyFullText() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        didCopy = true
+        resetTask?.cancel()
+        resetTask = Task {
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run { didCopy = false }
+        }
+    }
+}
+
 struct TypewriterTextView: View {
     let text: String
     let isEnabled: Bool
@@ -346,47 +415,33 @@ struct IMMessageBubble: View {
 
                 // Assistant/System 메시지는 Markdown으로 렌더링, User는 plain text 유지
                 if isUser {
-                    Text(text)
-                        .font(.system(size: 14))
-                        .foregroundColor(.white)
-                        .textSelection(.enabled)
+                    CopyableMessageContainer(text: text, isUser: true) {
+                        Text(text)
+                            .font(.system(size: 14))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 9)
+                            .background(RoundedRectangle(cornerRadius: 18).fill(bubbleBg))
+                            .frame(maxWidth: 260, alignment: .trailing)
+                    }
+                } else {
+                    CopyableMessageContainer(text: text, isUser: false) {
+                        Group {
+                            if enableTypewriter {
+                                TypewriterTextView(text: text)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(isDarkMode ? .white.opacity(0.92) : .black.opacity(0.88))
+                            } else {
+                                MarkdownTextView(
+                                    text: text,
+                                    isDarkMode: isDarkMode
+                                )
+                            }
+                        }
                         .padding(.horizontal, 14)
                         .padding(.vertical, 9)
                         .background(RoundedRectangle(cornerRadius: 18).fill(bubbleBg))
-                        .frame(maxWidth: 260, alignment: .trailing)
-                        .contextMenu {
-                            Button(action: {
-                                NSPasteboard.general.clearContents()
-                                NSPasteboard.general.setString(text, forType: .string)
-                            }) {
-                                Label("복사", systemImage: "doc.on.doc")
-                            }
-                        }
-                } else {
-                    Group {
-                        if enableTypewriter {
-                            TypewriterTextView(text: text)
-                                .font(.system(size: 14))
-                                .foregroundColor(isDarkMode ? .white.opacity(0.92) : .black.opacity(0.88))
-                        } else {
-                            MarkdownTextView(
-                                text: text,
-                                isDarkMode: isDarkMode
-                            )
-                        }
-                    }
-                    .textSelection(.enabled)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 9)
-                    .background(RoundedRectangle(cornerRadius: 18).fill(bubbleBg))
-                    .frame(maxWidth: 480, alignment: .leading)
-                    .contextMenu {
-                        Button(action: {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(text, forType: .string)
-                        }) {
-                            Label("복사", systemImage: "doc.on.doc")
-                        }
+                        .frame(maxWidth: 480, alignment: .leading)
                     }
                 }
 

@@ -675,15 +675,15 @@ struct TeamStatusView: View {
                                     Text(log.isUser ? "나" : log.agentName)
                                         .font(.system(size: 9, weight: .bold))
                                         .foregroundColor(log.isUser ? .blue : (manager.allAvailableAgents.first(where: { $0.id == log.agentID })?.color ?? .orange))
-                                    if log.skillID != nil {
-                                        SkillResultRendererView(
-                                            skillID: log.skillID,
-                                            text: log.text,
-                                            isDarkMode: manager.isDarkMode,
-                                            isUser: log.isUser
-                                        )
-                                    } else {
-                                        if log.isUser {
+                                    CopyableMessageContainer(text: log.text, isUser: log.isUser) {
+                                        if log.skillID != nil {
+                                            SkillResultRendererView(
+                                                skillID: log.skillID,
+                                                text: log.text,
+                                                isDarkMode: manager.isDarkMode,
+                                                isUser: log.isUser
+                                            )
+                                        } else if log.isUser {
                                             Text(log.text)
                                                 .font(.system(size: 12))
                                                 .foregroundColor(.white)
