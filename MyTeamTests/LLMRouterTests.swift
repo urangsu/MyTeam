@@ -10,6 +10,46 @@ import PDFKit
 
 final class LLMRouterTests: XCTestCase {
 
+    func test_conversationReplyPolicy_distinguishesCasualWorkAndExplicitDetail() {
+        XCTAssertEqual(ConversationReplyPolicy.mode(for: "안녕"), .quick)
+        XCTAssertEqual(ConversationReplyPolicy.mode(for: "오늘 너무 힘들었어"), .casual)
+        XCTAssertEqual(ConversationReplyPolicy.mode(for: "삼성전자 공시와 재무를 정리해줘"), .work)
+        XCTAssertEqual(ConversationReplyPolicy.mode(for: "이 원리를 하나씩 자세히 설명해줘"), .explicitDetail)
+    }
+
+    func test_casualBubbleSegmenter_preservesContentWithinThreeParagraphs() {
+        let original = "그랬구나. 오늘은 정말 힘들었겠다. 우선 숨부터 천천히 쉬어봐. 물도 한 잔 마시고. 내가 옆에서 같이 정리해볼게."
+        let segments = CasualBubbleSegmenter.segments(from: original, mode: .casual)
+
+        XCTAssertLessThanOrEqual(segments.count, 3)
+        XCTAssertTrue(segments.allSatisfy { !$0.contains("\n") })
+        XCTAssertEqual(
+            CasualBubbleSegmenter.normalizedForComparison(segments.joined(separator: " ")),
+            CasualBubbleSegmenter.normalizedForComparison(original)
+        )
+        XCTAssertTrue(segments.last?.contains("같이 정리해볼게") == true)
+    }
+
+    func test_casualBubbleSegmenter_doesNotBreakURLDateOrDecimal() {
+        let original = "링크는 https://example.com/a.b?x=1.2 이야. 날짜는 2026.07.14이고 값은 3.14야. 확인해볼게."
+        let segments = CasualBubbleSegmenter.segments(from: original, mode: .casual)
+
+        XCTAssertTrue(segments.contains { $0.contains("https://example.com/a.b?x=1.2") })
+        XCTAssertTrue(segments.contains { $0.contains("2026.07.14") })
+        XCTAssertTrue(segments.contains { $0.contains("3.14") })
+        XCTAssertEqual(
+            CasualBubbleSegmenter.normalizedForComparison(segments.joined(separator: " ")),
+            CasualBubbleSegmenter.normalizedForComparison(original)
+        )
+    }
+
+    func test_casualBubbleSegmenter_keepsWorkAndExplicitDetailTogether() {
+        let text = "첫 번째 설명입니다. 두 번째 설명입니다. 세 번째 설명입니다."
+
+        XCTAssertEqual(CasualBubbleSegmenter.segments(from: text, mode: .work), [text])
+        XCTAssertEqual(CasualBubbleSegmenter.segments(from: text, mode: .explicitDetail), [text])
+    }
+
     @MainActor
     func test_executionTracePreservesActualProviderModelAndFallback() async throws {
         let requestID = UUID()

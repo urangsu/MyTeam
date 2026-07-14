@@ -1380,6 +1380,10 @@ struct AgentChatView: View {
                     let llmRequestID = UUID()
                     let sourceSnippetCharacters = toolEvidence.promptContext.count
                     let fileContextCharacters = attachmentContext.count
+                    let replyMode = ConversationReplyPolicy.mode(
+                        for: fullText,
+                        forceWork: requiresToolUse || needsEvidence || !attachments.isEmpty
+                    )
                     // ── 순차 스트리밍: SpeechManager 백그라운드 위임 ──
                     if manager.isSilentMode || ttsProvider == nil {
                         let tokenStream = AIService.shared.getResponseStream(
@@ -1394,43 +1398,51 @@ struct AgentChatView: View {
                         )
                         AppLog.debug("[DirectChat] silent getResponseStream opened targetAgentID=\(targetIDAtSend)")
                         var accumulated = ""
-                        var assistantMessageID: UUID?
+                        var assistantMessageIDs: [UUID] = []
                         for try await token in tokenStream {
                             accumulated += token
 
-                            let visibleText = accumulated.trimmingCharacters(in: .whitespacesAndNewlines)
-                            guard !visibleText.isEmpty else { continue }
+                            let visibleSegments = CasualBubbleSegmenter.streamingSegments(
+                                from: accumulated,
+                                mode: replyMode
+                            )
+                            guard !visibleSegments.isEmpty else { continue }
                             await MainActor.run {
-                                if let assistantMessageID {
-                                    manager.updateChatLogText(
-                                        roomID: roomIDAtSend,
-                                        messageID: assistantMessageID,
-                                        text: visibleText,
-                                        sources: toolEvidence.sources
-                                    )
-                                } else {
-                                    assistantMessageID = manager.addChatLog(
+                                for (index, segment) in visibleSegments.enumerated() {
+                                    let segmentSources = index == 0 ? toolEvidence.sources : []
+                                    if index < assistantMessageIDs.count {
+                                        manager.updateChatLogText(
+                                            roomID: roomIDAtSend,
+                                            messageID: assistantMessageIDs[index],
+                                            text: segment,
+                                            sources: segmentSources
+                                        )
+                                    } else if let messageID = manager.addChatLog(
                                         roomID: roomIDAtSend,
                                         agentID: targetIDAtSend,
                                         agentName: agentName,
-                                        text: visibleText,
+                                        text: segment,
                                         isUser: false,
-                                        sources: toolEvidence.sources
-                                    )
+                                        sources: segmentSources
+                                    ) {
+                                        assistantMessageIDs.append(messageID)
+                                    }
                                 }
                             }
                         }
                         let executionMetadata = await LLMExecutionTraceStore.shared.metadata(for: llmRequestID)
                         await MainActor.run {
                             manager.typingAgentIDs.remove(targetIDAtSend)
-                            if let assistantMessageID, let executionMetadata {
-                                manager.updateChatLogLLMMetadata(
-                                    roomID: roomIDAtSend,
-                                    messageID: assistantMessageID,
-                                    metadata: executionMetadata
-                                )
+                            if let executionMetadata {
+                                for messageID in assistantMessageIDs {
+                                    manager.updateChatLogLLMMetadata(
+                                        roomID: roomIDAtSend,
+                                        messageID: messageID,
+                                        metadata: executionMetadata
+                                    )
+                                }
                             }
-                            if assistantMessageID == nil {
+                            if assistantMessageIDs.isEmpty {
                                 manager.addChatLog(
                                     roomID: roomIDAtSend,
                                     agentID: "system",
@@ -1455,31 +1467,37 @@ struct AgentChatView: View {
                         let ttsStream = AsyncThrowingStream<String, Error> { continuation in
                             let relayTask = Task {
                                 var accumulated = ""
-                                var assistantMessageID: UUID?
+                                var assistantMessageIDs: [UUID] = []
                                 do {
                                     for try await token in sourceStream {
                                         accumulated += token
                                         continuation.yield(token)
 
-                                        let visibleText = accumulated.trimmingCharacters(in: .whitespacesAndNewlines)
-                                        guard !visibleText.isEmpty else { continue }
+                                        let visibleSegments = CasualBubbleSegmenter.streamingSegments(
+                                            from: accumulated,
+                                            mode: replyMode
+                                        )
+                                        guard !visibleSegments.isEmpty else { continue }
                                         await MainActor.run {
-                                            if let assistantMessageID {
-                                                manager.updateChatLogText(
-                                                    roomID: roomIDAtSend,
-                                                    messageID: assistantMessageID,
-                                                    text: visibleText,
-                                                    sources: toolEvidence.sources
-                                                )
-                                            } else {
-                                                assistantMessageID = manager.addChatLog(
+                                            for (index, segment) in visibleSegments.enumerated() {
+                                                let segmentSources = index == 0 ? toolEvidence.sources : []
+                                                if index < assistantMessageIDs.count {
+                                                    manager.updateChatLogText(
+                                                        roomID: roomIDAtSend,
+                                                        messageID: assistantMessageIDs[index],
+                                                        text: segment,
+                                                        sources: segmentSources
+                                                    )
+                                                } else if let messageID = manager.addChatLog(
                                                     roomID: roomIDAtSend,
                                                     agentID: targetIDAtSend,
                                                     agentName: agentName,
-                                                    text: visibleText,
+                                                    text: segment,
                                                     isUser: false,
-                                                    sources: toolEvidence.sources
-                                                )
+                                                    sources: segmentSources
+                                                ) {
+                                                    assistantMessageIDs.append(messageID)
+                                                }
                                             }
                                         }
                                     }
@@ -1487,14 +1505,16 @@ struct AgentChatView: View {
                                     let executionMetadata = await LLMExecutionTraceStore.shared.metadata(for: llmRequestID)
                                     await MainActor.run {
                                         manager.typingAgentIDs.remove(targetIDAtSend)
-                                        if let assistantMessageID, let executionMetadata {
-                                            manager.updateChatLogLLMMetadata(
-                                                roomID: roomIDAtSend,
-                                                messageID: assistantMessageID,
-                                                metadata: executionMetadata
-                                            )
+                                        if let executionMetadata {
+                                            for messageID in assistantMessageIDs {
+                                                manager.updateChatLogLLMMetadata(
+                                                    roomID: roomIDAtSend,
+                                                    messageID: messageID,
+                                                    metadata: executionMetadata
+                                                )
+                                            }
                                         }
-                                        if assistantMessageID == nil {
+                                        if assistantMessageIDs.isEmpty {
                                             manager.addChatLog(
                                                 roomID: roomIDAtSend,
                                                 agentID: "system",
