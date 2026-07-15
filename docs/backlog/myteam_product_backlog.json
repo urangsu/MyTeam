@@ -2328,7 +2328,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "81513fd, ebdfd8a, c9a3dc5",
+        "commit_sha": "81513fd, ebdfd8a, c9a3dc5, b710734",
         "files_changed": [
           "MyTeam/SupertonicProsodyTextProcessor.swift",
           "MyTeam/BubbleSpeechCharacterTuningPolicy.swift",
@@ -2365,7 +2365,7 @@
           "docs/qa/TTSRuntimeQualityAudit.md",
           "docs/qa/BubbleSpeechCharacterLanguageQA.md"
         ],
-        "validation_summary": "2026-07-16: Commit c9a3dc5 replaces punctuation-presence buffer flushing with a shared completed-sentence/remainder parser, so an SSE chunk such as '아 정말? 시우 덕분에 루나도 잠시' speaks only the completed question and retains the unfinished tail. The 105-test suite, release validators, git diff check, Debug build, and universal Release build passed. Partial remains because real-device listening comparison, Luna and Chiko prosody tuning, release-equivalent inference, and App Store redistribution approval are not verified.",
+        "validation_summary": "2026-07-16: Commit b710734 preserves SSE whitespace and quote lookahead, serializes realtime sentence ingestion through the same speech queue used by ordinary character lines, and separates ingestion-task ownership from active playback-task ownership. The full 109-test suite, release validators, git diff check, Debug build, and universal Release build passed. Partial remains because concurrent stream interruption, audible sentence transitions, Luna and Chiko prosody, and release-equivalent inference still require listening QA.",
         "screenshots": []
       },
       "notes": [
@@ -2505,7 +2505,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "54a8756, e1dab81, 1d3ba52, c9a3dc5",
+        "commit_sha": "54a8756, e1dab81, 1d3ba52, c9a3dc5, b710734",
         "files_changed": [
           "MyTeam/AgentChatView.swift",
           "MyTeam/AIModelPolicy.swift",
@@ -2515,6 +2515,7 @@
           "MyTeam/AgentQuickSwitchBar.swift",
           "MyTeam/AgentToolKit.swift",
           "MyTeam/ChatComponents.swift",
+          "MyTeam/ChatModels.swift",
           "MyTeam/ConversationMemory.swift",
           "MyTeam/TeamOrchestrator.swift",
           "MyTeam/TeamStatusView.swift",
@@ -2527,7 +2528,7 @@
           "scripts/validate_conversation_presentation.py",
           "scripts/validate_myteam_release.py"
         ],
-        "validation_summary": "2026-07-16: Commit c9a3dc5 changes non-work typing from 26 characters per second to a 600-strokes-per-minute estimate of 5 Hangul characters per second, sequences team bubbles after the prior sentence finishes typing, shares sentence boundaries with streaming TTS, and removes Markdown emphasis markers from casual display and speech. The complete release validator set, 105 XCTest cases, git diff check, Debug build, and universal Release build passed. Status remains partial until a normally signed runtime confirms perceived pacing, audible sentence transitions, copy interactions, and real pointer behavior.",
+        "validation_summary": "2026-07-16: Commit b710734 preserves meaningful single asterisks while removing paired casual emphasis, handles SSE whitespace, closing quotes, numbered sentences, and email addresses behaviorally, aligns casual bubble splitting with the 100-character typewriter ceiling, and persists an explicit presentation style so work messages are never slowed by the casual typewriter. The full 109-test suite, release validators, git diff check, Debug build, and universal Release build passed. Status remains partial until a normally signed runtime confirms perceived pacing, audible sentence transitions, copy interactions, and real pointer behavior.",
         "screenshots": []
       },
       "notes": [
