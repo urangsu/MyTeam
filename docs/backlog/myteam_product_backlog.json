@@ -2328,12 +2328,13 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "81513fd, ebdfd8a",
+        "commit_sha": "81513fd, ebdfd8a, c9a3dc5",
         "files_changed": [
           "MyTeam/SupertonicProsodyTextProcessor.swift",
           "MyTeam/BubbleSpeechCharacterTuningPolicy.swift",
           "MyTeam/BubbleSpeechSynthesizer.swift",
           "MyTeam/SpeechManager.swift",
+          "MyTeam/ChatComponents.swift",
           "MyTeam/TTSLabView.swift",
           "MyTeam/AudioPlaybackService.swift",
           "MyTeam/AudioFeatureSnapshot.swift",
@@ -2364,7 +2365,7 @@
           "docs/qa/TTSRuntimeQualityAudit.md",
           "docs/qa/BubbleSpeechCharacterLanguageQA.md"
         ],
-        "validation_summary": "2026-07-13: Commits 81513fd and ebdfd8a removed the repeated-grain product renderer, preserve the full Supertonic3 waveform, and remove user-initiated QoS escalation from audio completion callbacks. The team table displays the exact playing text, and 22 supportive completion/recovery variants bring the catalog to 154 lines with unique IDs. The focused 42-test suite, TTS/runtime/release validators, precommit, git diff check, Debug build, and Release build passed. Partial remains because real-device listening comparison across speakers, Chiko retuning, release-equivalent inference, and App Store redistribution approval are not verified.",
+        "validation_summary": "2026-07-16: Commit c9a3dc5 replaces punctuation-presence buffer flushing with a shared completed-sentence/remainder parser, so an SSE chunk such as '아 정말? 시우 덕분에 루나도 잠시' speaks only the completed question and retains the unfinished tail. The 105-test suite, release validators, git diff check, Debug build, and universal Release build passed. Partial remains because real-device listening comparison, Luna and Chiko prosody tuning, release-equivalent inference, and App Store redistribution approval are not verified.",
         "screenshots": []
       },
       "notes": [
@@ -2504,7 +2505,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "54a8756, e1dab81, 1d3ba52",
+        "commit_sha": "54a8756, e1dab81, 1d3ba52, c9a3dc5",
         "files_changed": [
           "MyTeam/AgentChatView.swift",
           "MyTeam/AIModelPolicy.swift",
@@ -2526,7 +2527,7 @@
           "scripts/validate_conversation_presentation.py",
           "scripts/validate_myteam_release.py"
         ],
-        "validation_summary": "2026-07-15: Commit 1d3ba52 fixes personal-chat width/header collapse, normalizes legacy Korean room labels, prevents unverified runtime model promotion, removes Gemini keys from request URLs, bounds prompt memory, and suppresses professional-role prompting for quick/casual replies. A regression test proves Luna's casual policy does not inject marketing role text while work mode still does. The complete release validator set, 101 XCTest cases, git diff check, Debug build, and universal Release build passed. Status remains partial until a normally signed runtime confirms Luna response pacing, audible TTS, copy interactions, and real pointer behavior.",
+        "validation_summary": "2026-07-16: Commit c9a3dc5 changes non-work typing from 26 characters per second to a 600-strokes-per-minute estimate of 5 Hangul characters per second, sequences team bubbles after the prior sentence finishes typing, shares sentence boundaries with streaming TTS, and removes Markdown emphasis markers from casual display and speech. The complete release validator set, 105 XCTest cases, git diff check, Debug build, and universal Release build passed. Status remains partial until a normally signed runtime confirms perceived pacing, audible sentence transitions, copy interactions, and real pointer behavior.",
         "screenshots": []
       },
       "notes": [
