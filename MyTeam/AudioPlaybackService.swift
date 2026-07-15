@@ -208,7 +208,7 @@ actor AudioPlaybackService: AudioPlayable {
                 AppLog.info("[AudioPlayback] ▶️ 재생 개시 (streamId=\(command.streamId.prefix(12)), queuedBuffers=\(queuedBufferCount), engineRunning=\(engine.isRunning), playerPlaying=\(playerNode.isPlaying))")
             }
 
-            // 🎯 Perfect Lip-Sync: 첫 버퍼가 재생 큐에 등록되는 찰나에 UI 말풍선 트리거
+            // Notify speaking-state UI when the first buffer starts playback.
             // wasAlreadyPlaying=false → 이 버퍼가 재생 개시 버퍼 → 텍스트 표시 타이밍 정확
             if !wasAlreadyPlaying, let callback = lipSyncCallback {
                 Task { @MainActor in callback() }
@@ -421,7 +421,7 @@ actor AudioPlaybackService: AudioPlayable {
                 + "(streamId=\(streamId.prefix(12)), frames=\(frameCount), sr=\(sampleRate)Hz, char=\(characterName))")
         }
 
-        // 7. playerNode.play() 이후 콜백 — 립싱크 원칙 준수
+        // 7. Notify playback lifecycle observers after playerNode.play().
         if let cb = onPlaybackStarted {
             await MainActor.run { cb() }
         }

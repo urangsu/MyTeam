@@ -14,7 +14,7 @@ struct PlaybackCommand: @unchecked Sendable {
     let rate: Float
     let volume: Float
     
-    // 🎯 Perfect Lip-Sync 페이로드
+    // Playback lifecycle callback used for speaking-state UI.
     // 이 버퍼의 PCM 데이터가 실제로 스피커에서 재생을 시작하는 순간에 트리거되는 콜백
     let textPayload: String?
     let onPlaybackStarted: (@MainActor @Sendable () -> Void)?

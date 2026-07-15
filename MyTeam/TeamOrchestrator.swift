@@ -701,11 +701,26 @@ class TeamOrchestrator {
                             for: priorBubble
                         )
                         if typingDuration > 0 {
-                            try? await Task.sleep(nanoseconds: typingDuration)
+                            do {
+                                try await Task.sleep(nanoseconds: typingDuration)
+                            } catch {
+                                return discussionSucceeded
+                            }
                         }
                     }
+                    guard !Task.isCancelled else { return discussionSucceeded }
                     await MainActor.run {
-                        manager.addChatLog(roomID: roomID, agentID: agent.id, agentName: agent.displayName, text: bubbleText, isUser: false, sources: index == 0 ? sources : [])
+                        manager.addChatLog(
+                            roomID: roomID,
+                            agentID: agent.id,
+                            agentName: agent.displayName,
+                            text: bubbleText,
+                            isUser: false,
+                            sources: index == 0 ? sources : [],
+                            presentationStyle: replyMode == .quick || replyMode == .casual
+                                ? .casualTypewriter
+                                : .immediate
+                        )
                         if index == 0, !manager.isSilentMode && !didSpeakInThisDiscussion {
                             SpeechManager.shared.speak(text: bubbleText, agentID: agent.id, characterName: agent.displayName)
                             didSpeakInThisDiscussion = true

@@ -689,7 +689,8 @@ struct TeamStatusView: View {
                                                 )
                                         } else {
                                             Group {
-                                                if ChatTypingPolicy.shouldAnimate(
+                                                if log.presentationStyle == .casualTypewriter,
+                                                   ChatTypingPolicy.shouldAnimate(
                                                     text: log.text,
                                                     isUser: log.isUser,
                                                     isSkillResult: log.skillID != nil

@@ -61,11 +61,11 @@ actor SpeechRequestQueue {
     }
 }
 
-// MARK: - SpeechManager (Perfect Lip-Sync + Barge-in 지원 백그라운드 오케스트레이터)
+// MARK: - SpeechManager (serialized playback + barge-in background orchestrator)
 // 핵심 원칙:
-//   ✅텍스트는 오디오가 스피커에서 재생 시작될 때만 화면에 표시됨
-//   ✅SSE 청크 분리/Supertonic3 추론/AudioPlayback 배관은 모두 백그라운드에서만 동작
-//   ✅UI(AgentChatView)는 onPlaybackStarted 콜백을 받아 말풍선을 그리기만 함
+//   - Text rendering never waits for TTS synthesis or playback.
+//   - SSE ingestion only extracts complete sentences; the shared queue owns all playback.
+//   - Playback lifecycle callbacks drive speaking state, not chat message visibility.
 final class SpeechManager: ObservableObject, @unchecked Sendable {
     static let shared = SpeechManager()
 
@@ -81,7 +81,9 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
     private let capture = AudioCaptureService.shared
     private let playback = AudioPlaybackService.shared
 
-    private var currentStreamTask: Task<Void, Never>? = nil
+    private var currentPlaybackTask: Task<Void, Never>? = nil
+    private var realtimeIngestionTask: Task<Void, Never>? = nil
+    private var realtimeIngestionID: UUID? = nil
     private var currentSpeakingAgentID: String? = nil
     private var currentSpeechRequestID: UUID? = nil
     private let speechQueue = SpeechRequestQueue()
@@ -112,32 +114,39 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         speechWorkerTask?.cancel()
     }
 
-    // MARK: - 🎯 Perfect Lip-Sync SSE 스트리밍 파이프라인
-    /// AIService SSE 토큰 스트림 → 문장 분리 → Supertonic3 추론 → 오디오 재생 시작 시점에 UI 텍스트 표시
+    // MARK: - SSE sentence ingestion
+    /// AIService SSE token stream -> complete sentence extraction -> shared speech queue.
     ///
     /// - Parameters:
     ///   - agentID: 말하는 에이전트 ID
     ///   - characterName: TTS 레퍼런스 오디오 선택에 사용되는 이름
     ///   - tokenStream: AIService.getResponseStream()에서 반환된 SSE 토큰 스트림
-    ///   - onAudioPlaybackStarted: 오디오가 스피커에서 '재생 시작'될 때 호출되는 UI 콜백
-    ///                             인자: 해당 청크의 원본 텍스트 (말풍선에 표시할 문장)
     func processRealtimeSSEStream(
         agentID: String,
         characterName: String,
         tokenStream: AsyncThrowingStream<String, Error>,
-        replyMode: ConversationReplyMode,
-        onAudioPlaybackStarted: @escaping @Sendable (String) -> Void
+        replyMode: ConversationReplyMode
     ) {
-        let interruptedTask = currentStreamTask
-        currentStreamTask = nil
-        currentSpeechRequestID = nil
-        currentSpeakingAgentID = agentID
-        currentStreamTask = Task.detached(priority: .userInitiated) { [weak self] in
+        let previousIngestion = realtimeIngestionTask
+        let ingestionID = UUID()
+        realtimeIngestionID = ingestionID
+        realtimeIngestionTask = Task(priority: .userInitiated) { [weak self] in
             guard let self else { return }
-            await self.finishInterruption(of: interruptedTask, clearPending: true)
+            defer {
+                if self.realtimeIngestionID == ingestionID {
+                    self.realtimeIngestionTask = nil
+                    self.realtimeIngestionID = nil
+                }
+            }
+            previousIngestion?.cancel()
+            await previousIngestion?.value
+
+            let interruptedPlayback = self.currentPlaybackTask
+            self.currentPlaybackTask = nil
+            self.currentSpeechRequestID = nil
+            await self.finishInterruption(of: interruptedPlayback, clearPending: true)
             guard !Task.isCancelled else { return }
             var sentenceBuffer = ""
-            let playbackStreamID = UUID().uuidString
 
             do {
                 for try await token in tokenStream {
@@ -152,27 +161,18 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                             completedSentence,
                             mode: replyMode
                         )
-                        if let ttsChunk = Self.validatedTTSChunk(visibleSentence), !Task.isCancelled {
-                            // ✅ 핵심: UI 콜백을 여기서 직접 호출하지 않음
-                            // 대신 오디오 재생 시작 시점에 실행될 클로저를 파이프라인에 주입
-                            // Round 266: agentID 전달 — 캐릭터별 preset/emotion/pitch/rate/speed 적용
-                            let didPlay = await self.dispatchToInferencePipeline(
-                                text: ttsChunk,
-                                characterName: characterName,
-                                agentID: agentID,
-                                streamId: playbackStreamID,
-                                onPlaybackStarted: {
-                                    self.isSpeaking = true
-                                    AgentWindowManager.shared.setAgentSpeaking(agentID: agentID, text: ttsChunk)
-                                    onAudioPlaybackStarted(ttsChunk)
-                                }
+                        if let ttsChunk = Self.validatedTTSChunk(
+                            visibleSentence.trimmingCharacters(in: .whitespacesAndNewlines)
+                        ), !Task.isCancelled {
+                            _ = await self.speechQueue.enqueue(
+                                SpeechRequest(
+                                    id: UUID(),
+                                    text: ttsChunk,
+                                    agentID: agentID,
+                                    characterName: characterName
+                                ),
+                                policy: .queue
                             )
-                            if didPlay {
-                                await MainActor.run {
-                                    self.isSpeaking = false
-                                    AgentWindowManager.shared.clearAgentSpeaking(agentID: agentID)
-                                }
-                            }
                         }
                     }
                 }
@@ -183,31 +183,21 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                     mode: replyMode
                 )
                 if let ttsRemainder = Self.validatedTTSChunk(remainder), !Task.isCancelled {
-                    // Round 266: agentID 전달 (자투리 문장도 동일하게)
-                    let didPlay = await self.dispatchToInferencePipeline(
-                        text: ttsRemainder,
-                        characterName: characterName,
-                        agentID: agentID,
-                        streamId: playbackStreamID,
-                        onPlaybackStarted: {
-                            self.isSpeaking = true
-                            AgentWindowManager.shared.setAgentSpeaking(agentID: agentID, text: ttsRemainder)
-                            onAudioPlaybackStarted(ttsRemainder)
-                        }
+                    _ = await self.speechQueue.enqueue(
+                        SpeechRequest(
+                            id: UUID(),
+                            text: ttsRemainder,
+                            agentID: agentID,
+                            characterName: characterName
+                        ),
+                        policy: .queue
                     )
-                    if didPlay {
-                        await MainActor.run {
-                            self.isSpeaking = false
-                            AgentWindowManager.shared.clearAgentSpeaking(agentID: agentID)
-                        }
-                    }
                 }
 
             } catch {
                 AppLog.warning("[SpeechManager] SSE stream failed: \(AIErrorPresentation.userMessage(for: error))")
             }
 
-            await MainActor.run { self.isSpeaking = false }
         }
     }
 
@@ -227,7 +217,8 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
             // Round 257TTS: 합성 결과를 AudioPlaybackService.playFloatSamples로 직접 재생.
             // Round 258TTS: prosody 전처리 + pitch/rate/speed 캐릭터별 적용.
             // Round 258B: emotion-aware pitch/rate/speed 적용.
-            // onPlaybackStarted는 playerNode.play() 이후 AudioPlaybackService가 호출 — 립싱크 원칙 준수.
+            // AudioPlaybackService invokes onPlaybackStarted after playerNode.play()
+            // so speaking state follows audible playback without delaying chat text.
             AppLog.info("[AICall] callType=tts provider=supertonic3 (official)")
             do {
                 let preset  = SupertonicVoicePresetPolicy.preset(for: agentID)
@@ -248,6 +239,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                     speed: speed,
                     paths: paths
                 )
+                guard !Task.isCancelled else { return false }
                 guard let playbackSamples = bubbleSpeechPlaybackSamples(
                     text: spokenText,
                     sourceSamples: result.wavSamples,
@@ -260,6 +252,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                     AppLog.warning("[SpeechManager] BubbleSpeech render failed after Supertonic3 synthesis")
                     return false
                 }
+                guard !Task.isCancelled else { return false }
                 // 실제 재생: playerNode.play() 이후 onPlaybackStarted 호출됨
                 let didPlay = await playback.playFloatSamples(
                     samples: playbackSamples,
@@ -362,10 +355,19 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         Task(priority: .userInitiated) { [weak self] in
             guard let self else { return }
             if policy == .interruptCurrent {
-                let interruptedTask = self.currentStreamTask
-                self.currentStreamTask = nil
+                let ingestionTask = self.realtimeIngestionTask
+                self.realtimeIngestionTask = nil
+                self.realtimeIngestionID = nil
+                ingestionTask?.cancel()
+                await ingestionTask?.value
+                let interruptedTask = self.currentPlaybackTask
+                self.currentPlaybackTask = nil
                 self.currentSpeechRequestID = nil
                 await self.finishInterruption(of: interruptedTask, clearPending: false)
+            } else {
+                while let ingestionTask = self.realtimeIngestionTask {
+                    await ingestionTask.value
+                }
             }
             let accepted = await self.speechQueue.enqueue(request, policy: policy)
             if !accepted {
@@ -383,12 +385,12 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 guard let self else { return }
                 await self.performQueuedSpeech(request)
             }
-            currentStreamTask = task
+            currentPlaybackTask = task
             currentSpeechRequestID = request.id
             await task.value
 
             if currentSpeechRequestID == request.id {
-                currentStreamTask = nil
+                currentPlaybackTask = nil
                 currentSpeechRequestID = nil
             }
             await speechQueue.markFinished()
@@ -872,10 +874,15 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
 
     // MARK: - Barge-in 격추 시스템
     func abortPipelinedStream(clearPending: Bool = true) {
-        let interruptedTask = currentStreamTask
-        currentStreamTask = nil
+        let ingestionTask = realtimeIngestionTask
+        realtimeIngestionTask = nil
+        realtimeIngestionID = nil
+        let interruptedTask = currentPlaybackTask
+        currentPlaybackTask = nil
         currentSpeechRequestID = nil
         Task(priority: .userInitiated) { [weak self] in
+            ingestionTask?.cancel()
+            await ingestionTask?.value
             await self?.finishInterruption(of: interruptedTask, clearPending: clearPending)
         }
     }

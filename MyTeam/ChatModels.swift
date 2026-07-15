@@ -5,6 +5,11 @@ import Foundation
 
 extension AgentWindowManager {
 
+    enum ChatPresentationStyle: String, Codable, Sendable {
+        case immediate
+        case casualTypewriter
+    }
+
     // ── 채팅방(워크룸/개인 대화) 모델 ──
     struct ChatRoom: Identifiable, Codable, Sendable {
         let id: UUID
@@ -44,6 +49,7 @@ extension AgentWindowManager {
         var llmProvider: String? = nil
         var llmModelID: String? = nil
         var llmFallbackUsed: Bool? = nil
+        var presentationStyle: ChatPresentationStyle? = nil
     }
 
     // ── 워크룸/개인 대화 구분 (Round 146A) ──

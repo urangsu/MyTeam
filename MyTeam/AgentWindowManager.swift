@@ -1605,11 +1605,13 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         isUser: Bool,
         isSystem: Bool = false,
         sources: [SourceReference] = [],
-        skillID: String? = nil
+        skillID: String? = nil,
+        presentationStyle: ChatPresentationStyle? = nil
     ) -> UUID? {
         guard let index = rooms.firstIndex(where: { $0.id == roomID }) else { return nil }
         let newLog = ChatLog(id: UUID(), agentID: agentID, agentName: agentName,
-                             text: text, isUser: isUser, timestamp: Date(), isSystem: isSystem, sources: sources, skillID: skillID)
+                             text: text, isUser: isUser, timestamp: Date(), isSystem: isSystem,
+                             sources: sources, skillID: skillID, presentationStyle: presentationStyle)
         rooms[index].messages.append(newLog)
         return newLog.id
     }
@@ -1638,7 +1640,8 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
             artifactIDs: rooms[roomIndex].messages[messageIndex].artifactIDs,
             llmProvider: rooms[roomIndex].messages[messageIndex].llmProvider,
             llmModelID: rooms[roomIndex].messages[messageIndex].llmModelID,
-            llmFallbackUsed: rooms[roomIndex].messages[messageIndex].llmFallbackUsed
+            llmFallbackUsed: rooms[roomIndex].messages[messageIndex].llmFallbackUsed,
+            presentationStyle: rooms[roomIndex].messages[messageIndex].presentationStyle
         )
     }
 

@@ -119,22 +119,52 @@ final class LLMRouterTests: XCTestCase {
             "아 정말? 시우 덕분에 루나도 잠시"
         )
         XCTAssertEqual(first.completed, ["아 정말?"])
-        XCTAssertEqual(first.remainder, "시우 덕분에 루나도 잠시")
+        XCTAssertEqual(first.remainder, " 시우 덕분에 루나도 잠시")
 
         let completed = ConversationSentenceBoundary.splitStreaming(
             first.remainder + " 쉬어가네! 다음 이야기도 궁금해."
         )
         XCTAssertEqual(
             completed.completed,
-            ["시우 덕분에 루나도 잠시 쉬어가네!", "다음 이야기도 궁금해."]
+            ["시우 덕분에 루나도 잠시 쉬어가네!"]
         )
-        XCTAssertEqual(completed.remainder, "")
+        XCTAssertEqual(completed.remainder, " 다음 이야기도 궁금해.")
     }
 
     func test_streamingSentenceBoundary_keepsEllipsisWithItsSentence() {
         let split = ConversationSentenceBoundary.splitStreaming("잠깐만... 이제 괜찮아!")
-        XCTAssertEqual(split.completed, ["잠깐만...", "이제 괜찮아!"])
-        XCTAssertEqual(split.remainder, "")
+        XCTAssertEqual(split.completed, ["잠깐만..."])
+        XCTAssertEqual(split.remainder, " 이제 괜찮아!")
+    }
+
+    func test_streamingSentenceBoundary_preservesWhitespaceAcrossTokens() {
+        let first = ConversationSentenceBoundary.splitStreaming("오늘은 ")
+        XCTAssertEqual(first.completed, [])
+        XCTAssertEqual(first.remainder, "오늘은 ")
+
+        let second = ConversationSentenceBoundary.splitStreaming(first.remainder + "좋아요.")
+        XCTAssertEqual(second.completed, [])
+        XCTAssertEqual(second.remainder, "오늘은 좋아요.")
+    }
+
+    func test_streamingSentenceBoundary_waitsForClosingQuoteLookahead() {
+        let first = ConversationSentenceBoundary.splitStreaming("정말?")
+        XCTAssertEqual(first.completed, [])
+        XCTAssertEqual(first.remainder, "정말?")
+
+        let second = ConversationSentenceBoundary.splitStreaming(first.remainder + "” 다음 문장.")
+        XCTAssertEqual(second.completed, ["정말?”"])
+        XCTAssertEqual(second.remainder, " 다음 문장.")
+    }
+
+    func test_streamingSentenceBoundary_handlesNumberedSentenceAndEmail() {
+        let numbered = ConversationSentenceBoundary.splitStreaming("총 3. 다음 문장.")
+        XCTAssertEqual(numbered.completed, ["총 3."])
+        XCTAssertEqual(numbered.remainder, " 다음 문장.")
+
+        let email = ConversationSentenceBoundary.splitStreaming("문의는 help@example.com으로 보내세요. 다음 안내입니다.")
+        XCTAssertEqual(email.completed, ["문의는 help@example.com으로 보내세요."])
+        XCTAssertEqual(email.remainder, " 다음 안내입니다.")
     }
 
     func test_casualConversationSanitizer_removesMarkdownEmphasisWithoutChangingWords() {
@@ -146,6 +176,10 @@ final class LLMRouterTests: XCTestCase {
             ConversationTextSanitizer.sanitize("__천천히__ 해도 괜찮아.", mode: .quick),
             "천천히 해도 괜찮아."
         )
+        XCTAssertEqual(
+            ConversationTextSanitizer.sanitize("2 * 3 = 6이고 *.swift 파일을 봐줘.", mode: .casual),
+            "2 * 3 = 6이고 *.swift 파일을 봐줘."
+        )
     }
 
     func test_casualTypingPolicy_matchesSixHundredStrokesPerMinute() {
@@ -154,6 +188,19 @@ final class LLMRouterTests: XCTestCase {
         XCTAssertEqual(
             ChatTypingPolicy.estimatedTypingDurationNanoseconds(for: "1234567890"),
             2_000_000_000
+        )
+    }
+
+    func test_casualBubbleSegmentation_alignsWithTypewriterLimit() {
+        let longSentence = String(repeating: "가", count: 101)
+        let segments = CasualBubbleSegmenter.segments(from: longSentence, mode: .casual)
+
+        XCTAssertGreaterThan(segments.count, 1)
+        XCTAssertTrue(segments.allSatisfy { $0.count <= ChatTypingPolicy.maxAnimatedCharacters })
+        XCTAssertTrue(
+            segments.allSatisfy {
+                ChatTypingPolicy.shouldAnimate(text: $0, isUser: false)
+            }
         )
     }
 

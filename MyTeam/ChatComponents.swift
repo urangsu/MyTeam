@@ -33,8 +33,8 @@ nonisolated enum ConversationReplyMode: Sendable, Equatable {
 
 enum ConversationReplyPolicy {
     nonisolated static let maximumCasualBubbles = 3
-    nonisolated static let preferredBubbleCharacters = 100
-    nonisolated static let longBubbleSplitCharacters = 140
+    nonisolated static let preferredBubbleCharacters = 72
+    nonisolated static let longBubbleSplitCharacters = 100
 
     nonisolated static func mode(for userText: String, forceWork: Bool = false) -> ConversationReplyMode {
         if forceWork { return .work }
@@ -109,6 +109,12 @@ enum ConversationSentenceBoundary {
                 end += 1
             }
 
+            // A closing quote or another sentence mark may arrive in the next SSE token.
+            // Keep the final boundary buffered until one character of lookahead exists.
+            if end == characters.count {
+                break
+            }
+
             let sentence = String(characters[start..<end])
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             if !sentence.isEmpty { completed.append(sentence) }
@@ -116,9 +122,7 @@ enum ConversationSentenceBoundary {
             index = end
         }
 
-        let remainder = start < characters.count
-            ? String(characters[start...]).trimmingCharacters(in: .whitespacesAndNewlines)
-            : ""
+        let remainder = start < characters.count ? String(characters[start...]) : ""
         return ConversationSentenceSplit(completed: completed, remainder: remainder)
     }
 
@@ -130,7 +134,7 @@ enum ConversationSentenceBoundary {
         if character == "." {
             let previousIsDigit = index > 0 && characters[index - 1].isNumber
             let nextIsDigit = index + 1 < characters.count && characters[index + 1].isNumber
-            return !previousIsDigit && !nextIsDigit && !isInsideURL(characters, at: index)
+            return !(previousIsDigit && nextIsDigit) && !isInsideAddressToken(characters, at: index)
         }
         if character == "\n" {
             return true
@@ -147,12 +151,21 @@ enum ConversationSentenceBoundary {
     }
 
     nonisolated private static func isInsideURL(_ characters: [Character], at index: Int) -> Bool {
+        isInsideAddressToken(characters, at: index)
+    }
+
+    nonisolated private static func isInsideAddressToken(_ characters: [Character], at index: Int) -> Bool {
         var tokenStart = index
         while tokenStart > 0 && !characters[tokenStart - 1].isWhitespace { tokenStart -= 1 }
         var tokenEnd = index
         while tokenEnd + 1 < characters.count && !characters[tokenEnd + 1].isWhitespace { tokenEnd += 1 }
         let token = String(characters[tokenStart...tokenEnd]).lowercased()
-        return token.hasPrefix("http://") || token.hasPrefix("https://") || token.hasPrefix("www.")
+        let isAddress = token.hasPrefix("http://")
+            || token.hasPrefix("https://")
+            || token.hasPrefix("www.")
+            || token.contains("@")
+        // A period inside an address is data. A period at the end of the token is punctuation.
+        return isAddress && index < tokenEnd
     }
 }
 
@@ -161,9 +174,40 @@ enum ConversationTextSanitizer {
     /// Work and detailed responses keep Markdown because they render in structured views.
     nonisolated static func sanitize(_ text: String, mode: ConversationReplyMode) -> String {
         guard mode == .quick || mode == .casual else { return text }
-        return text
-            .replacingOccurrences(of: "*", with: "")
-            .replacingOccurrences(of: "__", with: "")
+        return removingPairedEmphasis(
+            removingPairedEmphasis(text, marker: "**"),
+            marker: "__"
+        )
+    }
+
+    nonisolated private static func removingPairedEmphasis(_ text: String, marker: String) -> String {
+        var output = ""
+        var cursor = text.startIndex
+
+        while let opening = text.range(of: marker, range: cursor..<text.endIndex) {
+            let contentStart = opening.upperBound
+            guard let closing = text.range(of: marker, range: contentStart..<text.endIndex) else {
+                output += text[cursor...]
+                return output
+            }
+
+            let content = text[contentStart..<closing.lowerBound]
+            guard let first = content.first,
+                  let last = content.last,
+                  !first.isWhitespace,
+                  !last.isWhitespace else {
+                output += text[cursor..<opening.upperBound]
+                cursor = opening.upperBound
+                continue
+            }
+
+            output += text[cursor..<opening.lowerBound]
+            output += content
+            cursor = closing.upperBound
+        }
+
+        output += text[cursor...]
+        return output
     }
 }
 

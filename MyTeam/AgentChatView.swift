@@ -802,7 +802,9 @@ struct AgentChatView: View {
     }
 
     private func shouldTypewriteMessage(_ log: AgentWindowManager.ChatLog) -> Bool {
-        guard log.agentID == "system" || log.isSystem else { return false }
+        let isLegacyLocalLine = log.presentationStyle == nil
+            && (log.agentID == "system" || log.isSystem)
+        guard log.presentationStyle == .casualTypewriter || isLegacyLocalLine else { return false }
         return ChatTypingPolicy.shouldAnimate(
             text: log.text,
             isUser: log.isUser,
@@ -1519,8 +1521,7 @@ struct AgentChatView: View {
                             agentID: targetIDAtSend,
                             characterName: agentName,
                             tokenStream: ttsStream,
-                            replyMode: replyMode,
-                            onAudioPlaybackStarted: { _ in }
+                            replyMode: replyMode
                         )
                     }
                 } catch {
