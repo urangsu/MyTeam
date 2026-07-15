@@ -63,9 +63,9 @@ enum ConversationReplyPolicy {
     nonisolated static func promptDirective(for mode: ConversationReplyMode) -> String {
         switch mode {
         case .quick:
-            return "질문을 해결하는 가장 짧고 자연스러운 한 문장으로 답하세요."
+            return "질문을 해결하는 가장 짧고 자연스러운 한 문장으로 답하세요. Markdown 강조 기호는 쓰지 마세요."
         case .casual:
-            return "일상 대화는 카카오톡처럼 짧고 자연스럽게 답하세요. 한 문단에 1~2문장만 쓰고, 필요한 내용만 남기세요."
+            return "일상 대화는 카카오톡처럼 짧고 자연스럽게 답하세요. 한 문단에 1~2문장만 쓰고, 필요한 내용만 남기며 Markdown 강조 기호는 쓰지 마세요."
         case .work:
             return "질문을 해결하는 가장 짧고 완전한 답변을 작성하세요. 필요한 근거와 다음 행동만 포함하고 사용자가 요청한 형식을 우선하세요."
         case .explicitDetail:
@@ -78,9 +78,99 @@ enum ConversationReplyPolicy {
     }
 }
 
+nonisolated struct ConversationSentenceSplit: Sendable, Equatable {
+    let completed: [String]
+    let remainder: String
+}
+
+enum ConversationSentenceBoundary {
+    /// Returns only fully terminated sentences. The unfinished tail remains buffered
+    /// so UI bubbles and TTS never split at an arbitrary SSE token boundary.
+    nonisolated static func splitStreaming(_ text: String) -> ConversationSentenceSplit {
+        let characters = Array(text)
+        guard !characters.isEmpty else {
+            return ConversationSentenceSplit(completed: [], remainder: "")
+        }
+
+        var completed: [String] = []
+        var start = 0
+        var index = 0
+        while index < characters.count {
+            guard isSentenceBoundary(characters, at: index) else {
+                index += 1
+                continue
+            }
+
+            var end = index + 1
+            while end < characters.count && isTrailingSentenceMark(characters[end]) {
+                end += 1
+            }
+            while end < characters.count && isClosingCharacter(characters[end]) {
+                end += 1
+            }
+
+            let sentence = String(characters[start..<end])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if !sentence.isEmpty { completed.append(sentence) }
+            start = end
+            index = end
+        }
+
+        let remainder = start < characters.count
+            ? String(characters[start...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            : ""
+        return ConversationSentenceSplit(completed: completed, remainder: remainder)
+    }
+
+    nonisolated private static func isSentenceBoundary(_ characters: [Character], at index: Int) -> Bool {
+        let character = characters[index]
+        if "!?。！？…".contains(character) {
+            return !isInsideURL(characters, at: index)
+        }
+        if character == "." {
+            let previousIsDigit = index > 0 && characters[index - 1].isNumber
+            let nextIsDigit = index + 1 < characters.count && characters[index + 1].isNumber
+            return !previousIsDigit && !nextIsDigit && !isInsideURL(characters, at: index)
+        }
+        if character == "\n" {
+            return true
+        }
+        return false
+    }
+
+    nonisolated private static func isTrailingSentenceMark(_ character: Character) -> Bool {
+        ".!?。！？…".contains(character)
+    }
+
+    nonisolated private static func isClosingCharacter(_ character: Character) -> Bool {
+        "\"'”’)]}".contains(character)
+    }
+
+    nonisolated private static func isInsideURL(_ characters: [Character], at index: Int) -> Bool {
+        var tokenStart = index
+        while tokenStart > 0 && !characters[tokenStart - 1].isWhitespace { tokenStart -= 1 }
+        var tokenEnd = index
+        while tokenEnd + 1 < characters.count && !characters[tokenEnd + 1].isWhitespace { tokenEnd += 1 }
+        let token = String(characters[tokenStart...tokenEnd]).lowercased()
+        return token.hasPrefix("http://") || token.hasPrefix("https://") || token.hasPrefix("www.")
+    }
+}
+
+enum ConversationTextSanitizer {
+    /// Plain casual bubbles do not expose model-oriented Markdown emphasis markers.
+    /// Work and detailed responses keep Markdown because they render in structured views.
+    nonisolated static func sanitize(_ text: String, mode: ConversationReplyMode) -> String {
+        guard mode == .quick || mode == .casual else { return text }
+        return text
+            .replacingOccurrences(of: "*", with: "")
+            .replacingOccurrences(of: "__", with: "")
+    }
+}
+
 enum CasualBubbleSegmenter {
     nonisolated static func segments(from text: String, mode: ConversationReplyMode) -> [String] {
-        let normalized = normalizedForComparison(text)
+        let sanitized = ConversationTextSanitizer.sanitize(text, mode: mode)
+        let normalized = normalizedForComparison(sanitized)
         guard !normalized.isEmpty else { return [] }
         guard mode == .quick || mode == .casual else { return [text.trimmingCharacters(in: .whitespacesAndNewlines)] }
         guard !normalized.contains("```") else { return [text.trimmingCharacters(in: .whitespacesAndNewlines)] }
@@ -95,9 +185,10 @@ enum CasualBubbleSegmenter {
 
     /// Streaming uses only stable sentence boundaries. Long unpunctuated text stays in the active bubble.
     nonisolated static func streamingSegments(from text: String, mode: ConversationReplyMode) -> [String] {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sanitized = ConversationTextSanitizer.sanitize(text, mode: mode)
+        let trimmed = sanitized.trimmingCharacters(in: .whitespacesAndNewlines)
         guard mode == .casual else { return trimmed.isEmpty ? [] : [trimmed] }
-        let normalized = normalizedForComparison(text)
+        let normalized = normalizedForComparison(sanitized)
         guard !normalized.isEmpty else { return [] }
         return cappedSegments(sentenceUnits(from: normalized))
     }
@@ -107,53 +198,10 @@ enum CasualBubbleSegmenter {
     }
 
     nonisolated private static func sentenceUnits(from text: String) -> [String] {
-        let characters = Array(text)
-        guard !characters.isEmpty else { return [] }
-
-        var result: [String] = []
-        var start = 0
-        var index = 0
-        while index < characters.count {
-            let character = characters[index]
-            let isBoundary: Bool
-            if "!?。！？…".contains(character) {
-                isBoundary = !isInsideURL(characters, at: index)
-            } else if character == "." {
-                let previousIsDigit = index > 0 && characters[index - 1].isNumber
-                let nextIsDigit = index + 1 < characters.count && characters[index + 1].isNumber
-                isBoundary = !previousIsDigit && !nextIsDigit && !isInsideURL(characters, at: index)
-            } else {
-                isBoundary = false
-            }
-
-            if isBoundary {
-                var end = index + 1
-                while end < characters.count && "!?。！？…".contains(characters[end]) {
-                    end += 1
-                }
-                let unit = String(characters[start..<end]).trimmingCharacters(in: .whitespacesAndNewlines)
-                if !unit.isEmpty { result.append(unit) }
-                start = end
-                index = end
-                continue
-            }
-            index += 1
-        }
-
-        if start < characters.count {
-            let tail = String(characters[start...]).trimmingCharacters(in: .whitespacesAndNewlines)
-            if !tail.isEmpty { result.append(tail) }
-        }
-        return result.isEmpty ? [text] : result
-    }
-
-    nonisolated private static func isInsideURL(_ characters: [Character], at index: Int) -> Bool {
-        var tokenStart = index
-        while tokenStart > 0 && !characters[tokenStart - 1].isWhitespace { tokenStart -= 1 }
-        var tokenEnd = index
-        while tokenEnd + 1 < characters.count && !characters[tokenEnd + 1].isWhitespace { tokenEnd += 1 }
-        let token = String(characters[tokenStart...tokenEnd]).lowercased()
-        return token.hasPrefix("http://") || token.hasPrefix("https://") || token.hasPrefix("www.")
+        let split = ConversationSentenceBoundary.splitStreaming(text)
+        var units = split.completed
+        if !split.remainder.isEmpty { units.append(split.remainder) }
+        return units.isEmpty ? [text] : units
     }
 
     nonisolated private static func splitLongUnit(_ unit: String) -> [String] {
@@ -192,10 +240,22 @@ enum CasualBubbleSegmenter {
 }
 
 enum ChatTypingPolicy {
-    nonisolated static let normalCharactersPerSecond: Double = 26
-    nonisolated static let fastCharactersPerSecond: Double = 26
-    nonisolated static let punctuationPauseNanoseconds: UInt64 = 90_000_000
+    nonisolated static let strokesPerMinute = 600
+    nonisolated static let estimatedStrokesPerHangulCharacter: Double = 2
+    nonisolated static let normalCharactersPerSecond: Double =
+        Double(strokesPerMinute) / 60 / estimatedStrokesPerHangulCharacter
+    nonisolated static let fastCharactersPerSecond: Double = normalCharactersPerSecond
+    nonisolated static let punctuationPauseNanoseconds: UInt64 = 180_000_000
     nonisolated static let maxAnimatedCharacters: Int = 100
+
+    nonisolated static func estimatedTypingDurationNanoseconds(for text: String) -> UInt64 {
+        guard shouldAnimate(text: text, isUser: false) else { return 0 }
+        let baseSeconds = Double(text.count) / normalCharactersPerSecond
+        let punctuationCount = text.filter { ".,!?…。，！？".contains($0) }.count
+        let punctuationSeconds = Double(punctuationCount)
+            * Double(punctuationPauseNanoseconds) / 1_000_000_000
+        return UInt64((baseSeconds + punctuationSeconds) * 1_000_000_000)
+    }
 
     nonisolated static func shouldAnimate(
         text: String,

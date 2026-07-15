@@ -114,6 +114,49 @@ final class LLMRouterTests: XCTestCase {
         )
     }
 
+    func test_streamingSentenceBoundary_keepsIncompleteTailForNextUtterance() {
+        let first = ConversationSentenceBoundary.splitStreaming(
+            "아 정말? 시우 덕분에 루나도 잠시"
+        )
+        XCTAssertEqual(first.completed, ["아 정말?"])
+        XCTAssertEqual(first.remainder, "시우 덕분에 루나도 잠시")
+
+        let completed = ConversationSentenceBoundary.splitStreaming(
+            first.remainder + " 쉬어가네! 다음 이야기도 궁금해."
+        )
+        XCTAssertEqual(
+            completed.completed,
+            ["시우 덕분에 루나도 잠시 쉬어가네!", "다음 이야기도 궁금해."]
+        )
+        XCTAssertEqual(completed.remainder, "")
+    }
+
+    func test_streamingSentenceBoundary_keepsEllipsisWithItsSentence() {
+        let split = ConversationSentenceBoundary.splitStreaming("잠깐만... 이제 괜찮아!")
+        XCTAssertEqual(split.completed, ["잠깐만...", "이제 괜찮아!"])
+        XCTAssertEqual(split.remainder, "")
+    }
+
+    func test_casualConversationSanitizer_removesMarkdownEmphasisWithoutChangingWords() {
+        XCTAssertEqual(
+            ConversationTextSanitizer.sanitize("아, **정말** 고마워!", mode: .casual),
+            "아, 정말 고마워!"
+        )
+        XCTAssertEqual(
+            ConversationTextSanitizer.sanitize("__천천히__ 해도 괜찮아.", mode: .quick),
+            "천천히 해도 괜찮아."
+        )
+    }
+
+    func test_casualTypingPolicy_matchesSixHundredStrokesPerMinute() {
+        XCTAssertEqual(ChatTypingPolicy.strokesPerMinute, 600)
+        XCTAssertEqual(ChatTypingPolicy.normalCharactersPerSecond, 5, accuracy: 0.001)
+        XCTAssertEqual(
+            ChatTypingPolicy.estimatedTypingDurationNanoseconds(for: "1234567890"),
+            2_000_000_000
+        )
+    }
+
     func test_casualBubbleSegmenter_keepsWorkAndExplicitDetailTogether() {
         let text = "첫 번째 설명입니다. 두 번째 설명입니다. 세 번째 설명입니다."
 

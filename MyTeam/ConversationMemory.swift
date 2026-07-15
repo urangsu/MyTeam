@@ -519,9 +519,9 @@ class ConversationMemory {
         let conversationalGuidance: String
         switch replyMode {
         case .quick:
-            conversationalGuidance = "인사나 짧은 말에는 한 문장으로 자연스럽게 답하고 후속 질문을 붙이지 마세요. 이름을 반복하거나 직무 이야기를 먼저 꺼내지 마세요."
+            conversationalGuidance = "인사나 짧은 말에는 한 문장으로 자연스럽게 답하고 후속 질문을 붙이지 마세요. 이름을 반복하거나 직무 이야기를 먼저 꺼내지 말고 Markdown 강조 기호를 쓰지 마세요."
         case .casual:
-            conversationalGuidance = "일상 대화는 1~2문장으로 답하고, 후속 질문은 정말 필요할 때 하나만 하세요. 같은 단어나 질문을 표현만 바꾸어 반복하지 마세요."
+            conversationalGuidance = "일상 대화는 1~2문장으로 답하고, 후속 질문은 정말 필요할 때 하나만 하세요. 같은 단어나 질문을 표현만 바꾸어 반복하지 말고 Markdown 강조 기호를 쓰지 마세요."
         case .work, .explicitDetail:
             conversationalGuidance = ConversationReplyPolicy.promptDirective(for: replyMode)
         }

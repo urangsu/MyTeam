@@ -1519,6 +1519,7 @@ struct AgentChatView: View {
                             agentID: targetIDAtSend,
                             characterName: agentName,
                             tokenStream: ttsStream,
+                            replyMode: replyMode,
                             onAudioPlaybackStarted: { _ in }
                         )
                     }

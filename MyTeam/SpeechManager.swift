@@ -125,6 +125,7 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
         agentID: String,
         characterName: String,
         tokenStream: AsyncThrowingStream<String, Error>,
+        replyMode: ConversationReplyMode,
         onAudioPlaybackStarted: @escaping @Sendable (String) -> Void
     ) {
         let interruptedTask = currentStreamTask
@@ -143,13 +144,15 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                     if Task.isCancelled { break }
 
                     sentenceBuffer += token
+                    let split = ConversationSentenceBoundary.splitStreaming(sentenceBuffer)
+                    sentenceBuffer = split.remainder
 
-                    // 문장 경계(마침표, 물음표, 느낌표, 개행) 감지 시 즉각 청크 처리
-                    if sentenceBuffer.contains(where: { [".", "?", "!", "\n", "。"].contains($0) }) {
-                        let chunk = sentenceBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
-                        sentenceBuffer = "" // 버퍼 즉시 플러시
-
-                        if let ttsChunk = Self.validatedTTSChunk(chunk), !Task.isCancelled {
+                    for completedSentence in split.completed {
+                        let visibleSentence = ConversationTextSanitizer.sanitize(
+                            completedSentence,
+                            mode: replyMode
+                        )
+                        if let ttsChunk = Self.validatedTTSChunk(visibleSentence), !Task.isCancelled {
                             // ✅ 핵심: UI 콜백을 여기서 직접 호출하지 않음
                             // 대신 오디오 재생 시작 시점에 실행될 클로저를 파이프라인에 주입
                             // Round 266: agentID 전달 — 캐릭터별 preset/emotion/pitch/rate/speed 적용
@@ -175,7 +178,10 @@ final class SpeechManager: ObservableObject, @unchecked Sendable {
                 }
 
                 // 자투리 미완성 문장 처리
-                let remainder = sentenceBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
+                let remainder = ConversationTextSanitizer.sanitize(
+                    sentenceBuffer.trimmingCharacters(in: .whitespacesAndNewlines),
+                    mode: replyMode
+                )
                 if let ttsRemainder = Self.validatedTTSChunk(remainder), !Task.isCancelled {
                     // Round 266: agentID 전달 (자투리 문장도 동일하게)
                     let didPlay = await self.dispatchToInferencePipeline(

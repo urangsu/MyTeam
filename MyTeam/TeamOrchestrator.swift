@@ -696,7 +696,13 @@ class TeamOrchestrator {
                 let bubbleParts = CasualBubbleSegmenter.segments(from: responseText, mode: replyMode)
                 for (index, bubbleText) in bubbleParts.enumerated() {
                     if index > 0 {
-                        try? await Task.sleep(nanoseconds: UInt64.random(in: 350_000_000...700_000_000))
+                        let priorBubble = bubbleParts[index - 1]
+                        let typingDuration = ChatTypingPolicy.estimatedTypingDurationNanoseconds(
+                            for: priorBubble
+                        )
+                        if typingDuration > 0 {
+                            try? await Task.sleep(nanoseconds: typingDuration)
+                        }
                     }
                     await MainActor.run {
                         manager.addChatLog(roomID: roomID, agentID: agent.id, agentName: agent.displayName, text: bubbleText, isUser: false, sources: index == 0 ? sources : [])
