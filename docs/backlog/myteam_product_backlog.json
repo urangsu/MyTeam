@@ -2278,16 +2278,17 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "7bde2769f12a8c4be835ea33811d1bb068d7d1dd",
+        "commit_sha": "837197894f9801724b818e2203ec9c968c15c316",
         "files_changed": [
           ".github/workflows/quality-gate.yml",
           "Backup_claude_worktrees/worktrees/compassionate-hofstadter",
+          "MyTeam/AgentToolKit.swift",
           "MyTeam/StockEvidenceCollector.swift",
           "MyTeamTests/PublicAPIConnectorValidatorTests.swift",
           "scripts/validate_myteam_release.py",
           "scripts/validate_myteam_release_tests.py"
         ],
-        "validation_summary": "2026-07-17: Main runs 29519077240, 29519315673, and 29519507293 exposed three local/CI equivalence gaps: unhydrated Supertonic3 LFS assets, a runner-specific ripgrep dependency, and an Xcode 26.2 type-check timeout in StockEvidenceBundle formatting. Commits e622ff5, 824ad44, and 7bde276 respectively fix those contracts without changing model content or evidence output. Git LFS fsck, workflow YAML parsing, Python regression tests, git diff --check, all MyTeam release validators, XCTest 132/132, and a Universal Release build with x86_64 + arm64 passed locally. Status remains partial until the corrected Xcode 26.2 remote workflow completes successfully.",
+        "validation_summary": "2026-07-17: Main runs 29519077240, 29519315673, 29519507293, and 29522721974 exposed four local/CI equivalence gaps: unhydrated Supertonic3 LFS assets, a runner-specific ripgrep dependency, an Xcode 26.2 type-check timeout, and a non-Sendable [String: Any] tool-handler boundary. Commits e622ff5, 824ad44, 7bde276, and 8371978 fix those contracts without changing model content or formatted evidence output. Tool input strings now cross the async handler boundary in a Sendable value wrapper. Git LFS fsck, workflow YAML parsing, Python regression tests, git diff --check, all MyTeam release validators, XCTest 133/133, and a warning-clean Universal Release build with x86_64 + arm64 passed locally. Status remains partial until the corrected Xcode 26.2 remote workflow completes successfully.",
         "screenshots": []
       },
       "notes": [
@@ -2296,7 +2297,8 @@
         "Strict manual QA and release-live gates remain separate blockers.",
         "2026-07-17: Failed main run 29519077240 exposed the LFS checkout gap before release; no model content or Supertonic3 routing was changed.",
         "2026-07-17: Follow-up run 29519315673 hydrated LFS successfully and then exposed the Ubuntu runner's missing rg binary; the validator now has no ripgrep dependency.",
-        "2026-07-17: Run 29519507293 passed all static contracts, then Xcode 26.2 rejected a complex StockEvidenceBundle expression that Xcode 26.6 accepted. The formatter is now split into explicit typed sections and covered by an output-order regression test."
+        "2026-07-17: Run 29519507293 passed all static contracts, then Xcode 26.2 rejected a complex StockEvidenceBundle expression that Xcode 26.6 accepted. The formatter is now split into explicit typed sections and covered by an output-order regression test.",
+        "2026-07-17: Run 29522721974 reached a later Xcode 26.2 compile batch and rejected raw Any dictionaries crossing @Sendable tool-handler isolation. AgentToolInput now retains only declared string inputs in a Sendable wrapper; the boundary has a regression test and no Swift 6 actor warning in the local Release log."
       ]
     },
     {
