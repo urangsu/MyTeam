@@ -61,6 +61,10 @@ def main() -> None:
     credential_store = read("MyTeam/SecureCredentialStore.swift")
     keychain_manager = read("MyTeam/KeychainManager.swift")
     connector_setup = read("MyTeam/ConnectorSetupCardView.swift")
+    artifact_store = read("MyTeam/ArtifactStore.swift")
+    tool_execution_context = read("MyTeam/ToolExecutionContext.swift")
+    recent_artifact_persistence = read("MyTeam/RecentArtifactIndexPersistence.swift")
+    recent_artifact_resolver = read("MyTeam/RecentArtifactContentResolver.swift")
     dart_resolver = read("MyTeam/DARTCompanyResolver.swift")
     dart_runner = read("MyTeam/ToolRunners/DARTToolRunner.swift")
     myteam_app = read("MyTeam/MyTeamApp.swift")
@@ -183,6 +187,14 @@ def main() -> None:
         failures.append("successful Keychain deletion must evict the in-memory credential cache")
     if "let saveSucceeded" not in connector_setup or "let deleteSucceeded" not in connector_setup:
         failures.append("connector credential UI must check persistence results before reporting save/delete success")
+    for path, source in {
+        "ArtifactStore.swift": artifact_store,
+        "ToolExecutionContext.swift": tool_execution_context,
+        "RecentArtifactIndexPersistence.swift": recent_artifact_persistence,
+        "RecentArtifactContentResolver.swift": recent_artifact_resolver,
+    }.items():
+        if "AppPaths.workspaceDirectory" not in source:
+            failures.append(f"{path} must use the QA-aware shared workspace path")
     if "private func presentSettingsWindow(_ window: NSWindow)" not in agent_window_manager:
         failures.append("AgentWindowManager must present Settings through a shared helper")
     if "presentSettingsWindow(settingsWindow)" not in agent_window_manager:

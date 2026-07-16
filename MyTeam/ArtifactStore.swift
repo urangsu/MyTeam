@@ -364,21 +364,24 @@ enum ActionLogCompactionPolicy {
 
 actor ArtifactStore {
     static let shared = ArtifactStore()
-    private init() {}
+
+    nonisolated let workspaceURL: URL
+
+    init(workspaceURL: URL? = nil) {
+        self.workspaceURL = (workspaceURL ?? ArtifactStore.defaultWorkspaceURL()).standardizedFileURL
+        try? FileManager.default.createDirectory(
+            at: self.workspaceURL,
+            withIntermediateDirectories: true
+        )
+    }
 
     private(set) var lastActionLogCompactedAt: Date?
     private(set) var actionLogCompactionCount: Int = 0
     private(set) var lastArtifactIndexError: ArtifactStorePersistenceError?
     private var cachedArtifacts: [IndexedArtifact]?
 
-    nonisolated var workspaceURL: URL {
-        let appSupport = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first!
-        let url = appSupport.appendingPathComponent("MyTeam/Workspace")
-        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        return url
+    private nonisolated static func defaultWorkspaceURL() -> URL {
+        AppPaths.workspaceDirectory()
     }
 
     var actionLogURL: URL { workspaceURL.appendingPathComponent("action_log.jsonl") }
@@ -435,7 +438,7 @@ actor ArtifactStore {
             recordArtifactIndexError(error, operation: "register")
             return .failure(error)
         }
-        let normalized = await normalizeArtifact(artifact)
+        let normalized = normalizeArtifact(artifact)
         list.removeAll { $0.id == normalized.id }
         list.append(normalized)
         let data: Data
@@ -460,8 +463,10 @@ actor ArtifactStore {
     func loadArtifacts() -> [IndexedArtifact] {
         switch loadArtifactIndex() {
         case .success(let artifacts):
+            let refreshed = artifacts.map(normalizeArtifact)
+            cachedArtifacts = refreshed
             lastArtifactIndexError = nil
-            return artifacts
+            return refreshed
         case .failure(let error):
             recordArtifactIndexError(error, operation: "load")
             return []
@@ -546,7 +551,7 @@ actor ArtifactStore {
         }
     }
 
-    private func normalizeArtifact(_ artifact: IndexedArtifact) async -> IndexedArtifact {
+    private func normalizeArtifact(_ artifact: IndexedArtifact) -> IndexedArtifact {
         let (relativePath, pathStatus) = Self.normalizeStoredPath(artifact.relativePath, workspaceURL: workspaceURL)
         let resolvedRelativePath = relativePath.isEmpty ? artifact.relativePath : relativePath
         guard let url = Self.fileURL(for: resolvedRelativePath, workspaceURL: workspaceURL) else {

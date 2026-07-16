@@ -746,12 +746,116 @@ final class LLMRouterTests: XCTestCase {
         )
     }
 
+    func test_workspaceDirectoryUsesIsolatedQARoot() {
+        let qaRoot = URL(fileURLWithPath: "/private/tmp/MyTeamWorkspaceQA", isDirectory: true)
+        let workspaceURL = AppPaths.workspaceDirectory(
+            arguments: ["MyTeam", "--qa-root", qaRoot.path]
+        )
+
+        XCTAssertEqual(
+            workspaceURL,
+            qaRoot
+                .appendingPathComponent("Application Support", isDirectory: true)
+                .appendingPathComponent("MyTeam", isDirectory: true)
+                .appendingPathComponent("Workspace", isDirectory: true)
+                .standardizedFileURL
+        )
+    }
+
     func test_keychainMutationPolicyFailsClosedAndTreatsMissingDeleteAsSuccess() {
         XCTAssertTrue(KeychainMutationPolicy.saveSucceeded(status: errSecSuccess))
         XCTAssertFalse(KeychainMutationPolicy.saveSucceeded(status: errSecAuthFailed))
         XCTAssertTrue(KeychainMutationPolicy.deleteSucceeded(status: errSecSuccess))
         XCTAssertTrue(KeychainMutationPolicy.deleteSucceeded(status: errSecItemNotFound))
         XCTAssertFalse(KeychainMutationPolicy.deleteSucceeded(status: errSecAuthFailed))
+    }
+
+    func test_artifactStoreRefreshesCachedHealthAfterFileChanges() async throws {
+        let workspaceURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("myteam-artifact-health-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspaceURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: workspaceURL) }
+
+        let store = ArtifactStore(workspaceURL: workspaceURL)
+        let fileURL = workspaceURL.appendingPathComponent("report.md")
+        try Data("version-one".utf8).write(to: fileURL)
+        let artifact = IndexedArtifact(
+            id: "artifact-health",
+            workflowID: "test-workflow",
+            title: "Health report",
+            type: .report,
+            filename: fileURL.lastPathComponent,
+            relativePath: fileURL.lastPathComponent,
+            preview: "",
+            createdAt: ISO8601DateFormatter().string(from: Date())
+        )
+
+        guard case .success = await store.registerArtifact(artifact) else {
+            return XCTFail("The test artifact must be registered")
+        }
+        try Data("version-two".utf8).write(to: fileURL, options: .atomic)
+
+        let refreshed = await store.loadArtifacts()
+        XCTAssertEqual(refreshed.first?.healthStatus, .hashMismatch)
+    }
+
+    @MainActor
+    func test_recentArtifactCompactionPreservesEntriesWhenArtifactIndexIsCorrupt() async throws {
+        let workspaceURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("myteam-artifact-corrupt-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspaceURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: workspaceURL) }
+        try Data("not-json".utf8).write(to: workspaceURL.appendingPathComponent("artifacts.json"))
+
+        let artifactStore = ArtifactStore(workspaceURL: workspaceURL)
+        let runtimeStore = RoomRuntimeStore()
+        let entry = RecentArtifactIndexEntry(
+            artifactID: "recoverable-artifact",
+            roomID: UUID(),
+            filename: "report.md",
+            artifactType: ArtifactType.report.rawValue,
+            createdAt: Date(),
+            contentHash: nil,
+            fileSizeBytes: nil
+        )
+        runtimeStore.recentArtifactIndex.add(entry)
+
+        await runtimeStore.compactRecentArtifactIndex(
+            using: artifactStore,
+            persistChanges: false
+        )
+
+        XCTAssertEqual(runtimeStore.recentArtifactIndex.allEntries, [entry])
+        XCTAssertNotNil(runtimeStore.recentArtifactIndexPersistenceError)
+    }
+
+    @MainActor
+    func test_recentArtifactCompactionPreservesEntriesWhenArtifactIndexIsMissing() async throws {
+        let workspaceURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("myteam-artifact-missing-index-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: workspaceURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: workspaceURL) }
+
+        let artifactStore = ArtifactStore(workspaceURL: workspaceURL)
+        let runtimeStore = RoomRuntimeStore()
+        let entry = RecentArtifactIndexEntry(
+            artifactID: "recoverable-artifact",
+            roomID: UUID(),
+            filename: "report.md",
+            artifactType: ArtifactType.report.rawValue,
+            createdAt: Date(),
+            contentHash: nil,
+            fileSizeBytes: nil
+        )
+        runtimeStore.recentArtifactIndex.add(entry)
+
+        await runtimeStore.compactRecentArtifactIndex(
+            using: artifactStore,
+            persistChanges: false
+        )
+
+        XCTAssertEqual(runtimeStore.recentArtifactIndex.allEntries, [entry])
+        XCTAssertNotNil(runtimeStore.recentArtifactIndexPersistenceError)
     }
 
     func test_ttsRuntimeProbeRejectsMissingOrEmptyAudio() throws {

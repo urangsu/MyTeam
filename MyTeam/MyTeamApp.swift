@@ -80,6 +80,24 @@ enum AppPaths {
         applicationSupportDirectory.appendingPathComponent("TTSBench", isDirectory: true)
     }
 
+    nonisolated static func workspaceDirectory(
+        arguments: [String] = ProcessInfo.processInfo.arguments
+    ) -> URL {
+        let appSupport: URL
+        if let qaRoot = QARuntimeProfile.rootURL(arguments: arguments) {
+            appSupport = qaRoot
+                .appendingPathComponent("Application Support", isDirectory: true)
+                .appendingPathComponent(appDirectoryName, isDirectory: true)
+        } else {
+            let base = FileManager.default.urls(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask
+            ).first ?? FileManager.default.temporaryDirectory
+            appSupport = base.appendingPathComponent(appDirectoryName, isDirectory: true)
+        }
+        return appSupport.appendingPathComponent("Workspace", isDirectory: true).standardizedFileURL
+    }
+
 }
 
 enum QARuntimeProfile {

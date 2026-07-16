@@ -84,31 +84,14 @@ enum RecentArtifactIndexPersistence {
             return .failure(.versionMismatch)
         }
 
-        // Filter out entries with missing files
-        let validEntries = snapshot.entries
-            .sorted { $0.createdAt > $1.createdAt }
-            .filter { entry in
-            // Check if file exists — basic validation
-            // Full validation happens in resolver
-            true
-        }
-
-        return .success(validEntries)
+        // File/hash truth is resolved by ArtifactStore against its configured workspace.
+        return .success(snapshot.entries.sorted { $0.createdAt > $1.createdAt })
     }
 
     // MARK: - Persistence URL
 
     private static var persistenceFileURL: URL {
-        guard let appSupport = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first else {
-            // Fallback
-            return URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("recent_artifacts.json")
-        }
-
-        let url = appSupport.appendingPathComponent("MyTeam/Workspace")
-        return url.appendingPathComponent(".myteam_recent_artifacts.json")
+        AppPaths.workspaceDirectory().appendingPathComponent(".myteam_recent_artifacts.json")
     }
 
     // MARK: - Helpers

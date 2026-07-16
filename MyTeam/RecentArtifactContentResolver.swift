@@ -152,12 +152,7 @@ enum RecentArtifactContentResolver {
     }
 
     private static func isInsideWorkspace(_ url: URL) -> Bool {
-        let workspaceURL = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
-            .first?
-            .appendingPathComponent("MyTeam/Workspace")
-            .standardizedFileURL
-
-        guard let workspaceURL else { return false }
+        let workspaceURL = AppPaths.workspaceDirectory()
         let standardized = url.standardizedFileURL.path
         let workspacePath = workspaceURL.path.hasSuffix("/") ? workspaceURL.path : workspaceURL.path + "/"
         return standardized == workspaceURL.path || standardized.hasPrefix(workspacePath)

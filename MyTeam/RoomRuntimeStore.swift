@@ -211,10 +211,26 @@ final class RoomRuntimeStore: ObservableObject {
     }
 
     @MainActor
-    func compactRecentArtifactIndex(using artifactStore: ArtifactStore) async {
-        let artifacts = await artifactStore.loadArtifacts()
-        let artifactsByID = Dictionary(uniqueKeysWithValues: artifacts.map { ($0.id, $0) })
+    func compactRecentArtifactIndex(
+        using artifactStore: ArtifactStore,
+        persistChanges: Bool = true
+    ) async {
         let previousEntries = recentArtifactIndex.allEntries
+        let artifactIndexURL = await artifactStore.artifactIndexURL
+        if !previousEntries.isEmpty,
+           !FileManager.default.fileExists(atPath: artifactIndexURL.path) {
+            recentArtifactIndexPersistenceError = "artifact index missing; recent entries preserved"
+            recentArtifactIndexPersistedCount = previousEntries.count
+            return
+        }
+
+        let artifacts = await artifactStore.loadArtifacts()
+        if let indexError = await artifactStore.lastArtifactIndexError {
+            recentArtifactIndexPersistenceError = "artifact index unavailable: \(indexError)"
+            recentArtifactIndexPersistedCount = recentArtifactIndex.allEntries.count
+            return
+        }
+        let artifactsByID = Dictionary(uniqueKeysWithValues: artifacts.map { ($0.id, $0) })
         let before = previousEntries.count
 
         recentArtifactIndex.clear()
@@ -224,7 +240,9 @@ final class RoomRuntimeStore: ObservableObject {
 
         recentArtifactIndexPersistenceError = before == recentArtifactIndex.allEntries.count ? nil : "stale recent entry removed: \(before - recentArtifactIndex.allEntries.count)"
         recentArtifactIndexPersistedCount = recentArtifactIndex.allEntries.count
-        saveRecentArtifactIndex()
+        if persistChanges {
+            saveRecentArtifactIndex()
+        }
     }
 
     @MainActor

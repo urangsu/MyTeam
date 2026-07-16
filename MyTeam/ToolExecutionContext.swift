@@ -17,8 +17,7 @@ struct ToolExecutionContext: Sendable {
 
     /// workspace 경로만 필요한 진단/읽기 전용 컨텍스트 (roomID 불필요 시)
     static var workspaceURL: URL {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let url = appSupport.appendingPathComponent("MyTeam/Workspace")
+        let url = AppPaths.workspaceDirectory()
         try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
     }
@@ -31,11 +30,7 @@ struct ToolExecutionContext: Sendable {
         roomID: UUID,
         isDryRun: Bool = false
     ) -> ToolExecutionContext {
-        let appSupport = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first!
-        let workspaceURL = appSupport.appendingPathComponent("MyTeam/Workspace")
+        let workspaceURL = AppPaths.workspaceDirectory()
         try? FileManager.default.createDirectory(
             at: workspaceURL,
             withIntermediateDirectories: true
