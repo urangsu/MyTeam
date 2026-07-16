@@ -136,10 +136,22 @@ STRICT_BUILD_METADATA_FIELDS = (
     "artifact_sha256",
 )
 
-MANUAL_PASS_EVIDENCE_PATTERN = re.compile(
-    r"(docs/qa/evidence/|\.png\b|\.mov\b|\.mp4\b|\.log\b|python3\s+scripts/|xcodebuild|pgrep|osascript|screenshot|video|runtime log|provider response)",
+MANUAL_EVIDENCE_FILE_PATTERN = re.compile(
+    r"docs/qa/evidence/[^\s`|]+",
     re.I,
 )
+
+MANUAL_EVIDENCE_COMMAND_PATTERN = re.compile(
+    r"(?:python3\s+scripts/[^\s`|]+|xcodebuild\b|pgrep\b|osascript\b)",
+    re.I,
+)
+
+PYTHON_EVIDENCE_SCRIPT_PATTERN = re.compile(
+    r"python3\s+(scripts/[^\s`|]+)",
+    re.I,
+)
+
+SHA256_PATTERN = re.compile(r"[0-9a-f]{64}", re.I)
 
 
 def split_table_row(line: str) -> list[str]:
@@ -217,6 +229,35 @@ def is_qa_evidence_path(path: str) -> bool:
     return path.startswith("docs/qa/") or path == "docs/backlog/myteam_product_backlog.json"
 
 
+def validate_manual_pass_evidence(joined_cells: str, relative_path: str, case_id: str) -> list[str]:
+    failures: list[str] = []
+    evidence_root = (ROOT / "docs/qa/evidence").resolve()
+    evidence_files = MANUAL_EVIDENCE_FILE_PATTERN.findall(joined_cells)
+    evidence_commands = MANUAL_EVIDENCE_COMMAND_PATTERN.findall(joined_cells)
+    if not evidence_files and not evidence_commands:
+        failures.append(f"{relative_path} case {case_id} is PASS without durable evidence path or command")
+
+    for reference in evidence_files:
+        candidate = (ROOT / reference).resolve()
+        if not candidate.is_relative_to(evidence_root):
+            failures.append(
+                f"{relative_path} case {case_id} evidence path escapes docs/qa/evidence: {reference}"
+            )
+        elif not candidate.is_file():
+            failures.append(
+                f"{relative_path} case {case_id} evidence file does not exist: {reference}"
+            )
+
+    scripts_root = (ROOT / "scripts").resolve()
+    for script_reference in PYTHON_EVIDENCE_SCRIPT_PATTERN.findall(joined_cells):
+        candidate = (ROOT / script_reference).resolve()
+        if not candidate.is_relative_to(scripts_root) or not candidate.is_file():
+            failures.append(
+                f"{relative_path} case {case_id} evidence script does not exist: {script_reference}"
+            )
+    return failures
+
+
 def validate_doc(path: Path, case_ids: list[str], strict: bool, release_strict: bool) -> list[str]:
     failures: list[str] = []
     if not path.exists():
@@ -251,6 +292,9 @@ def validate_doc(path: Path, case_ids: list[str], strict: bool, release_strict: 
                 value = metadata_value(text, field)
                 if not value or re.search(r"\b(not run|pending|unknown|n/a)\b", value, re.I):
                     failures.append(f"{relative_path} strict build metadata field {field} must be an actual tested value")
+            artifact_sha256 = metadata_value(text, "artifact_sha256") or ""
+            if not SHA256_PATTERN.fullmatch(artifact_sha256):
+                failures.append(f"{relative_path} artifact_sha256 must be exactly 64 hexadecimal characters")
 
     forbidden_release_tag_patterns = [
         r"release tag\s*:\s*PASS",
@@ -284,8 +328,7 @@ def validate_doc(path: Path, case_ids: list[str], strict: bool, release_strict: 
             joined = " ".join(cells)
             if "Pending" in joined or "pending" in joined:
                 failures.append(f"{path.relative_to(ROOT)} case {case_id} is PASS but still contains pending evidence text")
-            if not MANUAL_PASS_EVIDENCE_PATTERN.search(joined):
-                failures.append(f"{path.relative_to(ROOT)} case {case_id} is PASS without durable evidence path or command")
+            failures.extend(validate_manual_pass_evidence(joined, relative_path, case_id))
         if release_strict and case_id.startswith(RELEASE_REQUIRED_PROVIDER_PREFIXES) and status not in {"PASS", "DISABLED"}:
             failures.append(
                 f"{path.relative_to(ROOT)} case {case_id} must be PASS or DISABLED in --release-strict mode, found {status}"
