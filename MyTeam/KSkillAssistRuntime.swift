@@ -1099,7 +1099,7 @@ enum KSkillRunEngine {
             AppLog.error("[KSkillRunEngine] missing chainRunID for artifact write")
             return nil
         }
-        let workflowID = manager.currentWorkflowID ?? UUID()
+        let workflowID = ArtifactWorkflowOwnership.workflowID(for: roomID, manager: manager)
         let markdown = result.markdown.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !markdown.isEmpty else { return nil }
 
@@ -1136,7 +1136,14 @@ enum KSkillRunEngine {
             roomID: roomID.uuidString
         )
 
-        await ArtifactStore.shared.registerArtifact(artifact)
+        switch await ArtifactStore.shared.registerArtifact(artifact) {
+        case .success:
+            break
+        case .failure(let error):
+            try? FileManager.default.removeItem(at: fileURL)
+            AppLog.error("[KSkillRunEngine] artifact index registration failed: \(error)")
+            return nil
+        }
         ChainRunStore.shared.appendArtifact(artifact.id, chainRunID: chainRunID, roomID: roomID)
         manager.addRecentArtifactIndexEntry(
             RecentArtifactIndexEntry(

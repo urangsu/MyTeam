@@ -146,6 +146,7 @@ enum ActionRuntime {
         }
     }
 
+    @MainActor
     private static func persistDraftArtifact(
         roomID: UUID,
         chainRunID: UUID?,
@@ -155,7 +156,7 @@ enum ActionRuntime {
         body: String
     ) async -> String? {
         guard let chainRunID else { return nil }
-        let workflowID = manager.currentWorkflowID ?? UUID()
+        let workflowID = ArtifactWorkflowOwnership.workflowID(for: roomID, manager: manager)
         let context = ToolExecutionContext.current(workflowID: workflowID, roomID: roomID)
         let timestamp = DateFormatter.localizedString(
             from: Date(),
@@ -194,7 +195,14 @@ enum ActionRuntime {
                 roomID: roomID.uuidString
             )
 
-            await ArtifactStore.shared.registerArtifact(artifact)
+            switch await ArtifactStore.shared.registerArtifact(artifact) {
+            case .success:
+                break
+            case .failure(let error):
+                try? FileManager.default.removeItem(at: url)
+                AppLog.error("[ActionRuntime] artifact index registration failed: \(error)")
+                return nil
+            }
             ChainRunStore.shared.appendArtifact(artifact.id, chainRunID: chainRunID, roomID: roomID)
             manager.addRecentArtifactIndexEntry(
                 RecentArtifactIndexEntry(

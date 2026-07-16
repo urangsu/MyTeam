@@ -302,8 +302,11 @@ enum ToolResultArtifactWriter {
         }
 
         let now = Date()
-        let roomID = await MainActor.run { AgentWindowManager.shared.currentRoomID }
-        let workflowID = await MainActor.run { AgentWindowManager.shared.currentWorkflowID } ?? UUID()
+        let ownership = await MainActor.run {
+            ArtifactWorkflowOwnership.currentContext(manager: .shared)
+        }
+        let roomID = ownership.roomID
+        let workflowID = ownership.workflowID
         let artifact = IndexedArtifact(
             id: UUID().uuidString,
             workflowID: workflowID.uuidString,

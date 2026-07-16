@@ -137,7 +137,7 @@ enum FileIntakeService {
             return nil
         }
 
-        let workflowID = manager.currentWorkflowID ?? UUID()
+        let workflowID = ArtifactWorkflowOwnership.workflowID(for: roomID, manager: manager)
         let markdown = buildFirstResultCardMarkdown(result: result, sourceText: sourceText)
         let filename = firstResultCardFilename(for: result)
         let fileURL: URL

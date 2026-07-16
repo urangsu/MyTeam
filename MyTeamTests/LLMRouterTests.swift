@@ -865,6 +865,37 @@ final class LLMRouterTests: XCTestCase {
     }
 
     @MainActor
+    func test_artifactWorkflowOwnershipUsesTheRequestedRoom() {
+        let manager = AgentWindowManager.shared
+        let originalCurrentRoomID = manager.currentRoomID
+        let originalSelectedTeamWorkroomID = manager.selectedTeamWorkroomID
+        let roomA = UUID()
+        let roomB = UUID()
+        let workflowA = UUID()
+        let workflowB = UUID()
+        defer {
+            manager.setCurrentWorkflowID(nil, roomID: roomA)
+            manager.setCurrentWorkflowID(nil, roomID: roomB)
+            manager.currentRoomID = originalCurrentRoomID
+            manager.selectedTeamWorkroomID = originalSelectedTeamWorkroomID
+        }
+
+        manager.currentRoomID = roomA
+        manager.selectedTeamWorkroomID = roomA
+        manager.setCurrentWorkflowID(workflowA, roomID: roomA)
+        manager.setCurrentWorkflowID(workflowB, roomID: roomB)
+
+        XCTAssertEqual(
+            ArtifactWorkflowOwnership.workflowID(for: roomB, manager: manager),
+            workflowB
+        )
+        XCTAssertNotEqual(
+            ArtifactWorkflowOwnership.workflowID(for: roomB, manager: manager),
+            workflowA
+        )
+    }
+
+    @MainActor
     func test_cancellingOneRoomPreservesAnotherRoomsRuntimeAndTypingState() async {
         let manager = AgentWindowManager.shared
         let roomA = UUID()

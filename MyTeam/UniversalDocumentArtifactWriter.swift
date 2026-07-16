@@ -30,7 +30,9 @@ enum UniversalDocumentArtifactWriter {
 
         let filename = UniversalDocumentSkillService.outputFilename(for: request)
         let title = UniversalDocumentSkillService.documentTitle(for: request)
-        let workflowID = await MainActor.run { manager.currentWorkflowID } ?? UUID()
+        let workflowID = await MainActor.run {
+            ArtifactWorkflowOwnership.workflowID(for: roomID, manager: manager)
+        }
         let fileURL = try safeWritableWorkspaceURL(
             filename: filename,
             context: ToolExecutionContext.current(workflowID: workflowID, roomID: roomID)
@@ -62,7 +64,14 @@ enum UniversalDocumentArtifactWriter {
             roomID: roomID.uuidString
         )
 
-        await ArtifactStore.shared.registerArtifact(artifact)
+        switch await ArtifactStore.shared.registerArtifact(artifact) {
+        case .success:
+            break
+        case .failure(let error):
+            try? FileManager.default.removeItem(at: fileURL)
+            AppLog.error("[UniversalDocumentArtifactWriter] artifact index registration failed: \(error)")
+            throw error
+        }
 
         // ArtifactPersistencePolicy: index 추가 여부 확인
         if ArtifactPersistencePolicy.shouldIndexArtifact(resultStatus: resultStatus) {

@@ -61,3 +61,20 @@ enum ArtifactPersistencePolicy {
     }
     #endif
 }
+
+enum ArtifactWorkflowOwnership {
+    @MainActor
+    static func workflowID(for roomID: UUID, manager: AgentWindowManager) -> UUID {
+        manager.currentWorkflowID(for: roomID) ?? UUID()
+    }
+
+    @MainActor
+    static func currentContext(
+        manager: AgentWindowManager
+    ) -> (roomID: UUID?, workflowID: UUID) {
+        guard let roomID = manager.currentRoomID else {
+            return (nil, UUID())
+        }
+        return (roomID, workflowID(for: roomID, manager: manager))
+    }
+}
