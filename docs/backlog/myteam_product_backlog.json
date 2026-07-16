@@ -466,7 +466,7 @@
       },
       "completion_evidence": {
         "required": true,
-      "commit_sha": "7196256, 47ff4ae, 1cd2452, 7409b68, ffa1a1e",
+      "commit_sha": "7196256, 47ff4ae, 1cd2452, 7409b68, ffa1a1e, da61c03",
         "files_changed": [
           "MyTeam/Assets.xcassets/AppIcon.appiconset/Contents.json",
           "MyTeam/Assets.xcassets/AppIcon.appiconset/*.png",
@@ -484,12 +484,13 @@
           "MyTeam/CharacterGalleryView.swift",
           "MyTeam/CharacterCatalog.swift",
         "MyTeam/ProductSurfacePolicy.swift",
+        "MyTeam/TeamCollaborationStatus.swift",
         "MyTeam/TeamCollaborationStatusProvider.swift",
         "MyTeam/AgentWindowManager.swift",
         "MyTeamTests/PublicAPIConnectorValidatorTests.swift",
         "MyTeamTests/LLMRouterTests.swift"
       ],
-      "validation_summary": "2026-07-17: Commit ffa1a1e removes invented idle activity such as characters claiming to refine, check, or work without a runtime task. Idle cards now expose only truthful specialty-specific availability and use consistent Korean spacing. A regression test covers all 11 built-in characters, and the complete release validator passed. Partial remains because Dock/Finder icon rendering, a normally signed Release UI pass, and production Keychain/real-audio listening checks remain open.",
+      "validation_summary": "2026-07-17: Commits ffa1a1e and da61c03 remove invented idle activity and the hard-coded fake main task. The team header now reports idle, active, completed, or failed truthfully; status detail comes from the selected room's latest real user request and refreshes immediately on room switches. Unit tests cover all 11 idle character lines and header-state mapping; architecture and complete release validators passed. Partial remains because Dock/Finder icon rendering, a normally signed Release UI pass, and production Keychain/real-audio listening checks remain open.",
         "screenshots": []
       },
       "notes": [
@@ -497,7 +498,8 @@
         "No completed claim: the locked Mac prevented live screen inspection of the current QA build.",
         "Unlocked live QA later covered onboarding, work dashboard, connection center, character gallery, workroom, keyboard input, and quit/relaunch. User and skill tabs triggered Computer Use accessibility transport limits rather than an app crash.",
       "Character composition decision: 치코 replaces 핀 in the default four-person team; 핀 remains a built-in replacement option and no character role, tone, or persona was changed.",
-      "2026-07-17: Idle character status copy now describes availability only. It no longer implies separate background work or fabricated elapsed effort."
+      "2026-07-17: Idle character status copy now describes availability only. It no longer implies separate background work or fabricated elapsed effort.",
+      "2026-07-17: The team panel no longer labels idle/completed/failed states as active collaboration or displays a hard-coded project as the user's current task."
       ]
     },
     {
