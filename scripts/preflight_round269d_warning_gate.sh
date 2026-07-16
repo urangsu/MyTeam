@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # preflight_round269d_warning_gate.sh
 # Round 269D: Warning Zero Gate
-# Supertonic3ONNXRunner Swift 6 forward-compat 경고는 Spike-only 파일 예외로 허용.
+# Supertonic3ONNXRunner와 번들 모델의 현재 Release 계약을 정적으로 검증한다.
 # Production 파일 구조 계약을 정적으로 검증한다.
 # 12개 검사
 
@@ -37,10 +37,10 @@ fhas 'continuation.finish(throwing:' "$SRC/AIService.swift" \
   && ok "AIService continuation.finish(throwing:) guard 패턴 존재" \
   || fail "continuation.finish(throwing:) 없음"
 
-# 4. Supertonic3ONNXRunner Spike-only 명시
-fhas 'Spike-only' "$SRC/Supertonic3ONNXRunner.swift" \
-  && ok "Supertonic3ONNXRunner Spike-only 주석 존재" \
-  || fail "Spike-only 주석 없음"
+# 4. Supertonic3ONNXRunner는 실제 제품 actor로 유지
+fhas 'actor Supertonic3ONNXRunner' "$SRC/Supertonic3ONNXRunner.swift" \
+  && ok "Supertonic3ONNXRunner 제품 actor 존재" \
+  || fail "Supertonic3ONNXRunner 제품 actor 없음"
 
 # 5. S3Config Swift 6 주석 존재 (pre-existing warning 설명)
 fhas 'Swift 6 future error' "$SRC/Supertonic3ONNXRunner.swift" \
@@ -69,11 +69,11 @@ else
     ok "Apple TTS 없음"
 fi
 
-# 10. .onnx git untracked
-if git -C "$ROOT" ls-files --error-unmatch '*.onnx' 2>/dev/null | grep -q '\.onnx'; then
-    fail ".onnx 파일 git track됨"
+# 10. App Store Release에 필요한 Supertonic3 모델 번들과 무결성
+if python3 "$ROOT/scripts/validate_supertonic3_bundle.py" --require-bundle >/dev/null; then
+    ok "Supertonic3 번들 모델 및 무결성 검증"
 else
-    ok ".onnx git untracked (정상)"
+    fail "Supertonic3 번들 모델 또는 무결성 불일치"
 fi
 
 # 11. .log git untracked

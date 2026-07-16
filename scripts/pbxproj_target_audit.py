@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import json
 import re
 import sys
 from pathlib import Path
@@ -33,14 +32,17 @@ def read_pbxproj(path):
 
 def check_file_presence(pbxproj_content, filename):
     """Check if file has PBXFileReference, PBXBuildFile, and PBXSourcesBuildPhase entries."""
-    basename = filename.replace('.swift', '')
-
-    # Match both quoted `path = "Foo.swift"` and unquoted `path = Foo.swift;`
+    # Match OpenStep projects and Xcode's XML plist serialization.
+    xml_reference = re.search(
+        rf"<key>(?:path|name)</key>\s*<string>{re.escape(filename)}</string>",
+        pbxproj_content,
+    )
     has_file_ref = (
         f'path = "{filename}"' in pbxproj_content
         or f'name = "{filename}"' in pbxproj_content
         or f'path = {filename};' in pbxproj_content
         or f'name = {filename};' in pbxproj_content
+        or xml_reference is not None
     )
     has_build_file = f'fileRef = ' in pbxproj_content and f'/* {filename}' in pbxproj_content
     has_sources_phase = f'sourceRoot' in pbxproj_content or f'PBXSourcesBuildPhase' in pbxproj_content
