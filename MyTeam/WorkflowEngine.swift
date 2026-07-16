@@ -206,20 +206,26 @@ final class WorkflowEngine {
         let workspaceURL = context.workspaceURL
         let completedArtifacts = artifacts
         let completedWorkflowID = sessionID
-        Task { @MainActor in
-            NotificationCenter.default.post(
-                name: .workflowCompleted,
-                object: nil,
-                userInfo: [
-                    "workspaceURL": workspaceURL,
-                    "artifacts": completedArtifacts,
-                    "workflowID": completedWorkflowID
-                ]
-            )
+        if WorkflowCompletionTruthPolicy.shouldPostArtifactNotification(artifactCount: completedArtifacts.count) {
+            Task { @MainActor in
+                NotificationCenter.default.post(
+                    name: .workflowCompleted,
+                    object: nil,
+                    userInfo: [
+                        "workspaceURL": workspaceURL,
+                        "artifacts": completedArtifacts,
+                        "workflowID": completedWorkflowID
+                    ]
+                )
+            }
         }
 
         let summary = buildSummary(plan: plan, artifacts: artifacts,
-                                   failedSteps: failedSteps, workspaceURL: workspaceURL)
+                                   failedSteps: failedSteps,
+                                   approvalRequiredCount: approvalRequiredRequests.count,
+                                   plannedStepCount: plannedStepMessages.count,
+                                   unavailableStepCount: unavailableStepMessages.count,
+                                   workspaceURL: workspaceURL)
         AppLog.info("[WorkflowEngine] 완료: \(artifacts.count)개 artifact, \(failedSteps.count)개 실패, \(approvalRequiredRequests.count)개 승인대기")
         return WorkflowResult(
             plan: plan,
@@ -238,12 +244,21 @@ final class WorkflowEngine {
         plan: WorkflowPlan,
         artifacts: [Artifact],
         failedSteps: [(step: WorkflowStep, error: String)],
+        approvalRequiredCount: Int,
+        plannedStepCount: Int,
+        unavailableStepCount: Int,
         workspaceURL: URL
     ) -> String {
         var lines: [String] = []
 
-        let allFailed = artifacts.isEmpty && !failedSteps.isEmpty
-        lines.append(allFailed ? "❌ 작업 실패: \(plan.title)" : "✅ 작업 완료: \(plan.title)")
+        lines.append(WorkflowCompletionTruthPolicy.headline(
+            planTitle: plan.title,
+            artifactCount: artifacts.count,
+            failureCount: failedSteps.count,
+            approvalCount: approvalRequiredCount,
+            plannedCount: plannedStepCount,
+            unavailableCount: unavailableStepCount
+        ))
 
         if !artifacts.isEmpty {
             lines.append("📄 생성 파일:")

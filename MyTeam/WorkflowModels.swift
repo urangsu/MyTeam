@@ -96,3 +96,36 @@ struct WorkflowResult {
         self.unavailableStepMessages = unavailableStepMessages
     }
 }
+
+enum WorkflowCompletionTruthPolicy {
+    static func headline(
+        planTitle: String,
+        artifactCount: Int,
+        failureCount: Int,
+        approvalCount: Int,
+        plannedCount: Int,
+        unavailableCount: Int
+    ) -> String {
+        let blockedCount = approvalCount + plannedCount + unavailableCount
+        if artifactCount > 0, failureCount + blockedCount > 0 {
+            return "⚠️ 일부 완료: \(planTitle)"
+        }
+        if artifactCount > 0 {
+            return "✅ 작업 완료: \(planTitle)"
+        }
+        if approvalCount > 0, failureCount == 0, plannedCount == 0, unavailableCount == 0 {
+            return "⏸️ 사용자 확인 필요: \(planTitle)"
+        }
+        if failureCount > 0 {
+            return "❌ 작업 실패: \(planTitle)"
+        }
+        if plannedCount + unavailableCount > 0 {
+            return "⚠️ 작업 미완료: \(planTitle)"
+        }
+        return "✅ 작업 완료: \(planTitle)"
+    }
+
+    static func shouldPostArtifactNotification(artifactCount: Int) -> Bool {
+        artifactCount > 0
+    }
+}

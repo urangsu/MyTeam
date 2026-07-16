@@ -895,6 +895,33 @@ final class LLMRouterTests: XCTestCase {
         )
     }
 
+    func test_workflowCompletionTruthNeverClaimsPlannedWorkAsDone() {
+        XCTAssertEqual(
+            WorkflowCompletionTruthPolicy.headline(
+                planTitle: "출시 문서",
+                artifactCount: 0,
+                failureCount: 0,
+                approvalCount: 0,
+                plannedCount: 1,
+                unavailableCount: 0
+            ),
+            "⚠️ 작업 미완료: 출시 문서"
+        )
+        XCTAssertEqual(
+            WorkflowCompletionTruthPolicy.headline(
+                planTitle: "메일 초안",
+                artifactCount: 0,
+                failureCount: 0,
+                approvalCount: 1,
+                plannedCount: 0,
+                unavailableCount: 0
+            ),
+            "⏸️ 사용자 확인 필요: 메일 초안"
+        )
+        XCTAssertFalse(WorkflowCompletionTruthPolicy.shouldPostArtifactNotification(artifactCount: 0))
+        XCTAssertTrue(WorkflowCompletionTruthPolicy.shouldPostArtifactNotification(artifactCount: 1))
+    }
+
     @MainActor
     func test_cancellingOneRoomPreservesAnotherRoomsRuntimeAndTypingState() async {
         let manager = AgentWindowManager.shared
