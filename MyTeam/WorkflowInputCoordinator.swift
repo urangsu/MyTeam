@@ -91,10 +91,12 @@ struct LegacyWorkflowFallbackRouter {
                 text: progressText
             )
         }
-        await MainActor.run {
-            manager.isWorkflowRunning = true
+        let operationToken = await MainActor.run {
             let statusName = matches.count == 1 ? matches[0].descriptor.displayName : "\(matches.count)개 업무"
-            manager.setWorkflowStatus("업무 도구 실행 중: \(statusName)", for: roomID)
+            return manager.beginWorkflowOperation(
+                status: "업무 도구 실행 중: \(statusName)",
+                roomID: roomID
+            )
         }
 
         var results: [(match: MyTeamToolFastPathMatch, state: ToolExecutionState)] = []
@@ -117,8 +119,7 @@ struct LegacyWorkflowFallbackRouter {
                 text: responseText,
                 agentName: "업무 실행"
             )
-            manager.clearWorkflowStatus(for: roomID)
-            manager.isWorkflowRunning = manager.activeWorkflowTaskCount() > 0
+            manager.finishWorkflowOperation(roomID: roomID, token: operationToken)
         }
         return true
     }

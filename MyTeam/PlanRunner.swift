@@ -33,7 +33,7 @@ final class PlanRunner {
         }
 
         await MainActor.run {
-            manager.currentWorkflowID = workflowID
+            manager.setCurrentWorkflowID(workflowID, roomID: roomID)
             manager.updateRoomGoalContext(roomID: roomID, activeWorkflowStep: "planRunner.started")
         }
 

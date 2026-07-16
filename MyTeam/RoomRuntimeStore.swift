@@ -20,6 +20,8 @@ final class RoomRuntimeStore: ObservableObject {
     @Published private(set) var roomGoalContexts: [UUID: RoomGoalContext] = [:]
     @Published private(set) var lastFileIntakeResultsByRoom: [UUID: FileIntakeResult] = [:]
     @Published private(set) var activeTasksByRoom: [UUID: Task<Void, Never>] = [:]
+    private var activeTaskTokensByRoom: [UUID: UUID] = [:]
+    private var activeOperationTokensByRoom: [UUID: Set<UUID>] = [:]
     @Published private(set) var memoryWriteBlockedCount: Int = 0
     @Published private(set) var automationTaskSensitiveBlockedCount: Int = 0
 
@@ -35,7 +37,9 @@ final class RoomRuntimeStore: ObservableObject {
     var ownsGoalContext: Bool { true }
     var ownsFileIntake: Bool { true }
     var ownsActiveTasks: Bool { true }
-    var activeTaskRoomCount: Int { activeTasksByRoom.count }
+    var activeTaskRoomCount: Int {
+        Set(activeTasksByRoom.keys).union(activeOperationTokensByRoom.keys).count
+    }
 
     func updateRoomGoalContext(
         roomID: UUID,
@@ -132,9 +136,43 @@ final class RoomRuntimeStore: ObservableObject {
     func setActiveTask(_ task: Task<Void, Never>?, for roomID: UUID) {
         if let task {
             activeTasksByRoom[roomID] = task
+            activeTaskTokensByRoom[roomID] = UUID()
         } else {
             activeTasksByRoom.removeValue(forKey: roomID)
+            activeTaskTokensByRoom.removeValue(forKey: roomID)
         }
+    }
+
+    func installActiveTask(_ task: Task<Void, Never>, for roomID: UUID) -> UUID {
+        let token = UUID()
+        activeTasksByRoom[roomID] = task
+        activeTaskTokensByRoom[roomID] = token
+        return token
+    }
+
+    func clearActiveTask(for roomID: UUID, token: UUID) -> Bool {
+        guard activeTaskTokensByRoom[roomID] == token else { return false }
+        activeTasksByRoom.removeValue(forKey: roomID)
+        activeTaskTokensByRoom.removeValue(forKey: roomID)
+        return true
+    }
+
+    func beginActiveOperation(for roomID: UUID) -> UUID {
+        let token = UUID()
+        activeOperationTokensByRoom[roomID, default: []].insert(token)
+        return token
+    }
+
+    func finishActiveOperation(for roomID: UUID, token: UUID) -> Bool {
+        guard activeOperationTokensByRoom[roomID]?.remove(token) != nil else { return false }
+        if activeOperationTokensByRoom[roomID]?.isEmpty == true {
+            activeOperationTokensByRoom.removeValue(forKey: roomID)
+        }
+        return true
+    }
+
+    func hasActiveOperation(for roomID: UUID) -> Bool {
+        activeOperationTokensByRoom[roomID]?.isEmpty == false
     }
 
     func activeTask(for roomID: UUID) -> Task<Void, Never>? {
@@ -143,6 +181,8 @@ final class RoomRuntimeStore: ObservableObject {
 
     func cancelActiveTask(for roomID: UUID) -> Task<Void, Never>? {
         let task = activeTasksByRoom.removeValue(forKey: roomID)
+        activeTaskTokensByRoom.removeValue(forKey: roomID)
+        activeOperationTokensByRoom.removeValue(forKey: roomID)
         task?.cancel()
         return task
     }
@@ -150,6 +190,8 @@ final class RoomRuntimeStore: ObservableObject {
     func cancelAllTasks() {
         let tasks = Array(activeTasksByRoom.values)
         activeTasksByRoom.removeAll()
+        activeTaskTokensByRoom.removeAll()
+        activeOperationTokensByRoom.removeAll()
         tasks.forEach { $0.cancel() }
     }
 

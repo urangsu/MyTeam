@@ -122,6 +122,7 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
     @Published var workflowStatusText: String? = nil
     /// room별 workflow 진행 문구. UI는 현재 방 값을 먼저 읽어 방 간 진행 상태 오염을 막는다.
     @Published private(set) var workflowStatusTextByRoom: [UUID: String] = [:]
+    private var workflowStatusOwnerTokensByRoom: [UUID: UUID] = [:]
     /// room별 workflowID. 전역 currentWorkflowID는 레거시/진단 호환용으로만 남긴다.
     @Published private(set) var currentWorkflowIDByRoom: [UUID: UUID] = [:]
     /// room별 마지막 turn profile — /why, /last, diagnostics용 읽기 전용 상태.
@@ -521,13 +522,13 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
     @MainActor
     func setWorkflowStatus(_ status: String, for roomID: UUID) {
         workflowStatusTextByRoom[roomID] = status
-        workflowStatusText = status
+        refreshLegacyWorkflowStatusMirror(preferredRoomID: roomID)
     }
 
     @MainActor
     func clearWorkflowStatus(for roomID: UUID) {
         workflowStatusTextByRoom.removeValue(forKey: roomID)
-        workflowStatusText = nil
+        refreshLegacyWorkflowStatusMirror()
     }
 
     @MainActor
@@ -548,11 +549,11 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         if let step = activeWorkflowStep {
             let status = TeamRuntimeStatusCopy.koreanStatus(forWorkflowStep: step)
             workflowStatusTextByRoom[roomID] = status
-            workflowStatusText = status
+            refreshLegacyWorkflowStatusMirror(preferredRoomID: roomID)
         } else {
             // nil step 전달은 명시적 완료 신호 — 인디케이터 즉시 해제
             workflowStatusTextByRoom.removeValue(forKey: roomID)
-            workflowStatusText = nil
+            refreshLegacyWorkflowStatusMirror()
         }
     }
 
@@ -607,31 +608,111 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         roomRuntimeStore.setActiveTask(task, for: roomID)
         if task == nil {
             currentWorkflowIDByRoom.removeValue(forKey: roomID)
+            if !roomRuntimeStore.hasActiveOperation(for: roomID) {
+                workflowStatusTextByRoom.removeValue(forKey: roomID)
+            }
+            refreshLegacyCurrentWorkflowIDMirror()
+            refreshLegacyWorkflowStatusMirror()
+        }
+    }
+
+    @MainActor
+    @discardableResult
+    func installActiveWorkflowTask(_ task: Task<Void, Never>, roomID: UUID) -> UUID {
+        roomRuntimeStore.installActiveTask(task, for: roomID)
+    }
+
+    @MainActor
+    @discardableResult
+    func clearActiveWorkflowTask(roomID: UUID, token: UUID) -> Bool {
+        guard roomRuntimeStore.clearActiveTask(for: roomID, token: token) else { return false }
+        currentWorkflowIDByRoom.removeValue(forKey: roomID)
+        if !roomRuntimeStore.hasActiveOperation(for: roomID) {
             workflowStatusTextByRoom.removeValue(forKey: roomID)
         }
+        refreshLegacyCurrentWorkflowIDMirror()
+        refreshLegacyWorkflowStatusMirror()
+        return true
+    }
+
+    @MainActor
+    func beginWorkflowOperation(status: String, roomID: UUID) -> UUID {
+        let token = roomRuntimeStore.beginActiveOperation(for: roomID)
+        workflowStatusOwnerTokensByRoom[roomID] = token
+        workflowStatusTextByRoom[roomID] = status
+        refreshLegacyWorkflowStatusMirror(preferredRoomID: roomID)
+        isWorkflowRunning = true
+        return token
+    }
+
+    @MainActor
+    func finishWorkflowOperation(roomID: UUID, token: UUID) {
+        guard roomRuntimeStore.finishActiveOperation(for: roomID, token: token) else { return }
+        if workflowStatusOwnerTokensByRoom[roomID] == token {
+            workflowStatusOwnerTokensByRoom.removeValue(forKey: roomID)
+            workflowStatusTextByRoom.removeValue(forKey: roomID)
+            refreshLegacyWorkflowStatusMirror()
+        }
+        isWorkflowRunning = activeWorkflowTaskCount() > 0
     }
 
     @MainActor
     func setCurrentWorkflowID(_ workflowID: UUID?, roomID: UUID) {
         if let workflowID {
             currentWorkflowIDByRoom[roomID] = workflowID
-            currentWorkflowID = workflowID
         } else {
             currentWorkflowIDByRoom.removeValue(forKey: roomID)
-            if selectedTeamWorkroomID == roomID || currentRoomID == roomID {
-                currentWorkflowID = nil
-            }
         }
+        refreshLegacyCurrentWorkflowIDMirror(preferredRoomID: roomID)
+    }
+
+    @MainActor
+    @discardableResult
+    func clearCurrentWorkflowID(_ workflowID: UUID, roomID: UUID) -> Bool {
+        guard currentWorkflowIDByRoom[roomID] == workflowID else { return false }
+        currentWorkflowIDByRoom.removeValue(forKey: roomID)
+        refreshLegacyCurrentWorkflowIDMirror()
+        return true
+    }
+
+    @MainActor
+    private func refreshLegacyWorkflowStatusMirror(preferredRoomID: UUID? = nil) {
+        workflowStatusText = legacyWorkflowRoomCandidates(preferredRoomID: preferredRoomID)
+            .lazy
+            .compactMap { self.workflowStatusTextByRoom[$0] }
+            .first
+            ?? workflowStatusTextByRoom.values.first
+    }
+
+    @MainActor
+    private func refreshLegacyCurrentWorkflowIDMirror(preferredRoomID: UUID? = nil) {
+        currentWorkflowID = legacyWorkflowRoomCandidates(preferredRoomID: preferredRoomID)
+            .lazy
+            .compactMap { self.currentWorkflowIDByRoom[$0] }
+            .first
+            ?? currentWorkflowIDByRoom.values.first
+    }
+
+    @MainActor
+    private func legacyWorkflowRoomCandidates(preferredRoomID: UUID?) -> [UUID] {
+        var candidates: [UUID] = []
+        for roomID in [currentRoomID, selectedTeamWorkroomID, preferredRoomID].compactMap({ $0 })
+            where !candidates.contains(roomID) {
+            candidates.append(roomID)
+        }
+        return candidates
     }
 
     @MainActor
     func cancelActiveWorkflowTask(roomID: UUID) {
         _ = roomRuntimeStore.cancelActiveTask(for: roomID)
+        workflowStatusOwnerTokensByRoom.removeValue(forKey: roomID)
     }
 
     @MainActor
     func cancelAllActiveWorkflowTasks() {
         roomRuntimeStore.cancelAllTasks()
+        workflowStatusOwnerTokensByRoom.removeAll()
     }
     
     var persistentContext: String {

@@ -804,6 +804,171 @@ final class LLMRouterTests: XCTestCase {
         XCTAssertFalse(response.contains("위임 작업이 없습니다"))
     }
 
+    @MainActor
+    func test_roomScopedWorkflowStatusMirrorPreservesTheVisibleRoomAndSurvivingWork() {
+        let manager = AgentWindowManager.shared
+        let originalCurrentRoomID = manager.currentRoomID
+        let originalSelectedTeamWorkroomID = manager.selectedTeamWorkroomID
+        let roomA = UUID()
+        let roomB = UUID()
+        defer {
+            manager.clearWorkflowStatus(for: roomA)
+            manager.clearWorkflowStatus(for: roomB)
+            manager.currentRoomID = originalCurrentRoomID
+            manager.selectedTeamWorkroomID = originalSelectedTeamWorkroomID
+        }
+
+        manager.currentRoomID = roomA
+        manager.selectedTeamWorkroomID = roomA
+        manager.setWorkflowStatus("A 작업 중", for: roomA)
+        manager.setWorkflowStatus("B 작업 중", for: roomB)
+
+        XCTAssertEqual(manager.workflowStatusText(for: roomA), "A 작업 중")
+        XCTAssertEqual(manager.workflowStatusText(for: roomB), "B 작업 중")
+        XCTAssertEqual(manager.workflowStatusText, "A 작업 중")
+
+        manager.clearWorkflowStatus(for: roomA)
+
+        XCTAssertEqual(manager.workflowStatusText(for: roomB), "B 작업 중")
+        XCTAssertEqual(manager.workflowStatusText, "B 작업 중")
+    }
+
+    @MainActor
+    func test_roomScopedWorkflowIDMirrorDoesNotClearAnotherRoom() {
+        let manager = AgentWindowManager.shared
+        let originalCurrentRoomID = manager.currentRoomID
+        let originalSelectedTeamWorkroomID = manager.selectedTeamWorkroomID
+        let roomA = UUID()
+        let roomB = UUID()
+        let workflowA = UUID()
+        let workflowB = UUID()
+        defer {
+            manager.setCurrentWorkflowID(nil, roomID: roomA)
+            manager.setCurrentWorkflowID(nil, roomID: roomB)
+            manager.currentRoomID = originalCurrentRoomID
+            manager.selectedTeamWorkroomID = originalSelectedTeamWorkroomID
+        }
+
+        manager.currentRoomID = roomA
+        manager.selectedTeamWorkroomID = roomA
+        manager.setCurrentWorkflowID(workflowA, roomID: roomA)
+        manager.setCurrentWorkflowID(workflowB, roomID: roomB)
+
+        XCTAssertEqual(manager.currentWorkflowID(for: roomA), workflowA)
+        XCTAssertEqual(manager.currentWorkflowID(for: roomB), workflowB)
+        XCTAssertEqual(manager.currentWorkflowID, workflowA)
+
+        manager.setCurrentWorkflowID(nil, roomID: roomA)
+
+        XCTAssertEqual(manager.currentWorkflowID(for: roomB), workflowB)
+        XCTAssertEqual(manager.currentWorkflowID, workflowB)
+    }
+
+    @MainActor
+    func test_cancellingOneRoomPreservesAnotherRoomsRuntimeAndTypingState() async {
+        let manager = AgentWindowManager.shared
+        let roomA = UUID()
+        let roomB = UUID()
+        let originalTypingAgentIDs = manager.typingAgentIDs
+        let originalTeamRuntimeState = manager.teamRuntimeState
+        let originalIsWorkflowRunning = manager.isWorkflowRunning
+        let taskA = Task<Void, Never> { try? await Task.sleep(nanoseconds: 30_000_000_000) }
+        let taskB = Task<Void, Never> { try? await Task.sleep(nanoseconds: 30_000_000_000) }
+        defer {
+            taskA.cancel()
+            taskB.cancel()
+            manager.setActiveWorkflowTask(nil, roomID: roomA)
+            manager.setActiveWorkflowTask(nil, roomID: roomB)
+            manager.clearWorkflowStatus(for: roomA)
+            manager.clearWorkflowStatus(for: roomB)
+            manager.typingAgentIDs = originalTypingAgentIDs
+            manager.teamRuntimeState = originalTeamRuntimeState
+            manager.isWorkflowRunning = originalIsWorkflowRunning
+        }
+
+        manager.setActiveWorkflowTask(taskA, roomID: roomA)
+        manager.setActiveWorkflowTask(taskB, roomID: roomB)
+        manager.setWorkflowStatus("A 작업 중", for: roomA)
+        manager.setWorkflowStatus("B 작업 중", for: roomB)
+        manager.typingAgentIDs = ["agent_concurrent"]
+        manager.teamRuntimeState = .discussionStarted(roomID: roomB)
+        manager.isWorkflowRunning = true
+
+        WorkflowOrchestrator.shared.cancelCurrentWorkflow(roomID: roomA, manager: manager)
+        for _ in 0..<20 where manager.activeWorkflowTask(for: roomA) != nil {
+            await Task.yield()
+        }
+
+        XCTAssertNil(manager.activeWorkflowTask(for: roomA))
+        XCTAssertNotNil(manager.activeWorkflowTask(for: roomB))
+        XCTAssertEqual(manager.workflowStatusText(for: roomB), "B 작업 중")
+        XCTAssertEqual(manager.typingAgentIDs, ["agent_concurrent"])
+        XCTAssertEqual(manager.teamRuntimeState?.roomID, roomB)
+        XCTAssertTrue(manager.isWorkflowRunning)
+    }
+
+    @MainActor
+    func test_staleWorkflowCleanupCannotClearReplacementTaskInTheSameRoom() {
+        let manager = AgentWindowManager.shared
+        let roomID = UUID()
+        let oldTask = Task<Void, Never> { try? await Task.sleep(nanoseconds: 30_000_000_000) }
+        let replacementTask = Task<Void, Never> { try? await Task.sleep(nanoseconds: 30_000_000_000) }
+        defer {
+            oldTask.cancel()
+            replacementTask.cancel()
+            manager.setActiveWorkflowTask(nil, roomID: roomID)
+        }
+
+        let oldToken = manager.installActiveWorkflowTask(oldTask, roomID: roomID)
+        let replacementToken = manager.installActiveWorkflowTask(replacementTask, roomID: roomID)
+
+        XCTAssertFalse(manager.clearActiveWorkflowTask(roomID: roomID, token: oldToken))
+        XCTAssertNotNil(manager.activeWorkflowTask(for: roomID))
+        XCTAssertTrue(manager.clearActiveWorkflowTask(roomID: roomID, token: replacementToken))
+        XCTAssertNil(manager.activeWorkflowTask(for: roomID))
+    }
+
+    @MainActor
+    func test_staleWorkflowFinishCannotClearReplacementWorkflowID() {
+        let manager = AgentWindowManager.shared
+        let roomID = UUID()
+        let oldWorkflowID = UUID()
+        let replacementWorkflowID = UUID()
+        defer { manager.setCurrentWorkflowID(nil, roomID: roomID) }
+
+        manager.setCurrentWorkflowID(oldWorkflowID, roomID: roomID)
+        manager.setCurrentWorkflowID(replacementWorkflowID, roomID: roomID)
+
+        XCTAssertFalse(manager.clearCurrentWorkflowID(oldWorkflowID, roomID: roomID))
+        XCTAssertEqual(manager.currentWorkflowID(for: roomID), replacementWorkflowID)
+        XCTAssertTrue(manager.clearCurrentWorkflowID(replacementWorkflowID, roomID: roomID))
+        XCTAssertNil(manager.currentWorkflowID(for: roomID))
+    }
+
+    @MainActor
+    func test_staleNaturalWorkOperationCannotClearReplacementStatus() {
+        let manager = AgentWindowManager.shared
+        let roomID = UUID()
+        let originalIsWorkflowRunning = manager.isWorkflowRunning
+        defer {
+            manager.clearWorkflowStatus(for: roomID)
+            manager.isWorkflowRunning = originalIsWorkflowRunning
+        }
+
+        let oldToken = manager.beginWorkflowOperation(status: "첫 작업", roomID: roomID)
+        let replacementToken = manager.beginWorkflowOperation(status: "새 작업", roomID: roomID)
+
+        manager.finishWorkflowOperation(roomID: roomID, token: oldToken)
+
+        XCTAssertEqual(manager.workflowStatusText(for: roomID), "새 작업")
+        XCTAssertTrue(manager.isWorkflowRunning)
+
+        manager.finishWorkflowOperation(roomID: roomID, token: replacementToken)
+
+        XCTAssertNil(manager.workflowStatusText(for: roomID))
+        XCTAssertFalse(manager.isWorkflowRunning)
+    }
+
     func test_keychainMutationPolicyFailsClosedAndTreatsMissingDeleteAsSuccess() {
         XCTAssertTrue(KeychainMutationPolicy.saveSucceeded(status: errSecSuccess))
         XCTAssertFalse(KeychainMutationPolicy.saveSucceeded(status: errSecAuthFailed))

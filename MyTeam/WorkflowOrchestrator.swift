@@ -1,5 +1,10 @@
 import Foundation
 
+@MainActor
+private final class WorkflowFastPathOutcome {
+    var handled = false
+}
+
 // MARK: - WorkflowOrchestrator
 // TeamStatusView.sendTeamMessage()의 단일 진입점.
 // IntentRouter를 1회만 호출하고 CHITCHAT → runChitchatOnly(), TASK → WorkflowEngine으로 라우팅.
@@ -11,6 +16,30 @@ final class WorkflowOrchestrator {
     // MARK: - 취소 지원
     private func activeWorkflowTaskCount(manager: AgentWindowManager) -> Int {
         manager.activeWorkflowTaskCount()
+    }
+
+    private func installActiveWorkflowTask(
+        _ task: Task<Void, Never>,
+        roomID: UUID,
+        manager: AgentWindowManager
+    ) async -> UUID {
+        await MainActor.run {
+            manager.isWorkflowRunning = true
+            return manager.installActiveWorkflowTask(task, roomID: roomID)
+        }
+    }
+
+    @discardableResult
+    private func clearActiveWorkflowTask(
+        roomID: UUID,
+        token: UUID,
+        manager: AgentWindowManager
+    ) async -> Bool {
+        await MainActor.run {
+            let didClear = manager.clearActiveWorkflowTask(roomID: roomID, token: token)
+            manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0
+            return didClear
+        }
     }
 
     private func beginBudgetSession(roomID: UUID?, workflowID: UUID? = nil, tier: AICallBudgetTier) async -> AICallBudgetSessionKey {
@@ -107,12 +136,13 @@ final class WorkflowOrchestrator {
         Task { @MainActor in
             guard manager.activeWorkflowTask(for: roomID) != nil else { return }
             manager.cancelActiveWorkflowTask(roomID: roomID)
-            manager.typingAgentIDs.removeAll()
-            manager.workflowStatusText = nil
-            manager.teamRuntimeState = TeamRuntimeState.discussionFailed(
-                roomID: roomID,
-                detail: "작업을 중지했습니다."
-            )
+            manager.clearWorkflowStatus(for: roomID)
+            if manager.teamRuntimeState == nil || manager.teamRuntimeState?.roomID == roomID {
+                manager.teamRuntimeState = TeamRuntimeState.discussionFailed(
+                    roomID: roomID,
+                    detail: "작업을 중지했습니다."
+                )
+            }
             manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0
             manager.addChatLog(
                 roomID: roomID, agentID: "system", agentName: "작업봇",
@@ -205,7 +235,30 @@ final class WorkflowOrchestrator {
         let eventMsg = userMessage
         Task { await AgentEventBus.shared.publish(.userMessageSubmitted(roomID: eventRoomID, message: eventMsg)) }
 
-        if await handleToolFastPath(userMessage: userMessage, roomID: roomID, manager: manager) {
+        let fastPathOutcome = await MainActor.run { WorkflowFastPathOutcome() }
+        let fastPathTask = Task {
+            let handled = await self.handleToolFastPath(
+                userMessage: userMessage,
+                roomID: roomID,
+                manager: manager
+            )
+            await MainActor.run { fastPathOutcome.handled = handled }
+        }
+        let fastPathToken = await installActiveWorkflowTask(
+            fastPathTask,
+            roomID: roomID,
+            manager: manager
+        )
+        await fastPathTask.value
+        let handledFastPath = await MainActor.run { fastPathOutcome.handled }
+        guard await clearActiveWorkflowTask(
+            roomID: roomID,
+            token: fastPathToken,
+            manager: manager
+        ) else {
+            return
+        }
+        if handledFastPath {
             return
         }
 
@@ -700,7 +753,6 @@ final class WorkflowOrchestrator {
 
             effectiveScopes.formUnion(enabledSkills.flatMap { $0.allowedScopes })
             await MainActor.run { manager.isWorkflowRunning = true }
-            defer { Task { @MainActor in manager.isWorkflowRunning = false } }
             let task = Task {
                 await self.runAppLaunchPackWorkflow(
                     request: request,
@@ -710,10 +762,9 @@ final class WorkflowOrchestrator {
                     allowedScopes: effectiveScopes
                 )
             }
-            await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
+            let taskToken = await installActiveWorkflowTask(task, roomID: roomID, manager: manager)
             await task.value
-            await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
-            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
+            await clearActiveWorkflowTask(roomID: roomID, token: taskToken, manager: manager)
             return
         }
 
@@ -783,12 +834,10 @@ final class WorkflowOrchestrator {
                 effectiveScopes.formUnion(privacySkill.allowedScopes)
                 effectiveScopes.insert(.artifactGeneration)
                 await MainActor.run { manager.isWorkflowRunning = true }
-                defer { Task { @MainActor in manager.isWorkflowRunning = false } }
                 let task = Task { await self.runPrivacyTermsWorkflow(request: request, userMessage: userMessage, roomID: roomID, manager: manager, allowedScopes: effectiveScopes) }
-                await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
+                let taskToken = await installActiveWorkflowTask(task, roomID: roomID, manager: manager)
                 await task.value
-                await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
-                await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
+                await clearActiveWorkflowTask(roomID: roomID, token: taskToken, manager: manager)
                 return
             }
         }
@@ -876,7 +925,6 @@ final class WorkflowOrchestrator {
 
             if FeatureFlags.planRunnerUniversalDocumentEnabled {
                 await MainActor.run { manager.isWorkflowRunning = true }
-                defer { Task { @MainActor in manager.isWorkflowRunning = false } }
                 let task = Task {
                     await self.runUniversalDocumentPlanWorkflow(
                         request: request,
@@ -886,10 +934,9 @@ final class WorkflowOrchestrator {
                         allowedScopes: effectiveScopes
                     )
                 }
-                await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
+                let taskToken = await installActiveWorkflowTask(task, roomID: roomID, manager: manager)
                 await task.value
-                await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
-                await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
+                await clearActiveWorkflowTask(roomID: roomID, token: taskToken, manager: manager)
                 return
             }
 
@@ -897,7 +944,6 @@ final class WorkflowOrchestrator {
                 manager.isWorkflowRunning = true
                 CharacterReactionEventSink.shared.notifyDocumentGenerationStarted(workflowType: "universalDocument", roomID: roomID)
             }
-            defer { Task { @MainActor in manager.isWorkflowRunning = false } }
             let task = Task {
                 _ = await self.runUniversalDocumentWorkflow(
                     request: request,
@@ -907,10 +953,9 @@ final class WorkflowOrchestrator {
                     allowedScopes: effectiveScopes
                 )
             }
-            await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
+            let taskToken = await installActiveWorkflowTask(task, roomID: roomID, manager: manager)
             _ = await task.value
-            await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
-            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
+            await clearActiveWorkflowTask(roomID: roomID, token: taskToken, manager: manager)
             return
         }
 
@@ -983,7 +1028,6 @@ final class WorkflowOrchestrator {
             }
 
             await MainActor.run { manager.isWorkflowRunning = true }
-            defer { Task { @MainActor in manager.isWorkflowRunning = false } }
             let task = Task {
                 await self.runDailyBriefingWorkflow(
                     userMessage: userMessage,
@@ -992,10 +1036,9 @@ final class WorkflowOrchestrator {
                     allowedScopes: effectiveScopes
                 )
             }
-            await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
+            let taskToken = await installActiveWorkflowTask(task, roomID: roomID, manager: manager)
             await task.value
-            await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
-            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
+            await clearActiveWorkflowTask(roomID: roomID, token: taskToken, manager: manager)
             return
         }
 
@@ -1091,7 +1134,6 @@ final class WorkflowOrchestrator {
             effectiveScopes.formUnion(enabledSkills.flatMap { $0.allowedScopes })
             effectiveScopes.insert(.artifactGeneration)
             await MainActor.run { manager.isWorkflowRunning = true }
-            defer { Task { @MainActor in manager.isWorkflowRunning = false } }
             let task = Task {
                 _ = await self.runUniversalDocumentWorkflow(
                     request: request,
@@ -1101,10 +1143,9 @@ final class WorkflowOrchestrator {
                     allowedScopes: effectiveScopes
                 )
             }
-            await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
+            let taskToken = await installActiveWorkflowTask(task, roomID: roomID, manager: manager)
             await task.value
-            await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
-            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
+            await clearActiveWorkflowTask(roomID: roomID, token: taskToken, manager: manager)
             return
         }
 
@@ -1176,7 +1217,6 @@ final class WorkflowOrchestrator {
 
             if FeatureFlags.planRunnerUniversalDocumentEnabled {
                 await MainActor.run { manager.isWorkflowRunning = true }
-                defer { Task { @MainActor in manager.isWorkflowRunning = false } }
                 let task = Task {
                     await self.runUniversalDocumentPlanWorkflow(
                         request: request,
@@ -1186,15 +1226,13 @@ final class WorkflowOrchestrator {
                         allowedScopes: effectiveScopes
                     )
                 }
-                await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
+                let taskToken = await installActiveWorkflowTask(task, roomID: roomID, manager: manager)
                 _ = await task.value
-                await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
-                await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
+                await clearActiveWorkflowTask(roomID: roomID, token: taskToken, manager: manager)
                 return
             }
 
             await MainActor.run { manager.isWorkflowRunning = true }
-            defer { Task { @MainActor in manager.isWorkflowRunning = false } }
             let task = Task {
                 _ = await self.runUniversalDocumentWorkflow(
                     request: request,
@@ -1204,10 +1242,9 @@ final class WorkflowOrchestrator {
                     allowedScopes: effectiveScopes
                 )
             }
-            await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
+            let taskToken = await installActiveWorkflowTask(task, roomID: roomID, manager: manager)
             await task.value
-            await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
-            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
+            await clearActiveWorkflowTask(roomID: roomID, token: taskToken, manager: manager)
             return
         } else if GoalContextEngine.referencesRecentArtifact(userMessage) {
             _ = await MainActor.run {
@@ -1302,7 +1339,6 @@ final class WorkflowOrchestrator {
 
             if FeatureFlags.planRunnerUniversalDocumentEnabled {
                 await MainActor.run { manager.isWorkflowRunning = true }
-                defer { Task { @MainActor in manager.isWorkflowRunning = false } }
                 let task = Task {
                     await self.runUniversalDocumentPlanWorkflow(
                         request: request,
@@ -1312,15 +1348,13 @@ final class WorkflowOrchestrator {
                         allowedScopes: effectiveScopes
                     )
                 }
-                await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
+                let taskToken = await installActiveWorkflowTask(task, roomID: roomID, manager: manager)
                 await task.value
-                await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
-                await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
+                await clearActiveWorkflowTask(roomID: roomID, token: taskToken, manager: manager)
                 return
             }
 
             await MainActor.run { manager.isWorkflowRunning = true }
-            defer { Task { @MainActor in manager.isWorkflowRunning = false } }
             let task = Task {
                 _ = await self.runUniversalDocumentWorkflow(
                     request: request,
@@ -1330,10 +1364,9 @@ final class WorkflowOrchestrator {
                     allowedScopes: effectiveScopes
                 )
             }
-            await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
+            let taskToken = await installActiveWorkflowTask(task, roomID: roomID, manager: manager)
             _ = await task.value
-            await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
-            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
+            await clearActiveWorkflowTask(roomID: roomID, token: taskToken, manager: manager)
             return
         }
 
@@ -1366,13 +1399,10 @@ final class WorkflowOrchestrator {
             Task { await AgentEventBus.shared.publish(AgentEvent(type: .routeDecided, roomID: eventRoomID,
                                                                   payload: AgentEventPayload(message: "artifactGeneration"))) }
             await MainActor.run { manager.isWorkflowRunning = true }
-            // defer: cancel/failure/success/early return 모든 경로에서 false 보장
-            defer { Task { @MainActor in manager.isWorkflowRunning = false } }
             let task = Task { await self.runWorkflow(userMessage: userMessage, roomID: roomID, manager: manager, allowedScopes: effectiveScopes) }
-            await MainActor.run { manager.setActiveWorkflowTask(task, roomID: roomID) }
+            let taskToken = await installActiveWorkflowTask(task, roomID: roomID, manager: manager)
             await task.value
-            await MainActor.run { manager.setActiveWorkflowTask(nil, roomID: roomID) }
-            await MainActor.run { manager.isWorkflowRunning = self.activeWorkflowTaskCount(manager: manager) > 0 }
+            await clearActiveWorkflowTask(roomID: roomID, token: taskToken, manager: manager)
             return
         }
 
@@ -1943,7 +1973,7 @@ final class WorkflowOrchestrator {
             // 단일 Task로 finish → publish 순서를 보장한다.
             Task { [weak self] in
                 await self?.finishWorkflowRun(
-                    workflowID: workflowID, manager: manager,
+                    workflowID: workflowID, roomID: roomID, manager: manager,
                     status: capturedStatus, event: capturedEvent
                 )
             }
@@ -1955,15 +1985,6 @@ final class WorkflowOrchestrator {
         let progressMsgID = postEphemeralProgress(
             manager: manager, roomID: roomID, text: "⏳ 작업 계획을 수립하는 중입니다..."
         )
-
-        // 15초 typing indicator 자동 해제 타이머
-        let timeoutTask = Task {
-            try? await Task.sleep(nanoseconds: 15_000_000_000)
-            if !Task.isCancelled {
-                await MainActor.run { manager.typingAgentIDs.removeAll() }
-            }
-        }
-        defer { timeoutTask.cancel() }
 
         // 취소 검사 — finalStatus = .cancelled (기본값) 유지
         guard !Task.isCancelled else { return }
@@ -2275,7 +2296,7 @@ final class WorkflowOrchestrator {
             let capturedEvent = finalEvent
             Task { [weak self] in
                 await self?.finishWorkflowRun(
-                    workflowID: workflowID, manager: manager,
+                    workflowID: workflowID, roomID: roomID, manager: manager,
                     status: capturedStatus, event: capturedEvent
                 )
             }
@@ -2287,14 +2308,6 @@ final class WorkflowOrchestrator {
             manager: manager, roomID: roomID,
             text: "⏳ \(request.serviceName)의 개인정보처리방침을 생성하는 중입니다..."
         )
-
-        let timeoutTask = Task {
-            try? await Task.sleep(nanoseconds: 15_000_000_000)
-            if !Task.isCancelled {
-                await MainActor.run { manager.typingAgentIDs.removeAll() }
-            }
-        }
-        defer { timeoutTask.cancel() }
 
         guard !Task.isCancelled else { return }
 
@@ -2399,7 +2412,7 @@ final class WorkflowOrchestrator {
             let capturedEvent = finalEvent
             Task { [weak self] in
                 await self?.finishWorkflowRun(
-                    workflowID: workflowID, manager: manager,
+                    workflowID: workflowID, roomID: roomID, manager: manager,
                     status: capturedStatus, event: capturedEvent
                 )
             }
@@ -2412,14 +2425,6 @@ final class WorkflowOrchestrator {
             roomID: roomID,
             text: "⏳ \(request.type.displayName)을 생성하는 중입니다..."
         )
-
-        let timeoutTask = Task {
-            try? await Task.sleep(nanoseconds: 15_000_000_000)
-            if !Task.isCancelled {
-                await MainActor.run { manager.typingAgentIDs.removeAll() }
-            }
-        }
-        defer { timeoutTask.cancel() }
 
         guard !Task.isCancelled else {
             return PlanExecutionResult(
@@ -2661,6 +2666,7 @@ final class WorkflowOrchestrator {
             Task { [weak self] in
                 await self?.finishWorkflowRun(
                     workflowID: workflowID,
+                    roomID: roomID,
                     manager: manager,
                     status: capturedStatus,
                     event: capturedEvent
@@ -2836,7 +2842,7 @@ final class WorkflowOrchestrator {
             let capturedEvent = finalEvent
             Task { [weak self] in
                 await self?.finishWorkflowRun(
-                    workflowID: workflowID, manager: manager,
+                    workflowID: workflowID, roomID: roomID, manager: manager,
                     status: capturedStatus, event: capturedEvent
                 )
             }
@@ -2848,14 +2854,6 @@ final class WorkflowOrchestrator {
             manager: manager, roomID: roomID,
             text: "⏳ \(request.skillType.displayName)을 생성하는 중입니다..."
         )
-
-        let timeoutTask = Task {
-            try? await Task.sleep(nanoseconds: 15_000_000_000)
-            if !Task.isCancelled {
-                await MainActor.run { manager.typingAgentIDs.removeAll() }
-            }
-        }
-        defer { timeoutTask.cancel() }
 
         guard !Task.isCancelled else { return }
 
@@ -2935,6 +2933,7 @@ final class WorkflowOrchestrator {
     /// WorkflowRunStore.finish 완료 후 AgentEventBus.publish를 호출한다.
     private func finishWorkflowRun(
         workflowID: UUID,
+        roomID: UUID,
         manager: AgentWindowManager,
         status: WorkflowStatus,
         event: AgentEvent
@@ -2942,7 +2941,7 @@ final class WorkflowOrchestrator {
         AppLog.debug("[WorkflowOrchestrator] finishWorkflowRun status=\(status.rawValue) workflowID=\(workflowID.uuidString.prefix(8))")
         await MainActor.run {
             WorkflowRunStore.shared.finish(workflowID: workflowID, status: status)
-            manager.currentWorkflowID = nil
+            manager.clearCurrentWorkflowID(workflowID, roomID: roomID)
         }
         await AgentEventBus.shared.publish(event)
     }

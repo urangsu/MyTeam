@@ -31,16 +31,11 @@ enum NaturalWorkPlanRunner {
                 text: NaturalWorkRouter.runningMarkdown(for: validatedPlan)
             )
         }
-        await MainActor.run {
-            manager.isWorkflowRunning = true
-            manager.setWorkflowStatus("업무 조회 중: \(validatedPlan.title)", for: roomID)
-        }
-
-        defer {
-            Task { @MainActor in
-                manager.clearWorkflowStatus(for: roomID)
-                manager.isWorkflowRunning = manager.activeWorkflowTaskCount() > 0
-            }
+        let operationToken = await MainActor.run {
+            manager.beginWorkflowOperation(
+                status: "업무 조회 중: \(validatedPlan.title)",
+                roomID: roomID
+            )
         }
 
         let parentWorkID = UUID()
@@ -64,6 +59,7 @@ enum NaturalWorkPlanRunner {
                 text: naturalResult.artifactMarkdown,
                 agentName: "업무 실행"
             )
+            manager.finishWorkflowOperation(roomID: roomID, token: operationToken)
         }
         return true
     }
