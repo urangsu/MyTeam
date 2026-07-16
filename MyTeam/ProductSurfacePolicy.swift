@@ -28,8 +28,7 @@ enum ProductSurfacePolicy: Sendable {
     }
 
     static func characterVisibilityInRelease(_ characterID: String) -> Bool {
-        let canonical = CharacterIDNormalizer.canonicalID(characterID)
-        if canonical == "chiko" {
+        if CharacterCatalog.isDefaultTeamCharacter(characterID) {
             return true
         }
         let manifest = CharacterCatalog.assetManifest(for: characterID)

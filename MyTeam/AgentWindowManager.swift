@@ -29,8 +29,8 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         AgentConfig(id: "agent_1",  name: "레오",   role: "비즈니스 전략가",    emoji: "🦊", color: .orange, isPremium: false, status: "전략 판단 도와드릴 준비",         spriteName: nil, fallbackImageName: "레오_profile", dragEmoji: "😤", dragRotation: -12, dragSoundName: "Pop",   dropSoundName: "Funk"),
         AgentConfig(id: "agent_2",  name: "루나",   role: "마케터/콘텐츠 기획", emoji: "🐰", color: .pink,   isPremium: false, status: "콘텐츠 초안 도와드릴 준비",    spriteName: nil, fallbackImageName: "루나_profile", dragEmoji: "😆", dragRotation:  10, dragSoundName: "Blow",  dropSoundName: "Pop"),
         AgentConfig(id: "agent_3",  name: "모코",   role: "프로젝트 매니저",    emoji: "🐹", color: .purple, isPremium: false, status: "일 정리 도와드릴 준비",  spriteName: nil, fallbackImageName: "모코_profile", dragEmoji: "😵", dragRotation:  -8, dragSoundName: "Morse", dropSoundName: "Funk"),
-        AgentConfig(id: "agent_4",  name: "핀",     role: "UI 디자이너",        emoji: "🐧", color: .cyan,   isPremium: false, status: "화면 개선 도와드릴 준비", spriteName: nil, fallbackImageName: "핀_profile", dragEmoji: "😱", dragRotation:  12, dragSoundName: "Ping",  dropSoundName: "Pop"),
         AgentConfig(id: "agent_5",  name: "치코",   role: "UX 디자이너 & 온보딩 도우미", emoji: "🐿️", color: Color(red:0.6, green:0.4, blue:0.2), isPremium: false, status: "사용성 점검 도와드릴 준비", spriteName: "치코", fallbackImageName: "치코_profile", dragEmoji: "🤯", dragRotation: -10, dragSoundName: "Pop",   dropSoundName: "Funk"),
+        AgentConfig(id: "agent_4",  name: "핀",     role: "UI 디자이너",        emoji: "🐧", color: .cyan,   isPremium: false, status: "화면 개선 도와드릴 준비", spriteName: nil, fallbackImageName: "핀_profile", dragEmoji: "😱", dragRotation:  12, dragSoundName: "Ping",  dropSoundName: "Pop"),
         AgentConfig(id: "agent_6",  name: "렉스",   role: "법률 전문가",        emoji: "🦥", color: .green,  isPremium: true,  status: "리스크 검토 도와드릴 준비", spriteName: nil, fallbackImageName: "렉스_profile", dragEmoji: "😴", dragRotation:  14, dragSoundName: "Blow",  dropSoundName: "Pop"),
         AgentConfig(id: "agent_7",  name: "케이",   role: "보안/데이터 전문가", emoji: "🐕", color: .blue,   isPremium: true,  status: "데이터 점검 도와드릴 준비",       spriteName: nil, fallbackImageName: "케이_profile", dragEmoji: "😐", dragRotation:  -5, dragSoundName: "Morse", dropSoundName: "Funk"),
         AgentConfig(id: "agent_8",  name: "래키",   role: "백엔드 개발자",      emoji: "🦝", color: .gray,   isPremium: true,  status: "구현 검토 도와드릴 준비",    spriteName: nil, fallbackImageName: "래키_profile", dragEmoji: "😵‍💫", dragRotation:   8, dragSoundName: "Ping",  dropSoundName: "Pop"),
@@ -768,7 +768,7 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
 
     private override init() {
         let isRunningTests = AppRuntimeEnvironment.isRunningTests
-        activeAgents = Array(allAvailableAgents.prefix(4))
+        activeAgents = Array(allAvailableAgents.prefix(CharacterCatalog.defaultTeamAgentIDs.count))
         super.init()
         for index in activeAgents.indices {
             activeAgents[index].applyDeskRouting(index: index)

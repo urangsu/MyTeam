@@ -11,6 +11,18 @@ import PDFKit
 final class LLMRouterTests: XCTestCase {
 
     @MainActor
+    func test_defaultTeamRoster_matchesReleaseCharacterGallery() {
+        let defaultTeamAgentIDs = Set(AgentWindowManager.shared.activeAgents.map(\.id))
+        let galleryAgentIDs = Set(
+            CharacterCatalog.builtIn
+                .filter { ProductSurfacePolicy.characterVisibilityInRelease($0.id) }
+                .compactMap(\.agentID)
+        )
+
+        XCTAssertEqual(galleryAgentIDs, defaultTeamAgentIDs)
+    }
+
+    @MainActor
     func test_conversationReplyPolicy_distinguishesCasualWorkAndExplicitDetail() {
         XCTAssertEqual(ConversationReplyPolicy.mode(for: "안녕"), .quick)
         XCTAssertEqual(ConversationReplyPolicy.mode(for: "오늘 너무 힘들었어"), .casual)

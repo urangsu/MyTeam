@@ -119,6 +119,8 @@ enum CharacterDisplayNameResolver: Sendable {
 }
 
 enum CharacterCatalog {
+    static let defaultTeamAgentIDs = ["agent_1", "agent_2", "agent_3", "agent_5"]
+
     static let builtIn: [CharacterDLC] = [
         makeBuiltIn(id: "leo", agentID: "agent_1", name: "레오", subtitle: "시장과 수익 구조를 먼저 보는 전략가", portrait: "레오_profile", sprite: "leo_placeholder", bundledSkillIDs: ["korean.weather", "korean.dart"]),
         makeBuiltIn(id: "luna", agentID: "agent_2", name: "루나", subtitle: "캠페인 감각이 빠른 콘텐츠 메이커", portrait: "루나_profile", sprite: "luna_placeholder", bundledSkillIDs: ["korean.naver-news", "korean.naver-blog-research"]),
@@ -197,6 +199,12 @@ enum CharacterCatalog {
     ]
 
     static var all: [CharacterDLC] { builtIn + premium }
+
+    static func isDefaultTeamCharacter(_ characterID: String) -> Bool {
+        builtIn.first(where: { $0.id == characterID })
+            .flatMap(\.agentID)
+            .map(defaultTeamAgentIDs.contains) ?? false
+    }
 
     static func character(id: String) -> CharacterDLC? {
         all.first { $0.id == id }
