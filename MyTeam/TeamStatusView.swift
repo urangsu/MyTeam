@@ -1188,7 +1188,9 @@ struct TeamStatusView: View {
     private func refreshCollaborationStatus() async {
         // Round 241A: selectedTeamWorkroomID 기준 — 개인 대화 전환 시 오염 방지
         let roomID = await MainActor.run { manager.selectedTeamWorkroomID }
-        let workflowID = await MainActor.run { manager.currentWorkflowID }
+        let workflowID = await MainActor.run {
+            roomID.flatMap { manager.currentWorkflowID(for: $0) }
+        }
         let recentEvents: [AgentEvent]
         if let roomID {
             recentEvents = await AgentEventBus.shared.recentEvents(for: roomID, limit: 50)
