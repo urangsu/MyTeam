@@ -47,6 +47,8 @@ struct OnboardingCardView: View {
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(PlainButtonStyle())
+                .help("안내 닫기")
+                .accessibilityLabel("안내 닫기")
             }
 
             // localOnly + API 키 없음: 사용 가능한 기능 목록
@@ -89,39 +91,15 @@ struct OnboardingCardView: View {
     // MARK: - 상태별 속성
 
     private var iconName: String {
-        switch state.capabilityMode {
-        case .localOnly:
-            return state.isOffline ? "wifi.slash" : "sparkles"
-        case .connectorLimited:
-            return "exclamationmark.triangle.fill"
-        case .aiEnabled:
-            return "checkmark.circle.fill"
-        }
+        FirstLaunchPresentation.content(for: state).iconName
     }
 
     private var title: String {
-        switch state.capabilityMode {
-        case .localOnly:
-            return state.isOffline ? "네트워크 연결 없음" : "로컬 기능부터 바로 시작"
-        case .connectorLimited:
-            return "일부 연결 기능 준비 중"
-        case .aiEnabled:
-            return "모든 기능 활성화"
-        }
+        FirstLaunchPresentation.content(for: state).title
     }
 
     private var subtitle: String {
-        switch state.capabilityMode {
-        case .localOnly:
-            if state.isOffline {
-                return "네트워크 연결이 없어 AI 응답은 제한됩니다."
-            }
-            return "아래 기능은 바로 사용할 수 있습니다."
-        case .connectorLimited:
-            return "메일·일정 연동은 준비 중입니다."
-        case .aiEnabled:
-            return "AI 기능과 모든 기능을 사용할 수 있습니다."
-        }
+        FirstLaunchPresentation.content(for: state).subtitle
     }
 
     private var accentColor: Color {

@@ -82,6 +82,18 @@ enum PanelTuckGeometry {
         next.origin.y = min(max(next.origin.y, visibleFrame.minY + 8), visibleFrame.maxY - min(next.height, visibleFrame.height) - 8)
         return next
     }
+
+    /// Resizes a composer-bearing panel without moving its bottom edge, then
+    /// clamps the result so resizing cannot strand controls outside the screen.
+    nonisolated static func bottomAnchoredResizedFrame(
+        _ frame: NSRect,
+        size: NSSize,
+        visibleFrame: NSRect
+    ) -> NSRect {
+        var resized = frame
+        resized.size = size
+        return clampedExpandedFrame(resized, visibleFrame: visibleFrame)
+    }
 }
 
 // MARK: - FloatingPanel

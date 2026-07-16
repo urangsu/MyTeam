@@ -1569,19 +1569,34 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
     
     func updateChatWindowWidth(id: String, width: CGFloat) {
         guard let panel = chatPanels["chat_single"] else { return }
-        var frame = panel.frame
-        frame.size.width = width
+        let size = NSSize(width: width, height: panel.frame.height)
+        let frame: NSRect
+        if let visibleFrame = visibleFrame(for: panel.frame) {
+            frame = PanelTuckGeometry.bottomAnchoredResizedFrame(
+                panel.frame,
+                size: size,
+                visibleFrame: visibleFrame
+            )
+        } else {
+            frame = NSRect(origin: panel.frame.origin, size: size)
+        }
         panel.setFrame(frame, display: true)
     }
 
     func updateChatWindowSize(id: String, width: CGFloat, height: CGFloat, minSize: NSSize? = nil) {
         guard let panel = chatPanels["chat_single"] else { return }
         if let minSize { panel.minSize = minSize }
-        var frame = panel.frame
-        // y 좌표를 조정해서 창이 위로 줄어들지 않고 아래쪽이 고정되게
-        let heightDiff = height - frame.size.height
-        frame.origin.y -= heightDiff
-        frame.size = NSSize(width: width, height: height)
+        let size = NSSize(width: width, height: height)
+        let frame: NSRect
+        if let visibleFrame = visibleFrame(for: panel.frame) {
+            frame = PanelTuckGeometry.bottomAnchoredResizedFrame(
+                panel.frame,
+                size: size,
+                visibleFrame: visibleFrame
+            )
+        } else {
+            frame = NSRect(origin: panel.frame.origin, size: size)
+        }
         panel.setFrame(frame, display: true)
     }
 

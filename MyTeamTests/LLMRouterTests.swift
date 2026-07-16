@@ -645,6 +645,48 @@ final class LLMRouterTests: XCTestCase {
         XCTAssertEqual(bottom.maxY, visible.minY + PanelTuckGeometry.revealThickness, accuracy: 0.001)
     }
 
+    func test_bottomAnchoredPanelResizeKeepsComposerEdgeVisible() {
+        let visible = NSRect(x: 0, y: 0, width: 1_440, height: 900)
+        let original = NSRect(x: 980, y: 80, width: 420, height: 480)
+
+        let resized = PanelTuckGeometry.bottomAnchoredResizedFrame(
+            original,
+            size: NSSize(width: 620, height: 700),
+            visibleFrame: visible
+        )
+
+        XCTAssertEqual(resized.minY, original.minY, accuracy: 0.001)
+        XCTAssertLessThanOrEqual(resized.maxX, visible.maxX - 8)
+        XCTAssertLessThanOrEqual(resized.maxY, visible.maxY - 8)
+        XCTAssertGreaterThanOrEqual(resized.minX, visible.minX + 8)
+    }
+
+    func test_firstLaunchPresentationDoesNotClaimEveryFeatureIsEnabled() {
+        let state = FirstLaunchState(
+            hasSeenOnboarding: true,
+            hasAPIKey: true,
+            capabilityMode: .aiEnabled
+        )
+
+        let content = FirstLaunchPresentation.content(for: state)
+
+        XCTAssertEqual(content.title, "AI 대화 연결됨")
+        XCTAssertFalse(content.title.contains("모든 기능"))
+        XCTAssertFalse(content.subtitle.contains("모든 기능"))
+        XCTAssertTrue(content.subtitle.contains("외부 서비스"))
+        XCTAssertFalse(RuntimeCapabilityMode.aiEnabled.shortMessage.contains("모든 기능"))
+        XCTAssertFalse(RuntimeCapabilityMode.aiEnabled.detailedMessage.contains("모두 사용할"))
+    }
+
+    func test_qaRuntimeProfileAcceptsOnlyExplicitAbsoluteRoot() {
+        XCTAssertNil(QARuntimeProfile.rootURL(arguments: ["MyTeam"]))
+        XCTAssertNil(QARuntimeProfile.rootURL(arguments: ["MyTeam", "--qa-root", "relative/path"]))
+        XCTAssertEqual(
+            QARuntimeProfile.rootURL(arguments: ["MyTeam", "--qa-root", "/private/tmp/MyTeamQA"]),
+            URL(fileURLWithPath: "/private/tmp/MyTeamQA", isDirectory: true)
+        )
+    }
+
     func test_fileIntake_readsPDFIntoStructuredMarkdown() throws {
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("codex-file-intake-test.pdf")
         try makeSamplePDF(at: tempURL, text: "회의 목적\n이번 주 우선순위를 정리합니다.")

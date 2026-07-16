@@ -55,12 +55,22 @@ enum AppPaths {
     nonisolated static let appDirectoryName = "MyTeam"
 
     nonisolated static var applicationSupportDirectory: URL {
+        if let qaRoot = QARuntimeProfile.rootURL(arguments: ProcessInfo.processInfo.arguments) {
+            return qaRoot
+                .appendingPathComponent("Application Support", isDirectory: true)
+                .appendingPathComponent(appDirectoryName, isDirectory: true)
+        }
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
         return base.appendingPathComponent(appDirectoryName, isDirectory: true)
     }
 
     nonisolated static var cacheDirectory: URL {
+        if let qaRoot = QARuntimeProfile.rootURL(arguments: ProcessInfo.processInfo.arguments) {
+            return qaRoot
+                .appendingPathComponent("Caches", isDirectory: true)
+                .appendingPathComponent(appDirectoryName, isDirectory: true)
+        }
         let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
         return base.appendingPathComponent(appDirectoryName, isDirectory: true)
@@ -70,6 +80,21 @@ enum AppPaths {
         applicationSupportDirectory.appendingPathComponent("TTSBench", isDirectory: true)
     }
 
+}
+
+enum QARuntimeProfile {
+    nonisolated static func rootURL(arguments: [String]) -> URL? {
+        #if DEBUG
+        guard let flagIndex = arguments.firstIndex(of: "--qa-root") else { return nil }
+        let valueIndex = arguments.index(after: flagIndex)
+        guard arguments.indices.contains(valueIndex) else { return nil }
+        let path = arguments[valueIndex].trimmingCharacters(in: .whitespacesAndNewlines)
+        guard path.hasPrefix("/") else { return nil }
+        return URL(fileURLWithPath: path, isDirectory: true).standardizedFileURL
+        #else
+        return nil
+        #endif
+    }
 }
 
 enum AppRuntimeEnvironment {

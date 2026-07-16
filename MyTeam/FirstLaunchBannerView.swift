@@ -15,22 +15,18 @@ struct FirstLaunchBannerView: View {
     }
 
     private var bannerConfig: (icon: String, title: String, message: String, accentColor: Color) {
+        let content = FirstLaunchPresentation.content(for: state)
         switch state.capabilityMode {
         case .localOnly:
             if state.isOffline {
-                return ("wifi.slash", "네트워크 연결 없음",
-                    "네트워크 연결이 없어 AI 응답은 제한됩니다.", .red)
+                return (content.iconName, content.title, content.subtitle, .red)
             } else {
-                // API 키 미연결: 큰 CTA 없이 로컬 기능 안내만
-                return ("sparkles", "로컬 기능부터 바로 시작",
-                    "회의록 양식, 체크리스트, 파일 읽기, 오늘 할 일은 바로 사용할 수 있습니다.", .blue)
+                return (content.iconName, content.title, content.subtitle, .blue)
             }
         case .connectorLimited:
-            return ("exclamationmark.triangle.fill", "연결 기능 준비 중",
-                "Google Calendar 읽기 연결은 준비 중입니다. 메일 발송이나 일정 생성은 자동 실행하지 않습니다.", .yellow)
+            return (content.iconName, content.title, content.subtitle, .yellow)
         case .aiEnabled:
-            return ("checkmark.circle.fill", "모든 기능 활성화",
-                "AI 기능과 모든 기능을 사용할 수 있습니다.", .green)
+            return (content.iconName, content.title, content.subtitle, .green)
         }
     }
 
@@ -63,6 +59,8 @@ struct FirstLaunchBannerView: View {
                         .foregroundColor(.secondary)
                 }
                 .buttonStyle(PlainButtonStyle())
+                .help("안내 닫기")
+                .accessibilityLabel("안내 닫기")
             }
             .padding(12)
             .background(

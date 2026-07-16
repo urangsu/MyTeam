@@ -23,7 +23,7 @@ enum RuntimeCapabilityMode: String, Codable, Equatable, Sendable {
         case .localOnly:
             return "API 키를 설정하여 AI 기능을 사용할 수 있습니다."
         case .aiEnabled:
-            return "모든 기능을 사용할 수 있습니다."
+            return "연결한 AI로 대화할 수 있습니다."
         case .connectorLimited:
             return "Calendar 읽기는 준비 중입니다. 외부 쓰기는 실행되지 않습니다."
         }
@@ -34,7 +34,7 @@ enum RuntimeCapabilityMode: String, Codable, Equatable, Sendable {
         case .localOnly:
             return "AI 응답을 사용하려면 설정에서 API 키를 연결해 주세요. 지금은 로컬 파일 정리, 문서 템플릿, 스케줄 확인 기능부터 사용할 수 있습니다."
         case .aiEnabled:
-            return "요약, 보고서, 문서 변환 등 AI 기능을 모두 사용할 수 있습니다."
+            return "요약, 보고서, 문서 변환 등 AI 대화 기능을 사용할 수 있습니다. 외부 서비스는 각각의 연결 및 승인 상태를 확인해 주세요."
         case .connectorLimited:
             return "Google Calendar 읽기 연결은 준비 중입니다. 메일 발송이나 일정 생성은 자동 실행하지 않습니다."
         }
