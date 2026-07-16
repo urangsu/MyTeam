@@ -466,7 +466,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "7196256, 47ff4ae, 1cd2452, 7409b68",
+      "commit_sha": "7196256, 47ff4ae, 1cd2452, 7409b68, ffa1a1e",
         "files_changed": [
           "MyTeam/Assets.xcassets/AppIcon.appiconset/Contents.json",
           "MyTeam/Assets.xcassets/AppIcon.appiconset/*.png",
@@ -483,18 +483,21 @@
           "MyTeam/TeamStatusView.swift",
           "MyTeam/CharacterGalleryView.swift",
           "MyTeam/CharacterCatalog.swift",
-          "MyTeam/ProductSurfacePolicy.swift",
-          "MyTeam/AgentWindowManager.swift",
-          "MyTeamTests/LLMRouterTests.swift"
-        ],
-        "validation_summary": "2026-07-17: Commit 7409b68 resolves the character gallery/team-table roster mismatch without changing roles or personas. The default team and Release gallery now both use 레오, 루나, 모코, 치코; 핀 remains available for replacement. A regression test first failed with gallery agent_5 versus team agent_1 through agent_4, then passed after the shared default-roster contract was introduced. Live Debug QA confirmed the same four characters in the team table, replacement/leader menus, and gallery. XCTest 118/118, all release validators, git diff check, Debug build, and arm64+x86_64 universal Release build passed. Partial remains because Dock/Finder icon rendering, a normally signed Release UI pass, and production Keychain/real-audio listening checks remain open.",
+        "MyTeam/ProductSurfacePolicy.swift",
+        "MyTeam/TeamCollaborationStatusProvider.swift",
+        "MyTeam/AgentWindowManager.swift",
+        "MyTeamTests/PublicAPIConnectorValidatorTests.swift",
+        "MyTeamTests/LLMRouterTests.swift"
+      ],
+      "validation_summary": "2026-07-17: Commit ffa1a1e removes invented idle activity such as characters claiming to refine, check, or work without a runtime task. Idle cards now expose only truthful specialty-specific availability and use consistent Korean spacing. A regression test covers all 11 built-in characters, and the complete release validator passed. Partial remains because Dock/Finder icon rendering, a normally signed Release UI pass, and production Keychain/real-audio listening checks remain open.",
         "screenshots": []
       },
       "notes": [
         "Figma source: https://www.figma.com/design/eAa0ZBJ9BtQeCj5MqOKcgy",
         "No completed claim: the locked Mac prevented live screen inspection of the current QA build.",
         "Unlocked live QA later covered onboarding, work dashboard, connection center, character gallery, workroom, keyboard input, and quit/relaunch. User and skill tabs triggered Computer Use accessibility transport limits rather than an app crash.",
-        "Character composition decision: 치코 replaces 핀 in the default four-person team; 핀 remains a built-in replacement option and no character role, tone, or persona was changed."
+      "Character composition decision: 치코 replaces 핀 in the default four-person team; 핀 remains a built-in replacement option and no character role, tone, or persona was changed.",
+      "2026-07-17: Idle character status copy now describes availability only. It no longer implies separate background work or fabricated elapsed effort."
       ]
     },
     {
