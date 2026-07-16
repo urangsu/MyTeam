@@ -1308,7 +1308,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "e879406, 261d3c5, b643b05, f0392b0, 183ff68, 2302093, 18f3046, 7fc7d93, c5c849c, a7de3b4, ee44f59, b0dea66, 7522b8f, c28ce6b",
+        "commit_sha": "e879406, 261d3c5, b643b05, f0392b0, 183ff68, 2302093, 18f3046, 7fc7d93, c5c849c, a7de3b4, ee44f59, b0dea66, 7522b8f, c28ce6b, 3845a96",
         "files_changed": [
           "MyTeam/AppTerminationCoordinator.swift",
           "MyTeam/MyTeamApp.swift",
@@ -1327,6 +1327,7 @@
           "MyTeam/GenerateXLSXTool.swift",
           "MyTeam/KoreanPrivacyTermsArtifactWriter.swift",
           "MyTeam/WorkflowEngine.swift",
+          "MyTeam/WorkflowModels.swift",
           "MyTeam/ToolRunners/GoogleCalendarToolRunner.swift",
           "MyTeam/ToolRunners/GoogleRunnerSupport.swift",
           "MyTeam/ToolRunners/GoogleSheetsToolRunner.swift",
@@ -1346,7 +1347,7 @@
           "scripts/validate_worker_production_health.py",
           "scripts/validate_myteam_release.py"
         ],
-        "validation_summary": "2026-07-17: Commits b0dea66, 7522b8f, and c28ce6b remove global workflow ownership and ignored artifact-registration results. Every production artifact writer now handles index persistence failure, rolls back its generated file where safe, and withholds success; XLSX/PPTX registration is centralized in WorkflowEngine to prevent duplicate recent entries. Ownership regression tests, architecture/release validators, and Debug build passed. Manual two-room and artifact-recovery UI QA remain open, so this task stays partial.",
+        "validation_summary": "2026-07-17: Commits b0dea66, 7522b8f, c28ce6b, and 3845a96 remove global workflow ownership, ignored artifact-registration results, and false completion reporting. Every production artifact writer now handles index persistence failure, rolls back its generated file where safe, and withholds success; XLSX/PPTX registration is centralized in WorkflowEngine to prevent duplicate recent entries. Planned, unavailable, approval-only, or failed workflows no longer emit an artifact-completion notification or claim successful completion. Ownership and completion-truth regression tests plus architecture/release validators passed. Manual two-room and artifact-recovery UI QA remain open, so this task stays partial.",
         "screenshots": []
       },
       "notes": [
@@ -1355,7 +1356,8 @@
         "ProductSurfacePolicy hides or lowers non-primary surfaces rather than deleting feature code.",
         "2026-07-17: Team status is now room-scoped during concurrent workflows; the legacy global mirror remains only for compatibility surfaces.",
         "2026-07-17: Artifact writers no longer borrow another room's workflow ID, and index-registration failure cannot be presented as saved success.",
-        "2026-07-17: Architecture validation now rejects ignored artifact-registration results and duplicate XLSX/PPTX self-registration."
+        "2026-07-17: Architecture validation now rejects ignored artifact-registration results and duplicate XLSX/PPTX self-registration.",
+        "2026-07-17: Workflow summaries distinguish completed, partially completed, approval-waiting, failed, and unexecuted states; only a registered artifact can trigger the artifact-completion notification."
       ]
     },
     {
