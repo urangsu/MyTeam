@@ -1011,6 +1011,13 @@ final class RuntimeTruthPersistenceTests: XCTestCase {
 
 @MainActor
 final class TeamCollaborationStatusProviderTests: XCTestCase {
+    func testHeaderTitleReflectsRuntimeState() {
+        XCTAssertEqual(makeStatus(.idle).headerTitle, "팀 대기 중")
+        XCTAssertEqual(makeStatus(.thinking).headerTitle, "팀 협업 중")
+        XCTAssertEqual(makeStatus(.completed).headerTitle, "작업 완료")
+        XCTAssertEqual(makeStatus(.failed).headerTitle, "확인 필요")
+    }
+
     func testIdleCharactersNeverImplyUnstartedBackgroundWork() {
         let names = CharacterCatalog.builtIn.map(\.name)
 
@@ -1033,6 +1040,16 @@ final class TeamCollaborationStatusProviderTests: XCTestCase {
             )
             XCTAssertEqual(status.detail, "대기 중")
         }
+    }
+
+    private func makeStatus(_ kind: TeamCollaborationStatus.Kind) -> TeamCollaborationStatus {
+        TeamCollaborationStatus(
+            kind: kind,
+            title: "",
+            detail: "",
+            agentName: nil,
+            timestamp: nil
+        )
     }
 }
 

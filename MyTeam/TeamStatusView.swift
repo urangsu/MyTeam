@@ -30,6 +30,7 @@ struct TeamStatusView: View {
     @State private var latestEventType: AgentEventType? = nil
     @State private var latestEventTimestamp: Date? = nil
     @State private var latestToolName: String? = nil
+    @State private var currentTaskMessage: String? = nil
     @State private var currentWorkflowStatus: WorkflowStatus? = nil
 
     private let panelChromePadding: CGFloat = 20
@@ -70,7 +71,7 @@ struct TeamStatusView: View {
             latestToolName: latestToolName,
             latestEventTimestamp: latestEventTimestamp,
             idleIndex: collaborationStatusTick,
-            currentTask: manager.currentMainTask,
+            currentTask: currentTaskMessage,
             activeAgentNames: manager.activeAgents.map(\.displayName)
         )
     }
@@ -82,9 +83,9 @@ struct TeamStatusView: View {
             HStack(spacing: 12) {
                 HStack(spacing: 8) {
                     Circle()
-                        .fill(selectedTab == 0 ? Color.orange : Color.blue)
+                        .fill(selectedTab == 0 ? collaborationStatus.accentColor : Color.blue)
                         .frame(width: 8, height: 8)
-                    Text(selectedTab == 0 ? "팀 협업 중" : "팀 워크룸")
+                    Text(selectedTab == 0 ? collaborationStatus.headerTitle : "팀 워크룸")
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(textColor.opacity(0.8))
                 }
@@ -196,6 +197,9 @@ struct TeamStatusView: View {
             Task { await refreshCollaborationStatus() }
         }
         .onChange(of: manager.currentWorkflowID?.uuidString ?? "") { _, _ in
+            Task { await refreshCollaborationStatus() }
+        }
+        .onChange(of: manager.selectedTeamWorkroomID?.uuidString ?? "") { _, _ in
             Task { await refreshCollaborationStatus() }
         }
         .onDisappear {
@@ -1196,6 +1200,10 @@ struct TeamStatusView: View {
             return event.workflowID == workflowID
         }
         let latest = scopedEvents.last ?? recentEvents.last
+        let currentTaskMessage = recentEvents
+            .last(where: { $0.type == .userMessageSubmitted })?
+            .payload.message?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         let workflowStatus = await MainActor.run {
             workflowID.flatMap { WorkflowRunStore.shared.record(for: $0)?.status }
         }
@@ -1204,6 +1212,7 @@ struct TeamStatusView: View {
             self.latestEventType = latest?.type
             self.latestEventTimestamp = latest?.timestamp
             self.latestToolName = latest?.payload.toolName
+            self.currentTaskMessage = currentTaskMessage
             self.currentWorkflowStatus = workflowStatus
             if !manager.isWorkflowRunning {
                 self.collaborationStatusTick += 1

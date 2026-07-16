@@ -51,4 +51,17 @@ struct TeamCollaborationStatus: Equatable {
     var isActive: Bool {
         kind != .idle
     }
+
+    var headerTitle: String {
+        switch kind {
+        case .idle:
+            return "팀 대기 중"
+        case .completed:
+            return "작업 완료"
+        case .failed:
+            return "확인 필요"
+        default:
+            return "팀 협업 중"
+        }
+    }
 }

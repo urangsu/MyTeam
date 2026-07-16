@@ -93,9 +93,6 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         dragEmoji: "🤝", dragRotation: 0, dragSoundName: "", dropSoundName: ""
     )
 
-    // 팀의 현재 큰 업무
-    @Published var currentMainTask: String = "AI 팀 프로젝트 매니징 및 고도화"
-
     // 첫 실행 상태 — 첫 실행 배너, 로컬 전용 모드 카드, 스타터 액션 표시에 사용
     @Published var firstLaunchState: FirstLaunchState = .empty
 
