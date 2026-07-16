@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CHECKS = [
     ["node", "--check", "workers/basic-lookup-api/worker.js"],
     ["node", "--test", "workers/basic-lookup-api/worker.test.mjs"],
+    ["python3", "scripts/validate_myteam_release_tests.py"],
     ["python3", "scripts/validate_release_checklist.py"],
     ["python3", "scripts/validate_skill_packages.py"],
     ["python3", "scripts/validate_app_store_profile.py"],
@@ -88,23 +89,28 @@ def run(command: list[str]) -> None:
         raise SystemExit(result.returncode)
 
 
+def find_forbidden_swift_matches(root: Path, pattern: str) -> list[str]:
+    matches: list[str] = []
+    regex = re.compile(pattern)
+    source_root = root / "MyTeam"
+    for path in sorted(source_root.rglob("*.swift")):
+        relative = path.relative_to(root)
+        if relative.parts[:3] == ("MyTeam", "tools", "legacy"):
+            continue
+        for line_number, line in enumerate(
+            path.read_text(encoding="utf-8", errors="ignore").splitlines(),
+            start=1,
+        ):
+            if regex.search(line):
+                matches.append(f"{relative.as_posix()}:{line_number}:{line}")
+    return matches
+
+
 def run_forbidden_grep(label: str, pattern: str) -> None:
-    command = [
-        "rg",
-        "--glob",
-        "*.swift",
-        "--glob",
-        "!tools/legacy/**",
-        pattern,
-        "MyTeam",
-    ]
-    result = subprocess.run(command, cwd=ROOT, text=True, capture_output=True)
-    if result.returncode == 0:
-        print(result.stdout, file=sys.stderr)
+    matches = find_forbidden_swift_matches(ROOT, pattern)
+    if matches:
+        print("\n".join(matches), file=sys.stderr)
         raise SystemExit(f"FAIL: forbidden pattern found: {label}")
-    if result.returncode > 1:
-        print(result.stderr, file=sys.stderr)
-        raise SystemExit(result.returncode)
 
 
 def descriptor_blocks(source: str) -> list[str]:
