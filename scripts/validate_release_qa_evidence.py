@@ -184,6 +184,39 @@ def worktree_is_clean() -> bool:
     return status.strip() == ""
 
 
+def changed_paths_since_tested_commit(tested_commit: str) -> list[str] | None:
+    commit_exists = subprocess.run(
+        ["git", "cat-file", "-e", f"{tested_commit}^{{commit}}"],
+        cwd=ROOT,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    if commit_exists.returncode != 0:
+        return None
+
+    is_ancestor = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", tested_commit, "HEAD"],
+        cwd=ROOT,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    if is_ancestor.returncode != 0:
+        return None
+
+    output = subprocess.check_output(
+        ["git", "diff", "--name-only", f"{tested_commit}..HEAD"],
+        cwd=ROOT,
+        text=True,
+    )
+    return [line.strip() for line in output.splitlines() if line.strip()]
+
+
+def is_qa_evidence_path(path: str) -> bool:
+    return path.startswith("docs/qa/") or path == "docs/backlog/myteam_product_backlog.json"
+
+
 def validate_doc(path: Path, case_ids: list[str], strict: bool, release_strict: bool) -> list[str]:
     failures: list[str] = []
     if not path.exists():
@@ -201,7 +234,17 @@ def validate_doc(path: Path, case_ids: list[str], strict: bool, release_strict: 
             tested_commit = metadata_value(text, "tested_commit")
             tested_build = metadata_value(text, "tested_build") or ""
             if tested_commit != current_head():
-                failures.append(f"{relative_path} tested_commit must match current HEAD in --strict mode")
+                changed_paths = changed_paths_since_tested_commit(tested_commit or "")
+                if changed_paths is None:
+                    failures.append(
+                        f"{relative_path} tested_commit must identify current HEAD or one of its ancestors in --strict mode"
+                    )
+                else:
+                    product_changes = [changed for changed in changed_paths if not is_qa_evidence_path(changed)]
+                    if product_changes:
+                        failures.append(
+                            f"{relative_path} product source changed after tested_commit: {', '.join(product_changes)}"
+                        )
             if re.search(r"\b(not run|pending|unknown|n/a)\b", tested_build, re.I):
                 failures.append(f"{relative_path} tested_build must reference an actual tested build in --strict mode")
             for field in STRICT_BUILD_METADATA_FIELDS:
