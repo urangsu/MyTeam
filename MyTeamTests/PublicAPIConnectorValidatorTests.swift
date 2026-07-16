@@ -187,6 +187,7 @@ final class BubbleSpeechSynthesizerTests: XCTestCase {
         XCTAssertTrue(grains.allSatisfy { $0.rms > 0.008 })
     }
 
+    @MainActor
     func testBubbleSpeechGrainAnalyzerIsDeterministic() throws {
         let sampleRate = 44_100
         let samples = (0..<sampleRate / 2).map { index in
@@ -901,6 +902,7 @@ final class RuntimeTruthPersistenceTests: XCTestCase {
         XCTAssertTrue(result.artifactMarkdown.contains("일부 결과만 확인했습니다"))
     }
 
+    @MainActor
     func testUnknownPersistedToolLogStateFailsClosed() throws {
         let data = Data(#""futureState""#.utf8)
 
@@ -909,6 +911,7 @@ final class RuntimeTruthPersistenceTests: XCTestCase {
         XCTAssertEqual(state, .blocked)
     }
 
+    @MainActor
     func testPartialToolLogStateRoundTripsWithoutBecomingSuccess() throws {
         let encoded = try JSONEncoder().encode(ToolExecutionLogState.partial)
         let decoded = try JSONDecoder().decode(ToolExecutionLogState.self, from: encoded)
