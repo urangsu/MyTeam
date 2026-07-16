@@ -299,9 +299,14 @@ struct TeamStatusView: View {
                     )
                     headerIconButton(
                         systemName: "waveform",
-                        tint: manager.isVoiceMode ? .blue.opacity(0.85) : textColor.opacity(0.30),
-                        label: manager.isVoiceMode ? "음성 모드 끄기" : "음성 모드 켜기",
-                        action: { manager.isVoiceMode.toggle() }
+                        tint: TTSProductPolicy.userFacingTTSEnabled
+                            ? (manager.isVoiceMode ? .blue.opacity(0.85) : textColor.opacity(0.30))
+                            : textColor.opacity(0.22),
+                        label: TTSProductPolicy.userFacingTTSEnabled
+                            ? (manager.isVoiceMode ? "음성 모드 끄기" : "음성 모드 켜기")
+                            : "음성 출력 준비 중",
+                        action: { manager.isVoiceMode.toggle() },
+                        disabled: !TTSProductPolicy.userFacingTTSEnabled
                     )
                 }
 
@@ -1381,9 +1386,14 @@ struct TeamStatusView: View {
 
             headerIconButton(
                 systemName: "waveform",
-                tint: manager.isVoiceMode ? .blue.opacity(0.85) : textColor.opacity(0.30),
-                label: manager.isVoiceMode ? "음성 모드 끄기" : "음성 모드 켜기",
-                action: { manager.isVoiceMode.toggle() }
+                tint: TTSProductPolicy.userFacingTTSEnabled
+                    ? (manager.isVoiceMode ? .blue.opacity(0.85) : textColor.opacity(0.30))
+                    : textColor.opacity(0.22),
+                label: TTSProductPolicy.userFacingTTSEnabled
+                    ? (manager.isVoiceMode ? "음성 모드 끄기" : "음성 모드 켜기")
+                    : "음성 출력 준비 중",
+                action: { manager.isVoiceMode.toggle() },
+                disabled: !TTSProductPolicy.userFacingTTSEnabled
             )
 
             headerIconButton(

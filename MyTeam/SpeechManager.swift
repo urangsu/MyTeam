@@ -961,6 +961,11 @@ final class AppTerminationSpeechService {
     private init() {}
 
     func scheduleInitialPrewarm(manager: AgentWindowManager) {
+        guard TTSProductPolicy.userFacingTTSEnabled else {
+            preparedFarewell = nil
+            prepareTask?.cancel()
+            return
+        }
         prepareTask?.cancel()
         prepareTask = Task(priority: .utility) { [weak self, weak manager] in
             try? await Task.sleep(nanoseconds: 3_500_000_000)
@@ -970,6 +975,10 @@ final class AppTerminationSpeechService {
     }
 
     func refreshForCurrentTeamLeader(manager: AgentWindowManager) {
+        guard TTSProductPolicy.userFacingTTSEnabled else {
+            preparedFarewell = nil
+            return
+        }
         guard manager.isVoiceMode else {
             preparedFarewell = nil
             return
@@ -1015,6 +1024,7 @@ final class AppTerminationSpeechService {
     }
 
     func playPreparedFarewell(completion: @MainActor @escaping @Sendable () -> Void) -> Bool {
+        guard TTSProductPolicy.userFacingTTSEnabled else { return false }
         guard !isTerminationPlaybackPending else { return true }
         guard AgentWindowManager.shared.isVoiceMode, !AgentWindowManager.shared.isSilentMode else { return false }
         guard let prepared = preparedFarewell, !prepared.samples.isEmpty else { return false }

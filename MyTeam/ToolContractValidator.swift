@@ -2072,9 +2072,9 @@ enum ToolContractValidator {
         if !snap.supertonicReleaseGateStillLocked {
             issues.append(issue(.error, "TTSProductPolicy.canShipAsProductFeature가 true입니다. 모든 릴리즈 gate 조건이 충족될 때까지 false여야 합니다."))
         }
-        // Confirm userFacingTTSEnabled is still false
-        if TTSProductPolicy.userFacingTTSEnabled {
-            issues.append(issue(.error, "TTSProductPolicy.userFacingTTSEnabled가 true입니다. Release TTS는 여전히 비활성이어야 합니다."))
+        // Confirm the App Store surface remains closed even when Debug keeps the lab available.
+        if TTSProductPolicy.userFacingTTSEnabled(for: .appStore) {
+            issues.append(issue(.error, "App Store 프로필에서 사용자 TTS가 노출됩니다. Release TTS는 승인 전까지 비활성이어야 합니다."))
         }
         if TTSProductPolicy.fallbackTTSAvailable {
             issues.append(issue(.error, "TTSProductPolicy.fallbackTTSAvailable가 true입니다. 폴백 TTS는 금지됩니다."))

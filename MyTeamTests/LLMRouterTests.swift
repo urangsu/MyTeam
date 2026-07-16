@@ -763,6 +763,17 @@ final class LLMRouterTests: XCTestCase {
     }
 
     @MainActor
+    func test_appStoreVoiceSurfaceStaysHiddenUntilReleaseApproval() {
+        XCTAssertFalse(TTSProductPolicy.userFacingTTSEnabled(for: .appStore))
+        XCTAssertFalse(TTSProductPolicy.labEnabled(for: .appStore))
+        XCTAssertFalse(SettingsSurfacePolicy.showsVoiceLab(in: .appStore))
+
+        XCTAssertTrue(TTSProductPolicy.userFacingTTSEnabled(for: .debug))
+        XCTAssertTrue(TTSProductPolicy.labEnabled(for: .debug))
+        XCTAssertTrue(SettingsSurfacePolicy.showsVoiceLab(in: .debug))
+    }
+
+    @MainActor
     func test_localSchedulerDelegatedWorkResponseUsesPendingRequestState() {
         let manager = AgentWindowManager.shared
         let roomID = UUID()
@@ -801,6 +812,7 @@ final class LLMRouterTests: XCTestCase {
         XCTAssertFalse(KeychainMutationPolicy.deleteSucceeded(status: errSecAuthFailed))
     }
 
+    @MainActor
     func test_artifactStoreRefreshesCachedHealthAfterFileChanges() async throws {
         let workspaceURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("myteam-artifact-health-\(UUID().uuidString)", isDirectory: true)

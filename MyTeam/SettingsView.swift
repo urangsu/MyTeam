@@ -12,6 +12,12 @@ enum SettingsSurfaceCopy {
     }
 }
 
+enum SettingsSurfacePolicy {
+    static func showsVoiceLab(in profile: AppReleaseProfile) -> Bool {
+        TTSProductPolicy.labEnabled(for: profile)
+    }
+}
+
 // MARK: - 검증 상태
 private enum ValidationStatus {
     case idle, loading
@@ -215,14 +221,19 @@ struct SettingsView: View {
     @StateObject private var gps = LocationHelper()
     @StateObject private var credentialHealthService = CredentialHealthService.shared
 
-    private let settingsTabs: [SettingsTabItem] = [
-        .init(id: 0, title: "업무", icon: "bolt.fill"),
-        .init(id: 1, title: "사용자", icon: "person.fill"),
-        .init(id: 2, title: "연결", icon: "link"),
-        .init(id: 3, title: "스킬", icon: "square.stack.3d.up"),
-        .init(id: 4, title: "캐릭터", icon: "person.2.fill"),
-        .init(id: 5, title: "음성", icon: "waveform")
-    ]
+    private var settingsTabs: [SettingsTabItem] {
+        var tabs = [
+            SettingsTabItem(id: 0, title: "업무", icon: "bolt.fill"),
+            SettingsTabItem(id: 1, title: "사용자", icon: "person.fill"),
+            SettingsTabItem(id: 2, title: "연결", icon: "link"),
+            SettingsTabItem(id: 3, title: "스킬", icon: "square.stack.3d.up"),
+            SettingsTabItem(id: 4, title: "캐릭터", icon: "person.2.fill")
+        ]
+        if SettingsSurfacePolicy.showsVoiceLab(in: AppReleaseProfile.current) {
+            tabs.append(.init(id: 5, title: "음성", icon: "waveform"))
+        }
+        return tabs
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -253,7 +264,12 @@ struct SettingsView: View {
                 case 2: connectionCenterTab
                 case 3: skillsTab
                 case 4: charactersTab
-                case 5: TTSLabView()
+                case 5:
+                    if SettingsSurfacePolicy.showsVoiceLab(in: AppReleaseProfile.current) {
+                        TTSLabView()
+                    } else {
+                        homeDashboardTab
+                    }
                 default: homeDashboardTab
                 }
             }
@@ -285,8 +301,10 @@ struct SettingsView: View {
         }, onOpenWorkspace: { descriptor in
             if descriptor.category == .system {
                 currentTab = 2
+            } else if descriptor.category == .voice {
+                currentTab = SettingsSurfacePolicy.showsVoiceLab(in: AppReleaseProfile.current) ? 5 : 3
             } else {
-                currentTab = descriptor.category == .voice ? 5 : 3
+                currentTab = 3
             }
         })
     }
