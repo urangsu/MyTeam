@@ -1308,11 +1308,12 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "e879406, 261d3c5, b643b05, f0392b0, 183ff68, 2302093, 18f3046, 7fc7d93, c5c849c, a7de3b4, ee44f59",
+        "commit_sha": "e879406, 261d3c5, b643b05, f0392b0, 183ff68, 2302093, 18f3046, 7fc7d93, c5c849c, a7de3b4, ee44f59, b0dea66",
         "files_changed": [
           "MyTeam/AppTerminationCoordinator.swift",
           "MyTeam/MyTeamApp.swift",
           "MyTeam/TeamTableView.swift",
+          "MyTeam/TeamStatusView.swift",
           "MyTeam/ToolRunners/GoogleCalendarToolRunner.swift",
           "MyTeam/ToolRunners/GoogleRunnerSupport.swift",
           "MyTeam/ToolRunners/GoogleSheetsToolRunner.swift",
@@ -1332,13 +1333,14 @@
           "scripts/validate_worker_production_health.py",
           "scripts/validate_myteam_release.py"
         ],
-        "validation_summary": "2026-07-12: Empty Google Sheets, Calendar, News, Weather, and Law lookups now persist checkedEmpty instead of succeeded. News no longer claims unperformed issue clustering, weather impact notes are derived from observed thresholds, composite summaries use verified section summaries, and partial sections remain explicitly partial with a missing-item notice. Worker production health now compares the deployed SHA with the latest Worker-source commit instead of unrelated app-only HEAD commits. Product/result validators, production Worker health, 75 XCTest cases, git diff --check, Debug build, and Release build passed. Manual app termination UI/audio QA, provider live result QA, and Google OAuth live QA remain open, so this task stays partial.",
+        "validation_summary": "2026-07-17: Commit b0dea66 makes team-status event and workflow lookup use the selected room's workflow ID instead of the global compatibility mirror. The room-scoped workflow regression test and architecture validator passed. Manual two-room UI QA, app termination UI/audio QA, provider live result QA, and Google OAuth live QA remain open, so this task stays partial.",
         "screenshots": []
       },
       "notes": [
         "This is a code/static/build stabilization gate, not a manual release sign-off.",
         "Google Calendar and Sheets behavior remains read-only and scope policy was not changed.",
-        "ProductSurfacePolicy hides or lowers non-primary surfaces rather than deleting feature code."
+        "ProductSurfacePolicy hides or lowers non-primary surfaces rather than deleting feature code.",
+        "2026-07-17: Team status is now room-scoped during concurrent workflows; the legacy global mirror remains only for compatibility surfaces."
       ]
     },
     {
