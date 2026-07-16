@@ -1,6 +1,7 @@
 import XCTest
 import AppKit
 import PDFKit
+import Security
 @testable import MyTeam
 
 // MARK: - LLMRouterTests
@@ -743,6 +744,14 @@ final class LLMRouterTests: XCTestCase {
             QARuntimeProfile.rootURL(arguments: ["MyTeam", "--qa-root", "/private/tmp/MyTeamQA"]),
             URL(fileURLWithPath: "/private/tmp/MyTeamQA", isDirectory: true)
         )
+    }
+
+    func test_keychainMutationPolicyFailsClosedAndTreatsMissingDeleteAsSuccess() {
+        XCTAssertTrue(KeychainMutationPolicy.saveSucceeded(status: errSecSuccess))
+        XCTAssertFalse(KeychainMutationPolicy.saveSucceeded(status: errSecAuthFailed))
+        XCTAssertTrue(KeychainMutationPolicy.deleteSucceeded(status: errSecSuccess))
+        XCTAssertTrue(KeychainMutationPolicy.deleteSucceeded(status: errSecItemNotFound))
+        XCTAssertFalse(KeychainMutationPolicy.deleteSucceeded(status: errSecAuthFailed))
     }
 
     func test_ttsRuntimeProbeRejectsMissingOrEmptyAudio() throws {

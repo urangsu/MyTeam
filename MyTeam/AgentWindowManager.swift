@@ -477,7 +477,35 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
 
     @MainActor
     func updateFirstLaunchAPIKeyState(hasAPIKey: Bool) {
-        firstLaunchState = firstLaunchState.updated(hasAPIKey: hasAPIKey)
+        let capabilityMode = RuntimeCapabilityMode.detect(
+            apiKeyAvailable: hasAPIKey,
+            networkAvailable: !firstLaunchState.isOffline,
+            connectorState: .notStarted
+        )
+        firstLaunchState = firstLaunchState.updated(
+            hasAPIKey: hasAPIKey,
+            capabilityMode: capabilityMode
+        )
+    }
+
+    @MainActor
+    func refreshCredentialAvailabilityAfterLaunch(migrateLegacy: Bool = false) {
+        guard !QARuntimeProfile.isEnabled(arguments: ProcessInfo.processInfo.arguments) else {
+            updateFirstLaunchAPIKeyState(hasAPIKey: false)
+            return
+        }
+
+        credentialBootstrapTask?.cancel()
+        credentialBootstrapTask = Task { [weak self] in
+            let hasAnyAPIKey = await Task.detached(priority: .utility) {
+                SecureCredentialStore.prepareLaunchCredentialAvailability(
+                    migrateLegacy: migrateLegacy
+                )
+            }.value
+
+            guard !Task.isCancelled else { return }
+            self?.updateFirstLaunchAPIKeyState(hasAPIKey: hasAnyAPIKey)
+        }
     }
 
     @MainActor
@@ -765,6 +793,7 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
     private var lastInteractionTime: Date = Date()
     private var idleTimer: Timer?
     private var automationTimer: Timer?
+    private var credentialBootstrapTask: Task<Void, Never>?
 
     private override init() {
         let isRunningTests = AppRuntimeEnvironment.isRunningTests
@@ -799,9 +828,7 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         }
 
         loadMemoryStores()
-        let isQARuntime = QARuntimeProfile.isEnabled(arguments: ProcessInfo.processInfo.arguments)
-        let hasAnyAPIKey = isQARuntime ? false : SecureCredentialStore.shared.hasAnyAIProviderKey()
-        firstLaunchState = FirstLaunchStateProvider.currentState(hasAPIKey: hasAnyAPIKey)
+        firstLaunchState = FirstLaunchStateProvider.currentState(hasAPIKey: false)
 
         roomRuntimeStoreCancellable = roomRuntimeStore.objectWillChange
             .sink { [weak self] _ in

@@ -59,6 +59,8 @@ def main() -> None:
     xcode_project = read("MyTeam/MyTeam.xcodeproj/project.pbxproj")
     credential_health = read("MyTeam/CredentialHealth.swift")
     credential_store = read("MyTeam/SecureCredentialStore.swift")
+    keychain_manager = read("MyTeam/KeychainManager.swift")
+    connector_setup = read("MyTeam/ConnectorSetupCardView.swift")
     dart_resolver = read("MyTeam/DARTCompanyResolver.swift")
     dart_runner = read("MyTeam/ToolRunners/DARTToolRunner.swift")
     myteam_app = read("MyTeam/MyTeamApp.swift")
@@ -167,6 +169,20 @@ def main() -> None:
             failures.append(f"Chat room persistence must remain debounced and off the UI actor: {token}")
     if "let isRunningTests = AppRuntimeEnvironment.isRunningTests" not in agent_window_manager:
         failures.append("AgentWindowManager tests must not initialize user persistence, Keychain, or product timers")
+    if "SecureCredentialStore.shared.hasAnyAIProviderKey()" in agent_window_manager:
+        failures.append("AgentWindowManager initialization must not synchronously read Keychain before showing product windows")
+    if "refreshCredentialAvailabilityAfterLaunch" not in agent_window_manager:
+        failures.append("AgentWindowManager must refresh credential availability after launch without blocking initial UI")
+    migration_index = myteam_app.find("KeychainManager.migrateFromUserDefaultsIfNeeded()")
+    show_team_index = myteam_app.find(".showTeam()")
+    if migration_index != -1 and show_team_index != -1 and migration_index < show_team_index:
+        failures.append("legacy credential migration must not access Keychain before the team window is shown")
+    if "memoryCache[key] = value // 캐시 업데이트" in keychain_manager:
+        failures.append("Keychain cache must not expose a replacement value before persistence succeeds")
+    if "removeCachedValue(for: key)" not in keychain_manager:
+        failures.append("successful Keychain deletion must evict the in-memory credential cache")
+    if "let saveSucceeded" not in connector_setup or "let deleteSucceeded" not in connector_setup:
+        failures.append("connector credential UI must check persistence results before reporting save/delete success")
     if "private func presentSettingsWindow(_ window: NSWindow)" not in agent_window_manager:
         failures.append("AgentWindowManager must present Settings through a shared helper")
     if "presentSettingsWindow(settingsWindow)" not in agent_window_manager:

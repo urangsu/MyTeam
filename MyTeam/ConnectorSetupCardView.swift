@@ -354,26 +354,50 @@ struct ConnectorSetupCardView: View {
 
     private func saveKey() {
         guard canSaveInput else { return }
+        let saveSucceeded: Bool
         if schema.fields.count == 1, let field = schema.fields.first {
             let value = inputValues[field.id] ?? ""
-            SecureCredentialStore.shared.save(provider: provider, key: value)
+            saveSucceeded = SecureCredentialStore.shared.save(provider: provider, key: value)
+        } else {
+            let results = schema.fields.map { field in
+                let value = inputValues[field.id] ?? ""
+                return SecureCredentialStore.shared.save(provider: provider, field: field, value: value)
+            }
+            saveSucceeded = !results.isEmpty && results.allSatisfy { $0 }
         }
-        for field in schema.fields {
-            let value = inputValues[field.id] ?? ""
-            SecureCredentialStore.shared.save(provider: provider, field: field, value: value)
+
+        guard saveSucceeded else {
+            CredentialHealthService.shared.refresh()
+            testResultMessage = "키를 이 Mac의 키체인에 저장하지 못했습니다. 키체인 잠금과 접근 권한을 확인해 주세요."
+            return
         }
+
         CredentialHealthService.shared.didSaveKey(for: provider)
+        if !provider.isPublicAPIProvider {
+            AgentWindowManager.shared.updateFirstLaunchAPIKeyState(hasAPIKey: true)
+        }
         inputValues = [:]
         isEditing = false
         testResultMessage = nil
     }
 
     private func deleteKey() {
-        for field in schema.fields {
+        let fieldResults = schema.fields.map { field in
             SecureCredentialStore.shared.delete(provider: provider, field: field)
         }
-        SecureCredentialStore.shared.delete(provider: provider)
+        let genericResult = SecureCredentialStore.shared.delete(provider: provider)
+        let deleteSucceeded = fieldResults.allSatisfy { $0 } && genericResult
+
+        guard deleteSucceeded else {
+            CredentialHealthService.shared.refresh()
+            testResultMessage = "키를 완전히 삭제하지 못했습니다. 키체인 잠금과 접근 권한을 확인해 주세요."
+            return
+        }
+
         CredentialHealthService.shared.didDeleteKey(for: provider)
+        if !provider.isPublicAPIProvider {
+            AgentWindowManager.shared.refreshCredentialAvailabilityAfterLaunch()
+        }
         testResultMessage = nil
     }
 

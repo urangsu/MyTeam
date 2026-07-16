@@ -12,6 +12,22 @@ final class SecureCredentialStore {
     static let shared = SecureCredentialStore()
     private init() {}
 
+    nonisolated static func prepareLaunchCredentialAvailability(migrateLegacy: Bool) -> Bool {
+        if migrateLegacy {
+            KeychainManager.migrateFromUserDefaultsIfNeeded()
+        }
+        let keychainAccounts = [
+            "geminiAPIKey",
+            "openAIAPIKey",
+            "claudeAPIKey",
+            "openRouterAPIKey",
+        ]
+        return keychainAccounts.contains { account in
+            guard let value = KeychainManager.load(key: account) else { return false }
+            return !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+    }
+
     // MARK: - Save
 
     /// 지정 provider의 API 키를 Keychain에 저장합니다.
