@@ -858,6 +858,47 @@ final class RuntimeTruthPersistenceTests: XCTestCase {
         XCTAssertFalse(summary.contains("2개 항목"))
     }
 
+    func testStockEvidenceBundlePromptContextPreservesSectionOrder() {
+        let accessedAt = Date(timeIntervalSince1970: 0)
+        let quote = AgentWindowManager.SourceReference(
+            title: "시세",
+            url: "https://example.com/quote",
+            provider: "finance",
+            accessedAt: accessedAt,
+            sourceType: .quote
+        )
+        let news = AgentWindowManager.SourceReference(
+            title: "뉴스",
+            url: "https://example.com/news",
+            provider: "news",
+            accessedAt: accessedAt,
+            sourceType: .news
+        )
+        let bundle = StockEvidenceBundle(
+            quote: quote,
+            news: [news],
+            disclosures: [],
+            marketContext: [],
+            warnings: ["단정하지 않습니다."]
+        )
+
+        XCTAssertEqual(
+            bundle.promptContext,
+            """
+            [시세 출처]
+            - 시세
+              https://example.com/quote
+
+            [뉴스 출처]
+            - 뉴스
+              https://example.com/news
+
+            [주의]
+            - 단정하지 않습니다.
+            """
+        )
+    }
+
     func testCompositeResultPreservesPartialState() {
         let request = NaturalWorkRequest(
             originalText: "삼성전자 알려줘",

@@ -17,13 +17,26 @@ struct StockEvidenceBundle: Sendable {
     let warnings: [String]
 
     var promptContext: String {
-        let sections = [
-            quote.map { "[시세 출처]\n- \($0.title)\n  \($0.url)" },
-            news.isEmpty ? nil : "[뉴스 출처]\n" + news.map { "- \($0.title)\n  \($0.url)" }.joined(separator: "\n"),
-            disclosures.isEmpty ? nil : "[공시 출처]\n" + disclosures.map { "- \($0.title)\n  \($0.url)" }.joined(separator: "\n"),
-            marketContext.isEmpty ? nil : "[시장 맥락 출처]\n" + marketContext.map { "- \($0.title)\n  \($0.url)" }.joined(separator: "\n"),
-            warnings.isEmpty ? nil : "[주의]\n" + warnings.map { "- \($0)" }.joined(separator: "\n")
-        ].compactMap { $0 }
+        var sections: [String] = []
+        if let quote {
+            sections.append("[시세 출처]\n- \(quote.title)\n  \(quote.url)")
+        }
+        if !news.isEmpty {
+            let lines = news.map { "- \($0.title)\n  \($0.url)" }
+            sections.append("[뉴스 출처]\n" + lines.joined(separator: "\n"))
+        }
+        if !disclosures.isEmpty {
+            let lines = disclosures.map { "- \($0.title)\n  \($0.url)" }
+            sections.append("[공시 출처]\n" + lines.joined(separator: "\n"))
+        }
+        if !marketContext.isEmpty {
+            let lines = marketContext.map { "- \($0.title)\n  \($0.url)" }
+            sections.append("[시장 맥락 출처]\n" + lines.joined(separator: "\n"))
+        }
+        if !warnings.isEmpty {
+            let lines = warnings.map { "- \($0)" }
+            sections.append("[주의]\n" + lines.joined(separator: "\n"))
+        }
         return sections.joined(separator: "\n\n")
     }
 
