@@ -51,7 +51,7 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
             }
         }
     }
-    @AppStorage("userLocation") var userLocation: String = "전남 광양"
+    @AppStorage("userLocation") var userLocation: String = ""
 
     // ── 방 목록 (UserDefaults 영속화) ──
     @Published var rooms: [ChatRoom] = [] {

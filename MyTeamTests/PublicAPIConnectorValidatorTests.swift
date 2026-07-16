@@ -1053,6 +1053,19 @@ final class TeamCollaborationStatusProviderTests: XCTestCase {
     }
 }
 
+final class UserContextTruthTests: XCTestCase {
+    func testMissingUserLocationIsNeverReplacedWithAProductDefault() {
+        XCTAssertEqual(
+            TeamOrchestrator.locationContextLine(for: "  \n"),
+            "- 사용자 위치: 설정되지 않음 (위치를 추측하지 마세요.)"
+        )
+        XCTAssertEqual(
+            TeamOrchestrator.locationContextLine(for: " 전남 광양 "),
+            "- 사용자 위치: 전남 광양"
+        )
+    }
+}
+
 private struct FixedPublicAPIClock: PublicAPIClock {
     let now: Date
     let timeZone = TimeZone(identifier: "Asia/Seoul")!

@@ -206,7 +206,7 @@ struct SettingsView: View {
 
     // ── 사용자 설정
     @AppStorage("userTitle")              private var userTitle: String = "수석님"
-    @AppStorage("userLocation")           private var userLocation: String = "전남 광양"
+    @AppStorage("userLocation")           private var userLocation: String = ""
     @AppStorage("teamName")               private var teamName: String = "MyTeam"
     @AppStorage(TeamNameplateAppearanceSettings.enabledKey) private var teamNameplateEnabled: Bool = TeamNameplateAppearanceSettings.defaultEnabled
     @AppStorage(TeamNameplateAppearanceSettings.paletteKey) private var teamNameplatePaletteRaw: String = TeamNameplateAppearanceSettings.defaultPalette.rawValue
@@ -333,7 +333,7 @@ struct SettingsView: View {
                         .frame(width: 20)
                         .help("현재 위치 가져오기")
                         .accessibilityLabel("현재 위치 가져오기")
-                        TextField("", text: $userLocation)
+                        TextField("예: 광양", text: $userLocation)
                     }
                 } label: {
                     Label("위치", systemImage: "location.fill")

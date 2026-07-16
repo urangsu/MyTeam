@@ -29,15 +29,23 @@ class TeamOrchestrator {
         default: season = "겨울"
         }
         
-        let location = AgentWindowManager.shared.userLocation
+        let locationLine = Self.locationContextLine(for: AgentWindowManager.shared.userLocation)
         
         return """
         [현재 시스템 및 환경 정보]
         - 현재 시간: \(dateString)
         - 현재 계절: \(season)
-        - 사용자 위치: \(location)
+        \(locationLine)
         (위 정보를 바탕으로 지금 시기와 장소에 맞는 현실적인 응답을 하세요. 계절에 어긋나는 활동이나 대화는 절대 하지 마세요.)
         """
+    }
+
+    static func locationContextLine(for rawLocation: String) -> String {
+        let location = rawLocation.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !location.isEmpty else {
+            return "- 사용자 위치: 설정되지 않음 (위치를 추측하지 마세요.)"
+        }
+        return "- 사용자 위치: \(location)"
     }
 
     // MARK: - 팀 토의 실행
