@@ -762,6 +762,37 @@ final class LLMRouterTests: XCTestCase {
         )
     }
 
+    @MainActor
+    func test_localSchedulerDelegatedWorkResponseUsesPendingRequestState() {
+        let manager = AgentWindowManager.shared
+        let roomID = UUID()
+        let request = DelegatedExecutionRequest(
+            id: UUID(),
+            roomID: roomID,
+            contractID: UUID(),
+            originalMessagePreview: "분기 보고서 초안을 정리해줘",
+            normalizedExecutionMessage: "분기 보고서 초안 정리",
+            routeHint: "universalDocument",
+            status: .pendingApproval,
+            createdAt: Date()
+        )
+        manager.recordPendingDelegatedExecutionRequest(request)
+        defer { manager.clearPendingDelegatedExecutionRequest(for: roomID) }
+
+        let response = LocalSchedulerCommandService.response(
+            for: LocalSchedulerCommand(
+                kind: .showDelegatedWork,
+                sourceMessage: "진행 중인 위임 작업 보여줘"
+            ),
+            roomID: roomID,
+            manager: manager
+        )
+
+        XCTAssertTrue(response.contains("분기 보고서 초안을 정리해줘"))
+        XCTAssertTrue(response.contains("승인 대기"))
+        XCTAssertFalse(response.contains("위임 작업이 없습니다"))
+    }
+
     func test_keychainMutationPolicyFailsClosedAndTreatsMissingDeleteAsSuccess() {
         XCTAssertTrue(KeychainMutationPolicy.saveSucceeded(status: errSecSuccess))
         XCTAssertFalse(KeychainMutationPolicy.saveSucceeded(status: errSecAuthFailed))

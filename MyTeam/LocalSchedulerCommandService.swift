@@ -145,9 +145,39 @@ enum LocalSchedulerCommandService {
     }
 
     private static func buildDelegatedWorkResponse(roomID: UUID, manager: AgentWindowManager) -> String {
-        // Delegation state is not yet fully implemented in the current version
-        // Return a placeholder response
-        return "현재 진행 중인 위임 작업이 없습니다."
+        guard let request = manager.pendingDelegatedExecutionRequest(for: roomID) else {
+            return "현재 진행 중인 위임 작업이 없습니다."
+        }
+
+        let status: String
+        let nextAction: String
+        switch request.status {
+        case .pendingApproval:
+            status = "승인 대기"
+            nextAction = "내용을 확인한 뒤 직접 승인하면 작업을 이어갑니다."
+        case .readyToResume:
+            status = "재개 준비"
+            nextAction = "이 대화방에서 작업 재개를 요청할 수 있습니다."
+        case .resumed:
+            status = "진행 중"
+            nextAction = "작업 결과가 이 대화방에 이어서 표시됩니다."
+        case .blocked:
+            status = "확인 필요"
+            nextAction = "막힌 이유를 확인한 뒤 요청을 수정해 주세요."
+        case .cancelled:
+            status = "취소됨"
+            nextAction = "필요하면 같은 내용을 새 작업으로 다시 요청해 주세요."
+        }
+
+        return """
+        # 위임 작업 상태
+
+        - 요청: \(request.originalMessagePreview)
+        - 상태: \(status)
+        - 등록: \(formatTime(request.createdAt))
+
+        \(nextAction)
+        """
     }
 
     private static func buildSchedulePolicyResponse() -> String {
