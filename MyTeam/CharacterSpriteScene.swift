@@ -78,7 +78,7 @@ class CharacterSpriteScene: SKScene {
     private let defaultFPS: Double = 12.0
 
     // ── 루프 재생할 상태 목록 ─────────────────────────────────
-    private let loopingStates: Set<AnimationState> = [
+    private static let loopingStates: Set<AnimationState> = [
         .idle,          // 대기 앵커 루프
         .typing,        // 업무 중 ★ 기본 루프
         .idleLoop,      // 아이들 루프
@@ -90,7 +90,7 @@ class CharacterSpriteScene: SKScene {
 
     // ── 폴백 매핑: 파일 없는 상태 → 대체 상태 ──────────────────
     // 이미지 파일이 없을 때 자동으로 대체 모션을 재생합니다.
-    private let fallbackStates: [AnimationState: AnimationState] = [
+    private static let fallbackStates: [AnimationState: AnimationState] = [
         .thinking   : .idle,       // 생각중 → 대기
         .praise     : .agree,      // 칭찬 → 긍정대답
         .sleeping   : .resting,    // 수면 → 휴식
@@ -149,7 +149,7 @@ class CharacterSpriteScene: SKScene {
         var visited = Set<AnimationState>()
         while visited.insert(current).inserted {
             if !loadTextures(for: current).isEmpty { return current }
-            guard let next = fallbackStates[current] else { break }
+            guard let next = Self.fallbackStates[current] else { break }
             current = next
         }
         // 최종 폴백: idle (파일이 반드시 존재해야 함)
@@ -190,7 +190,7 @@ class CharacterSpriteScene: SKScene {
             restore: true
         )
 
-        if loopingStates.contains(resolved) {
+        if Self.loopingStates.contains(resolved) {
             characterNode.run(SKAction.repeatForever(animateAction), withKey: "animation")
         } else {
             // 1회 재생 후 타이핑(기본)으로 복귀
