@@ -332,21 +332,28 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "8303e911bae00001b73f85315e9978e042f97f7f",
+        "commit_sha": "8303e911bae00001b73f85315e9978e042f97f7f, 7196256",
         "files_changed": [
           "MyTeam/UseCaseSelectionView.swift",
           "MyTeam/FirstRoomTemplatePicker.swift",
           "MyTeam/AgentWindowManager.swift",
           "MyTeam/TeamStatusView.swift",
-          "MyTeam/AgentChatView.swift"
+          "MyTeam/AgentChatView.swift",
+          "MyTeam/FirstLaunchBannerView.swift",
+          "MyTeam/FirstLaunchState.swift",
+          "MyTeam/OnboardingCardView.swift",
+          "MyTeam/RuntimeCapabilityMode.swift",
+          "MyTeam/MyTeamApp.swift",
+          "MyTeamTests/LLMRouterTests.swift"
         ],
-        "validation_summary": "2026-05-31: FirstLaunchOnboardingFlowView wires use-case selection and first room template selection into TeamStatusView and empty team chat surfaces. Completion persists MyTeam.hasSeenOnboarding, stores onboarding use cases/template, and creates/selects 업무 정리방/생활 도움방/주식·뉴스 분석방 without requiring an API key. Debug/Release xcodebuild succeeded with only the existing AppIntents metadata warning. Partial because fresh UserDefaults first-run walkthrough and relaunch check remain manual.",
+        "validation_summary": "2026-07-16: Commit 7196256 centralizes truthful first-launch copy, removes the false all-features-enabled claim, labels close controls for accessibility, and adds a Debug-only absolute --qa-root profile so first-run QA does not contaminate production support/cache data. XCTest 112/112, all release validators, Debug, and universal Release builds passed. Partial remains because the isolated live walkthrough was blocked by the locked Mac and API-key-free entry/relaunch still require screen verification.",
         "screenshots": []
       },
       "notes": [
         "Productization v1에서 UseCaseSelectionView, FirstRoomTemplatePicker 생성 완료. MyTeamApp.swift 진입점 연결 여부 확인 필요.",
         "2026-05-31: UseCaseSelectionView + FirstRoomTemplatePicker are no longer orphan views. The first-launch flow creates/selects 업무 정리방/생활 도움방/주식·뉴스 분석방 and persists onboarding completion. Manual fresh-install walkthrough remains before marking done.",
-        "Partial reason: implementation and builds pass, but the App must still be launched with cleared MyTeam.hasSeenOnboarding/myteam_rooms defaults to confirm the real first-run UX and no-repeat behavior."
+        "Partial reason: implementation and builds pass, but the App must still be launched with cleared MyTeam.hasSeenOnboarding/myteam_rooms defaults to confirm the real first-run UX and no-repeat behavior.",
+        "2026-07-16: An isolated com.urang.MyTeam.QA build launched with --qa-root, but Computer Use could not inspect it while macOS was locked; no manual UI claim was made."
       ]
     },
     {
@@ -408,7 +415,7 @@
     {
       "id": "P1-001-commercial-ui-polish-pass",
       "priority": "P1",
-      "status": "todo",
+      "status": "partial",
       "category": "ux",
       "title": "Commercial UI polish pass",
       "why": "Settings, Connection Center, onboarding, failure card, chain card를 상용 앱 수준으로 정리해야 한다. 개발자 용어와 버튼 과밀이 남아 있으면 일반 사용자가 이탈한다.",
@@ -419,7 +426,8 @@
           "ConnectorSetupCardView.swift",
           "ConnectorFailureCardView.swift",
           "UseCaseSelectionView.swift",
-          "FirstRoomTemplatePicker.swift"
+          "FirstRoomTemplatePicker.swift",
+          "AppIcon asset catalog and Figma source"
         ],
         "exclude": [
           "캐릭터 역할/말투/성격 설정",
@@ -451,12 +459,22 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": null,
-        "files_changed": [],
-        "validation_summary": null,
+        "commit_sha": "7196256, 47ff4ae",
+        "files_changed": [
+          "MyTeam/Assets.xcassets/AppIcon.appiconset/Contents.json",
+          "MyTeam/Assets.xcassets/AppIcon.appiconset/*.png",
+          "MyTeam/FirstLaunchBannerView.swift",
+          "MyTeam/FirstLaunchState.swift",
+          "MyTeam/OnboardingCardView.swift",
+          "MyTeam/RuntimeCapabilityMode.swift"
+        ],
+        "validation_summary": "2026-07-16: Commits 7196256 and 47ff4ae replace false all-features-enabled onboarding language with capability-scoped copy, label close controls for accessibility, and add a Figma-authored macOS icon at all 10 required asset sizes. XCTest 112/112, release validators, Debug, and universal Release builds passed. Partial remains because Settings, Connection Center, live onboarding, Dock/Finder rendering, and nontechnical-user terminology still require manual review.",
         "screenshots": []
       },
-      "notes": []
+      "notes": [
+        "Figma source: https://www.figma.com/design/eAa0ZBJ9BtQeCj5MqOKcgy",
+        "No completed claim: the locked Mac prevented live screen inspection of the current QA build."
+      ]
     },
     {
       "id": "P1-002-demo-mode-sample-data",
@@ -2431,21 +2449,23 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "b37bc65, 1d3ba52",
+        "commit_sha": "b37bc65, 1d3ba52, 7196256",
         "files_changed": [
           "MyTeam/FloatingPanel.swift",
           "MyTeam/TeamStatusView.swift",
           "MyTeam/AgentWindowManager.swift",
           "scripts/validate_conversation_presentation.py",
           "scripts/audit_product_completeness.py",
-          "docs/qa/TTSRuntimeQualityAudit.md"
+          "docs/qa/TTSRuntimeQualityAudit.md",
+          "MyTeamTests/LLMRouterTests.swift"
         ],
-        "validation_summary": "2026-07-15: Commit 1d3ba52 keeps complex-panel background dragging disabled, adds a header-only AppKit drag handle that updates only the window origin, and defers status-window sizing to the next main runloop without animation. Product/release validators, 101 XCTest cases, git diff check, Debug build, and universal Release build passed. Partial remains because the current handle still requires a real-mouse retest and the prior layout-recursion log must be checked on a normally signed Xcode launch.",
+        "validation_summary": "2026-07-16: Commit 7196256 replaces the inverted chat resize origin adjustment with a shared bottom-anchored, visible-screen-clamped geometry path for width and size changes. The focused geometry regression test and the full 112-test suite passed, along with release validators, Debug, and universal Release builds. Partial remains because real pointer, keyboard-focus, multi-display, and resize interaction checks were blocked while macOS was locked.",
         "screenshots": []
       },
       "notes": [
         "Static and build evidence cannot prove pointer feel or keyboard focus behavior.",
-        "Status remains partial until the listed panel interaction checks are recorded on the current build."
+        "Status remains partial until the listed panel interaction checks are recorded on the current build.",
+        "2026-07-16: Static geometry now preserves the composer-side bottom edge and clamps expanded frames to the active display; no manual multi-display claim was made."
       ]
     },
     {
