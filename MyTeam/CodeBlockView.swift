@@ -52,7 +52,10 @@ struct CodeBlockView: View {
     /// 코드를 클립보드에 복사한다.
     private func copyCode() {
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(code, forType: .string)
+        guard NSPasteboard.general.setString(code, forType: .string) else {
+            AppLog.warning("[CodeBlockView] 클립보드 복사 실패")
+            return
+        }
 
         // 피드백: 잠시 "복사됨" 표시
         isCopied = true

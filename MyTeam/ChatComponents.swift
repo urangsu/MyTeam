@@ -375,7 +375,7 @@ struct CopyableMessageContainer<Content: View>: View {
 
     private func copyFullText() {
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
+        guard NSPasteboard.general.setString(text, forType: .string) else { return }
         didCopy = true
         resetTask?.cancel()
         resetTask = Task {
