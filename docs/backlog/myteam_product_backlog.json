@@ -147,7 +147,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "747a5878a259b9d658e7048f5887a84e093befa6, 1cd2452, af2a141",
+        "commit_sha": "747a5878a259b9d658e7048f5887a84e093befa6, 1cd2452, af2a141, 1f02e4a",
         "files_changed": [
           "MyTeam/SecureCredentialStore.swift",
           "MyTeam/SettingsView.swift",
@@ -160,9 +160,12 @@
           "MyTeam/KeychainManager.swift",
           "MyTeam/MyTeamApp.swift",
           "MyTeam/AgentWindowManager.swift",
-          "MyTeam/AgentChatView.swift"
+          "MyTeam/AgentChatView.swift",
+          "MyTeam/GoogleCalendarClient.swift",
+          "MyTeam/GoogleSheetsClient.swift",
+          "scripts/validate_architecture_boundaries.py"
         ],
-        "validation_summary": "2026-07-17: Commit af2a141 moves production Keychain discovery and legacy migration off the app launch main thread, updates the in-memory cache only after successful writes and evicts it after deletion, and makes the connector UI fail closed when save/delete returns an error. A locked-Keychain Release reproduction now creates two onscreen MyTeam windows while the main thread remains in CFRunLoop; SecItemCopyMatching is isolated to a utility queue. XCTest 119/119, all release validators, product completeness audit, release-strict QA evidence, git diff check, and universal Release arm64+x86_64 build passed. Partial remains because a user-approved production-bundle valid-key save/mask/delete/relaunch test is still required.",
+        "validation_summary": "2026-07-17: Production Keychain discovery and legacy migration run off the app launch main thread, caches update only after successful writes, and connector UI fails closed on save/delete error. Commit 1f02e4a additionally makes Google Calendar/Sheets refreshed-token Keychain persistence failure propagate instead of being silently ignored; architecture validation rejects regression. Debug build and architecture validation passed. Partial remains because a user-approved production-bundle valid-key save/mask/delete/relaunch and live OAuth test is still required.",
         "screenshots": []
       },
       "notes": [
@@ -173,7 +176,8 @@
         "Partial reason: code audit no longer shows direct credential bypass or UserDefaults key storage, but manual UI entry/save/delete/relaunch masking checks remain before marking done.",
     "2026-06-05: Public API runtime path now uses SecureCredentialStore.read(provider:field:) after validated CredentialHealthService .connected state; no UserDefaults API key/token Swift matches found. Manual UI persistence checks remain.",
     "2026-07-16: Isolated QA no longer prompts for or reads production Keychain entries; production credential persistence and deletion are intentionally still unverified.",
-    "2026-07-17: Locked-Keychain Release sampling proved that startup no longer blocks the main thread. Connector save/delete success is now conditional on actual Keychain results, but valid-key replacement, deletion, masking, and relaunch persistence still require user-authorized manual QA."
+    "2026-07-17: Locked-Keychain Release sampling proved that startup no longer blocks the main thread. Connector save/delete success is now conditional on actual Keychain results, but valid-key replacement, deletion, masking, and relaunch persistence still require user-authorized manual QA.",
+    "2026-07-17: Refreshed Google OAuth tokens must persist successfully in Keychain before Calendar/Sheets execution can continue."
       ]
     },
     {
@@ -470,7 +474,7 @@
       },
       "completion_evidence": {
         "required": true,
-      "commit_sha": "7196256, 47ff4ae, 1cd2452, 7409b68, ffa1a1e, da61c03, c3c5df2, 29a0adf, 0d91ebb",
+      "commit_sha": "7196256, 47ff4ae, 1cd2452, 7409b68, ffa1a1e, da61c03, c3c5df2, 29a0adf, 0d91ebb, 12b158b, 3ac01b0",
         "files_changed": [
           "MyTeam/Assets.xcassets/AppIcon.appiconset/Contents.json",
           "MyTeam/Assets.xcassets/AppIcon.appiconset/*.png",
@@ -489,12 +493,17 @@
           "MyTeam/CharacterCatalog.swift",
         "MyTeam/ProductSurfacePolicy.swift",
         "MyTeam/TeamCollaborationStatus.swift",
-        "MyTeam/TeamCollaborationStatusProvider.swift",
-        "MyTeam/AgentWindowManager.swift",
+          "MyTeam/TeamCollaborationStatusProvider.swift",
+          "MyTeam/AgentWindowManager.swift",
+          "MyTeam/ArtifactCardView.swift",
+          "MyTeam/WorkspaceFileActions.swift",
+          "MyTeam/OpenURLTool.swift",
+          "MyTeam/ChatComponents.swift",
+          "MyTeam/CodeBlockView.swift",
         "MyTeamTests/PublicAPIConnectorValidatorTests.swift",
         "MyTeamTests/LLMRouterTests.swift"
       ],
-      "validation_summary": "2026-07-17: Invented idle activity and the hard-coded fake main task are removed. The team header reports actual room state, built-in character cards no longer contradict entitlement truth, the default four-person team follows explicit catalog IDs, and the schedule empty state uses correct Korean copy. Focused character/status tests and the character dialogue validator passed. Partial remains because Dock/Finder icon rendering, a normally signed Release UI pass, and production Keychain/real-audio listening checks remain open.",
+      "validation_summary": "2026-07-17: Invented idle activity and fake main-task copy are removed; character entitlement labels and default team IDs are consistent. Artifact cards now distinguish local path copy from cloud link copy, expose open/copy failures, and OpenURL/copy controls do not show success when the OS rejects the action. Debug builds, result-presentation validation, focused character/status tests, and the character dialogue validator passed. Partial remains because a normally signed Release UI pass and production Keychain/real-audio listening checks remain open.",
         "screenshots": []
       },
       "notes": [
@@ -504,7 +513,8 @@
       "Character composition decision: 치코 replaces 핀 in the default four-person team; 핀 remains a built-in replacement option and no character role, tone, or persona was changed.",
       "2026-07-17: Idle character status copy now describes availability only. It no longer implies separate background work or fabricated elapsed effort.",
       "2026-07-17: The team panel no longer labels idle/completed/failed states as active collaboration or displays a hard-coded project as the user's current task.",
-      "2026-07-17: All 11 built-in characters are consistently labeled as included, while StoreKit-backed additional characters remain hidden or coming soon in Release."
+      "2026-07-17: All 11 built-in characters are consistently labeled as included, while StoreKit-backed additional characters remain hidden or coming soon in Release.",
+      "2026-07-17: Cloud artifact copy uses the URL, local artifact copy uses the Workspace path, and failed OS open/pasteboard actions no longer display success feedback."
       ]
     },
     {
