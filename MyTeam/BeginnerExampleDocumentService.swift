@@ -85,7 +85,8 @@ final class BeginnerExampleDocumentService {
                 userInfo: [
                     "workspaceURL": workspaceURL,
                     "artifacts": [registeredArtifact],
-                    "workflowID": registeredArtifact.workflowID
+                    "workflowID": registeredArtifact.workflowID,
+                    "roomID": roomID
                 ]
             )
         }

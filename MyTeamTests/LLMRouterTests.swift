@@ -893,6 +893,26 @@ final class LLMRouterTests: XCTestCase {
             ArtifactWorkflowOwnership.workflowID(for: roomB, manager: manager),
             workflowA
         )
+
+        let options = ToolExecutionOptions.scopedStandalone(roomID: roomB)
+        XCTAssertEqual(options.roomID, roomB)
+        XCTAssertTrue(options.persistIndividualArtifact)
+    }
+
+    func test_workflowCompletionReactionRequiresExplicitRoomOwnership() {
+        let roomID = UUID()
+
+        XCTAssertEqual(
+            WorkflowCompletionRoomResolver.roomID(from: ["roomID": roomID]),
+            roomID
+        )
+        XCTAssertEqual(
+            WorkflowCompletionRoomResolver.roomID(from: ["roomID": roomID.uuidString]),
+            roomID
+        )
+        XCTAssertNil(
+            WorkflowCompletionRoomResolver.roomID(from: ["artifacts": ["result.md"]])
+        )
     }
 
     func test_workflowCompletionTruthNeverClaimsPlannedWorkAsDone() {

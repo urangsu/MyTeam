@@ -174,13 +174,27 @@ actor ToolExecutionRouter {
             return state
         }
 
+        let artifactOwnership: ArtifactWorkflowContext? = options.persistIndividualArtifact
+            ? await MainActor.run {
+                if let roomID = options.roomID {
+                    return ArtifactWorkflowOwnership.context(for: roomID, manager: .shared)
+                }
+                return ArtifactWorkflowOwnership.currentContext(manager: .shared)
+            }
+            : nil
+
         let result = await ToolExecutionDispatcher.run(
             descriptor: descriptor,
             input: input,
             router: self
         )
         let artifact = options.persistIndividualArtifact
-            ? await persistArtifactIfPossible(descriptor: descriptor, result: result, input: input)
+            ? await persistArtifactIfPossible(
+                descriptor: descriptor,
+                result: result,
+                input: input,
+                ownership: artifactOwnership
+            )
             : nil
         await finishLog(id: logID, state: result, artifact: artifact)
         return result
@@ -201,7 +215,8 @@ actor ToolExecutionRouter {
     private func persistArtifactIfPossible(
         descriptor: MyTeamToolDescriptor,
         result state: ToolExecutionState,
-        input: MyTeamToolInput
+        input: MyTeamToolInput,
+        ownership: ArtifactWorkflowContext?
     ) async -> IndexedArtifact? {
         let result: MyTeamToolResult
         switch state {
@@ -214,7 +229,8 @@ actor ToolExecutionRouter {
         return await ToolResultArtifactWriter.write(
             descriptor: descriptor,
             result: result,
-            input: input
+            input: input,
+            ownership: ownership
         )
     }
 

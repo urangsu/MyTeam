@@ -188,7 +188,13 @@ struct HomeDashboardView: View {
                 displayCount: descriptor.id == "news.search" ? 5 : nil,
                 providerHint: descriptor.requiredCredential?.provider.externalProvider
             )
-            let result = await ToolExecutionRouter.shared.run(descriptor, input: input, bypassApproval: bypassApproval)
+            let roomID = await MainActor.run { AgentWindowManager.shared.currentRoomID }
+            let result = await ToolExecutionRouter.shared.run(
+                descriptor,
+                input: input,
+                bypassApproval: bypassApproval,
+                options: .scopedStandalone(roomID: roomID)
+            )
             await MainActor.run {
                 toolStates[descriptor.id] = result
                 selectedState = result

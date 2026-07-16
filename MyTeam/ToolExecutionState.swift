@@ -34,18 +34,30 @@ struct ToolExecutionOptions: Sendable {
     let persistIndividualArtifact: Bool
     let parentWorkID: UUID?
     let executionMode: ToolExecutionMode
+    let roomID: UUID?
 
     nonisolated static let standalone = ToolExecutionOptions(
         persistIndividualArtifact: true,
         parentWorkID: nil,
-        executionMode: .standalone
+        executionMode: .standalone,
+        roomID: nil
     )
+
+    nonisolated static func scopedStandalone(roomID: UUID?) -> ToolExecutionOptions {
+        ToolExecutionOptions(
+            persistIndividualArtifact: true,
+            parentWorkID: nil,
+            executionMode: .standalone,
+            roomID: roomID
+        )
+    }
 
     nonisolated static func composite(parentWorkID: UUID?) -> ToolExecutionOptions {
         ToolExecutionOptions(
             persistIndividualArtifact: false,
             parentWorkID: parentWorkID,
-            executionMode: .compositeWork
+            executionMode: .compositeWork,
+            roomID: nil
         )
     }
 }

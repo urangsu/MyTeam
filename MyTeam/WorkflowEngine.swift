@@ -214,7 +214,8 @@ final class WorkflowEngine {
                     userInfo: [
                         "workspaceURL": workspaceURL,
                         "artifacts": completedArtifacts,
-                        "workflowID": completedWorkflowID
+                        "workflowID": completedWorkflowID,
+                        "roomID": roomID
                     ]
                 )
             }

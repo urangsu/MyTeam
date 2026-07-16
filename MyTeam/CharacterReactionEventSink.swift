@@ -24,6 +24,18 @@ struct CharacterReactionDiagnostics: Equatable {
     }
 }
 
+enum WorkflowCompletionRoomResolver {
+    nonisolated static func roomID(from userInfo: [AnyHashable: Any]?) -> UUID? {
+        if let roomID = userInfo?["roomID"] as? UUID {
+            return roomID
+        }
+        if let rawRoomID = userInfo?["roomID"] as? String {
+            return UUID(uuidString: rawRoomID)
+        }
+        return nil
+    }
+}
+
 // MARK: - CharacterReactionEventSink
 // Workroom workflow → CharacterReactionEngine 브리지.
 // 핵심 연결: event 수신 → AgentWindowManager.agentEmotions[agentID] 업데이트
@@ -53,10 +65,12 @@ final class CharacterReactionEventSink {
             // artifactCount > 0인 경우에만 documentCreated 반응
             let artifacts = notification.userInfo?["artifacts"] as? [Any] ?? []
             guard !artifacts.isEmpty else { return }
+            guard let roomID = WorkflowCompletionRoomResolver.roomID(from: notification.userInfo) else {
+                AppLog.warning("CharacterReactionEventSink: workflowCompleted roomID 없음 — 반응 생략")
+                return
+            }
 
             Task { @MainActor in
-                // roomID: workflowCompleted에는 workspaceURL만 있어 currentRoomID로 fallback
-                let roomID = AgentWindowManager.shared.currentRoomID ?? UUID()
                 self.notifyDocumentCreated(documentType: "workflowArtifact", roomID: roomID)
             }
         }

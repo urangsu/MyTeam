@@ -105,7 +105,8 @@ struct LegacyWorkflowFallbackRouter {
                 match.descriptor,
                 input: match.input,
                 bypassApproval: false,
-                path: path
+                path: path,
+                options: .scopedStandalone(roomID: roomID)
             )
             results.append((match: match, state: state))
         }

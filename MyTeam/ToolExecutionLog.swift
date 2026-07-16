@@ -287,7 +287,8 @@ enum ToolResultArtifactWriter {
     static func write(
         descriptor: MyTeamToolDescriptor,
         result: MyTeamToolResult,
-        input: MyTeamToolInput
+        input: MyTeamToolInput,
+        ownership: ArtifactWorkflowContext?
     ) async -> IndexedArtifact? {
         let markdown = markdownBody(descriptor: descriptor, result: result, input: input)
         let filename = filename(for: descriptor)
@@ -302,11 +303,16 @@ enum ToolResultArtifactWriter {
         }
 
         let now = Date()
-        let ownership = await MainActor.run {
-            ArtifactWorkflowOwnership.currentContext(manager: .shared)
+        let resolvedOwnership: ArtifactWorkflowContext
+        if let ownership {
+            resolvedOwnership = ownership
+        } else {
+            resolvedOwnership = await MainActor.run {
+                ArtifactWorkflowOwnership.currentContext(manager: .shared)
+            }
         }
-        let roomID = ownership.roomID
-        let workflowID = ownership.workflowID
+        let roomID = resolvedOwnership.roomID
+        let workflowID = resolvedOwnership.workflowID
         let artifact = IndexedArtifact(
             id: UUID().uuidString,
             workflowID: workflowID.uuidString,
