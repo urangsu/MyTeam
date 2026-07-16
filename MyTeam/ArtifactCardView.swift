@@ -7,6 +7,7 @@ struct ArtifactCardView: View {
     var compactMode: Bool = false
 
     @State private var copied = false
+    @State private var actionError: String?
 
     /// cloud artifact이면 URL(string:), local이면 workspace-relative path를 절대 경로로 resolve.
     private var resolvedURL: URL? {
@@ -137,12 +138,19 @@ struct ArtifactCardView: View {
                 }
 
                 // Copy path
-                Button(copied ? "✓" : "복사") { copyPath() }
+                Button(copyButtonTitle) { copyArtifactLocation() }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .disabled(!canInteract)
 
                 Spacer()
+            }
+
+            if let actionError {
+                Text(actionError)
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(12)
@@ -324,7 +332,13 @@ struct ArtifactCardView: View {
 
     private func openArtifact() {
         guard let url = resolvedURL, canInteract else { return }
-        NSWorkspace.shared.open(url)
+        guard NSWorkspace.shared.open(url) else {
+            actionError = artifact.type == .cloud
+                ? "링크를 열지 못했습니다. 주소를 복사해 다시 시도해 주세요."
+                : "파일을 열지 못했습니다. Finder에서 파일 상태를 확인해 주세요."
+            return
+        }
+        actionError = nil
     }
 
     private func revealInFinder() {
@@ -335,17 +349,40 @@ struct ArtifactCardView: View {
         }
     }
 
-    private func copyPath() {
+    private var copyButtonTitle: String {
+        if copied { return "✓" }
+        return artifact.type == .cloud ? "링크 복사" : "경로 복사"
+    }
+
+    private func copyArtifactLocation() {
         guard canInteract else { return }
         Task { @MainActor in
             guard let url = resolvedURL else { return }
+
+            if artifact.type == .cloud {
+                NSPasteboard.general.clearContents()
+                guard NSPasteboard.general.setString(url.absoluteString, forType: .string) else {
+                    actionError = "링크를 클립보드에 복사하지 못했습니다. 잠시 후 다시 시도해 주세요."
+                    return
+                }
+                markCopySucceeded()
+                return
+            }
+
             let result = await ToolExecutionLayer.executeWorkspaceAction(kind: .copyPath, path: url.path)
             if result.status == .succeeded {
-                copied = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
+                markCopySucceeded()
                 AppLog.debug("Path copied to pasteboard: \(url.path)")
+            } else {
+                actionError = result.error ?? "경로를 복사하지 못했습니다. 잠시 후 다시 시도해 주세요."
             }
         }
+    }
+
+    private func markCopySucceeded() {
+        actionError = nil
+        copied = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { copied = false }
     }
 
     private static func fileURL(for relativePath: String, workspaceURL: URL) -> URL? {

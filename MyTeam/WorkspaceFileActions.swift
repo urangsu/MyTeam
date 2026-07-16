@@ -20,7 +20,9 @@ enum WorkspaceFileActions {
         guard FileManager.default.fileExists(atPath: path) else { return .failure(.fileNotFound) }
 
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(path, forType: .string)
+        guard NSPasteboard.general.setString(path, forType: .string) else {
+            return .failure(.pasteboardWriteFailed)
+        }
         return .success(())
     }
 
@@ -39,6 +41,7 @@ enum WorkspaceFileActions {
         case pathEmpty
         case pathOutsideWorkspace
         case fileNotFound
+        case pasteboardWriteFailed
 
         var message: String {
             switch self {
@@ -48,6 +51,8 @@ enum WorkspaceFileActions {
                 return "Workspace 내부 파일만 열 수 있습니다."
             case .fileNotFound:
                 return "파일을 찾을 수 없습니다. Workspace에서 다시 확인해 주세요."
+            case .pasteboardWriteFailed:
+                return "경로를 클립보드에 복사하지 못했습니다. 잠시 후 다시 시도해 주세요."
             }
         }
     }
