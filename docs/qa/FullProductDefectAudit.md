@@ -1,20 +1,21 @@
 # Full Product Defect Audit
 
 Last full audit: 2026-07-11
-Incremental verification: 2026-07-17 (`WORKER-PROD-001`, `ART-INTEGRITY-001`)
+Incremental verification: 2026-07-17 (`WORKER-PROD-001`, `ART-INTEGRITY-001`, `QA-EVIDENCE-002`, `HOME-PROFILE-001`, `NW-CONC-001`)
 Audited branch: `codex/tts-runtime-hardening-p0`
-Audited commit: `eef00e3`
-Audited build: Debug test bundle passed; manual QA was not run
+Audited commit: `775b632`
+Audited build: XCTest 131/131 and Universal Release build passed; manual UI/audio QA was not run
 
 ## Summary
 
 | Severity | Count | Meaning |
 | --- | ---: | --- |
-| P0-blocker | 4 | Blocks RC or risks fake success/user trust |
-| P0-qa-blocked | 15 | Needs runtime/manual proof |
+| P0-blocker | 3 | Blocks RC or risks fake success/user trust |
+| P0-qa-blocked | 14 | Needs runtime/manual proof |
 | P1-product-gap | 4 | Partial feature or incomplete user value |
 | P1-live-disabled | 1 | Intentionally hidden/disabled until provider QA |
 | P2-polish | 0 | Quality improvement after RC |
+| resolved | 3 | Defect closed with current static/build evidence |
 
 ## Inventory
 
@@ -31,11 +32,11 @@ Audited build: Debug test bundle passed; manual QA was not run
 | LIVE-PROVIDER-001 | P1-live-disabled | Public lookup providers | FIN/DART/KMA/NEWS/LAW/GOOGLE are disabled or unproven. | `docs/qa/LiveProviderQAMatrix.md` | DISABLED | Keep disabled or run live provider QA before enabling. | Provider QA | `python3 scripts/validate_release_qa_evidence.py --release-strict` plus provider screenshots/logs |
 | RELEASE-MANIFEST-001 | P0-qa-blocked | Release capability gate | Generated release capability evidence is now separated from the fail-closed template, but no current RC manifest/live evidence is approved. | `MyTeam/ReleaseCapabilityManifest.swift`; `MyTeam/Resources/ReleaseCapabilityManifest.template.json` | CODE COMPLETE, QA BLOCKED | Generate the manifest only from a tested release commit/build after strict and live QA. | Release QA | Manifest validator plus release branch QA |
 | QA-METADATA-001 | P0-qa-blocked | QA evidence | Manual QA docs reference stale `tested_commit` / build metadata. | `docs/qa/*ManualQA.md` | STALE | Refresh only after actual runtime QA on current HEAD/build. | QA doc update | `python3 scripts/validate_release_qa_evidence.py --strict` |
-| QA-EVIDENCE-002 | P0-blocker | QA evidence | Markdown PASS values alone are not durable proof; evidence path/hash/build identity can be forged or omitted. | `scripts/validate_release_qa_evidence.py` | PARTIAL | Require current HEAD/build metadata and durable evidence path or command in strict manual QA. | Validator hardening | `python3 scripts/validate_release_qa_evidence.py --strict` |
+| QA-EVIDENCE-002 | resolved | QA evidence | Strict manual PASS evidence now rejects malformed SHA-256 values, missing or escaped evidence files, and commands whose repository scripts do not exist. | commit `84f9bd4`; `scripts/validate_release_qa_evidence.py`; `scripts/release_qa_evidence_validator_tests.py` | PASS | Keep the seven adversarial validator cases in release verification. Actual manual QA remains BLOCKED and is tracked by the individual manual rows plus `QA-METADATA-001`. | Release verification | Validator tests 7/7; `--release-strict` PASS; full `--strict` correctly rejects the stale/BLOCKED manual evidence |
 | QA-DIRTY-001 | P0-qa-blocked | QA evidence | Strict evidence now rejects a dirty worktree and requires configuration, architecture, Xcode version, and artifact SHA-256, but current manual evidence remains BLOCKED. | `scripts/validate_release_qa_evidence.py` | CODE COMPLETE, QA BLOCKED | Populate metadata only from an actual current-build QA run. | Manual QA | `python3 scripts/validate_release_qa_evidence.py --strict` |
-| HOME-PROFILE-001 | P0-qa-blocked | Home/Settings surface | HOME expectations were not profile-specific; Release fail-closed provider hiding can conflict with Developer-visible surfaces. | `docs/qa/HomeSurfaceManualQA.md` | OPEN | Split HOME expected results by Developer, Release Candidate, and App Store profiles. | QA doc update | Profile-specific screenshots and strict validator |
+| HOME-PROFILE-001 | resolved | Home/Settings surface | HOME-001 now separates Developer, Release Candidate, and App Store-equivalent expectations and explicitly forbids profile-invariant readiness claims. | `docs/qa/HomeSurfaceManualQA.md` | QA CONTRACT UPDATED | Keep profile-specific expected results; capture each profile before HOME-MANUAL-001 can pass. | Manual QA | Profile-specific screenshots and strict validator |
 | APPTERM-AUDIO-001 | P0-qa-blocked | App termination | APPTERM-004 requires active audio playback, but Release surface may not expose a user path to create it. | `docs/qa/AppTerminationManualQA.md` | OPEN | Add a release-equivalent internal audio QA harness or explicit capability-aware N/A rule. | QA harness decision | Audio termination log plus APPTERM-004 evidence |
-| NW-CONC-001 | P0-qa-blocked | Workflow concurrency | Room-scoped workflow state and global workflow state can race when multiple rooms run or finish workflows concurrently. | `MyTeam/WorkflowOrchestrator.swift` | OPEN | Add concurrent room/workflow QA: two rooms, room switching, cancellation, personal + team execution, artifact completion. | Runtime QA / fix if reproduced | New NW-CONC evidence rows |
+| NW-CONC-001 | P0-qa-blocked | Workflow concurrency | Cross-room cancellation, stale task completion, stale workflow finish, and global status mirrors could clear or overwrite surviving work. Task/operation ownership is now tokenized and room-scoped; runtime UI behavior is still unproven. | commit `775b632`; `MyTeam/RoomRuntimeStore.swift`; `MyTeam/AgentWindowManager.swift`; `MyTeam/WorkflowOrchestrator.swift`; `MyTeamTests/LLMRouterTests.swift` | CODE HARDENED, MANUAL QA BLOCKED | Run NW-CONC-001~006 across two rooms and personal + team surfaces, including cancellation and room switching during completion. | Runtime QA | Six concurrency regression tests; XCTest 131/131; Universal Release x86_64 + arm64 PASS |
 | STATE-MIG-001 | P0-qa-blocked | Persistence migration | Tool logs preserve `partial`, decode `checkedEmpty`, and fail unknown future states closed to `blocked`; old artifact recovery still needs runtime QA. | `MyTeam/ToolExecutionLog.swift`; `MyTeamTests/PublicAPIConnectorValidatorTests.swift` | CODE COMPLETE, ART QA BLOCKED | Run old artifact index recovery and reopen cases. | Migration QA | 68 XCTest cases passed; artifact reopen QA remains |
 | REL-RUNTIME-001 | P0-qa-blocked | Release runtime gate | `ToolExecutionRouter.readiness()` now applies the manifest-backed gate before every dispatch path; current RC/live evidence is still absent. | `MyTeam/ProductSurfacePolicy.swift`; `MyTeam/ToolExecutionRouter.swift` | CODE COMPLETE, QA BLOCKED | Keep generated manifest absent until release-profile natural/direct smoke passes. | Release QA | Release gate XCTest plus RC smoke |
 | SETTINGS-RUNTIME-001 | P0-qa-blocked | Settings/windowing | Current Debug run placed Settings beside the visible four-member status panel and Cmd+Q terminated the process, but the full HOME matrix is not complete. | `MyTeam/AgentWindowManager.swift` | PARTIAL, DEBUG VERIFIED | Repeat menu/status-item/minimized/other-Space and Release-profile checks. | Manual QA | Current Debug window bounds plus HOME-004 evidence |

@@ -40,6 +40,9 @@ This document verifies that personal chat and team workroom route natural langua
 
 - `python3 scripts/smoke_natural_work_e2e.py`: expected static call-chain gate.
 - `python3 scripts/validate_natural_work_routing.py`: expected routing fixture/static gate.
+- Commit `775b632` isolates active task, operation, status, and workflow-ID ownership by room and prevents stale completion from clearing a replacement run.
+- Six concurrency regression tests cover visible-room mirrors, cross-room cancellation, stale task cleanup, stale workflow finish, and stale natural-work operation cleanup; XCTest 131/131 and the Universal Release build passed on 2026-07-17.
+- This static/build evidence does not change NW-CONC-001~006 from BLOCKED. Their two-window timing, rendered bubbles, and artifact placement still require interactive evidence.
 
 ## Completion Rule
 

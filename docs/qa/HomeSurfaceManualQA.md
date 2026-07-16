@@ -26,6 +26,7 @@ This document verifies that Home and Settings expose only defensible product sur
 ## Static Evidence
 
 - `python3 scripts/audit_product_completeness.py`: expected to pass.
+- HOME-001 defines separate Developer, Release Candidate, and App Store-equivalent expectations. This contract update does not replace the three required rendered-surface captures.
 
 ## Completion Rule
 
