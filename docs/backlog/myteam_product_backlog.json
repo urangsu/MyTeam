@@ -2378,9 +2378,11 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "81513fd, ebdfd8a, c9a3dc5, b710734, a770a72",
-        "files_changed": [
-          "MyTeam/SupertonicProsodyTextProcessor.swift",
+      "commit_sha": "81513fd, ebdfd8a, c9a3dc5, b710734, a770a72, 4e4d996",
+      "files_changed": [
+        "MyTeam/CharacterVoiceConfig.swift",
+        "MyTeam/CharacterVoiceProfile.swift",
+        "MyTeam/SupertonicProsodyTextProcessor.swift",
           "MyTeam/BubbleSpeechCharacterTuningPolicy.swift",
           "MyTeam/BubbleSpeechSynthesizer.swift",
           "MyTeam/SpeechManager.swift",
@@ -2418,7 +2420,7 @@
           "MyTeam/AppTerminationCoordinator.swift",
           "MyTeamTests/LLMRouterTests.swift"
         ],
-        "validation_summary": "2026-07-16: Commit a770a72 replaces the hanging no-op MYTEAM_TTS_PROBE with a Debug-only Supertonic3 inference smoke that fails closed unless it produces a non-empty RIFF/WAVE payload with positive duration and sample rate, then exits through AppTerminationCoordinator. Luna synthesis passed in 1.9 seconds, XCTest 113/113 and all release validators passed. Partial remains because overlapping-stream interruption, audible sentence transitions, and Luna/Chiko prosody still require listening QA.",
+      "validation_summary": "2026-07-17: Commit 4e4d996 corrects Kay/Kei voice identity, clamps Chiko and Rex base pitch to the documented artifact-safe ±100-cent range, and adds regression tests across all voice profiles. BubbleSpeechSynthesizerTests 23/23, TTS runtime contracts, and BubbleSpeech smoke passed. Partial remains because overlapping-stream interruption, audible sentence transitions, and Luna/Chiko prosody still require listening QA.",
         "screenshots": []
       },
       "notes": [
@@ -2427,7 +2429,8 @@
         "Status remains partial until manual audio QA and a release-equivalent Supertonic3 inference smoke are recorded."
         ,"The source-aligned boundary shaper is an immediate machine-tone removal measure, not the final forced-alignment syllable renderer.",
         "Luna's rise on a vocative such as '시우!' and the falling tone at the end of a longer greeting remain listening-based Supertonic3 prosody tuning work; conversation prompt changes do not claim to fix audible pitch contours.",
-        "The former MYTEAM_TTS_PROBE printed a no-op message and did not terminate reliably; it is no longer accepted as runtime evidence."
+      "The former MYTEAM_TTS_PROBE printed a no-op message and did not terminate reliably; it is no longer accepted as runtime evidence.",
+      "2026-07-17: Character voice metadata now preserves canonical identity and enforces the documented artifact-safe pitch boundary. This is a static/runtime-signal guard, not listening evidence."
       ]
     },
     {
