@@ -955,6 +955,24 @@ final class LLMRouterTests: XCTestCase {
         }
     }
 
+    func test_naturalWorkArtifactPresentationDisclosesPersistenceFailure() {
+        let markdown = "# 조사 결과\n\n본문"
+
+        XCTAssertEqual(
+            NaturalWorkArtifactPresentationPolicy.message(
+                markdown: markdown,
+                artifactPersisted: true
+            ),
+            markdown
+        )
+        XCTAssertTrue(
+            NaturalWorkArtifactPresentationPolicy.message(
+                markdown: markdown,
+                artifactPersisted: false
+            ).contains("파일로 저장하지 못했습니다")
+        )
+    }
+
     @MainActor
     func test_cancellingOneRoomPreservesAnotherRoomsRuntimeAndTypingState() async {
         let manager = AgentWindowManager.shared

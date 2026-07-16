@@ -134,6 +134,12 @@ def main() -> None:
         failures.append("NaturalWorkPlanRunner must delegate chat message writes to ChatResponseSink")
     if "CompositeArtifactRecorder.write" not in plan_runner:
         failures.append("NaturalWorkPlanRunner must delegate artifact writes to CompositeArtifactRecorder")
+    if "_ = await CompositeArtifactRecorder.write" in plan_runner:
+        failures.append("NaturalWorkPlanRunner must not ignore composite artifact persistence results")
+    if "workflowID: parentWorkID" not in plan_runner:
+        failures.append("NaturalWorkPlanRunner must bind the composite artifact to its parent work ID")
+    if "NaturalWorkArtifactPresentationPolicy.message" not in plan_runner:
+        failures.append("NaturalWorkPlanRunner must disclose composite artifact persistence failure")
     if "manager.addChatLog" not in chat_sink or "manager.updateChatLogText" not in chat_sink:
         failures.append("ChatResponseSink must own natural work chat response writes")
     if "CompositeWorkArtifactWriter.write" not in artifact_recorder:

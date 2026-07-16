@@ -1,5 +1,17 @@
 import Foundation
 
+enum NaturalWorkArtifactPresentationPolicy {
+    nonisolated static func message(markdown: String, artifactPersisted: Bool) -> String {
+        guard !artifactPersisted else { return markdown }
+        return markdown + """
+
+
+        ---
+        ⚠️ 결과를 파일로 저장하지 못했습니다. 위 내용은 이 대화에서 확인할 수 있습니다.
+        """
+    }
+}
+
 enum NaturalWorkPlanRunner {
     static func run(
         _ plan: NaturalWorkPlan,
@@ -44,11 +56,15 @@ enum NaturalWorkPlanRunner {
             path: path,
             options: .composite(parentWorkID: parentWorkID)
         )
-        _ = await CompositeArtifactRecorder.write(
+        let artifact = await CompositeArtifactRecorder.write(
             result: naturalResult,
             originalText: originalText,
             roomID: roomID,
-            manager: manager
+            workflowID: parentWorkID
+        )
+        let responseText = NaturalWorkArtifactPresentationPolicy.message(
+            markdown: naturalResult.artifactMarkdown,
+            artifactPersisted: artifact != nil
         )
         await MainActor.run {
             WorkContextMemory.shared.record(plan: validatedPlan, roomID: roomID)
@@ -56,7 +72,7 @@ enum NaturalWorkPlanRunner {
                 roomID: roomID,
                 manager: manager,
                 messageID: progressMessageID,
-                text: naturalResult.artifactMarkdown,
+                text: responseText,
                 agentName: "업무 실행"
             )
             manager.finishWorkflowOperation(roomID: roomID, token: operationToken)

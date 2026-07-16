@@ -5,9 +5,8 @@ enum CompositeArtifactRecorder {
         result: NaturalWorkResult,
         originalText: String,
         roomID: UUID,
-        manager: AgentWindowManager
+        workflowID: UUID
     ) async -> IndexedArtifact? {
-        let workflowID = await MainActor.run { manager.currentWorkflowID(for: roomID) }
         return await CompositeWorkArtifactWriter.write(
             result: result,
             originalText: originalText,
