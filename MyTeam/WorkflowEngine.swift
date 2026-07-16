@@ -59,28 +59,9 @@ final class WorkflowEngine {
             let durationMs = Int(Date().timeIntervalSince(stepStart) * 1000)
 
             if result.status == .succeeded {
-                // ── step 성공 기록 ──
-                await MainActor.run {
-                    WorkflowRunStore.shared.updateStep(workflowID: workflowID, stepID: executedStep.id) { rec in
-                        rec.status = .completed
-                        rec.endedAt = Date()
-                        rec.outputSummary = String(result.output.prefix(100))
-                    }
-                }
-                await AgentEventBus.shared.publish(.toolCallFinished(workflowID: workflowID, stepID: executedStep.id,
-                                                                     toolName: executedStep.toolName, durationMs: durationMs, success: true))
-
+                var artifactRegistrationError: ArtifactStorePersistenceError?
                 if let relPath = result.artifactPath,
                    ArtifactPersistencePolicy.shouldPersist(resultStatus: result.status) {
-                    // artifact 기록은 실제 실행된 step(executedStep) 기준
-                    let artifact = Artifact(
-                        stepID: executedStep.id,
-                        stepTitle: executedStep.title,
-                        path: relPath,
-                        output: result.output
-                    )
-                    artifacts.append(artifact)
-
                     // ArtifactIndex 등록 (executedStep 기준)
                     let indexed = IndexedArtifact(
                         id: UUID().uuidString,
@@ -93,10 +74,55 @@ final class WorkflowEngine {
                         createdAt: ISO8601DateFormatter().string(from: Date()),
                         roomID: roomID.uuidString
                     )
-                    await ArtifactStore.shared.registerArtifact(indexed)
-                    await MainActor.run { WorkflowRunStore.shared.addArtifact(workflowID: workflowID, relativePath: relPath) }
-                    await AgentEventBus.shared.publish(.artifactCreated(workflowID: workflowID, roomID: roomID, path: relPath))
+                    switch await ArtifactStore.shared.registerArtifact(indexed) {
+                    case .success:
+                        artifacts.append(Artifact(
+                            stepID: executedStep.id,
+                            stepTitle: executedStep.title,
+                            path: relPath,
+                            output: result.output
+                        ))
+                        await MainActor.run { WorkflowRunStore.shared.addArtifact(workflowID: workflowID, relativePath: relPath) }
+                        await AgentEventBus.shared.publish(.artifactCreated(workflowID: workflowID, roomID: roomID, path: relPath))
+                    case .failure(let error):
+                        artifactRegistrationError = error
+                        if let fileURL = try? safeWorkspaceURL(filename: relPath, context: context) {
+                            try? FileManager.default.removeItem(at: fileURL)
+                        }
+                    }
                 }
+
+                if let artifactRegistrationError {
+                    let rawError = "산출물 인덱스 저장 실패: \(artifactRegistrationError)"
+                    failedSteps.append((step: executedStep, error: friendlyError(rawError, step: executedStep)))
+                    await MainActor.run {
+                        WorkflowRunStore.shared.updateStep(workflowID: workflowID, stepID: executedStep.id) { rec in
+                            rec.status = .failed
+                            rec.endedAt = Date()
+                            rec.errorMessage = rawError
+                        }
+                        WorkflowRunStore.shared.recordError(workflowID: workflowID, stepID: executedStep.id, message: rawError)
+                    }
+                    await AgentEventBus.shared.publish(.toolCallFinished(
+                        workflowID: workflowID,
+                        stepID: executedStep.id,
+                        toolName: executedStep.toolName,
+                        durationMs: durationMs,
+                        success: false
+                    ))
+                    if executedStep.isRequired { break } else { continue }
+                }
+
+                // ── 파일 저장과 인덱스 등록까지 끝난 뒤에만 성공 기록 ──
+                await MainActor.run {
+                    WorkflowRunStore.shared.updateStep(workflowID: workflowID, stepID: executedStep.id) { rec in
+                        rec.status = .completed
+                        rec.endedAt = Date()
+                        rec.outputSummary = String(result.output.prefix(100))
+                    }
+                }
+                await AgentEventBus.shared.publish(.toolCallFinished(workflowID: workflowID, stepID: executedStep.id,
+                                                                     toolName: executedStep.toolName, durationMs: durationMs, success: true))
             } else {
                 let rawErr = result.error ?? "알 수 없는 오류"
 

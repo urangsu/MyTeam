@@ -56,7 +56,14 @@ enum AppLaunchArtifactWriter {
             roomID: roomID.uuidString
         )
 
-        await ArtifactStore.shared.registerArtifact(artifact)
+        switch await ArtifactStore.shared.registerArtifact(artifact) {
+        case .success:
+            break
+        case .failure(let error):
+            try? FileManager.default.removeItem(at: fileURL)
+            AppLog.error("[AppLaunchArtifactWriter] artifact index registration failed: \(error)")
+            throw error
+        }
         AppLog.info("[AppLaunchArtifactWriter] artifact 저장: \(savedFilename) workflowID=\(workflowID.uuidString.prefix(8)) roomID=\(roomID.uuidString.prefix(8)) stepID=\(stepID)")
         return artifact
     }

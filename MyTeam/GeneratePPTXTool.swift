@@ -24,18 +24,6 @@ struct GeneratePPTXTool: WorkflowTool {
         let result = try DocumentGenerationService.generatePPTX(planURL: planURL, outputURL: outputURL)
         let savedFilename = result.artifactPath
 
-        await ArtifactStore.shared.registerArtifact(IndexedArtifact(
-            id:         UUID().uuidString,
-            workflowID: context.sessionID,
-            title:      result.title,
-            type:       .presentation,
-            filename:   savedFilename,
-            relativePath: savedFilename,
-            preview:    "\(result.pageCount)장 슬라이드",
-            createdAt:  ISO8601DateFormatter().string(from: Date()),
-            roomID:     context.roomID.uuidString
-        ))
-
         return ToolResult(
             status:       .succeeded,
             output:       "\(savedFilename) 생성 완료 (\(result.pageCount)장)",

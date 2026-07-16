@@ -67,6 +67,26 @@ def main() -> None:
     worker = read("workers/basic-lookup-api/worker.js")
     project = read("MyTeam/MyTeam.xcodeproj/project.pbxproj")
 
+    ignored_artifact_registrations: list[str] = []
+    for swift_path in (ROOT / "MyTeam").rglob("*.swift"):
+        for line_number, line in enumerate(swift_path.read_text().splitlines(), start=1):
+            stripped = line.strip()
+            if stripped.startswith("await ") and ".registerArtifact(" in stripped:
+                ignored_artifact_registrations.append(
+                    f"{swift_path.relative_to(ROOT)}:{line_number}"
+                )
+    if ignored_artifact_registrations:
+        failures.append(
+            "Artifact registration results must be handled explicitly: "
+            + ", ".join(ignored_artifact_registrations)
+        )
+
+    for generator_path in ["MyTeam/GenerateXLSXTool.swift", "MyTeam/GeneratePPTXTool.swift"]:
+        if "registerArtifact(" in read(generator_path):
+            failures.append(
+                f"{generator_path} must leave artifact registration to WorkflowEngine to avoid duplicate index entries"
+            )
+
     handle_body = method_body(workflow, "private func handleToolFastPath(")
     if "WorkflowInputCoordinator.shared.handle" not in handle_body:
         failures.append("WorkflowOrchestrator.handleToolFastPath must delegate to WorkflowInputCoordinator")

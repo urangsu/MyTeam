@@ -67,7 +67,14 @@ final class BeginnerExampleDocumentService {
             roomID: roomID.uuidString
         )
 
-        await store.registerArtifact(artifact)
+        switch await store.registerArtifact(artifact) {
+        case .success:
+            break
+        case .failure(let error):
+            try? FileManager.default.removeItem(at: fileURL)
+            AppLog.error("BeginnerExampleDocumentService: artifact 등록 실패 — \(error)")
+            return nil
+        }
 
         // workflowCompleted notification → CharacterReactionEventSink → .joy
         let registeredArtifact = artifact

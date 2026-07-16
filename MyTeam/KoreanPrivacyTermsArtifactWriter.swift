@@ -45,7 +45,14 @@ enum KoreanPrivacyTermsArtifactWriter {
             roomID: roomID.uuidString
         )
 
-        await ArtifactStore.shared.registerArtifact(artifact)
+        switch await ArtifactStore.shared.registerArtifact(artifact) {
+        case .success:
+            break
+        case .failure(let error):
+            try? FileManager.default.removeItem(atPath: filePath)
+            AppLog.error("[KoreanPrivacyTermsWriter] artifact index registration failed: \(error)")
+            throw error
+        }
         AppLog.info("[KoreanPrivacyTermsWriter] artifact 저장: \(request.filename) workflowID=\(workflowID.uuidString.prefix(8)) roomID=\(roomID.uuidString.prefix(8))")
 
         return artifact

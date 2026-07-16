@@ -51,7 +51,14 @@ enum DocumentCreationService {
         )
 
         // Artifact Store에 저장
-        await ArtifactStore.shared.registerArtifact(artifact)
+        switch await ArtifactStore.shared.registerArtifact(artifact) {
+        case .success:
+            break
+        case .failure(let error):
+            try? FileManager.default.removeItem(at: fileURL)
+            AppLog.error("[DocumentCreationService] artifact index registration failed: \(error)")
+            return nil
+        }
 
         // Recent artifact index에 추가
         let entry = RecentArtifactIndexEntry(
