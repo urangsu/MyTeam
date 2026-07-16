@@ -67,6 +67,12 @@ def main() -> None:
     worker = read("workers/basic-lookup-api/worker.js")
     project = read("MyTeam/MyTeam.xcodeproj/project.pbxproj")
 
+    for google_client_path in ["MyTeam/GoogleCalendarClient.swift", "MyTeam/GoogleSheetsClient.swift"]:
+        if "try? GoogleOAuthTokenStore.shared.saveToken" in read(google_client_path):
+            failures.append(
+                f"{google_client_path} must not hide refreshed-token Keychain persistence failure"
+            )
+
     ignored_artifact_registrations: list[str] = []
     for swift_path in (ROOT / "MyTeam").rglob("*.swift"):
         for line_number, line in enumerate(swift_path.read_text().splitlines(), start=1):

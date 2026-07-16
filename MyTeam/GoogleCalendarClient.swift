@@ -114,7 +114,7 @@ final class GoogleCalendarClient: GoogleCalendarClienting {
             refreshToken: refreshToken,
             clientID: GoogleOAuthConfigStore.shared.load().clientID
         )
-        try? GoogleOAuthTokenStore.shared.saveToken(refreshed, for: .googleCalendar)
+        try GoogleOAuthTokenStore.shared.saveToken(refreshed, for: .googleCalendar)
         return try await fetchEvents(from: start, to: end, limit: limit, with: refreshed)
     }
 
@@ -187,7 +187,7 @@ final class GoogleCalendarClient: GoogleCalendarClienting {
             refreshToken: refreshToken,
             clientID: GoogleOAuthConfigStore.shared.load().clientID
         )
-        try? GoogleOAuthTokenStore.shared.saveToken(refreshed, for: .googleCalendar)
+        try GoogleOAuthTokenStore.shared.saveToken(refreshed, for: .googleCalendar)
         return refreshed
     }
 

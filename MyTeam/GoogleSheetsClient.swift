@@ -113,7 +113,7 @@ final class GoogleSheetsClient {
             clientID: GoogleOAuthConfigStore.shared.load().clientID,
             fallbackScopes: token.scopes.isEmpty ? [.spreadsheetsReadonly] : token.scopes
         )
-        try? GoogleOAuthTokenStore.shared.saveToken(refreshed, for: .googleSheets)
+        try GoogleOAuthTokenStore.shared.saveToken(refreshed, for: .googleSheets)
         return refreshed
     }
 
@@ -130,7 +130,7 @@ final class GoogleSheetsClient {
             clientID: GoogleOAuthConfigStore.shared.load().clientID,
             fallbackScopes: originalToken.scopes.isEmpty ? [.spreadsheetsReadonly] : originalToken.scopes
         )
-        try? GoogleOAuthTokenStore.shared.saveToken(refreshed, for: .googleSheets)
+        try GoogleOAuthTokenStore.shared.saveToken(refreshed, for: .googleSheets)
         return try await fetchValues(spreadsheetID: spreadsheetID, range: range, token: refreshed, allowRetry: false)
     }
 }
