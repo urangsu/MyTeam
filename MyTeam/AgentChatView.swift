@@ -638,7 +638,8 @@ struct AgentChatView: View {
 
                             // ── 첫 아티팩트 생성 후 "다음 단계" 액션 표시 (room-scoped) ──
                             // 회의록/보고서/체크리스트 등이 생성되면 요약/표로 변경/체크리스트로 변경/Finder 열기 등의 다음 액션 제안
-                            if !manager.recentArtifacts(for: agentRoomID ?? UUID()).isEmpty {
+                            if let roomID = agentRoomID,
+                               !manager.recentArtifacts(for: roomID).isEmpty {
                                 Divider()
                                     .padding(.vertical, 12)
 
@@ -774,7 +775,9 @@ struct AgentChatView: View {
             }
         } else if WorkResultCardView.shouldRenderAsWorkResult(log.text, isUser: log.isUser) {
             // WP2-lite: 긴 어시스턴트 응답 → 전체 너비 업무 결과 카드
-            let relatedArtifacts = artifactsForLog(log, roomID: agentRoomID ?? UUID())
+            let relatedArtifacts = agentRoomID.map { roomID in
+                artifactsForLog(log, roomID: roomID)
+            } ?? []
             CopyableMessageContainer(text: log.text, isUser: false) {
                 WorkResultCardView(
                     text: log.text,

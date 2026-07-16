@@ -74,6 +74,16 @@ forbid(agent_chat, "tuckChatWindow", "personal chat still exposes the unstable t
 require(window_manager, "hostingController.sizingOptions = []", "SwiftUI can still resize the chat NSWindow during layout")
 require(window_manager, "applyStatusWindowSize", "team panel sizing is not deferred away from SwiftUI layout")
 forbid(window_manager, "panel.setFrame(frame, display: true, animate: true)", "team panel resizing still animates during SwiftUI layout")
+forbid(
+    agent_chat,
+    "agentRoomID ?? UUID()",
+    "AgentChatView creates a phantom room identity during rendering when no room is selected",
+)
+forbid(
+    team,
+    "selectedTeamWorkroomID ?? UUID()",
+    "TeamStatusView creates a phantom workroom identity during rendering when no workroom is selected",
+)
 require(window_manager, "width >= 520", "personal chat accepts the legacy collapsing width")
 if '"chat_single"' in floating_panel.split("allowedPanelIDs", 1)[1].split("]", 1)[0]:
     raise SystemExit("FAIL: personal chat must not participate in panel tuck geometry")

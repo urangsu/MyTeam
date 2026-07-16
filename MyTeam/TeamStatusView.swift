@@ -607,15 +607,13 @@ struct TeamStatusView: View {
                     VStack(alignment: .leading, spacing: 8) {
 
                         // ── WorkroomHomeView: 대화가 없을 때만 표시 (isBeginnerMode와 무관) ──
-                        if manager.teamChatLogs.isEmpty {
+                        if manager.teamChatLogs.isEmpty,
+                           let roomID = manager.selectedTeamWorkroomID {
                             // Round 241A: selectedTeamWorkroomID 기준 — 개인 대화 전환 시 오염 방지
-                            let roomArtifactsForHome: [IndexedArtifact] = {
-                                if let rid = manager.selectedTeamWorkroomID { return manager.recentArtifacts(for: rid) }
-                                return []
-                            }()
+                            let roomArtifactsForHome = manager.recentArtifacts(for: roomID)
                             let homeModel = WorkroomHomeModel.fromRuntime(
-                                roomID: manager.selectedTeamWorkroomID ?? UUID(),
-                                roomTitle: manager.rooms.first(where: { $0.id == manager.selectedTeamWorkroomID })?.name ?? "워크룸",
+                                roomID: roomID,
+                                roomTitle: manager.rooms.first(where: { $0.id == roomID })?.name ?? "워크룸",
                                 recentArtifacts: roomArtifactsForHome
                             )
                             WorkroomHomeView(
