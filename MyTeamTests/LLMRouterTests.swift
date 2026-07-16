@@ -943,6 +943,19 @@ final class LLMRouterTests: XCTestCase {
     }
 
     @MainActor
+    func test_builtInCharacterRosterNeverLooksPremiumOrChangesPersonaRole() {
+        let manager = AgentWindowManager.shared
+
+        for agent in manager.allAvailableAgents {
+            let character = CharacterCatalog.builtIn.first { $0.agentID == agent.id }
+            XCTAssertNotNil(character, "Missing built-in catalog entry for \(agent.id)")
+            XCTAssertFalse(agent.isPremium, "Built-in character \(agent.id) must not look paywalled")
+            XCTAssertEqual(agent.role, agentPersonas[agent.id]?.role)
+            XCTAssertEqual(character?.role, agentPersonas[agent.id]?.role)
+        }
+    }
+
+    @MainActor
     func test_cancellingOneRoomPreservesAnotherRoomsRuntimeAndTypingState() async {
         let manager = AgentWindowManager.shared
         let roomA = UUID()
