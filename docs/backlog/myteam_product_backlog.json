@@ -405,18 +405,22 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "7750268",
+        "commit_sha": "7750268, c3c5df2, 29a0adf",
         "files_changed": [
           "MyTeam/CharacterEntitlementManager.swift",
           "MyTeam/CharacterGalleryView.swift",
+          "MyTeam/CharacterCatalog.swift",
+          "MyTeam/AgentWindowManager.swift",
+          "MyTeamTests/LLMRouterTests.swift",
           "scripts/audit_product_completeness.py"
         ],
-        "validation_summary": "2026-07-11: Removed the UserDefaults fake-unlock store and public markUnlocked path. Character ownership now accepts only built-in characters or StoreKit-verified current entitlements, Release hides the additional-character section, the product audit passed, and the Debug build passed. StoreKit sandbox purchase and Release UI manual QA remain open, so status is partial.",
+        "validation_summary": "2026-07-17: Character ownership accepts only built-in characters or StoreKit-verified current entitlements. Commits c3c5df2 and 29a0adf also remove a contradictory premium label from the 11 built-in characters, align the duplicated Chiko role label with the unchanged canonical UX persona, and initialize the default team from explicit catalog IDs rather than array order. Focused XCTest and the character dialogue validator passed. StoreKit sandbox purchase and Release UI manual QA remain open, so status is partial.",
         "screenshots": []
       },
       "notes": [
         "Productization v1에서 CharacterEntitlementManager 퍼시스턴스 강화, CharacterStoreSkeletonView 생성 완료. StoreKit 실제 연동은 별도 task.",
-        "검증되지 않은 unlock 상태를 안전한 저장소로 옮기는 대신 제품 경로에서 제거했다. 실제 소유권은 StoreKit 검증 결과만 인정한다."
+        "검증되지 않은 unlock 상태를 안전한 저장소로 옮기는 대신 제품 경로에서 제거했다. 실제 소유권은 StoreKit 검증 결과만 인정한다.",
+        "2026-07-17: User-authorized character composition cleanup changed duplicate UI metadata only; canonical personas and dialogue tone were not redesigned."
       ]
     },
     {
@@ -466,7 +470,7 @@
       },
       "completion_evidence": {
         "required": true,
-      "commit_sha": "7196256, 47ff4ae, 1cd2452, 7409b68, ffa1a1e, da61c03",
+      "commit_sha": "7196256, 47ff4ae, 1cd2452, 7409b68, ffa1a1e, da61c03, c3c5df2, 29a0adf, 0d91ebb",
         "files_changed": [
           "MyTeam/Assets.xcassets/AppIcon.appiconset/Contents.json",
           "MyTeam/Assets.xcassets/AppIcon.appiconset/*.png",
@@ -490,7 +494,7 @@
         "MyTeamTests/PublicAPIConnectorValidatorTests.swift",
         "MyTeamTests/LLMRouterTests.swift"
       ],
-      "validation_summary": "2026-07-17: Commits ffa1a1e and da61c03 remove invented idle activity and the hard-coded fake main task. The team header now reports idle, active, completed, or failed truthfully; status detail comes from the selected room's latest real user request and refreshes immediately on room switches. Unit tests cover all 11 idle character lines and header-state mapping; architecture and complete release validators passed. Partial remains because Dock/Finder icon rendering, a normally signed Release UI pass, and production Keychain/real-audio listening checks remain open.",
+      "validation_summary": "2026-07-17: Invented idle activity and the hard-coded fake main task are removed. The team header reports actual room state, built-in character cards no longer contradict entitlement truth, the default four-person team follows explicit catalog IDs, and the schedule empty state uses correct Korean copy. Focused character/status tests and the character dialogue validator passed. Partial remains because Dock/Finder icon rendering, a normally signed Release UI pass, and production Keychain/real-audio listening checks remain open.",
         "screenshots": []
       },
       "notes": [
@@ -499,7 +503,8 @@
         "Unlocked live QA later covered onboarding, work dashboard, connection center, character gallery, workroom, keyboard input, and quit/relaunch. User and skill tabs triggered Computer Use accessibility transport limits rather than an app crash.",
       "Character composition decision: 치코 replaces 핀 in the default four-person team; 핀 remains a built-in replacement option and no character role, tone, or persona was changed.",
       "2026-07-17: Idle character status copy now describes availability only. It no longer implies separate background work or fabricated elapsed effort.",
-      "2026-07-17: The team panel no longer labels idle/completed/failed states as active collaboration or displays a hard-coded project as the user's current task."
+      "2026-07-17: The team panel no longer labels idle/completed/failed states as active collaboration or displays a hard-coded project as the user's current task.",
+      "2026-07-17: All 11 built-in characters are consistently labeled as included, while StoreKit-backed additional characters remain hidden or coming soon in Release."
       ]
     },
     {
@@ -1308,7 +1313,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "e879406, 261d3c5, b643b05, f0392b0, 183ff68, 2302093, 18f3046, 7fc7d93, c5c849c, a7de3b4, ee44f59, b0dea66, 7522b8f, c28ce6b, 3845a96, d9fc0ce",
+        "commit_sha": "e879406, 261d3c5, b643b05, f0392b0, 183ff68, 2302093, 18f3046, 7fc7d93, c5c849c, a7de3b4, ee44f59, b0dea66, 7522b8f, c28ce6b, 3845a96, d9fc0ce, ef7720b",
         "files_changed": [
           "MyTeam/AppTerminationCoordinator.swift",
           "MyTeam/MyTeamApp.swift",
@@ -1330,6 +1335,8 @@
           "MyTeam/WorkflowEngine.swift",
           "MyTeam/WorkflowModels.swift",
           "MyTeam/WorkflowInputCoordinator.swift",
+          "MyTeam/NaturalWorkPlanRunner.swift",
+          "MyTeam/CompositeArtifactRecorder.swift",
           "MyTeam/HomeDashboardView.swift",
           "MyTeam/ToolExecutionState.swift",
           "MyTeam/ToolRunners/GoogleCalendarToolRunner.swift",
@@ -1350,7 +1357,7 @@
           "scripts/validate_worker_production_health.py",
           "scripts/validate_myteam_release.py"
         ],
-        "validation_summary": "2026-07-17: Commits b0dea66, 7522b8f, c28ce6b, 3845a96, and d9fc0ce remove global workflow ownership, ignored artifact-registration results, false completion reporting, and completion-time room reassignment. Every production artifact writer handles index persistence failure and withholds success; XLSX/PPTX registration is centralized in WorkflowEngine. Planned, unavailable, approval-only, or failed workflows do not emit artifact-completion notifications. Standalone tool artifacts snapshot their room ownership before execution, and character reactions require the explicit room carried by the completion event. Ownership/completion regression tests plus architecture and routing validators passed. Manual two-room and artifact-recovery UI QA remain open, so this task stays partial.",
+        "validation_summary": "2026-07-17: Commits b0dea66, 7522b8f, c28ce6b, 3845a96, d9fc0ce, and ef7720b remove global workflow ownership, ignored artifact-registration results, false completion reporting, completion-time room reassignment, and ignored composite artifact persistence failure. Production artifact writers withhold saved-success on index failure. Standalone and composite artifacts retain explicit start-time room/work IDs, and the chat discloses when a composite result could not be saved as a file. Ownership/completion/presentation regression tests plus architecture and routing validators passed. Manual two-room and artifact-recovery UI QA remain open, so this task stays partial.",
         "screenshots": []
       },
       "notes": [
@@ -1361,7 +1368,8 @@
         "2026-07-17: Artifact writers no longer borrow another room's workflow ID, and index-registration failure cannot be presented as saved success.",
         "2026-07-17: Architecture validation now rejects ignored artifact-registration results and duplicate XLSX/PPTX self-registration.",
         "2026-07-17: Workflow summaries distinguish completed, partially completed, approval-waiting, failed, and unexecuted states; only a registered artifact can trigger the artifact-completion notification.",
-        "2026-07-17: Tool artifacts and character completion reactions retain the room selected when execution began instead of borrowing whichever room is selected when async work finishes."
+        "2026-07-17: Tool artifacts and character completion reactions retain the room selected when execution began instead of borrowing whichever room is selected when async work finishes.",
+        "2026-07-17: Composite work uses its explicit parent work ID and warns in chat when the result body exists but file/index persistence fails."
       ]
     },
     {
