@@ -662,14 +662,18 @@
       "status": "partial",
       "category": "release-truth",
       "title": "Voice tab truth and manual audio QA",
-      "why": "음성탭은 유지하되 실제 TTS provider 없음/model 미포함 상태를 거짓 없이 표시해야 한다. 캐릭터 TTS와 오디오 경로 테스트를 혼동시키면 fake success와 사용자 불신이 발생한다.",
+      "why": "App Store 승인 gate가 닫힌 동안 음성탭과 음성 컨트롤을 노출하면 사용할 수 없는 기능을 사용 가능한 것처럼 보이게 한다. 개발자 빌드의 Supertonic3/BubbleSpeech 검증 경로는 유지하되 Release 표면과 백그라운드 준비는 같은 정책 진실을 따라야 한다.",
       "scope": {
         "include": [
           "TTSProductPolicy.swift",
           "TTSRoutingPolicy.swift",
           "TTSLabView.swift",
+          "SettingsView.swift",
+          "TeamStatusView.swift",
+          "ToolContractValidator.swift",
           "SpeechManager.swift",
-          "AudioPlaybackService.swift"
+          "AudioPlaybackService.swift",
+          "MyTeamTests/LLMRouterTests.swift"
         ],
         "exclude": [
           "ONNX/MLX/TTS 모델 재도입",
@@ -697,32 +701,33 @@
           "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Release -destination 'platform=macOS' build"
         ],
         "manual_checks": [
-          "음성탭에서 캐릭터 TTS provider 없음 표시 확인",
+          "Release 설정에서 승인 전 음성탭이 숨겨지는지 확인",
+          "Release 팀 창에서 음성 컨트롤이 비활성화되는지 확인",
+          "Debug 설정에서 음성 Lab과 Supertonic3/BubbleSpeech 검증 경로가 유지되는지 확인",
           "오디오 경로 테스트 실제 소리 재생 확인",
           "소리가 안 나면 AudioPlaybackService.playFloatSamples 경로를 별도 P0/P1로 분리"
         ]
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "cb45a13b85c7fcbee1702c04ba74cd8474cfd6f8",
+        "commit_sha": "5c5bf7c144bdabb54d2d10439009b05913ba369e",
         "files_changed": [
-          "MyTeam/AudioPlaybackService.swift",
+          "MyTeam/SettingsView.swift",
           "MyTeam/SpeechManager.swift",
-          "MyTeam/TTSLabView.swift",
           "MyTeam/TTSProductPolicy.swift",
-          "MyTeam/TTSRoutingPolicy.swift",
-          "MyTeam/BubbleSpeechSynthesizer.swift",
-          "MyTeam/BubbleSpeechCharacterTuningPolicy.swift",
-          "MyTeam/MyTeam.xcodeproj/project.pbxproj"
+          "MyTeam/TeamStatusView.swift",
+          "MyTeam/ToolContractValidator.swift",
+          "MyTeamTests/LLMRouterTests.swift"
         ],
-        "validation_summary": "2026-06-07: AudioPlaybackService QoS hot path tightened. scheduleBuffer completion and onPlaybackStarted Task calls now use .userInitiated priority; playFloatSamples performs engine readiness once at function entry and reuses the prepared graph for session setup/scheduling; appendRawPCM no longer rechecks readiness immediately before playerNode.play(). stopAll/endSession still keep the engine graph attached, and detach/disconnect remain termination-only. BubbleSpeechCharacterTuningPolicy added and wired into chopper min/max segment duration, guideGain, shimmerDepth, and gapScale for character/profile tuning prep. Debug/Release builds passed. Partial because live manual smoke and Xcode console QoS warning observation remain.",
+        "validation_summary": "2026-07-17: Commit 5c5bf7c makes user-facing TTS profile-aware, hides the TTS Lab in App Store builds until explicit release approval, disables both team-window voice controls under the same gate, and prevents termination-speech prewarm/playback while the surface is unavailable. Debug/power-user validation paths and Supertonic3/BubbleSpeech implementation remain intact. XCTest 125/125 passed; MyTeam release validators, release-strict QA evidence, Worker production health, and git diff --check passed; universal Release build passed with x86_64 and arm64 slices. Partial remains because legal/redistribution approval and manual Debug audio QA are not complete.",
         "screenshots": []
       },
       "notes": [
         "This task tracks manual QA after the runtime truth fix. It must not become done until the audio path test is exercised on the macOS app.",
         "2026-06-03: Commit c7cd7de1a8b96a8654453d7f1c01451302a3aa1b added Settings voice guard copy and TTS Lab guard copy. Manual audio output remains the explicit partial reason.",
         "2026-06-07: QoS code hardening complete for default-priority callback tasks and duplicate hot-path readiness checks. Manual smoke must still report QoS priority inversion warning YES/NO, playback failed, engineFormat nil, and buffer drop status before done.",
-        "2026-06-10: Supertonic3 App Store release gate now requires explicit AppStoreTTSReleaseGate approval and bundled model validation. validate_supertonic3_bundle.py skips in developer mode but fails under MYTEAM_REQUIRE_SUPERTONIC3_BUNDLE=1 when required ONNX/style files are missing. Partial remains until model bundle, license/redistribution approval, and live audio smoke are complete."
+        "2026-06-10: Supertonic3 App Store release gate now requires explicit AppStoreTTSReleaseGate approval and bundled model validation. validate_supertonic3_bundle.py skips in developer mode but fails under MYTEAM_REQUIRE_SUPERTONIC3_BUNDLE=1 when required ONNX/style files are missing. Partial remains until model bundle, license/redistribution approval, and live audio smoke are complete.",
+        "2026-07-17: App Store voice UI and termination prewarm now fail closed under the same approval policy. Debug retains TTS Lab for Supertonic3 and BubbleSpeech verification. Manual audio listening and legal/redistribution approval remain explicit blockers before enabling the Release surface."
       ]
     },
     {
