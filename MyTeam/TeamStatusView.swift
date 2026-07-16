@@ -989,7 +989,7 @@ struct TeamStatusView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "tray")
                         .font(.system(size: 10))
-                    Text("등록된 예약 작업가 없습니다.")
+                    Text("등록된 예약 작업이 없습니다.")
                         .font(.system(size: 10))
                         .lineLimit(1)
                     Spacer()
