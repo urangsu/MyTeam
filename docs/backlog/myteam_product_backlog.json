@@ -2346,7 +2346,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "81513fd, ebdfd8a, c9a3dc5, b710734",
+        "commit_sha": "81513fd, ebdfd8a, c9a3dc5, b710734, a770a72",
         "files_changed": [
           "MyTeam/SupertonicProsodyTextProcessor.swift",
           "MyTeam/BubbleSpeechCharacterTuningPolicy.swift",
@@ -2381,9 +2381,12 @@
           "scripts/validate_supertonic3_bundle.py",
           "scripts/validate_myteam_release.py",
           "docs/qa/TTSRuntimeQualityAudit.md",
-          "docs/qa/BubbleSpeechCharacterLanguageQA.md"
+          "docs/qa/BubbleSpeechCharacterLanguageQA.md",
+          "MyTeam/MyTeamApp.swift",
+          "MyTeam/AppTerminationCoordinator.swift",
+          "MyTeamTests/LLMRouterTests.swift"
         ],
-        "validation_summary": "2026-07-16: Commit b710734 preserves SSE whitespace and quote lookahead, serializes realtime sentence ingestion through the same speech queue used by ordinary character lines, and separates ingestion-task ownership from active playback-task ownership. The full 109-test suite, release validators, git diff check, Debug build, and universal Release build passed. Partial remains because concurrent stream interruption, audible sentence transitions, Luna and Chiko prosody, and release-equivalent inference still require listening QA.",
+        "validation_summary": "2026-07-16: Commit a770a72 replaces the hanging no-op MYTEAM_TTS_PROBE with a Debug-only Supertonic3 inference smoke that fails closed unless it produces a non-empty RIFF/WAVE payload with positive duration and sample rate, then exits through AppTerminationCoordinator. Luna synthesis passed in 1.9 seconds, XCTest 113/113 and all release validators passed. Partial remains because overlapping-stream interruption, audible sentence transitions, and Luna/Chiko prosody still require listening QA.",
         "screenshots": []
       },
       "notes": [
@@ -2391,7 +2394,8 @@
         "Queue, interruptCurrent, and dropIfBusy policies are now explicit; actual overlapping-character listening QA remains required.",
         "Status remains partial until manual audio QA and a release-equivalent Supertonic3 inference smoke are recorded."
         ,"The source-aligned boundary shaper is an immediate machine-tone removal measure, not the final forced-alignment syllable renderer.",
-        "Luna's rise on a vocative such as '시우!' and the falling tone at the end of a longer greeting remain listening-based Supertonic3 prosody tuning work; conversation prompt changes do not claim to fix audible pitch contours."
+        "Luna's rise on a vocative such as '시우!' and the falling tone at the end of a longer greeting remain listening-based Supertonic3 prosody tuning work; conversation prompt changes do not claim to fix audible pitch contours.",
+        "The former MYTEAM_TTS_PROBE printed a no-op message and did not terminate reliably; it is no longer accepted as runtime evidence."
       ]
     },
     {
