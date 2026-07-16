@@ -90,7 +90,7 @@ enum CharacterVoiceConfig {
         "올리버": CharacterVoiceTrait(characterID: "oliver", voiceType: "deep_male", pitchOffset: -0.05, speedOffset: -0.02),
 
         // 남성 중성적, 차분
-        "케이": CharacterVoiceTrait(characterID: "kai", voiceType: "neutral_male", pitchOffset: 0.0, speedOffset: 0.0),
+        "케이": CharacterVoiceTrait(characterID: "kei", voiceType: "neutral_male", pitchOffset: 0.0, speedOffset: 0.0),
         "모코": CharacterVoiceTrait(characterID: "moko", voiceType: "neutral_male", pitchOffset: 0.05, speedOffset: 0.02),
 
         // 여성 활기찬

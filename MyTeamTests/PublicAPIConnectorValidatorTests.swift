@@ -292,6 +292,27 @@ final class BubbleSpeechSynthesizerTests: XCTestCase {
         XCTAssertGreaterThan(leo.maxSegmentDuration, chiko.minSegmentDuration)
     }
 
+    func testCharacterVoiceTraitsKeepCanonicalCharacterIdentity() throws {
+        for profile in CharacterVoiceProfileCatalog.profiles {
+            let trait = try XCTUnwrap(
+                CharacterVoiceConfig.voiceTrait(for: profile.displayName),
+                "Missing voice trait for \(profile.displayName)"
+            )
+            let expectedID = CharacterDisplayNameResolver.canonicalID(for: profile.displayName)
+            XCTAssertEqual(trait.characterID, expectedID, "Voice identity mismatch for \(profile.displayName)")
+        }
+    }
+
+    func testCharacterVoiceProfilesStayWithinArtifactSafePitchRange() {
+        for profile in CharacterVoiceProfileCatalog.profiles {
+            XCTAssertLessThanOrEqual(
+                abs(profile.basePitch),
+                100,
+                "\(profile.displayName) base pitch exceeds the documented artifact-safe range"
+            )
+        }
+    }
+
     func testAdaptiveBubbleSpeechExplicitBypassPreservesSource() throws {
         let samples = (0..<4_410).map { index in Float(sin(Double(index) * 0.04) * 0.2) }
         let text = String(repeating: "긴 업무 설명입니다. ", count: 30)
