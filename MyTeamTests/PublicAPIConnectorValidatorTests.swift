@@ -1009,6 +1009,33 @@ final class RuntimeTruthPersistenceTests: XCTestCase {
     }
 }
 
+@MainActor
+final class TeamCollaborationStatusProviderTests: XCTestCase {
+    func testIdleCharactersNeverImplyUnstartedBackgroundWork() {
+        let names = CharacterCatalog.builtIn.map(\.name)
+
+        for (index, name) in names.enumerated() {
+            let status = TeamCollaborationStatusProvider.currentStatus(
+                isWorkflowRunning: false,
+                workflowStatus: nil,
+                teamRuntimeState: nil,
+                latestEventType: nil,
+                latestToolName: nil,
+                latestEventTimestamp: nil,
+                idleIndex: index,
+                activeAgentNames: [name]
+            )
+
+            XCTAssertEqual(status.kind, .idle)
+            XCTAssertTrue(
+                status.title.hasSuffix("요청을 기다리는 중"),
+                "Idle copy must describe availability, not invented work: \(status.title)"
+            )
+            XCTAssertEqual(status.detail, "대기 중")
+        }
+    }
+}
+
 private struct FixedPublicAPIClock: PublicAPIClock {
     let now: Date
     let timeZone = TimeZone(identifier: "Asia/Seoul")!
