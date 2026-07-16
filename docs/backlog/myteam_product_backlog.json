@@ -2278,22 +2278,19 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "0b02f40",
+        "commit_sha": "e622ff5657fbc35cac7811eef9c2eb8fe8e246c6",
         "files_changed": [
           ".github/workflows/quality-gate.yml",
-          "MyTeam/AgentWindowManager.swift",
-          "MyTeam/ChatModels.swift",
-          "MyTeam/AIService.swift",
-          "MyTeamTests/LLMRouterTests.swift",
-          "scripts/audit_product_completeness.py"
+          "Backup_claude_worktrees/worktrees/compassionate-hofstadter"
         ],
-        "validation_summary": "2026-07-12: AgentWindowManager test startup now avoids user rooms, Keychain, startup reactions, observers, and product timers. Chat persistence is debounced and encoded off the UI actor, and fallback tests inject provider availability instead of reading Keychain. The complete 70-test suite passed; the isolated room-context test fell from 38.5 seconds to 0.002 seconds. The workflow still lacks a confirmed remote GitHub Actions run, so status remains partial.",
+        "validation_summary": "2026-07-17: Main run 29519077240 proved that both checkout jobs were leaving Supertonic3 Git LFS pointers unhydrated, so local release validation and CI were not equivalent. Commit e622ff5 enables LFS hydration in the Ubuntu contract job and macOS build job, and removes an invalid tracked gitlink whose path had no .gitmodules declaration while preserving the ignored local backup directory. Git LFS fsck, workflow YAML parsing, git diff --check, and all MyTeam release validators passed locally. Status remains partial until the corrected remote workflow completes successfully.",
         "screenshots": []
       },
       "notes": [
         "The pull-request workflow intentionally contains no live-provider secret access.",
         "The XCTest step has an explicit timeout, uploads its result bundle on failure, and the local app-hosted suite now executes instead of stalling during product startup.",
-        "Strict manual QA and release-live gates remain separate blockers."
+        "Strict manual QA and release-live gates remain separate blockers.",
+        "2026-07-17: Failed main run 29519077240 exposed the LFS checkout gap before release; no model content or Supertonic3 routing was changed."
       ]
     },
     {
