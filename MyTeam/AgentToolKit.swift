@@ -688,11 +688,23 @@ enum ToolEvidenceService {
 }
 
 // MARK: - Tool 정의
-struct AgentTool: Sendable {
+struct AgentToolInput: Sendable {
+    private let stringValues: [String: String]
+
+    init(_ values: [String: Any]) {
+        self.stringValues = values.compactMapValues { $0 as? String }
+    }
+
+    nonisolated func string(for key: String) -> String? {
+        stringValues[key]
+    }
+}
+
+struct AgentTool: @unchecked Sendable {
     let name: String
     let description: String
     let inputSchema: [String: Any]
-    let handler: @Sendable (_ input: [String: Any]) async throws -> String
+    let handler: @Sendable (_ input: AgentToolInput) async throws -> String
 
     func toAnthropicJSON() -> [String: Any] {
         ["name": name, "description": description, "input_schema": inputSchema]
@@ -700,13 +712,19 @@ struct AgentTool: Sendable {
 }
 
 // MARK: - Tool 호출/결과
-struct AgentToolCall {
+struct AgentToolCall: Sendable {
     let id: String
     let name: String
-    let input: [String: Any]
+    let input: AgentToolInput
+
+    init(id: String, name: String, input: [String: Any]) {
+        self.id = id
+        self.name = name
+        self.input = AgentToolInput(input)
+    }
 }
 
-struct AgentToolResult {
+struct AgentToolResult: Sendable {
     let toolUseId: String
     let content: String
     let isError: Bool
@@ -769,7 +787,7 @@ private extension AgentToolRegistry {
                 "required": ["query"]
             ],
             handler: { input in
-                guard let query = input["query"] as? String,
+                guard let query = input.string(for: "query"),
                       let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
                       let url = URL(string: "https://api.duckduckgo.com/?q=\(encoded)&format=json&no_html=1&skip_disambig=1")
                 else {
@@ -802,7 +820,7 @@ private extension AgentToolRegistry {
                 "required": ["symbol"]
             ],
             handler: { input in
-                guard let symbol = input["symbol"] as? String else { return "Invalid finance symbol" }
+                guard let symbol = input.string(for: "symbol") else { return "Invalid finance symbol" }
                 let policy = ToolPolicyDecision(
                     needsTool: true,
                     needsWeb: true,

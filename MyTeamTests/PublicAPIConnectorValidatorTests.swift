@@ -899,6 +899,21 @@ final class RuntimeTruthPersistenceTests: XCTestCase {
         )
     }
 
+    func testAgentToolInputCrossesSendableHandlerBoundaryWithoutLosingValues() async throws {
+        let tool = AgentTool(
+            name: "echo",
+            description: "test",
+            inputSchema: ["type": "object"],
+            handler: { input in
+                input.string(for: "query") ?? "missing"
+            }
+        )
+
+        let output = try await tool.handler(AgentToolInput(["query": "안녕하세요"]))
+
+        XCTAssertEqual(output, "안녕하세요")
+    }
+
     func testCompositeResultPreservesPartialState() {
         let request = NaturalWorkRequest(
             originalText: "삼성전자 알려줘",
