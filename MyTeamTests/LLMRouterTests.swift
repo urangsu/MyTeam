@@ -945,6 +945,7 @@ final class LLMRouterTests: XCTestCase {
     @MainActor
     func test_builtInCharacterRosterNeverLooksPremiumOrChangesPersonaRole() {
         let manager = AgentWindowManager.shared
+        XCTAssertEqual(manager.activeAgents.map(\.id), CharacterCatalog.defaultTeamAgentIDs)
 
         for agent in manager.allAvailableAgents {
             let character = CharacterCatalog.builtIn.first { $0.agentID == agent.id }

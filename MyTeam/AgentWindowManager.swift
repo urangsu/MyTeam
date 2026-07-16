@@ -875,7 +875,10 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
 
     private override init() {
         let isRunningTests = AppRuntimeEnvironment.isRunningTests
-        activeAgents = Array(allAvailableAgents.prefix(CharacterCatalog.defaultTeamAgentIDs.count))
+        let availableAgents = allAvailableAgents
+        activeAgents = CharacterCatalog.defaultTeamAgentIDs.compactMap { defaultAgentID in
+            availableAgents.first { $0.id == defaultAgentID }
+        }
         super.init()
         for index in activeAgents.indices {
             activeAgents[index].applyDeskRouting(index: index)
