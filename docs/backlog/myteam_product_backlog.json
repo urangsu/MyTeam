@@ -147,7 +147,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "747a5878a259b9d658e7048f5887a84e093befa6",
+        "commit_sha": "747a5878a259b9d658e7048f5887a84e093befa6, 1cd2452",
         "files_changed": [
           "MyTeam/SecureCredentialStore.swift",
           "MyTeam/SettingsView.swift",
@@ -156,9 +156,13 @@
           "MyTeam/ConnectorSetupCardView.swift",
           "MyTeam/PublicAPIConnectorValidator.swift",
           "MyTeam/KSkillAssistRuntime.swift",
-          "MyTeam/SkillAvailabilityResolver.swift"
+          "MyTeam/SkillAvailabilityResolver.swift",
+          "MyTeam/KeychainManager.swift",
+          "MyTeam/MyTeamApp.swift",
+          "MyTeam/AgentWindowManager.swift",
+          "MyTeam/AgentChatView.swift"
         ],
-        "validation_summary": "2026-06-05: Added credential-gated BYOK direct public API evidence paths. Runtime reads Naver/DART/KMA/KoreanLaw credentials through SecureCredentialStore field reads only after CredentialHealthService reports .connected. rg UserDefaults.*apiKey/UserDefaults.*token/apiKey.*UserDefaults/token.*UserDefaults returned no Swift matches. Partial remains because manual UI key entry/save/delete/relaunch masking checks are still required.",
+        "validation_summary": "2026-07-16: Commit 1cd2452 adds a Debug-only QA access policy that fails closed before every Keychain load/save/delete/migration when --qa-root is active. This removed two reproduced launch/settings hangs in SecItemCopyMatching and prevented isolated QA from reading production credentials. The real Settings and Connection Center then opened with zero stored keys. XCTest 117/117, release validators, Debug, and universal Release builds passed. Partial remains because production-bundle manual key entry/save/delete/relaunch masking checks are still required.",
         "screenshots": []
       },
       "notes": [
@@ -167,7 +171,8 @@
         "2026-06-02: Commit ceae318ad3b770de3dbafba95d2b9a46c60db865 routed AgentToolKit Gemini/OpenAI evidence reads through SecureCredentialStore.read(provider:) instead of direct KeychainManager.load.",
         "2026-06-03: Commit c7cd7de1a8b96a8654453d7f1c01451302a3aa1b routed AIService and LLMConfigCatalog runtime key reads through SecureCredentialStore.read(provider:). rg 'KeychainManager.save|KeychainManager.delete|KeychainManager.load' now only reports SecureCredentialStore.swift wrapper calls.",
         "Partial reason: code audit no longer shows direct credential bypass or UserDefaults key storage, but manual UI entry/save/delete/relaunch masking checks remain before marking done.",
-        "2026-06-05: Public API runtime path now uses SecureCredentialStore.read(provider:field:) after validated CredentialHealthService .connected state; no UserDefaults API key/token Swift matches found. Manual UI persistence checks remain."
+    "2026-06-05: Public API runtime path now uses SecureCredentialStore.read(provider:field:) after validated CredentialHealthService .connected state; no UserDefaults API key/token Swift matches found. Manual UI persistence checks remain.",
+    "2026-07-16: Isolated QA no longer prompts for or reads production Keychain entries; production credential persistence and deletion are intentionally still unverified."
       ]
     },
     {
@@ -291,7 +296,7 @@
     {
       "id": "P0-005-onboarding-real-entry-flow",
       "priority": "P0",
-      "status": "partial",
+      "status": "done",
       "category": "ux",
       "title": "Onboarding 실제 연결 검증",
       "why": "온보딩 view 파일이 존재하지만 실제 첫 실행 흐름에 올바르게 연결되어 있는지 검증해야 한다. 파일만 있고 호출되지 않으면 사용자는 빈 화면을 만난다.",
@@ -332,7 +337,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "8303e911bae00001b73f85315e9978e042f97f7f, 7196256",
+        "commit_sha": "8303e911bae00001b73f85315e9978e042f97f7f, 7196256, 1cd2452",
         "files_changed": [
           "MyTeam/UseCaseSelectionView.swift",
           "MyTeam/FirstRoomTemplatePicker.swift",
@@ -346,14 +351,15 @@
           "MyTeam/MyTeamApp.swift",
           "MyTeamTests/LLMRouterTests.swift"
         ],
-        "validation_summary": "2026-07-16: Commit 7196256 centralizes truthful first-launch copy, removes the false all-features-enabled claim, labels close controls for accessibility, and adds a Debug-only absolute --qa-root profile so first-run QA does not contaminate production support/cache data. XCTest 112/112, all release validators, Debug, and universal Release builds passed. Partial remains because the isolated live walkthrough was blocked by the locked Mac and API-key-free entry/relaunch still require screen verification.",
+        "validation_summary": "2026-07-16: Commit 1cd2452 completes the isolated first-run path. A fresh com.urang.MyTeam.QA launch showed the use-case picker first, continued without an API key, created 업무 정리방, persisted MyTeam.hasSeenOnboarding, exited through Command-Q without a remaining process, and relaunched directly to the team input without repeating onboarding. The QA profile blocks Keychain access and isolates support/cache data. XCTest 117/117, all release validators, Debug, and universal Release builds passed.",
         "screenshots": []
       },
       "notes": [
         "Productization v1에서 UseCaseSelectionView, FirstRoomTemplatePicker 생성 완료. MyTeamApp.swift 진입점 연결 여부 확인 필요.",
         "2026-05-31: UseCaseSelectionView + FirstRoomTemplatePicker are no longer orphan views. The first-launch flow creates/selects 업무 정리방/생활 도움방/주식·뉴스 분석방 and persists onboarding completion. Manual fresh-install walkthrough remains before marking done.",
         "Partial reason: implementation and builds pass, but the App must still be launched with cleared MyTeam.hasSeenOnboarding/myteam_rooms defaults to confirm the real first-run UX and no-repeat behavior.",
-        "2026-07-16: An isolated com.urang.MyTeam.QA build launched with --qa-root, but Computer Use could not inspect it while macOS was locked; no manual UI claim was made."
+        "2026-07-16: An isolated com.urang.MyTeam.QA build launched with --qa-root, but Computer Use could not inspect it while macOS was locked; no manual UI claim was made.",
+        "2026-07-16 later verification: after unlock, the complete API-key-free first-run, first-room creation, Command-Q termination, and no-repeat relaunch path passed on the isolated QA bundle."
       ]
     },
     {
@@ -459,21 +465,30 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "7196256, 47ff4ae",
+        "commit_sha": "7196256, 47ff4ae, 1cd2452",
         "files_changed": [
           "MyTeam/Assets.xcassets/AppIcon.appiconset/Contents.json",
           "MyTeam/Assets.xcassets/AppIcon.appiconset/*.png",
           "MyTeam/FirstLaunchBannerView.swift",
           "MyTeam/FirstLaunchState.swift",
           "MyTeam/OnboardingCardView.swift",
-          "MyTeam/RuntimeCapabilityMode.swift"
+          "MyTeam/RuntimeCapabilityMode.swift",
+          "MyTeam/SettingsView.swift",
+          "MyTeam/ConnectionCenterView.swift",
+          "MyTeam/AssistantConnectorCenterView.swift",
+          "MyTeam/ConnectorSetupCardView.swift",
+          "MyTeam/ConnectorFailureCardView.swift",
+          "MyTeam/HomeDashboardView.swift",
+          "MyTeam/TeamStatusView.swift",
+          "MyTeam/CharacterGalleryView.swift"
         ],
-        "validation_summary": "2026-07-16: Commits 7196256 and 47ff4ae replace false all-features-enabled onboarding language with capability-scoped copy, label close controls for accessibility, and add a Figma-authored macOS icon at all 10 required asset sizes. XCTest 112/112, release validators, Debug, and universal Release builds passed. Partial remains because Settings, Connection Center, live onboarding, Dock/Finder rendering, and nontechnical-user terminology still require manual review.",
+        "validation_summary": "2026-07-16: Commit 1cd2452 extends the live polish pass across the work dashboard, Settings, Connection Center, assistant connectors, character gallery, and team workroom. It removes a duplicated briefing card, hides skill IDs behind user-facing descriptions, replaces provider/OAuth/Keychain wording with product language, labels icon-only controls for VoiceOver, and fixes the visible 치코는 particle. Live QA covered the work dashboard, connection center, character gallery, workroom, Korean input, onboarding, resize transition, and quit/relaunch. XCTest 117/117, release validators, Debug, and universal Release builds passed. Partial remains because the user/skill accessibility trees exceeded the automation tool, Dock/Finder icon rendering was not inspected, the voice tab remains developer-heavy in Debug, and the character gallery/team-table roster mismatch needs a product decision.",
         "screenshots": []
       },
       "notes": [
         "Figma source: https://www.figma.com/design/eAa0ZBJ9BtQeCj5MqOKcgy",
-        "No completed claim: the locked Mac prevented live screen inspection of the current QA build."
+        "No completed claim: the locked Mac prevented live screen inspection of the current QA build.",
+        "Unlocked live QA later covered onboarding, work dashboard, connection center, character gallery, workroom, keyboard input, and quit/relaunch. User and skill tabs triggered Computer Use accessibility transport limits rather than an app crash."
       ]
     },
     {
@@ -2453,7 +2468,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "b37bc65, 1d3ba52, 7196256",
+        "commit_sha": "b37bc65, 1d3ba52, 7196256, 1cd2452",
         "files_changed": [
           "MyTeam/FloatingPanel.swift",
           "MyTeam/TeamStatusView.swift",
@@ -2463,13 +2478,14 @@
           "docs/qa/TTSRuntimeQualityAudit.md",
           "MyTeamTests/LLMRouterTests.swift"
         ],
-        "validation_summary": "2026-07-16: Commit 7196256 replaces the inverted chat resize origin adjustment with a shared bottom-anchored, visible-screen-clamped geometry path for width and size changes. The focused geometry regression test and the full 112-test suite passed, along with release validators, Debug, and universal Release builds. Partial remains because real pointer, keyboard-focus, multi-display, and resize interaction checks were blocked while macOS was locked.",
+        "validation_summary": "2026-07-16: Live QA after commit 1cd2452 confirmed Korean text input keeps focus, enables send without submitting, the onboarding 380x640 to normal 320x520 status-window transition keeps controls visible, Command-Q leaves no process, and a pointer drag changes the saved team window position without a crash. XCTest 117/117, release validators, Debug, and universal Release builds passed. Partial remains because multi-display clamping and subjective slow/fast pointer feel still need physical-mouse verification.",
         "screenshots": []
       },
       "notes": [
         "Static and build evidence cannot prove pointer feel or keyboard focus behavior.",
         "Status remains partial until the listed panel interaction checks are recorded on the current build.",
-        "2026-07-16: Static geometry now preserves the composer-side bottom edge and clamps expanded frames to the active display; no manual multi-display claim was made."
+        "2026-07-16: Static geometry now preserves the composer-side bottom edge and clamps expanded frames to the active display; no manual multi-display claim was made.",
+        "2026-07-16 unlocked QA: Korean input, send enablement, dynamic status-window resize, one pointer drag, and Command-Q termination passed; multi-display and subjective drag smoothness remain."
       ]
     },
     {
