@@ -2329,7 +2329,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "837197894f9801724b818e2203ec9c968c15c316",
+        "commit_sha": "837197894f9801724b818e2203ec9c968c15c316, 7bdc9eb",
         "files_changed": [
           ".github/workflows/quality-gate.yml",
           "Backup_claude_worktrees/worktrees/compassionate-hofstadter",
@@ -2339,7 +2339,7 @@
           "scripts/validate_myteam_release.py",
           "scripts/validate_myteam_release_tests.py"
         ],
-        "validation_summary": "2026-07-17: Main runs 29519077240, 29519315673, 29519507293, and 29522721974 exposed four local/CI equivalence gaps: unhydrated Supertonic3 LFS assets, a runner-specific ripgrep dependency, an Xcode 26.2 type-check timeout, and a non-Sendable [String: Any] tool-handler boundary. Commits e622ff5, 824ad44, 7bde276, and 8371978 fix those contracts without changing model content or formatted evidence output. Local Git LFS fsck, workflow YAML parsing, Python regression tests, git diff --check, all MyTeam release validators, XCTest 133/133, and a warning-clean Universal Release build with x86_64 + arm64 passed. Main Quality Gate run 29523615449 then passed static contracts plus Xcode 26.2 Debug build-for-testing, XCTest, and Release build. This closes the CI task only; strict manual UI, audio, and live-provider gates remain separate blockers.",
+        "validation_summary": "2026-07-17: The main quality gate has proven LFS hydration, runner-independent static contracts, Xcode 26.2 Debug/XCTest/Release compatibility, and Sendable tool boundaries. Commit 7bdc9eb updates checkout, setup-node, setup-python, and failure-artifact upload to the official Node 24 major releases after main run 29528176489 reported Node 20 action deprecation. Local workflow YAML parsing passed. A fresh main run must verify the new action majors; strict manual UI, audio, and live-provider gates remain separate blockers.",
         "screenshots": []
       },
       "notes": [
@@ -2350,7 +2350,8 @@
         "2026-07-17: Follow-up run 29519315673 hydrated LFS successfully and then exposed the Ubuntu runner's missing rg binary; the validator now has no ripgrep dependency.",
         "2026-07-17: Run 29519507293 passed all static contracts, then Xcode 26.2 rejected a complex StockEvidenceBundle expression that Xcode 26.6 accepted. The formatter is now split into explicit typed sections and covered by an output-order regression test.",
         "2026-07-17: Run 29522721974 reached a later Xcode 26.2 compile batch and rejected raw Any dictionaries crossing @Sendable tool-handler isolation. AgentToolInput now retains only declared string inputs in a Sendable wrapper; the boundary has a regression test and no Swift 6 actor warning in the local Release log.",
-        "2026-07-17: Main Quality Gate run 29523615449 passed both jobs. CI completion does not promote APPTERM, NW, ART, HOME, TTS, or live-provider manual evidence."
+        "2026-07-17: Main Quality Gate run 29523615449 passed both jobs. CI completion does not promote APPTERM, NW, ART, HOME, TTS, or live-provider manual evidence.",
+        "2026-07-17: GitHub's Node 20 deprecation annotation triggered an official-major action upgrade; completion evidence must come from the follow-up main run."
       ]
     },
     {
