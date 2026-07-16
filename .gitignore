@@ -35,7 +35,7 @@ frames/
 *.mp4
 *.png
 # (Except for required assets)
-!MyTeam/MyTeam/Assets.xcassets/**/*.png
+!MyTeam/Assets.xcassets/**/*.png
 
 # Models and Cache
 MyTeam/Resources/onnx_models/
