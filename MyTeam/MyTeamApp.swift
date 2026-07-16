@@ -97,6 +97,33 @@ enum QARuntimeProfile {
     }
 }
 
+#if DEBUG
+enum TTSRuntimeProbeValidation {
+    nonisolated static func failureReason(output: TTSOutput?) -> String? {
+        guard let output else { return "Supertonic3 returned no output" }
+        guard output.providerKind == .supertonic3 else { return "unexpected TTS provider" }
+        guard output.sampleRate > 0 else { return "invalid sample rate" }
+        guard let duration = output.duration, duration > 0 else { return "empty audio duration" }
+        guard let url = output.audioFileURL else { return "missing WAV file URL" }
+
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+            let byteCount = (attributes[.size] as? NSNumber)?.intValue ?? 0
+            guard byteCount > 44 else { return "WAV file has no audio payload" }
+            let header = try Data(contentsOf: url, options: .mappedIfSafe).prefix(12)
+            guard header.count == 12,
+                  String(decoding: header.prefix(4), as: UTF8.self) == "RIFF",
+                  String(decoding: header.suffix(4), as: UTF8.self) == "WAVE" else {
+                return "invalid WAV header"
+            }
+        } catch {
+            return "cannot inspect WAV output: \(error.localizedDescription)"
+        }
+        return nil
+    }
+}
+#endif
+
 enum AppRuntimeEnvironment {
     nonisolated static var isRunningTests: Bool {
         ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
@@ -142,14 +169,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        #if DEBUG
         if ProcessInfo.processInfo.environment["MYTEAM_TTS_PROBE"] == "1" {
-            // TTS probe: Supertonic3 only candidate.
-            print("[TTSProbe] Supertonic3-only probe — no-op in this build")
-            fflush(stdout)
             NSApp.setActivationPolicy(.prohibited)
-            Task { await MainActor.run { NSApp.terminate(nil) } }
+            let text = ProcessInfo.processInfo.environment["MYTEAM_TTS_PROBE_TEXT"]
+                ?? "안녕하세요. 마이팀 음성 점검입니다."
+            let agentID = ProcessInfo.processInfo.environment["MYTEAM_TTS_PROBE_AGENT"] ?? "luna"
+            Task {
+                let output = await SpeechManager.shared.synthesize(text: text, agentID: agentID)
+                if let failure = TTSRuntimeProbeValidation.failureReason(output: output) {
+                    print("[TTSProbe] FAILED: \(failure)")
+                    fflush(stdout)
+                    AppTerminationCoordinator.shared.terminateRuntimeProbe(succeeded: false)
+                }
+                print("[TTSProbe] PASSED: Supertonic3 produced a non-empty WAV")
+                fflush(stdout)
+                AppTerminationCoordinator.shared.terminateRuntimeProbe(succeeded: true)
+            }
             return
         }
+        #endif
 
         setupMenuBar()
 

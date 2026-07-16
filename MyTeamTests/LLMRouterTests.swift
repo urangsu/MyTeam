@@ -687,6 +687,23 @@ final class LLMRouterTests: XCTestCase {
         )
     }
 
+    func test_ttsRuntimeProbeRejectsMissingOrEmptyAudio() throws {
+        XCTAssertNotNil(TTSRuntimeProbeValidation.failureReason(output: nil))
+
+        let emptyWAV = FileManager.default.temporaryDirectory
+            .appendingPathComponent("myteam-empty-tts-probe.wav")
+        try Data().write(to: emptyWAV)
+        defer { try? FileManager.default.removeItem(at: emptyWAV) }
+
+        let output = TTSOutput(
+            audioFileURL: emptyWAV,
+            duration: 0,
+            sampleRate: 24_000,
+            providerKind: .supertonic3
+        )
+        XCTAssertNotNil(TTSRuntimeProbeValidation.failureReason(output: output))
+    }
+
     func test_fileIntake_readsPDFIntoStructuredMarkdown() throws {
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("codex-file-intake-test.pdf")
         try makeSamplePDF(at: tempURL, text: "회의 목적\n이번 주 우선순위를 정리합니다.")

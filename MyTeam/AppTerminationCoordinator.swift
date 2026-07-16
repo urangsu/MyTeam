@@ -67,6 +67,15 @@ final class AppTerminationCoordinator: ObservableObject {
         NSApplication.shared.terminate(nil)
     }
 
+    #if DEBUG
+    /// Headless QA probes need a deterministic process result without entering
+    /// the interactive AppKit termination path. Keep the hard-exit boundary
+    /// centralized here so production code cannot bypass coordinated shutdown.
+    func terminateRuntimeProbe(succeeded: Bool) -> Never {
+        Darwin.exit(succeeded ? EXIT_SUCCESS : EXIT_FAILURE)
+    }
+    #endif
+
     func handleApplicationWillTerminate() {
         watchdogTask?.cancel()
         terminationTask?.cancel()
