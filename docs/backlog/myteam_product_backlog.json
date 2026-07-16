@@ -2208,23 +2208,28 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "47ab96e",
-        "files_changed": [
-          "MyTeam/KMABaseTimePolicy.swift",
+      "commit_sha": "47ab96e, 0051fd5",
+      "files_changed": [
+        "MyTeam/AgentWindowManager.swift",
+        "MyTeam/KMABaseTimePolicy.swift",
           "MyTeam/KMARegionGridMapper.swift",
           "MyTeam/KSkillAssistRuntime.swift",
-          "MyTeam/PublicAPIConnectorValidator.swift",
+        "MyTeam/PublicAPIConnectorValidator.swift",
+        "MyTeam/SettingsView.swift",
+        "MyTeam/TeamOrchestrator.swift",
+        "MyTeamTests/PublicAPIConnectorValidatorTests.swift",
           "workers/basic-lookup-api/worker.js",
           "workers/basic-lookup-api/worker.test.mjs",
           "scripts/audit_product_completeness.py"
         ],
-        "validation_summary": "2026-07-10: Six Worker contract tests, product audit, release validator, precommit guard, git diff check, Debug test-bundle build, and Release universal build passed. The nationwide region index, live KMA key boundaries, and Worker 0.4.1 production deployment remain open, so status stays partial.",
+      "validation_summary": "2026-07-17: Commit 0051fd5 removes the hard-coded Gwangyang user-location default from clean installs and team prompts. Missing location is now explicit and must not be guessed; a regression test covers empty and user-supplied values, and natural-work routing validation passed. The nationwide region index and live KMA key boundaries remain open, so status stays partial.",
         "screenshots": []
       },
       "notes": [
         "The current registered-region list remains a limited safe subset and now fails closed outside that subset.",
         "Official nationwide administrative-grid ingestion is still required before claiming nationwide support.",
-        "Production still reports an older Worker and weather remains disabled in the Release surface."
+      "Production Worker health now matches the reviewed contract, but weather remains disabled until live provider QA passes.",
+      "2026-07-17: Existing user-saved locations are preserved; only the unverified clean-install default was removed."
       ]
     },
     {
