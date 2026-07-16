@@ -147,7 +147,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "747a5878a259b9d658e7048f5887a84e093befa6, 1cd2452",
+        "commit_sha": "747a5878a259b9d658e7048f5887a84e093befa6, 1cd2452, af2a141",
         "files_changed": [
           "MyTeam/SecureCredentialStore.swift",
           "MyTeam/SettingsView.swift",
@@ -162,7 +162,7 @@
           "MyTeam/AgentWindowManager.swift",
           "MyTeam/AgentChatView.swift"
         ],
-        "validation_summary": "2026-07-16: Commit 1cd2452 adds a Debug-only QA access policy that fails closed before every Keychain load/save/delete/migration when --qa-root is active. This removed two reproduced launch/settings hangs in SecItemCopyMatching and prevented isolated QA from reading production credentials. The real Settings and Connection Center then opened with zero stored keys. XCTest 117/117, release validators, Debug, and universal Release builds passed. Partial remains because production-bundle manual key entry/save/delete/relaunch masking checks are still required.",
+        "validation_summary": "2026-07-17: Commit af2a141 moves production Keychain discovery and legacy migration off the app launch main thread, updates the in-memory cache only after successful writes and evicts it after deletion, and makes the connector UI fail closed when save/delete returns an error. A locked-Keychain Release reproduction now creates two onscreen MyTeam windows while the main thread remains in CFRunLoop; SecItemCopyMatching is isolated to a utility queue. XCTest 119/119, all release validators, product completeness audit, release-strict QA evidence, git diff check, and universal Release arm64+x86_64 build passed. Partial remains because a user-approved production-bundle valid-key save/mask/delete/relaunch test is still required.",
         "screenshots": []
       },
       "notes": [
@@ -172,7 +172,8 @@
         "2026-06-03: Commit c7cd7de1a8b96a8654453d7f1c01451302a3aa1b routed AIService and LLMConfigCatalog runtime key reads through SecureCredentialStore.read(provider:). rg 'KeychainManager.save|KeychainManager.delete|KeychainManager.load' now only reports SecureCredentialStore.swift wrapper calls.",
         "Partial reason: code audit no longer shows direct credential bypass or UserDefaults key storage, but manual UI entry/save/delete/relaunch masking checks remain before marking done.",
     "2026-06-05: Public API runtime path now uses SecureCredentialStore.read(provider:field:) after validated CredentialHealthService .connected state; no UserDefaults API key/token Swift matches found. Manual UI persistence checks remain.",
-    "2026-07-16: Isolated QA no longer prompts for or reads production Keychain entries; production credential persistence and deletion are intentionally still unverified."
+    "2026-07-16: Isolated QA no longer prompts for or reads production Keychain entries; production credential persistence and deletion are intentionally still unverified.",
+    "2026-07-17: Locked-Keychain Release sampling proved that startup no longer blocks the main thread. Connector save/delete success is now conditional on actual Keychain results, but valid-key replacement, deletion, masking, and relaunch persistence still require user-authorized manual QA."
       ]
     },
     {
