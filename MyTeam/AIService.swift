@@ -26,8 +26,8 @@ extension LLMFallbackPolicy {
     var displayName: String {
         switch self {
         case .disabled: return "사용 안 함"
-        case .sameProviderOnly: return "같은 제공자만"
-        case .crossProviderAllowed: return "다른 제공자 허용"
+        case .sameProviderOnly: return "같은 AI 서비스만"
+        case .crossProviderAllowed: return "다른 AI 서비스 허용"
         }
     }
 

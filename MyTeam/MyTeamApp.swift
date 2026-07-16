@@ -83,6 +83,10 @@ enum AppPaths {
 }
 
 enum QARuntimeProfile {
+    nonisolated static func isEnabled(arguments: [String]) -> Bool {
+        rootURL(arguments: arguments) != nil
+    }
+
     nonisolated static func rootURL(arguments: [String]) -> URL? {
         #if DEBUG
         guard let flagIndex = arguments.firstIndex(of: "--qa-root") else { return nil }
@@ -193,7 +197,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         setupMenuBar()
 
         // 1순위: 이전 평문 저장소(UserDefaults)에 남은 비밀번호를 Keychain으로 마이그레이션
-        KeychainManager.migrateFromUserDefaultsIfNeeded()
+        if !QARuntimeProfile.isEnabled(arguments: ProcessInfo.processInfo.arguments) {
+            KeychainManager.migrateFromUserDefaultsIfNeeded()
+        }
         TeamNameplateAppearanceSettings.migrateLegacyValuesIfNeeded()
 
         // 앱 시작 시 팀 테이블 창 표시 (4명 한 번에)

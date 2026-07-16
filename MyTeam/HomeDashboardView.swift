@@ -1,5 +1,13 @@
 import SwiftUI
 
+enum HomeDashboardLayoutPolicy {
+    nonisolated static let featuredToolID = "briefing.today"
+
+    nonisolated static func shouldIncludeInPrimaryGrid(_ descriptor: MyTeamToolDescriptor) -> Bool {
+        descriptor.id != featuredToolID && ProductSurfacePolicy.shouldShowInHomePrimary(descriptor)
+    }
+}
+
 struct HomeDashboardView: View {
     let onOpenConnection: (ExternalProvider?) -> Void
     let onOpenAssistantConnection: (AssistantConnector.Provider?) -> Void
@@ -16,7 +24,7 @@ struct HomeDashboardView: View {
 
     private var quickTools: [MyTeamToolDescriptor] {
         MyTeamToolRegistry.userFacingTools.filter {
-            ProductSurfacePolicy.shouldShowInHomePrimary($0)
+            HomeDashboardLayoutPolicy.shouldIncludeInPrimaryGrid($0)
         }
     }
 
@@ -31,7 +39,7 @@ struct HomeDashboardView: View {
             VStack(alignment: .leading, spacing: 16) {
                 header
 
-                if let briefing = MyTeamToolRegistry.descriptor(id: "briefing.today") {
+                if let briefing = MyTeamToolRegistry.descriptor(id: HomeDashboardLayoutPolicy.featuredToolID) {
                     ToolActionCardView(
                         descriptor: briefing,
                         state: state(for: briefing),

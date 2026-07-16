@@ -19,7 +19,7 @@ struct CharacterGalleryView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("캐릭터 갤러리")
                         .font(.system(size: 20, weight: .bold))
-                    Text("캐릭터를 확인합니다.")
+                    Text("팀원별 역할과 사용할 수 있는 기능을 확인하세요.")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                 }

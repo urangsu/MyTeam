@@ -17,7 +17,7 @@ enum BYOKProviderStatusService {
             displayName: displayName,
             providerKey: providerKey,
             isConnected: isConnected,
-            storageLabel: "Keychain",
+            storageLabel: "이 Mac",
             helpText: isConnected ? "개인 API 키가 저장되어 있습니다. 실제 연결 여부는 연결 테스트로 확인하세요." : "설정 탭에서 API 키를 입력하세요."
         )
     }

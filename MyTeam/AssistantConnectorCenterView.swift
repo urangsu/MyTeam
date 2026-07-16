@@ -1,5 +1,11 @@
 import SwiftUI
 
+enum AssistantConnectorUserCopy {
+    static let permissionTitle = "요청 권한"
+    static let permissionPolicyTitle = "권한 처리 원칙"
+    static let pendingSetupMessage = "Google 연결은 준비 중입니다."
+}
+
 struct AssistantConnectorCenterView: View {
     var onGoogleCalendarConnectionChanged: (() -> Void)? = nil
 
@@ -87,7 +93,11 @@ struct AssistantConnectorCenterView: View {
                     .background(Capsule().fill(validation.status == .ready ? Color.green.opacity(0.12) : Color.orange.opacity(0.12)))
             }
 
-            Text(validation.isReady ? "Google Calendar와 Google Sheets 읽기 연결에 사용합니다." : "앱 Google OAuth 설정이 필요합니다.")
+            Text(validation.isReady
+                ? "Google Calendar와 Google Sheets 읽기 연결에 사용합니다."
+                : (AppReleaseProfile.current.policy.showsDeveloperDiagnostics
+                    ? "개발자용 Google 연결 설정이 필요합니다."
+                    : AssistantConnectorUserCopy.pendingSetupMessage))
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
@@ -238,7 +248,9 @@ struct AssistantConnectorCenterView: View {
         let validation = GoogleOAuthConfigValidator.validate(draft)
         let canConnect = validation.isReady && (state.status == .notConnected || state.status == .needsReauth)
         let buttonTitle: String = {
-            if !validation.isReady { return "앱 설정 필요" }
+            if !validation.isReady {
+                return AppReleaseProfile.current.policy.showsDeveloperDiagnostics ? "개발 설정 필요" : "준비 중"
+            }
             if state.status == .connected { return "연결됨" }
             if state.status == .needsReauth { return "재연결" }
             return "Google로 로그인"
@@ -317,16 +329,7 @@ struct AssistantConnectorCenterView: View {
     }
 
     private func googleScopeTitle(for provider: AssistantConnector.Provider) -> String {
-        switch provider {
-        case .googleCalendar:
-            return "Google Calendar OAuth scope"
-        case .googleSheets:
-            return "Google Sheets OAuth scope"
-        case .gmail:
-            return "Gmail OAuth scope"
-        case .naverMail, .naverCalendar:
-            return "OAuth scope"
-        }
+        AssistantConnectorUserCopy.permissionTitle
     }
 
     private func googleScopes(for provider: AssistantConnector.Provider) -> [GoogleOAuthScope] {
@@ -366,7 +369,7 @@ struct AssistantConnectorCenterView: View {
 
     private var scopePolicySection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Google OAuth 정책")
+            Text(AssistantConnectorUserCopy.permissionPolicyTitle)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(.secondary)
 

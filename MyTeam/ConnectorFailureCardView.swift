@@ -31,6 +31,8 @@ struct ConnectorFailureCardView: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .help("연결 안내 닫기")
+                    .accessibilityLabel("연결 안내 닫기")
                 }
             }
 

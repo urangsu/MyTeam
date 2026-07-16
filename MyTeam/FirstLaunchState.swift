@@ -99,3 +99,9 @@ enum FirstLaunchPresentation {
         }
     }
 }
+
+enum FirstLaunchWindowPolicy {
+    nonisolated static func shouldFocusStatusWindow(for state: FirstLaunchState) -> Bool {
+        !state.hasSeenOnboarding
+    }
+}

@@ -799,7 +799,8 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         }
 
         loadMemoryStores()
-        let hasAnyAPIKey = SecureCredentialStore.shared.hasAnyAIProviderKey()
+        let isQARuntime = QARuntimeProfile.isEnabled(arguments: ProcessInfo.processInfo.arguments)
+        let hasAnyAPIKey = isQARuntime ? false : SecureCredentialStore.shared.hasAnyAIProviderKey()
         firstLaunchState = FirstLaunchStateProvider.currentState(hasAPIKey: hasAnyAPIKey)
 
         roomRuntimeStoreCancellable = roomRuntimeStore.objectWillChange
@@ -1321,6 +1322,9 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         if statusPanel != nil {
             if let statusPanel { applySettingsPresentationPolicy(to: statusPanel) }
             statusPanel?.orderFront(nil)
+            if FirstLaunchWindowPolicy.shouldFocusStatusWindow(for: firstLaunchState) {
+                statusPanel?.makeKey()
+            }
             keepSettingsFrontIfNeeded()
             return
         }
@@ -1346,6 +1350,9 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
 
         applySettingsPresentationPolicy(to: panel)
         panel.orderFront(nil)
+        if FirstLaunchWindowPolicy.shouldFocusStatusWindow(for: firstLaunchState) {
+            panel.makeKey()
+        }
         keepSettingsFrontIfNeeded()
         statusPanel = panel
     }

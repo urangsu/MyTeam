@@ -678,7 +678,53 @@ final class LLMRouterTests: XCTestCase {
         XCTAssertFalse(RuntimeCapabilityMode.aiEnabled.detailedMessage.contains("모두 사용할"))
     }
 
+    func test_firstLaunchWindowPolicyPrioritizesOnboardingUntilSeen() {
+        XCTAssertTrue(
+            FirstLaunchWindowPolicy.shouldFocusStatusWindow(
+                for: FirstLaunchState(hasSeenOnboarding: false)
+            )
+        )
+        XCTAssertFalse(
+            FirstLaunchWindowPolicy.shouldFocusStatusWindow(
+                for: FirstLaunchState(hasSeenOnboarding: true)
+            )
+        )
+    }
+
+    func test_productSettingsCopyAvoidsDeveloperJargon() {
+        XCTAssertEqual(SettingsSurfaceCopy.skillSearchPlaceholder, "스킬 이름이나 설명 검색")
+        XCTAssertEqual(SettingsSurfaceCopy.builtInSkillSectionTitle(enabled: 3, total: 5), "기본 스킬 (3/5 활성화)")
+        XCTAssertFalse(SettingsSurfaceCopy.skillSearchPlaceholder.contains("ID"))
+        XCTAssertFalse(AssistantConnectorUserCopy.permissionTitle.contains("OAuth"))
+        XCTAssertFalse(AssistantConnectorUserCopy.pendingSetupMessage.contains("OAuth"))
+        XCTAssertEqual(ConnectionCenterUserCopy.storageLocation, "이 Mac")
+        XCTAssertFalse(LLMFallbackPolicy.sameProviderOnly.displayName.contains("제공자"))
+        XCTAssertFalse(LLMFallbackPolicy.crossProviderAllowed.displayName.contains("제공자"))
+    }
+
+    func test_homeDashboardDoesNotDuplicateFeaturedBriefingInPrimaryGrid() throws {
+        let briefing = try XCTUnwrap(MyTeamToolRegistry.descriptor(id: "briefing.today"))
+        XCTAssertFalse(HomeDashboardLayoutPolicy.shouldIncludeInPrimaryGrid(briefing))
+    }
+
+    func test_koreanSubjectParticleMatchesFinalConsonant() {
+        XCTAssertEqual(KoreanSubjectParticle.suffix(for: "치코"), "는")
+        XCTAssertEqual(KoreanSubjectParticle.suffix(for: "핀"), "은")
+    }
+
     func test_qaRuntimeProfileAcceptsOnlyExplicitAbsoluteRoot() {
+        XCTAssertFalse(QARuntimeProfile.isEnabled(arguments: ["MyTeam"]))
+        XCTAssertTrue(
+            QARuntimeProfile.isEnabled(
+                arguments: ["MyTeam", "--qa-root", "/private/tmp/MyTeamQA"]
+            )
+        )
+        XCTAssertFalse(
+            KeychainAccessPolicy.allowsAccess(
+                arguments: ["MyTeam", "--qa-root", "/private/tmp/MyTeamQA"]
+            )
+        )
+        XCTAssertTrue(KeychainAccessPolicy.allowsAccess(arguments: ["MyTeam"]))
         XCTAssertNil(QARuntimeProfile.rootURL(arguments: ["MyTeam"]))
         XCTAssertNil(QARuntimeProfile.rootURL(arguments: ["MyTeam", "--qa-root", "relative/path"]))
         XCTAssertEqual(

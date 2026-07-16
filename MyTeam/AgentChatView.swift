@@ -391,6 +391,8 @@ struct AgentChatView: View {
                             .foregroundColor(isEditingProjects ? currentAgent.color : subTextColor)
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .help(isEditingProjects ? "대화방 편집 끝내기" : "대화방 편집")
+                    .accessibilityLabel(isEditingProjects ? "대화방 편집 끝내기" : "대화방 편집")
                 }
 
                 // 새 프로젝트 추가 (+ 버튼)
@@ -400,6 +402,8 @@ struct AgentChatView: View {
                         .foregroundColor(currentAgent.color)
                 }
                 .buttonStyle(PlainButtonStyle())
+                .help("새 대화방 추가")
+                .accessibilityLabel("새 대화방 추가")
 
             }
             .padding(.horizontal, isSidebarCollapsed ? 8 : 12)
@@ -597,10 +601,7 @@ struct AgentChatView: View {
                                     .padding(.vertical, 48)
                             } else {
                                 VStack(spacing: 16) {
-                                    let hasAnyAPIKey = SecureCredentialStore.shared.hasAnyAIProviderKey()
-                                    let firstLaunchState = FirstLaunchStateProvider.currentState(
-                                        hasAPIKey: hasAnyAPIKey
-                                    )
+                                    let firstLaunchState = manager.firstLaunchState
 
                                     if firstLaunchState.shouldShowOnboarding {
                                         FirstLaunchOnboardingFlowView(

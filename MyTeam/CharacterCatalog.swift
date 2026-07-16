@@ -1,5 +1,15 @@
 import Foundation
 
+enum KoreanSubjectParticle {
+    nonisolated static func suffix(for text: String) -> String {
+        guard let scalar = text.unicodeScalars.last?.value,
+              (0xAC00...0xD7A3).contains(scalar) else {
+            return "는"
+        }
+        return (scalar - 0xAC00).isMultiple(of: 28) ? "는" : "은"
+    }
+}
+
 enum CharacterIDNormalizer: Sendable {
     static func canonicalID(_ rawID: String) -> String {
         let lowered = rawID.lowercased()
@@ -226,7 +236,7 @@ enum CharacterCatalog {
             name: name,
             subtitle: subtitle,
             role: persona.role,
-            description: "\(name)은 MyTeam 기본 제공 캐릭터로, \(persona.specialty) 영역에서 바로 대화에 참여할 수 있는 팀원입니다.",
+            description: "\(name)\(KoreanSubjectParticle.suffix(for: name)) MyTeam 기본 제공 캐릭터로, \(persona.specialty) 영역에서 바로 대화에 참여할 수 있는 팀원입니다.",
             specialty: persona.specialty
                 .split(separator: ",")
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) },

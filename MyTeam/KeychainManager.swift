@@ -1,6 +1,16 @@
 import Foundation
 import Security
 
+enum KeychainAccessPolicy {
+    nonisolated static func allowsAccess(arguments: [String]) -> Bool {
+        !QARuntimeProfile.isEnabled(arguments: arguments)
+    }
+
+    nonisolated static var allowsCurrentProcessAccess: Bool {
+        allowsAccess(arguments: ProcessInfo.processInfo.arguments)
+    }
+}
+
 /// API 키 보안 관리 — Login Keychain (entitlement 불필요, -34018 없음)
 /// kSecUseDataProtectionKeychain 제거: 개발 빌드에서 entitlement 없으면 -34018 발생
 final class KeychainManager {
@@ -13,6 +23,7 @@ final class KeychainManager {
     // MARK: - Save
     @discardableResult
     static func save(key: String, value: String) -> Bool {
+        guard KeychainAccessPolicy.allowsCurrentProcessAccess else { return false }
         memoryCache[key] = value // 캐시 업데이트
         
         guard let data = value.data(using: .utf8) else { return false }
@@ -41,6 +52,7 @@ final class KeychainManager {
 
     // MARK: - Load
     static func load(key: String) -> String? {
+        guard KeychainAccessPolicy.allowsCurrentProcessAccess else { return nil }
         if let cached = memoryCache[key] {
             return cached
         }
@@ -99,6 +111,7 @@ final class KeychainManager {
     // MARK: - Delete
     @discardableResult
     static func delete(key: String) -> Bool {
+        guard KeychainAccessPolicy.allowsCurrentProcessAccess else { return true }
         let query: [String: Any] = [
             kSecClass as String:       kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -110,6 +123,7 @@ final class KeychainManager {
 
     // MARK: - UserDefaults 마이그레이션 (최초 1회)
     static func migrateFromUserDefaultsIfNeeded() {
+        guard KeychainAccessPolicy.allowsCurrentProcessAccess else { return }
         let migrationKey = "keychain_migrated_v3"
         guard !UserDefaults.standard.bool(forKey: migrationKey) else { return }
 

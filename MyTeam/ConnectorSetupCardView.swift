@@ -62,6 +62,7 @@ struct ConnectorSetupCardView: View {
                     }
                     .buttonStyle(.plain)
                     .help("API 키 발급 페이지를 엽니다")
+                    .accessibilityLabel("\(provider.displayName) API 키 발급 페이지 열기")
                     .frame(width: 28, height: 24, alignment: .trailing)
                 } else {
                     Color.clear
@@ -229,7 +230,7 @@ struct ConnectorSetupCardView: View {
         switch health.state {
         case .notConnected:
             if provider == .dartDisclosure {
-                return "DART 공시 조회에는 개인 OpenDART API Key 연결이 필요합니다. 키는 이 기기의 Keychain에 저장됩니다."
+                return "DART 공시 조회에는 개인 OpenDART API 키 연결이 필요합니다. 키는 이 Mac에 안전하게 저장됩니다."
             }
             if provider.isPublicAPIProvider {
                 return "기본 조회를 먼저 사용합니다. 개인 키 연결은 장애 대응과 고급 사용을 위한 선택 사항입니다."

@@ -1,5 +1,10 @@
 import SwiftUI
 
+enum ConnectionCenterUserCopy {
+    static let storageLocation = "이 Mac"
+    static let storageExplanation = "키는 이 Mac에 안전하게 저장됩니다. 저장만으로 연결 성공을 표시하지 않고, 실제 확인이 된 경우에만 사용 가능으로 표시합니다."
+}
+
 // MARK: - ConnectionCenterView
 
 /// 연결 센터 — 외부 서비스를 연결하는 메인 허브.
@@ -92,10 +97,10 @@ struct ConnectionCenterView: View {
             HStack(spacing: 8) {
                 summaryTile(title: "검증된 AI", value: "\(connectedAIProviderCount)", icon: "checkmark.seal.fill")
                 summaryTile(title: "저장된 키", value: "\(storedAIProviderCount)", icon: "key.fill")
-                summaryTile(title: "저장 위치", value: "Keychain", icon: "lock.fill")
+                summaryTile(title: "저장 위치", value: ConnectionCenterUserCopy.storageLocation, icon: "lock.fill")
             }
 
-            Text("키는 Keychain에 저장됩니다. 저장만으로 연결 성공을 표시하지 않고, 실제 확인이 된 경우에만 사용 가능으로 표시합니다.")
+            Text(ConnectionCenterUserCopy.storageExplanation)
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

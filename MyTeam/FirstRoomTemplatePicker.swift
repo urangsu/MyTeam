@@ -54,7 +54,7 @@ struct FirstRoomTemplatePicker: View {
                     HStack(spacing: 4) {
                         Image(systemName: "key.fill")
                             .font(.system(size: 11))
-                        Text("AI / API 먼저 연결하기")
+                        Text("AI 연결부터 설정하기")
                             .font(.system(size: 12))
                     }
                     .foregroundStyle(Color.accentColor)

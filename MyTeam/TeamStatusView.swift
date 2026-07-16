@@ -456,6 +456,8 @@ struct TeamStatusView: View {
                 }
             }
             .buttonStyle(PlainButtonStyle())
+            .help(isDeleteMode ? "워크룸 삭제 모드 끄기" : "워크룸 삭제 모드 켜기")
+            .accessibilityLabel(isDeleteMode ? "워크룸 삭제 모드 끄기" : "워크룸 삭제 모드 켜기")
             // 채팅방 추가 (+)
             Button(action: {
                 isDeleteMode = false
@@ -469,6 +471,7 @@ struct TeamStatusView: View {
             }
             .buttonStyle(PlainButtonStyle())
             .help("워크룸 추가")
+            .accessibilityLabel("워크룸 추가")
             Button(action: {
                 isDeleteMode = false
                 manager.createBlogWritingRoom()
@@ -481,6 +484,7 @@ struct TeamStatusView: View {
             }
             .buttonStyle(PlainButtonStyle())
             .help("콘텐츠 초안 보조 워크룸 추가")
+            .accessibilityLabel("콘텐츠 초안 보조 워크룸 추가")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -849,6 +853,8 @@ struct TeamStatusView: View {
                                 .frame(width: 24, height: 28)
                         }
                         .buttonStyle(PlainButtonStyle())
+                        .help("파일 첨부")
+                        .accessibilityLabel("파일 첨부")
 
                         // ── 빠른 기능 메뉴 (두루마리 아이콘) ──
                         Button(action: { isQuickActionMenuPresented.toggle() }) {
@@ -859,6 +865,7 @@ struct TeamStatusView: View {
                         }
                         .buttonStyle(PlainButtonStyle())
                         .help("할 수 있는 것 보기")
+                        .accessibilityLabel("할 수 있는 것 보기")
                         .popover(isPresented: $isQuickActionMenuPresented, arrowEdge: .bottom) {
                             quickActionMenuView
                         }
@@ -892,6 +899,7 @@ struct TeamStatusView: View {
                             }
                             .buttonStyle(PlainButtonStyle())
                             .help("작업 중지")
+                            .accessibilityLabel("작업 중지")
                         } else {
                             Button(action: sendTeamMessage) {
                                 Image(systemName: "paperplane.fill")
@@ -901,6 +909,8 @@ struct TeamStatusView: View {
                             }
                             .buttonStyle(PlainButtonStyle())
                             .disabled(inputText.isEmpty && pendingAttachments.isEmpty)
+                            .help("팀 워크룸에 보내기")
+                            .accessibilityLabel("팀 워크룸에 보내기")
                         }
                     }
                 }
@@ -1328,6 +1338,8 @@ struct TeamStatusView: View {
                             .foregroundColor(.blue.opacity(0.7))
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .help("워크룸 이름 변경")
+                    .accessibilityLabel("워크룸 이름 변경")
                 }
             }
             .frame(maxWidth: .infinity)

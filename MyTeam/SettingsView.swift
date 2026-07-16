@@ -4,6 +4,14 @@ import Combine
 @preconcurrency import CoreLocation
 import MapKit
 
+enum SettingsSurfaceCopy {
+    static let skillSearchPlaceholder = "스킬 이름이나 설명 검색"
+
+    nonisolated static func builtInSkillSectionTitle(enabled: Int, total: Int) -> String {
+        "기본 스킬 (\(enabled)/\(total) 활성화)"
+    }
+}
+
 // MARK: - 검증 상태
 private enum ValidationStatus {
     case idle, loading
@@ -228,6 +236,8 @@ struct SettingsView: View {
                 }
                 .buttonStyle(.plain)
                 .frame(width: 26, height: 26)
+                .help("설정 닫기")
+                .accessibilityLabel("설정 닫기")
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -303,6 +313,8 @@ struct SettingsView: View {
                         }
                         .buttonStyle(.plain)
                         .frame(width: 20)
+                        .help("현재 위치 가져오기")
+                        .accessibilityLabel("현재 위치 가져오기")
                         TextField("", text: $userLocation)
                     }
                 } label: {
@@ -328,19 +340,25 @@ struct SettingsView: View {
                         HStack(spacing: 6) {
                             ForEach(TeamNameplatePalette.allCases, id: \.rawValue) { palette in
                                 let isSelected = teamNameplatePaletteRaw == palette.rawValue
-                                Circle()
-                                    .fill(palette == .clear ? Color.gray.opacity(0.15) : palette.color.opacity(0.85))
-                                    .frame(width: 22, height: 22)
-                                    .overlay(
-                                        Circle().stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
-                                    )
-                                    .overlay(
-                                        palette == .clear
-                                            ? Image(systemName: "xmark").font(.system(size: 9, weight: .bold)).foregroundColor(.secondary)
-                                            : nil
-                                    )
-                                    .onTapGesture { teamNameplatePaletteRaw = palette.rawValue }
-                                    .help(palette.displayName)
+                                Button {
+                                    teamNameplatePaletteRaw = palette.rawValue
+                                } label: {
+                                    Circle()
+                                        .fill(palette == .clear ? Color.gray.opacity(0.15) : palette.color.opacity(0.85))
+                                        .frame(width: 22, height: 22)
+                                        .overlay(
+                                            Circle().stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
+                                        )
+                                        .overlay(
+                                            palette == .clear
+                                                ? Image(systemName: "xmark").font(.system(size: 9, weight: .bold)).foregroundColor(.secondary)
+                                                : nil
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                                .help(palette.displayName)
+                                .accessibilityLabel("\(palette.displayName) 명패 색상")
+                                .accessibilityValue(isSelected ? "선택됨" : "선택 안 됨")
                             }
                         }
                         .padding(.top, 2)
@@ -452,7 +470,7 @@ struct SettingsView: View {
         let enabledCount = SkillRegistry.shared.allEnabledSkills().count
         return VStack(spacing: 0) {
             HStack(spacing: 10) {
-                TextField("스킬 이름, ID, 설명 검색", text: $skillSearchText)
+                TextField(SettingsSurfaceCopy.skillSearchPlaceholder, text: $skillSearchText)
                     .textFieldStyle(.roundedBorder)
 
                 Text("\(enabledCount)/\(builtInSkills.count)")
@@ -464,7 +482,7 @@ struct SettingsView: View {
             .padding(.bottom, 4)
 
             Form {
-                Section("Built-in 스킬 (\(enabledCount)/\(builtInSkills.count) 활성화)") {
+                Section(SettingsSurfaceCopy.builtInSkillSectionTitle(enabled: enabledCount, total: builtInSkills.count)) {
                     ForEach(filteredSkills, id: \.id) { skill in
                         let isEnabled = SkillRegistry.shared.isSkillEnabled(id: skill.id)
                         let isHighRisk = SkillRegistry.isHighRiskSkill(skill)
@@ -473,9 +491,10 @@ struct SettingsView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(skill.name)
                                     .font(.body)
-                                Text(skill.id)
+                                Text(skill.description)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                                    .lineLimit(2)
                             }
                             Spacer()
                             if isHighRisk && !isEnabled {

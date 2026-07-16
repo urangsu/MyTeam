@@ -69,7 +69,7 @@ enum ExternalProvider: String, Codable, CaseIterable, Sendable, Hashable {
         case .naverNews:
             return "기본 뉴스 조회는 MyTeam 서버로 사용할 수 있습니다. 개인 API 키 연결은 고급 사용자를 위한 선택 사항입니다."
         case .dartDisclosure:
-            return "DART 공시 조회는 개인 OpenDART API Key를 연결하면 앱에서 직접 실행합니다. API 키는 기기 Keychain에 저장됩니다."
+            return "DART 공시 조회는 개인 OpenDART API 키를 연결하면 앱에서 직접 실행합니다. API 키는 이 Mac에 안전하게 저장됩니다."
         case .koreanLaw:
             return "기본 법령 검색은 MyTeam 서버로 사용할 수 있습니다. 개인 국가법령정보센터 OC 연결은 고급 사용자를 위한 선택 사항입니다."
         case .publicDataPortal:
