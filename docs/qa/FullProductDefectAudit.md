@@ -1,6 +1,7 @@
 # Full Product Defect Audit
 
-Last updated: 2026-07-11
+Last full audit: 2026-07-11
+Incremental verification: 2026-07-17 (`WORKER-PROD-001`, `ART-INTEGRITY-001`)
 Audited branch: `codex/tts-runtime-hardening-p0`
 Audited commit: `eef00e3`
 Audited build: Debug test bundle passed; manual QA was not run
@@ -9,7 +10,7 @@ Audited build: Debug test bundle passed; manual QA was not run
 
 | Severity | Count | Meaning |
 | --- | ---: | --- |
-| P0-blocker | 5 | Blocks RC or risks fake success/user trust |
+| P0-blocker | 4 | Blocks RC or risks fake success/user trust |
 | P0-qa-blocked | 15 | Needs runtime/manual proof |
 | P1-product-gap | 4 | Partial feature or incomplete user value |
 | P1-live-disabled | 1 | Intentionally hidden/disabled until provider QA |
@@ -23,7 +24,7 @@ Audited build: Debug test bundle passed; manual QA was not run
 | NW-MANUAL-001 | P0-qa-blocked | Natural work routing | NW-001~013 and NW-CONC-001~006 are still BLOCKED. One-bubble composite routing and multi-room concurrency are not proven in runtime. | `docs/qa/NaturalWorkE2EManualQA.md` | BLOCKED | Run all personal chat, team workroom, false-positive, and concurrency scenarios. | Manual QA | Runtime screenshots/logs plus strict validator |
 | ART-MANUAL-001 | P0-qa-blocked | Artifact reopen | ART-001~009 are still BLOCKED. Internal artifact detail reopen and artifact integrity failure modes are not proven. | `docs/qa/ArtifactReopenManualQA.md` | BLOCKED | Generate composite artifact, reopen recent artifact, test artifactID-only, long body, save interruption, missing file/index, hash mismatch, and concurrent saves. | Manual QA | Runtime screenshots/logs plus strict validator |
 | HOME-MANUAL-001 | P0-qa-blocked | Home/Settings surface | HOME-001~004 and HOME-006 are still BLOCKED. Product surface is not manually proven. | `docs/qa/HomeSurfaceManualQA.md` | BLOCKED | Inspect Home, Settings, DLC/Pro, developer diagnostics, Settings layering, team panel. | Manual QA | Runtime screenshots plus strict validator |
-| WORKER-PROD-001 | P0-blocker | Cloudflare Worker | Production `/health` returns `routes` only; missing `userRoutes`, `diagnosticContract`, `contractVersion`, `gitSha`, and `deployedAt`. | `python3 scripts/validate_worker_production_health.py` | FAIL | Push exact commit, deploy repository Worker source, set `MYTEAM_WORKER_GIT_SHA` and `MYTEAM_WORKER_DEPLOYED_AT`, then validate production. | Cloudflare deploy | `python3 scripts/validate_worker_production_health.py` |
+| WORKER-PROD-001 | resolved | Cloudflare Worker | Production `/health` now exposes the expected v3 contract, matching Worker source SHA, deployment timestamp, user routes, diagnostic contract, and abuse-control declarations. Public and wrong-token diagnostic probes return 404. | `python3 scripts/validate_worker_production_health.py` on 2026-07-17 | PASS | Keep the production health validator in every release verification; authenticated diagnostic payload QA remains tracked separately. | Release verification | `PASS: Worker production /health validation` |
 | WORKER-DIAG-001 | P0-blocker | Cloudflare Worker | Diagnostic auth must prove handler entry, not just a non-404 status. | `workers/basic-lookup-api/worker.js` | PARTIAL | Require diagnostic token for `/dart/*`, hide diagnostic paths from public `/health`, verify no-token and wrong-token return exactly 404, and verify correct-token returns DART diagnostic JSON schema. | Code + Cloudflare deploy | `node --check workers/basic-lookup-api/worker.js`; `MYTEAM_DIAGNOSTIC_TOKEN=... python3 scripts/validate_worker_production_health.py --validate-diagnostic-auth` |
 | WORKER-ABUSE-001 | P0-blocker | Cloudflare Worker | Source now uses Cloudflare Rate Limiting and Cache API with fail-closed binding checks, but production deployment identity and load behavior remain unproven. | `workers/basic-lookup-api/worker.js`; `workers/basic-lookup-api/wrangler.jsonc` | CODE COMPLETE, DEPLOY BLOCKED | Deploy the reviewed Worker, verify binding/Cache API behavior, and retain provider quota evidence. | Cloudflare deploy/QA | Worker contract tests plus production health/load QA |
 | DIAG-TOKEN-001 | P0-blocker | Secret handling | Diagnostic token must never be embedded in app code, bundle resources, QA Markdown, logs, or URLs. | Worker diagnostic auth contract | PARTIAL | Keep token only in Cloudflare secret, CI secret, or local env var; scan app runtime for token contract strings. | Static validation | `python3 scripts/validate_myteam_release.py`; secret grep |
