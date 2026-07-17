@@ -85,6 +85,10 @@ actor ToolExecutionRouter {
     private let externalReadHardTimeoutNanoseconds: UInt64 = 10_000_000_000
 
     func readiness(for descriptor: MyTeamToolDescriptor) async -> ToolExecutionState {
+        guard MyTeamToolPreference.isEnabled(id: descriptor.id) else {
+            return .unavailable("설정에서 꺼져 있습니다.")
+        }
+
         guard FeatureGate.allows(descriptor) else {
             return .unavailable(distributionMessage(for: descriptor))
         }

@@ -10,10 +10,6 @@
 	<array>
 		<string>/Users/su/.cache/supertonic3/</string>
 	</array>
-	<key>com.apple.security.temporary-exception.files.absolute-path.read-write</key>
-	<array>
-		<string>/Users/su/Desktop/</string>
-	</array>
 	<key>com.apple.security.network.client</key>
 	<true/>
 </dict>

@@ -673,7 +673,14 @@ class TeamOrchestrator {
                     )
                 }
 
-            let prompt = buildDiscussionPrompt(agent: agent, history: history, turn: turn, totalAgents: agents.count)
+            let replyMode = ConversationReplyPolicy.mode(for: userMessage)
+            let prompt = buildDiscussionPrompt(
+                agent: agent,
+                history: history,
+                turn: turn,
+                totalAgents: agents.count,
+                replyMode: replyMode
+            )
 
             do {
                 await MainActor.run {
@@ -700,7 +707,6 @@ class TeamOrchestrator {
                     chatHistory: Array(history.suffix(3)),
                     agentConfig: agent
                 )
-                let replyMode = ConversationReplyPolicy.mode(for: userMessage)
                 let bubbleParts = CasualBubbleSegmenter.segments(from: responseText, mode: replyMode)
                 for (index, bubbleText) in bubbleParts.enumerated() {
                     if index > 0 {
@@ -725,7 +731,7 @@ class TeamOrchestrator {
                             text: bubbleText,
                             isUser: false,
                             sources: index == 0 ? sources : [],
-                            presentationStyle: replyMode == .quick || replyMode == .casual
+                            presentationStyle: replyMode.usesCasualPresentation
                                 ? .casualTypewriter
                                 : .immediate
                         )
@@ -910,7 +916,8 @@ class TeamOrchestrator {
         agent: AgentWindowManager.AgentConfig,
         history: [AgentWindowManager.ChatLog],
         turn: Int,
-        totalAgents: Int
+        totalAgents: Int,
+        replyMode: ConversationReplyMode
     ) -> String {
         // 과거 페르소나 오염 방지를 위한 엄격한 슬라이딩 윈도우 (최신 3개만)
         let otherAgentMessages = history.suffix(3)
@@ -946,7 +953,11 @@ class TeamOrchestrator {
         prompt += "[최우선 채팅 규칙]\n"
         prompt += "0. 모든 대답은 반드시 '\(appLanguage)'로만 작성하세요.\n"
         prompt += "1. 당신은 오직 당신('\(agent.displayName)')의 대답만 출력해야 합니다. 절대 다른 사람의 대사를 대신 작성하거나 '<user>' 같은 시스템 태그를 멋대로 생성하지 마세요.\n"
-        prompt += "2. \(ConversationReplyPolicy.promptDirective(for: .casual))\n"
+        prompt += "2. \(ConversationReplyPolicy.promptDirective(for: replyMode))\n"
+        if replyMode == .supportive,
+           let comfortLine = CharacterDialogues.lines(for: agent.id, event: .userNeedsComfort).first?.text {
+            prompt += "2-1. 캐릭터의 따뜻한 결은 '\(comfortLine)'을 참고하되, 문장을 복사하지 말고 사용자의 감정에 맞춰 답하세요.\n"
+        }
         prompt += "3. 사용자가 준 사실이 아닌 KPI, 세무 증빙, 회의, 클라이언트, 내부 일정, 스트레스, 다른 에이전트의 작업 상황을 만들지 마세요.\n"
         prompt += "4. 마음속 생각이나 상황 설명(\"아직 내 얘기 못했는데...\", \"흠...\")은 절대 출력하지 말고 바로 채팅방에 입력할 텍스트만 출력하세요.\n"
         prompt += "5. 답변 말머리(문장 시작)에 당신의 이름(예: [\(agent.displayName)], \(agent.displayName):)을 절대로 붙이지 마세요.\n"

@@ -77,79 +77,18 @@ struct TeamStatusView: View {
     }
     
     var body: some View {
+        lifecycleView
+    }
+
+    private var panelContentView: some View {
         VStack(spacing: 0) {
-            
-            // ── 헤더 (더블 클릭으로 접기/펼치기) ──
-            HStack(spacing: 12) {
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(selectedTab == 0 ? collaborationStatus.accentColor : Color.blue)
-                        .frame(width: 8, height: 8)
-                    Text(selectedTab == 0 ? collaborationStatus.headerTitle : "팀 워크룸")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(textColor.opacity(0.8))
-                }
-                .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
-                .contentShape(Rectangle())
-                .overlay(WindowDragHandle())
-                
-                HStack(spacing: 14) {
-                    if !isCollapsed {
-                        // 탭 전환 버튼
-                        Button(action: { selectedTab = (selectedTab == 0 ? 1 : 0) }) {
-                            Image(systemName: selectedTab == 0 ? "bubble.left.and.bubble.right.fill" : "person.3.fill")
-                                .font(.system(size: 12))
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .help(selectedTab == 0 ? "팀 워크룸 보기" : "협업 상태 보기")
-                        .accessibilityLabel(selectedTab == 0 ? "팀 워크룸 보기" : "협업 상태 보기")
-                    }
-
-                    Button(action: {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            isCollapsed.toggle()
-                        }
-                    }) {
-                        Image(systemName: isCollapsed ? "arrow.up.left.and.arrow.down.right" : "arrow.down.right.and.arrow.up.left")
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .help(isCollapsed ? "펼치기" : "접기")
-                    .accessibilityLabel(isCollapsed ? "펼치기" : "접기")
-
-                    Button(action: { manager.hideStatusWindow() }) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .bold))
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                    .help("협업창 닫기")
-                    .accessibilityLabel("협업창 닫기")
-                }
-                .foregroundColor(manager.isDarkMode ? .white.opacity(0.5) : .gray.opacity(0.6))
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
-            
-            if !isCollapsed {
-                // ── 첫 실행 온보딩 (WP1: 통합 카드, 팀 패널에서는 간결하게만) ──
-                if manager.firstLaunchState.shouldShowOnboarding {
-                    FirstLaunchOnboardingFlowView(
-                        manager: manager,
-                        onOpenSettings: { manager.showSettingsWindow() }
-                    )
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                }
-
-                Divider().background(textColor.opacity(0.05))
-
-                if selectedTab == 0 {
-                    // ── 탭 0: 에이전트 리스트 ──
-                    agentListView
-                } else {
-                    // ── 탭 1: 팀 워크룸 (로그) ──
-                    chatroomView
-                }
-            }
+            statusHeaderView
+            expandedPanelContent
         }
+    }
+
+    private var sizedPanelView: some View {
+        panelContentView
         .frame(width: panelWidth, height: panelHeight, alignment: .top)
         .onChange(of: selectedTab) { _, _ in
             if !isCollapsed {
@@ -164,6 +103,10 @@ struct TeamStatusView: View {
                 manager.updateStatusWindowSize(width: windowWidth, height: windowHeight)
             }
         }
+    }
+
+    private var presentedPanelView: some View {
+        sizedPanelView
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: isCollapsed ? 20 : 24)
@@ -189,6 +132,10 @@ struct TeamStatusView: View {
         }
         .shadow(color: Color.black.opacity(manager.isDarkMode ? 0.3 : 0.08), radius: 15, x: 0, y: 8)
         .padding(10)
+    }
+
+    private var lifecycleView: some View {
+        presentedPanelView
         .onAppear {
             manager.updateStatusWindowSize(width: windowWidth, height: windowHeight)
             startCollaborationStatusRefreshLoop()
@@ -214,6 +161,83 @@ struct TeamStatusView: View {
                   notifRoomID == manager.selectedTeamWorkroomID else { return }
             // 원본 메시지를 다시 워크룸 프롬프트로 디스패치 → WorkflowOrchestrator 재실행
             dispatchWorkroomPrompt(originalMessage, roomID: notifRoomID)
+        }
+    }
+
+    private var statusHeaderView: some View {
+        HStack(spacing: 12) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(selectedTab == 0 ? collaborationStatus.accentColor : Color.blue)
+                    .frame(width: 8, height: 8)
+                Text(selectedTab == 0 ? collaborationStatus.headerTitle : "팀 워크룸")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(textColor.opacity(0.8))
+            }
+            .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+            .contentShape(Rectangle())
+            .overlay(WindowDragHandle())
+
+            statusHeaderControls
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+    }
+
+    private var statusHeaderControls: some View {
+        HStack(spacing: 14) {
+            if !isCollapsed {
+                Button(action: { selectedTab = (selectedTab == 0 ? 1 : 0) }) {
+                    Image(systemName: selectedTab == 0 ? "bubble.left.and.bubble.right.fill" : "person.3.fill")
+                        .font(.system(size: 12))
+                }
+                .buttonStyle(PlainButtonStyle())
+                .help(selectedTab == 0 ? "팀 워크룸 보기" : "협업 상태 보기")
+                .accessibilityLabel(selectedTab == 0 ? "팀 워크룸 보기" : "협업 상태 보기")
+            }
+
+            Button(action: toggleCollapsed) {
+                Image(systemName: isCollapsed ? "arrow.up.left.and.arrow.down.right" : "arrow.down.right.and.arrow.up.left")
+            }
+            .buttonStyle(PlainButtonStyle())
+            .help(isCollapsed ? "펼치기" : "접기")
+            .accessibilityLabel(isCollapsed ? "펼치기" : "접기")
+
+            Button(action: { manager.hideStatusWindow() }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 12, weight: .bold))
+            }
+            .buttonStyle(PlainButtonStyle())
+            .help("협업창 닫기")
+            .accessibilityLabel("협업창 닫기")
+        }
+        .foregroundColor(manager.isDarkMode ? .white.opacity(0.5) : .gray.opacity(0.6))
+    }
+
+    @ViewBuilder
+    private var expandedPanelContent: some View {
+        if !isCollapsed {
+            if manager.firstLaunchState.shouldShowOnboarding {
+                FirstLaunchOnboardingFlowView(
+                    manager: manager,
+                    onOpenSettings: { manager.showSettingsWindow() }
+                )
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
+
+            Divider().background(textColor.opacity(0.05))
+
+            if selectedTab == 0 {
+                agentListView
+            } else {
+                chatroomView
+            }
+        }
+    }
+
+    private func toggleCollapsed() {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            isCollapsed.toggle()
         }
     }
     

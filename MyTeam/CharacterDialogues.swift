@@ -8,6 +8,7 @@ enum CharacterDialogueEvent: String, CaseIterable, Sendable, Hashable {
     case moved
     case settled
     case taskStarted
+    case userNeedsComfort
     case appWillQuit
     case taskCompleted
     case taskFailedRecoverable
@@ -41,6 +42,7 @@ enum CharacterDialogues {
         .moved: [fallback(.moved, "필요한 곳으로 함께 이동할게요.")],
         .settled: [fallback(.settled, "자리를 잡았어요. 바로 이어서 도와드릴게요.")],
         .taskStarted: [fallback(.taskStarted, "바로 시작할게요. 진행 상황도 함께 알려드릴게요.")],
+        .userNeedsComfort: [fallback(.userNeedsComfort, "많이 힘드셨겠어요. 지금은 잠깐 숨을 고르셔도 괜찮아요.")],
         .appWillQuit: [fallback(.appWillQuit, "오늘 작업은 여기까지 정리해둘게요.", leader: true)],
         .taskCompleted: [fallback(.taskCompleted, "요청하신 작업을 마쳤습니다.")],
         .taskFailedRecoverable: [fallback(.taskFailedRecoverable, "괜찮아요. 다른 방법으로 다시 도와드릴게요.")],
@@ -228,7 +230,62 @@ enum CharacterDialogues {
         line("agent_10", .taskCompleted, "불편했던 부분이 남지 않도록 처리 순서까지 다정하게 정리했어요.", variant: 2),
         line("agent_10", .taskFailedRecoverable, "속상하실 필요 없어요. 가능한 해결 방법부터 하나씩 같이 찾아볼게요.", variant: 2),
         line("agent_11", .taskCompleted, "통과한 항목과 더 확인할 항목을 구분해두었습니다.", variant: 2),
-        line("agent_11", .taskFailedRecoverable, "재현 단서를 확보했습니다. 같은 문제가 반복되지 않게 다시 검증하겠습니다.", variant: 2)
+        line("agent_11", .taskFailedRecoverable, "재현 단서를 확보했습니다. 같은 문제가 반복되지 않게 다시 검증하겠습니다.", variant: 2),
+
+        line("agent_1", .userNeedsComfort, "많이 버텨오셨군요. 지금 느끼는 무게부터 함께 정리해보겠습니다."),
+        line("agent_1", .userNeedsComfort, "지금은 결론보다 숨을 고르는 게 먼저여도 괜찮습니다.", variant: 2),
+        line("agent_1", .appWillQuit, "오늘 하루도 정말 고생하셨습니다. 편히 쉬세요.", variant: 2, priority: 30, leader: true),
+        line("agent_1", .appWillQuit, "내일 다시 만나요. 이어갈 흐름은 차분히 남겨두겠습니다.", variant: 3, priority: 30, leader: true),
+
+        line("agent_2", .userNeedsComfort, "마음이 많이 무거웠겠어요. 오늘은 빛나지 않아도 충분해요."),
+        line("agent_2", .userNeedsComfort, "잘 해내려 애쓴 마음이 보여요. 잠깐 쉬어가도 괜찮아요.", variant: 2),
+        line("agent_2", .appWillQuit, "오늘 하루도 고생 많았어요. 편안한 밤 보내요.", variant: 2, priority: 30, leader: true),
+        line("agent_2", .appWillQuit, "내일 다시 만나요. 좋은 기분으로 천천히 이어가요.", variant: 3, priority: 30, leader: true),
+
+        line("agent_3", .userNeedsComfort, "해야 할 일이 많아 마음까지 지쳤겠어요. 지금은 쉬어도 괜찮아요."),
+        line("agent_3", .userNeedsComfort, "혼자 다 감당하지 않아도 돼요. 편한 만큼만 이야기해 주세요.", variant: 2),
+        line("agent_3", .appWillQuit, "오늘 하루도 고생하셨어요. 남은 일은 내일 천천히 이어가요.", variant: 2, priority: 30, leader: true),
+        line("agent_3", .appWillQuit, "내일 다시 만나요. 편히 시작할 수 있게 흐름을 남겨둘게요.", variant: 3, priority: 30, leader: true),
+
+        line("agent_4", .userNeedsComfort, "마음이 복잡하면 세상도 흐릿하게 보여요. 잠깐 눈을 쉬게 해도 괜찮아요."),
+        line("agent_4", .userNeedsComfort, "지금 느끼는 마음 그대로도 괜찮아요. 서두르지 않고 곁에 있을게요.", variant: 2),
+        line("agent_4", .appWillQuit, "오늘 하루도 고생했어요. 편안한 장면으로 하루를 마쳐요.", variant: 2, priority: 30, leader: true),
+        line("agent_4", .appWillQuit, "내일 다시 만나요. 더 편안한 흐름으로 이어가요.", variant: 3, priority: 30, leader: true),
+
+        line("agent_5", .userNeedsComfort, "많이 힘들었군요. 지금은 아무것도 해결하지 않아도 괜찮아요."),
+        line("agent_5", .userNeedsComfort, "마음이 지친 날도 있어요. 제가 조용히 옆에 있을게요.", variant: 2),
+        line("agent_5", .appWillQuit, "오늘 하루도 정말 고생했어요. 푹 쉬어요!", variant: 2, priority: 30, leader: true),
+        line("agent_5", .appWillQuit, "내일 다시 만나요. 그때도 천천히 같이 해봐요!", variant: 3, priority: 30, leader: true),
+
+        line("agent_6", .userNeedsComfort, "지금의 힘듦을 가볍게 보지 않겠습니다. 편한 만큼만 말씀해 주세요."),
+        line("agent_6", .userNeedsComfort, "견디느라 많이 지치셨겠습니다. 우선 마음을 돌보셔도 괜찮습니다.", variant: 2),
+        line("agent_6", .appWillQuit, "오늘 하루도 고생 많으셨습니다. 편히 쉬십시오.", variant: 2, priority: 30, leader: true),
+        line("agent_6", .appWillQuit, "내일 다시 뵙겠습니다. 남은 검토는 차분히 이어가겠습니다.", variant: 3, priority: 30, leader: true),
+
+        line("agent_7", .userNeedsComfort, "마음이 보내는 신호를 지나치지 않아도 됩니다. 지금은 쉬어가세요."),
+        line("agent_7", .userNeedsComfort, "많이 지치셨겠어요. 이유를 바로 설명하지 않아도 괜찮습니다.", variant: 2),
+        line("agent_7", .appWillQuit, "오늘 하루도 고생하셨습니다. 안전하고 편안한 밤 보내세요.", variant: 2, priority: 30, leader: true),
+        line("agent_7", .appWillQuit, "내일 다시 만나요. 확인할 흐름은 그대로 남겨두겠습니다.", variant: 3, priority: 30, leader: true),
+
+        line("agent_8", .userNeedsComfort, "계속 애쓰느라 에너지가 다했겠어요. 지금은 멈춰도 괜찮습니다."),
+        line("agent_8", .userNeedsComfort, "문제를 바로 고치지 않아도 돼요. 먼저 마음이 쉴 틈부터 만들어요.", variant: 2),
+        line("agent_8", .appWillQuit, "오늘 하루도 고생하셨습니다. 이제 편히 쉬세요.", variant: 2, priority: 30, leader: true),
+        line("agent_8", .appWillQuit, "내일 다시 만나요. 이어갈 지점은 깔끔하게 남겨둘게요.", variant: 3, priority: 30, leader: true),
+
+        line("agent_9", .userNeedsComfort, "마음이 지친 날에는 잘 보이던 길도 흐려져요. 천천히 쉬어가요."),
+        line("agent_9", .userNeedsComfort, "많이 애쓴 마음이 느껴져요. 오늘의 속도는 느려도 괜찮아요.", variant: 2),
+        line("agent_9", .appWillQuit, "오늘 하루도 고생 많았어요. 편안하게 쉬어요.", variant: 2, priority: 30, leader: true),
+        line("agent_9", .appWillQuit, "내일 다시 만나요. 좋은 기회는 천천히 이어가도 돼요.", variant: 3, priority: 30, leader: true),
+
+        line("agent_10", .userNeedsComfort, "많이 힘드셨죠. 지금 느끼는 마음을 그대로 말해도 괜찮아요."),
+        line("agent_10", .userNeedsComfort, "오늘은 버틴 것만으로도 충분해요. 제가 따뜻하게 곁에 있을게요.", variant: 2),
+        line("agent_10", .appWillQuit, "오늘 하루도 정말 고생하셨어요. 푹 쉬세요.", variant: 2, priority: 30, leader: true),
+        line("agent_10", .appWillQuit, "내일 다시 만나요. 반갑고 편안하게 기다릴게요.", variant: 3, priority: 30, leader: true),
+
+        line("agent_11", .userNeedsComfort, "마음이 지친 신호를 그냥 넘기지 않아도 됩니다. 지금은 쉬어가세요."),
+        line("agent_11", .userNeedsComfort, "많이 버티셨습니다. 오늘의 어려움을 혼자 판단하지 않아도 괜찮아요.", variant: 2),
+        line("agent_11", .appWillQuit, "오늘 하루도 고생하셨습니다. 편히 쉬세요.", variant: 2, priority: 30, leader: true),
+        line("agent_11", .appWillQuit, "내일 다시 만나요. 확인할 기준은 잘 남겨두겠습니다.", variant: 3, priority: 30, leader: true)
     ]
 
     private static func line(
@@ -277,6 +334,12 @@ enum CharacterDialogues {
                 return lhs.id < rhs.id
             }
             .first
+    }
+
+    static func randomLeaderLine(for agentID: String, event: CharacterDialogueEvent) -> CharacterDialogueLine? {
+        let available = lines(for: agentID, event: event)
+        let preferred = available.filter(\.isLeaderPreferred)
+        return (preferred.isEmpty ? available : preferred).randomElement()
     }
 
     static func allEventDialogueLines(includeFallbacks: Bool = false) -> [CharacterDialogueLine] {

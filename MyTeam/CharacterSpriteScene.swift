@@ -62,13 +62,28 @@ enum AnimationState: String, CaseIterable {
 // MARK: - CharacterSpriteScene
 class CharacterSpriteScene: SKScene {
 
+    // SpriteView may recreate scenes while SwiftUI reshapes the team panel.
+    // Reuse a small number of decoded sequences instead of constructing a new
+    // SKTexture graph for the same character/state on every recreation.
+    private static let maxSharedTextureSets = 4
+    private static var sharedTextureSets: [String: [SKTexture]] = [:]
+    private static var sharedTextureSetOrder: [String] = []
+
+    static var sharedTextureSetCountForTesting: Int { sharedTextureSets.count }
+
+    static func resetSharedTextureCacheForTesting() {
+        sharedTextureSets.removeAll(keepingCapacity: false)
+        sharedTextureSetOrder.removeAll(keepingCapacity: false)
+    }
+
     // ── 공개 설정값 ───────────────────────────────────────────
-    var characterID: String = "sloth"
-    var fallbackImageName: String = ""        // 스프라이트 없을 때 표시할 얼굴 이미지
+    private(set) var characterID: String = "sloth"
+    private(set) var fallbackImageName: String = ""        // 스프라이트 없을 때 표시할 얼굴 이미지
 
     // ── 내부 노드 ─────────────────────────────────────────────
-    private var characterNode: SKSpriteNode!
+    private var characterNode: SKSpriteNode?
     private var fallbackImageNode: SKSpriteNode?
+    private var cachedTextures: (state: AnimationState, textures: [SKTexture])?
 
     // ── 상태 관리 ─────────────────────────────────────────────
     private(set) var currentState: AnimationState = .typing
@@ -106,39 +121,69 @@ class CharacterSpriteScene: SKScene {
     // idle 대신 typing으로 복귀 (앱의 기본 상태)
     private var defaultReturnState: AnimationState { .typing }
 
+    init(characterID: String = "sloth", fallbackImageName: String = "") {
+        self.characterID = characterID
+        self.fallbackImageName = fallbackImageName
+        super.init(size: CGSize(width: 1, height: 1))
+        backgroundColor = .clear
+    }
+
+    required init?(coder aDecoder: NSCoder) {
+        super.init(coder: aDecoder)
+    }
+
     // MARK: - Scene 초기화
     override func didMove(to view: SKView) {
         backgroundColor = .clear
         scaleMode = .aspectFit
         anchorPoint = CGPoint(x: 0.5, y: 0.0)  // origin = 씬 하단 중앙
 
-        setupCharacterNode()
+        rebuildCharacterNodes()
         loadAndPlay(state: .typing)             // 기본 상태: 타이핑
+    }
+
+    override func willMove(from view: SKView) {
+        super.willMove(from: view)
+        prepareForRemoval()
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
         super.didChangeSize(oldSize)
-        fitCharacterToScene()
+        fitVisibleNodeToScene()
     }
 
     // MARK: - 노드 셋업
-    private func setupCharacterNode() {
-        let placeholder = SKTexture(imageNamed: "\(characterID)_idle_001")
-        characterNode = SKSpriteNode(texture: placeholder)
-        characterNode.position = CGPoint(x: 0, y: 0)
-        characterNode.anchorPoint = CGPoint(x: 0.5, y: 0.0)
-        addChild(characterNode)
+    func configure(characterID: String, fallbackImageName: String) {
+        let identityChanged = self.characterID != characterID || self.fallbackImageName != fallbackImageName
+        self.characterID = characterID
+        self.fallbackImageName = fallbackImageName
+        guard identityChanged || characterNode == nil else { return }
+        rebuildCharacterNodes()
+        loadAndPlay(state: currentState)
+    }
+
+    func prepareForRemoval() {
+        removeAllActions()
+        characterNode?.removeAllActions()
+        fallbackImageNode?.removeAllActions()
+        removeAllChildren()
+        characterNode = nil
+        fallbackImageNode = nil
+        cachedTextures = nil
+        isAnimationLoaded = false
+    }
+
+    private func rebuildCharacterNodes() {
+        prepareForRemoval()
+        let node = SKSpriteNode()
+        node.name = "characterNode"
+        node.position = CGPoint(x: 0, y: 0)
+        node.anchorPoint = CGPoint(x: 0.5, y: 0.0)
+        characterNode = node
+        addChild(node)
 
         // 폴백 이미지 노드 (스프라이트 없을 때 표시)
-        if !fallbackImageName.isEmpty {
-            let fallbackNode = SKSpriteNode(imageNamed: fallbackImageName)
-            fallbackNode.position = CGPoint(x: 0, y: 0)
-            fallbackNode.anchorPoint = CGPoint(x: 0.5, y: 0.0)
-            fallbackNode.name = "fallbackImageNode"
-            fallbackNode.isHidden = true
-            fallbackImageNode = fallbackNode
-            addChild(fallbackNode)
-        }
+        _ = makeFallbackNodeIfNeeded()
     }
 
     // MARK: - 상태 해석 (폴백 체인)
@@ -148,7 +193,7 @@ class CharacterSpriteScene: SKScene {
         var current = state
         var visited = Set<AnimationState>()
         while visited.insert(current).inserted {
-            if !loadTextures(for: current).isEmpty { return current }
+            if hasTextures(for: current) { return current }
             guard let next = Self.fallbackStates[current] else { break }
             current = next
         }
@@ -160,7 +205,9 @@ class CharacterSpriteScene: SKScene {
     /// 특정 상태의 PNG 시퀀스를 로드해 재생합니다.
     /// 파일이 없으면 fallbackStates 체인을 통해 자동 대체됩니다.
     func loadAndPlay(state: AnimationState, fps: Double? = nil) {
-        guard characterNode != nil else { return }
+        guard let characterNode else { return }
+
+        characterNode.removeAllActions()
 
         // 폴백 체인으로 실제 재생할 상태 결정
         let resolved = resolveWithFallback(state)
@@ -176,18 +223,20 @@ class CharacterSpriteScene: SKScene {
         isAnimationLoaded = true
 
         // 첫 프레임 적용 후 씬에 맞게 스케일
+        let frameSizes = textures.map { $0.size() }
         characterNode.texture = textures[0]
-        characterNode.size = textures[0].size()
-        fitCharacterToScene(basedOn: textures.map { $0.size() })
-
-        characterNode.removeAllActions()
+        characterNode.size = CGSize(
+            width: frameSizes.map(\.width).max() ?? textures[0].size().width,
+            height: frameSizes.map(\.height).max() ?? textures[0].size().height
+        )
+        fitCharacterToScene()
 
         let timePerFrame = 1.0 / (fps ?? defaultFPS)
         let animateAction = SKAction.animate(
             with: textures,
             timePerFrame: timePerFrame,
-            resize: true,
-            restore: true
+            resize: false,
+            restore: false
         )
 
         if Self.loopingStates.contains(resolved) {
@@ -208,6 +257,15 @@ class CharacterSpriteScene: SKScene {
 
     // MARK: - 텍스처 로드 헬퍼
     private func loadTextures(for state: AnimationState) -> [SKTexture] {
+        if let cachedTextures, cachedTextures.state == state {
+            return cachedTextures.textures
+        }
+        let cacheKey = sharedTextureCacheKey(for: state)
+        if let textures = Self.sharedTextureSets[cacheKey] {
+            Self.markSharedTextureSetRecentlyUsed(cacheKey)
+            cachedTextures = (state, textures)
+            return textures
+        }
         guard let resourcePath = Bundle.main.resourcePath else { return [] }
         var textures: [SKTexture] = []
         // macOS HFS+/APFS가 한글 파일명을 NFD로 저장 → Bundle API 검색 실패.
@@ -221,23 +279,77 @@ class CharacterSpriteScene: SKScene {
                   let image = NSImage(contentsOfFile: path) else { break }
             textures.append(SKTexture(image: image))
         }
+        Self.storeSharedTextureSet(textures, for: cacheKey)
+        cachedTextures = (state, textures)
         return textures
+    }
+
+    private func hasTextures(for state: AnimationState) -> Bool {
+        if let cachedTextures, cachedTextures.state == state {
+            return !cachedTextures.textures.isEmpty
+        }
+        if let shared = Self.sharedTextureSets[sharedTextureCacheKey(for: state)] {
+            return !shared.isEmpty
+        }
+        guard let resourcePath = Bundle.main.resourcePath else { return false }
+        let imageName = String(format: "%@_%@_%03d", characterID, state.rawValue, 1)
+        return FileManager.default.fileExists(
+            atPath: "\(resourcePath)/Sprites/\(characterID)/\(imageName).png"
+        )
+    }
+
+    private func sharedTextureCacheKey(for state: AnimationState) -> String {
+        "\(characterID)\u{0}\(state.rawValue)"
+    }
+
+    private static func storeSharedTextureSet(_ textures: [SKTexture], for key: String) {
+        guard !textures.isEmpty else { return }
+        sharedTextureSets[key] = textures
+        markSharedTextureSetRecentlyUsed(key)
+
+        while sharedTextureSetOrder.count > maxSharedTextureSets {
+            let evictedKey = sharedTextureSetOrder.removeFirst()
+            sharedTextureSets.removeValue(forKey: evictedKey)
+        }
+    }
+
+    private static func markSharedTextureSetRecentlyUsed(_ key: String) {
+        sharedTextureSetOrder.removeAll { $0 == key }
+        sharedTextureSetOrder.append(key)
     }
 
     // MARK: - 폴백 이미지 표시/숨기기
     private func showEmojiFallback() {
-        guard let fallback = fallbackImageNode else { return }
-        characterNode.isHidden = true
+        guard let fallback = makeFallbackNodeIfNeeded() else {
+            characterNode?.isHidden = false
+            return
+        }
+        characterNode?.isHidden = true
         fallback.isHidden = false
+        fitFallbackToScene()
     }
 
     private func hideEmojiFallback() {
         fallbackImageNode?.isHidden = true
-        characterNode.isHidden = false
+        characterNode?.isHidden = false
+    }
+
+    private func makeFallbackNodeIfNeeded() -> SKSpriteNode? {
+        if let fallbackImageNode { return fallbackImageNode }
+        guard !fallbackImageName.isEmpty else { return nil }
+        let fallbackNode = SKSpriteNode(imageNamed: fallbackImageName)
+        fallbackNode.position = CGPoint(x: 0, y: 0)
+        fallbackNode.anchorPoint = CGPoint(x: 0.5, y: 0.0)
+        fallbackNode.name = "fallbackImageNode"
+        fallbackNode.isHidden = true
+        fallbackImageNode = fallbackNode
+        addChild(fallbackNode)
+        return fallbackNode
     }
 
     // MARK: - 드래그 인터랙션
     func startDragging() {
+        guard let characterNode else { return }
         loadAndPlay(state: .lifted)
         let wobble = SKAction.sequence([
             SKAction.rotate(byAngle: 0.1, duration: 0.08),
@@ -248,27 +360,34 @@ class CharacterSpriteScene: SKScene {
     }
 
     func stopDragging() {
+        guard let characterNode else { return }
         characterNode.removeAction(forKey: "wobble")
         characterNode.run(SKAction.rotate(toAngle: 0, duration: 0.2, shortestUnitArc: true))
         loadAndPlay(state: .landing)
     }
 
     // MARK: - 크기 조절
-    func fitCharacterToScene(basedOn sizeList: [CGSize]? = nil) {
-        guard characterNode != nil, !characterNode.isHidden else { return }
-        
-        var refWidth = characterNode.size.width
-        var refHeight = characterNode.size.height
-        
-        if let sizes = sizeList, !sizes.isEmpty {
-            refWidth = sizes.map { $0.width }.max() ?? refWidth
-            refHeight = sizes.map { $0.height }.max() ?? refHeight
-        }
-        
+    func fitCharacterToScene() {
+        guard let characterNode, !characterNode.isHidden else { return }
+        let refWidth = characterNode.size.width
+        let refHeight = characterNode.size.height
         guard refWidth > 0, refHeight > 0 else { return }
 
         let scaleX = size.width  / refWidth
         let scaleY = size.height / refHeight
         characterNode.setScale(min(scaleX, scaleY) * 0.95)
+    }
+
+    private func fitFallbackToScene() {
+        guard let fallbackImageNode, !fallbackImageNode.isHidden,
+              fallbackImageNode.size.width > 0, fallbackImageNode.size.height > 0 else { return }
+        let scaleX = size.width / fallbackImageNode.size.width
+        let scaleY = size.height / fallbackImageNode.size.height
+        fallbackImageNode.setScale(min(scaleX, scaleY) * 0.75)
+    }
+
+    private func fitVisibleNodeToScene() {
+        fitCharacterToScene()
+        fitFallbackToScene()
     }
 }

@@ -101,7 +101,10 @@ struct AgentSeatView: View {
                         fallbackImageName: config.fallbackImageName,
                         state: emotionState
                     )
-                    .frame(width: 100, height: 140)
+                    // Keep animated characters inside the same visual footprint
+                    // as static profile images. Oversized SpriteView bounds let
+                    // full-body frames spill over adjacent seats.
+                    .frame(width: 60, height: 60)
                     .rotationEffect(.degrees(isDragging ? config.dragRotation : 0))
                 } else if !config.fallbackImageName.isEmpty {
                     Image(config.fallbackImageName)

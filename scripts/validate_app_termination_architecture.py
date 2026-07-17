@@ -47,6 +47,7 @@ def main() -> None:
 
     app = read("MyTeam/MyTeamApp.swift")
     team_table = read("MyTeam/TeamTableView.swift")
+    speech_manager = read("MyTeam/SpeechManager.swift")
     project = read("MyTeam/MyTeam.xcodeproj/project.pbxproj")
 
     if "AppTerminationCoordinator.shared.requestTermination" not in method_body(app, "func applicationShouldTerminate("):
@@ -82,8 +83,7 @@ def main() -> None:
 
     for token in [
         "didReplyToShouldTerminate",
-        "terminationWatchdogNanoseconds: UInt64 = 5_000_000_000",
-        "engineStopTimeoutNanoseconds: UInt64 = 2_000_000_000",
+        "terminationWatchdogNanoseconds: UInt64 = 8_000_000_000",
         "replyOnce",
         "forceExitIfNeeded",
         "stopAudioNonBlocking",
@@ -94,8 +94,31 @@ def main() -> None:
             failures.append(f"AppTerminationCoordinator missing required guard/constant: {token}")
     if "withTaskGroup" in coordinator:
         failures.append("AppTerminationCoordinator must not use withTaskGroup for termination cleanup timeout")
-    if "playPreparedFarewell" in coordinator:
-        failures.append("termination sequence must not start farewell playback")
+
+    request_body = method_body(coordinator, "func requestTermination(")
+    for token in [
+        "playPreparedFarewell",
+        "phase = .playingFarewell",
+        "startWatchdog()",
+        "return .terminateLater",
+    ]:
+        if token not in request_body:
+            failures.append(f"opt-in farewell termination path missing: {token}")
+
+    farewell_body = method_body(speech_manager, "func playPreparedFarewell(")
+    for token in [
+        "TerminationFarewellPreference.isEnabled()",
+        "preparedFarewell",
+        "isTerminationPlaybackPending",
+    ]:
+        if token not in farewell_body:
+            failures.append(f"prepared farewell guard missing: {token}")
+    if "synthesize" in farewell_body:
+        failures.append("termination playback must not synthesize after quit is requested")
+
+    preference_body = method_body(speech_manager, "static func isEnabled(")
+    if "defaults.bool(forKey: key)" not in preference_body:
+        failures.append("termination farewell preference must default off when unset")
     quit_index = team_table.find('Label("어플리케이션 종료"')
     if quit_index != -1:
         quit_window = team_table[max(0, quit_index - 600):quit_index + 300]

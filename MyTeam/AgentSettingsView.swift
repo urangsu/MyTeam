@@ -10,17 +10,17 @@ struct JobPreset: Identifiable {
 }
 
 let jobPresets: [JobPreset] = [
-    JobPreset(title: "비즈니스 전략가", icon: "chart.line.uptrend.xyaxis", defaultPrompt: "객관적이고 시장 상황을 분석하며 날카롭지만 정중하게 의견을 제시합니다."),
+    JobPreset(title: "비즈니스 전략가", icon: "chart.line.uptrend.xyaxis", defaultPrompt: "객관적으로 시장 상황을 분석하며 중요한 판단을 분명하고 배려 있게 제시합니다."),
     JobPreset(title: "마케터/콘텐츠 기획", icon: "megaphone", defaultPrompt: "트렌드에 민감하고 톡톡 튀는 아이디어를 선호하며 밝은 에너지를 보여줍니다."),
     JobPreset(title: "프로젝트 매니저", icon: "calendar.badge.clock", defaultPrompt: "차분하게 일정을 관리하고 팀원들의 의견을 조율하는 다정한 리더입니다."),
     JobPreset(title: "UI 디자이너", icon: "paintbrush.pointed", defaultPrompt: "시각적 트렌드에 민감하며 픽셀 단위의 미적 완벽함을 추구합니다."),
     JobPreset(title: "UX 디자이너", icon: "person.crop.circle.dashed", defaultPrompt: "사용자의 심리와 행동 데이터 기반으로 사용성 개선을 끊임없이 질문합니다."),
     JobPreset(title: "법률 전문가", icon: "building.columns", defaultPrompt: "리스크와 규제를 꼼꼼하게 따져보고 가장 논리적이고 안전한 조언을 제공합니다."),
-    JobPreset(title: "보안/데이터 전문가", icon: "lock.shield", defaultPrompt: "보안 위협과 취약점에 매우 민감하고 경계심이 강하여 모든 시스템을 의심합니다."),
-    JobPreset(title: "백엔드 개발자", icon: "server.rack", defaultPrompt: "서버 안정성과 성능 최적화에 대해 논리적이고 단호하게 이야기합니다."),
+    JobPreset(title: "보안/데이터 전문가", icon: "lock.shield", defaultPrompt: "보안 위협과 취약점을 차분히 확인하고 근거와 한계를 명확하게 설명합니다."),
+    JobPreset(title: "백엔드 개발자", icon: "server.rack", defaultPrompt: "서버 안정성과 성능 최적화를 논리적으로 설명하고 실용적인 개선안을 제시합니다."),
     JobPreset(title: "세일즈/BD", icon: "briefcase", defaultPrompt: "놀라운 친화력과 설득력으로 매력적이고 여유 넘치는 대화를 이끌어냅니다."),
     JobPreset(title: "고객 서비스", icon: "heart", defaultPrompt: "상대방의 감정에 깊이 공감하고 친절하며 다정다감한 말투로 위로합니다."),
-    JobPreset(title: "QA 엔지니어", icon: "ladybug", defaultPrompt: "꼼꼼한 성격으로 예외 상황을 집요하게 파고들며 조심스럽지만 예리하게 말합니다.")
+    JobPreset(title: "QA 엔지니어", icon: "ladybug", defaultPrompt: "예외 상황을 꼼꼼하게 확인하고 재현 방법과 검증 기준을 차분히 설명합니다.")
 ]
 
 struct AgentSettingsView: View {

@@ -16,6 +16,7 @@ enum AppTerminationPhase: String, Sendable {
     case idle
     case requested
     case savingState
+    case playingFarewell
     case stoppingAudio
     case stoppingEngine
     case replying
@@ -27,13 +28,11 @@ enum AppTerminationPhase: String, Sendable {
 final class AppTerminationCoordinator: ObservableObject {
     static let shared = AppTerminationCoordinator()
 
-    private let engineStopTimeoutNanoseconds: UInt64 = 2_000_000_000
-    private let terminationWatchdogNanoseconds: UInt64 = 5_000_000_000
+    private let terminationWatchdogNanoseconds: UInt64 = 8_000_000_000
 
     @Published private(set) var phase: AppTerminationPhase = .idle
 
     private var didReplyToShouldTerminate = false
-    private var terminationTask: Task<Void, Never>?
     private var watchdogTask: Task<Void, Never>?
     private var pendingSource: AppTerminationSource = .unknown
     private weak var pendingApplication: NSApplication?
@@ -47,14 +46,28 @@ final class AppTerminationCoordinator: ObservableObject {
         if phase == .terminating || phase == .forcedExit {
             return .terminateNow
         }
+        if phase == .playingFarewell || phase == .replying {
+            return .terminateLater
+        }
 
         phase = .requested
         pendingSource = source
         pendingApplication = application
-        didReplyToShouldTerminate = true
+        didReplyToShouldTerminate = false
 
+        phase = .savingState
         AgentWindowManager.shared.savePosition()
         AgentWindowManager.shared.cancelAllActiveWorkflowTasks()
+
+        if AppTerminationSpeechService.shared.playPreparedFarewell(completion: { [weak self] in
+            self?.finishAfterFarewell()
+        }) {
+            phase = .playingFarewell
+            startWatchdog()
+            return .terminateLater
+        }
+
+        didReplyToShouldTerminate = true
         stopAudioNonBlocking()
         stopEngineBestEffort()
 
@@ -78,7 +91,6 @@ final class AppTerminationCoordinator: ObservableObject {
 
     func handleApplicationWillTerminate() {
         watchdogTask?.cancel()
-        terminationTask?.cancel()
         phase = .terminating
         Task.detached(priority: .utility) {
             await AudioPlaybackService.shared.stopAll()
@@ -86,8 +98,7 @@ final class AppTerminationCoordinator: ObservableObject {
         }
     }
 
-    private func startTerminationSequence(source: AppTerminationSource) {
-        terminationTask?.cancel()
+    private func startWatchdog() {
         watchdogTask?.cancel()
 
         watchdogTask = Task(priority: .userInitiated) { [weak self] in
@@ -98,24 +109,14 @@ final class AppTerminationCoordinator: ObservableObject {
             }
         }
 
-        terminationTask = Task(priority: .userInitiated) { [weak self] in
-            guard let self else { return }
-            await self.runTerminationSequence(source: source)
-        }
     }
 
-    private func runTerminationSequence(source: AppTerminationSource) async {
-        phase = .savingState
-        AgentWindowManager.shared.savePosition()
-        AgentWindowManager.shared.cancelAllActiveWorkflowTasks()
-
+    private func finishAfterFarewell() {
+        guard phase == .playingFarewell else { return }
         phase = .stoppingAudio
         stopAudioNonBlocking()
-
         phase = .stoppingEngine
         stopEngineBestEffort()
-        try? await Task.sleep(nanoseconds: engineStopTimeoutNanoseconds)
-
         phase = .replying
         replyOnce()
     }
@@ -136,7 +137,6 @@ final class AppTerminationCoordinator: ObservableObject {
         guard !didReplyToShouldTerminate else { return }
         didReplyToShouldTerminate = true
         watchdogTask?.cancel()
-        terminationTask?.cancel()
         phase = .terminating
         (pendingApplication ?? NSApplication.shared).reply(toApplicationShouldTerminate: true)
     }

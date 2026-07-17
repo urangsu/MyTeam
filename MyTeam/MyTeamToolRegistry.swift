@@ -70,6 +70,20 @@ struct MyTeamToolDescriptor: Identifiable, Sendable, Hashable {
     let relatedProvider: ExternalProvider?
 }
 
+nonisolated enum MyTeamToolPreference {
+    private static let keyPrefix = "tool.enabled."
+
+    static func isEnabled(id: String, in defaults: UserDefaults = .standard) -> Bool {
+        let key = keyPrefix + id
+        guard defaults.object(forKey: key) != nil else { return true }
+        return defaults.bool(forKey: key)
+    }
+
+    static func setEnabled(_ enabled: Bool, id: String, in defaults: UserDefaults = .standard) {
+        defaults.set(enabled, forKey: keyPrefix + id)
+    }
+}
+
 enum MyTeamToolRegistry {
     nonisolated static let all: [MyTeamToolDescriptor] = [
         MyTeamToolDescriptor(

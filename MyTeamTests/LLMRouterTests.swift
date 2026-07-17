@@ -2,6 +2,7 @@ import XCTest
 import AppKit
 import PDFKit
 import Security
+import SpriteKit
 @testable import MyTeam
 
 // MARK: - LLMRouterTests
@@ -10,6 +11,108 @@ import Security
 // no network calls are made.
 
 final class LLMRouterTests: XCTestCase {
+
+    @MainActor
+    func test_characterSpriteScene_rebuildsFallbackAfterLateIdentityConfiguration() {
+        let scene = CharacterSpriteScene()
+        let view = SKView(frame: NSRect(x: 0, y: 0, width: 100, height: 140))
+
+        scene.didMove(to: view)
+        scene.configure(characterID: "missing-character", fallbackImageName: "치코_profile")
+        scene.loadAndPlay(state: .idle)
+
+        XCTAssertNotNil(scene.childNode(withName: "fallbackImageNode"))
+        XCTAssertFalse(scene.childNode(withName: "fallbackImageNode")?.isHidden ?? true)
+    }
+
+    @MainActor
+    func test_characterSpriteScene_didMoveIsIdempotent() {
+        let scene = CharacterSpriteScene()
+        scene.configure(characterID: "missing-character", fallbackImageName: "치코_profile")
+        let view = SKView(frame: NSRect(x: 0, y: 0, width: 100, height: 140))
+
+        scene.didMove(to: view)
+        scene.didMove(to: view)
+
+        XCTAssertEqual(scene.children.filter { $0.name == "characterNode" }.count, 1)
+        XCTAssertEqual(scene.children.filter { $0.name == "fallbackImageNode" }.count, 1)
+    }
+
+    @MainActor
+    func test_characterSpriteScene_reusesDecodedTexturesAcrossSceneRecreation() {
+        CharacterSpriteScene.resetSharedTextureCacheForTesting()
+        defer { CharacterSpriteScene.resetSharedTextureCacheForTesting() }
+
+        let first = CharacterSpriteScene(characterID: "치코", fallbackImageName: "치코_profile")
+        first.didMove(to: SKView(frame: NSRect(x: 0, y: 0, width: 60, height: 60)))
+        let firstCacheCount = CharacterSpriteScene.sharedTextureSetCountForTesting
+
+        let second = CharacterSpriteScene(characterID: "치코", fallbackImageName: "치코_profile")
+        second.didMove(to: SKView(frame: NSRect(x: 0, y: 0, width: 60, height: 60)))
+
+        XCTAssertGreaterThan(firstCacheCount, 0)
+        XCTAssertEqual(CharacterSpriteScene.sharedTextureSetCountForTesting, firstCacheCount)
+    }
+
+    func test_emotionalSupportMessageGetsExplicitlySupportiveGuidance() {
+        let mode = ConversationReplyPolicy.mode(for: "요즘 너무 힘들고 지쳤어")
+        let directive = ConversationReplyPolicy.promptDirective(for: mode)
+
+        XCTAssertTrue(directive.contains("감정을 먼저 인정"))
+        XCTAssertTrue(directive.contains("해결책부터 밀어붙이지"))
+    }
+
+    func test_emotionalSupportClassificationDoesNotCaptureOrdinaryWorkConcerns() {
+        XCTAssertEqual(ConversationReplyPolicy.mode(for: "광고와 구독 모델을 고민 중이야"), .casual)
+        XCTAssertEqual(ConversationReplyPolicy.mode(for: "요즘 마음이 너무 복잡하고 지쳤어"), .supportive)
+    }
+
+    func test_terminationFarewellPreferenceDefaultsOffAndPersists() {
+        let suiteName = "MyTeamTests.TerminationFarewell.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        XCTAssertFalse(TerminationFarewellPreference.isEnabled(in: defaults))
+        TerminationFarewellPreference.setEnabled(true, in: defaults)
+        XCTAssertTrue(TerminationFarewellPreference.isEnabled(in: defaults))
+    }
+
+    func test_toolPreferenceDefaultsOnAndPersistsExplicitDisable() {
+        let suiteName = "MyTeamTests.ToolPreference.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        XCTAssertTrue(MyTeamToolPreference.isEnabled(id: "weather.current", in: defaults))
+        MyTeamToolPreference.setEnabled(false, id: "weather.current", in: defaults)
+        XCTAssertFalse(MyTeamToolPreference.isEnabled(id: "weather.current", in: defaults))
+    }
+
+    func test_characterDialogueCatalogIncludesComfortAndFarewellVariety() {
+        let lines = CharacterDialogues.allEventDialogueLines()
+
+        for agentID in CharacterDialogues.eventDialogueAgentIDs {
+            let comfortLines = lines.filter {
+                $0.agentID == agentID && $0.event.rawValue == "userNeedsComfort"
+            }
+            let farewellLines = lines.filter {
+                $0.agentID == agentID && $0.event == .appWillQuit
+            }
+
+            XCTAssertGreaterThanOrEqual(comfortLines.count, 2, "missing comfort variety for \(agentID)")
+            XCTAssertGreaterThanOrEqual(farewellLines.count, 3, "missing farewell variety for \(agentID)")
+        }
+    }
+
+    func test_builtinPersonasAvoidHarshToneDirectives() {
+        let forbiddenToneMarkers = ["날카롭", "단호", "모든 시스템을 의심", "집요"]
+        let builtInPersonaText = agentPersonas.values.map(\.persona).joined(separator: "\n")
+        let presetText = jobPresets.map(\.defaultPrompt).joined(separator: "\n")
+
+        for marker in forbiddenToneMarkers {
+            XCTAssertFalse(builtInPersonaText.contains(marker), "harsh persona marker: \(marker)")
+            XCTAssertFalse(presetText.contains(marker), "harsh preset marker: \(marker)")
+        }
+    }
 
     @MainActor
     func test_defaultTeamRoster_matchesReleaseCharacterGallery() {
@@ -26,7 +129,7 @@ final class LLMRouterTests: XCTestCase {
     @MainActor
     func test_conversationReplyPolicy_distinguishesCasualWorkAndExplicitDetail() {
         XCTAssertEqual(ConversationReplyPolicy.mode(for: "안녕"), .quick)
-        XCTAssertEqual(ConversationReplyPolicy.mode(for: "오늘 너무 힘들었어"), .casual)
+        XCTAssertEqual(ConversationReplyPolicy.mode(for: "오늘 너무 힘들었어"), .supportive)
         XCTAssertEqual(ConversationReplyPolicy.mode(for: "삼성전자 공시와 재무를 정리해줘"), .work)
         XCTAssertEqual(ConversationReplyPolicy.mode(for: "이 원리를 하나씩 자세히 설명해줘"), .explicitDetail)
     }

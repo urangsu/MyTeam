@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 import Combine
 @preconcurrency import CoreLocation
-import MapKit
+@preconcurrency import MapKit
 
 enum SettingsSurfaceCopy {
     static let skillSearchPlaceholder = "스킬 이름이나 설명 검색"
@@ -167,36 +167,39 @@ private struct SettingsTabBar: View {
     @Binding var selection: Int
 
     var body: some View {
-        HStack(spacing: 4) {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("설정")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 10)
+                .padding(.bottom, 4)
+
             ForEach(tabs) { tab in
                 Button {
                     selection = tab.id
                 } label: {
-                    HStack(spacing: 5) {
+                    HStack(spacing: 10) {
                         Image(systemName: tab.icon)
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(.system(size: 13, weight: .medium))
+                            .frame(width: 18)
                         Text(tab.title)
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.system(size: 13, weight: selection == tab.id ? .semibold : .medium))
                             .lineLimit(1)
+                        Spacer(minLength: 0)
                     }
-                    .frame(maxWidth: .infinity, minHeight: 30)
-                    .padding(.horizontal, 6)
-                    .foregroundStyle(selection == tab.id ? Color.white : Color.primary)
+                    .frame(maxWidth: .infinity, minHeight: 34)
+                    .padding(.horizontal, 10)
+                    .foregroundStyle(selection == tab.id ? Color.accentColor : Color.primary)
                     .background(
-                        Capsule()
-                            .fill(selection == tab.id ? Color.accentColor : Color.clear)
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(selection == tab.id ? Color.accentColor.opacity(0.12) : Color.clear)
                     )
-                    .contentShape(Capsule())
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 32)
-        .padding(2)
-        .background(
-            Capsule()
-                .fill(Color(NSColor.controlBackgroundColor))
-        )
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -212,6 +215,7 @@ struct SettingsView: View {
     @AppStorage(TeamNameplateAppearanceSettings.paletteKey) private var teamNameplatePaletteRaw: String = TeamNameplateAppearanceSettings.defaultPalette.rawValue
     @AppStorage(TeamNameplateAppearanceSettings.borderModeKey) private var teamNameplateBorderModeRaw: String = TeamNameplateAppearanceSettings.defaultBorderMode.rawValue
     @AppStorage("agentWindowOpacity")     private var agentWindowOpacity: Double = 0.0
+    @AppStorage(TerminationFarewellPreference.key) private var terminationFarewellEnabled: Bool = false
 
     @State private var currentTab: Int = 0
     @State private var focusedConnectionProvider: ExternalProvider? = nil
@@ -236,50 +240,65 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                SettingsTabBar(tabs: settingsTabs, selection: $currentTab)
-
-                Button(action: { manager.hideSettingsWindow() }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
+        HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("MyTeam")
+                        .font(.system(size: 15, weight: .semibold))
+                    Text("환경설정")
+                        .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
-                .frame(width: 26, height: 26)
-                .help("설정 닫기")
-                .accessibilityLabel("설정 닫기")
+                .padding(.horizontal, 10)
+
+                SettingsTabBar(tabs: settingsTabs, selection: $currentTab)
+                Spacer(minLength: 0)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Color(NSColor.windowBackgroundColor))
+            .padding(12)
+            .frame(width: 176)
+            .background(.ultraThinMaterial)
 
             Divider()
 
-            // ── 탭 콘텐츠
-            Group {
-                switch currentTab {
-                case 0: homeDashboardTab
-                case 1: userSettingsTab
-                case 2: connectionCenterTab
-                case 3: skillsTab
-                case 4: charactersTab
-                case 5:
-                    if SettingsSurfacePolicy.showsVoiceLab(in: AppReleaseProfile.current) {
-                        TTSLabView()
-                    } else {
-                        homeDashboardTab
-                    }
-                default: homeDashboardTab
+            VStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(selectedSettingsTab.title)
+                        .font(.system(size: 24, weight: .semibold))
+                    Text(selectedSettingsTabSubtitle)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 24)
+                .padding(.top, 20)
+                .padding(.bottom, 16)
+
+                Divider()
+
+                Group {
+                    switch currentTab {
+                    case 0: homeDashboardTab
+                    case 1: userSettingsTab
+                    case 2: connectionCenterTab
+                    case 3: skillsTab
+                    case 4: charactersTab
+                    case 5:
+                        if SettingsSurfacePolicy.showsVoiceLab(in: AppReleaseProfile.current) {
+                            TTSLabView()
+                        } else {
+                            homeDashboardTab
+                        }
+                    default: homeDashboardTab
+                    }
+                }
+                .transaction { transaction in
+                    transaction.animation = nil
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
-            .transaction { transaction in
-                transaction.animation = nil
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .preferredColorScheme(manager.isDarkMode ? .dark : .light)
-        .frame(minWidth: 560, minHeight: 500)
+        .frame(minWidth: 720, minHeight: 560)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(NSColor.windowBackgroundColor))
         .onAppear {
@@ -288,25 +307,39 @@ struct SettingsView: View {
         .onChange(of: gps.locationText) { _, newVal in
             if !newVal.isEmpty { userLocation = newVal }
         }
+        .onChange(of: terminationFarewellEnabled) { _, enabled in
+            AppTerminationSpeechService.shared.preferenceDidChange(enabled: enabled, manager: manager)
+        }
+    }
+
+    private var selectedSettingsTab: SettingsTabItem {
+        settingsTabs.first(where: { $0.id == currentTab }) ?? settingsTabs[0]
+    }
+
+    private var selectedSettingsTabSubtitle: String {
+        switch currentTab {
+        case 0: return "MyTeam의 업무 기능과 현재 준비 상태를 확인합니다."
+        case 1: return "나와 MyTeam이 함께 일하고 대화하는 방식을 설정합니다."
+        case 2: return "AI와 외부 서비스 연결을 안전하게 관리합니다."
+        case 3: return "필요한 업무 능력만 선택해 사용합니다."
+        case 4: return "함께 일할 팀원과 캐릭터 구성을 관리합니다."
+        case 5: return "캐릭터 음성을 미리 듣고 조절합니다."
+        default: return "MyTeam 설정을 관리합니다."
+        }
     }
 
     // MARK: - Tab 1: 기능 홈
     private var homeDashboardTab: some View {
-        HomeDashboardView(onOpenConnection: { provider in
-            focusedConnectionProvider = provider
-            currentTab = 2
-        }, onOpenAssistantConnection: { provider in
-            focusedAssistantConnectorProvider = provider
-            currentTab = 2
-        }, onOpenWorkspace: { descriptor in
-            if descriptor.category == .system {
+        WorkCapabilitySettingsView(
+            onOpenConnection: { provider in
+                focusedConnectionProvider = provider
                 currentTab = 2
-            } else if descriptor.category == .voice {
-                currentTab = SettingsSurfacePolicy.showsVoiceLab(in: AppReleaseProfile.current) ? 5 : 3
-            } else {
-                currentTab = 3
+            },
+            onOpenAssistantConnection: { provider in
+                focusedAssistantConnectorProvider = provider
+                currentTab = 2
             }
-        })
+        )
     }
 
     // MARK: - Tab 2: 사용자 설정
@@ -426,11 +459,28 @@ struct SettingsView: View {
             Section("음성") {
                 Toggle(isOn: Binding(
                     get: { !manager.isSilentMode },
-                    set: { manager.isSilentMode = !$0 }
+                    set: { enabled in
+                        manager.isSilentMode = !enabled
+                        AppTerminationSpeechService.shared.preferenceDidChange(
+                            enabled: terminationFarewellEnabled,
+                            manager: manager
+                        )
+                    }
                 )) {
                     Label("음성 출력", systemImage: "waveform")
                 }
                 .disabled(!TTSProductPolicy.userFacingTTSEnabled)
+
+                Toggle(isOn: $terminationFarewellEnabled) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Label("종료 인사", systemImage: "moon.stars")
+                        Text("MyTeam을 종료할 때 팀장이 짧은 인사를 들려줍니다.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .disabled(!TTSProductPolicy.userFacingTTSEnabled)
+
                 if !TTSProductPolicy.userFacingTTSEnabled {
                     Text("Supertonic3가 MyTeam의 단일 TTS 엔진입니다. 모델·고지·런타임 조건이 충족되면 말하기 버튼에서 재생됩니다.")
                         .font(.caption)
@@ -630,6 +680,181 @@ struct SettingsView: View {
 
 }
 
+private struct WorkCapabilitySettingsView: View {
+    let onOpenConnection: (ExternalProvider?) -> Void
+    let onOpenAssistantConnection: (AssistantConnector.Provider?) -> Void
+
+    @State private var states: [String: ToolExecutionState] = [:]
+    @State private var isRefreshing = false
+
+    private var tools: [MyTeamToolDescriptor] {
+        MyTeamToolRegistry.userFacingTools
+            .filter { descriptor in
+                guard descriptor.category != .system, descriptor.category != .voice else { return false }
+                switch ProductSurfacePolicy.tier(for: descriptor) {
+                case .primary, .secondary, .naturalOnly, .connectionOnly:
+                    return descriptor.isImplemented
+                case .developerOnly, .hidden:
+                    return false
+                }
+            }
+            .sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("기능 상태")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("기능을 끄면 대화창과 협업창에서도 실행되지 않습니다.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button(action: refresh) {
+                        if isRefreshing {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Label("다시 확인", systemImage: "arrow.clockwise")
+                        }
+                    }
+                    .controlSize(.small)
+                    .disabled(isRefreshing)
+                }
+
+                VStack(spacing: 0) {
+                    ForEach(Array(tools.enumerated()), id: \.element.id) { index, descriptor in
+                        capabilityRow(descriptor)
+                        if index < tools.count - 1 {
+                            Divider().padding(.leading, 44)
+                        }
+                    }
+                }
+                .background(Color(NSColor.controlBackgroundColor), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                }
+            }
+            .padding(20)
+        }
+    }
+
+    private func capabilityRow(_ descriptor: MyTeamToolDescriptor) -> some View {
+        let isEnabled = MyTeamToolPreference.isEnabled(id: descriptor.id)
+        let state = states[descriptor.id]
+        return HStack(spacing: 12) {
+            Image(systemName: icon(for: descriptor.category))
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(isEnabled ? Color.accentColor : Color.secondary)
+                .frame(width: 30, height: 30)
+                .background(Color.accentColor.opacity(isEnabled ? 0.10 : 0.04), in: RoundedRectangle(cornerRadius: 8))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(descriptor.displayName)
+                    .font(.system(size: 13, weight: .medium))
+                Text(isEnabled ? state.map(statusText(for:)) ?? "확인 전" : "꺼짐")
+                    .font(.caption)
+                    .foregroundStyle(statusColor(for: state, isEnabled: isEnabled))
+            }
+
+            Spacer(minLength: 12)
+
+            if let state {
+                connectionButton(for: state)
+            }
+
+            Toggle("", isOn: Binding(
+                get: { MyTeamToolPreference.isEnabled(id: descriptor.id) },
+                set: { enabled in
+                    MyTeamToolPreference.setEnabled(enabled, id: descriptor.id)
+                    if enabled {
+                        Task { await refreshState(for: descriptor) }
+                    } else {
+                        states[descriptor.id] = .unavailable("설정에서 꺼져 있습니다.")
+                    }
+                }
+            ))
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .accessibilityLabel("\(descriptor.displayName) 사용")
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+    }
+
+    @ViewBuilder
+    private func connectionButton(for state: ToolExecutionState) -> some View {
+        switch state {
+        case .needsConnection(let provider), .needsValidation(let provider):
+            Button("연결 확인") { onOpenConnection(provider) }
+                .controlSize(.small)
+        case .needsAssistantConnection(let provider):
+            Button("연결 확인") { onOpenAssistantConnection(provider) }
+                .controlSize(.small)
+        default:
+            EmptyView()
+        }
+    }
+
+    private func statusText(for state: ToolExecutionState) -> String {
+        switch state {
+        case .idle: return "사용 가능"
+        case .checkingReadiness: return "확인 중"
+        case .needsConnection, .needsAssistantConnection: return "연결 필요"
+        case .needsValidation: return "연결 점검 필요"
+        case .needsApproval: return "실행할 때 승인 필요"
+        case .unavailable(let reason): return reason
+        case .failed(let failure): return failure.message
+        default: return state.displayLabel
+        }
+    }
+
+    private func statusColor(for state: ToolExecutionState?, isEnabled: Bool) -> Color {
+        guard isEnabled else { return .secondary }
+        guard let state else { return .secondary }
+        switch state {
+        case .idle: return .secondary
+        case .needsConnection, .needsAssistantConnection, .needsValidation, .needsApproval: return .orange
+        case .failed, .unavailable: return .red
+        default: return .secondary
+        }
+    }
+
+    private func icon(for category: MyTeamToolCategory) -> String {
+        switch category {
+        case .briefing: return "sun.max"
+        case .document: return "doc.text"
+        case .spreadsheet: return "tablecells"
+        case .externalInfo: return "globe.asia.australia"
+        case .calendar: return "calendar"
+        case .mail: return "envelope"
+        case .voice: return "waveform"
+        case .system: return "gearshape"
+        }
+    }
+
+    private func refresh() {
+        Task { await refreshStates() }
+    }
+
+    private func refreshStates() async {
+        await MainActor.run { isRefreshing = true }
+        for descriptor in tools {
+            await refreshState(for: descriptor)
+        }
+        await MainActor.run { isRefreshing = false }
+    }
+
+    private func refreshState(for descriptor: MyTeamToolDescriptor) async {
+        let state = await ToolExecutionRouter.shared.readiness(for: descriptor)
+        await MainActor.run { states[descriptor.id] = state }
+    }
+}
+
 // MARK: - RuntimeDiagnosticsPlaceholder
 struct RuntimeDiagnosticsPlaceholder: View {
     @ObservedObject var manager: AgentWindowManager
@@ -687,9 +912,6 @@ struct RuntimeDiagnosticsPlaceholder: View {
             }
         }
         .padding(.vertical, 8)
-        .onAppear {
-            refreshDiagnostics()
-        }
     }
 
     private func refreshDiagnostics() {

@@ -42,13 +42,18 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
     // ── 전역 설정 ──
     @AppStorage("isDarkMode") var isDarkMode: Bool = false
     @AppStorage("MyTeam.isBeginnerMode") var isBeginnerMode: Bool = false
-    @AppStorage("isVoiceMode") var isVoiceMode: Bool = true
+    @AppStorage("isVoiceMode") var isVoiceMode: Bool = true {
+        didSet {
+            AppTerminationSpeechService.shared.refreshForCurrentTeamLeader(manager: self)
+        }
+    }
     @AppStorage("isSilentMode") var isSilentMode: Bool = false {
         didSet {
             // 무음 모드 켜지면 즉시 모든 음성 중단
             if isSilentMode {
                 SpeechManager.shared.stopSpeaking()
             }
+            AppTerminationSpeechService.shared.refreshForCurrentTeamLeader(manager: self)
         }
     }
     @AppStorage("userLocation") var userLocation: String = ""
@@ -1374,6 +1379,7 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
               let rid = targetID,
               let index = rooms.firstIndex(where: { $0.id == rid }) else { return }
         rooms[index].leaderAgentID = agentID
+        AppTerminationSpeechService.shared.refreshForCurrentTeamLeader(manager: self)
     }
 
     struct AgentMentionResolution {
@@ -1520,8 +1526,8 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         }
         
         let screenRect = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 800, height: 600)
-        let width: CGFloat = 620
-        let height: CGFloat = 680
+        let width: CGFloat = 820
+        let height: CGFloat = 720
 
         let window = NSWindow(
             contentRect: NSRect(
@@ -1536,7 +1542,7 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         )
         window.title = "MyTeam 설정"
         window.level = .normal
-        window.minSize = NSSize(width: 540, height: 500)
+        window.minSize = NSSize(width: 720, height: 560)
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.identifier = NSUserInterfaceItemIdentifier("MyTeam.settings_window")
@@ -2119,6 +2125,7 @@ class AgentWindowManager: NSObject, ObservableObject, NSWindowDelegate {
         selectedTeamWorkroomID = roomID
         activePersonalAgentID = nil
         markRoomRead(roomID)  // Round 241C: 팀 워크룸 선택 시 읽음 처리
+        AppTerminationSpeechService.shared.refreshForCurrentTeamLeader(manager: self)
     }
 
     /// Round 241B: 에이전트별 개인 대화 조회

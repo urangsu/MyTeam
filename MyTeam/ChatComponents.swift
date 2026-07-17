@@ -27,8 +27,13 @@ enum KoreanText {
 nonisolated enum ConversationReplyMode: Sendable, Equatable {
     case quick
     case casual
+    case supportive
     case work
     case explicitDetail
+
+    nonisolated var usesCasualPresentation: Bool {
+        self == .quick || self == .casual || self == .supportive
+    }
 }
 
 enum ConversationReplyPolicy {
@@ -52,6 +57,13 @@ enum ConversationReplyPolicy {
         ]) {
             return .work
         }
+        if containsAny(normalized, [
+            "너무 힘들", "힘들었", "지쳤", "지쳐", "우울", "외롭", "속상", "괴롭",
+            "무기력", "번아웃", "울고 싶", "눈물이", "마음이 무거", "마음이 너무 복잡",
+            "걱정돼", "걱정이 많", "잠을 못", "잠 못", "답답해서"
+        ]) {
+            return .supportive
+        }
         if normalized.count <= 12 && containsAny(normalized, [
             "안녕", "고마워", "감사", "응", "네", "그래", "알겠어", "좋아", "잘 자", "잘자"
         ]) {
@@ -66,6 +78,8 @@ enum ConversationReplyPolicy {
             return "질문을 해결하는 가장 짧고 자연스러운 한 문장으로 답하세요. Markdown 강조 기호는 쓰지 마세요."
         case .casual:
             return "일상 대화는 카카오톡처럼 짧고 자연스럽게 답하세요. 한 문단에 1~2문장만 쓰고, 필요한 내용만 남기며 Markdown 강조 기호는 쓰지 마세요."
+        case .supportive:
+            return "사용자의 감정을 먼저 인정하고 따뜻하게 곁을 지켜주세요. 감정을 축소하거나 원인을 단정하거나 해결책부터 밀어붙이지 마세요. 짧고 진심 어린 1~2문장으로 답하고, 필요하면 부담 없는 질문을 하나만 하며 Markdown 강조 기호는 쓰지 마세요."
         case .work:
             return "질문을 해결하는 가장 짧고 완전한 답변을 작성하세요. 필요한 근거와 다음 행동만 포함하고 사용자가 요청한 형식을 우선하세요."
         case .explicitDetail:
@@ -173,7 +187,7 @@ enum ConversationTextSanitizer {
     /// Plain casual bubbles do not expose model-oriented Markdown emphasis markers.
     /// Work and detailed responses keep Markdown because they render in structured views.
     nonisolated static func sanitize(_ text: String, mode: ConversationReplyMode) -> String {
-        guard mode == .quick || mode == .casual else { return text }
+        guard mode.usesCasualPresentation else { return text }
         return removingPairedEmphasis(
             removingPairedEmphasis(text, marker: "**"),
             marker: "__"
@@ -216,7 +230,7 @@ enum CasualBubbleSegmenter {
         let sanitized = ConversationTextSanitizer.sanitize(text, mode: mode)
         let normalized = normalizedForComparison(sanitized)
         guard !normalized.isEmpty else { return [] }
-        guard mode == .quick || mode == .casual else { return [text.trimmingCharacters(in: .whitespacesAndNewlines)] }
+        guard mode.usesCasualPresentation else { return [text.trimmingCharacters(in: .whitespacesAndNewlines)] }
         guard !normalized.contains("```") else { return [text.trimmingCharacters(in: .whitespacesAndNewlines)] }
 
         var units = sentenceUnits(from: normalized)
@@ -231,7 +245,7 @@ enum CasualBubbleSegmenter {
     nonisolated static func streamingSegments(from text: String, mode: ConversationReplyMode) -> [String] {
         let sanitized = ConversationTextSanitizer.sanitize(text, mode: mode)
         let trimmed = sanitized.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard mode == .casual else { return trimmed.isEmpty ? [] : [trimmed] }
+        guard mode == .casual || mode == .supportive else { return trimmed.isEmpty ? [] : [trimmed] }
         let normalized = normalizedForComparison(sanitized)
         guard !normalized.isEmpty else { return [] }
         return cappedSegments(sentenceUnits(from: normalized))

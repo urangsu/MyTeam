@@ -21,7 +21,17 @@ struct SpriteAgentView: View {
     // SpriteKit 씬은 한 번 생성되고 재사용됩니다.
     // @StateObject 대신 직접 인스턴스를 들고 있습니다.
     // (SpriteKit은 SwiftUI의 생명주기와 분리되어 관리됩니다)
-    @State private var scene: CharacterSpriteScene = CharacterSpriteScene()
+    @State private var scene: CharacterSpriteScene
+
+    init(characterID: String, fallbackImageName: String, state: AnimationState) {
+        self.characterID = characterID
+        self.fallbackImageName = fallbackImageName
+        self.state = state
+        _scene = State(initialValue: CharacterSpriteScene(
+            characterID: characterID,
+            fallbackImageName: fallbackImageName
+        ))
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -38,26 +48,39 @@ struct SpriteAgentView: View {
             .onChange(of: geo.size) { _, newSize in
                 updateSceneSize(newSize)
             }
+            .onDisappear {
+                scene.prepareForRemoval()
+            }
         }
         // state 값이 변경될 때마다 씬에 새 상태를 전달합니다.
         .onChange(of: state) { _, newState in
             scene.loadAndPlay(state: newState)
         }
+        .onChange(of: characterID) { _, _ in
+            configureIdentity()
+        }
+        .onChange(of: fallbackImageName) { _, _ in
+            configureIdentity()
+        }
     }
 
     // MARK: - 씬 초기화
     private func setupScene(size: CGSize) {
-        // 캐릭터 ID와 폴백 이미지 설정
-        scene.characterID = characterID
-        scene.fallbackImageName = fallbackImageName
-
         // 씬 크기: SpriteView 프레임과 동일하게 맞춥니다.
         scene.size = sanitizedSceneSize(size)
 
         // 배경 투명
         scene.backgroundColor = .clear
 
+        // 캐릭터 ID와 폴백 이미지 설정
+        scene.configure(characterID: characterID, fallbackImageName: fallbackImageName)
+
         // 초기 상태 재생
+        scene.loadAndPlay(state: state)
+    }
+
+    private func configureIdentity() {
+        scene.configure(characterID: characterID, fallbackImageName: fallbackImageName)
         scene.loadAndPlay(state: state)
     }
 

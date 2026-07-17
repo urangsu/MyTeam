@@ -950,6 +950,18 @@ struct TerminationFarewellRequest: Sendable {
     let rate: Float
 }
 
+nonisolated enum TerminationFarewellPreference {
+    static let key = "terminationFarewellEnabled"
+
+    static func isEnabled(in defaults: UserDefaults = .standard) -> Bool {
+        defaults.bool(forKey: key)
+    }
+
+    static func setEnabled(_ enabled: Bool, in defaults: UserDefaults = .standard) {
+        defaults.set(enabled, forKey: key)
+    }
+}
+
 @MainActor
 final class AppTerminationSpeechService {
     static let shared = AppTerminationSpeechService()
@@ -961,9 +973,9 @@ final class AppTerminationSpeechService {
     private init() {}
 
     func scheduleInitialPrewarm(manager: AgentWindowManager) {
-        guard TTSProductPolicy.userFacingTTSEnabled else {
-            preparedFarewell = nil
-            prepareTask?.cancel()
+        guard TTSProductPolicy.userFacingTTSEnabled,
+              TerminationFarewellPreference.isEnabled() else {
+            clearPreparedFarewell()
             return
         }
         prepareTask?.cancel()
@@ -975,8 +987,9 @@ final class AppTerminationSpeechService {
     }
 
     func refreshForCurrentTeamLeader(manager: AgentWindowManager) {
-        guard TTSProductPolicy.userFacingTTSEnabled else {
-            preparedFarewell = nil
+        guard TTSProductPolicy.userFacingTTSEnabled,
+              TerminationFarewellPreference.isEnabled() else {
+            clearPreparedFarewell()
             return
         }
         guard manager.isVoiceMode else {
@@ -992,7 +1005,7 @@ final class AppTerminationSpeechService {
             return
         }
         guard let leader = manager.fallbackTeamLeader(for: manager.selectedTeamWorkroomID),
-              let line = CharacterDialogues.leaderLine(for: leader.id, event: .appWillQuit) else {
+              let line = CharacterDialogues.randomLeaderLine(for: leader.id, event: .appWillQuit) else {
             preparedFarewell = nil
             return
         }
@@ -1024,7 +1037,8 @@ final class AppTerminationSpeechService {
     }
 
     func playPreparedFarewell(completion: @MainActor @escaping @Sendable () -> Void) -> Bool {
-        guard TTSProductPolicy.userFacingTTSEnabled else { return false }
+        guard TTSProductPolicy.userFacingTTSEnabled,
+              TerminationFarewellPreference.isEnabled() else { return false }
         guard !isTerminationPlaybackPending else { return true }
         guard AgentWindowManager.shared.isVoiceMode, !AgentWindowManager.shared.isSilentMode else { return false }
         guard let prepared = preparedFarewell, !prepared.samples.isEmpty else { return false }
@@ -1035,6 +1049,7 @@ final class AppTerminationSpeechService {
 
         isTerminationPlaybackPending = true
         Task(priority: .userInitiated) {
+            await AudioPlaybackService.shared.stopAll()
             let didPlay = await AudioPlaybackService.shared.playFloatSamples(
                 samples: prepared.samples,
                 sampleRate: prepared.sampleRate,
@@ -1044,19 +1059,28 @@ final class AppTerminationSpeechService {
                 rate: prepared.rate,
                 onPlaybackStarted: nil
             )
-            if !didPlay {
-                await MainActor.run {
+            await MainActor.run {
+                if !didPlay {
                     AppLog.warning("[AppTerminationSpeech] prepared farewell playback failed")
-                    self.finishTermination(completion: completion)
                 }
+                self.finishTermination(completion: completion)
             }
         }
-
-        Task(priority: .userInitiated) { @MainActor in
-            try? await Task.sleep(nanoseconds: 1_200_000_000)
-            self.finishTermination(completion: completion)
-        }
         return true
+    }
+
+    func preferenceDidChange(enabled: Bool, manager: AgentWindowManager) {
+        if enabled {
+            refreshForCurrentTeamLeader(manager: manager)
+        } else {
+            clearPreparedFarewell()
+        }
+    }
+
+    private func clearPreparedFarewell() {
+        prepareTask?.cancel()
+        prepareTask = nil
+        preparedFarewell = nil
     }
 
     private func currentTeamLeaderAgentID() -> String? {

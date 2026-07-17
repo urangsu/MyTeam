@@ -19,6 +19,7 @@ EVENTS = [
     "moved",
     "settled",
     "taskStarted",
+    "userNeedsComfort",
     "appWillQuit",
     "taskCompleted",
     "taskFailedRecoverable",
