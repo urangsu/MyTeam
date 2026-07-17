@@ -474,7 +474,7 @@
       },
       "completion_evidence": {
         "required": true,
-      "commit_sha": "7196256, 47ff4ae, 1cd2452, 7409b68, ffa1a1e, da61c03, c3c5df2, 29a0adf, 0d91ebb, 12b158b, 3ac01b0",
+      "commit_sha": "7196256, 47ff4ae, 1cd2452, 7409b68, ffa1a1e, da61c03, c3c5df2, 29a0adf, 0d91ebb, 12b158b, 3ac01b0, 86f379a",
         "files_changed": [
           "MyTeam/Assets.xcassets/AppIcon.appiconset/Contents.json",
           "MyTeam/Assets.xcassets/AppIcon.appiconset/*.png",
@@ -495,6 +495,9 @@
         "MyTeam/TeamCollaborationStatus.swift",
           "MyTeam/TeamCollaborationStatusProvider.swift",
           "MyTeam/AgentWindowManager.swift",
+          "MyTeam/MyTeamToolRegistry.swift",
+          "MyTeam/ToolExecutionRouter.swift",
+          "MyTeam/MyTeam.Developer.entitlements",
           "MyTeam/ArtifactCardView.swift",
           "MyTeam/WorkspaceFileActions.swift",
           "MyTeam/OpenURLTool.swift",
@@ -503,7 +506,7 @@
         "MyTeamTests/PublicAPIConnectorValidatorTests.swift",
         "MyTeamTests/LLMRouterTests.swift"
       ],
-      "validation_summary": "2026-07-17: Invented idle activity and fake main-task copy are removed; character entitlement labels and default team IDs are consistent. Artifact cards now distinguish local path copy from cloud link copy, expose open/copy failures, and OpenURL/copy controls do not show success when the OS rejects the action. Debug builds, result-presentation validation, focused character/status tests, and the character dialogue validator passed. Partial remains because a normally signed Release UI pass and production Keychain/real-audio listening checks remain open.",
+      "validation_summary": "2026-07-17: Commit 86f379a replaces the settings dashboard with a quiet native sidebar hierarchy. The Work tab contains only capability switches, readiness state, and explicit recheck; execution and query inputs remain in conversation/collaboration surfaces. Switches fail closed in ToolExecutionRouter, readiness does not scan automatically, the farewell preference defaults off, and the Debug entitlement no longer requests blanket Desktop access. Manual walkthrough covered all settings tabs. XCTest 152/152, release validators, clean Debug build-for-testing, and universal Release passed. Partial remains because detailed Figma cards hit the Starter MCP limit and production-signed Keychain/audio QA remains open.",
         "screenshots": []
       },
       "notes": [
@@ -514,7 +517,9 @@
       "2026-07-17: Idle character status copy now describes availability only. It no longer implies separate background work or fabricated elapsed effort.",
       "2026-07-17: The team panel no longer labels idle/completed/failed states as active collaboration or displays a hard-coded project as the user's current task.",
       "2026-07-17: All 11 built-in characters are consistently labeled as included, while StoreKit-backed additional characters remain hidden or coming soon in Release.",
-      "2026-07-17: Cloud artifact copy uses the URL, local artifact copy uses the Workspace path, and failed OS open/pasteboard actions no longer display success feedback."
+      "2026-07-17: Cloud artifact copy uses the URL, local artifact copy uses the Workspace path, and failed OS open/pasteboard actions no longer display success feedback.",
+      "2026-07-17: Settings separates configuration from execution. Work capability rows do not accept task input and never execute work; conversation and collaboration windows remain the execution surfaces.",
+      "2026-07-17: Settings design source: https://www.figma.com/design/qjXv1JMqXlwtleklnPloX4. The native shell and hierarchy were generated; detailed card generation remains incomplete because the Starter plan exhausted its MCP call allowance."
       ]
     },
     {
@@ -1323,7 +1328,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "e879406, 261d3c5, b643b05, f0392b0, 183ff68, 2302093, 18f3046, 7fc7d93, c5c849c, a7de3b4, ee44f59, b0dea66, 7522b8f, c28ce6b, 3845a96, d9fc0ce, ef7720b",
+        "commit_sha": "e879406, 261d3c5, b643b05, f0392b0, 183ff68, 2302093, 18f3046, 7fc7d93, c5c849c, a7de3b4, ee44f59, b0dea66, 7522b8f, c28ce6b, 3845a96, d9fc0ce, ef7720b, 86f379a",
         "files_changed": [
           "MyTeam/AppTerminationCoordinator.swift",
           "MyTeam/MyTeamApp.swift",
@@ -1367,7 +1372,7 @@
           "scripts/validate_worker_production_health.py",
           "scripts/validate_myteam_release.py"
         ],
-        "validation_summary": "2026-07-17: Commits b0dea66, 7522b8f, c28ce6b, 3845a96, d9fc0ce, and ef7720b remove global workflow ownership, ignored artifact-registration results, false completion reporting, completion-time room reassignment, and ignored composite artifact persistence failure. Production artifact writers withhold saved-success on index failure. Standalone and composite artifacts retain explicit start-time room/work IDs, and the chat discloses when a composite result could not be saved as a file. Ownership/completion/presentation regression tests plus architecture and routing validators passed. Manual two-room and artifact-recovery UI QA remain open, so this task stays partial.",
+        "validation_summary": "2026-07-17: Commit 86f379a adds an opt-in termination farewell with prepared-audio ownership, exactly-once terminateLater reply, and an eight-second fail-safe. Disabling the preference prevents prewarm, refresh, and playback. The updated architecture validator, XCTest 152/152, Debug build-for-testing, universal Release, and manual quit/relaunch passed. Partial remains because the enabled path still needs real Supertonic3 listening during active playback and interruption.",
         "screenshots": []
       },
       "notes": [
@@ -2430,7 +2435,7 @@
       },
       "completion_evidence": {
         "required": true,
-      "commit_sha": "81513fd, ebdfd8a, c9a3dc5, b710734, a770a72, 4e4d996",
+      "commit_sha": "81513fd, ebdfd8a, c9a3dc5, b710734, a770a72, 4e4d996, 86f379a",
       "files_changed": [
         "MyTeam/CharacterVoiceConfig.swift",
         "MyTeam/CharacterVoiceProfile.swift",
@@ -2472,7 +2477,7 @@
           "MyTeam/AppTerminationCoordinator.swift",
           "MyTeamTests/LLMRouterTests.swift"
         ],
-      "validation_summary": "2026-07-17: Commit 4e4d996 corrects Kay/Kei voice identity, clamps Chiko and Rex base pitch to the documented artifact-safe ±100-cent range, and adds regression tests across all voice profiles. BubbleSpeechSynthesizerTests 23/23, TTS runtime contracts, and BubbleSpeech smoke passed. Partial remains because overlapping-stream interruption, audible sentence transitions, and Luna/Chiko prosody still require listening QA.",
+      "validation_summary": "2026-07-17: Commit 86f379a adds targeted supportive classification and warm dialogue coverage without rewriting TTS text, removes hostile persona hints, serializes prepared quit playback, and makes varied farewell speech opt-in. Dialogue coverage is 198 lines across 11 characters and 13 events. XCTest 152/152, TTS/release validators, Debug build-for-testing, and universal Release passed. Partial remains because overlapping-stream interruption, enabled quit farewell, audible sentence transitions, and Luna/Chiko prosody still require listening QA.",
         "screenshots": []
       },
       "notes": [
@@ -2648,6 +2653,74 @@
         "The copy action always uses the complete stored message text, not the rendered preview.",
         "The earlier awkward Luna greeting was traced to always-on role and specialty hints plus unverified Debug model discovery, not to the provider API capability itself.",
         "APPTERM, NW, ART, and HOME release evidence remain unchanged until manual QA is run."
+      ]
+    },
+    {
+      "id": "P0-028-character-sprite-runtime-stability",
+      "priority": "P0",
+      "status": "partial",
+      "category": "character-runtime",
+      "title": "Keep character sprites visible, bounded, and reusable",
+      "why": "Repeated character interaction could recreate SpriteKit resources, a missing frame could leave a character blank, and inconsistent animation frame sizes could briefly enlarge one source image. These failures are visible product defects and can grow memory during long sessions.",
+      "scope": {
+        "include": [
+          "Idempotent CharacterSpriteScene lifecycle",
+          "Stable animation canvas size",
+          "Fallback texture recovery",
+          "Bounded shared texture-set reuse",
+          "Explicit SpriteAgentView teardown",
+          "Consistent collaboration-seat character frame"
+        ],
+        "exclude": [
+          "New character art",
+          "DLC sprite production",
+          "Character role or persona redesign",
+          "Sprite atlas migration"
+        ]
+      },
+      "acceptance_criteria": [
+        "Repeated single clicks do not make a character disappear",
+        "Animation frames keep one stable rendered size",
+        "Scene recreation reuses a bounded texture set",
+        "Leaving the view releases scene-owned actions and nodes",
+        "A missing resource renders a recoverable placeholder instead of corrupting scene state"
+      ],
+      "failure_conditions": [
+        "CharacterSpriteScene or SKSpriteNode count grows after repeated equivalent interactions",
+        "One animation frame appears enlarged relative to the seat",
+        "A configured fallback remains blank after late identity assignment",
+        "Manual leak evidence is claimed from a run that also starts Supertonic3"
+      ],
+      "verification": {
+        "commands": [
+          "bash scripts/validate_sprites.sh",
+          "python3 scripts/validate_myteam_release.py",
+          "git diff --check",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Debug -destination 'platform=OS X,arch=arm64' test",
+          "xcodebuild -project MyTeam/MyTeam.xcodeproj -scheme MyTeam -configuration Release -destination 'generic/platform=macOS' ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO build"
+        ],
+        "manual_checks": [
+          "Single-click the same character at least 24 times without triggering TTS",
+          "Compare SpriteKit object counts before and after the interaction loop",
+          "Inspect the process with leaks",
+          "Exercise every bundled animation state and look for a mismatched frame crop"
+        ]
+      },
+      "completion_evidence": {
+        "required": true,
+        "commit_sha": "86f379a",
+        "files_changed": [
+          "MyTeam/CharacterSpriteScene.swift",
+          "MyTeam/SpriteAgentView.swift",
+          "MyTeam/AgentSeatView.swift",
+          "MyTeamTests/LLMRouterTests.swift"
+        ],
+        "validation_summary": "2026-07-17: Commit 86f379a makes scene setup and teardown idempotent, gives animation sets a stable maximum frame size, restores fallback nodes, and reuses at most four shared texture sets. In a TTS-isolated 24-click run, CharacterSpriteScene stayed at 2, SKSpriteNode at 2, SKTexture at 39, texture pixel data at 4 MB, footprint ended below its 192.9 MB peak, and leaks reported 0 bytes. XCTest 152/152, sprite validation, Debug build-for-testing, and universal Release passed. Partial remains because every emotion/state and the missing DLC art folders still need a full visual sweep.",
+        "screenshots": []
+      },
+      "notes": [
+        "Fast repeated clicks can intentionally trigger the existing double-click voice interaction; that loads Supertonic3 and must not be counted as SpriteKit-only leak evidence.",
+        "The current sprite validator still reports three design-pending DLC runtime folders for Sena, Kai, and Yuna."
       ]
     }
   ]
