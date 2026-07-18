@@ -1328,7 +1328,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "e879406, 261d3c5, b643b05, f0392b0, 183ff68, 2302093, 18f3046, 7fc7d93, c5c849c, a7de3b4, ee44f59, b0dea66, 7522b8f, c28ce6b, 3845a96, d9fc0ce, ef7720b, 86f379a",
+        "commit_sha": "e879406, 261d3c5, b643b05, f0392b0, 183ff68, 2302093, 18f3046, 7fc7d93, c5c849c, a7de3b4, ee44f59, b0dea66, 7522b8f, c28ce6b, 3845a96, d9fc0ce, ef7720b, 86f379a, 4d8c363",
         "files_changed": [
           "MyTeam/AppTerminationCoordinator.swift",
           "MyTeam/MyTeamApp.swift",
@@ -1372,7 +1372,7 @@
           "scripts/validate_worker_production_health.py",
           "scripts/validate_myteam_release.py"
         ],
-        "validation_summary": "2026-07-17: Commit 86f379a adds an opt-in termination farewell with prepared-audio ownership, exactly-once terminateLater reply, and an eight-second fail-safe. Disabling the preference prevents prewarm, refresh, and playback. The updated architecture validator, XCTest 152/152, Debug build-for-testing, universal Release, and manual quit/relaunch passed. Partial remains because the enabled path still needs real Supertonic3 listening during active playback and interruption.",
+        "validation_summary": "2026-07-18: Commit 4d8c363 reduces the termination fail-safe to 4.5 seconds so AppKit teardown stays inside the five-second APPTERM contract, and makes the validator reject future watchdog drift above five seconds. XCTest 156/156, release validators, Debug test build, and universal Release passed. Partial remains because the enabled farewell path still needs current-build Supertonic3 listening and APPTERM manual evidence.",
         "screenshots": []
       },
       "notes": [
@@ -1384,7 +1384,8 @@
         "2026-07-17: Architecture validation now rejects ignored artifact-registration results and duplicate XLSX/PPTX self-registration.",
         "2026-07-17: Workflow summaries distinguish completed, partially completed, approval-waiting, failed, and unexecuted states; only a registered artifact can trigger the artifact-completion notification.",
         "2026-07-17: Tool artifacts and character completion reactions retain the room selected when execution began instead of borrowing whichever room is selected when async work finishes.",
-        "2026-07-17: Composite work uses its explicit parent work ID and warns in chat when the result body exists but file/index persistence fails."
+        "2026-07-17: Composite work uses its explicit parent work ID and warns in chat when the result body exists but file/index persistence fails.",
+        "2026-07-18: The termination watchdog now reserves 0.5 seconds of the five-second contract for AppKit reply and process teardown."
       ]
     },
     {
@@ -2622,7 +2623,7 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "54a8756, e1dab81, 1d3ba52, c9a3dc5, b710734",
+        "commit_sha": "54a8756, e1dab81, 1d3ba52, c9a3dc5, b710734, 4d8c363",
         "files_changed": [
           "MyTeam/AgentChatView.swift",
           "MyTeam/AIModelPolicy.swift",
@@ -2645,7 +2646,7 @@
           "scripts/validate_conversation_presentation.py",
           "scripts/validate_myteam_release.py"
         ],
-        "validation_summary": "2026-07-16: Commit b710734 preserves meaningful single asterisks while removing paired casual emphasis, handles SSE whitespace, closing quotes, numbered sentences, and email addresses behaviorally, aligns casual bubble splitting with the 100-character typewriter ceiling, and persists an explicit presentation style so work messages are never slowed by the casual typewriter. The full 109-test suite, release validators, git diff check, Debug build, and universal Release build passed. Status remains partial until a normally signed runtime confirms perceived pacing, audible sentence transitions, copy interactions, and real pointer behavior.",
+        "validation_summary": "2026-07-18: Commit 4d8c363 removes explicitly disabled tools from both the LLM semantic manifest and validated plans, preventing avoidable planner calls and execute-then-disabled results. XCTest 156/156, release validators, Debug test build, and universal Release passed. Status remains partial until a normally signed runtime confirms perceived pacing, audible sentence transitions, copy interactions, and real pointer behavior.",
         "screenshots": []
       },
       "notes": [
@@ -2708,19 +2709,20 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "86f379a",
+        "commit_sha": "86f379a, 4d8c363",
         "files_changed": [
           "MyTeam/CharacterSpriteScene.swift",
           "MyTeam/SpriteAgentView.swift",
           "MyTeam/AgentSeatView.swift",
           "MyTeamTests/LLMRouterTests.swift"
         ],
-        "validation_summary": "2026-07-17: Commit 86f379a makes scene setup and teardown idempotent, gives animation sets a stable maximum frame size, restores fallback nodes, and reuses at most four shared texture sets. In a TTS-isolated 24-click run, CharacterSpriteScene stayed at 2, SKSpriteNode at 2, SKTexture at 39, texture pixel data at 4 MB, footprint ended below its 192.9 MB peak, and leaks reported 0 bytes. XCTest 152/152, sprite validation, Debug build-for-testing, and universal Release passed. Partial remains because every emotion/state and the missing DLC art folders still need a full visual sweep.",
+        "validation_summary": "2026-07-18: Commit 4d8c363 keeps CharacterSpriteScene on a fixed 512-point logical canvas while constraining only the backing SKView to the 60-point seat, preventing a panel reattach from exposing a 500x502 source frame at 1:1 scale. A fresh Debug launch showed the complete Chiko frame; heap counts remained CharacterSpriteScene 2, SKSpriteNode 2, SKTexture 39, and 4 MB texture pixel data. leaks reported two CFData allocations totaling 112 bytes, with no SpriteKit root leak identified. XCTest 156/156, sprite validator, release validators, Debug test build, and universal Release passed. Partial remains because repeated panel moves, every emotion/state, and missing DLC art folders need a full visual sweep.",
         "screenshots": []
       },
       "notes": [
         "Fast repeated clicks can intentionally trigger the existing double-click voice interaction; that loads Supertonic3 and must not be counted as SpriteKit-only leak evidence.",
-        "The current sprite validator still reports three design-pending DLC runtime folders for Sena, Kai, and Yuna."
+        "The current sprite validator still reports three design-pending DLC runtime folders for Sena, Kai, and Yuna.",
+        "2026-07-18: Runtime inspection attributed the enlarged Chiko frame to scene/view coordinate drift during SKView reattachment, not corrupt source PNGs."
       ]
     }
   ]
