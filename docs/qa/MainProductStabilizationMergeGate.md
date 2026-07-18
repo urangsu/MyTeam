@@ -3,8 +3,8 @@
 ## 1. Branch Summary
 
 - Branch policy: `main` is the integration branch. `release/*` is the strict Release Candidate gate.
-- Current HEAD reviewed: `837276699a11268112a09c78bc1bb60bb954c781`.
-- Current evidence timestamp: `2026-07-06 00:08:59 KST`.
+- Last fully recorded manual-QA commit: `837276699a11268112a09c78bc1bb60bb954c781`.
+- Document truth refreshed: `2026-07-18 KST`; current working-tree manual evidence has not been recorded.
 - Purpose: prove stabilization work before any Release Candidate or release tag decision.
 - Current gate status: BLOCKED for Release Candidate until manual QA documents move required runtime cases from BLOCKED to PASS.
 
@@ -65,7 +65,7 @@
 - KMA: DISABLED in Release until Worker health and KMA live QA pass.
 - News: DISABLED in Release until Worker health and news live QA pass.
 - Law: DISABLED in Release until Worker health and law live QA pass.
-- Worker production health: DISABLED for Release because public lookup surfaces are disabled. Live check currently fails until production Worker is redeployed from repository source.
+- Worker production health: PASS on 2026-07-18 for the public `/health` contract. Provider Release surfaces remain DISABLED until their own live QA passes.
 
 Details are in `docs/qa/LiveProviderQAMatrix.md`.
 
@@ -81,8 +81,9 @@ Details are in `docs/qa/LiveProviderQAMatrix.md`.
 
 - Source validation can pass independently.
 - Production deploy is not asserted by source validation.
-- Live check on `https://late-waterfall-c95c.urange.workers.dev/health` returned version `0.3.0` and build `public-lookup-0.3.0`, but did not expose the current `userRoutes` / `diagnosticContract` contract.
-- Public lookup release surfaces remain disabled until the repository Worker source is redeployed and `python3 scripts/validate_worker_production_health.py` passes.
+- `python3 scripts/validate_worker_production_health.py` passed against production on 2026-07-18, including the public route/diagnostic-contract and no-token/wrong-token checks performed by the default validator.
+- Correct-token diagnostic payload QA was not run because no diagnostic secret was supplied.
+- Public lookup Release surfaces remain disabled until each provider-specific live QA passes; Worker health alone does not enable them.
 
 ## 9. App Termination Status
 

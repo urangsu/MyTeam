@@ -3,6 +3,7 @@ import AppKit
 import PDFKit
 import Security
 import SpriteKit
+import SwiftUI
 @testable import MyTeam
 
 // MARK: - LLMRouterTests
@@ -11,6 +12,50 @@ import SpriteKit
 // no network calls are made.
 
 final class LLMRouterTests: XCTestCase {
+
+    @MainActor
+    func test_characterSpriteScene_usesStableLogicalCanvasForSeatRelocation() {
+        let scene = CharacterSpriteScene(characterID: "치코", fallbackImageName: "치코_profile")
+
+        XCTAssertEqual(scene.size, CGSize(width: 512, height: 512))
+    }
+
+    @MainActor
+    func test_spriteAgentView_constrainsSKViewToSeatBounds() {
+        let host = NSHostingView(
+            rootView: SpriteAgentView(
+                characterID: "치코",
+                fallbackImageName: "치코_profile",
+                state: .typing
+            )
+            .frame(width: 60, height: 60)
+        )
+        host.frame = NSRect(x: 0, y: 0, width: 60, height: 60)
+        host.layoutSubtreeIfNeeded()
+
+        func findSKView(in view: NSView) -> SKView? {
+            if let skView = view as? SKView { return skView }
+            return view.subviews.lazy.compactMap { findSKView(in: $0) }.first
+        }
+
+        let skView = findSKView(in: host)
+        XCTAssertNotNil(skView)
+        XCTAssertEqual(skView?.bounds.size, CGSize(width: 60, height: 60))
+    }
+
+    @MainActor
+    func test_spriteViewHosting_doesNotResizeLogicalSceneCanvas() {
+        let scene = CharacterSpriteScene(characterID: "치코", fallbackImageName: "치코_profile")
+        let host = NSHostingView(
+            rootView: SpriteView(scene: scene, options: [.allowsTransparency])
+                .frame(width: 60, height: 60)
+        )
+        host.frame = NSRect(x: 0, y: 0, width: 60, height: 60)
+        host.layoutSubtreeIfNeeded()
+
+        XCTAssertEqual(scene.size, CGSize(width: 512, height: 512))
+        XCTAssertEqual(scene.scaleMode, .aspectFit)
+    }
 
     @MainActor
     func test_characterSpriteScene_rebuildsFallbackAfterLateIdentityConfiguration() {
@@ -85,6 +130,28 @@ final class LLMRouterTests: XCTestCase {
         XCTAssertTrue(MyTeamToolPreference.isEnabled(id: "weather.current", in: defaults))
         MyTeamToolPreference.setEnabled(false, id: "weather.current", in: defaults)
         XCTAssertFalse(MyTeamToolPreference.isEnabled(id: "weather.current", in: defaults))
+    }
+
+    func test_toolManifestCatalog_excludesExplicitlyDisabledTools() {
+        let defaults = UserDefaults.standard
+        let toolID = "weather.current"
+        let key = "tool.enabled.\(toolID)"
+        let previousValue = defaults.object(forKey: key)
+        defer {
+            if let previousValue {
+                defaults.set(previousValue, forKey: key)
+            } else {
+                defaults.removeObject(forKey: key)
+            }
+        }
+
+        MyTeamToolPreference.setEnabled(false, id: toolID, in: defaults)
+
+        XCTAssertFalse(ToolSemanticManifestCatalog.manifests().contains { $0.toolID == toolID })
+        XCTAssertFalse(
+            ToolSemanticManifestCatalog.manifests(for: "오늘 날씨를 확인해줘")
+                .contains { $0.toolID == toolID }
+        )
     }
 
     func test_characterDialogueCatalogIncludesComfortAndFarewellVariety() {

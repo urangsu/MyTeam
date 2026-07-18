@@ -62,6 +62,12 @@ enum AnimationState: String, CaseIterable {
 // MARK: - CharacterSpriteScene
 class CharacterSpriteScene: SKScene {
 
+    // Keep SpriteKit in a stable, view-independent coordinate space. The
+    // SwiftUI seat can detach and reattach its SKView while the panel moves;
+    // using the transient 60x60 view size as the scene canvas can briefly
+    // expose a 500x502 source frame at scale 1.
+    static let logicalCanvasSize = CGSize(width: 512, height: 512)
+
     // SpriteView may recreate scenes while SwiftUI reshapes the team panel.
     // Reuse a small number of decoded sequences instead of constructing a new
     // SKTexture graph for the same character/state on every recreation.
@@ -124,7 +130,7 @@ class CharacterSpriteScene: SKScene {
     init(characterID: String = "sloth", fallbackImageName: String = "") {
         self.characterID = characterID
         self.fallbackImageName = fallbackImageName
-        super.init(size: CGSize(width: 1, height: 1))
+        super.init(size: Self.logicalCanvasSize)
         backgroundColor = .clear
     }
 
@@ -137,6 +143,7 @@ class CharacterSpriteScene: SKScene {
         backgroundColor = .clear
         scaleMode = .aspectFit
         anchorPoint = CGPoint(x: 0.5, y: 0.0)  // origin = 씬 하단 중앙
+        size = Self.logicalCanvasSize
 
         rebuildCharacterNodes()
         loadAndPlay(state: .typing)             // 기본 상태: 타이핑

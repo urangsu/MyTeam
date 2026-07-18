@@ -43,7 +43,7 @@ Expected: FAIL until APPTERM/NW/ART/HOME manual rows are PASS.
 python3 scripts/validate_worker_production_health.py
 ```
 
-Expected: FAIL until Cloudflare production Worker exposes `userRoutes` and `diagnosticContract`.
+Expected: PASS when Cloudflare production Worker exposes the reviewed `userRoutes` and `diagnosticContract`. The check passed on 2026-07-18; provider-specific live QA remains separate.
 
 ## 4. Manual QA Order
 

@@ -34,19 +34,18 @@ struct SpriteAgentView: View {
     }
 
     var body: some View {
-        GeometryReader { geo in
-            // SpriteView: SwiftUI 안에서 SpriteKit을 표시하는 공식 방법
-            // options: .allowsTransparency → 배경 투명 처리
+        GeometryReader { geometry in
+            // SpriteKit owns one stable logical canvas. GeometryReader only
+            // constrains the backing SKView to the SwiftUI seat; it must never
+            // rewrite scene.size or the 512-point canvas is cropped at 1:1.
             SpriteView(
                 scene: scene,
                 options: [.allowsTransparency]
             )
-            .frame(width: geo.size.width, height: geo.size.height)
+            .frame(width: geometry.size.width, height: geometry.size.height)
+            .clipped()
             .onAppear {
-                setupScene(size: geo.size)
-            }
-            .onChange(of: geo.size) { _, newSize in
-                updateSceneSize(newSize)
+                setupScene()
             }
             .onDisappear {
                 scene.prepareForRemoval()
@@ -65,10 +64,7 @@ struct SpriteAgentView: View {
     }
 
     // MARK: - 씬 초기화
-    private func setupScene(size: CGSize) {
-        // 씬 크기: SpriteView 프레임과 동일하게 맞춥니다.
-        scene.size = sanitizedSceneSize(size)
-
+    private func setupScene() {
         // 배경 투명
         scene.backgroundColor = .clear
 
@@ -84,19 +80,6 @@ struct SpriteAgentView: View {
         scene.loadAndPlay(state: state)
     }
 
-    private func updateSceneSize(_ size: CGSize) {
-        let nextSize = sanitizedSceneSize(size)
-        guard scene.size != nextSize else { return }
-        scene.size = nextSize
-        scene.fitCharacterToScene()
-    }
-
-    private func sanitizedSceneSize(_ size: CGSize) -> CGSize {
-        CGSize(
-            width: max(1, size.width),
-            height: max(1, size.height)
-        )
-    }
 }
 
 // MARK: - SpriteAgentView (Preview)

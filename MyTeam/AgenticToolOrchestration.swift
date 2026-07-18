@@ -52,6 +52,7 @@ enum ToolSemanticManifestCatalog {
     nonisolated static func manifests() -> [ToolSemanticManifest] {
         MyTeamToolRegistry.all
             .filter { $0.isImplemented && $0.isUserFacing }
+            .filter { MyTeamToolPreference.isEnabled(id: $0.id) }
             .filter { $0.category != .voice && $0.category != .system && $0.category != .mail }
             .filter { ProductSurfacePolicy.isEnabledInCurrentReleaseSurface($0) }
             .filter {
@@ -487,7 +488,8 @@ enum ToolPlanValidator {
             guard manifestIDs.contains(plannedStep.toolID),
                   let descriptor = MyTeamToolRegistry.descriptor(id: plannedStep.toolID),
                   descriptor.isImplemented,
-                  descriptor.isUserFacing else {
+                  descriptor.isUserFacing,
+                  MyTeamToolPreference.isEnabled(id: descriptor.id) else {
                 missing.append(NaturalMissingSection(
                     title: plannedStep.reason.isEmpty ? "요청 항목" : plannedStep.reason,
                     reason: "현재 앱에서 실행할 수 없는 항목입니다.",

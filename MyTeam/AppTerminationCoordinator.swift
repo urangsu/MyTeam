@@ -28,7 +28,9 @@ enum AppTerminationPhase: String, Sendable {
 final class AppTerminationCoordinator: ObservableObject {
     static let shared = AppTerminationCoordinator()
 
-    private let terminationWatchdogNanoseconds: UInt64 = 8_000_000_000
+    // APPTERM release contract: the process must be gone within five seconds.
+    // Leave margin for AppKit's reply/teardown after prepared audio is cut.
+    private let terminationWatchdogNanoseconds: UInt64 = 4_500_000_000
 
     @Published private(set) var phase: AppTerminationPhase = .idle
 

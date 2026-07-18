@@ -83,7 +83,6 @@ def main() -> None:
 
     for token in [
         "didReplyToShouldTerminate",
-        "terminationWatchdogNanoseconds: UInt64 = 8_000_000_000",
         "replyOnce",
         "forceExitIfNeeded",
         "stopAudioNonBlocking",
@@ -92,6 +91,16 @@ def main() -> None:
     ]:
         if token not in coordinator:
             failures.append(f"AppTerminationCoordinator missing required guard/constant: {token}")
+    watchdog_match = re.search(
+        r"terminationWatchdogNanoseconds:\s*UInt64\s*=\s*([0-9_]+)",
+        coordinator,
+    )
+    if watchdog_match is None:
+        failures.append("AppTerminationCoordinator is missing a numeric termination watchdog")
+    else:
+        watchdog_nanoseconds = int(watchdog_match.group(1).replace("_", ""))
+        if watchdog_nanoseconds > 5_000_000_000:
+            failures.append("termination watchdog must honor the 5-second APPTERM contract")
     if "withTaskGroup" in coordinator:
         failures.append("AppTerminationCoordinator must not use withTaskGroup for termination cleanup timeout")
 
