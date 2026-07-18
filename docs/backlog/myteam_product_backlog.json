@@ -2709,20 +2709,21 @@
       },
       "completion_evidence": {
         "required": true,
-        "commit_sha": "86f379a, 4d8c363",
+        "commit_sha": "86f379a, 4d8c363, 9f34904",
         "files_changed": [
           "MyTeam/CharacterSpriteScene.swift",
           "MyTeam/SpriteAgentView.swift",
           "MyTeam/AgentSeatView.swift",
           "MyTeamTests/LLMRouterTests.swift"
         ],
-        "validation_summary": "2026-07-18: Commit 4d8c363 keeps CharacterSpriteScene on a fixed 512-point logical canvas while constraining only the backing SKView to the 60-point seat, preventing a panel reattach from exposing a 500x502 source frame at 1:1 scale. A fresh Debug launch showed the complete Chiko frame; heap counts remained CharacterSpriteScene 2, SKSpriteNode 2, SKTexture 39, and 4 MB texture pixel data. leaks reported two CFData allocations totaling 112 bytes, with no SpriteKit root leak identified. XCTest 156/156, sprite validator, release validators, Debug test build, and universal Release passed. Partial remains because repeated panel moves, every emotion/state, and missing DLC art folders need a full visual sweep.",
+        "validation_summary": "2026-07-18: Commit 9f34904 removes drag-start dialogue and coalesces a burst of panel moves into one settled reaction 0.9 seconds after the final move. Superseded and disappeared-view tasks are cancelled, one random agent owns the final visible line, and decorative speech uses dropIfBusy so it cannot interrupt or trail substantive TTS. The two debounce regression tests, XCTest 158/158, dialogue/TTS/release validators, Debug test build, and universal Release passed. Computer Use performed three rapid coordinate drags, but the transparent nameplate did not expose enough accessibility evidence to count the one-line result as confirmed listening/UI QA, so status remains partial.",
         "screenshots": []
       },
       "notes": [
         "Fast repeated clicks can intentionally trigger the existing double-click voice interaction; that loads Supertonic3 and must not be counted as SpriteKit-only leak evidence.",
         "The current sprite validator still reports three design-pending DLC runtime folders for Sena, Kai, and Yuna.",
-        "2026-07-18: Runtime inspection attributed the enlarged Chiko frame to scene/view coordinate drift during SKView reattachment, not corrupt source PNGs."
+        "2026-07-18: Runtime inspection attributed the enlarged Chiko frame to scene/view coordinate drift during SKView reattachment, not corrupt source PNGs.",
+        "2026-07-18: Panel movement reactions now use trailing debounce: no start line, one final settled line, and no stale decorative speech behind active work audio."
       ]
     }
   ]
