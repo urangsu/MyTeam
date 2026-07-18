@@ -159,7 +159,7 @@ def main() -> int:
     required_runtime_events = {
         "AgentWindowManager.swift": ["kind.dialogueEvent"],
         "AgentSeatView.swift": ["event: .wake"],
-        "TeamTableView.swift": ["event: .moved", "event: .settled"],
+        "TeamTableView.swift": ["event: .settled", "TrailingDragReactionGate"],
         "CharacterReactionEngine.swift": ["CharacterDialogues.randomText"],
         "CharacterReactionEventSink.swift": ["targetAgentID(for: event)"],
         "WorkroomCharacterEvent.swift": ["dialogueEvent: .taskStarted", "dialogueEvent: .taskCompleted"],
@@ -172,11 +172,15 @@ def main() -> int:
 
     team_table_source = (ROOT / "MyTeam" / "TeamTableView.swift").read_text()
     drag_dialogue_marker = ".onReceive(NotificationCenter.default.publisher(for: .agentDragBegan))"
-    drag_dialogue_region = team_table_source.split(drag_dialogue_marker, 1)[-1].split(".onChange(of: speechManager.recognizedText)", 1)[0]
+    drag_dialogue_region = team_table_source.split(drag_dialogue_marker, 1)[-1].split("// MARK: - 팀 입력 전송", 1)[0]
     if "manager.currentRoomID" in drag_dialogue_region:
         failures.append("team-panel drag dialogue must not be stored in the current personal room")
-    if drag_dialogue_region.count("manager.selectedTeamWorkroomID") < 2:
-        failures.append("team-panel drag start and settled dialogue must use the selected team workroom")
+    if drag_dialogue_region.count("manager.selectedTeamWorkroomID") != 1:
+        failures.append("team-panel drag burst must store exactly one settled dialogue in the selected team workroom")
+    if "event: .moved" in drag_dialogue_region:
+        failures.append("team-panel drag start must not generate dialogue before the final settled position")
+    if "policy: .dropIfBusy" not in drag_dialogue_region:
+        failures.append("team-panel settled speech must not interrupt or trail substantive speech")
 
     report_lines = [
         "# Character Dialogue Report",

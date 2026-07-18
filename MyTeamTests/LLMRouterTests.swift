@@ -14,6 +14,38 @@ import SwiftUI
 final class LLMRouterTests: XCTestCase {
 
     @MainActor
+    func test_dragReactionGate_onlyRunsTheLastScheduledReaction() async {
+        let gate = TrailingDragReactionGate()
+        var reactions: [String] = []
+        let lastReaction = expectation(description: "last reaction runs")
+
+        gate.schedule(after: .milliseconds(30)) {
+            XCTFail("superseded reaction must be cancelled")
+        }
+        gate.schedule(after: .milliseconds(30)) {
+            reactions.append("last")
+            lastReaction.fulfill()
+        }
+
+        await fulfillment(of: [lastReaction], timeout: 1)
+        XCTAssertEqual(reactions, ["last"])
+    }
+
+    @MainActor
+    func test_dragReactionGate_cancelPreventsPendingReaction() async {
+        let gate = TrailingDragReactionGate()
+        let pendingReaction = expectation(description: "cancelled reaction stays cancelled")
+        pendingReaction.isInverted = true
+
+        gate.schedule(after: .milliseconds(30)) {
+            pendingReaction.fulfill()
+        }
+        gate.cancel()
+
+        await fulfillment(of: [pendingReaction], timeout: 0.1)
+    }
+
+    @MainActor
     func test_characterSpriteScene_usesStableLogicalCanvasForSeatRelocation() {
         let scene = CharacterSpriteScene(characterID: "치코", fallbackImageName: "치코_profile")
 

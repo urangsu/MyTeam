@@ -1,5 +1,33 @@
 import SwiftUI
 import AppKit
+import Combine
+
+@MainActor
+final class TrailingDragReactionGate: ObservableObject {
+    private var pendingTask: Task<Void, Never>?
+
+    func schedule(
+        after delay: Duration = .milliseconds(900),
+        action: @escaping @MainActor () -> Void
+    ) {
+        pendingTask?.cancel()
+        pendingTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: delay)
+            } catch {
+                return
+            }
+            guard !Task.isCancelled else { return }
+            self?.pendingTask = nil
+            action()
+        }
+    }
+
+    func cancel() {
+        pendingTask?.cancel()
+        pendingTask = nil
+    }
+}
 
 // MARK: - TeamTableView
 // 4명의 에이전트가 투명 창에 나란히 떠있는 메인 뷰.
@@ -10,6 +38,7 @@ struct TeamTableView: View {
     @State private var inputText: String = ""
     @State private var preRecordText: String = ""
     @State private var selectedAgentIndex: Int? = nil
+    @StateObject private var dragReactionGate = TrailingDragReactionGate()
 
     @AppStorage("teamName") private var teamName: String = "MyTeam"
     @AppStorage(TeamNameplateAppearanceSettings.enabledKey) private var teamNameplateEnabled: Bool = TeamNameplateAppearanceSettings.defaultEnabled
@@ -19,10 +48,6 @@ struct TeamTableView: View {
 
     // 드래그 스팸 방지: 한 번의 드래그 제스처 당 알림 1회만 발생
     @State private var isBadgeDragActive: Bool = false
-    // 드래그 TTS 중복 방지: agentDragBegan/Ended 알림이 여러 번 와도 speak()는 1회만
-    @State private var hasSpokenOnDragBegan: Bool = false
-    @State private var hasSpokenOnDragEnded: Bool = false
-
     private var currentPalette: TeamNameplatePalette {
         TeamNameplatePalette(rawValue: teamNameplatePaletteRaw) ?? .clear
     }
@@ -253,60 +278,52 @@ struct TeamTableView: View {
         )
         .frame(width: 460, height: 280)
         .onReceive(NotificationCenter.default.publisher(for: .agentDragBegan)) { _ in
+            dragReactionGate.cancel()
             withAnimation(.spring(response: 0.25, dampingFraction: 0.5)) {
                 isDragging = true
                 selectedAgentIndex = nil
-            }
-            // 중복 방지: 이미 말한 경우 skip (알림이 여러 번 와도 speak()는 1회만)
-            guard !hasSpokenOnDragBegan else { return }
-            hasSpokenOnDragBegan = true
-
-            // 드래그 시작 시 랜덤 에이전트 1명만 말함
-            if let agent = manager.activeAgents.randomElement() {
-                let line = CharacterDialogues.randomText(for: agent.id, event: .moved)
-                    ?? "필요한 곳으로 함께 이동할게요."
-                if let rid = manager.selectedTeamWorkroomID {
-                    manager.addChatLog(roomID: rid, agentID: agent.id, agentName: agent.displayName, text: line, isUser: false, isSystem: true)
-                }
-                if !manager.isSilentMode {
-                    SpeechManager.shared.speak(text: line, agentID: agent.id, characterName: agent.displayName)
-                }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .agentDragEnded)) { _ in
             withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
                 isDragging = false
             }
-            // 드래그 종료: 플래그 초기화 + 착지 대사 1회 (중복 방지)
-            hasSpokenOnDragBegan = false
-            guard !hasSpokenOnDragEnded else {
-                // 타이머로 플래그 초기화 (다음 드래그를 위해)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    hasSpokenOnDragEnded = false
-                }
-                return
-            }
-            hasSpokenOnDragEnded = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                hasSpokenOnDragEnded = false
-            }
-
-            if let agent = manager.activeAgents.randomElement() {
-                let line = CharacterDialogues.randomText(for: agent.id, event: .settled)
-                    ?? "자리를 잡았어요. 바로 이어서 도와드릴게요."
-                if let rid = manager.selectedTeamWorkroomID {
-                    manager.addChatLog(roomID: rid, agentID: agent.id, agentName: agent.displayName, text: line, isUser: false, isSystem: true)
-                }
-                if !manager.isSilentMode {
-                    SpeechManager.shared.speak(text: line, agentID: agent.id, characterName: agent.displayName)
-                }
+            // 여러 번 연속 이동하면 앞선 예약을 취소하고 마지막 위치가
+            // 안정된 뒤 한 명만 반응한다. 드래그 시작 대사는 생성하지 않는다.
+            dragReactionGate.schedule {
+                emitSettledDragReaction()
             }
         }
+        .onDisappear { dragReactionGate.cancel() }
         .onChange(of: speechManager.recognizedText) { _, newText in
             if speechManager.isRecording {
                 let prefix = preRecordText.isEmpty ? "" : preRecordText + " "
                 inputText = prefix + newText
             }
+        }
+    }
+
+    private func emitSettledDragReaction() {
+        guard let agent = manager.activeAgents.randomElement() else { return }
+        let line = CharacterDialogues.randomText(for: agent.id, event: .settled)
+            ?? "자리를 잡았어요. 바로 이어서 도와드릴게요."
+        if let roomID = manager.selectedTeamWorkroomID {
+            manager.addChatLog(
+                roomID: roomID,
+                agentID: agent.id,
+                agentName: agent.displayName,
+                text: line,
+                isUser: false,
+                isSystem: true
+            )
+        }
+        if !manager.isSilentMode {
+            SpeechManager.shared.speak(
+                text: line,
+                agentID: agent.id,
+                characterName: agent.displayName,
+                policy: .dropIfBusy
+            )
         }
     }
 
